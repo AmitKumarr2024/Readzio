@@ -1,5 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { MessageCircle, Eye } from "lucide-react";
+
+// Utility to extract plain text from HTML
+const getPlainTextSnippet = (html, wordCount = 5) => {
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = html;
+  const text = tempDiv.textContent || tempDiv.innerText || "";
+  return text.split(" ").slice(0, wordCount).join(" ") + "...";
+};
 
 const CardOfPost = ({
   id,
@@ -8,40 +17,60 @@ const CardOfPost = ({
   createdAt,
   commentsCount,
   viewsCount,
+  author = { name: "John Doe", org: "TechPulse" },
+  previewHTML = "<p>No preview available</p>",
 }) => {
+  const fallbackImage =
+    "https://via.placeholder.com/400x240.png?text=No+Image";
 
-  
+  const preview = getPlainTextSnippet(previewHTML, 6);
+
   return (
     <Link
       to={`/post/${id}`}
-      className="flex justify-between flex-row-reverse w-full h-44 rounded-xl gap-1    overflow-hidden shadow-xl bg-gray-100 hover:shadow-lg transition-all"
+      className="group w-full max-w-4xl mx-auto flex flex-col sm:flex-row bg-card-bg rounded-xl shadow border-2 border-gray-200 hover:shadow-lg transition duration-300"
     >
-      {/* Image */}
-      <div className="w-2/4 h-40  m-2 rounded-xl">
+      {/* Thumbnail */}
+      <div className="sm:w-1/4 w-full h-52 sm:h-auto overflow-hidden p-3">
         <img
-          src={imageUrl}
+          src={imageUrl || fallbackImage}
           alt={title}
-          className="object-cover p-1 w-full h-[150px]"
+          className="w-full h-full object-contain "
         />
       </div>
 
-      {/* Details fixed to bottom */}
-      <div className="w-full p-4 mt-auto flex flex-col justify-between ">
-        <div>
-          <h2
-            className="text-lg font-bold text-blue-700 hover:underline cursor-pointer mb-2 line-clamp-1 "
-            title={title}
-          >
-            {title}
-          </h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Published: {new Date(createdAt).toLocaleDateString()}
-          </p>
+      {/* Text Content */}
+      <div className="sm:w-4/5 w-full p-5 flex flex-col justify-between">
+        {/* Author & Meta */}
+        <div className="text-lg text-gray-600 mb-1">
+          <span className="font-medium">{author.name}</span>
+          <span className="text-gray-400 mx-1">·</span>
+          <span>{author.org}</span>
         </div>
 
-        <div className="flex justify-between text-xs text-gray-600 border-t pt-2">
-          <span>🗨️ {commentsCount} Comments</span>
-          <span>👁️ {viewsCount} Views</span>
+        {/* Title */}
+        <h2 className="text-3xl line-clamp-1 font-serif font-semibold text-text-main leading-snug  ">
+          {title}
+        </h2>
+
+        {/* Text Preview */}
+        <p className="text-xl text-sub-text mt-2 line-clamp-2">{preview}</p>
+
+        {/* Date & Stats */}
+        <div className="flex items-center justify-between gap-4 mt-4 border-t pt-3 text-gray-500 text-lg">
+          <div className="flex items-center gap-2">
+            <MessageCircle size={16} /> {commentsCount}
+          </div>
+          <div className="flex items-center gap-2">
+            <Eye size={16} /> {viewsCount}
+          </div>
+          <div className="text-xs text-gray-400 ml-auto">
+            {new Date(createdAt).toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+          </div>
         </div>
       </div>
     </Link>
