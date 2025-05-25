@@ -5,6 +5,9 @@ import { FiLink } from "react-icons/fi";
 import { AiOutlineOrderedList, AiOutlineUnorderedList } from "react-icons/ai";
 import { LuListOrdered } from "react-icons/lu";
 import { RiListUnordered } from "react-icons/ri";
+import { FaPoll } from "react-icons/fa";
+import { FaQuoteLeft } from "react-icons/fa";
+import { MdTableChart } from "react-icons/md";
 
 const buttonHover = {
   scale: 1.05,
@@ -104,6 +107,51 @@ const AddBlockButtons = ({ addBlock }) => (
       transition={{ type: "spring", stiffness: 300 }}
     >
       <RiListUnordered size={34} className="text-xl" /> Unordered List
+    </motion.button>
+    <motion.button
+      onClick={() => addBlock("poll")}
+      className="bg-pink-700 text-white font-semibold px-8 py-3 rounded-2xl shadow-lg flex items-center justify-center gap-2"
+      whileHover={buttonHover}
+      transition={{ type: "spring", stiffness: 300 }}
+    >
+      <FaPoll size={20} /> + Poll
+    </motion.button>
+    <motion.button
+      onClick={() =>
+        addBlock("quote", {
+          text: "Your inspirational quote here...",
+          author: "Author Name",
+        })
+      }
+      className="bg-gray-700 text-white font-semibold px-8 py-3 rounded-2xl shadow-lg flex items-center justify-center gap-2"
+      whileHover={buttonHover}
+      transition={{ type: "spring", stiffness: 300 }}
+    >
+      <FaQuoteLeft size={20} /> + Quote
+    </motion.button>
+    <motion.button
+      onClick={() =>
+        addBlock("table", {
+          data: [
+            ["Cell 1", "Cell 2"],
+            ["Cell 3", "Cell 4"],
+          ],
+        })
+      }
+      className="bg-cyan-600 text-white font-semibold px-8 py-3 rounded-2xl shadow-lg flex items-center justify-center gap-2"
+      whileHover={buttonHover}
+      transition={{ type: "spring", stiffness: 300 }}
+    >
+      <MdTableChart size={24} /> + Table
+    </motion.button>
+
+    <motion.button
+      onClick={() => addBlock("video")}
+      className="bg-red-600 text-white font-semibold px-8 py-3 rounded-2xl shadow-lg"
+      whileHover={buttonHover}
+      transition={{ type: "spring", stiffness: 300 }}
+    >
+      + Video
     </motion.button>
   </div>
 );

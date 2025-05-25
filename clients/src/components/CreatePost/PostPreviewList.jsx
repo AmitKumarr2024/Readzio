@@ -4,6 +4,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
 import FileBlock from "../PostFeature/FileBlock";
 import ListBlock from "../PostFeature/ListBlock";
+import VideoBlock from "../PostFeature/VideoBlock";
 
 const PostPreviewList = ({
   allPosts,
@@ -167,6 +168,84 @@ const PostPreviewList = ({
             ordered={block.ordered || false}
           />
         );
+      case "poll":
+        return (
+          <div
+            key={i}
+            className="p-4 border rounded-xl bg-yellow-50 shadow-inner my-6"
+            aria-label="Poll"
+          >
+            <h4 className="font-semibold mb-2 text-gray-800">
+              {block.question}
+            </h4>
+            <ul className="list-disc list-inside space-y-1">
+              {(block.options || []).map((option, idx) => (
+                <li key={idx} className="text-gray-700">
+                  {option}
+                </li>
+              ))}
+            </ul>
+            {block.caption && (
+              <div className="text-xs text-gray-500 italic mt-2">
+                {block.caption}
+              </div>
+            )}
+          </div>
+        );
+      case "quote":
+        return (
+          <blockquote
+            key={i}
+            className="border-l-4 border-gray-400 pl-4 italic text-gray-700 my-4 bg-gray-50 p-4 rounded-md shadow-sm"
+          >
+            <p className="mb-2">"{block.text}"</p>
+            {block.author && (
+              <footer className="text-sm text-gray-500 text-right">
+                — {block.author}
+              </footer>
+            )}
+          </blockquote>
+        );
+      case "table":
+        const [headers = [], ...rows] = block.data || [];
+
+        return (
+          <div key={i} className="my-6 overflow-x-auto">
+            <table className="min-w-full border border-gray-300 table-auto text-left">
+              <thead className="bg-gray-100">
+                <tr>
+                  {headers.map((header, idx) => (
+                    <th key={idx} className="border px-4 py-2 font-semibold">
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {row.map((cell, cellIndex) => (
+                      <td key={cellIndex} className="border px-4 py-2">
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      case "video":
+        return (
+          <VideoBlock
+            key={i}
+            src={block.src}
+            caption={block.caption}
+         
+           
+          />
+        );
+
       default:
         return null;
     }
@@ -183,7 +262,9 @@ const PostPreviewList = ({
           <h3 className="text-xl font-bold text-yellow-700 mb-2">
             📝 Live Draft Preview
           </h3>
-          <h4 className="font-semibold text-lg mb-3">{currentDraftPost.title}</h4>
+          <h4 className="font-semibold text-lg mb-3">
+            {currentDraftPost.title}
+          </h4>
           <div className="space-y-4 mb-4">
             {currentDraftPost.blocks.map((block, i) => renderBlock(block, i))}
           </div>

@@ -1,7 +1,3 @@
-import VideoBlock from "./VideoBlock";
-import QuoteBlock from "./QuoteBlock";
-import TableBlock from "./TableBlock";
-import PollBlock from "./PollBlock";
 import TextBlock from "../actualPostDisplay/TextBlock";
 import CodeBlockOutput from "../actualPostDisplay/CodeBlockOutput";
 import ImageBlockOutput from "../actualPostDisplay/ImageBlockOutput";
@@ -11,6 +7,10 @@ import HrOutput from "../actualPostDisplay/HrOutput";
 import HeadingOutput from "../actualPostDisplay/HeadingOutput";
 import LinkBlockOutput from "../actualPostDisplay/LinkBlockOutput";
 import ListBlockOutput from "../actualPostDisplay/ListBlockOutput";
+import PollBlockOutput from "../actualPostDisplay/PollBlockOutput";
+import QuoteBlockOutput from "../actualPostDisplay/QuoteBlockOutput";
+import TableBlocksOutput from "../actualPostDisplay/TableBlocksOutput";
+import VideoBlockOutput from "../actualPostDisplay/VideoBlockOutput";
 
 const BlockRenderer = ({ blocks }) => {
   if (!Array.isArray(blocks)) return null;
@@ -33,32 +33,59 @@ const BlockRenderer = ({ blocks }) => {
           />
         );
       case "video":
-        return <VideoBlock key={i} src={block.src} caption={block.caption} />;
+        return (
+          <VideoBlockOutput key={i} src={block.src} caption={block.caption} />
+        );
       case "quote":
-        return <QuoteBlock key={i} text={block.text} author={block.author} />;
+        return (
+          <QuoteBlockOutput key={i} text={block.text} author={block.author} />
+        );
+
       case "list":
-        return <ListBlockOutput key={i} items={block.items} ordered={block.ordered}/>
+        return (
+          <ListBlockOutput
+            key={i}
+            items={block.items}
+            ordered={block.ordered}
+          />
+        );
       case "heading":
-        return <HeadingOutput key={i} level={block.level || 2} text={block.text} />;
+        return (
+          <HeadingOutput key={i} level={block.level || 2} text={block.text} />
+        );
       case "table":
-        return <TableBlock key={i} data={block.data} />;
+        return (
+          <TableBlocksOutput
+            key={i}
+            data={block.data}
+            caption={block.caption}
+          />
+        );
       case "link":
-        return <LinkBlockOutput key={i} href={block.href} text={block.text} caption={block.caption}/>
+        return (
+          <LinkBlockOutput
+            key={i}
+            href={block.href}
+            text={block.text}
+            caption={block.caption}
+          />
+        );
       case "hr":
-        return <HrOutput key={i} caption={block.caption} />
+        return <HrOutput key={i} caption={block.caption} />;
       case "emoji":
         return <EmojiBlockOutput key={i} emoji={block.emoji} />;
       case "file":
         return <FileDownloadOutput key={i} url={block.url} name={block.name} />;
       case "poll":
         return (
-          <PollBlock
+          <PollBlockOutput
             key={i}
             question={block.question}
             options={block.options}
+            caption={block.caption}
           />
         );
-        s;
+
       default:
         return (
           <div key={i} className="text-red-500 italic">

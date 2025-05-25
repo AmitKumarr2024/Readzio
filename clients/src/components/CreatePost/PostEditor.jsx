@@ -13,6 +13,10 @@ import FileBlock from "../PostFeature/FileBlock";
 import HeadingBlock from "../PostFeature/HeadingBlock";
 import HrBlock from "../PostFeature/HrBlock";
 import LinkBlock from "../PostFeature/LinkBlock";
+import PollBlock from "../PostFeature/PollBlock";
+import QuoteBlock from "../PostFeature/QuoteBlock";
+import TableBlock from "../PostFeature/TableBlock";
+import VideoBlock from "../PostFeature/VideoBlock";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -40,6 +44,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         ? { id: uuidv4(), type, href: "", text: "Link Text" }
         : type === "list"
         ? { id: uuidv4(), type, items: [""], ordered: options.ordered || false }
+        : type === "poll"
+        ? { id: uuidv4(), type, question: "", options: ["", ""] }
+        : type === "quote"
+        ? { id: uuidv4(), type, text: "Your quote here...", author: "" }
+        : type === "table"
+        ? { id: uuidv4(), type, data: [[""]] }
+        : type === "video"
+        ? { id: uuidv4(), type, src: "", caption: "" }
         : null;
 
     if (newBlock) setBlocks([...blocks, newBlock]);
@@ -79,7 +91,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     }
     // Simulate file URL (in real use, upload file to server or storage)
     const url = URL.createObjectURL(file);
-    updateBlock(index, { ...blocks[index], url, name: file.name, size: file.size });
+    updateBlock(index, {
+      ...blocks[index],
+      url,
+      name: file.name,
+      size: file.size,
+    });
   };
 
   useEffect(() => {
@@ -147,7 +164,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       index={index}
                       updateBlock={updateBlock}
                       removeBlock={removeBlock}
-                      handleImageUpload={(file) => handleImageUpload(file, index)}
+                      handleImageUpload={(file) =>
+                        handleImageUpload(file, index)
+                      }
                     />
                   </motion.div>
                 );
@@ -178,8 +197,15 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
 
               case "file":
                 return (
-                  <motion.div {...motionDivProps} className="my-4 flex flex-col">
-                    <FileBlock url={block.url} name={block.name} size={block.size} />
+                  <motion.div
+                    {...motionDivProps}
+                    className="my-4 flex flex-col"
+                  >
+                    <FileBlock
+                      url={block.url}
+                      name={block.name}
+                      size={block.size}
+                    />
                     <input
                       type="file"
                       onChange={(e) => handleFileUpload(e, index)}
@@ -224,7 +250,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       <select
                         value={block.level}
                         onChange={(e) =>
-                          updateBlock(index, { ...block, level: +e.target.value })
+                          updateBlock(index, {
+                            ...block,
+                            level: +e.target.value,
+                          })
                         }
                         className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                       >
@@ -252,7 +281,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                   <motion.div {...motionDivProps}>
                     <HrBlock
                       block={block}
-                      onChange={(updatedBlock) => updateBlock(index, updatedBlock)}
+                      onChange={(updatedBlock) =>
+                        updateBlock(index, updatedBlock)
+                      }
                       onDelete={() => removeBlock(index)}
                     />
                   </motion.div>
@@ -307,7 +338,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                     className="w-full my-6 p-4 rounded-2xl bg-white shadow-md border border-gray-200"
                   >
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {block.ordered ? "Ordered List Items" : "Unordered List Items"}
+                      {block.ordered
+                        ? "Ordered List Items"
+                        : "Unordered List Items"}
                     </label>
 
                     {block.items.map((item, i) => (
@@ -342,6 +375,234 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                         className="text-lg text-red-600 font-medium"
                       >
                         ❌ Remove List
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              case "poll":
+                return (
+                  <motion.div
+                    key={block.id}
+                    ref={(el) => (blockRefs.current[index] = el)}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    layout
+                    className="w-full"
+                  >
+                    <PollBlock
+                      question={block.question}
+                      options={block.options}
+                      onChangeQuestion={(newQuestion) =>
+                        updateBlock(index, { ...block, question: newQuestion })
+                      }
+                      onChangeOptions={(i, val, remove = false) => {
+                        let newOptions = [...block.options];
+                        if (remove) {
+                          newOptions.splice(i, 1);
+                        } else if (i >= newOptions.length) {
+                          newOptions.push(val);
+                        } else {
+                          newOptions[i] = val;
+                        }
+                        updateBlock(index, { ...block, options: newOptions });
+                      }}
+                    />
+                    <div className="text-right mt-3">
+                      <button
+                        onClick={() => removeBlock(index)}
+                        className="text-lg text-red-600 font-medium"
+                        title="Remove Poll"
+                      >
+                        ❌
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              case "quote":
+                return (
+                  <motion.div {...motionDivProps} className="w-full">
+                    <QuoteBlock text={block.text} author={block.author} />
+                    <div className="mt-2 space-y-2">
+                      <input
+                        type="text"
+                        value={block.text}
+                        onChange={(e) =>
+                          updateBlock(index, { ...block, text: e.target.value })
+                        }
+                        placeholder="Quote text"
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                      <input
+                        type="text"
+                        value={block.author}
+                        onChange={(e) =>
+                          updateBlock(index, {
+                            ...block,
+                            author: e.target.value,
+                          })
+                        }
+                        placeholder="Author (optional)"
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                      <div className="text-right">
+                        <button
+                          onClick={() => removeBlock(index)}
+                          className="text-lg text-red-600 font-medium"
+                        >
+                          ❌
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              case "table":
+                return (
+                  <motion.div
+                    {...motionDivProps}
+                    className="w-full my-6 p-4 rounded-2xl bg-white shadow-md border border-gray-200"
+                  >
+                    <TableBlock
+                      headers={block.headers || []}
+                      rows={block.data || [[]]}
+                      caption={block.caption || ""}
+                    />
+
+                    <div className="mt-4 space-y-4">
+                      {(block.data || []).map((row, rowIndex) => (
+                        <div
+                          key={rowIndex}
+                          className="flex space-x-2 items-center"
+                        >
+                          {row.map((cell, cellIndex) => (
+                            <input
+                              key={cellIndex}
+                              type="text"
+                              value={cell}
+                              onChange={(e) => {
+                                const newData = [...block.data];
+                                newData[rowIndex][cellIndex] = e.target.value;
+                                updateBlock(index, { ...block, data: newData });
+                              }}
+                              placeholder={`R${rowIndex + 1} C${cellIndex + 1}`}
+                              className="flex-1 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          ))}
+                        </div>
+                      ))}
+
+                      {/* Add/Remove rows and columns */}
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            const newData = [...block.data];
+                            newData.push(
+                              new Array(block.data[0].length).fill("")
+                            );
+                            updateBlock(index, { ...block, data: newData });
+                          }}
+                          className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                        >
+                          + Add Row
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            const newData = block.data.map((row) => [
+                              ...row,
+                              "",
+                            ]);
+                            updateBlock(index, { ...block, data: newData });
+                          }}
+                          className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                        >
+                          + Add Column
+                        </button>
+                      </div>
+
+                      <div className="flex space-x-2 mt-4">
+                        <button
+                          onClick={() => {
+                            if (block.data.length > 1) {
+                              const newData = block.data.slice(0, -1); // Remove last row
+                              updateBlock(index, { ...block, data: newData });
+                            }
+                          }}
+                          className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                        >
+                          - Remove Row
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            if (block.data[0].length > 1) {
+                              const newData = block.data.map((row) =>
+                                row.slice(0, -1)
+                              );
+                              updateBlock(index, { ...block, data: newData });
+                            }
+                          }}
+                          className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                        >
+                          - Remove Column
+                        </button>
+                      </div>
+
+                      {/* Delete entire table */}
+                      <div className="flex justify-end mt-4">
+                        <button
+                          onClick={() => removeBlock(index)}
+                          className="px-4 py-1 bg-red-700 text-white rounded hover:bg-red-800"
+                          title="Delete entire table"
+                        >
+                          ❌ Delete Table
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              case "video":
+                return (
+                  <motion.div {...motionDivProps}>
+                    <VideoBlock src={block.src} caption={block.caption} />
+                    <div className="mt-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Video URL (mp4)
+                      </label>
+                      <input
+                        type="text"
+                        value={block.src}
+                        onChange={(e) =>
+                          updateBlock(index, { ...block, src: e.target.value })
+                        }
+                        placeholder="https://example.com/video.mp4"
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                    <div className="mt-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Caption (optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={block.caption}
+                        onChange={(e) =>
+                          updateBlock(index, {
+                            ...block,
+                            caption: e.target.value,
+                          })
+                        }
+                        placeholder="Caption text"
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                    <div className="text-right mt-2">
+                      <button
+                        onClick={() => removeBlock(index)}
+                        className="text-lg text-red-600 font-medium"
+                        title="Remove Video Block"
+                      >
+                        ❌
                       </button>
                     </div>
                   </motion.div>
