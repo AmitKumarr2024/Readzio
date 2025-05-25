@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet";
-import RightSideBox from "../RightSideBox";
 import CommentBox from "./CommentBox";
 import { LikeButton } from "./LikeButton";
 import { ShareButton } from "./ShareButton";
 import { BookmarkButton } from "./BookmarkButton";
 import CardOfPostVertical from "../Cards/CardOfPostVertical";
 import BlockRenderer from "../PostFeature/BlockRenderer";
-
+import ProfileWrapper from "../RightSideBar/ProfileWrapper";
 
 const DisplayPost = () => {
   const { id } = useParams();
@@ -43,7 +42,8 @@ const DisplayPost = () => {
   const maxStartIndex = Math.max(allPosts.length - cardsToShow, 0);
 
   const goPrev = () => setStartIndex((prev) => Math.max(prev - 1, 0));
-  const goNext = () => setStartIndex((prev) => Math.min(prev + 1, maxStartIndex));
+  const goNext = () =>
+    setStartIndex((prev) => Math.min(prev + 1, maxStartIndex));
 
   // Extract first image and a short description from the blocks
   const firstImage =
@@ -58,9 +58,15 @@ const DisplayPost = () => {
     <>
       <Helmet>
         <title>{post.title} | My Blog</title>
-        <meta name="description" content={plainText || "Read this post on My Blog."} />
+        <meta
+          name="description"
+          content={plainText || "Read this post on My Blog."}
+        />
         <meta property="og:title" content={post.title} />
-        <meta property="og:description" content={plainText || "Check out this blog post."} />
+        <meta
+          property="og:description"
+          content={plainText || "Check out this blog post."}
+        />
         <meta property="og:image" content={firstImage} />
         <meta property="og:type" content="article" />
         <meta property="og:url" content={window.location.href} />
@@ -142,11 +148,15 @@ const DisplayPost = () => {
               {allPosts
                 .slice(startIndex, startIndex + cardsToShow)
                 .map((post) => (
-                  <div key={post.id} className="w-full grid md:grid-cols-1 gap-2">
+                  <div
+                    key={post.id}
+                    className="w-full grid md:grid-cols-1 gap-2"
+                  >
                     <CardOfPostVertical
                       {...post}
                       imageUrl={
-                        post.blocks?.find((block) => block.type === "image")?.src || ""
+                        post.blocks?.find((block) => block.type === "image")
+                          ?.src || ""
                       }
                     />
                   </div>
@@ -156,7 +166,7 @@ const DisplayPost = () => {
         </div>
 
         <div className="lg:col-span-4">
-          <RightSideBox />
+          <ProfileWrapper/>
         </div>
       </div>
     </>

@@ -15,6 +15,7 @@ import SearchPage from "../pages/SearchPage";
 import AboutPage from "../pages/AboutPage";
 import Contact from "../pages/Contact";
 import PrivacyPage from "../pages/PrivacyPage";
+import TermsAndConditionPage from "../pages/TermsAndConditionPage";
 
 const routes = createBrowserRouter([
   {
@@ -47,6 +48,8 @@ const routes = createBrowserRouter([
 
   { path: "/login", element: <LoginPage /> },
   { path: "/signup", element: <SignupPage /> },
+  { path: "/Term&Condition", element: <TermsAndConditionPage /> },
+
   { path: "*", element: <PageNotFound /> },
 ]);
 

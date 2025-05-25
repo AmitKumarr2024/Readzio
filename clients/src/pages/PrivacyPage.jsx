@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom'; // ✅ Step 1: Import Link
 
 const PrivacyPage = () => {
   return (
@@ -50,6 +51,14 @@ const PrivacyPage = () => {
           <p>
             If you have any questions about this policy, feel free to reach out at{' '}
             <span className="text-blue-600">amit@example.com</span>.
+          </p>
+
+          {/* ✅ Step 2: Add Terms & Conditions link */}
+          <p>
+            For more information, please also read our{' '}
+            <Link to="/Term&Condition" className="text-blue-600 underline">
+              Terms and Conditions
+            </Link>.
           </p>
         </div>
 

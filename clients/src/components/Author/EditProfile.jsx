@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 import { CgWebsite } from "react-icons/cg";
 import {
   FaTwitter,
@@ -25,6 +26,8 @@ const EditProfile = ({ initialData = {}, onSave }) => {
     gender: initialData.gender || "",
     location: initialData.location || "",
     profession: initialData.profession || "",
+    joinedDate: initialData.joinedDate || "",
+    subscribers: initialData.subscribers || 0,
     socialWebsite: initialData.social?.website || "",
     socialTwitter: initialData.social?.twitter || "",
     socialGithub: initialData.social?.github || "",

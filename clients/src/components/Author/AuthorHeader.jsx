@@ -1,5 +1,17 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { CgWebsite } from "react-icons/cg";
+import {
+  FaTwitter,
+  FaGithub,
+  FaLinkedin,
+  FaUser,
+  FaEnvelope,
+  FaVenusMars,
+  FaMapMarkerAlt,
+  FaBriefcase,
+  FaPen,
+} from "react-icons/fa";
 
 const AuthorHeader = ({ author, onEditClick }) => {
   const avatarFallback =
@@ -36,88 +48,107 @@ const AuthorHeader = ({ author, onEditClick }) => {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <div>
             <h2 className="text-2xl font-semibold text-gray-800">
-              {author?.name || "Author Name"}
+              {author?.name || "Unnamed Author"}
             </h2>
-            <p className="text-gray-500 text-sm">@{author?.username || "username"}</p>
+            <p className="text-sm text-gray-600 italic">@{author?.username}</p>
           </div>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            whileHover={{ scale: 1.03 }}
+          <button
             onClick={onEditClick}
-            className="self-start sm:self-auto bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+            aria-label="Edit Profile"
           >
-            ✏️ Edit Profile
-          </motion.button>
+            Edit Profile
+          </button>
         </div>
 
         {/* Bio */}
-        {author?.bio && <p className="text-gray-700 text-sm mt-2">{author.bio}</p>}
+        <p className="mt-2 text-gray-700">{author?.bio || "No bio available."}</p>
 
-        {/* Additional Info */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 mt-3 text-gray-600 text-sm">
-          {author?.email && <span>📧 {author.email}</span>}
-          {author?.gender && <span>🚻 {author.gender}</span>}
-          {author?.location && <span>📍 {author.location}</span>}
-          {author?.profession && <span>💼 {author.profession}</span>}
-          <span>📅 Joined: {author?.joinedDate || "January 2024"}</span>
+        {/* Details Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 text-gray-700 font-medium text-sm">
+          <div className="flex items-center gap-2">
+            <FaEnvelope className="text-blue-600" />
+            <span>{author?.email || "-"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CgWebsite className="text-blue-600" />
+            <a
+              href={author?.website || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-blue-700"
+            >
+              {author?.website ? new URL(author.website).hostname : "-"}
+            </a>
+          </div>
+          <div className="flex items-center gap-2">
+            <FaVenusMars className="text-blue-600" />
+            <span>{author?.gender || "-"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FaMapMarkerAlt className="text-blue-600" />
+            <span>{author?.location || "-"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FaBriefcase className="text-blue-600" />
+            <span>{author?.profession || "-"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FaUser className="text-blue-600" />
+            <span>Joined: {author?.joinedDate || "-"}</span>
+          </div>
+        </div>
+
+        {/* Social Icons */}
+        <div className="flex gap-5 text-2xl mt-6 text-gray-600">
+          {author?.social?.website && (
+            <a
+              href={author.social.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Website"
+            >
+              <CgWebsite />
+            </a>
+          )}
+          {author?.social?.twitter && (
+            <a
+              href={`https://twitter.com/${author.social.twitter}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Twitter"
+            >
+              <FaTwitter className="text-blue-400" />
+            </a>
+          )}
+          {author?.social?.github && (
+            <a
+              href={`https://github.com/${author.social.github}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="GitHub"
+            >
+              <FaGithub />
+            </a>
+          )}
+          {author?.social?.linkedin && (
+            <a
+              href={`https://linkedin.com/in/${author.social.linkedin}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="LinkedIn"
+            >
+              <FaLinkedin className="text-blue-700" />
+            </a>
+          )}
         </div>
 
         {/* Stats */}
-        <div className="flex flex-wrap gap-4 mt-4 text-sm text-gray-800 font-medium">
+        <div className="flex flex-wrap gap-6 mt-6 text-sm text-gray-800 font-semibold">
           <span>📝 {author?.postsCount || 0} Posts</span>
           <span>👥 {author?.followers || 0} Followers</span>
+          <span>🔔 {author?.subscribers || 0} Subscribers</span>
         </div>
-
-        {/* Social Links */}
-        {author?.social && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-            className="flex flex-wrap gap-4 mt-4 text-sm"
-          >
-            {author.social.website && (
-              <a
-                href={author.social.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                🌐 Website
-              </a>
-            )}
-            {author.social.twitter && (
-              <a
-                href={`https://twitter.com/${author.social.twitter}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:underline"
-              >
-                🐦 Twitter
-              </a>
-            )}
-            {author.social.github && (
-              <a
-                href={`https://github.com/${author.social.github}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-900 hover:underline"
-              >
-                💻 GitHub
-              </a>
-            )}
-            {author.social.linkedin && (
-              <a
-                href={`https://linkedin.com/in/${author.social.linkedin}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-700 hover:underline"
-              >
-                💼 LinkedIn
-              </a>
-            )}
-          </motion.div>
-        )}
       </motion.div>
     </motion.div>
   );
