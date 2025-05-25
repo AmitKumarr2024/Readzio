@@ -11,7 +11,7 @@ import { FaUnderline } from "react-icons/fa";
 import { FaStrikethrough } from "react-icons/fa";
 import { FaLink } from "react-icons/fa";
 
-const TextBlock = ({ value, onUpdate, onRemove }) => {
+const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
   const contentRef = useRef(null);
 
   // Set initial content only once
@@ -38,7 +38,7 @@ const TextBlock = ({ value, onUpdate, onRemove }) => {
       if (!current || current === "<br>") {
         onRemove();
       }
-    }, 300);
+    }, 300);  
   };
 
   const insertLink = () => {
@@ -178,4 +178,4 @@ const TextBlock = ({ value, onUpdate, onRemove }) => {
   );
 };
 
-export default TextBlock;
+export default EditorTextBlock;

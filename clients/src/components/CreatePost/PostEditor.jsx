@@ -1,25 +1,48 @@
 import React, { useRef, useEffect } from "react";
-import TextBlock from "../../Utils/TextBlock";
-import { MdDeleteForever, MdClear } from "react-icons/md";
-import { motion, AnimatePresence } from "framer-motion";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { FiUpload } from "react-icons/fi";
-import { IoIosBackspace } from "react-icons/io";
+import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "react-hot-toast";
+import { v4 as uuidv4 } from "uuid";
 
+import PostImageBlock from "../PostFeature/PostImageBlock";
+import CodeBlock from "../PostFeature/CodeBlock";
+import TextBlockWrapper from "../PostFeature/TextBlockWrapper";
+import TitleInput from "../PostFeature/TitleInput";
+import AddBlockButtons from "../PostFeature/AddBlockButtons";
+import EmojiBlock from "../PostFeature/EmojiBlock";
+import FileBlock from "../PostFeature/FileBlock";
+import HeadingBlock from "../PostFeature/HeadingBlock";
+import HrBlock from "../PostFeature/HrBlock";
+import LinkBlock from "../PostFeature/LinkBlock";
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
   const blockRefs = useRef([]);
 
-  const addBlock = (type) => {
+  // Add block with optional options (for list type)
+  const addBlock = (type, options = {}) => {
     const newBlock =
       type === "text"
-        ? { type, value: "<p></p>" }
+        ? { id: uuidv4(), type, value: "<p></p>" }
+        : type === "heading"
+        ? { id: uuidv4(), type, level: 2, text: "Heading Text" }
         : type === "code"
-        ? { type, code: "", caption: "" }
-        : { type, src: "", caption: "" };
-    setBlocks([...blocks, newBlock]);
+        ? { id: uuidv4(), type, code: "", caption: "" }
+        : type === "image"
+        ? { id: uuidv4(), type, src: "", caption: "" }
+        : type === "emoji"
+        ? { id: uuidv4(), type, emoji: "😀" }
+        : type === "file"
+        ? { id: uuidv4(), type, url: "", name: "", size: 0 }
+        : type === "hr"
+        ? { id: uuidv4(), type }
+        : type === "link"
+        ? { id: uuidv4(), type, href: "", text: "Link Text" }
+        : type === "list"
+        ? { id: uuidv4(), type, items: [""], ordered: options.ordered || false }
+        : null;
+
+    if (newBlock) setBlocks([...blocks, newBlock]);
   };
 
   const updateBlock = (index, newData) => {
@@ -33,15 +56,30 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     setBlocks(updated);
   };
 
-  const handleImageUpload = (e, index) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateBlock(index, { ...blocks[index], src: reader.result });
-      };
-      reader.readAsDataURL(file);
+  // Dummy placeholder handlers — implement these properly
+  const handleImageUpload = (file, index) => {
+    if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("File size exceeds 10MB limit.");
+      return;
     }
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateBlock(index, { ...blocks[index], src: reader.result });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileUpload = (e, index) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("File size exceeds 10MB limit.");
+      return;
+    }
+    // Simulate file URL (in real use, upload file to server or storage)
+    const url = URL.createObjectURL(file);
+    updateBlock(index, { ...blocks[index], url, name: file.name, size: file.size });
   };
 
   useEffect(() => {
@@ -53,27 +91,15 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     }
   }, [blocks]);
 
-  // Animation variants for blocks
-  const blockVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-    exit: { opacity: 0, y: -20, transition: { duration: 0.2 } },
-  };
-
-  // Animation variants for buttons
-  const buttonHover = {
-    scale: 1.05,
-    boxShadow: "0 0 8px rgba(0,0,0,0.2)",
-  };
   const sizeToWidthClass = (size) => {
     const widthMap = {
-      25: "md:w-1/4", // 25%
-      50: "md:w-1/2", // 50%
+      25: "md:w-1/4",
+      50: "md:w-1/2",
       60: "md:w-[60%]",
-      75: "md:w-3/4", // 75%
-      100: "md:w-full", // 100%
+      75: "md:w-3/4",
+      100: "md:w-full",
     };
-    return widthMap[size] || "md:w-full"; // Fallback to w-full if size isn’t mapped
+    return widthMap[size] || "md:w-full";
   };
 
   return (
@@ -86,208 +112,249 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         Create Content
       </h1>
 
-      {/* Title Input */}
-      <section className="mb-6">
-        <label className="block mb-3 font-semibold text-gray-700 text-3xl">
-          Title
-        </label>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Write your post title here..."
-          className="w-full border border-gray-300 rounded-lg px-5 py-3 text-gray-900 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-        />
-      </section>
+      <TitleInput title={title} setTitle={setTitle} />
 
-      {/* Content Blocks */}
       <div className="flex flex-col overflow-y-auto mb-6 w-full space-y-6 pr-3">
         <AnimatePresence>
           {blocks.map((block, index) => {
-            if (block.type === "text") {
-              return (
-                <motion.div
-                  key={index}
-                  ref={(el) => (blockRefs.current[index] = el)}
-                  className="relative bg-white w-full pr-10 p-6 rounded-2xl shadow-md border border-gray-200"
-                  variants={blockVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  layout
-                >
-                  <button
-                    onClick={() => removeBlock(index)}
-                    className="absolute top-1 right-0 text-red-500 hover:text-red-700 transition"
-                    aria-label="Remove text block"
-                  >
-                    <MdDeleteForever size={28} />
-                  </button>
-                  <TextBlock
-                    value={block.value}
-                    onUpdate={(val) =>
-                      updateBlock(index, { ...block, value: val })
-                    }
-                  />
-                </motion.div>
-              );
-            } else if (block.type === "image") {
-              return (
-                <motion.div
-                  key={index}
-                  ref={(el) => (blockRefs.current[index] = el)}
-                  className="relative bg-white p-6 pr-12 rounded-2xl shadow-md border border-gray-200"
-                  variants={blockVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  layout
-                >
-                  <button
-                    onClick={() => removeBlock(index)}
-                    className="absolute top-2 right-2 text-red-500 hover:text-red-700 transition"
-                    aria-label="Remove image block"
-                  >
-                    <MdDeleteForever size={28} />
-                  </button>
+            const motionDivProps = {
+              key: block.id,
+              ref: (el) => (blockRefs.current[index] = el),
+              initial: { opacity: 0, y: 10 },
+              animate: { opacity: 1, y: 0 },
+              exit: { opacity: 0, y: -10 },
+              layout: true,
+            };
 
-                  <input
-                    type="text"
-                    placeholder="Image URL (or upload below)"
-                    value={block.src.startsWith("data:") ? "" : block.src}
-                    onChange={(e) =>
-                      updateBlock(index, { ...block, src: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-md px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
-                  />
+            switch (block.type) {
+              case "text":
+                return (
+                  <motion.div {...motionDivProps}>
+                    <TextBlockWrapper
+                      block={block}
+                      index={index}
+                      updateBlock={updateBlock}
+                      removeBlock={removeBlock}
+                    />
+                  </motion.div>
+                );
 
-                  <label className="mb-4 flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow-md cursor-pointer hover:bg-blue-700 transition duration-300">
-                    <FiUpload className="w-5 h-5 mr-2" />
-                    <span>Choose Image</span>
+              case "image":
+                return (
+                  <motion.div {...motionDivProps}>
+                    <PostImageBlock
+                      block={block}
+                      index={index}
+                      updateBlock={updateBlock}
+                      removeBlock={removeBlock}
+                      handleImageUpload={(file) => handleImageUpload(file, index)}
+                    />
+                  </motion.div>
+                );
+
+              case "code":
+                return (
+                  <motion.div {...motionDivProps}>
+                    <CodeBlock
+                      block={block}
+                      index={index}
+                      updateBlock={updateBlock}
+                      removeBlock={removeBlock}
+                    />
+                  </motion.div>
+                );
+
+              case "emoji":
+                return (
+                  <motion.div {...motionDivProps}>
+                    <EmojiBlock
+                      block={block}
+                      index={index}
+                      updateBlock={updateBlock}
+                      removeBlock={removeBlock}
+                    />
+                  </motion.div>
+                );
+
+              case "file":
+                return (
+                  <motion.div {...motionDivProps} className="my-4 flex flex-col">
+                    <FileBlock url={block.url} name={block.name} size={block.size} />
                     <input
                       type="file"
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(e, index)}
-                      className="hidden"
+                      onChange={(e) => handleFileUpload(e, index)}
+                      className="mt-2"
                     />
-                  </label>
+                    <button
+                      onClick={() => removeBlock(index)}
+                      className="mt-2 text-red-600 hover:underline"
+                    >
+                      Remove File
+                    </button>
+                  </motion.div>
+                );
 
-                  <input
-                    placeholder="Caption (optional)"
-                    value={block.caption}
-                    onChange={(e) =>
-                      updateBlock(index, { ...block, caption: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-md px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
-                  />
-                  {block.src && (
-                    <img
-                      src={block.src}
-                      alt={block.caption || "Uploaded"}
-                      className="rounded-lg max-w-full max-h-96 object-contain border border-gray-300"
-                    />
-                  )}
-                </motion.div>
-              );
-            } else if (block.type === "code") {
-              return (
-                <motion.div
-                  key={index}
-                  ref={(el) => (blockRefs.current[index] = el)}
-                  className="relative bg-gray-900 p-6 pt-10 pr-10 rounded-2xl shadow-md border border-gray-700 text-white font-mono"
-                  variants={blockVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  layout
-                >
-                  {/* Buttons */}
-                  <button
-                    onClick={() => removeBlock(index)}
-                    className="absolute top-1 right-2 text-red-400 hover:text-red-600 transition"
-                    aria-label="Remove code block"
+              case "heading":
+                return (
+                  <motion.div
+                    {...motionDivProps}
+                    className="w-full my-6 p-4 rounded-2xl bg-white shadow-md border border-gray-200 space-y-4"
                   >
-                    <MdDeleteForever size={28} />
-                  </button>
+                    <HeadingBlock level={block.level} text={block.text} />
 
-                  <button
-                    onClick={() => updateBlock(index, { ...block, code: "" })}
-                    className="absolute top-1 right-12 text-gray-500 hover:text-gray-700 hover: font-bold transition flex items-center gap-1 px-2 mt-1 rounded-md bg-gray-100"
-                    aria-label="Clear code"
-                    title="Clear code"
-                  >
-                    <IoIosBackspace size={20} />
-                    ClearCode
-                  </button>
-
-                  {/* Textarea for editing code */}
-                  <textarea
-                    value={block.code}
-                    onChange={(e) =>
-                      updateBlock(index, { ...block, code: e.target.value })
-                    }
-                    placeholder="Write your code here..."
-                    rows={6}
-                    className="w-full bg-gray-800 rounded-md p-4 resize-none border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600 transition text-white"
-                  />
-
-                  {/* Live preview with syntax highlighting */}
-                  {block.code && (
-                    <div className="mt-4 overflow-x-auto max-w-full bg-gray-800 rounded-md p-4">
-                      <SyntaxHighlighter
-                        language="javascript"
-                        style={oneDark}
-                        wrapLongLines={true}
-                      >
-                        {block.code}
-                      </SyntaxHighlighter>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Heading Text
+                      </label>
+                      <input
+                        type="text"
+                        value={block.text}
+                        onChange={(e) =>
+                          updateBlock(index, { ...block, text: e.target.value })
+                        }
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        placeholder="Edit heading text"
+                      />
                     </div>
-                  )}
 
-                  {/* Optional caption */}
-                  <input
-                    placeholder="Caption (optional)"
-                    value={block.caption}
-                    onChange={(e) =>
-                      updateBlock(index, { ...block, caption: e.target.value })
-                    }
-                    className="w-full mt-4 rounded-md px-4 py-3 text-gray-100 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-600 transition"
-                  />
-                </motion.div>
-              );
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Heading Level
+                      </label>
+                      <select
+                        value={block.level}
+                        onChange={(e) =>
+                          updateBlock(index, { ...block, level: +e.target.value })
+                        }
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      >
+                        {[1, 2, 3].map((lvl) => (
+                          <option key={lvl} value={lvl}>
+                            H{lvl}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="text-right">
+                      <button
+                        onClick={() => removeBlock(index)}
+                        className="text-lg text-red-600 font-medium"
+                      >
+                        ❌
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+
+              case "hr":
+                return (
+                  <motion.div {...motionDivProps}>
+                    <HrBlock
+                      block={block}
+                      onChange={(updatedBlock) => updateBlock(index, updatedBlock)}
+                      onDelete={() => removeBlock(index)}
+                    />
+                  </motion.div>
+                );
+
+              case "link":
+                return (
+                  <motion.div
+                    {...motionDivProps}
+                    className="w-full my-6 p-4 rounded-2xl bg-white shadow-md border border-gray-200"
+                  >
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Link URL
+                    </label>
+                    <input
+                      type="text"
+                      value={block.href}
+                      onChange={(e) =>
+                        updateBlock(index, { ...block, href: e.target.value })
+                      }
+                      placeholder="https://example.com"
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-900 mb-3"
+                    />
+
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Link Text
+                    </label>
+                    <input
+                      type="text"
+                      value={block.text}
+                      onChange={(e) =>
+                        updateBlock(index, { ...block, text: e.target.value })
+                      }
+                      placeholder="Link text"
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-900"
+                    />
+                    <div className="text-right mt-3">
+                      <button
+                        onClick={() => removeBlock(index)}
+                        className="text-lg text-red-600 font-medium"
+                      >
+                        ❌
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+
+              case "list":
+                return (
+                  <motion.div
+                    {...motionDivProps}
+                    className="w-full my-6 p-4 rounded-2xl bg-white shadow-md border border-gray-200"
+                  >
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {block.ordered ? "Ordered List Items" : "Unordered List Items"}
+                    </label>
+
+                    {block.items.map((item, i) => (
+                      <input
+                        key={i}
+                        type="text"
+                        value={item}
+                        onChange={(e) => {
+                          const newItems = [...block.items];
+                          newItems[i] = e.target.value;
+                          updateBlock(index, { ...block, items: newItems });
+                        }}
+                        placeholder={`Item ${i + 1}`}
+                        className="w-full px-4 py-2 mb-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                      />
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newItems = [...block.items, ""];
+                        updateBlock(index, { ...block, items: newItems });
+                      }}
+                      className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700"
+                    >
+                      + Add Item
+                    </button>
+
+                    <div className="text-right mt-3">
+                      <button
+                        onClick={() => removeBlock(index)}
+                        className="text-lg text-red-600 font-medium"
+                      >
+                        ❌ Remove List
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+
+              default:
+                return null;
             }
-            return null;
           })}
         </AnimatePresence>
       </div>
 
-      {/* Add New Blocks Buttons */}
-      <div className="flex gap-5 justify-center">
-        <motion.button
-          onClick={() => addBlock("text")}
-          className="bg-indigo-600 text-white font-semibold px-8 py-3 rounded-2xl shadow-lg"
-          whileHover={buttonHover}
-          transition={{ type: "spring", stiffness: 300 }}
-        >
-          + Text
-        </motion.button>
-        <motion.button
-          onClick={() => addBlock("image")}
-          className="bg-green-600 text-white font-semibold px-8 py-3 rounded-2xl shadow-lg"
-          whileHover={buttonHover}
-          transition={{ type: "spring", stiffness: 300 }}
-        >
-          + Image
-        </motion.button>
-        <motion.button
-          onClick={() => addBlock("code")}
-          className="bg-purple-600 text-white font-semibold px-8 py-3 rounded-2xl shadow-lg"
-          whileHover={buttonHover}
-          transition={{ type: "spring", stiffness: 300 }}
-        >
-          + Code
-        </motion.button>
-      </div>
+      <AddBlockButtons addBlock={addBlock} />
     </div>
   );
 };

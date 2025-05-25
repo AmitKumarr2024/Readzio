@@ -1,4 +1,3 @@
-// TextBlock.js
 const TextBlock = ({ value }) => (
   <div
     className="text-gray-800 leading-relaxed text-lg"

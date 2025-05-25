@@ -1,5 +1,5 @@
 // ImageBlock.js
-const ImageBlock = ({ src, caption }) => (
+const ImageBlockOutput = ({ src, caption }) => (
   <figure className="my-6">
     <img
       src={src}
@@ -14,4 +14,4 @@ const ImageBlock = ({ src, caption }) => (
   </figure>
 );
 
-export default ImageBlock;
+export default ImageBlockOutput;
