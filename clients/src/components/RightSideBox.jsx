@@ -2,7 +2,6 @@ import React from "react";
 import { Link } from "react-router-dom";
 import Footer from "./Footer";
 import TrendingPosts from "./Cards/TrendingPost";
-import CreateShortProfile from "./RightSideBar/CreateShortProfile";
 
 const RightSideBox = ({ size }) => {
   return (
@@ -11,7 +10,6 @@ const RightSideBox = ({ size }) => {
     >
       {/* Trending Post Section */}
 
-      <CreateShortProfile />
       
       <TrendingPosts />
 

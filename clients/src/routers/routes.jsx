@@ -6,8 +6,6 @@ import Dashboard from "../pages/Admin/Dashboard";
 import MainPage from "../pages/MainPage";
 import CategoryWisePage from "../pages/CategoryWisePage";
 import DisplayPost from "../components/Post/DisplayPost";
-import AuthorProfilePage from "../pages/AuthorProfilePage";
-import AuthorSettingPage from "../pages/AuthorSettingPage";
 import CreatePost from "../pages/CreatePost";
 import EditPost from "../components/Post/EditPost";
 import PageNotFound from "../pages/PageNotFound";
@@ -23,14 +21,8 @@ const routes = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <MainPage /> },
-      {
-        path: "/profile",
-        element: <AuthorProfilePage />,
-      },
-      {
-        path: "/setting",
-        element: <AuthorSettingPage />,
-      },
+     
+      
       {
         path: "/createPost",
         element: <CreatePost />,

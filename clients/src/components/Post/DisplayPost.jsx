@@ -7,7 +7,6 @@ import { ShareButton } from "./ShareButton";
 import { BookmarkButton } from "./BookmarkButton";
 import CardOfPostVertical from "../Cards/CardOfPostVertical";
 import BlockRenderer from "../PostFeature/BlockRenderer";
-import CreateShortProfile from "../RightSideBar/CreateShortProfile";
 
 const DisplayPost = () => {
   const { id } = useParams();
@@ -165,9 +164,7 @@ const DisplayPost = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-4">
-          <CreateShortProfile/>
-        </div>
+       
       </div>
     </>
   );

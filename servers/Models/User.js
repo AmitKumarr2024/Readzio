@@ -2,17 +2,7 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    username: {
-      type: String,
-      unique: true,
-      trim: true,
-      
-    },
+    name: { type: String, required: true, trim: true },
     email: {
       type: String,
       required: true,
@@ -26,58 +16,17 @@ const userSchema = new mongoose.Schema(
         return !this.googleId;
       },
     },
-    googleId: {
-      type: String,
-      unique: true,
-      sparse: true,
-    },
-    avatar: {
-      type: String,
-    },
+    googleId: { type: String, unique: true, sparse: true },
+    avatar: { type: String, default: "" },
     gender: {
       type: String,
       enum: ["Male", "Female", "Other"],
+      default: "Other",
     },
-
-    bio: {
-      type: String,
-      default: "",
-    },
-    website: {
-      type: String,
-      default: "",
-    },
-    location: {
-      type: String,
-      default: "",
-    },
-    profession: {
-      type: String,
-      default: "",
-    },
-    joinedDate: {
-      type: Date,
-      default: Date.now,
-    },
-    social: {
-      website: String,
-      twitter: String,
-      github: String,
-      linkedin: String,
-    },
-
-    postsCount: {
-      type: Number,
-      default: 0,
-    },
-    followers: {
-      type: Number,
-      default: 0,
-    },
-    subscribers: {
-      type: Number,
-      default: 0,
-    },
+    location: { type: String, default: "" }, // city, country, etc.
+    profession: { type: String, default: "" }, // job title or role
+    joiningDate: { type: Date, default: Date.now },
+     blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
   },
   { timestamps: true }
 );

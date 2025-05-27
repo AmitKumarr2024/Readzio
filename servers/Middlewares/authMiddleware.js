@@ -1,43 +1,44 @@
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/dotenv.js";
 import UserModel from "../Models/User.js";
+import { AppError } from "../utils/AppError.js";  // Import your AppError class
 
 export const protectedRoute = async (req, res, next) => {
   try {
-    // ✅ First check Authorization header
     let token;
     const authHeader = req.headers.authorization;
+
     if (authHeader && authHeader.startsWith("Bearer ")) {
       token = authHeader.split(" ")[1];
     }
 
-    // ✅ Fallback to cookies if token not found in header
     if (!token) {
       token = req.cookies?.jwt;
     }
 
     if (!token) {
-      return res
-        .status(401)
-        .json({ message: "Unauthorized-No token Provided" });
+      // Use AppError for uniform error handling
+      return next(new AppError("Unauthorized - No token provided", 401, "ProtectedRoute Middleware"));
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
     if (!decoded) {
-      return res
-        .status(401)
-        .json({ message: "Unauthorized-Token verification failed" });
+      return next(new AppError("Unauthorized - Token verification failed", 401, "ProtectedRoute Middleware"));
     }
 
     const user = await UserModel.findById(decoded.userId).select("-password");
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return next(new AppError("User not found", 404, "ProtectedRoute Middleware"));
     }
 
     req.user = user;
     next();
   } catch (error) {
-    console.log("Error in Protected Route Middleware:", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.error("Error in Protected Route Middleware:", error.message);
+    // Wrap unknown errors in AppError with 500 status
+    if (!(error instanceof AppError)) {
+      return next(new AppError(error.message || "Internal Server Error", 500, "ProtectedRoute Middleware"));
+    }
+    next(error);
   }
 };

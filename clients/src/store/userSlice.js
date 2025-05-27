@@ -57,11 +57,28 @@ export const updateUser = createAsyncThunk(
       const { token } = state.user;
       if (!token) throw new Error("No token found");
 
-      const res = await axiosInstance.patch("/user/update-user", userData, {
-        headers: { Authorization: `Bearer ${token}` },
+      const formData = new FormData();
+
+      // Append simple fields
+      Object.entries(userData).forEach(([key, value]) => {
+        if (key !== "avatarFile") {
+          formData.append(key, value);
+        }
       });
 
-      // Flatten social object
+      // Append avatar file if exists
+      if (userData.avatarFile) {
+        formData.append("avatar", userData.avatarFile);
+      }
+
+      const res = await axiosInstance.patch("/user/update-user", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Backend returns updated user data
       const updatedUser = {
         ...res.data.data,
         ...res.data.social,

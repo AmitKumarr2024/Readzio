@@ -6,6 +6,10 @@ import connectDb from "./config/mongodb.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 import AuthRoutes from "../servers/Routes/authRoutes.js";
 import UserRoutes from "../servers/Routes/userRoutes.js";
+import ImageRoutes from "../servers/Routes/postRoutes.js";
+import CategoryRoutes from "../servers/Routes/categoryRoutes.js";
+import BlockRoutes from "../servers/Routes/blockRoutes.js";
+import AdminRoutes from "../servers/Routes/adminRoutes.js";
 
 const app = express();
 
@@ -24,6 +28,12 @@ app.use(cookieParser());
 // Routes
 app.use("/api/auth", AuthRoutes);
 app.use("/api/user", UserRoutes);
+app.use("/api/post", ImageRoutes);
+app.use("/api/category", CategoryRoutes);
+app.use("/api/block", BlockRoutes);
+
+// admin
+app.use("/api/admin", AdminRoutes);
 
 // Error Handler
 app.use(errorHandler);
