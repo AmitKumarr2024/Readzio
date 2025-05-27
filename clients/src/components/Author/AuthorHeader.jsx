@@ -1,6 +1,5 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { CgWebsite } from "react-icons/cg";
 import {
   FaTwitter,
   FaGithub,
@@ -10,12 +9,24 @@ import {
   FaVenusMars,
   FaMapMarkerAlt,
   FaBriefcase,
-  FaPen,
 } from "react-icons/fa";
 
-const AuthorHeader = ({ author, onEditClick }) => {
+const AuthorHeader = ({ authors, onEditClick }) => {
   const avatarFallback =
-    "https://img.freepik.com/premium-vector/avatar-profile-icon-flat-style-male-user-profile-vector-illustration-isolated-background-man-profile-sign-business-concept_157943-38764.jpg?semt=ais_hybrid&w=740";
+    "https://img.freepik.com/premium-vector/avatar-profile-icon-flat-style-male-user-profile-vector-illustration-isolated-background-man-profile-sign-business-concept_157943-38764.jpg";
+
+  const author = authors?.data || {};
+  console.log("AuthorHeader", author);
+
+  const joinedDateFormatted = author?.joinedDate
+    ? new Date(author.joinedDate).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "-";
+
+  const social = author?.social || {};
 
   return (
     <motion.div
@@ -44,14 +55,11 @@ const AuthorHeader = ({ author, onEditClick }) => {
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.2, duration: 0.5 }}
       >
-        {/* Name and Button */}
+        {/* Name and Edit Button */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-          <div>
-            <h2 className="text-2xl font-semibold text-gray-800">
-              {author?.name || "Unnamed Author"}
-            </h2>
-            <p className="text-sm text-gray-600 italic">@{author?.username}</p>
-          </div>
+          <h2 className="text-2xl font-semibold text-gray-800">
+            {author?.name || "Unnamed Author"}
+          </h2>
           <button
             onClick={onEditClick}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
@@ -71,17 +79,6 @@ const AuthorHeader = ({ author, onEditClick }) => {
             <span>{author?.email || "-"}</span>
           </div>
           <div className="flex items-center gap-2">
-            <CgWebsite className="text-blue-600" />
-            <a
-              href={author?.website || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-blue-700"
-            >
-              {author?.website ? new URL(author.website).hostname : "-"}
-            </a>
-          </div>
-          <div className="flex items-center gap-2">
             <FaVenusMars className="text-blue-600" />
             <span>{author?.gender || "-"}</span>
           </div>
@@ -95,25 +92,15 @@ const AuthorHeader = ({ author, onEditClick }) => {
           </div>
           <div className="flex items-center gap-2">
             <FaUser className="text-blue-600" />
-            <span>Joined: {author?.joinedDate || "-"}</span>
+            <span>Joined: {joinedDateFormatted}</span>
           </div>
         </div>
 
         {/* Social Icons */}
         <div className="flex gap-5 text-2xl mt-6 text-gray-600">
-          {author?.social?.website && (
+          {social.twitter && (
             <a
-              href={author.social.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Website"
-            >
-              <CgWebsite />
-            </a>
-          )}
-          {author?.social?.twitter && (
-            <a
-              href={`https://twitter.com/${author.social.twitter}`}
+              href={`https://twitter.com/${social.twitter}`}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Twitter"
@@ -121,9 +108,9 @@ const AuthorHeader = ({ author, onEditClick }) => {
               <FaTwitter className="text-blue-400" />
             </a>
           )}
-          {author?.social?.github && (
+          {social.github && (
             <a
-              href={`https://github.com/${author.social.github}`}
+              href={`https://github.com/${social.github}`}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="GitHub"
@@ -131,9 +118,9 @@ const AuthorHeader = ({ author, onEditClick }) => {
               <FaGithub />
             </a>
           )}
-          {author?.social?.linkedin && (
+          {social.linkedin && (
             <a
-              href={`https://linkedin.com/in/${author.social.linkedin}`}
+              href={`https://linkedin.com/in/${social.linkedin}`}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="LinkedIn"

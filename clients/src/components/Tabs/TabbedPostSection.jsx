@@ -18,6 +18,7 @@ const TabbedPostSection = () => {
                 ? "bg-blue-600 text-white"
                 : "bg-gray-100 text-gray-700"
             }`}
+            aria-pressed={activeTab === tab} // Accessibility improvement
           >
             {tab}
           </button>

@@ -44,14 +44,7 @@ const AddBlockButtons = ({ addBlock }) => (
       + Code
     </motion.button>
 
-    <motion.button
-      onClick={() => addBlock("emoji")}
-      className="bg-yellow-400 text-black font-semibold px-8 py-3 rounded-2xl shadow-lg"
-      whileHover={buttonHover}
-      transition={{ type: "spring", stiffness: 300 }}
-    >
-      + Emoji
-    </motion.button>
+   
 
     <motion.button
       onClick={() => addBlock("file")}

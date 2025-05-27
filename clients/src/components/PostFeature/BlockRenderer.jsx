@@ -1,7 +1,6 @@
 import TextBlock from "../actualPostDisplay/TextBlock";
 import CodeBlockOutput from "../actualPostDisplay/CodeBlockOutput";
 import ImageBlockOutput from "../actualPostDisplay/ImageBlockOutput";
-import EmojiBlockOutput from "../actualPostDisplay/EmojiBlockOutput";
 import FileDownloadOutput from "../actualPostDisplay/FileDownloadOutput";
 import HrOutput from "../actualPostDisplay/HrOutput";
 import HeadingOutput from "../actualPostDisplay/HeadingOutput";
@@ -72,8 +71,7 @@ const BlockRenderer = ({ blocks }) => {
         );
       case "hr":
         return <HrOutput key={i} caption={block.caption} />;
-      case "emoji":
-        return <EmojiBlockOutput key={i} emoji={block.emoji} />;
+      
       case "file":
         return <FileDownloadOutput key={i} url={block.url} name={block.name} />;
       case "poll":

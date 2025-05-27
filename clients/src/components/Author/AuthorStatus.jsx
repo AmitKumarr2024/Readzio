@@ -18,7 +18,7 @@ const AuthorStatus = ({ stats }) => {
       {/* Following */}
       <div className="flex-1 min-w-[80px] sm:min-w-[100px] px-4 py-2 hover:bg-indigo-50 rounded-lg cursor-default transition duration-300 ease-in-out">
         <p className="text-2xl font-extrabold text-indigo-600">{stats?.following ?? 0}</p>
-        <p className="text-sm text-gray-500 mt-1">Following</p>
+        <p className="text-sm text-gray-500 mt-1">Subscribers</p>
       </div>
 
       {/* Likes */}

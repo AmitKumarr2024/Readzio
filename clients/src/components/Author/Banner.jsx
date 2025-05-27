@@ -1,17 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { FiUpload } from "react-icons/fi";
 
-const Banner = ({ bannerUrl, onBannerChange }) => {
+const Banner = ({ userId, bannerUrl: initialBannerUrl, onBannerChange }) => {
+  const [bannerUrl, setBannerUrl] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tempBanner, setTempBanner] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false); // for click-to-zoom modal
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
+  // On mount or when userId changes, load banner from localStorage or fallback to initialBannerUrl
   useEffect(() => {
-    if (bannerUrl) {
-      localStorage.setItem("authorBanner", bannerUrl);
+    if (!userId) return; // safety check
+
+    const storedBanner = localStorage.getItem(`authorBanner_${userId}`);
+    if (storedBanner) {
+      setBannerUrl(storedBanner);
+      onBannerChange?.(storedBanner);
+    } else if (initialBannerUrl) {
+      setBannerUrl(initialBannerUrl);
+      onBannerChange?.(initialBannerUrl);
     }
-  }, [bannerUrl]);
+  }, [userId, initialBannerUrl, onBannerChange]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -26,9 +35,10 @@ const Banner = ({ bannerUrl, onBannerChange }) => {
   };
 
   const handleSave = () => {
-    if (tempBanner) {
-      onBannerChange(tempBanner);
-      localStorage.setItem("authorBanner", tempBanner);
+    if (tempBanner && userId) {
+      setBannerUrl(tempBanner);
+      localStorage.setItem(`authorBanner_${userId}`, tempBanner);
+      onBannerChange?.(tempBanner);
     }
     setIsModalOpen(false);
     setTempBanner(null);
@@ -42,7 +52,7 @@ const Banner = ({ bannerUrl, onBannerChange }) => {
           src={bannerUrl}
           alt="Profile Banner"
           className="w-full h-full object-cover cursor-zoom-in"
-          onClick={() => setIsPreviewOpen(true)} // open full-screen modal
+          onClick={() => setIsPreviewOpen(true)}
         />
         <div className="absolute inset-0 bg-black/25" />
         <button
@@ -57,7 +67,7 @@ const Banner = ({ bannerUrl, onBannerChange }) => {
       {isPreviewOpen && (
         <div
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center"
-          onClick={() => setIsPreviewOpen(false)} // close on outside click
+          onClick={() => setIsPreviewOpen(false)}
         >
           <div
             className="relative max-w-6xl w-full p-4"
@@ -81,7 +91,7 @@ const Banner = ({ bannerUrl, onBannerChange }) => {
       {/* Edit Banner Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-gray-800/75 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-7xl  w-full p-6 relative">
+          <div className="bg-white rounded-lg shadow-lg max-w-7xl w-full p-6 relative">
             <h2 className="text-xl font-semibold mb-4">Change Banner</h2>
             <div className="mb-4 h-[540px] overflow-hidden rounded-md border border-gray-300 flex items-center justify-center bg-gray-100">
               <img

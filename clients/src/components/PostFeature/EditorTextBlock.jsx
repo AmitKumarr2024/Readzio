@@ -1,25 +1,47 @@
-import React, { useEffect, useRef } from "react";
-import { FaAlignLeft } from "react-icons/fa6";
-import { FaAlignCenter } from "react-icons/fa6";
-import { FaAlignRight } from "react-icons/fa6";
-import { FaRedo } from "react-icons/fa";
-import { FaUndo } from "react-icons/fa";
-import { FaBackspace } from "react-icons/fa";
-import { FaBold } from "react-icons/fa";
-import { FaItalic } from "react-icons/fa6";
-import { FaUnderline } from "react-icons/fa";
-import { FaStrikethrough } from "react-icons/fa";
-import { FaLink } from "react-icons/fa";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  FaAlignLeft,
+  FaAlignCenter,
+  FaAlignRight,
+  FaRedo,
+  FaUndo,
+  FaBackspace,
+  FaBold,
+  FaItalic,
+  FaUnderline,
+  FaStrikethrough,
+  FaLink,
+} from "react-icons/fa";
+
+const emojiOptions = [
+  "😀", "😂", "😊", "😍", "😎", "😢", "😡", "😴", "🤔", "😭",
+  "👍", "👎", "👏", "🙏", "💪", "🔥", "🎉", "✨", "💯", "🎂",
+  "❤️", "💔", "💕", "💖", "💙", "📌", "📎", "📚", "🧠", "💡",
+  "⚡", "🌟", "🌈", "☀️", "🌙",
+];
 
 const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
   const contentRef = useRef(null);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const emojiPickerRef = useRef();
 
-  // Set initial content only once
+  // Set content only once on mount (or when value changes externally)
   useEffect(() => {
-    if (contentRef.current && value) {
-      contentRef.current.innerHTML = value;
+    if (contentRef.current && value !== contentRef.current.innerHTML) {
+      contentRef.current.innerHTML = value || "";
     }
-  }, []); // Only on mount
+  }, [value]);
+
+  // Close emoji picker on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setEmojiPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const execCommand = (command, val = null) => {
     document.execCommand(command, false, val);
@@ -29,16 +51,16 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
   };
 
   const handleInput = () => {
+    if (!contentRef.current) return;
     const html = contentRef.current.innerHTML;
     onUpdate(html);
 
-    // Delay to avoid accidental block removal while typing
     setTimeout(() => {
       const current = contentRef.current?.innerHTML?.trim();
       if (!current || current === "<br>") {
         onRemove();
       }
-    }, 300);  
+    }, 300);
   };
 
   const insertLink = () => {
@@ -56,7 +78,6 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
       return;
     }
 
-    // Create the link element with blue color
     const link = document.createElement("a");
     link.href = url;
     link.target = "_blank";
@@ -65,12 +86,42 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
     link.style.color = "blue";
     link.style.textDecoration = "underline";
 
-    // Replace the selected text with the link node
     range.deleteContents();
     range.insertNode(link);
 
-    // Remove selection (optional)
+    range.setStartAfter(link);
+    range.collapse(true);
+
     selection.removeAllRanges();
+    selection.addRange(range);
+
+    if (contentRef.current) {
+      onUpdate(contentRef.current.innerHTML);
+    }
+  };
+
+  const insertEmojiAtCaret = (emoji) => {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+
+    const textNode = document.createTextNode(emoji);
+    range.insertNode(textNode);
+
+    range.setStartAfter(textNode);
+    range.collapse(true);
+
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    if (contentRef.current) {
+      onUpdate(contentRef.current.innerHTML);
+    }
+
+    setEmojiPickerOpen(false);
+    contentRef.current.focus();
   };
 
   const clearContent = () => {
@@ -82,63 +133,22 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
   };
 
   return (
-    <div className="mb-4 border rounded p-3 bg-gray-50">
+    <div className="mb-4 border rounded p-3 bg-gray-50 relative">
       {/* Toolbar */}
-      <div className="mb-2 flex flex-wrap items-center justify-evenly gap-1 text-lg">
-        <button onClick={() => execCommand("bold")} title="Bold">
-          <FaBold />
-        </button>
-        <button onClick={() => execCommand("italic")} title="Italic">
-          <FaItalic />
-        </button>
-        <button onClick={() => execCommand("underline")} title="Underline">
-          <FaUnderline />
-        </button>
-        <button
-          onClick={() => execCommand("strikeThrough")}
-          title="Strikethrough"
-        >
-          <FaStrikethrough />
-        </button>
-        <button onClick={() => execCommand("justifyLeft")} title="Align Left">
-          <FaAlignLeft />
-        </button>
-        <button
-          onClick={() => execCommand("justifyCenter")}
-          title="Align Center"
-        >
-          <FaAlignCenter />
-        </button>
-        <button onClick={() => execCommand("justifyRight")} title="Align Right">
-          <FaAlignRight />
-        </button>
-        <button
-          onClick={() => execCommand("insertOrderedList")}
-          title="Ordered List"
-        >
-          1.
-        </button>
-        <button
-          onClick={() => execCommand("insertUnorderedList")}
-          title="Bullet List"
-        >
-          •
-        </button>
-        <button onClick={insertLink} title="Insert Link">
-          <FaLink size={23} className="text-sky-500"/>
-        </button>
-        <button onClick={() => execCommand("undo")} title="Undo">
-          <FaUndo />
-        </button>
-        <button onClick={() => execCommand("redo")} title="Redo">
-          <FaRedo />
-        </button>
-        <button
-          onClick={() => execCommand("removeFormat")}
-          title="Remove Format"
-        >
-          🚫
-        </button>
+      <div className="mb-2 flex flex-wrap items-center justify-evenly gap-1 text-lg relative">
+        <button onClick={() => execCommand("bold")} title="Bold"><FaBold /></button>
+        <button onClick={() => execCommand("italic")} title="Italic"><FaItalic /></button>
+        <button onClick={() => execCommand("underline")} title="Underline"><FaUnderline /></button>
+        <button onClick={() => execCommand("strikeThrough")} title="Strikethrough"><FaStrikethrough /></button>
+        <button onClick={() => execCommand("justifyLeft")} title="Align Left"><FaAlignLeft /></button>
+        <button onClick={() => execCommand("justifyCenter")} title="Align Center"><FaAlignCenter /></button>
+        <button onClick={() => execCommand("justifyRight")} title="Align Right"><FaAlignRight /></button>
+        <button onClick={() => execCommand("insertOrderedList")} title="Ordered List">1.</button>
+        <button onClick={() => execCommand("insertUnorderedList")} title="Bullet List">•</button>
+        <button onClick={insertLink} title="Insert Link"><FaLink size={23} className="text-sky-500" /></button>
+        <button onClick={() => execCommand("undo")} title="Undo"><FaUndo /></button>
+        <button onClick={() => execCommand("redo")} title="Redo"><FaRedo /></button>
+        <button onClick={() => execCommand("removeFormat")} title="Remove Format">🚫</button>
         <input
           type="color"
           onChange={(e) => execCommand("foreColor", e.target.value)}
@@ -160,6 +170,37 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
           <option value="6">32px</option>
           <option value="7">48px</option>
         </select>
+
+        {/* Emoji Picker */}
+        <div className="relative" ref={emojiPickerRef}>
+          <button
+            type="button"
+            onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
+            title="Insert Emoji"
+            className="text-2xl"
+          >
+            😀
+          </button>
+
+          {emojiPickerOpen && (
+            <div
+              className="absolute z-10 mt-1 p-2 bg-white border rounded shadow max-h-48 overflow-y-auto grid grid-cols-6 gap-2"
+              style={{ width: "200px" }}
+            >
+              {emojiOptions.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => insertEmojiAtCaret(emoji)}
+                  className="text-2xl hover:bg-gray-200 rounded"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <button onClick={clearContent} title="Clear Block">
           <FaBackspace size={30} className="text-yellow-700 mr-4" />
         </button>
@@ -172,8 +213,10 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
         suppressContentEditableWarning={true}
         onInput={handleInput}
         dir="ltr"
+        tabIndex={0}
         className="border p-3 rounded min-h-[120px] bg-white focus:outline-none"
-      ></div>
+        style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", cursor: "text" }}
+      />
     </div>
   );
 };

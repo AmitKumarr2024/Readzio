@@ -1,17 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
+import { useSelector } from "react-redux";
 import HeroSection from "../components/HeroSection";
 import RightSideBox from "../components/RightSideBox";
-import Postbox from "../components/Post/Postbox";
 import TabbedPostSection from "../components/Tabs/TabbedPostSection";
 
 const MainPage = () => {
-  const [activeTab, setActiveTab] = useState("all");
-
-  const tabs = [
-    { id: "all", label: "All Posts" },
-    { id: "following", label: "Following" },
-    { id: "my", label: "My Posts" },
-  ];
+  const user = useSelector((state) => state.auth.user);
 
   return (
     <div className="pt-28">
@@ -22,8 +16,7 @@ const MainPage = () => {
         <div className="w-full md:w-[80%]">
           {/* Tabs */}
           <div className="mt-7">
-            <TabbedPostSection />
-        
+            <TabbedPostSection user={user} />
           </div>
         </div>
 

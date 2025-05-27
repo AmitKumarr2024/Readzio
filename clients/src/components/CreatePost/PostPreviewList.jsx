@@ -107,12 +107,7 @@ const PostPreviewList = ({
             )}
           </div>
         );
-      case "emoji":
-        return (
-          <div key={i} className="text-4xl select-none">
-            {block.emoji || "😀"}
-          </div>
-        );
+     
       case "file":
         return <FileBlock key={i} url={block.url} name={block.name} />;
       case "heading":

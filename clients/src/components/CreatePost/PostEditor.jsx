@@ -8,7 +8,6 @@ import CodeBlock from "../PostFeature/CodeBlock";
 import TextBlockWrapper from "../PostFeature/TextBlockWrapper";
 import TitleInput from "../PostFeature/TitleInput";
 import AddBlockButtons from "../PostFeature/AddBlockButtons";
-import EmojiBlock from "../PostFeature/EmojiBlock";
 import FileBlock from "../PostFeature/FileBlock";
 import HeadingBlock from "../PostFeature/HeadingBlock";
 import HrBlock from "../PostFeature/HrBlock";
@@ -34,8 +33,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         ? { id: uuidv4(), type, code: "", caption: "" }
         : type === "image"
         ? { id: uuidv4(), type, src: "", caption: "" }
-        : type === "emoji"
-        ? { id: uuidv4(), type, emoji: "😀" }
+       
         : type === "file"
         ? { id: uuidv4(), type, url: "", name: "", size: 0 }
         : type === "hr"
@@ -183,17 +181,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                   </motion.div>
                 );
 
-              case "emoji":
-                return (
-                  <motion.div {...motionDivProps}>
-                    <EmojiBlock
-                      block={block}
-                      index={index}
-                      updateBlock={updateBlock}
-                      removeBlock={removeBlock}
-                    />
-                  </motion.div>
-                );
+              
 
               case "file":
                 return (
