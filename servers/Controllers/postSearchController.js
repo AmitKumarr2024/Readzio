@@ -56,7 +56,7 @@ export const getLatestPosts = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 10;
 
     const posts = await PostModel.find()
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1 }) // Newest first
       .limit(limit)
       .populate("author", "name");
 
@@ -65,6 +65,10 @@ export const getLatestPosts = async (req, res, next) => {
       posts,
     });
   } catch (error) {
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "getLatestPosts Controller"));
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "getLatestPosts Controller")
+    );
   }
 };

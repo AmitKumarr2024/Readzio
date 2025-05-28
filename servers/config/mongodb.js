@@ -3,7 +3,11 @@ import { MONGO_URI } from "./dotenv.js";
 
 const connectDb = async () => {
   try {
-    const connect = await mongoose.connect(MONGO_URI);
+    const connect = await mongoose.connect(MONGO_URI, {
+    
+      serverSelectionTimeoutMS: 10000,
+      family: 4,
+    });
     console.log("Successfully Connected with MongoDb");
     connect.connection.host;
   } catch (error) {

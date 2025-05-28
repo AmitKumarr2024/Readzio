@@ -7,7 +7,6 @@ import {
   getSinglePost,
   updatePost,
   deletePost,
-  getSubscribedPosts,
 } from "../Controllers/postController.js";
 
 
@@ -26,24 +25,22 @@ import { getPostStats, getUserEngagementStats } from "../Controllers/postAnalyti
 const router = express.Router();
 
 // Post CRUD
-router.post("/", protectedRoute, createPost);
-router.get("/", getAllPosts);
+router.post("/post-create", protectedRoute, createPost);
+router.get("/all-post", getAllPosts);
 router.get("/:slug", getSinglePost);
-router.patch("/:postId", protectedRoute, updatePost);
-router.delete("/:postId", protectedRoute, deletePost);
+router.patch("/post-update/:postId", protectedRoute, updatePost);
+router.delete("/post-delete/:postId", protectedRoute, deletePost);
 
 // Post interactions
-router.post("/:postId/like", protectedRoute, toggleLike);
-router.post("/:postId/bookmark", protectedRoute, toggleBookmark);
-router.post("/:postId/view", incrementView);
+router.post("/toggle-like/:postId", protectedRoute, toggleLike);
+router.post("/post-bookmark/:postId", protectedRoute, toggleBookmark);
+router.post("/view/:postId", incrementView);
 
-// Subscribed posts
-router.get("/subscribed/posts", protectedRoute, getSubscribedPosts);
 
 // Post search & filters
-router.get("/search", searchPosts); // e.g. /search?q=keyword&category=tech
-router.get("/trending", getTrendingPosts);
-router.get("/latest", getLatestPosts);
+router.get("/search-post/search", searchPosts); // e.g. /search?q=keyword&category=tech
+router.get("/trending-post/trending", getTrendingPosts);
+router.get("/latest-post/latest", getLatestPosts);
 
 // Analytics (protected)
 router.get("/analytics/post/:postId", protectedRoute, getPostStats);

@@ -3,8 +3,8 @@ import { AppError } from "../utils/AppError.js";
 
 export const blockUser = async (req, res, next) => {
   try {
-    const userId = req.user._id;       // current logged-in user
-    const { blockedUserId } = req.body;
+    const userId = req.user._id;
+    const blockedUserId = req.params.id; // 👈 from URL instead of body
 
     if (!blockedUserId) {
       throw new AppError("User ID to block is required", 400);
@@ -23,6 +23,7 @@ export const blockUser = async (req, res, next) => {
     next(error instanceof AppError ? error : new AppError(error.message, 500));
   }
 };
+
 
 export const unblockUser = async (req, res, next) => {
   try {

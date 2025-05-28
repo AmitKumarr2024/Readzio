@@ -1,9 +1,8 @@
 import mongoose from "mongoose";
 
-// Content block schema used inside posts
 const blockSchema = new mongoose.Schema({
-  id: { type: String, required: true },  // UUID
-  type: { type: String, required: true }, // e.g. text, image, code, etc.
+  id: { type: String, required: true },
+  type: { type: String, required: true },
   value: { type: String },
   level: { type: Number },
   text: { type: String },
@@ -14,12 +13,12 @@ const blockSchema = new mongoose.Schema({
   url: { type: String },
   name: { type: String },
   size: { type: Number },
-  items: [String],
+  items: { type: [String], default: [] },
   ordered: { type: Boolean },
   question: { type: String },
-  options: [String],
+  options: { type: [String], default: [] },
   author: { type: String },
-  data: [[String]],
+  data: { type: [[String]], default: [] },
 }, { _id: false });
 
 const postSchema = new mongoose.Schema({
@@ -31,7 +30,7 @@ const postSchema = new mongoose.Schema({
     required: true,
   },
   category: { type: String, required: true },
-  tags: [String],
+  tags: { type: [String], default: [] },
   thumbnail: { type: String },
   excerpt: { type: String },
   blocks: {
@@ -39,10 +38,38 @@ const postSchema = new mongoose.Schema({
     validate: (v) => Array.isArray(v) && v.length > 0,
   },
   isPublished: { type: Boolean, default: false },
+  blocked: { type: Boolean, default: false }, // ✅ Added this line
+  status: {
+    type: String,
+    enum: ['draft', 'review', 'published', 'archived'],
+    default: 'draft',
+  },
+  isFeatured: { type: Boolean, default: false },
+  readingTime: { type: Number },
+  language: { type: String, default: 'en' },
+  metaTitle: { type: String },
+  metaDescription: { type: String },
+  metaKeywords: { type: [String], default: [] },
+  reactions: {
+    type: Map,
+    of: Number,
+    default: {},
+  },
   views: { type: Number, default: 0 },
-  likes: { type: Number, default: 0 },
+  likes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  }],
+  bookmarksCount: { type: Number, default: 0 },
   commentsCount: { type: Number, default: 0 },
+  lastEditedAt: { type: Date },
+  allowComments: { type: Boolean, default: true },
+  canonicalUrl: { type: String },
 }, { timestamps: true });
+
+postSchema.index({ author: 1 });
+postSchema.index({ category: 1 });
+postSchema.index({ title: 'text', excerpt: 'text', tags: 'text' });
 
 const PostModel = mongoose.model("Post", postSchema);
 export default PostModel;

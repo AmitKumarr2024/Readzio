@@ -1,9 +1,11 @@
-import PostModel from '../Models/Post.js';
-import { AppError } from '../utils/AppError.js';
+import PostModel from "../Models/Post.js";
+import { AppError } from "../utils/AppError.js";
+import { createNotification } from "../Utils/createNotification.js";
 
 /**
  * @desc Like or Unlike a post
  */
+
 export const toggleLike = async (req, res, next) => {
   try {
     const userId = req.user._id;
@@ -12,11 +14,28 @@ export const toggleLike = async (req, res, next) => {
     const post = await PostModel.findById(postId);
     if (!post) throw new AppError("Post not found", 404, "toggleLike Controller");
 
-    const index = post.likes.indexOf(userId);
-    if (index === -1) {
-      post.likes.push(userId); // Like
+    let likesArray = Array.isArray(post.likes) ? post.likes : [];
+
+    const alreadyLiked = likesArray.some(
+      (id) => id.toString() === userId.toString()
+    );
+
+    if (alreadyLiked) {
+      // Unlike
+      post.likes = likesArray.filter(
+        (id) => id.toString() !== userId.toString()
+      );
     } else {
-      post.likes.splice(index, 1); // Unlike
+      // Like
+      post.likes = [...likesArray, userId];
+
+      // Create notification for post author
+      await createNotification({
+        user: userId,
+        targetUser: post.author,
+        type: "like",
+        postId: post._id,
+      });
     }
 
     await post.save();
@@ -24,12 +43,18 @@ export const toggleLike = async (req, res, next) => {
     res.status(200).json({
       success: true,
       likesCount: post.likes.length,
-      liked: index === -1,
+      liked: !alreadyLiked,
     });
   } catch (error) {
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "toggleLike Controller"));
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "toggleLike Controller")
+    );
   }
 };
+
+
 
 /**
  * @desc Bookmark or remove bookmark of a post for user
@@ -41,7 +66,8 @@ export const toggleBookmark = async (req, res, next) => {
 
     // Assuming user model has bookmarks array of postIds
     const user = await UserModel.findById(userId);
-    if (!user) throw new AppError("User not found", 404, "toggleBookmark Controller");
+    if (!user)
+      throw new AppError("User not found", 404, "toggleBookmark Controller");
 
     const index = user.bookmarks.indexOf(postId);
     if (index === -1) {
@@ -58,7 +84,11 @@ export const toggleBookmark = async (req, res, next) => {
       bookmarked: index === -1,
     });
   } catch (error) {
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "toggleBookmark Controller"));
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "toggleBookmark Controller")
+    );
   }
 };
 
@@ -70,7 +100,8 @@ export const incrementView = async (req, res, next) => {
     const { postId } = req.params;
 
     const post = await PostModel.findById(postId);
-    if (!post) throw new AppError("Post not found", 404, "incrementView Controller");
+    if (!post)
+      throw new AppError("Post not found", 404, "incrementView Controller");
 
     post.views = (post.views || 0) + 1;
     await post.save();
@@ -80,6 +111,10 @@ export const incrementView = async (req, res, next) => {
       views: post.views,
     });
   } catch (error) {
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "incrementView Controller"));
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "incrementView Controller")
+    );
   }
 };

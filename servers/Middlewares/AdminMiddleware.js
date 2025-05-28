@@ -1,7 +1,8 @@
-// Middlewares/adminMiddleware.js
+import { AppError } from "../utils/AppError.js";
+
 export const adminOnly = (req, res, next) => {
-  if (req.user && req.user.role === "admin") {
-    return next();
+  if (req.user?.role !== "admin") {
+    return next(new AppError("Admin access only", 403, "AdminMiddleware"));
   }
-  res.status(403).json({ message: "Access denied. Admins only." });
+  next();
 };

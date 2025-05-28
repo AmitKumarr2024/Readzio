@@ -2,6 +2,7 @@
 import UserModel from "../Models/User.js";
 import PostModel from "../Models/Post.js";
 import { AppError } from "../utils/AppError.js";
+import mongoose, { Mongoose } from "mongoose";
 
 // Get all users
 export const getAllUsers = async (req, res, next) => {
@@ -17,7 +18,11 @@ export const getAllUsers = async (req, res, next) => {
 export const toggleBlockUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
+    console.log("🔍 userId param received:", userId);
+
     const user = await UserModel.findById(userId);
+    console.log("📄 User found:", user);
+
     if (!user) throw new AppError("User not found", 404, "ToggleBlockUser");
 
     user.blocked = !user.blocked;
@@ -28,6 +33,8 @@ export const toggleBlockUser = async (req, res, next) => {
       message: `User ${user.blocked ? "blocked" : "unblocked"} successfully`,
     });
   } catch (error) {
+    console.error("❌ ToggleBlockUser Error:", error.message);
+    console.error("🔥 Error Context:", error.context);
     next(error instanceof AppError ? error : new AppError(error.message, 500, "ToggleBlockUser"));
   }
 };
@@ -82,6 +89,12 @@ export const toggleBlockPost = async (req, res, next) => {
     if (!post) throw new AppError("Post not found", 404, "ToggleBlockPost");
 
     post.blocked = !post.blocked;
+
+    // Fix potential likes data corruption
+    if (!Array.isArray(post.likes)) {
+      post.likes = [];
+    }
+
     await post.save();
 
     res.status(200).json({

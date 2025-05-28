@@ -9,7 +9,10 @@ import UserRoutes from "../servers/Routes/userRoutes.js";
 import ImageRoutes from "../servers/Routes/postRoutes.js";
 import CategoryRoutes from "../servers/Routes/categoryRoutes.js";
 import BlockRoutes from "../servers/Routes/blockRoutes.js";
+import SubscribeRoutes from "../servers/Routes/subscribeRoutes.js";
+import NotificationRoutes from "../servers/Routes/notificationRoutes.js";
 import AdminRoutes from "../servers/Routes/adminRoutes.js";
+import RazorpayRoutes from "../servers/Routes/paymentRoutes.js";
 
 const app = express();
 
@@ -30,7 +33,12 @@ app.use("/api/auth", AuthRoutes);
 app.use("/api/user", UserRoutes);
 app.use("/api/post", ImageRoutes);
 app.use("/api/category", CategoryRoutes);
+app.use("/api/subscribe", SubscribeRoutes);
 app.use("/api/block", BlockRoutes);
+app.use("/api/notification", NotificationRoutes);
+app.use("/api/payment",RazorpayRoutes );
+
+
 
 // admin
 app.use("/api/admin", AdminRoutes);

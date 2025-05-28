@@ -1,28 +1,21 @@
-import NotificationModel from '../Models/Notification.js'; // You need to create this Mongoose model
+import NotificationModel from '../Models/Notification.js';
 import { AppError } from '../utils/AppError.js';
 
-/**
- * Get all notifications for logged-in user
- */
 export const getNotifications = async (req, res, next) => {
   try {
     const userId = req.user._id;
+    const notifications = await NotificationModel.find({ user: userId }).sort({ createdAt: -1 });
+    
+    console.log("User ID:", userId.toString());
+    console.log("Number of notifications:", notifications.length);
 
-    const notifications = await NotificationModel.find({ user: userId })
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      notifications,
-    });
+    res.status(200).json({ success: true, notifications });
   } catch (error) {
-    next(new AppError(error.message, 500, 'GetNotifications Controller'));
+    next(new AppError(error.message, 500, "GetNotifications Controller"));
   }
 };
 
-/**
- * Mark a notification as read
- */
+
 export const markAsRead = async (req, res, next) => {
   try {
     const { notificationId } = req.params;
@@ -35,15 +28,11 @@ export const markAsRead = async (req, res, next) => {
     );
 
     if (!notification) {
-      throw new AppError('Notification not found', 404, 'MarkAsRead Controller');
+      throw new AppError("Notification not found", 404, "MarkAsRead Controller");
     }
 
-    res.status(200).json({
-      success: true,
-      message: 'Notification marked as read',
-      notification,
-    });
+    res.status(200).json({ success: true, message: "Notification marked as read", notification });
   } catch (error) {
-    next(new AppError(error.message, 500, 'MarkAsRead Controller'));
+    next(new AppError(error.message, 500, "MarkAsRead Controller"));
   }
 };

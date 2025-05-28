@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import PostModel from '../Models/Post.js';
 import { AppError } from '../utils/AppError.js';
 
@@ -32,36 +33,55 @@ export const getPostStats = async (req, res, next) => {
  * @route GET /analytics/user-engagement
  * @access Protected
  */
+
+
 export const getUserEngagementStats = async (req, res, next) => {
   try {
     const userId = req.user._id;
 
-    // Aggregate stats for the user
     const stats = await PostModel.aggregate([
-      { $match: { author: userId } }, // filter posts by this user
+      { $match: { author: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: null,
           totalPosts: { $sum: 1 },
-          totalLikes: { $sum: { $size: { $ifNull: ["$likes", []] } } },
-          totalBookmarks: { $sum: { $size: { $ifNull: ["$bookmarks", []] } } },
+          totalLikes: {
+            $sum: {
+              $cond: [
+                { $isArray: "$likes" },
+                { $size: "$likes" },
+                0
+              ]
+            }
+          },
           totalViews: { $sum: { $ifNull: ["$views", 0] } },
-        },
-      },
+          totalBookmarks: {
+            $sum: {
+              $cond: [
+                { $isArray: "$bookmarks" },
+                { $size: "$bookmarks" },
+                0
+              ]
+            }
+          }
+        }
+      }
     ]);
 
     const result = stats[0] || {
       totalPosts: 0,
       totalLikes: 0,
       totalBookmarks: 0,
-      totalViews: 0,
+      totalViews: 0
     };
 
     res.status(200).json({
       success: true,
-      data: result,
+      data: result
     });
   } catch (error) {
     next(new AppError(error.message, 500, "getUserEngagementStats Controller"));
   }
 };
+
+

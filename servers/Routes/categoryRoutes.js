@@ -5,9 +5,9 @@ import { createCategory, deleteCategory, getAllCategories, updateCategory } from
 
 const router = express.Router();
 
-router.get("/", getAllCategories);
-router.post("/", protectedRoute, createCategory);        // Restrict to admins in middleware ideally
-router.patch("/:categoryId", protectedRoute, updateCategory);
-router.delete("/:categoryId", protectedRoute, deleteCategory);
+router.get("/AllCategories", getAllCategories);
+router.post("/create-Category", protectedRoute, createCategory);        // Restrict to admins in middleware ideally
+router.patch("/update-Category/:categoryId", protectedRoute, updateCategory);
+router.delete("/delete-Category/:categoryId", protectedRoute, deleteCategory);
 
 export default router;

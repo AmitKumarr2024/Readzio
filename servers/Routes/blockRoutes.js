@@ -4,7 +4,7 @@ import { blockUser, unblockUser } from "../Controllers/blockUnblockController.js
 
 const router = express.Router();
 
-router.post("/block", protectedRoute, blockUser);
+router.post("/block-user/:id", protectedRoute, blockUser);
 router.post("/unblock", protectedRoute, unblockUser);
 
 export default router;
