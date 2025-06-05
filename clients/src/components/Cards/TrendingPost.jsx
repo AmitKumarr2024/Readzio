@@ -1,24 +1,22 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { getLatestPosts } from "../../store/postSlice"; // Adjust path accordingly
+import { Link } from "react-router-dom";
 
 const TrendingPosts = () => {
-  // Now each post has a title and a url
-  const posts = [
-    { title: "React 19 New Features", url: "/posts/react-19-new-features" },
-    { title: "AI Tools for Developers", url: "/posts/ai-tools-for-developers" },
-    { title: "Best VS Code Extensions", url: "/posts/best-vs-code-extensions" },
-    { title: "Next.js 14 Routing System", url: "/posts/nextjs-14-routing-system" },
-    { title: "CSS Tricks for 2025", url: "/posts/css-tricks-for-2025" },
-    { title: "Node.js Performance Tips", url: "/posts/nodejs-performance-tips" },
-    { title: "TypeScript Advanced Types", url: "/posts/typescript-advanced-types" },
-    { title: "Deploying with Vercel", url: "/posts/deploying-with-vercel" },
-    { title: "MongoDB Indexing Tips", url: "/posts/mongodb-indexing-tips" },
-    { title: "JWT Authentication Guide", url: "/posts/jwt-authentication-guide" },
-    { title: "Bonus: Tailwind Dark Mode", url: "/posts/tailwind-dark-mode" },
-    { title: "React Server Components Intro", url: "/posts/react-server-components-intro" },
-  ];
+  const dispatch = useDispatch();
+
+  const latestPosts = useSelector((state) => state.post.latestPosts || []);
+  const loading = useSelector((state) => state.post.latestLoading);
+  const error = useSelector((state) => state.post.latestError);
 
   const [showAll, setShowAll] = useState(false);
-  const visiblePosts = showAll ? posts : posts.slice(0, 6);
+
+  useEffect(() => {
+    dispatch(getLatestPosts());
+  }, [dispatch]);
+
+  const visiblePosts = showAll ? latestPosts : latestPosts.slice(0, 6);
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-md w-full">
@@ -26,28 +24,38 @@ const TrendingPosts = () => {
         🔥 Trending Posts
       </h2>
 
-      <ul className="text-lg font-bold text-gray-700 list-disc pl-5 space-y-1">
-        {visiblePosts.map(({ title, url }, index) => (
-          <li key={index}>
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-blue-600 underline"
-            >
-              {title}
-            </a>
-          </li>
-        ))}
-      </ul>
+      {loading && <p className="text-gray-500">Loading posts...</p>}
 
-      {posts.length > 6 && (
-        <button
-          onClick={() => setShowAll(!showAll)}
-          className="mt-2 text-blue-600 text-sm underline hover:text-blue-800"
-        >
-          {showAll ? "View Less" : "View All"}
-        </button>
+      {error && <p className="text-red-500">Error loading posts: {error}</p>}
+
+      {!loading && !error && (
+        <>
+          {visiblePosts.length === 0 ? (
+            <p className="text-gray-500">No posts found.</p>
+          ) : (
+            <ul className="text-lg font-bold text-gray-700 list-disc pl-5 space-y-1">
+              {visiblePosts.map(({ _id, title, slug }) => (
+                <li key={_id}>
+                  <Link
+                    to={`/post/${slug}`}
+                    className="hover:text-blue-600 underline"
+                  >
+                    {title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {latestPosts.length > 6 && (
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className="mt-2 text-blue-600 text-sm underline hover:text-blue-800"
+            >
+              {showAll ? "View Less" : "View All"}
+            </button>
+          )}
+        </>
       )}
     </div>
   );

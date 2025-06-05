@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/dotenv.js";
 import UserModel from "../Models/User.js";
-import { AppError } from "../utils/AppError.js";  // Import your AppError class
+import { AppError } from "../utils/AppError.js";
 
 export const protectedRoute = async (req, res, next) => {
   try {
@@ -17,7 +17,6 @@ export const protectedRoute = async (req, res, next) => {
     }
 
     if (!token) {
-      // Use AppError for uniform error handling
       return next(new AppError("Unauthorized - No token provided", 401, "ProtectedRoute Middleware"));
     }
 
@@ -35,7 +34,6 @@ export const protectedRoute = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("Error in Protected Route Middleware:", error.message);
-    // Wrap unknown errors in AppError with 500 status
     if (!(error instanceof AppError)) {
       return next(new AppError(error.message || "Internal Server Error", 500, "ProtectedRoute Middleware"));
     }

@@ -1,8 +1,8 @@
 import React from "react";
 import { useParams } from "react-router-dom";
 import HorizontalBar from "../components/HorizentalBar";
-import RightSideBox from "../components/RightSideBox";
 import Postbox from "../components/Post/Postbox";
+import RightSideBox from "../components/RightSideBar/RightSideBox";
 
 const CategoryWisePage = () => {
   const { category } = useParams();

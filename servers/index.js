@@ -1,59 +1,67 @@
 import express from "express";
-import cors from "cors"; // 👈 Add this
+import cors from "cors";
 import cookieParser from "cookie-parser";
+
 import { CLIENT_URL, PORT } from "./config/dotenv.js";
 import connectDb from "./config/mongodb.js";
 import errorHandler from "./Middlewares/errorHandler.js";
-import AuthRoutes from "../servers/Routes/authRoutes.js";
-import UserRoutes from "../servers/Routes/userRoutes.js";
-import ImageRoutes from "../servers/Routes/postRoutes.js";
-import CategoryRoutes from "../servers/Routes/categoryRoutes.js";
-import BlockRoutes from "../servers/Routes/blockRoutes.js";
-import SubscribeRoutes from "../servers/Routes/subscribeRoutes.js";
-import NotificationRoutes from "../servers/Routes/notificationRoutes.js";
-import AdminRoutes from "../servers/Routes/adminRoutes.js";
-import RazorpayRoutes from "../servers/Routes/paymentRoutes.js";
+
+// Routes
+import AuthRoutes from "./Routes/authRoutes.js";
+import UserRoutes from "./Routes/userRoutes.js";
+import PostRoutes from "./Routes/postRoutes.js";
+import CategoryRoutes from "./Routes/categoryRoutes.js";
+import BlockRoutes from "./Routes/blockRoutes.js";
+import SubscribeRoutes from "./Routes/subscribeRoutes.js";
+import NotificationRoutes from "./Routes/notificationRoutes.js";
+import AdminRoutes from "./Routes/adminRoutes.js";
+import RazorpayRoutes from "./Routes/paymentRoutes.js";
+import SubscriptionRoutes from "./Routes/subscriptionPlan.js";
+
 
 const app = express();
 
-// ✅ Allow requests from frontend
+// ✅ Middleware
 app.use(
   cors({
-    origin: CLIENT_URL, // Replace with your frontend URL
+    origin: CLIENT_URL,
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
-// Routes
+// ✅ API Routes
 app.use("/api/auth", AuthRoutes);
 app.use("/api/user", UserRoutes);
-app.use("/api/post", ImageRoutes);
+app.use("/api/post", PostRoutes);
 app.use("/api/category", CategoryRoutes);
-app.use("/api/subscribe", SubscribeRoutes);
 app.use("/api/block", BlockRoutes);
+app.use("/api/subscribe", SubscribeRoutes);
 app.use("/api/notification", NotificationRoutes);
-app.use("/api/payment",RazorpayRoutes );
+app.use("/api/payment", RazorpayRoutes);
+app.use("/api/subscriptionPlan", SubscriptionRoutes);
 
-
-
-// admin
+// --------------------------------------------
 app.use("/api/admin", AdminRoutes);
-
-// Error Handler
+// ---------------------------------------
+// ✅ Error Handler (after all routes)
 app.use(errorHandler);
 
-// DB Connection + Server Start
-connectDb()
-  .then(() => {
+// ✅ Start Server
+const startServer = async () => {
+  try {
+    await connectDb();
+ 
     app.listen(PORT, () => {
-      console.log(`Server started successfully at port: ${PORT}`);
+      console.log(`🚀 Server running on port: ${PORT}`);
     });
-  })
-  .catch((error) => {
-    console.error("Database connection failed:", error.message);
+  } catch (error) {
+    console.error("❌ Startup failed:", error.message);
     process.exit(1);
-  });
+  }
+};
+
+startServer();

@@ -4,6 +4,7 @@ import { AppError } from "../utils/AppError.js";
 import { generateToken } from "../Utils/generateToken.js";
 import { OAuth2Client } from "google-auth-library";
 import { GOOGLE_CLIENT_ID } from "../config/dotenv.js";
+import { recordActivity } from "../helpers/activityHelper.js";
 
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
@@ -17,11 +18,19 @@ export const Signup = async (req, res, next) => {
 
     const existingUser = await UserModel.findOne({ email });
     if (existingUser) {
-      throw new AppError(
-        "User with this email already exists",
-        400,
-        "Signup Controller"
-      );
+      if (existingUser.authProvider === "google") {
+        throw new AppError(
+          "This email is already registered with Google. Please log in using Google.",
+          400,
+          "Signup Controller"
+        );
+      } else {
+        throw new AppError(
+          "User with this email already exists",
+          400,
+          "Signup Controller"
+        );
+      }
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -31,21 +40,25 @@ export const Signup = async (req, res, next) => {
       name: fullName,
       email,
       password: hashedPassword,
+      authProvider: "local",
     });
 
-    if (newUser) {
-      generateToken(newUser._id, res);
-      await newUser.save();
+    await newUser.save();
+    generateToken(newUser._id, res);
 
-      res.status(201).json({
-        message: "User registered successfully",
-        _id: newUser._id,
-        fullName: newUser.name,
-        email: newUser.email,
-      });
-    } else {
-      res.status(400).json({ message: "User not created" });
-    }
+    // Record signup activity
+    await recordActivity({
+      userId: newUser._id,
+      action: "SIGNED_UP", // New enum value needed in ActivityModel
+      message: `User ${fullName} signed up`,
+    });
+
+    res.status(201).json({
+      message: "User registered successfully",
+      _id: newUser._id,
+      fullName: newUser.name,
+      email: newUser.email,
+    });
   } catch (error) {
     if (!(error instanceof AppError)) {
       return next(new AppError(error.message, 500, "Signup Controller"));
@@ -78,6 +91,13 @@ export const Login = async (req, res, next) => {
 
     const token = generateToken(user._id, res);
 
+    // Record login activity
+    await recordActivity({
+      userId: user._id,
+      action: "LOGGED_IN", // Matches existing enum in ActivityModel
+      message: `User ${user.name} logged in`,
+    });
+
     res.status(200).json({
       _id: user._id,
       fullName: user.name,
@@ -94,10 +114,20 @@ export const Login = async (req, res, next) => {
 
 export const Logout = async (req, res, next) => {
   try {
-    res.cookie("jwt", {
+    // Record logout activity if user is authenticated
+    if (req.user?._id) {
+      await recordActivity({
+        userId: req.user._id,
+        action: "LOGGED_OUT", // New enum value needed in ActivityModel
+        message: `User ${req.user.name} logged out`,
+      });
+    }
+
+    res.cookie("jwt", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
+      expires: new Date(0),
     });
 
     res.status(200).json({ message: "Logged out successfully" });
@@ -111,6 +141,17 @@ export const Logout = async (req, res, next) => {
 
 export const checkAuth = async (req, res, next) => {
   try {
+    if (!req.user?._id) {
+      throw new AppError("Unauthorized - No user found", 401, "CheckAuth Controller");
+    }
+
+    // Record check auth activity (optional)
+    await recordActivity({
+      userId: req.user._id,
+      action: "CHECKED_AUTH", // New enum value needed in ActivityModel
+      message: `User ${req.user.name} checked authentication status`,
+    });
+
     res.status(200).json(req.user);
   } catch (error) {
     if (!(error instanceof AppError)) {
@@ -125,7 +166,7 @@ export const googleLogin = async (req, res, next) => {
 
   try {
     if (!token) {
-      throw new AppError("Google token is required", 400);
+      throw new AppError("Google token is required", 400, "Google Login Controller");
     }
 
     const ticket = await client.verifyIdToken({
@@ -136,20 +177,36 @@ export const googleLogin = async (req, res, next) => {
     const payload = ticket.getPayload();
     const { sub: googleId, email, name, picture } = payload;
 
-    let user = await UserModel.findOne({ googleId });
+    let user = await UserModel.findOne({ $or: [{ googleId }, { email }] });
 
-    if (!user) {
+    if (user) {
+      if (user.authProvider === "local") {
+        throw new AppError(
+          "This email is registered with a password-based account. Please log in with your password or link your Google account.",
+          400,
+          "Google Login Controller"
+        );
+      }
+    } else {
       user = new UserModel({
         name: name || "Unnamed Author",
         email,
         googleId,
         avatar: picture,
-        username: email.split("@")[0], // default username
+        username: email.split("@")[0],
+        authProvider: "google",
       });
       await user.save();
     }
 
     const jwtToken = generateToken(user._id, res);
+
+    // Record Google login activity
+    await recordActivity({
+      userId: user._id,
+      action: "GOOGLE_LOGGED_IN", // New enum value needed in ActivityModel
+      message: `User ${user.name} logged in with Google`,
+    });
 
     res.status(200).json({
       message: "Google login successful",
@@ -164,6 +221,9 @@ export const googleLogin = async (req, res, next) => {
       token: jwtToken,
     });
   } catch (error) {
-    next(new AppError(error.message, 500));
+    if (!(error instanceof AppError)) {
+      return next(new AppError(error.message, 500, "Google Login Controller"));
+    }
+    next(error);
   }
 };

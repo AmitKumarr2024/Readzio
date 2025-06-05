@@ -1,4 +1,4 @@
-const categories = [
+export const categories = [
   "Blogs",
   "Articles",
   "News",
@@ -12,4 +12,4 @@ const categories = [
   "Sports",
 ];
 
-export default categories;
+

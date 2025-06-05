@@ -1,9 +1,9 @@
 import React from "react";
 import { FiFilter } from "react-icons/fi";
 
-const FiltersSidebar = () => {
+const FiltersSidebar = ({ category, sortBy, onCategoryChange, onSortChange }) => {
   return (
-    <aside className="bg-white shadow-md rounded-2xl p-6 sticky top-6 border border-gray-100">
+    <aside className="bg-white w-72 h-96  shadow-md rounded-2xl p-6 sticky top-32 border border-gray-100">
       <div className="flex items-center gap-2 text-gray-800 mb-6">
         <FiFilter className="text-xl" />
         <h2 className="text-lg sm:text-xl font-semibold">Filters</h2>
@@ -15,11 +15,15 @@ const FiltersSidebar = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Category
           </label>
-          <select className="w-full border border-gray-300 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
-            <option>All</option>
-            <option>Technology</option>
-            <option>Health</option>
-            <option>Finance</option>
+          <select
+            value={category}
+            onChange={(e) => onCategoryChange(e.target.value)}
+            className="w-full border border-gray-300 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+          >
+            <option value="All">All</option>
+            <option value="Technology">Technology</option>
+            <option value="Health">Health</option>
+            <option value="Finance">Finance</option>
           </select>
         </div>
 
@@ -28,9 +32,14 @@ const FiltersSidebar = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Sort By
           </label>
-          <select className="w-full border border-gray-300 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
-            <option>Newest</option>
-            <option>Popular</option>
+          <select
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value)}
+            className="w-full border border-gray-300 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+          >
+            <option value="Newest">Newest</option>
+            <option value="Older">Older</option>
+            <option value="Popular">Popular</option>
           </select>
         </div>
       </div>

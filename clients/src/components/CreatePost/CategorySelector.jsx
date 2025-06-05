@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { X } from "lucide-react";
-import defaultCategories from "../../Utils/categories";
+import { categories as initialCategories } from "../../Utils/categories";  // Named import
 
 const CategorySelector = ({
   selectedCategory,
@@ -10,31 +10,29 @@ const CategorySelector = ({
   onContinue,
   onClose,
 }) => {
+  const [categories, setCategories] = useState(initialCategories);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [categories, setCategories] = useState(defaultCategories);
   const [hasContinuedOrSelected, setHasContinuedOrSelected] = useState(false);
 
-  useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("customCategories"));
-    if (stored) setCategories([...defaultCategories, ...stored]);
-  }, []);
+  const addCategory = (newCat) => {
+    setCategories((prev) => [...prev, newCat]);
+    setSelectedCategory(newCat);
+  };
 
   const handleAddCategory = () => {
     const trimmed = newCategoryName.trim();
     if (!trimmed) return toast.error("Category name cannot be empty");
-    if (categories.includes(trimmed)) return toast.error("Category already exists");
+    if (categories.includes(trimmed))
+      return toast.error("Category already exists");
 
-    const updatedCustom = JSON.parse(localStorage.getItem("customCategories")) || [];
-    updatedCustom.push(trimmed);
-    localStorage.setItem("customCategories", JSON.stringify(updatedCustom));
-    setCategories((prev) => [...prev, trimmed]);
+    addCategory(trimmed);
     setNewCategoryName("");
     toast.success("Category added");
   };
 
   const handleContinue = () => {
-    if (!selectedCategory) return toast.error("Please select or create a category");
-
+    if (!selectedCategory)
+      return toast.error("Please select or create a category");
     setHasContinuedOrSelected(true);
     onContinue();
   };

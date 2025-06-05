@@ -2,16 +2,16 @@ import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { FaChevronDown } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
-import defaultCategories from "../Utils/categories";
+import { categories as defaultCategories } from "../Utils/categories";
 
 const CategoryBox = () => {
-  const [categories, setCategories] = useState(defaultCategories);
+  const [categoryList, setCategoryList] = useState(defaultCategories);
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("customCategories"));
-    if (stored) setCategories([...defaultCategories, ...stored]);
+    if (stored) setCategoryList([...defaultCategories, ...stored]);
   }, []);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ const CategoryBox = () => {
             className="absolute left-0 w-full bg-gradient-to-r from-header-gradient-start to-header-gradient-end text-white max-h-60 overflow-y-auto p-4"
           >
             <div className="flex flex-wrap gap-3 justify-center">
-              {categories.map((category) => (
+              {categoryList.map((category) => (
                 <Link
                   to={`/category_page/${category}`}
                   key={category}

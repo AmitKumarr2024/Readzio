@@ -1,4 +1,5 @@
 import PostModel from "../Models/Post.js";
+import UserModel from "../Models/User.js";
 import { AppError } from "../utils/AppError.js";
 import { createNotification } from "../Utils/createNotification.js";
 

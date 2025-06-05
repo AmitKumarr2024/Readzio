@@ -13,7 +13,7 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <Provider store={store}>
       <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-        <Toaster position="top-right" />
+        <Toaster position="top-center" />
         <RouterProvider router={routes} />
       </GoogleOAuthProvider>
     </Provider>

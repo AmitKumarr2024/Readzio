@@ -32,7 +32,7 @@ const VideoBlockOutput = ({ src, caption }) => {
             src={embedUrl}
             controls
             preload="metadata"
-            className="absolute top-0 left-0 w-full h-full object-cover"
+            className="absolute aspect-video top-0 left-0 w-full h-full object-cover"
           >
             Sorry, your browser doesn't support embedded videos.
           </video>

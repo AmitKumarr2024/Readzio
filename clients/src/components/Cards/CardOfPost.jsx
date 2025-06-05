@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { MessageCircle, Eye } from "lucide-react";
+import { MessageCircle, Eye, Heart } from "lucide-react";
+import TimeAgo from "../../Utils/TimeAgo";
 
 // Utility to extract plain text from HTML
 const getPlainTextSnippet = (html, wordCount = 5) => {
@@ -12,64 +13,71 @@ const getPlainTextSnippet = (html, wordCount = 5) => {
 
 const CardOfPost = ({
   id,
+  slug,
   imageUrl,
   title,
   createdAt,
   commentsCount,
   viewsCount,
+  likesCount = 0,
   author = { name: "John Doe", org: "TechPulse" },
   previewHTML = "<p>No preview available</p>",
+  width = "max-w-3xl",
+  height="64",
+  thumbnail,
+  category
 }) => {
-  const fallbackImage =
-    "https://via.placeholder.com/400x240.png?text=No+Image";
+  const fallbackImage = "https://via.placeholder.com/400x240.png?text=No+Image";
 
-  const preview = getPlainTextSnippet(previewHTML, 6);
+  const preview = getPlainTextSnippet(previewHTML, 12);
 
   return (
     <Link
-      to={`/post/${id}`}
-      className="group w-full max-w-4xl mx-auto flex flex-col sm:flex-row bg-card-bg rounded-xl shadow border-2 border-gray-200 hover:shadow-lg transition duration-300"
+      to={`/post/${slug}`}
+      className={`mx-auto w-full ${width} h-${height} overflow-hidden rounded-xl bg-white shadow-md hover:shadow-lg transition duration-300 md:flex border`}
     >
-      {/* Thumbnail */}
-      <div className="sm:w-1/4 w-full h-52 sm:h-auto overflow-hidden p-3">
+      {/* Image Section */}
+      <div className="md:shrink-0">
         <img
-          src={imageUrl || fallbackImage}
+          className="h-36 w-full object-fit aspect-ratio:7/3 md:h-full md:w-48"
+          src={thumbnail || fallbackImage}
           alt={title}
-          className="w-full h-full object-contain "
         />
       </div>
 
-      {/* Text Content */}
-      <div className="sm:w-4/5 w-full p-5 flex flex-col justify-between">
-        {/* Author & Meta */}
-        <div className="text-lg text-gray-600 mb-1">
-          <span className="font-medium">{author.name}</span>
-          <span className="text-gray-400 mx-1">·</span>
-          <span>{author.org}</span>
+      {/* Text Section */}
+      <div className="p-2 flex flex-col justify-between w-full">
+        <div className="flex justify-between w-full">
+          <div className="text-sm font-semibold tracking-wide text-indigo-500 uppercase mb-2">
+            {author?.status || ""}
+          </div>
+          <div className="text-xs text-slate-500">
+            <p className="font-bold">{author?.name || "Unknown Author"}</p>
+            <p className="italic">Author</p>
+          </div>
         </div>
 
-        {/* Title */}
-        <h2 className="text-3xl line-clamp-1 font-serif font-semibold text-text-main leading-snug  ">
+        <h3 className="block text-lg capitalize leading-tight font-medium text-black hover:underline line-clamp-1">
           {title}
-        </h2>
+        </h3>
 
-        {/* Text Preview */}
-        <p className="text-xl text-sub-text mt-2 line-clamp-2">{preview}</p>
+        <p className="mt-2 text-gray-500 text-sm line-clamp-2">{category}</p>
 
-        {/* Date & Stats */}
-        <div className="flex items-center justify-between gap-4 mt-4 border-t pt-3 text-gray-500 text-lg">
-          <div className="flex items-center gap-2">
-            <MessageCircle size={16} /> {commentsCount}
+        {/* Footer Info */}
+        <div className="flex items-center justify-between text-gray-400 mt-4 text-sm">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1">
+              <MessageCircle size={16} /> {commentsCount}
+            </span>
+            <span className="flex items-center gap-1">
+              <Eye size={16} /> {viewsCount}
+            </span>
+            <span className="flex items-center gap-1">
+              <Heart size={16} className="text-red-500" /> {likesCount}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <Eye size={16} /> {viewsCount}
-          </div>
-          <div className="text-xs text-gray-400 ml-auto">
-            {new Date(createdAt).toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}
+          <div className="ml-auto text-xs">
+            <TimeAgo date={createdAt} />
           </div>
         </div>
       </div>

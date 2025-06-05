@@ -13,7 +13,7 @@ const CodeBlockOutput = ({ code, language = 'javascript', caption }) => {
   };
 
   return (
-    <div className="relative bg-gray-900 rounded-xl overflow-hidden my-4">
+    <div className="relative bg-gray-900 rounded-xl overflow-hidden my-8">
       <button
         onClick={handleCopy}
         className="absolute top-2 right-2 text-xs bg-gray-700 text-white px-2 py-1 rounded hover:bg-gray-600 transition select-none"

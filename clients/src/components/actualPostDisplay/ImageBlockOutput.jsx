@@ -4,10 +4,10 @@ const ImageBlockOutput = ({ src, caption }) => (
     <img
       src={src}
       alt={caption || "Image"}
-      className="rounded-lg shadow-md max-h-[600px] object-contain w-full"
+      className="rounded-lg shadow-md max-h-[600px] aspect-7/4 object-contain w-full"
     />
     {caption && (
-      <figcaption className="text-sm text-center text-gray-500 mt-2">
+      <figcaption className="text-sm text-center text-gray-400 mt-2">
         {caption}
       </figcaption>
     )}

@@ -1,42 +1,83 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useSelector, useDispatch } from "react-redux";
+import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+
 import FileBlock from "../PostFeature/FileBlock";
 import ListBlock from "../PostFeature/ListBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
+import PostView from "./PostView";
+
+import { createPosts, getSinglePost, deletePost } from "../../store/postSlice";
+import ConfirmPostModal from "./ConfirmPostModal";
+import {
+  setIsFeatured,
+  setIsPinned,
+  setIsPublished,
+  setLanguage,
+  setStatus,
+  resetPostMeta,
+} from "../../store/Post/postMetaSlice"; // Corrected import path
 
 const PostPreviewList = ({
-  allPosts,
-  deletePost,
-  createPost,
   currentDraftPost,
+  onUpdateDraft,
+  postType,
+  category,
 }) => {
-  const [selectedPostId, setSelectedPostId] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [copiedIndex, setCopiedIndex] = useState(null);
-  const modalRef = useRef(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isPostConfirmed, setIsPostConfirmed] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+  const [postData, setPostData] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const selectedPost = allPosts.find((post) => post.id === selectedPostId);
+  // Local state for post metadata with non-default values
+  const [isFeatured, setIsFeaturedLocal] = useState(true);
+  const [isPinned, setIsPinnedLocal] = useState(true);
+  const [isPublished, setIsPublishedLocal] = useState(true);
+  const [language, setLanguageLocal] = useState("es");
+  const [status, setStatusLocal] = useState("published");
+
+  const modalRef = useRef(null);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const { posts: allPosts, singlePost, singlePostStatus } = useSelector(
+    (state) => state.post
+  );
 
   useEffect(() => {
-    if (modalRef.current) {
+    if (singlePost) setIsModalOpen(true);
+  }, [singlePost]);
+
+  useEffect(() => {
+    if (modalRef.current && isModalOpen) {
       requestAnimationFrame(() => {
         modalRef.current.scrollTop = modalRef.current.scrollHeight;
       });
     }
     setZoomLevel(1);
-  }, [selectedPostId]);
+  }, [isModalOpen]);
 
   useEffect(() => {
-    if (allPosts.length > 0) {
-      localStorage.setItem("posts", JSON.stringify(allPosts));
+    let timer;
+    if (isPostConfirmed && countdown > 0) {
+      timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+    } else if (isPostConfirmed && countdown === 0) {
+      handleConfirmPublish();
     }
-  }, [allPosts]);
+    return () => clearTimeout(timer);
+  }, [isPostConfirmed, countdown]);
 
   const closeModal = () => {
-    setSelectedPostId(null);
+    setIsModalOpen(false);
     setZoomLevel(1);
+    dispatch({ type: "post/clearSinglePost" });
   };
 
   const handleCopyCode = (code, i) => {
@@ -45,321 +86,413 @@ const PostPreviewList = ({
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
-  const renderBlock = (block, i) => {
-    switch (block.type) {
-      case "text":
-        return (
-          <div
-            key={i}
-            className="leading-relaxed text-gray-800"
-            dangerouslySetInnerHTML={{ __html: block.value }}
-          />
+  const createPost = () => {
+    if (!currentDraftPost?.title) return toast.error("Please enter a title");
+    if (!currentDraftPost?.blocks?.length)
+      return toast.error("Please add content blocks");
+    if (!postType) return toast.error("Please select a post type");
+    if (!category) return toast.error("Please select a category");
+    if (!language.match(/^[a-z]{2}$/i))
+      return toast.error("Please enter a valid two-letter language code (e.g., 'en')");
+    if (!["draft", "review", "published", "archived"].includes(status))
+      return toast.error("Please select a valid status");
+
+    // Prevent submission with all default metadata
+    if (
+      !isFeatured &&
+      !isPinned &&
+      !isPublished &&
+      language === "en" &&
+      status === "draft"
+    ) {
+      toast.error(
+        "Please set at least one metadata field (e.g., feature, pin, publish, language, or status)"
+      );
+      return;
+    }
+
+    console.log("[DEBUG] createPost metadata:", {
+      isFeatured,
+      isPinned,
+      isPublished,
+      language,
+      status,
+    });
+
+    setShowConfirmModal(true);
+  };
+
+  const handleModalConfirm = ({ tags, thumbnail }) => {
+    console.log("[DEBUG] Tags received from ConfirmPostModal:", tags);
+    const newPostData = { tags, thumbnail, isFeatured, isPinned, isPublished, language, status };
+    console.log("[DEBUG] postData set:", newPostData);
+    setShowConfirmModal(false);
+    setPostData(newPostData);
+    setIsPostConfirmed(true);
+    setCountdown(5);
+
+    dispatch(setIsFeatured(isFeatured));
+    dispatch(setIsPinned(isPinned));
+    dispatch(setIsPublished(isPublished));
+    dispatch(setLanguage(language));
+    dispatch(setStatus(status));
+  };
+
+  const handleConfirmPublish = () => {
+    setIsPostConfirmed(false);
+
+    const payload = {
+      postType,
+      category,
+      title: currentDraftPost.title,
+      blocks: currentDraftPost.blocks,
+      tags: postData?.tags ?? [], // Ensure tags are included
+      thumbnail: postData?.thumbnail ?? "",
+      isFeatured: postData?.isFeatured ?? false,
+      isPinned: postData?.isPinned ?? false,
+      isPublished: postData?.isPublished ?? false,
+      language: postData?.language ?? "es",
+      status: postData?.status ?? "published",
+    };
+
+    console.log("[DEBUG] Payload sent to createPosts:", payload);
+
+    // Validate tags
+    if (!payload.tags || !Array.isArray(payload.tags) || payload.tags.length === 0) {
+      toast.error("Please provide at least one tag");
+      setPostData(null);
+      setIsPostConfirmed(false);
+      setCountdown(5);
+      return;
+    }
+
+    dispatch(createPosts(payload)).then((result) => {
+      if (createPosts.fulfilled.match(result)) {
+        toast.success("Post created successfully!");
+        if (onUpdateDraft) onUpdateDraft({ title: "", blocks: [] });
+        dispatch(resetPostMeta());
+        setIsFeaturedLocal(true);
+        setIsPinnedLocal(true);
+        setIsPublishedLocal(true);
+        setLanguageLocal("es");
+        setStatusLocal("published");
+        navigate("/");
+      } else {
+        toast.error(
+          "Failed to create post: " + (result.error?.message || "Unknown error")
         );
-      case "image":
-        return block.src ? (
-          <img
-            key={i}
-            src={block.src}
-            alt={block.caption || "Image"}
-            className="max-w-full rounded-xl shadow-md my-4"
-            loading="lazy"
-          />
-        ) : null;
+      }
+    });
+  };
+
+  const handleCancelPublish = () => {
+    setShowConfirmModal(false);
+    setIsPostConfirmed(false);
+    setPostData(null);
+    setCountdown(5);
+    toast("Post publishing cancelled.");
+  };
+
+  const deleteBlock = (index) => {
+    if (!onUpdateDraft) {
+      console.warn("No onUpdateDraft function provided");
+      return;
+    }
+    const updatedBlocks = currentDraftPost.blocks.filter((_, i) => i !== index);
+    onUpdateDraft({
+      ...currentDraftPost,
+      blocks: updatedBlocks,
+    });
+    toast.success("Block deleted");
+  };
+
+  const handleDeletePost = (postId) => {
+    if (window.confirm("Are you sure you want to delete this post?")) {
+      dispatch(deletePost(postId))
+        .unwrap()
+        .then(() => toast.success("Post deleted successfully"))
+        .catch((err) =>
+          toast.error("Failed to delete post: " + (err.message || err))
+        );
+    }
+  };
+
+  const renderBlock = (block, i) => {
+    const blockProps = {
+      block,
+      index: i,
+      zoomLevel,
+      copiedIndex,
+      handleCopyCode,
+      deleteBlock,
+      className: "relative my-4",
+    };
+
+    switch (block.type) {
       case "code":
         return (
-          <div
-            key={i}
-            className="relative bg-gray-900 rounded-xl overflow-hidden my-4"
-          >
-            {/* Copy button */}
-            <button
-              onClick={() => handleCopyCode(block.code, i)}
-              className="absolute top-2 right-2 text-xs bg-gray-700 text-white px-2 py-1 rounded hover:bg-gray-600 transition select-none flex items-center gap-1"
-              aria-label="Copy code"
-            >
-              {copiedIndex === i ? "Copied!" : "Copy"}
-            </button>
-
-            {/* Language label */}
-            <div className="absolute top-2 left-2 text-xs bg-gray-700 text-white px-2 py-1 rounded select-none uppercase font-semibold">
-              {block.language || "javascript"}
-            </div>
-
+          <div key={i} className="relative my-4">
             <SyntaxHighlighter
               language={block.language || "javascript"}
               style={tomorrow}
-              customStyle={{
-                margin: 0,
-                padding: "1.25rem",
-                fontSize: "0.875rem",
-                backgroundColor: "#1a202c",
-              }}
-              wrapLongLines
               showLineNumbers
+              wrapLines
             >
-              {block.code}
+              {block.value}
             </SyntaxHighlighter>
-
-            {block.caption && (
-              <div className="text-xs text-gray-400 italic mt-1 px-5 pb-3">
-                {block.caption}
-              </div>
-            )}
-          </div>
-        );
-     
-      case "file":
-        return <FileBlock key={i} url={block.url} name={block.name} />;
-      case "heading":
-        const Tag = `h${block.level || 2}`;
-        return (
-          <Tag
-            key={i}
-            className={`font-bold text-gray-800 my-4 ${
-              block.level === 1
-                ? "text-4xl"
-                : block.level === 2
-                ? "text-3xl"
-                : "text-2xl"
-            }`}
-          >
-            {block.text}
-          </Tag>
-        );
-      case "hr":
-        return (
-          <div key={i} className="my-6 text-center">
-            <hr className="border-t-2 border-gray-300 w-3/4 mx-auto" />
-            {block.caption && (
-              <div className="mt-2 text-sm text-gray-600 italic">
-                {block.caption}
-              </div>
-            )}
-          </div>
-        );
-      case "link":
-        return (
-          <div key={i} className="my-3">
-            <a
-              href={block.href || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline break-all"
+            <button
+              onClick={() => handleCopyCode(block.value, i)}
+              className="absolute top-2 right-2 bg-gray-800 text-white px-2 py-1 rounded text-sm"
             >
-              {block.text || block.href}
-            </a>
-            {block.caption && (
-              <div className="text-xs text-gray-500 italic mt-1">
-                {block.caption}
-              </div>
-            )}
+              {copiedIndex === i ? "Copied!" : "Copy"}
+            </button>
           </div>
         );
+      case "file":
+        return <FileBlock key={i} {...blockProps} />;
       case "list":
-        return (
-          <ListBlock
-            key={i}
-            items={block.items || []}
-            ordered={block.ordered || false}
-          />
-        );
-      case "poll":
+        return <ListBlock key={i} {...blockProps} />;
+      case "video":
+        return <VideoBlock key={i} {...blockProps} />;
+      default:
         return (
           <div
             key={i}
-            className="p-4 border rounded-xl bg-yellow-50 shadow-inner my-6"
-            aria-label="Poll"
-          >
-            <h4 className="font-semibold mb-2 text-gray-800">
-              {block.question}
-            </h4>
-            <ul className="list-disc list-inside space-y-1">
-              {(block.options || []).map((option, idx) => (
-                <li key={idx} className="text-gray-700">
-                  {option}
-                </li>
-              ))}
-            </ul>
-            {block.caption && (
-              <div className="text-xs text-gray-500 italic mt-2">
-                {block.caption}
-              </div>
-            )}
-          </div>
-        );
-      case "quote":
-        return (
-          <blockquote
-            key={i}
-            className="border-l-4 border-gray-400 pl-4 italic text-gray-700 my-4 bg-gray-50 p-4 rounded-md shadow-sm"
-          >
-            <p className="mb-2">"{block.text}"</p>
-            {block.author && (
-              <footer className="text-sm text-gray-500 text-right">
-                — {block.author}
-              </footer>
-            )}
-          </blockquote>
-        );
-      case "table":
-        const [headers = [], ...rows] = block.data || [];
-
-        return (
-          <div key={i} className="my-6 overflow-x-auto">
-            <table className="min-w-full border border-gray-300 table-auto text-left">
-              <thead className="bg-gray-100">
-                <tr>
-                  {headers.map((header, idx) => (
-                    <th key={idx} className="border px-4 py-2 font-semibold">
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {row.map((cell, cellIndex) => (
-                      <td key={cellIndex} className="border px-4 py-2">
-                        {cell}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
-      case "video":
-        return (
-          <VideoBlock
-            key={i}
-            src={block.src}
-            caption={block.caption}
-         
-           
+            className="relative my-4"
+            dangerouslySetInnerHTML={{ __html: block.value }}
           />
         );
-
-      default:
-        return null;
     }
   };
 
   return (
-    <div className="w-full md:w-[40%] h-screen bg-white overflow-y-auto p-6 relative font-sans text-gray-900">
-      <h2 className="text-3xl font-serif font-bold mb-8 border-b pb-3 text-gray-800">
-        📚 Blog Posts
-      </h2>
+    <>
+      <div className="mx-auto max-w-5xl px-2 sm:px-6 mt-6">
+        {currentDraftPost && (
+          <>
+            <h2 className="text-5xl text-center font-extrabold text-orange-400 mb-4">
+              Draft Preview Live
+            </h2>
+            <h1 className="text-4xl capitalize font-bold mb-4">
+              Title: {currentDraftPost.title}
+            </h1>
+            <div className="border border-gray-300 rounded-lg p-4 mb-12 shadow-lg bg-white">
+              {currentDraftPost.blocks.length === 0 ? (
+                <p className="text-gray-400 italic">
+                  No content blocks added yet.
+                </p>
+              ) : (
+                currentDraftPost.blocks.map((block, i) => renderBlock(block, i))
+              )}
+            </div>
 
-      {currentDraftPost?.title && currentDraftPost?.blocks?.length > 0 && (
-        <section className="mb-8 p-5 bg-yellow-50 border border-yellow-300 rounded-xl shadow-sm">
-          <h3 className="text-xl font-bold text-yellow-700 mb-2">
-            📝 Live Draft Preview
-          </h3>
-          <h4 className="font-semibold text-lg mb-3">
-            {currentDraftPost.title}
-          </h4>
-          <div className="space-y-4 mb-4">
-            {currentDraftPost.blocks.map((block, i) => renderBlock(block, i))}
-          </div>
-        </section>
-      )}
+            <div className="mb-6 grid grid-cols-2 gap-4 bg-white p-4 rounded-lg shadow-md">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={isFeatured}
+                  onChange={() => {
+                    const newValue = !isFeatured;
+                    setIsFeaturedLocal(newValue);
+                    console.log("[DEBUG] isFeatured set to:", newValue);
+                  }}
+                />
+                <span>Feature this post</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={isPinned}
+                  onChange={() => {
+                    const newValue = !isPinned;
+                    setIsPinnedLocal(newValue);
+                    console.log("[DEBUG] isPinned set to:", newValue);
+                  }}
+                />
+                <span>Pin this post</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={isPublished}
+                  onChange={() => {
+                    const newValue = !isPublished;
+                    setIsPublishedLocal(newValue);
+                    console.log("[DEBUG] isPublished set to:", newValue);
+                  }}
+                />
+                <span>Mark as Published</span>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-red-500">Language (required)</span>
+                <input
+                  type="text"
+                  value={language}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setLanguageLocal(newValue);
+                    console.log("[DEBUG] language set to:", newValue);
+                  }}
+                  placeholder="e.g., en"
+                  className="border rounded px-2 py-1 text-sm"
+                />
+              </label>
+              <label className="flex flex-col gap-1 col-span-2">
+                <span className="text-red-500">Status (required)</span>
+                <select
+                  value={status}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setStatusLocal(newValue);
+                    console.log("[DEBUG] status set to:", newValue);
+                  }}
+                  className="border rounded px-2 py-1 text-sm"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="review">Review</option>
+                  <option value="published">Published</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </label>
+            </div>
 
-      <div className="grid gap-5">
-        <AnimatePresence>
-          {allPosts.map((post) => {
-            const firstBlock = post.blocks.find((b) =>
-              ["image", "text", "file", "heading"].includes(b.type)
-            );
-
-            return (
-              <motion.div
-                key={post.id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 cursor-pointer overflow-hidden group"
-                onClick={() => setSelectedPostId(post.id)}
-              >
-                {firstBlock?.type === "image" ? (
-                  <img
-                    src={firstBlock.src}
-                    alt={firstBlock.caption || "Post Image"}
-                    className="w-full h-44 object-cover rounded-t-2xl group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => (e.target.style.display = "none")}
-                    loading="lazy"
-                  />
-                ) : firstBlock?.type === "text" ? (
-                  <div
-                    className="p-6 space-y-2"
-                    dangerouslySetInnerHTML={{ __html: firstBlock.value }}
-                  />
-                ) : null}
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </div>
-
-      <button
-        onClick={createPost}
-        className="mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg shadow-md transition"
-      >
-        ✅ Create Post
-      </button>
-
-      <AnimatePresence>
-        {selectedPost && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 flex flex-col items-center justify-center z-50 p-4"
-          >
             <button
-              onClick={closeModal}
-              className="self-end mb-4 text-white text-4xl font-bold hover:text-red-600 select-none"
-              aria-label="Close modal"
+              onClick={createPost}
+              className="bg-blue-600 text-white px-4 py-2 text-3xl my-6 w-full rounded mt-6"
             >
-              &times;
+              Create Post
             </button>
+          </>
+        )}
 
+        {allPosts.length === 0 ? (
+          <p className="text-center text-gray-500 mt-16">
+            No posts available yet.
+          </p>
+        ) : (
+          <div className="grid gap-6 mt-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {allPosts.map((post) => {
+              const firstBlock = post.blocks.find((b) =>
+                ["image", "text", "file", "heading"].includes(b.type)
+              );
+
+              return (
+                <motion.div
+                  key={post._id}
+                  layout
+                  initial={{ opacity: 0.2, y: 20 }}
+                  animate={{ opacity: 0.9, y: 0 }}
+                  exit={{ opacity: 0.5, y: -20 }}
+                  transition={{ duration: 0.5 }}
+                  className="relative bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-300 cursor-pointer overflow-hidden"
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeletePost(post._id);
+                    }}
+                    className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition"
+                    aria-label="Delete post"
+                    title="Delete post"
+                  >
+                    🗑
+                  </button>
+                  <div
+                    onClick={() => dispatch(getSinglePost(post.slug))}
+                    className="cursor-pointer"
+                  >
+                    {firstBlock?.type === "image" ? (
+                      <img
+                        src={firstBlock.src}
+                        alt={firstBlock.caption || "Post Image"}
+                        className="w-full h-48 object-cover rounded-t-lg hover:scale-105 transition-transform duration-200"
+                        onError={(e) => (e.target.style.display = "none")}
+                        loading="lazy"
+                      />
+                    ) : firstBlock?.type === "text" ? (
+                      <div
+                        className="p-6 text-gray-700 line-clamp-3"
+                        dangerouslySetInnerHTML={{ __html: firstBlock.value }}
+                      />
+                    ) : (
+                      <div className="p-6 text-gray-500 italic">
+                        No preview available
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+
+        <AnimatePresence>
+          {showConfirmModal && (
+            <ConfirmPostModal
+              onConfirm={handleModalConfirm}
+              onCancel={handleCancelPublish}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isPostConfirmed && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="fixed top-28 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 rounded shadow-lg px-6 py-4 flex items-center space-x-4 z-50"
+            >
+              <p>Publishing post in {countdown} seconds...</p>
+              <button
+                onClick={handleConfirmPublish}
+                className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+              >
+                Publish Now
+              </button>
+              <button
+                onClick={handleCancelPublish}
+                className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+              >
+                Cancel
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isModalOpen && singlePost && (
             <motion.div
               ref={modalRef}
-              style={{
-                transform: `scale(${zoomLevel})`,
-                transformOrigin: "top center",
-              }}
-              className="bg-white max-h-[90vh] overflow-y-auto p-10 rounded-3xl w-full max-w-4xl shadow-xl scroll-smooth"
+              key="modal"
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex justify-center items-start p-4 pt-20"
+              onClick={closeModal}
+              aria-modal="true"
+              role="dialog"
             >
-              <h2 className="text-4xl font-serif font-bold capitalize mb-8 select-none">
-                {selectedPost.title}
-              </h2>
-              <div className="space-y-10">
-                {selectedPost.blocks.map((block, i) => renderBlock(block, i))}
-              </div>
+              <motion.div
+                layout
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-lg max-w-4xl w-full p-6 shadow-lg max-h-[80vh] overflow-y-auto"
+              >
+                <PostView post={singlePost} />
+                <button
+                  onClick={closeModal}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                >
+                  Close
+                </button>
+              </motion.div>
             </motion.div>
-
-            <div className="mt-6 flex gap-4 z-50 select-none">
-              <button
-                onClick={() => setZoomLevel((z) => Math.min(z + 0.1, 3))}
-                className="px-5 py-2 bg-gray-100 rounded hover:bg-gray-200 text-gray-700 font-semibold transition"
-              >
-                Zoom In +
-              </button>
-              <button
-                onClick={() => setZoomLevel((z) => Math.max(z - 0.1, 0.5))}
-                className="px-5 py-2 bg-gray-100 rounded hover:bg-gray-200 text-gray-700 font-semibold transition"
-              >
-                Zoom Out -
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+          )}
+        </AnimatePresence>
+      </div>
+    </>
   );
 };
 

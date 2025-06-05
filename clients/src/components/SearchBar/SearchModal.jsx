@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiX } from "react-icons/fi"; // Import the close icon
+import { FiX } from "react-icons/fi";
 import SearchInput from "./SearchInput";
 
 const backdrop = {
@@ -14,6 +14,33 @@ const modal = {
 };
 
 const SearchModal = ({ isOpen, onClose }) => {
+  const modalRef = useRef(null);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    // Lock background scroll
+    document.body.style.overflow = "hidden";
+
+    // Focus modal container
+    if (modalRef.current) {
+      modalRef.current.focus();
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [isOpen, onClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -24,8 +51,13 @@ const SearchModal = ({ isOpen, onClose }) => {
           exit="hidden"
           variants={backdrop}
           onClick={onClose}
+          aria-modal="true"
+          role="dialog"
+          aria-labelledby="search-modal-title"
         >
           <motion.div
+            ref={modalRef}
+            tabIndex={-1}
             className="relative w-full max-w-md mx-auto bg-white rounded-lg shadow-lg p-4"
             variants={modal}
             initial="hidden"
@@ -37,12 +69,13 @@ const SearchModal = ({ isOpen, onClose }) => {
             <button
               onClick={onClose}
               className="absolute -top-5 -right-8 text-gray-500 hover:text-gray-800"
-              aria-label="Close"
+              aria-label="Close search modal"
+              type="button"
             >
               <FiX className="text-3xl text-red-500 font-bold" />
             </button>
 
-            {/* Search input */}
+            {/* Search input with Redux logic */}
             <SearchInput autoFocus onClose={onClose} />
           </motion.div>
         </motion.div>

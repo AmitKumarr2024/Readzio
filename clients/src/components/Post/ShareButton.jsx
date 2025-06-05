@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export const ShareButton = ({ postUrl }) => {
+const ShareButton = ({ postUrl }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState("");
 
@@ -62,3 +62,5 @@ export const ShareButton = ({ postUrl }) => {
     </>
   );
 };
+
+export default ShareButton

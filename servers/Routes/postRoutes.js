@@ -38,9 +38,9 @@ router.post("/view/:postId", incrementView);
 
 
 // Post search & filters
-router.get("/search-post/search", searchPosts); // e.g. /search?q=keyword&category=tech
-router.get("/trending-post/trending", getTrendingPosts);
-router.get("/latest-post/latest", getLatestPosts);
+router.get("/search-post/search",protectedRoute, searchPosts); // e.g. /search?q=keyword&category=tech
+router.get("/trending-post/trending",protectedRoute, getTrendingPosts);
+router.get("/latest-post/latest",protectedRoute, getLatestPosts);
 
 // Analytics (protected)
 router.get("/analytics/post/:postId", protectedRoute, getPostStats);

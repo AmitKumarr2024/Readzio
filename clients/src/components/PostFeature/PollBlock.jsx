@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 
-const PollBlock = ({ question, options, onChangeQuestion, onChangeOptions }) => {
+const PollBlock = ({ question = "", options = [], onChangeQuestion, onChangeOptions }) => {
   const [selected, setSelected] = useState(null);
 
-  // Handle changes for question and options inputs
   return (
     <div className="my-4 p-4 border rounded bg-white shadow-md">
       <label className="font-semibold mb-2 block">Poll Question</label>
@@ -16,7 +15,7 @@ const PollBlock = ({ question, options, onChangeQuestion, onChangeOptions }) => 
       />
 
       <label className="font-semibold mb-2 block">Options</label>
-      {options.map((opt, i) => (
+      {Array.isArray(options) && options.map((opt, i) => (
         <div key={i} className="flex items-center mb-1 gap-2">
           <input
             type="radio"

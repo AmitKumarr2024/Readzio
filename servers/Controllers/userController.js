@@ -1,137 +1,274 @@
+import mongoose from "mongoose";
 import UserModel from "../Models/User.js";
 import { AppError } from "../utils/AppError.js";
-import { uploadToCloudinary } from "../Utils/uploadToCloudinary.js"; // Cloudinary helper
+import { uploadToCloudinary } from "../Utils/uploadToCloudinary.js";
+import { recordActivity } from "../helpers/activityHelper.js";
+import ActivityModel from "../Models/ActivityModel.js";
 
-// Get logged-in user profile (without password)
+// GET: Profile of logged-in user (excluding password)
 export const getProfile = async (req, res, next) => {
   try {
-    const userId = req.user._id;
-
-    const profile = await UserModel.findById(userId).select("-password");
-    if (!profile) {
-      throw new AppError("User not found", 404, "GetProfile Controller");
+    if (!req.user?._id) {
+      throw new AppError("Unauthorized - No user found", 401, "GetProfile");
     }
 
-    return res.status(200).json({
-      success: true,
-      data: profile,
+    const profile = await UserModel.findById(req.user._id).select("-password");
+    if (!profile) throw new AppError("User not found", 404, "GetProfile");
+
+    await recordActivity({
+      userId: req.user._id,
+      action: "LOGGED_IN", // Changed to match enum in ActivityModel
+      message: "Viewed own profile",
     });
+
+    res.status(200).json({ success: true, data: profile });
   } catch (error) {
-    if (!(error instanceof AppError)) {
-      return next(new AppError(error.message, 500, "GetProfile Controller"));
-    }
-    next(error);
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "GetProfile")
+    );
   }
 };
 
-// Get all other users except the logged-in user
+// GET: All users except the logged-in one
 export const getAllUser = async (req, res, next) => {
   try {
-    if (!req.user || !req.user._id) {
-      throw new AppError("Unauthorized access", 401, "getAllUser Controller");
-    }
-
-    const otherUsers = await UserModel.find({ _id: { $ne: req.user._id } })
-      .select("name email gender avatar createdAt") // only expose necessary fields
+    const users = await UserModel.find()
+      .select("name email gender avatar banner bio profession location createdAt role blocked bookmarks following followers blockedUsers subscribedCategories subscribedAuthors subscribers hasSubscriptionPlan subscriptionPlan subscriptionDate ")
       .lean();
 
-    res.status(200).json({
-      success: true,
-      data: otherUsers,
-    });
+    // No activity logging because no user context
+
+    res.status(200).json({ success: true, data: users });
   } catch (error) {
-    if (!(error instanceof AppError)) {
-      return next(new AppError(error.message, 500, "getAllUser Controller"));
-    }
-    next(error);
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "getAllUser")
+    );
   }
 };
 
-// Update user profile with optional avatar upload
+
+// PATCH: Update user profile with optional avatar/banner upload
 export const updateProfile = async (req, res, next) => {
   try {
-    const userId = req.user?._id;
-
-    if (!userId) {
-      throw new AppError("Unauthorized", 401, "updateProfile Controller");
+    if (!req.user?._id) {
+      throw new AppError("Unauthorized - No user found", 401, "updateProfile");
     }
 
-    const disallowedFields = ["password", "roles", "_id"];
-    const updateData = {};
+    const user = await UserModel.findById(req.user._id);
+    if (!user) throw new AppError("User not found", 404, "updateProfile");
 
-    // Copy allowed fields from req.body
-    for (const key in req.body) {
-      if (!disallowedFields.includes(key)) {
-        updateData[key] = req.body[key];
+    const updatableFields = [
+      "name",
+      "bio",
+      "gender",
+      "location",
+      "profession",
+      "email",
+      "avatar",
+      "banner",
+      "blocked",
+    ];
+
+    updatableFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        user[field] = req.body[field];
+      }
+    });
+
+    if (req.files) {
+      if (req.files.avatar?.[0]) {
+        try {
+          const uploadedAvatar = await uploadToCloudinary({
+            buffer: req.files.avatar[0].buffer,
+            folder: "blog/users/avatar",
+          });
+          user.avatar = uploadedAvatar.secure_url;
+        } catch (err) {
+          console.error("Avatar upload error:", err);
+          throw new AppError("Failed to upload avatar", 500, "updateProfile");
+        }
+      }
+
+      if (req.files.banner?.[0]) {
+        try {
+          const uploadedBanner = await uploadToCloudinary({
+            buffer: req.files.banner[0].buffer,
+            folder: "blog/users/banner",
+          });
+          user.banner = uploadedBanner.secure_url;
+        } catch (err) {
+          console.error("Banner upload error:", err);
+          throw new AppError("Failed to upload banner", 500, "updateProfile");
+        }
       }
     }
 
-    // Handle avatar image upload if provided
+    await user.save();
 
-    if (req.file) {
-      // Upload file buffer from multer middleware
-      const result = await uploadToCloudinary({ buffer: req.file.buffer, folder: "users/profilePics" });
-      updateData.avatar = result.secure_url;
-    } else if (req.body.avatar && req.body.avatar.startsWith("data:image")) {
-      // Upload base64 image string
-      const result = await uploadToCloudinary({ base64: req.body.avatar, folder: "users/profilePics" });
-      updateData.avatar = result.secure_url;
-    } else if (typeof req.body.avatar === "string" && req.body.avatar.trim() !== "") {
-      // Use avatar URL string directly
-      updateData.avatar = req.body.avatar;
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      throw new AppError("No valid fields to update", 400, "updateProfile Controller");
-    }
-
-    // Update user in DB and exclude password from response
-    const updatedUser = await UserModel.findByIdAndUpdate(userId, updateData, {
-      new: true,
-    }).select("-password");
-
-    // Emit realtime profile update event if socket.io present
-    const io = req.app.get("io");
-    if (io) {
-      io.to(userId.toString()).emit("profileUpdated", updatedUser);
-    }
+    await recordActivity({
+      userId: req.user._id,
+      action: "UPDATED_PROFILE", // Matches enum in ActivityModel
+      message: "Updated their profile",
+    });
 
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      data: updatedUser,
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        banner: user.banner,
+        bio: user.bio,
+        gender: user.gender,
+        location: user.location,
+        profession: user.profession,
+        role: user.role,
+        blocked: user.blocked,
+        googleId: user.googleId,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        joiningDate: user.joiningDate,
+        bookmarks: user.bookmarks,
+        followers: user.followers,
+        following: user.following,
+        blockedUsers: user.blockedUsers,
+      },
     });
   } catch (error) {
-    if (!(error instanceof AppError)) {
-      return next(new AppError(error.message, 500, "updateProfile Controller"));
-    }
-    next(error);
+    console.error("Update profile error:", error);
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "updateProfile")
+    );
   }
 };
 
-// Delete logged-in user account
+// DELETE: Remove the currently logged-in user's account
 export const deleteUser = async (req, res, next) => {
   try {
     const userId = req.user?._id;
+    if (!userId) throw new AppError("Unauthorized", 401, "deleteUser");
 
-    if (!userId) {
-      throw new AppError("Unauthorized", 401, "deleteUser Controller");
+    const deleted = await UserModel.findByIdAndDelete(userId);
+    if (!deleted) throw new AppError("User not found", 404, "deleteUser");
+
+    await recordActivity({
+      userId,
+      action: "DELETED_ACCOUNT", // New enum value needed in ActivityModel
+      message: "Deleted their account",
+    });
+
+    res
+      .status(200)
+      .json({ success: true, message: "User deleted successfully" });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "deleteUser")
+    );
+  }
+};
+
+// GET: Get single user by ID (excluding sensitive fields)
+export const getSingleUserById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    console.log("[getSingleUserById] Requested user ID:", id);
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      console.warn("[getSingleUserById] Invalid user ID format:", id);
+      throw new AppError("Invalid user ID", 400, "getSingleUserById");
     }
 
-    const deletedUser = await UserModel.findByIdAndDelete(userId);
+    const user = await UserModel.findById(id)
+      .select("-password -googleId")
+      .populate("subscribedAuthors", "name email avatar")
+      .lean();
 
-    if (!deletedUser) {
-      throw new AppError("User not found", 404, "deleteUser Controller");
+    if (!user) {
+      console.warn("[getSingleUserById] No user found for ID:", id);
+      throw new AppError("User not found", 404, "getSingleUserById");
+    }
+
+    console.log("[getSingleUserById] User fetched successfully:", user.name);
+
+    // Defensive check before calling recordActivity
+    if (req.user && req.user._id) {
+      await recordActivity({
+        userId: req.user._id,
+        action: "VIEWED_PROFILE", // New enum value needed in ActivityModel
+        message: `Viewed profile of user ${id}`,
+      });
+    } else {
+      console.warn(
+        "[getSingleUserById] req.user is missing, skipping activity record"
+      );
+    }
+
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    console.error("[getSingleUserById] Error:", error.message);
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "getSingleUserById")
+    );
+  }
+};
+
+// NEW: GET user activity by user ID
+export const getUserActivity = async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      throw new AppError("Invalid user ID", 400, "getUserActivity");
+    }
+
+    // Fetch user with name
+    const user = await UserModel.findById(userId).select("name").lean();
+    
+    if (!user) {
+      throw new AppError("User not found", 404, "getUserActivity");
+    }
+
+    console.log("[DEBUG] User fetched:", { userId, name: user.name });
+
+    // Fetch activity list
+    const activityList = await ActivityModel.find({ user: userId })
+      .sort({ createdAt: -1 }) // recent first
+      .populate("targetPost", "title slug")
+      .populate("targetComment", "text")
+      .lean();
+
+    // Record activity for viewing user activity (if authenticated)
+    if (req.user && req.user._id) {
+      const targetUserName = user.name || userId; // Fallback to userId if name is missing
+      await recordActivity({
+        userId: req.user._id,
+        action: "VIEWED_ACTIVITY",
+        message: `Viewed activity of user ${targetUserName}`,
+      });
     }
 
     res.status(200).json({
       success: true,
-      message: "User deleted successfully",
+      activity: activityList,
     });
   } catch (error) {
-    if (!(error instanceof AppError)) {
-      return next(new AppError(error.message, 500, "deleteUser Controller"));
-    }
-    next(error);
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "getUserActivity")
+    );
   }
 };

@@ -2,7 +2,7 @@ import React from "react";
 
 const TitleInput = ({ title, setTitle }) => (
   <section className="mb-6">
-    <label className="block mb-3 font-semibold text-gray-700 text-3xl">Title</label>
+    <label className="block mb-3 font-bold text-gray-700 text-4xl">Title</label>
     <input
       type="text"
       value={title}

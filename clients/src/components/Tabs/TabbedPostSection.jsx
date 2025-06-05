@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import PostTabContent from "./PostTabContent";
+import FollowingPosts from "./FollowingPosts";
 
 const TabbedPostSection = () => {
   const [activeTab, setActiveTab] = useState("All Posts");

@@ -5,118 +5,136 @@ import PostTypeSelector from "../components/CreatePost/PostTypeSelector";
 import PostEditor from "../components/CreatePost/PostEditor";
 import PostPreviewList from "../components/CreatePost/PostPreviewList";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { createPosts, deletePost, getSinglePost } from "../store/postSlice";
+import LoadingBar from "../Utils/LoadingBar";
+import { setCategory } from "../store/Post/postMetaSlice";
 
 const CreatePost = () => {
   const navigate = useNavigate();
-  // Modal states
+  const dispatch = useDispatch();
+
   const [showPostTypeModal, setShowPostTypeModal] = useState(true);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-
-  // Post creation states
   const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [postType, setPostType] = useState("");
-
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState([]);
-  const [allPosts, setAllPosts] = useState([]);
+  const [slug, setSlug] = useState("");
 
-  // Load from localStorage
+  const { post, loading, error, createLoading, createError } = useSelector(
+    (state) => state.post
+  );
+
+  const { postType, category: selectedCategory } = useSelector(
+    (state) => state.postMeta
+  );
+
   useEffect(() => {
-    const savedPosts = JSON.parse(localStorage.getItem("posts")) || [];
-    const savedCategories =
-      JSON.parse(localStorage.getItem("categories")) || [];
-    setAllPosts(savedPosts);
+    const savedCategories = JSON.parse(localStorage.getItem("categories")) || [];
     setCategories(savedCategories);
   }, []);
 
-  // Save to localStorage when posts or categories change
   useEffect(() => {
-    localStorage.setItem("posts", JSON.stringify(allPosts));
-  }, [allPosts]);
+    if (slug) {
+      dispatch(getSinglePost(slug));
+    }
+  }, [dispatch, slug]);
 
-  useEffect(() => {
-    localStorage.setItem("categories", JSON.stringify(categories));
-  }, [categories]);
-
+  const posts = post ? [post] : [];
   const filteredPosts = selectedCategory
-    ? allPosts.filter((p) => p.category === selectedCategory)
-    : allPosts;
+    ? posts.filter((p) => p.category === selectedCategory)
+    : posts;
 
   const addCategory = (newCat) => {
-    setCategories((prev) => [...prev, newCat]);
-    setSelectedCategory(newCat);
+    const updatedCategories = [...categories, newCat];
+    setCategories(updatedCategories);
+    dispatch(setCategory(newCat));
+    localStorage.setItem("categories", JSON.stringify(updatedCategories));
   };
 
-  // When post type is selected, open category modal
-  const handlePostTypeSelect = (type) => {
-    setPostType(type);
-    setShowPostTypeModal(false);
-    setShowCategoryModal(true);
-  };
-
-  // When category selection is done, start editor
   const handleCategoryContinue = () => {
+    if (!selectedCategory) {
+      toast.error("Please select or create a category");
+      return;
+    }
     setShowCategoryModal(false);
   };
 
-  const createPost = () => {
+  const handleCreatePost = async () => {
     if (!title.trim()) return toast.error("Please enter a title");
     if (blocks.length === 0) return toast.error("Please add content blocks");
     if (!postType) return toast.error("Please select a post type");
     if (!selectedCategory) return toast.error("Please select a category");
 
-    // Generate unique ID for the post
-    const id =
-      Date.now().toString() + Math.floor(Math.random() * 1000).toString();
-
-    const newPost = {
-      id, // Unique ID
+    const postData = {
       postType,
       category: selectedCategory,
       title,
       blocks,
     };
-    console.log("id", id);
 
-    setAllPosts([...allPosts, newPost]);
-    setTitle("");
-    setBlocks([]);
-    toast.success("Post created successfully! ");
-    navigate("/");
+    try {
+      const resultAction = await dispatch(createPosts(postData));
+      if (createPosts.fulfilled.match(resultAction)) {
+        toast.success("Post created successfully!");
+        setTitle("");
+        setBlocks([]);
+        dispatch(resetPostMeta());
+        navigate("/");
+      } else {
+        toast.error("Failed to create post");
+      }
+    } catch (err) {
+      toast.error("An error occurred during post creation");
+    }
+  };
+
+  const handleDeletePost = (idToDelete) => {
+    dispatch(deletePost(idToDelete));
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen mt-20">
-      {/* Post Type Modal (Step 1) */}
+    <div className="flex flex-col md:flex-row">
+      <Toaster />
+      <LoadingBar loading={createLoading} />
+
       {showPostTypeModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-6">
           <PostTypeSelector
-            onSelect={handlePostTypeSelect}
-            onClose={() => setShowPostTypeModal(false)}
+            postType={postType}
+            setPostType={(value) => dispatch(setPostType(value))}
+            onContinue={() => {
+              setShowPostTypeModal(false);
+              setShowCategoryModal(true);
+            }}
+            onClose={() => {
+              setShowPostTypeModal(false);
+              navigate("/");
+            }}
           />
         </div>
       )}
 
-      {/* Category Modal (Step 2) */}
       {showCategoryModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-6">
           <CategorySelector
             categories={categories}
             selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
+            setSelectedCategory={(value) => dispatch(setCategory(value))}
             addCategory={addCategory}
             onBack={() => {
               setShowCategoryModal(false);
               setShowPostTypeModal(true);
             }}
             onContinue={handleCategoryContinue}
-            onClose={() => setShowCategoryModal(false)}
+            onClose={() => {
+              setShowCategoryModal(false);
+              navigate("/");
+            }}
           />
         </div>
       )}
 
-      {/* Main Editor */}
       {!showPostTypeModal && !showCategoryModal && (
         <div className="min-w-full flex container justify-around items-center flex-col flex-wrap md:flex-row">
           <PostEditor
@@ -129,26 +147,19 @@ const CreatePost = () => {
             category={selectedCategory}
           />
           <PostPreviewList
-            allPosts={filteredPosts}
-            deletePost={(idToDelete) =>
-              setAllPosts(allPosts.filter((post) => post.id !== idToDelete))
-            }
-            createPost={createPost}
             currentDraftPost={{ title, blocks }}
+            postType={postType}
+            category={selectedCategory}
+            allPosts={filteredPosts}
+            deletePost={handleDeletePost}
+            createPost={handleCreatePost}
+            loading={loading}
+            error={error}
+            createLoading={createLoading}
+            createError={createError}
           />
         </div>
       )}
-
-      {/* Optional Debug Button */}
-      <button
-        onClick={() => {
-          localStorage.clear();
-          window.location.reload();
-        }}
-        className="absolute top-20 right-1 bg-red-600 text-white px-4 py-2 rounded shadow-lg"
-      >
-        Clear LocalStorage
-      </button>
     </div>
   );
 };

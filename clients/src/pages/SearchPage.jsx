@@ -56,11 +56,6 @@ const SearchPage = () => {
   return (
     <div className="min-h-screen px-4 py-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row gap-8">
-        {/* Sidebar */}
-        <div className="md:flex-shrink-0 md:w-72">
-          <FiltersSidebar />
-        </div>
-
         {/* Results */}
         <div className="flex-1">
           {searchTerm && (

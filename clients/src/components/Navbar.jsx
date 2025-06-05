@@ -32,7 +32,6 @@ const Navbar = () => {
       dispatch(getUser());
     }
 
-    // One-time reload after login
     if (isAuthenticated && !sessionStorage.getItem("reloadedAfterLogin")) {
       sessionStorage.setItem("reloadedAfterLogin", "true");
       window.location.reload();
@@ -56,7 +55,7 @@ const Navbar = () => {
     try {
       await dispatch(logout()).unwrap();
       dispatch(clearUser());
-      sessionStorage.removeItem("reloadedAfterLogin"); // reset reload flag
+      sessionStorage.removeItem("reloadedAfterLogin");
       setDropdownOpen(false);
       navigate("/");
     } catch (err) {
@@ -64,7 +63,7 @@ const Navbar = () => {
     }
   };
 
-  const hideCategoryRoutes = ["/profile", "/setting", "/createPost"];
+  const hideCategoryRoutes = ["/user", "/user-setting", "/createPost"];
 
   return (
     <>
@@ -90,80 +89,91 @@ const Navbar = () => {
                 {/* Write Button */}
                 <Link
                   to="/createPost"
-                  className="hidden sm:flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-3 sm:px-6 py-1.5 rounded-md text-sm sm:text-base transition-all mr-14"
+                  className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white px-2 sm:px-4 py-1.5 rounded-md text-sm sm:text-base transition-all"
                 >
-                  <TfiWrite />
+                  <TfiWrite className="text-lg sm:text-xl" />
                   <span className="hidden sm:inline">Write</span>
                 </Link>
 
                 {/* Avatar Dropdown */}
-                <div className="relative" ref={dropdownRef}>
-                  <div
-                    className="cursor-pointer"
-                    onClick={toggleDropdown}
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") toggleDropdown();
-                    }}
-                  >
+                <div
+                  ref={dropdownRef}
+                  className="relative"
+                  onMouseEnter={() => setDropdownOpen(true)}
+                  onMouseLeave={() => setDropdownOpen(false)}
+                >
+                  {/* Avatar */}
+                  <div className="cursor-pointer">
                     {avatarUrl ? (
                       <img
                         src={avatarUrl}
                         alt={userName || "User"}
-                        className="w-14 rounded-full object-cover border-2"
+                        className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-full object-cover border-2 max-w-[4rem] sm:max-w-[5rem]"
+                        style={{
+                          width: "clamp(2.5rem, 5vw, 4rem)",
+                          height: "clamp(2.5rem, 5vw, 4rem)",
+                        }}
                         onError={(e) => {
                           e.currentTarget.onerror = null;
                           e.currentTarget.src = "/default-avatar.png";
                         }}
                       />
                     ) : (
-                      <div className="bg-gray-600 rounded-full h-10 w-10 flex items-center justify-center text-lg text-white uppercase">
+                      <div
+                        className="bg-gray-600 rounded-full flex items-center justify-center text-lg text-white uppercase w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 max-w-[4rem] sm:max-w-[5rem]"
+                        style={{
+                          width: "clamp(2.5rem, 5vw, 4rem)",
+                          height: "clamp(2.5rem, 5vw, 4rem)",
+                        }}
+                      >
                         {userName?.[0] || "U"}
                       </div>
                     )}
                   </div>
 
                   {/* Dropdown Menu */}
-                  {dropdownOpen && (
-                    <div className="absolute right-0 w-40 bg-white text-black rounded-md shadow-lg py-2 z-50 transition-opacity duration-300">
-                      <Link
-                        to="/profile"
-                        className="block px-4 py-2 hover:bg-gray-100"
-                        onClick={() => setDropdownOpen(false)}
-                      >
-                        Profile
-                      </Link>
-                      <Link
-                        to="/setting"
-                        className="block px-4 py-2 hover:bg-gray-100"
-                        onClick={() => setDropdownOpen(false)}
-                      >
-                        Settings
-                      </Link>
-                    </div>
-                  )}
+                  <div
+                    className={`absolute right-0 mt-2 w-40 bg-white text-black rounded-md shadow-lg py-2 z-50 transition-all duration-200 ${
+                      dropdownOpen
+                        ? "opacity-100 visible"
+                        : "opacity-0 invisible"
+                    }`}
+                  >
+                    <Link
+                      to="/user"
+                      className="block px-4 py-2 hover:bg-gray-100"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      Profile
+                    </Link>
+                    <Link
+                      to="/user-setting"
+                      className="block px-4 py-2 hover:bg-gray-100"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      Settings
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                    >
+                      Logout
+                    </button>
+                  </div>
                 </div>
-
-                {/* Logout */}
-                <button
-                  onClick={handleLogout}
-                  className="hidden sm:inline-block bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-sm sm:text-base"
-                >
-                  Logout
-                </button>
               </>
             ) : (
               // Unauthenticated Links
               <>
                 <Link
                   to="/login"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 rounded-md text-sm sm:text-base"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-2 sm:px-3 py-1.5 rounded-md text-sm"
                 >
                   Login
                 </Link>
                 <Link
                   to="/signup"
-                  className="bg-white text-slate-800 px-3 sm:px-4 py-1.5 rounded-md text-sm"
+                  className="bg-white text-slate-800 px-2 sm:px-3 py-1.5 rounded-md text-sm"
                 >
                   Sign Up
                 </Link>
