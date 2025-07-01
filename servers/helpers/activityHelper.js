@@ -42,10 +42,29 @@ const VALID_ACTIONS = [
   "UNSUBSCRIBED_CATEGORY",
   "VIEWED_FOLLOWERS_LIST",
   "VIEWED_FOLLOWING_LIST",
-  "CREATED_SUBSCRIPTION_PLAN",
-  "SUBSCRIBED_TO_PLAN",
-  "DELETED_SUBSCRIPTION",
+  "UPDATED_BANK_DETAILS",
+  "RAZORPAY_KEY_SECRET",
+  "CANCELLED_SUBSCRIPTION",
+  "CREATED_SUBSCRIPTION",
   "DELETED_SUBSCRIPTION_PLAN",
+  "UPDATED_SUBSCRIPTION_PLAN",
+  "SUBSCRIBED_TO_PLAN",
+  " UNSUBSCRIBED_FROM_AUTHOR",
+  "UPDATED_PAYOUT_DETAILS",
+  "CREATED_PAYOUT_DETAILS",
+  "DELETED_PAYOUT_DETAILS",
+  "VIEWED_EARNINGS",
+  "VIEWED_SUGGESTED_POSTS",
+  "VIEWED_ALL_EARNINGS",
+  "CREATED_PAYOUT"
+  ,"VIEWED_ALL_AD_EARNINGS",
+  "SET_AD_CONFIG",
+  "RECORDED_AD_EARNINGS",
+  "POST_BLOCKED",
+  "APPROVED_EMAILS",
+  "GENERATED_EARNINGS_REPORT",
+  "DELETED_PENDING_EMAILS",
+  "GENERATED_PENDING_EMAILS",
 ];
 
 // Record activity function
@@ -117,9 +136,9 @@ export const recordActivity = async ({
     });
 
     await newActivity.save();
-    console.log(
-      `[Activity] Recorded: user=${userId} action=${action} message="${trimmedMessage}"`
-    );
+    // console.log(
+    //   `[Activity] Recorded: user=${userId} action=${action} message="${trimmedMessage}"`
+    // );
 
     return newActivity;
   } catch (err) {

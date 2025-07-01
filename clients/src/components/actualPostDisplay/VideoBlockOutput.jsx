@@ -11,7 +11,7 @@ const getYouTubeEmbedUrl = (url) => {
 };
 
 const VideoBlockOutput = ({ src, caption }) => {
-  if (!src) return <div className="text-center text-gray-500 italic">No video source provided</div>;
+  if (!src) return <div className="text-center  text-text-main-light dark:text-text-main-dark italic">No video source provided</div>;
 
   const isYouTube = isYouTubeUrl(src);
   const embedUrl = isYouTube ? getYouTubeEmbedUrl(src) : src;
@@ -40,7 +40,7 @@ const VideoBlockOutput = ({ src, caption }) => {
       </div>
 
       {caption && (
-        <div className="mt-4 text-sm text-gray-600 flex items-center justify-center gap-2 italic">
+        <div className="mt-4 text-sm  text-text-main-light dark:text-text-main-dark flex items-center justify-center gap-2 italic">
           <PlayCircle size={16} className="text-blue-500" />
           {caption}
         </div>

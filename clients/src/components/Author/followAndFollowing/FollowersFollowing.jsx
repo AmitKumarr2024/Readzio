@@ -1,161 +1,221 @@
+import React, { useEffect, useState, useCallback, memo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import { fetchFollowers, fetchFollowing } from "../../../store/followSlice";
 import ToggleFollowButton from "../Subscribe/ToggleFollowButton";
-import { fetchFollowers, fetchFollowing, unfollowUser } from "../../../store/subscribeSlice";
+import Skeleton from "../../UI/Skeleton";
+import { motion } from "framer-motion";
 
-function FollowersFollowing() {
-  const dispatch = useDispatch();
-  const [selectedUsers, setSelectedUsers] = useState([]); // Track selected users for bulk unfollow
-  const [selectAll, setSelectAll] = useState(false); // Track select all checkbox state
+const UserCardSkeleton = () => (
+  <div className="bg-background-light dark:bg-background-dark rounded-lg p-4 shadow-sm border animate-pulse">
+    <div className="flex items-center gap-3">
+      <Skeleton width="w-12" height="h-12" rounded="rounded-full" />
+      <div className="flex-1 space-y-2">
+        <Skeleton width="w-3/4" height="h-4" />
+        <Skeleton width="w-1/2" height="h-3" />
+      </div>
+      <Skeleton width="w-20" height="h-8" rounded="rounded-full" />
+    </div>
+  </div>
+);
 
-  // Assuming your slice remains subscribe with followers and following keys:
-  const { list: followersList = [], count: followersCount = 0, loading: followersLoading, error: followersError } = useSelector(
-    (state) => state.subscribe.followers || {}
-  );
-  const { list: followingList = [], count: followingCount = 0, loading: followingLoading, error: followingError } = useSelector(
-    (state) => state.subscribe.following || {}
-  );
-
-  // Refresh lists after follow/unfollow action
-  const handleFollowSuccess = () => {
-    dispatch(fetchFollowers());
-    dispatch(fetchFollowing());
-    setSelectedUsers([]);
-    setSelectAll(false);
-  };
-
-  // Select all toggle
-  const handleSelectAll = () => {
-    if (selectAll) {
-      setSelectedUsers([]);
-    } else {
-      setSelectedUsers(followingList.map(user => user._id));
-    }
-    setSelectAll(!selectAll);
-  };
-
-  // Individual user select/deselect
-  const handleUserSelect = (userId) => {
-    let newSelected;
-    if (selectedUsers.includes(userId)) {
-      newSelected = selectedUsers.filter(id => id !== userId);
-    } else {
-      newSelected = [...selectedUsers, userId];
-    }
-    setSelectedUsers(newSelected);
-    setSelectAll(followingList.length > 0 && newSelected.length === followingList.length);
-  };
-
-  // Bulk unfollow all selected users
-  const handleBulkUnfollow = async () => {
-    try {
-      for (const userId of selectedUsers) {
-        const result = await dispatch(unfollowUser(userId)).unwrap();
-        if (!unfollowUser.fulfilled.match(result)) {
-          toast.error(`Failed to unfollow user ${userId}`);
-        }
-      }
-      toast.success(`Successfully unfollowed ${selectedUsers.length} user(s)!`);
-      handleFollowSuccess();
-    } catch (err) {
-      console.error("[BulkUnfollow] Error:", err);
-      toast.error("An error occurred while unfollowing users.");
-    }
-  };
-
-  // On mount, fetch lists
-  useEffect(() => {
-    dispatch(fetchFollowers());
-    dispatch(fetchFollowing());
-  }, [dispatch]);
-
-  // Render user list (followers or following)
-  const renderUserList = (users, isFollowingList = false) => (
-    <ul className="space-y-2">
-      {users.map(user => (
-        <li key={user._id} className="py-2 flex items-center gap-3 border-b last:border-b-0">
-          {isFollowingList && (
-            <input
-              type="checkbox"
-              checked={selectedUsers.includes(user._id)}
-              onChange={() => handleUserSelect(user._id)}
-              className="h-4 w-4 text-blue-600 rounded"
-            />
-          )}
-          <img
-            src={user?.avatar || "https://via.placeholder.com/40"}
-            alt={user?.name || "User"}
-            className="w-8 h-8 rounded-full object-cover"
-          />
-          <div className="flex-1">
-            <p className="font-medium text-gray-800">{user?.name || "Unnamed"}</p>
-            <p className="text-sm text-gray-500">@{user?.username || user?.email || "unknown"}</p>
-          </div>
-          <div className="w-24">
-            <ToggleFollowButton
-              followUserId={user._id}
-              onFollowSuccess={handleFollowSuccess}
-              isFollowing={isFollowingList || followingList.some(fu => fu._id === user._id)}
-            />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
+const UserCard = memo(({ user, onFollowSuccess }) => {
+  if (!user?._id) return null;
 
   return (
-    <div className="grid md:grid-cols-2 gap-6 p-4">
-      {/* Followers Section */}
-      <section className="bg-white rounded-lg shadow p-4">
-        <h3 className="text-xl font-semibold mb-2">Followers ({followersCount})</h3>
-        {followersLoading ? (
-          <p className="text-gray-500">Loading followers...</p>
-        ) : followersError ? (
-          <p className="text-red-500">{followersError}</p>
-        ) : followersList.length === 0 ? (
-          <p className="text-gray-500">No followers yet! 😞</p>
+    <motion.div
+      key={user._id}
+      className="bg-background-light dark:bg-background-dark rounded-lg p-4 shadow-sm border hover:shadow-md transition-all duration-300"
+      whileHover={{ scale: 1.02 }}
+      role="listitem"
+      aria-label={`User ${user.name || user.username || "Unnamed User"}`}
+    >
+      <div className="flex items-center gap-3">
+        {user.avatar ? (
+          <img
+            src={user.avatar}
+            alt={user.name || user.username || "User"}
+            className="w-12 h-12 rounded-full object-cover border"
+            loading="lazy"
+            onError={(e) => (e.target.src = "/fallback-avatar.png")}
+          />
         ) : (
-          renderUserList(followersList, false)
+          <Skeleton width="w-12" height="h-12" rounded="rounded-full" />
         )}
-      </section>
-
-      {/* Following Section */}
-      <section className="bg-white rounded-lg shadow p-4">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-xl font-semibold">Following ({followingCount})</h3>
-          {followingList.length > 0 && (
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={selectAll}
-                onChange={handleSelectAll}
-                className="h-4 w-4 text-blue-600 rounded"
-              />
-              <span className="text-sm text-gray-600">Select All</span>
-              {selectedUsers.length > 0 && (
-                <button
-                  onClick={handleBulkUnfollow}
-                  className="ml-2 px-3 py-1 text-sm bg-red-500 text-white rounded-md font-semibold hover:bg-red-600 transition duration-200"
-                >
-                  Unfollow Selected ({selectedUsers.length})
-                </button>
-              )}
-            </div>
-          )}
+        <div className="flex-1">
+          <p className="text-text-main-light dark:text-text-main-dark font-medium truncate">
+            {user.name || user.username}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            @{user.username || "unknown"}
+          </p>
         </div>
-        {followingLoading ? (
-          <p className="text-gray-500">Loading following...</p>
+        <ToggleFollowButton
+          followUserId={user._id}
+          onFollowSuccess={onFollowSuccess}
+        />
+      </div>
+    </motion.div>
+  );
+});
+
+const FollowersFollowing = () => {
+  const dispatch = useDispatch();
+  const { followers, following } = useSelector((state) => state.follow);
+
+  const [followersErrorRetry, setFollowersErrorRetry] = useState(0);
+  const [followingErrorRetry, setFollowingErrorRetry] = useState(0);
+  const [search, setSearch] = useState("");
+
+  const {
+    list: followersList = [],
+    count: followersCount = 0,
+    page: followersPage = 1,
+    totalPages: followersTotalPages = 1,
+    loading: followersLoading = false,
+    error: followersError = null,
+  } = followers;
+
+  const {
+    list: followingList = [],
+    count: followingCount = 0,
+    page: followingPage = 1,
+    totalPages: followingTotalPages = 1,
+    loading: followingLoading = false,
+    error: followingError = null,
+  } = following;
+
+  useEffect(() => {
+    dispatch(fetchFollowers({ page: 1, limit: 12 }));
+    dispatch(fetchFollowing({ page: 1, limit: 12 }));
+  }, [dispatch]);
+
+  const loadMore = useCallback((type) => {
+    if (type === "followers" && followersPage < followersTotalPages && !followersLoading) {
+      dispatch(fetchFollowers({ page: followersPage + 1, limit: 12 }));
+    } else if (type === "following" && followingPage < followingTotalPages && !followingLoading) {
+      dispatch(fetchFollowing({ page: followingPage + 1, limit: 12 }));
+    }
+  }, [dispatch, followersPage, followersTotalPages, followersLoading, followingPage, followingTotalPages, followingLoading]);
+
+  const handleRetry = useCallback((type) => {
+    if (type === "followers" && followersErrorRetry < 3) {
+      dispatch(fetchFollowers({ page: followersPage, limit: 12 }));
+      setFollowersErrorRetry((prev) => prev + 1);
+    } else if (type === "following" && followingErrorRetry < 3) {
+      dispatch(fetchFollowing({ page: followingPage, limit: 12 }));
+      setFollowingErrorRetry((prev) => prev + 1);
+    }
+  }, [dispatch, followersPage, followingPage, followersErrorRetry, followingErrorRetry]);
+
+  const filteredList = (list) => {
+    return list.filter((user) => {
+      const name = user.name?.toLowerCase() || "";
+      const username = user.username?.toLowerCase() || "";
+      return name.includes(search.toLowerCase()) || username.includes(search.toLowerCase());
+    });
+  };
+
+  return (
+    <div className="space-y-8 h-screen" role="region" aria-label="Followers and Following">
+      <div className="flex justify-end mb-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search followers and following..."
+          className="px-3 py-2 rounded-md border bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-sm w-full sm:w-1/2"
+        />
+      </div>
+
+      <div>
+        <h3 className="text-2xl font-semibold text-text-main-light dark:text-text-main-dark mb-4">
+          People You Follow ({followingCount})
+        </h3>
+        {followingLoading && followingList.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array(6).fill().map((_, i) => <UserCardSkeleton key={i} />)}
+          </div>
         ) : followingError ? (
-          <p className="text-red-500">{followingError}</p>
-        ) : followingList.length === 0 ? (
-          <p className="text-gray-500">You're not following anyone yet! 🤷‍♂️</p>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-6">
+            <p className="text-red-600 text-lg">Error: {followingError}</p>
+            {followingErrorRetry < 3 && (
+              <button
+                onClick={() => handleRetry("following")}
+                className="mt-2 px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+              >
+                Retry
+              </button>
+            )}
+          </motion.div>
+        ) : filteredList(followingList).length === 0 ? (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-text-main-light dark:text-text-main-dark text-center py-6"
+          >
+            No people you follow found.
+          </motion.p>
         ) : (
-          renderUserList(followingList, true)
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredList(followingList).map((user) => (
+              <UserCard
+                key={user._id}
+                user={user}
+                onFollowSuccess={() => {
+                  dispatch(fetchFollowers({ page: 1, limit: 12 }));
+                  dispatch(fetchFollowing({ page: 1, limit: 12 }));
+                }}
+              />
+            ))}
+          </div>
         )}
-      </section>
+      </div>
+
+      <div>
+        <h3 className="text-2xl font-semibold text-text-main-light dark:text-text-main-dark mb-4">
+          Your Followers ({followersCount})
+        </h3>
+        {followersLoading && followersList.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array(6).fill().map((_, i) => <UserCardSkeleton key={i} />)}
+          </div>
+        ) : followersError ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-6">
+            <p className="text-red-600 text-lg">Error: {followersError}</p>
+            {followersErrorRetry < 3 && (
+              <button
+                onClick={() => handleRetry("followers")}
+                className="mt-2 px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+              >
+                Retry
+              </button>
+            )}
+          </motion.div>
+        ) : filteredList(followersList).length === 0 ? (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-text-main-light dark:text-text-main-dark text-center py-6"
+          >
+            No followers found.
+          </motion.p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredList(followersList).map((user) => (
+              <UserCard
+                key={user._id}
+                user={user}
+                onFollowSuccess={() => {
+                  dispatch(fetchFollowers({ page: 1, limit: 12 }));
+                  dispatch(fetchFollowing({ page: 1, limit: 12 }));
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
-}
+};
 
 export default FollowersFollowing;

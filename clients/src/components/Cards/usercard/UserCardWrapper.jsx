@@ -3,21 +3,42 @@ import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
 import UserCard from "./UserCard";
 import { getUserById } from "../../../store/userSlice";
+import { getFollowStatus, fetchFollowing, fetchFollowers } from "../../../store/followSlice";
+import { getSubscriptionStatusByAuthor } from "../../../store/subscriptionSlice";
 
 const UserCardWrapper = ({ userId }) => {
   const dispatch = useDispatch();
-  const currentUser = useSelector((state) => state.user.user);
-  const followingList = useSelector((state) => state.subscribe.following.list) || [];
-  const subscribedAuthors = useSelector((state) => state.subscribe.subscribedAuthors) || [];
-  const posts = useSelector((state) => state.post.posts) || [];
 
+  // Select Redux state
+  const currentUser = useSelector((state) => state.user?.user);
+  const auth = useSelector((state) => state.auth);
+  const { user, isAuthenticated } = auth || {};
+
+  const followingList = useSelector((state) => {
+    const fullState = state.follow;
+    console.log("UserCardWrapper: Full follow state", fullState);
+    return fullState?.following?.list || [];
+  });
+
+  const posts = useSelector((state) => state.post?.posts || []);
+
+  // Local state
   const [fetchedUser, setFetchedUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
 
+  // Re-fetch user and subscription info
   const refetchUserInfo = () => {
-    if (userId) {
+    if (userId && typeof userId === "string") {
       dispatch(getUserById(userId))
-        .then((res) => setFetchedUser(res.payload))
+        .then((res) => {
+          if (res.payload && res.payload._id) {
+            setFetchedUser(res.payload);
+          } else {
+            setFetchedUser(null);
+            toast.error("Invalid user data received");
+          }
+        })
         .catch((err) => {
           console.error("Failed to refetch user:", err);
           toast.error("Failed to refetch user");
@@ -26,40 +47,87 @@ const UserCardWrapper = ({ userId }) => {
   };
 
   useEffect(() => {
-    if (userId) {
-      setLoadingUser(true);
-      dispatch(getUserById(userId))
-        .then((res) => setFetchedUser(res.payload))
-        .catch((err) => {
-          console.error("Failed to fetch user:", err);
-          toast.error("Failed to fetch user");
-          setFetchedUser(null);
-        })
-        .finally(() => setLoadingUser(false));
-    } else {
-      // If no userId provided, clear fetchedUser state
+    if (!userId || typeof userId !== "string") {
       setFetchedUser(null);
+      setSubscriptionStatus(null);
+      return;
     }
-  }, [userId, dispatch]);
 
-  if (loadingUser) return <div>Loading user...</div>;
+    setLoadingUser(true);
 
-  // Decide which user data to display: fetched user or current user
+    dispatch(getUserById(userId))
+      .then((res) => {
+        if (res.payload && res.payload._id) {
+          setFetchedUser(res.payload);
+          dispatch(fetchFollowers()).then((res) => console.log("fetchFollowers:", res.payload));
+          dispatch(fetchFollowing()).then((res) => console.log("fetchFollowing:", res.payload));
+          if (!user?._id || user._id === userId) {
+            console.warn("Skipping subscription fetch for own profile", { currentUserId: user?._id, targetUserId: userId });
+            setSubscriptionStatus(null);
+            return;
+          }
+          dispatch(getSubscriptionStatusByAuthor({ userId: user._id, authorId: userId }))
+            .unwrap()
+            .then((status) => setSubscriptionStatus(status))
+            .catch((err) => {
+              console.error("Failed to fetch subscription status:", err);
+              setSubscriptionStatus(null);
+            });
+        } else {
+          setFetchedUser(null);
+          toast.error("Invalid user data received");
+          setSubscriptionStatus(null);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch user:", err);
+        toast.error("Failed to fetch user");
+        setFetchedUser(null);
+        setSubscriptionStatus(null);
+      })
+      .finally(() => setLoadingUser(false));
+
+    dispatch(getFollowStatus(userId)).catch((err) =>
+      console.error("Failed to fetch follow status:", err)
+    );
+  }, [userId, dispatch, user?._id]);
+
+  useEffect(() => {
+    if (currentUser?._id) {
+      dispatch(fetchFollowing()).catch((err) =>
+        console.error("Failed to fetch following:", err)
+      );
+    }
+  }, [currentUser?._id, dispatch]);
+
   const userToShow = userId ? fetchedUser : currentUser;
-  if (!userToShow) return null;
 
-  // Determine if current user is following userToShow
-  const isFollowing = followingList.some((user) =>
-    typeof user === "string"
-      ? user === userToShow._id
-      : user?._id === userToShow._id
+  // Debugging log moved to top-level useEffect
+  useEffect(() => {
+    if (userToShow?._id) {
+      console.log("UserCardWrapper: userToShow.followers", userToShow.followers);
+      console.log("UserCardWrapper: userToShow.following", userToShow.following);
+      console.log("UserCardWrapper: followingList", followingList);
+    }
+  }, [userToShow, followingList]);
+
+  if (loadingUser) {
+    return <div className="text-gray-500 text-center py-4 animate-pulse">Loading user...</div>;
+  }
+
+  if (!userToShow || !userToShow._id) return null;
+
+  const isFollowing = followingList.some((item) =>
+    typeof item === "string" ? item === userToShow._id : item?._id === userToShow._id
   );
 
-  // Check subscription status
-  const isSubscribed = subscribedAuthors.includes(userToShow._id);
+  const showButtons =
+    userId &&
+    (currentUser?._id || currentUser?.data?._id) &&
+    (currentUser?._id || currentUser?.data?._id) !== userToShow._id;
 
-  // Show buttons only if viewing another user (not self) and userId is provided
-  const showButtons = userId && currentUser?._id !== userId;
+  const followersCount = loadingUser ? "Loading..." : (userToShow.followers?.length || 0);
+  const followingCount = loadingUser ? "Loading..." : (userToShow.following?.length || 0);
 
   return (
     <UserCard
@@ -67,12 +135,13 @@ const UserCardWrapper = ({ userId }) => {
       posts={posts}
       followers={userToShow.followers || []}
       following={userToShow.following || []}
+      followersCount={followersCount}
+      followingCount={followingCount}
       showFollowBtn={showButtons}
       isFollowing={isFollowing}
-      isSubscribed={isSubscribed}
-      currentUserId={currentUser?._id}
+      currentUserId={currentUser?._id || currentUser?.data?._id || null}
       onFollowToggle={refetchUserInfo}
-      onSubscribeToggle={refetchUserInfo}
+      subscriptionStatus={subscriptionStatus}
     />
   );
 };

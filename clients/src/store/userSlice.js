@@ -1,137 +1,108 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../connection/axiosInstance";
 
-const token = localStorage.getItem("token");
-
-// --- Existing User Thunks ---
-
-export const getUser = createAsyncThunk(
-  "user/getUser",
-  async (_, thunkAPI) => {
-    try {
-      const state = thunkAPI.getState();
-      const { token } = state.user;
-      console.log("getUser: Fetching user with token:", token); // Debug log
-      if (!token) {
-        console.log("getUser: No token found, returning null"); // Debug log
-        return null;
-      }
-
-      const res = await axiosInstance.get("user/get-user", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log("getUser: Successfully fetched user:", res.data); // Debug log
-      return res.data;
-    } catch (err) {
-      const errorMsg = err.response?.data?.message || "Failed to fetch user";
-      console.error("getUser: Error fetching user:", errorMsg); // Debug log
-      return thunkAPI.rejectWithValue(errorMsg);
-    }
+export const getUser = createAsyncThunk("user/getUser", async (_, { rejectWithValue }) => {
+  try {
+    const res = await axiosInstance.get("/user/get-user");
+    return res.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || "Failed to fetch user");
   }
-);
+});
 
-export const getAllUsers = createAsyncThunk(
-  "user/getAllUsers",
-  async (_, thunkAPI) => {
-    try {
-      const state = thunkAPI.getState();
-      const { token } = state.user;
-      console.log("getAllUsers: Fetching all users with token:", token); // Debug log
-      if (!token) throw new Error("No token found");
-
-      const res = await axiosInstance.get("/user/get-all-user", );
-
-      console.log("getAllUsers: Fetched users:", res.data); // Existing debug log
-      return res.data;
-    } catch (err) {
-      const errorMsg = err.response?.data?.message || "Failed to fetch users";
-      console.error("getAllUsers: Error fetching users:", errorMsg); // Debug log
-      return thunkAPI.rejectWithValue(errorMsg);
-    }
+export const getAllUsers = createAsyncThunk("user/getAllUsers", async ({ page = 1, limit = 10, search = '', sortField = 'name', sortOrder = 'asc' }, { rejectWithValue }) => {
+  try {
+    const response = await axiosInstance.get("/user/get-all-user", {
+      params: { page, limit, search, sortField, sortOrder },
+    });
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || "Failed to fetch users");
   }
-);
+});
 
-export const updateUser = createAsyncThunk(
-  "user/updateUser",
-  async (formData, thunkAPI) => {
-    try {
-      const state = thunkAPI.getState();
-      const { token } = state.user;
-      console.log("updateUser: Updating user with formData:", formData); // Debug log
-      if (!token) throw new Error("No token found");
-
-      const res = await axiosInstance.patch("/user/update-user", formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log("updateUser: Successfully updated user:", res.data.data); // Debug log
-      return res.data.data;
-    } catch (err) {
-      const errorMsg = err.response?.data?.message || "Failed to update user";
-      console.error("updateUser: Error updating user:", errorMsg); // Debug log
-      return thunkAPI.rejectWithValue(errorMsg);
-    }
+export const updateUser = createAsyncThunk("user/updateUser", async (formData, { rejectWithValue }) => {
+  try {
+    const res = await axiosInstance.patch("/user/update-user", formData);
+    return res.data.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || "Failed to update user");
   }
-);
+});
 
-export const deleteUser = createAsyncThunk(
-  "user/deleteUser",
-  async (userId, thunkAPI) => {
-    try {
-      const state = thunkAPI.getState();
-      const { token } = state.user;
-      console.log("deleteUser: Deleting user with ID:", userId); // Debug log
-      if (!token) throw new Error("No token found");
-
-      await axiosInstance.delete("/user/delete-user", {
-        headers: { Authorization: `Bearer ${token}` },
-        data: { userId },
-      });
-      console.log("deleteUser: Successfully deleted user:", userId); // Debug log
-      return userId;
-    } catch (err) {
-      const errorMsg = err.response?.data?.message || "Failed to delete user";
-      console.error("deleteUser: Error deleting user:", errorMsg); // Debug log
-      return thunkAPI.rejectWithValue(errorMsg);
-    }
+export const deleteUser = createAsyncThunk("user/deleteUser", async (userId, { rejectWithValue }) => {
+  try {
+    await axiosInstance.delete("/user/delete-user", { data: { userId } });
+    return userId;
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || "Failed to delete user");
   }
-);
+});
 
-export const getUserById = createAsyncThunk(
-  "user/getUserById",
-  async (userId, thunkAPI) => {
-    try {
-      console.log("getUserById: Fetching user with ID:", userId); // Debug log
-      const res = await axiosInstance.get(`/user/get-single-user/${userId}`);
-      console.log("getUserById: Successfully fetched user:", res.data.data); // Debug log
-      return res.data.data;
-    } catch (err) {
-      const errorMsg = err.response?.data?.message || "Failed to fetch user by ID";
-      console.error("getUserById: Error fetching user:", errorMsg); // Debug log
-      return thunkAPI.rejectWithValue(errorMsg);
+export const toggleBlockUser = createAsyncThunk("user/toggleBlockUser", async (userId, { rejectWithValue, getState }) => {
+  try {
+    const response = await axiosInstance.patch(`/user/toggle-block/${userId}`);
+    const updatedUser = response.data.data || response.data;
+    console.log('[toggleBlockUser] Backend response:', updatedUser);
+    // Ensure blocked field is present; fallback to toggling locally
+    if (updatedUser.blocked === undefined) {
+      const currentUser = getState().user.users.find((u) => u._id === userId);
+      console.log('[toggleBlockUser] Manually toggling blocked for user:', userId, 'from', currentUser?.blocked, 'to', !currentUser?.blocked);
+      return { _id: userId, blocked: !currentUser?.blocked };
     }
+    return updatedUser;
+  } catch (err) {
+    console.error('[toggleBlockUser] Error:', err.response?.data || err.message);
+    return rejectWithValue(err.response?.data?.message || "Failed to toggle block status");
   }
-);
+});
 
-export const fetchUserActivity = createAsyncThunk(
-  "user/fetchUserActivity",
-  async (userId, { rejectWithValue }) => {
-    try {
-      console.log("fetchUserActivity: Fetching activity for user ID:", userId); // Debug log
-      const response = await axiosInstance.get(`/user/activity/${userId}`);
-      console.log("fetchUserActivity: Successfully fetched activity:", response.data.activity); // Debug log
-      return response.data.activity || [];
-    } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || "Failed to fetch activity";
-      console.error("fetchUserActivity: Error fetching activity:", errorMsg); // Debug log
-      return rejectWithValue(errorMsg);
-    }
+export const toggleUserRole = createAsyncThunk("user/toggleUserRole", async (userId, { rejectWithValue }) => {
+  try {
+    const response = await axiosInstance.patch(`/user/toggle-role/${userId}`);
+    return response.data.data || response.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || "Failed to toggle user role");
   }
-);
+});
 
-// --- Initial State ---
+export const getUserById = createAsyncThunk("user/getUserById", async (userId, { rejectWithValue }) => {
+  try {
+    const res = await axiosInstance.get(`/user/get-single-user/${userId}`);
+    return res.data.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || "Failed to fetch user by ID");
+  }
+});
+
+export const fetchUserActivity = createAsyncThunk("user/fetchUserActivity", async (userId, { rejectWithValue }) => {
+  try {
+    const response = await axiosInstance.get(`/user/activity/${userId}`);
+    return response.data.activity || [];
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || "Failed to fetch activity");
+  }
+});
+
+export const clearUserActivity = createAsyncThunk("user/clearUserActivity", async (_, { rejectWithValue }) => {
+  try {
+    const res = await axiosInstance.delete("/user/activity/clear");
+    return res.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || "Failed to clear activity");
+  }
+});
+
+export const clearOldActivity = createAsyncThunk("user/clearOldActivity", async (_, { rejectWithValue }) => {
+  try {
+    const res = await axiosInstance.delete("/user/activity/clear-old");
+    return res.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || "Failed to clear old activity");
+  }
+});
 
 const initialState = {
-  token: token || null,
   user: null,
   users: [],
   loading: false,
@@ -151,24 +122,12 @@ const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
-    setToken: (state, action) => {
-      console.log("setToken: Setting token:", action.payload); // Debug log
-      state.token = action.payload;
-      localStorage.setItem("token", action.payload);
-    },
-    clearToken: (state) => {
-      console.log("clearToken: Clearing token"); // Debug log
-      state.token = null;
-      localStorage.removeItem("token");
-    },
     clearUserError: (state) => {
-      console.log("clearUserError: Clearing errors"); // Debug log
       state.error = null;
       state.updateError = null;
       state.activityError = null;
     },
     clearUser: (state) => {
-      console.log("clearUser: Clearing user state"); // Debug log
       state.user = null;
       state.loading = false;
       state.error = null;
@@ -179,14 +138,7 @@ const userSlice = createSlice({
       state.activityLoading = false;
       state.activityError = null;
     },
-    logoutUser: (state) => {
-      console.log("logoutUser: Logging out user"); // Debug log
-      state.token = null;
-      state.user = null;
-      localStorage.removeItem("token");
-    },
     clearSelectedUser: (state) => {
-      console.log("clearSelectedUser: Clearing selected user"); // Debug log
       state.selectedUser = null;
       state.selectedUserLoading = false;
       state.selectedUserError = null;
@@ -194,123 +146,135 @@ const userSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // getUser
       .addCase(getUser.pending, (state) => {
-        console.log("getUser.pending: Starting user fetch"); // Debug log
         state.loading = true;
         state.error = null;
       })
       .addCase(getUser.fulfilled, (state, action) => {
-        console.log("getUser.fulfilled: User fetched, payload:", action.payload); // Debug log
         state.loading = false;
-        if (action.payload) state.user = action.payload;
+        state.user = action.payload;
       })
       .addCase(getUser.rejected, (state, action) => {
-        console.log("getUser.rejected: Error:", action.payload); // Debug log
         state.loading = false;
-        if (action.payload !== "No token") state.error = action.payload;
+        state.error = action.payload;
       })
-
-      // getAllUsers
       .addCase(getAllUsers.pending, (state) => {
-        console.log("getAllUsers.pending: Starting fetch all users"); // Debug log
         state.loading = true;
         state.error = null;
       })
       .addCase(getAllUsers.fulfilled, (state, action) => {
-        console.log("getAllUsers.fulfilled: Users fetched, count:", action.payload.length); // Debug log
         state.loading = false;
-        state.users = action.payload;
+        state.users = action.payload.users || [];
+        console.log('[getAllUsers] Users updated:', state.users);
       })
       .addCase(getAllUsers.rejected, (state, action) => {
-        console.log("getAllUsers.rejected: Error:", action.payload); // Debug log
         state.loading = false;
         state.error = action.payload;
       })
-
-      // updateUser
       .addCase(updateUser.pending, (state) => {
-        console.log("updateUser.pending: Starting user update"); // Debug log
         state.updateLoading = true;
         state.updateSuccess = false;
         state.updateError = null;
       })
       .addCase(updateUser.fulfilled, (state, action) => {
-        console.log("updateUser.fulfilled: User updated, payload:", action.payload); // Debug log
         state.updateLoading = false;
         state.updateSuccess = true;
-        state.user = { ...state.user, ...action.payload };
+        state.users = state.users.map((u) =>
+          u._id === action.payload._id ? { ...u, ...action.payload } : u
+        );
+        if (state.user?._id === action.payload._id) {
+          state.user = { ...state.user, ...action.payload };
+        }
       })
       .addCase(updateUser.rejected, (state, action) => {
-        console.log("updateUser.rejected: Error:", action.payload); // Debug log
         state.updateLoading = false;
         state.updateSuccess = false;
         state.updateError = action.payload;
       })
-
-      // deleteUser
       .addCase(deleteUser.pending, (state) => {
-        console.log("deleteUser.pending: Starting user deletion"); // Debug log
         state.loading = true;
         state.error = null;
       })
       .addCase(deleteUser.fulfilled, (state, action) => {
-        console.log("deleteUser.fulfilled: User deleted, ID:", action.payload); // Debug log
-        console.log("deleteUser.fulfilled: Users before delete:", state.users.length); // Debug log
         state.loading = false;
-        state.users = state.users.filter((u) => u && u._id !== action.payload);
-        console.log("deleteUser.fulfilled: Users after delete:", state.users.length); // Debug log
+        state.users = state.users.filter((u) => u._id !== action.payload);
       })
       .addCase(deleteUser.rejected, (state, action) => {
-        console.log("deleteUser.rejected: Error:", action.payload); // Debug log
         state.loading = false;
         state.error = action.payload;
       })
-
-      // getUserById
+      .addCase(toggleBlockUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(toggleBlockUser.fulfilled, (state, action) => {
+        state.loading = false;
+        console.log('[toggleBlockUser] Applying payload:', action.payload);
+        state.users = state.users.map((u) =>
+          u._id === action.payload._id ? { ...u, blocked: action.payload.blocked } : u
+        );
+        if (state.user?._id === action.payload._id) {
+          state.user = { ...state.user, blocked: action.payload.blocked };
+        }
+      })
+      .addCase(toggleBlockUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Failed to toggle block status";
+        console.log('[toggleBlockUser] Rejected:', action.payload);
+      })
+      .addCase(toggleUserRole.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(toggleUserRole.fulfilled, (state, action) => {
+        state.loading = false;
+        state.users = state.users.map((u) =>
+          u._id === action.payload._id ? { ...u, role: action.payload.role } : u
+        );
+        if (state.user?._id === action.payload._id) {
+          state.user = { ...state.user, role: action.payload.role };
+        }
+      })
+      .addCase(toggleUserRole.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
       .addCase(getUserById.pending, (state) => {
-        console.log("getUserById.pending: Starting fetch user by ID"); // Debug log
         state.selectedUserLoading = true;
         state.selectedUserError = null;
       })
       .addCase(getUserById.fulfilled, (state, action) => {
-        console.log("getUserById.fulfilled: User fetched, payload:", action.payload); // Debug log
         state.selectedUserLoading = false;
         state.selectedUser = action.payload;
       })
       .addCase(getUserById.rejected, (state, action) => {
-        console.log("getUserById.rejected: Error:", action.payload); // Debug log
         state.selectedUserLoading = false;
         state.selectedUserError = action.payload;
       })
-
-      // fetchUserActivity
       .addCase(fetchUserActivity.pending, (state) => {
-        console.log("fetchUserActivity.pending: Starting activity fetch"); // Debug log
         state.activityLoading = true;
         state.activityError = null;
       })
       .addCase(fetchUserActivity.fulfilled, (state, action) => {
-        console.log("fetchUserActivity.fulfilled: Activity fetched, count:", action.payload.length); // Debug log
         state.activityLoading = false;
         state.activity = action.payload;
       })
       .addCase(fetchUserActivity.rejected, (state, action) => {
-        console.log("fetchUserActivity.rejected: Error:", action.payload); // Debug log
         state.activityLoading = false;
         state.activityError = action.payload;
+      })
+      .addCase(clearUserActivity.fulfilled, (state) => {
+        state.activity = [];
+        state.activityLoading = false;
+      })
+      .addCase(clearOldActivity.fulfilled, (state) => {
+        state.activity = state.activity.filter(
+          (item) => new Date(item.createdAt) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        );
+        state.activityLoading = false;
       });
   },
 });
 
-// Export actions and reducer
-export const {
-  setToken,
-  clearToken,
-  clearUserError,
-  clearUser,
-  logoutUser,
-  clearSelectedUser,
-} = userSlice.actions;
-
+export const { clearUserError, clearUser, clearSelectedUser } = userSlice.actions;
 export default userSlice.reducer;

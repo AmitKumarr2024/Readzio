@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from "react";
+import { PacmanLoader } from "react-spinners";
 
-const LoadingBar = ({ loading }) => {
+// ✅ Accept `text` as a prop with a default value
+const LoadingBar = ({ loading, text = "Loading..." }) => {
   const [showBar, setShowBar] = useState(false);
 
   useEffect(() => {
+    console.log("[DEBUG] LoadingBar: loading state changed:", loading);
     if (loading) {
       setShowBar(true);
     } else {
-      // Wait a bit so the bar can complete animation before disappearing
-      const timeout = setTimeout(() => setShowBar(false), 500);
+      const timeout = setTimeout(() => setShowBar(false), 300);
       return () => clearTimeout(timeout);
     }
   }, [loading]);
@@ -16,17 +18,13 @@ const LoadingBar = ({ loading }) => {
   return (
     <>
       {showBar && (
-        <div className="fixed top-[56px] left-0 right-0 h-1 bg-blue-600 animate-loadingBar z-50" />
+        <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center space-y-4">
+            <PacmanLoader color="#ff002b" size={40} />
+            <p className="text-white text-lg font-semibold">{text}</p>
+          </div>
+        </div>
       )}
-      <style>{`
-        @keyframes loadingBar {
-          0% { width: 0; }
-          100% { width: 100%; }
-        }
-        .animate-loadingBar {
-          animation: loadingBar 1.5s ease forwards;
-        }
-      `}</style>
     </>
   );
 };

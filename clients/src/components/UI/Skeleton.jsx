@@ -11,7 +11,7 @@ const Skeleton = React.memo(({
 }) => {
   return (
     <div
-      className={`animate-pulse bg-gray-300 ${width} ${height} ${rounded} ${className}`}
+      className={`animate-pulse bg-card-bg-light dark:bg-card-bg-dark  ${width} ${height} ${rounded} ${className}`}
     ></div>
   );
 });

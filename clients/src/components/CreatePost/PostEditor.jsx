@@ -55,12 +55,13 @@ const SortableBlock = ({ block, index, children }) => {
       <button
         {...attributes}
         {...listeners}
-        className="absolute left-0 top-0 bottom-0 flex items-center justify-center w-10 bg-gray-100 hover:bg-blue-500 hover:text-white transition-all duration-200 rounded-l-lg cursor-move z-10"
+        className="absolute left-0 top-0 bottom-0 flex items-center justify-center w-8 sm:w-10  bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark transition-all duration-200 rounded-l-lg cursor-move z-10 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
         title="Drag to reorder"
+        aria-label="Drag to reorder block"
       >
-        <FiMove className="text-lg" />
+        <FiMove className="text-base sm:text-lg" />
       </button>
-      <div className="pl-12">{children}</div>
+      <div className="pl-10 sm:pl-12">{children}</div>
     </div>
   );
 };
@@ -91,43 +92,82 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
   const addBlock = (type, options = {}) => {
     const newBlock =
       type === "text"
-        ? { id: uuidv4(), type, value: "<p></p>" }
+        ? { id: uuidv4(), type, value: "<p></p>", status: "draft" }
         : type === "heading"
-        ? { id: uuidv4(), type, level: 2, text: "Heading Text" }
+        ? {
+            id: uuidv4(),
+            type,
+            level: 2,
+            text: "Heading Text",
+            status: "draft",
+          }
         : type === "code"
-        ? { id: uuidv4(), type, code: "", caption: "" }
+        ? { id: uuidv4(), type, code: "", caption: "", status: "draft" }
         : type === "image"
-        ? { id: uuidv4(), type, src: "", caption: "" }
+        ? { id: uuidv4(), type, src: "", caption: "", status: "draft" }
         : type === "file"
-        ? { id: uuidv4(), type, url: "", name: "", size: 0 }
+        ? { id: uuidv4(), type, url: "", name: "", size: 0, status: "draft" }
         : type === "hr"
-        ? { id: uuidv4(), type }
+        ? { id: uuidv4(), type, status: "draft" }
         : type === "link"
-        ? { id: uuidv4(), type, href: "", text: "Link Text" }
+        ? { id: uuidv4(), type, href: "", text: "Link Text", status: "draft" }
         : type === "list"
-        ? { id: uuidv4(), type, items: [""], ordered: options.ordered || false }
+        ? {
+            id: uuidv4(),
+            type,
+            items: [""],
+            ordered: options.ordered || false,
+            status: "draft",
+          }
         : type === "poll"
-        ? { id: uuidv4(), type, question: "", options: ["", ""] }
+        ? {
+            id: uuidv4(),
+            type,
+            question: "",
+            options: ["", ""],
+            status: "draft",
+          }
         : type === "quote"
-        ? { id: uuidv4(), type, text: "Your quote here...", author: "" }
+        ? {
+            id: uuidv4(),
+            type,
+            text: "Your quote here...",
+            author: "",
+            status: "draft",
+          }
         : type === "table"
-        ? { id: uuidv4(), type, data: [[""]] }
+        ? {
+            id: uuidv4(),
+            type,
+            headers: ["Header 1", "Header 2"],
+            rows: [["", ""], ["", ""]],
+            caption: "",
+            status: "draft",
+          }
         : type === "video"
-        ? { id: uuidv4(), type, src: "", caption: "" }
+        ? { id: uuidv4(), type, src: "", caption: "", status: "draft" }
         : null;
 
-    if (newBlock) setBlocks([...blocks, newBlock]);
+    if (newBlock) {
+      if (type === "table" && (!newBlock.headers.length || !newBlock.rows.length)) {
+        toast.error("Invalid table configuration.");
+        return;
+      }
+      setBlocks([...blocks, newBlock]);
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} block added`);
+    }
   };
 
   const updateBlock = (index, newData) => {
     const updated = [...blocks];
-    updated[index] = newData;
+    updated[index] = { ...updated[index], ...newData };
     setBlocks(updated);
   };
 
   const removeBlock = (index) => {
     const updated = blocks.filter((_, i) => i !== index);
     setBlocks(updated);
+    toast.success("Block removed");
   };
 
   const handleImageUpload = (file, index) => {
@@ -136,10 +176,16 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
       toast.error("File size exceeds 10MB limit.");
       return;
     }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file.");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
-      updateBlock(index, { ...blocks[index], src: reader.result });
+      updateBlock(index, { src: reader.result, caption: blocks[index].caption });
+      toast.success("Image uploaded");
     };
+    reader.onerror = () => toast.error("Failed to upload image");
     reader.readAsDataURL(file);
   };
 
@@ -152,16 +198,19 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     }
     const url = URL.createObjectURL(file);
     updateBlock(index, {
-      ...blocks[index],
       url,
       name: file.name,
       size: file.size,
     });
+    toast.success("File uploaded");
   };
 
   useEffect(() => {
-    if (blockRefs.current.length > 0) {
-      const lastBlock = blockRefs.current[blockRefs.current.length - 1];
+    if (blockRefs.current.length > blocks.length) {
+      blockRefs.current = blockRefs.current.slice(0, blocks.length);
+    }
+    if (blocks.length > 0) {
+      const lastBlock = blockRefs.current[blocks.length - 1];
       if (lastBlock) {
         lastBlock.scrollIntoView({ behavior: "smooth", block: "start" });
       }
@@ -170,22 +219,22 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
 
   const sizeToWidthClass = (size) => {
     const widthMap = {
-      25: "md:w-1/4",
-      50: "md:w-1/2",
-      60: "md:w-3/5",
-      75: "md:w-3/4",
-      100: "md:w-full",
+      25: "w-full sm:w-1/2 md:w-1/4",
+      50: "w-full sm:w-3/4 md:w-1/2",
+      60: "w-full sm:w-4/5 md:w-3/5",
+      75: "w-full sm:w-11/12 md:w-3/4",
+      100: "w-full md:w-full",
     };
-    return widthMap[size] || "md:w-full";
+    return widthMap[size] || "w-full";
   };
 
   return (
     <div
-      className={`w-full ${sizeToWidthClass(
+      className={`min-w-[350px] ${sizeToWidthClass(
         size
-      )} h-[950px] bg-white shadow-lg flex flex-col p-6 rounded-2xl`}
+      )} max-w-[1200px] min-h-[600px] sm:min-h-[800px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300`}
     >
-      <h1 className="text-3xl font-bold text-center text-gray-900 mb-6 tracking-wide">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-center text-text-main-light dark:text-text-main-dark mb-4 sm:mb-6 tracking-wide">
         Create Content
       </h1>
 
@@ -200,7 +249,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
           items={blocks.map((block) => block.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="flex flex-col mx-auto bg-gray-100 overflow-y-auto mb-4 px-6 pb-6 w-full space-y-6 h-[950px] pt-6 rounded-lg">
+          <div className="flex flex-col mx-auto bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark overflow-y-auto mb-4 px-3 sm:px-4 md:px-6 pb-4 sm:pb-6 w-full space-y-4 sm:space-y-6 min-h-[400px] sm:min-h-[430px] pt-4 sm:pt-6 rounded-lg">
             <AnimatePresence>
               {blocks.map((block, index) => {
                 const motionDivProps = {
@@ -245,7 +294,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "file":
                       return (
-                        <div className="bg-white shadow-md p-4 rounded-lg">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg">
                           <FileBlock
                             url={block.url}
                             name={block.name}
@@ -254,11 +303,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           <input
                             type="file"
                             onChange={(e) => handleFileUpload(e, index)}
-                            className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            className="mt-2 block w-full text-xs sm:text-sm text-text-main-light dark:text-text-main-dark file:mr-3 sm:mr-4 file:py-1.5 sm:py-2 file:px-3 sm:px-4 file:rounded file:border-0 file:text-xs  file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                            aria-label="Upload file"
                           />
                           <button
                             onClick={() => removeBlock(index)}
-                            className="mt-2 px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                            className="mt-2 px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition-colors focus:ring-2 focus:ring-indigo-500"
+                            aria-label="Remove file block"
                           >
                             Remove File
                           </button>
@@ -266,10 +317,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "heading":
                       return (
-                        <div className="bg-white shadow-md p-4 rounded-lg space-y-4">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg space-y-3 sm:space-y-4">
                           <HeadingBlock level={block.level} text={block.text} />
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
                               Heading Text
                             </label>
                             <input
@@ -281,12 +332,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                   text: e.target.value,
                                 })
                               }
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
                               placeholder="Edit heading text"
+                              aria-label="Heading text"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
                               Heading Level
                             </label>
                             <select
@@ -297,7 +349,8 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                   level: +e.target.value,
                                 })
                               }
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                              aria-label="Heading level"
                             >
                               {[1, 2, 3].map((lvl) => (
                                 <option key={lvl} value={lvl}>
@@ -309,7 +362,8 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           <div className="text-right">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors focus:ring-2 focus:ring-indigo-500"
+                              aria-label="Remove heading block"
                             >
                               ❌
                             </button>
@@ -328,12 +382,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "link":
                       return (
-                        <div className="bg-white shadow-md p-4 rounded-lg">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg">
+                          <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
                             Link URL
                           </label>
                           <input
-                            type="text"
+                            type="url"
                             value={block.href}
                             onChange={(e) =>
                               updateBlock(index, {
@@ -342,9 +396,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               })
                             }
                             placeholder="https://example.com"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 mb-3"
+                            className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                            aria-label="Link URL"
                           />
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1 mt-2">
                             Link Text
                           </label>
                           <input
@@ -357,12 +412,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               })
                             }
                             placeholder="Link text"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                            className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                            aria-label="Link text"
                           />
-                          <div className="text-right mt-3">
+                          <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors focus:ring-2 focus:ring-indigo-500"
+                              aria-label="Remove link block"
                             >
                               ❌
                             </button>
@@ -371,28 +428,47 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "list":
                       return (
-                        <div className="bg-white shadow-md p-4 rounded-lg">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg">
+                          <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
                             {block.ordered
                               ? "Ordered List Items"
                               : "Unordered List Items"}
                           </label>
                           {block.items.map((item, i) => (
-                            <input
-                              key={i}
-                              type="text"
-                              value={item}
-                              onChange={(e) => {
-                                const newItems = [...block.items];
-                                newItems[i] = e.target.value;
-                                updateBlock(index, {
-                                  ...block,
-                                  items: newItems,
-                                });
-                              }}
-                              placeholder={`Item ${i + 1}`}
-                              className="w-full px-4 py-2 mb-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                            />
+                            <div key={i} className="flex items-center gap-2 mb-2">
+                              <input
+                                type="text"
+                                value={item}
+                                onChange={(e) => {
+                                  const newItems = [...block.items];
+                                  newItems[i] = e.target.value;
+                                  updateBlock(index, {
+                                    ...block,
+                                    items: newItems,
+                                  });
+                                }}
+                                placeholder={`Item ${i + 1}`}
+                                className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                                aria-label={`List item ${i + 1}`}
+                              />
+                              {block.items.length > 1 && (
+                                <button
+                                  onClick={() => {
+                                    const newItems = block.items.filter(
+                                      (_, idx) => idx !== i
+                                    );
+                                    updateBlock(index, {
+                                      ...block,
+                                      items: newItems,
+                                    });
+                                  }}
+                                  className="px-2 py-1 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs rounded hover:bg-red-600"
+                                  aria-label={`Remove list item ${i + 1}`}
+                                >
+                                  ❌
+                                </button>
+                              )}
+                            </div>
                           ))}
                           <button
                             type="button"
@@ -400,14 +476,16 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               const newItems = [...block.items, ""];
                               updateBlock(index, { ...block, items: newItems });
                             }}
-                            className="mt-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg shadow hover:bg-blue-700"
+                            className="mt-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded-lg hover:bg-indigo-600 transition-colors"
+                            aria-label="Add list item"
                           >
                             + Add Item
                           </button>
-                          <div className="text-right mt-3">
+                          <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors"
+                              aria-label="Remove list block"
                             >
                               ❌ Remove List
                             </button>
@@ -416,7 +494,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "poll":
                       return (
-                        <div className="bg-white shadow-md p-4 rounded-lg">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg">
                           <PollBlock
                             question={block.question}
                             options={block.options}
@@ -428,7 +506,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             }
                             onChangeOptions={(i, val, remove = false) => {
                               let newOptions = [...block.options];
-                              if (remove) {
+                              if (remove && newOptions.length > 2) {
                                 newOptions.splice(i, 1);
                               } else if (i >= newOptions.length) {
                                 newOptions.push(val);
@@ -441,11 +519,11 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               });
                             }}
                           />
-                          <div className="text-right mt-3">
+                          <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                              title="Remove Poll"
+                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors"
+                              aria-label="Remove poll block"
                             >
                               ❌
                             </button>
@@ -454,7 +532,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "quote":
                       return (
-                        <div className="bg-white shadow-md p-4 rounded-lg">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg">
                           <QuoteBlock text={block.text} author={block.author} />
                           <div className="space-y-2">
                             <input
@@ -467,7 +545,8 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 })
                               }
                               placeholder="Quote text"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                              aria-label="Quote text"
                             />
                             <input
                               type="text"
@@ -479,12 +558,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 })
                               }
                               placeholder="Author (optional)"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                              aria-label="Quote author"
                             />
                             <div className="text-right">
                               <button
                                 onClick={() => removeBlock(index)}
-                                className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors"
+                                aria-label="Remove quote block"
                               >
                                 ❌
                               </button>
@@ -494,17 +575,69 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "table":
                       return (
-                        <div className="bg-white shadow-md p-4 rounded-lg">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg max-w-full">
                           <TableBlock
                             headers={block.headers || []}
-                            rows={block.data || [[]]}
+                            rows={block.rows || [[]]}
                             caption={block.caption || ""}
                           />
-                          <div className="mt-4 space-y-4">
-                            {(block.data || []).map((row, rowIndex) => (
+                          <div className="mt-3 sm:mt-4 space-y-3 sm:space-y-4">
+                            {/* Headers Section */}
+                            <div>
+                              <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
+                                Headers
+                              </label>
+                              <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(100px,1fr))] gap-2 items-center">
+                                {(block.headers || []).map(
+                                  (header, headerIndex) => (
+                                    <input
+                                      key={headerIndex}
+                                      type="text"
+                                      value={header}
+                                      onChange={(e) => {
+                                        const newHeaders = [...block.headers];
+                                        newHeaders[headerIndex] =
+                                          e.target.value;
+                                        updateBlock(index, {
+                                          ...block,
+                                          headers: newHeaders,
+                                        });
+                                      }}
+                                      placeholder={`Header ${headerIndex + 1}`}
+                                      className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                      aria-label={`Table header ${headerIndex + 1}`}
+                                    />
+                                  )
+                                )}
+                                <button
+                                  onClick={() => {
+                                    const newHeaders = [
+                                      ...(block.headers || []),
+                                      "",
+                                    ];
+                                    const newRows = (block.rows || []).map(
+                                      (row) => [...row, ""]
+                                    );
+                                    updateBlock(index, {
+                                      ...block,
+                                      headers: newHeaders,
+                                      rows: newRows.length ? newRows : [[""]],
+                                    });
+                                    toast.success("Header added");
+                                  }}
+                                  className="px-3 sm:px-4 py-1 sm:py-1.5 bg-indigo-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-indigo-600 transition-colors"
+                                  aria-label="Add table header"
+                                >
+                                  + Add Header
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Rows Section */}
+                            {(block.rows || []).map((row, rowIndex) => (
                               <div
                                 key={rowIndex}
-                                className="flex space-x-2 items-center"
+                                className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(100px,1fr))] gap-2 items-center"
                               >
                                 {row.map((cell, cellIndex) => (
                                   <input
@@ -512,91 +645,135 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     type="text"
                                     value={cell}
                                     onChange={(e) => {
-                                      const newData = [...block.data];
-                                      newData[rowIndex][cellIndex] =
+                                      const newRows = [...block.rows];
+                                      newRows[rowIndex][cellIndex] =
                                         e.target.value;
                                       updateBlock(index, {
                                         ...block,
-                                        data: newData,
+                                        rows: newRows,
                                       });
                                     }}
                                     placeholder={`R${rowIndex + 1} C${
                                       cellIndex + 1
                                     }`}
-                                    className="flex-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    aria-label={`Table cell row ${rowIndex + 1} column ${cellIndex + 1}`}
                                   />
                                 ))}
                               </div>
                             ))}
-                            <div className="flex space-x-2">
+
+                            {/* Caption Section */}
+                            <div>
+                              <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
+                                Caption (optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={block.caption || ""}
+                                onChange={(e) =>
+                                  updateBlock(index, {
+                                    ...block,
+                                    caption: e.target.value,
+                                  })
+                                }
+                                placeholder="Table caption"
+                                className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                aria-label="Table caption"
+                              />
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex flex-wrap gap-2">
                               <button
                                 onClick={() => {
-                                  const newData = [...block.data];
-                                  newData.push(
-                                    new Array(block.data[0].length).fill("")
+                                  const newRows = [...(block.rows || [])];
+                                  newRows.push(
+                                    Array(block.headers?.length || 1).fill("")
                                   );
                                   updateBlock(index, {
                                     ...block,
-                                    data: newData,
+                                    rows: newRows,
                                   });
+                                  toast.success("Row added");
                                 }}
-                                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-indigo-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-indigo-600 transition-colors"
+                                aria-label="Add table row"
                               >
                                 + Add Row
                               </button>
                               <button
                                 onClick={() => {
-                                  const newData = block.data.map((row) => [
-                                    ...row,
+                                  const newHeaders = [
+                                    ...(block.headers || []),
                                     "",
-                                  ]);
+                                  ];
+                                  const newRows = (block.rows || []).map(
+                                    (row) => [...row, ""]
+                                  );
                                   updateBlock(index, {
                                     ...block,
-                                    data: newData,
+                                    headers: newHeaders,
+                                    rows: newRows.length ? newRows : [[""]],
                                   });
+                                  toast.success("Column added");
                                 }}
-                                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-indigo-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-indigo-600 transition-colors"
+                                aria-label="Add table column"
                               >
                                 + Add Column
                               </button>
-                            </div>
-                            <div className="flex space-x-2 mt-4">
                               <button
                                 onClick={() => {
-                                  if (block.data.length > 1) {
-                                    const newData = block.data.slice(0, -1);
+                                  if (block.rows?.length > 1) {
+                                    const newRows = block.rows.slice(0, -1);
                                     updateBlock(index, {
                                       ...block,
-                                      data: newData,
+                                      rows: newRows,
                                     });
+                                    toast.success("Row removed");
+                                  } else {
+                                    toast.error("At least one row is required");
                                   }
                                 }}
-                                className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors"
+                                aria-label="Remove table row"
                               >
                                 - Remove Row
                               </button>
                               <button
                                 onClick={() => {
-                                  if (block.data[0].length > 1) {
-                                    const newData = block.data.map((row) =>
+                                  if (block.headers?.length > 1) {
+                                    const newHeaders = block.headers.slice(
+                                      0,
+                                      -1
+                                    );
+                                    const newRows = block.rows.map((row) =>
                                       row.slice(0, -1)
                                     );
                                     updateBlock(index, {
                                       ...block,
-                                      data: newData,
+                                      headers: newHeaders,
+                                      rows: newRows,
                                     });
+                                    toast.success("Column removed");
+                                  } else {
+                                    toast.error("At least one column is required");
                                   }
                                 }}
-                                className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors"
+                                aria-label="Remove table column"
                               >
                                 - Remove Column
                               </button>
                             </div>
-                            <div className="flex justify-end mt-4">
+
+                            {/* Delete Table Button */}
+                            <div className="flex justify-end mt-3 sm:mt-4">
                               <button
                                 onClick={() => removeBlock(index)}
-                                className="px-4 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                                title="Delete entire table"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-600 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-700 transition-colors focus:ring-2 focus:ring-indigo-500"
+                                aria-label="Delete table block"
                               >
                                 ❌ Delete Table
                               </button>
@@ -606,14 +783,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "video":
                       return (
-                        <div className="bg-white shadow-md p-4 rounded-lg">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg">
                           <VideoBlock src={block.src} caption={block.caption} />
                           <div className="mt-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                               Video URL (mp4)
                             </label>
                             <input
-                              type="text"
+                              type="url"
                               value={block.src}
                               onChange={(e) =>
                                 updateBlock(index, {
@@ -622,11 +799,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 })
                               }
                               placeholder="https://example.com/video.mp4"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                              aria-label="Video URL"
                             />
                           </div>
                           <div className="mt-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
                               Caption (optional)
                             </label>
                             <input
@@ -639,14 +817,15 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 })
                               }
                               placeholder="Caption text"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                              aria-label="Video caption"
                             />
                           </div>
                           <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                              title="Remove Video Block"
+                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors focus:ring-2 focus:ring-indigo-500"
+                              aria-label="Remove video block"
                             >
                               ❌
                             </button>
@@ -660,7 +839,11 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
 
                 return (
                   <SortableBlock key={block.id} block={block} index={index}>
-                    <motion.div key={block.id} {...motionDivProps}>
+                    <motion.div
+                      key={block.id}
+                      {...motionDivProps}
+                      ref={(el) => (blockRefs.current[index] = el)}
+                    >
                       {blockContent}
                     </motion.div>
                   </SortableBlock>

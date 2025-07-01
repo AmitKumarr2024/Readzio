@@ -3,6 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   postType: "", // 'Article' or 'Blog'
   category: "",
+  selectedCategory: null, 
   visibility: "Public", // future: Public, Private, Unlisted
   tags: [], // future support
   isFeatured: false, // New field
@@ -33,6 +34,9 @@ const postMetaSlice = createSlice({
     },
     setCategory: (state, action) => {
       state.category = action.payload;
+    },
+    selectCategory: (state, action) => {
+      state.selectedCategory = action.payload; // ✅ set full category object
     },
     setVisibility: (state, action) => {
       state.visibility = action.payload;

@@ -13,16 +13,16 @@ const CodeBlockOutput = ({ code, language = 'javascript', caption }) => {
   };
 
   return (
-    <div className="relative bg-gray-900 rounded-xl overflow-hidden my-8">
+    <div className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl overflow-hidden my-8">
       <button
         onClick={handleCopy}
-        className="absolute top-2 right-2 text-xs bg-gray-700 text-white px-2 py-1 rounded hover:bg-gray-600 transition select-none"
+        className="absolute top-2 right-2 text-xs bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark px-2 py-1 rounded hover:bg-gray-600 transition select-none"
         aria-label="Copy code"
       >
         {copied ? 'Copied!' : 'Copy'}
       </button>
 
-      <div className="absolute -bottom-3 right-3 mb-4 text-xs bg-gray-700 text-white px-2 py-1 rounded select-none uppercase font-semibold">
+      <div className="absolute -bottom-3 right-3 mb-4 text-xs bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark px-2 py-1 rounded select-none uppercase font-semibold">
         {language}
       </div>
 
@@ -42,7 +42,7 @@ const CodeBlockOutput = ({ code, language = 'javascript', caption }) => {
       </SyntaxHighlighter>
 
       {caption && (
-        <div className="text-xs text-gray-400 italic mt-1 px-5 pb-3">{caption}</div>
+        <div className="text-xs  text-text-main-light dark:text-text-main-dark italic mt-1 px-5 pb-3">{caption}</div>
       )}
     </div>
   );

@@ -12,7 +12,7 @@ const LinkBlockOutput = ({ href, text, caption }) => {
         {text || href}
       </a>
       {caption && (
-        <div className="text-xs text-gray-500 italic mt-1">
+        <div className="text-xs  text-text-main-light dark:text-text-main-dark italic mt-1">
           {caption}
         </div>
       )}

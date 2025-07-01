@@ -1,13 +1,24 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
-const notificationSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },      // Who receives the notification (targetUser)
-  sender: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },    // Who triggered the notification
-  type: { type: String, enum: ["like", "comment", "follow"], required: true },
-  post: { type: mongoose.Schema.Types.ObjectId, ref: "Post" },                      // Optional reference to post
-  read: { type: Boolean, default: false },
-}, { timestamps: true });
+const notificationSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Receiver
+    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Admin/sender
+    type: {
+      type: String,
+      enum: ['like', 'comment', 'follow', 'admin', 'post', 'message', 'reply', 'admin_reply'],
+      required: true,
+    },
+    navigateTo: { type: String, default: null },
+    post: { type: mongoose.Schema.Types.ObjectId, ref: 'Post' },
+    content: { type: String },
+    read: { type: Boolean, default: false },
+    parentNotification: { type: mongoose.Schema.Types.ObjectId, ref: 'Notification' },
+  },
+  { timestamps: true }
+);
 
-const NotificationModel = mongoose.model("Notification", notificationSchema);
+const Notification =
+  mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
 
-export default NotificationModel;
+export default Notification;

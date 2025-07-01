@@ -1,24 +1,20 @@
 import React from "react";
 import { FiFilter } from "react-icons/fi";
 
-const FiltersSidebar = ({ category, sortBy, onCategoryChange, onSortChange }) => {
+const FiltersSidebar = ({ category, sortBy, onCategoryChange, onSortChange, className }) => {
   return (
-    <aside className="bg-white w-72 h-96  shadow-md rounded-2xl p-6 sticky top-32 border border-gray-100">
-      <div className="flex items-center gap-2 text-gray-800 mb-6">
-        <FiFilter className="text-xl" />
-        <h2 className="text-lg sm:text-xl font-semibold">Filters</h2>
+    <aside className={`bg-white/80 backdrop-blur-lg w-full max-w-sm h-fit shadow-2xl rounded-3xl p-6 border border-indigo-100 transition-all duration-300 hover:shadow-3xl ${className}`}>
+      <div className="flex items-center gap-3 text-indigo-900 mb-6">
+        <FiFilter className="text-2xl text-indigo-600" />
+        <h2 className="text-2xl font-bold">Filters</h2>
       </div>
-
       <div className="space-y-6">
-        {/* Category Filter */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Category
-          </label>
+          <label className="block text-sm font-semibold text-indigo-700 mb-2">Category</label>
           <select
             value={category}
             onChange={(e) => onCategoryChange(e.target.value)}
-            className="w-full border border-gray-300 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+            className="w-full border border-indigo-200 text-sm rounded-xl px-4 py-3 bg-white text-indigo-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition duration-300 hover:border-indigo-300"
           >
             <option value="All">All</option>
             <option value="Technology">Technology</option>
@@ -26,16 +22,12 @@ const FiltersSidebar = ({ category, sortBy, onCategoryChange, onSortChange }) =>
             <option value="Finance">Finance</option>
           </select>
         </div>
-
-        {/* Sort Filter */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Sort By
-          </label>
+          <label className="block text-sm font-semibold text-indigo-700 mb-2">Sort by</label>
           <select
             value={sortBy}
             onChange={(e) => onSortChange(e.target.value)}
-            className="w-full border border-gray-300 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+            className="w-full border border-indigo-200 text-sm rounded-xl px-4 py-3 bg-white text-indigo-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition duration-300 hover:border-indigo-400"
           >
             <option value="Newest">Newest</option>
             <option value="Older">Older</option>

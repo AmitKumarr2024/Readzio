@@ -1,33 +1,53 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams } from "react-router-dom"; // or pass `postId` as a prop
-import { togglePostLike } from "../../store/Post interactions";
+import { fetchBookmarkAndLikeStatus, togglePostLike } from "../../store/Post interactions";
 
-const LikeButton = ({ postId: propPostId }) => {
+const LikeButton = ({ postId }) => {
   const dispatch = useDispatch();
-  const postId = propPostId || useParams()?.postId;
 
-  const { likes } = useSelector((state) => state.postInteraction);
+  const isValidObjectId = (id) => /^[a-f\d]{24}$/i.test(id);
+
+  const { likes, loading, error } = useSelector((state) => state.postInteraction);
   const likeInfo = likes[postId] || { liked: false, likesCount: 0 };
 
+  useEffect(() => {
+    if (isValidObjectId(postId)) {
+      console.log("[LikeButton] Fetching status for postId:", postId);
+      dispatch(fetchBookmarkAndLikeStatus(postId));
+    } else {
+      console.warn("[LikeButton] Invalid postId provided:", postId);
+    }
+  }, [dispatch, postId]);
+
   const handleToggleLike = () => {
+    if (!isValidObjectId(postId) || loading) {
+      console.warn("[LikeButton] Cannot toggle like", { postId, loading });
+      return;
+    }
     dispatch(togglePostLike(postId));
   };
 
-  useEffect(() => {
-    // Optionally: fetch like status on mount if needed
-  }, [postId]);
+  if (!isValidObjectId(postId)) {
+    console.error("[LikeButton] Invalid postId, not rendering");
+    return null;
+  }
 
   return (
-    <button
-      onClick={handleToggleLike}
-      aria-pressed={likeInfo.liked}
-      className={`px-3 py-1.5 rounded-md transition ${
-        likeInfo.liked ? "bg-red-600 text-white" : "bg-gray-200 text-gray-700"
-      }`}
-    >
-      {likeInfo.liked ? "❤️ Liked" : "♡ Like"} • {likeInfo.likesCount}
-    </button>
+    <div className="relative">
+      <button
+        onClick={handleToggleLike}
+        disabled={loading}
+        aria-pressed={likeInfo.liked}
+        className={`px-3 py-1.5 rounded-full transition-colors ${
+          likeInfo.liked ? "bg-red-500 text-white" : "bg-gray-200 text-gray-700"
+        } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+      >
+        {likeInfo.liked ? "♥ Liked" : "♡ Like"} • {likeInfo.likesCount}
+      </button>
+      {error && (
+        <span className="absolute top-8 text-xs text-red-600">{error}</span>
+      )}
+    </div>
   );
 };
 

@@ -31,19 +31,19 @@ const PostTypeSelector = ({  onContinue, onClose }) => {
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="relative bg-white/90 backdrop-blur-xl border border-gray-200 p-6 rounded-2xl shadow-2xl w-full max-w-lg mx-auto"
+        className="relative bg-background-light dark:bg-background-dark backdrop-blur-xl border border-gray-200 p-6 rounded-2xl shadow-2xl w-full max-w-lg mx-auto"
       >
         {/* Close Button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 text-gray-700 hover:text-red-600 transition"
+          className="absolute top-4 right-4  text-text-main-light dark:text-text-main-dark hover:text-red-600 transition"
           aria-label="Close"
         >
           <X size={28} />
         </button>
 
         {/* Title */}
-        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">
+        <h2 className="text-3xl font-bold text-center  text-text-main-light dark:text-text-main-dark mb-6">
           Select Post Type
         </h2>
 
@@ -55,7 +55,7 @@ const PostTypeSelector = ({  onContinue, onClose }) => {
               postType === "Article"
                 ? "bg-blue-700"
                 : "bg-blue-600 hover:bg-blue-700"
-            } text-white rounded-xl shadow-md transition font-semibold text-lg`}
+            }  text-text-main-light dark:text-text-main-dark rounded-xl shadow-md transition font-semibold text-lg`}
           >
             <BookOpenText size={24} />
             Article
@@ -67,7 +67,7 @@ const PostTypeSelector = ({  onContinue, onClose }) => {
               postType === "Blog"
                 ? "bg-green-700"
                 : "bg-green-600 hover:bg-green-700"
-            } text-white rounded-xl shadow-md transition font-semibold text-lg`}
+            }  text-text-main-light dark:text-text-main-dark rounded-xl shadow-md transition font-semibold text-lg`}
           >
             <PenLine size={24} />
             Blog

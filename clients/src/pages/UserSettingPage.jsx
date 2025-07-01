@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import AccountsSettings from "../components/UserSetting/AccountsSettings";
-import UsersSettings from "../components/UserSetting/UsersSettings";
-import ProfileSettings from "../components/UserSetting/ProfileSettings";
-import BillingSettings from "../components/UserSetting/BillingSettings";
-import NotificationsSettings from "../components/UserSetting/NotificationsSettings";
-import IntegrationsSettings from "../components/UserSetting/IntegrationsSettings";
-import Sidebar from "../components/UserSetting/Sidebar";
+
+import AccountsSettings from "../components/AppSetting/AccountsSettings";
+import UsersSettings from "../components/AppSetting/UsersSettings";
+import ProfileSettings from "../components/AppSetting/ProfileSettings";
+import BillingSettings from "../components/AppSetting/BillingSettings";
+import NotificationsSettings from "../components/AppSetting/NotificationsSettings";
+import IntegrationsSettings from "../components/AppSetting/IntegrationsSettings";
 
 
 const UserSettingsPage = () => {

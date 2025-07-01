@@ -1,6 +1,6 @@
-import mongoose from 'mongoose';
-import PostModel from '../Models/Post.js';
-import { AppError } from '../utils/AppError.js';
+import mongoose from "mongoose";
+import PostModel from "../Models/Post.js";
+import { AppError } from "../utils/AppError.js";
 
 /**
  * @desc Get total views and likes of a post
@@ -8,25 +8,41 @@ import { AppError } from '../utils/AppError.js';
 export const getPostStats = async (req, res, next) => {
   try {
     const { postId } = req.params;
+    const postIds = postId.split(',').map(id => id.trim()); // Split and trim IDs
 
-    const post = await PostModel.findById(postId);
+    // Validate ObjectIds
+    const validIds = postIds.filter(id => mongoose.Types.ObjectId.isValid(id));
+    if (validIds.length === 0) {
+      throw new AppError("Invalid Post IDs", 400, "getPostStats Controller");
+    }
 
-    if (!post) throw new AppError("Post not found", 404, "getPostStats Controller");
+    // Query posts using $in
+    const posts = await PostModel.find({ _id: { $in: validIds } });
+
+    if (!posts || posts.length === 0) {
+      throw new AppError("No posts found", 404, "getPostStats Controller");
+    }
+
+    // Map posts to stats
+    const stats = posts.map(post => ({
+      postId: post._id,
+      views: post.views || 0,
+      likes: post.likes ? post.likes.length : 0,
+      commentsCount: post.comments ? post.comments.length : 0,
+    }));
 
     res.status(200).json({
       success: true,
-      stats: {
-        views: post.views || 0,
-        likes: post.likes ? post.likes.length : 0,
-        commentsCount: post.comments ? post.comments.length : 0,
-      }
+      stats,
     });
   } catch (error) {
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "getPostStats Controller"));
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "getPostStats Controller")
+    );
   }
 };
-
-
 
 /**
  * @desc Get engagement stats for the logged-in user
@@ -34,54 +50,57 @@ export const getPostStats = async (req, res, next) => {
  * @access Protected
  */
 
-
+/**
+ * @desc Optimized: Get engagement stats for the logged-in user
+ * @route GET /api/post/analytics/user-engagement
+ * @access Protected
+ */
 export const getUserEngagementStats = async (req, res, next) => {
   try {
     const userId = req.user._id;
 
-    const stats = await PostModel.aggregate([
-      { $match: { author: new mongoose.Types.ObjectId(userId) } },
+    const [stats] = await PostModel.aggregate([
+      {
+        $match: {
+          author: new mongoose.Types.ObjectId(userId),
+          isPublished: true,
+        },
+      },
       {
         $group: {
           _id: null,
           totalPosts: { $sum: 1 },
-          totalLikes: {
-            $sum: {
-              $cond: [
-                { $isArray: "$likes" },
-                { $size: "$likes" },
-                0
-              ]
-            }
-          },
+          totalLikes: { $sum: { $size: { $ifNull: ["$likes", []] } } },
           totalViews: { $sum: { $ifNull: ["$views", 0] } },
-          totalBookmarks: {
-            $sum: {
-              $cond: [
-                { $isArray: "$bookmarks" },
-                { $size: "$bookmarks" },
-                0
-              ]
-            }
-          }
-        }
-      }
-    ]);
+          totalBookmarks: { $sum: { $ifNull: ["$bookmarksCount", 0] } },
+          totalComments: { $sum: { $ifNull: ["$commentsCount", 0] } },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalPosts: 1,
+          totalLikes: 1,
+          totalViews: 1,
+          totalBookmarks: 1,
+          totalComments: 1,
+        },
+      },
+    ]).exec();
 
-    const result = stats[0] || {
+    const result = stats || {
       totalPosts: 0,
       totalLikes: 0,
+      totalViews: 0,
       totalBookmarks: 0,
-      totalViews: 0
+      totalComments: 0,
     };
 
     res.status(200).json({
       success: true,
-      data: result
+      data: result,
     });
   } catch (error) {
     next(new AppError(error.message, 500, "getUserEngagementStats Controller"));
   }
 };
-
-

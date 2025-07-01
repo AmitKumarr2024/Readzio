@@ -1,3 +1,4 @@
+
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axiosInstance from '../connection/axiosInstance';
 
@@ -10,20 +11,24 @@ export const createOrder = createAsyncThunk(
   async (orderData, { rejectWithValue }) => {
     const { amount, currency, receipt, notes } = orderData;
     if (!amount || !currency || !receipt) {
-      const message = `Missing required fields: ${[!amount && 'amount', !currency && 'currency', !receipt && 'receipt'].filter(Boolean).join(', ')}`;
+      const message = `Missing required fields: ${[
+        !amount && 'amount',
+        !currency && 'currency',
+        !receipt && 'receipt',
+      ].filter(Boolean).join(', ')}`;
       log(`[createOrder] Error: ${message}`);
       return rejectWithValue(message);
     }
     try {
       log('[createOrder] Creating order with data:', orderData);
-      const res = await axiosInstance.post('/payment/create-order', {
-        amount: Math.round(amount * 100), // Convert to smallest unit (e.g., paise for INR)
+      const res = await axiosInstance.post('/payment/razorpay/order', {
+        amount,
         currency,
         receipt,
         notes,
       });
-      log('[createOrder] Success:', res.data.data);
-      return res.data.data;
+      log('[createOrder] Success:', res.data.order);
+      return res.data.order;
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to create order';
       log(`[createOrder] Error: ${message}`);
@@ -43,12 +48,30 @@ export const fetchPayments = createAsyncThunk(
     }
     try {
       log(`[fetchPayments] Fetching payments: page=${page}, limit=${limit}`);
-      const res = await axiosInstance.get(`/payment/history?page=${page}&limit=${limit}`);
+      const res = await axiosInstance.get(`/payment/records?page=${page}&limit=${limit}`);
       log('[fetchPayments] Success:', res.data.data);
       return res.data.data;
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to fetch payments';
       log(`[fetchPayments] Error: ${message}`);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+// Fetch all payment records
+export const fetchAllPaymentRecords = createAsyncThunk(
+  'payment/fetchAllPaymentRecords',
+  async ({ page, limit, status }, { rejectWithValue }) => {
+    try {
+      log(`[fetchAllPaymentRecords] Fetching all payment records: page=${page}, limit=${limit}, status=${status}`);
+      const query = `/payment/records?page=${page}&limit=${limit}${status ? `&status=${status}` : ''}`;
+      const res = await axiosInstance.get(query);
+      log('[fetchAllPaymentRecords] Success:', res.data.data);
+      return res.data.data || []; // Ensure array return
+    } catch (err) {
+      const message = err.response?.data?.message || 'Failed to fetch payment records';
+      log(`[fetchAllPaymentRecords] Error: ${message}`);
       return rejectWithValue(message);
     }
   }
@@ -60,15 +83,21 @@ export const verifyPayment = createAsyncThunk(
   async (paymentData, { rejectWithValue }) => {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = paymentData;
     if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
-      const message = `Missing required fields: ${[!razorpay_payment_id && 'payment_id', !razorpay_order_id && 'order_id', !razorpay_signature && 'signature'].filter(Boolean).join(', ')}`;
+      const message = `Missing required fields: ${
+        [!razorpay_payment_id && 'payment_id', !razorpay_order_id && 'order_id', !razorpay_signature && 'signature']
+          .filter(Boolean)
+          .join(', ')
+      }`;
       log(`[verifyPayment] Error: ${message}`);
       return rejectWithValue(message);
     }
     try {
       log('[verifyPayment] Verifying payment:', paymentData);
-      const res = await axiosInstance.post('/payment/verify', paymentData);
-      log('[verifyPayment] Success:', res.data.data);
-      return res.data.data;
+      const res = await axiosInstance.post('/payment/razorpay/verify', paymentData);
+      log('[verifyPayment] Full response:', res.data);
+      const dataToReturn = res.data.data ?? res.data;
+      log('[verifyPayment] Returning:', dataToReturn);
+      return dataToReturn;
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to verify payment';
       log(`[verifyPayment] Error: ${message}`);
@@ -81,13 +110,16 @@ const paymentSlice = createSlice({
   name: 'payment',
   initialState: {
     order: null,
-    paymentStatus: 'idle', // idle, loading, succeeded, failed
+    paymentStatus: 'idle',
     paymentId: null,
     error: null,
     payments: [],
+    paymentRecords: [], // Initialize as empty array
+    paymentRecordsStatus: 'idle',
+    paymentRecordsError: null,
     isModalOpen: false,
     verificationResult: null,
-    subscriptionData: null, // Stores { postId, authorId, planType } for subscription context
+    subscriptionData: null,
   },
   reducers: {
     setSubscriptionData: (state, action) => {
@@ -106,6 +138,9 @@ const paymentSlice = createSlice({
       state.paymentId = null;
       state.error = null;
       state.payments = [];
+      state.paymentRecords = [];
+      state.paymentRecordsStatus = 'idle';
+      state.paymentRecordsError = null;
       state.isModalOpen = false;
       state.verificationResult = null;
       state.subscriptionData = null;
@@ -144,6 +179,22 @@ const paymentSlice = createSlice({
         log('[paymentSlice] fetchPayments rejected', action.payload);
         state.paymentStatus = 'failed';
         state.error = action.payload;
+      })
+      // Fetch All Payment Records
+      .addCase(fetchAllPaymentRecords.pending, (state) => {
+        log('[paymentSlice] fetchAllPaymentRecords pending');
+        state.paymentRecordsStatus = 'loading';
+        state.paymentRecordsError = null;
+      })
+      .addCase(fetchAllPaymentRecords.fulfilled, (state, action) => {
+        log('[paymentSlice] fetchAllPaymentRecords fulfilled', action.payload);
+        state.paymentRecordsStatus = 'succeeded';
+        state.paymentRecords = action.payload;
+      })
+      .addCase(fetchAllPaymentRecords.rejected, (state, action) => {
+        log('[paymentSlice] fetchAllPaymentRecords rejected', action.payload);
+        state.paymentRecordsStatus = 'failed';
+        state.paymentRecordsError = action.payload;
       })
       // Verify Payment
       .addCase(verifyPayment.pending, (state) => {

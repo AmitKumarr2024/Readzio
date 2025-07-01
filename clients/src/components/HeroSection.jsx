@@ -21,32 +21,31 @@ const itemVariants = {
 
 const HeroSection = () => {
   return (
-    <section className="relative bg-gradient-to-r from-indigo-600 via-purple-700 to-pink-600 text-white h-72 -mt-28 flex flex-col justify-center items-center px-6">
-      {/* Decorative circles */}
-      <div className="absolute top-10 left-10 w-24 h-24 bg-pink-400 rounded-full opacity-30 animate-pulse blur-3xl"></div>
-      <div className="absolute bottom-20 right-20 w-32 h-32 bg-indigo-400 rounded-full opacity-30 animate-pulse blur-3xl"></div>
+    <section  className="relative bg-gradient-theme text-white min-h-[200px] sm:min-h-[250px] md:min-h-[270px] flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 py-10 sm:py-14">
+      {/* Decorative circles - responsive or hidden on small screens */}
+      <div className="absolute top-6 left-6 sm:top-10 sm:left-10 w-16 sm:w-24 h-16 sm:h-24 bg-pink-400 rounded-full opacity-30 animate-pulse blur-3xl"></div>
+      <div className="absolute bottom-10 right-6 sm:bottom-20 sm:right-20 w-20 sm:w-32 h-20 sm:h-32 bg-indigo-400 rounded-full opacity-30 animate-pulse blur-3xl"></div>
 
       <motion.div
-        className="max-w-4xl text-center z-10"
+        className="max-w-2xl sm:max-w-3xl text-center z-10"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
         <motion.h1
-          className="text-5xl md:text-7xl font-extrabold mb-6 drop-shadow-lg"
+          className="text-3xl sm:text-5xl md:text-6xl font-extrabold mb-4 sm:mb-6 drop-shadow-lg leading-tight"
           variants={itemVariants}
         >
           Welcome to{" "}
-          <span className="text-yellow-400 underline decoration-yellow-300 decoration-4 underline-offset-8">
+          <span className="text-yellow-300 underline decoration-yellow-300 decoration-4 underline-offset-4 sm:underline-offset-8">
             MyyBlog
           </span>
         </motion.h1>
         <motion.p
-          className="text-xl md:text-2xl mb-10 max-w-xl mx-auto text-center"
+          className="text-base sm:text-lg md:text-xl max-w-md sm:max-w-xl mx-auto text-center"
           variants={itemVariants}
         >
-          Read the latest news, stories, tips, and ideas that inspire and help
-          you every day.
+          Read the latest news, stories, tips, and ideas that inspire and help you every day.
         </motion.p>
       </motion.div>
     </section>

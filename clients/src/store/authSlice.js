@@ -1,223 +1,229 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../connection/axiosInstance";
 
-// --------------------
-// Load old data from localStorage at startup
-// --------------------
-const rawUser = localStorage.getItem("user");
-let user = null;
-try {
-  user = rawUser && rawUser !== "undefined" ? JSON.parse(rawUser) : null;
-} catch {
-  user = null;
-}
-const token = localStorage.getItem("token");
-
-// --------------------
-// Initial State (uses old data)
-// --------------------
 const initialState = {
-  token: token || null,
-  user: user || null,
-  isAuthenticated: !!token,
+  user: null,
+  role: null,
+  isAuthenticated: false,
   loading: false,
   error: null,
+  token: null,
 };
 
-// --------------------
-// Thunks (Async actions)
-// --------------------
-
-// Signup
 export const signup = createAsyncThunk(
   "auth/signup",
   async (userData, { rejectWithValue }) => {
     try {
+      console.log("[AuthSlice:signup] Sending request", { email: userData.email });
       const res = await axiosInstance.post("/auth/signup", userData);
-      return res.data; // { token, user }
+      console.log("[AuthSlice:signup] Success", { userId: res.data._id });
+      return res.data;
     } catch (err) {
+      console.error("[AuthSlice:signup] Error:", err.response?.data?.message);
       return rejectWithValue(err.response?.data || { message: "Signup failed" });
     }
   }
 );
 
-// Login
+
 export const login = createAsyncThunk(
-  "auth/login",
+  'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.post("/auth/login", credentials);
+      console.log('[AuthSlice:login] Sending request', { email: credentials.email });
+      const res = await axiosInstance.post('/auth/login', credentials, {
+        withCredentials: true,
+      });
+      console.log('[AuthSlice:login] Success', { userId: res.data._id });
       return res.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || { message: "Login failed" });
+      console.error('[AuthSlice:login] Error:', err.response?.data?.message);
+      return rejectWithValue(err.response?.data || { message: 'Login failed' });
     }
   }
 );
 
-// Google Login
+
 export const googleLogin = createAsyncThunk(
   "auth/googleLogin",
   async (token, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.post("/auth/google-login", { token });
+      console.log("[AuthSlice:googleLogin] Sending request");
+      const res = await axiosInstance.post("/auth/google-login", { token }, {
+        withCredentials: true,
+      });
+      console.log("[AuthSlice:googleLogin] Success", { userId: res.data.user._id });
       return res.data;
     } catch (err) {
+      console.error("[AuthSlice:googleLogin] Error:", err.response?.data?.message);
       return rejectWithValue(err.response?.data || { message: "Google login failed" });
     }
   }
 );
 
-// Check Auth (e.g., on app refresh)
 export const checkAuth = createAsyncThunk(
-  "auth/checkAuth",
-  async (_, { getState, rejectWithValue }) => {
+  'auth/checkAuth',
+  async (_, { rejectWithValue }) => {
     try {
-      const { token } = getState().auth;
-      if (!token) throw new Error("No token found");
-      const res = await axiosInstance.get("/auth/check", {
-        headers: { Authorization: `Bearer ${token}` }
+      console.log('[AuthSlice:checkAuth] Sending request');
+      const res = await axiosInstance.get('/auth/check', {
+        withCredentials: true,
       });
-      return res.data; // only user data (token already exists)
+      console.log('[AuthSlice:checkAuth] Success', { userId: res.data._id, token: res.data.token ? 'present' : 'missing' });
+      return res.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || { message: "Auth check failed" });
+      console.error('[AuthSlice:checkAuth] Error:', err.response?.data?.message);
+      return rejectWithValue(err.response?.data || { message: 'Auth check failed' });
     }
   }
 );
 
-// Logout
+
 export const logout = createAsyncThunk(
-  "auth/logout",
-  async (_, { getState, rejectWithValue }) => {
+  'auth/logout',
+  async (_, { rejectWithValue }) => {
     try {
-      const { token } = getState().auth;
-      await axiosInstance.post("/auth/logout", null, {
-        headers: { Authorization: `Bearer ${token}` },
+      console.log('[AuthSlice:logout] Sending request');
+      const res = await axiosInstance.post('/auth/logout', {}, {
+        withCredentials: true,
       });
-      return true;
+      console.log('[AuthSlice:logout] Success');
+      return res.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || { message: "Logout failed" });
+      console.error('[AuthSlice:logout] Error:', err.response?.data?.message);
+      return rejectWithValue(err.response?.data || { message: 'Logout failed' });
     }
   }
 );
 
-// --------------------
-// Slice
-// --------------------
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    setAuth(state, action) {
-      const { token, user } = action.payload;
-      state.token = token;
-      state.user = user;
-      state.isAuthenticated = true;
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-    },
     clearAuth(state) {
-      state.token = null;
+      console.log("[AuthSlice:clearAuth]");
       state.user = null;
+      state.role = null;
       state.isAuthenticated = false;
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      state.loading = false;
+      state.error = null;
+      state.token = null;
+      localStorage.removeItem("jwt");
     },
   },
   extraReducers: (builder) => {
     builder
-      // -------------------- SIGNUP
       .addCase(signup.pending, (state) => {
+        console.log("[AuthSlice:signup] Pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(signup.fulfilled, (state, action) => {
-        const { token, user } = action.payload;
-        state.token = token;
-        state.user = user;
+        console.log("[AuthSlice:signup] Fulfilled", { userId: action.payload._id });
+        const { _id, fullName, email, role, token } = action.payload;
+        if (token) localStorage.setItem("jwt", token);
+        state.user = { _id, name: fullName, email, role };
+        state.role = role;
         state.isAuthenticated = true;
+        state.token = token;
         state.loading = false;
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
       })
       .addCase(signup.rejected, (state, action) => {
+        console.error("[AuthSlice:signup] Rejected:", action.payload?.message);
         state.loading = false;
         state.error = action.payload?.message || "Signup failed";
       })
-
-      // -------------------- LOGIN
-      .addCase(login.pending, (state) => {
+       .addCase(login.pending, (state) => {
+        console.log('[AuthSlice:login] Pending');
         state.loading = true;
         state.error = null;
       })
       .addCase(login.fulfilled, (state, action) => {
-        const { token, user } = action.payload;
-        state.token = token;
-        state.user = user;
+        console.log('[AuthSlice:login] Fulfilled', { userId: action.payload._id });
+        const { _id, fullName, email, role, token } = action.payload;
+        if (token) localStorage.setItem('jwt', token);
+        state.user = { _id, name: fullName, email, role };
+        state.role = role;
         state.isAuthenticated = true;
+        state.token = token;
         state.loading = false;
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
       })
       .addCase(login.rejected, (state, action) => {
+        console.error('[AuthSlice:login] Rejected:', action.payload?.message);
         state.loading = false;
-        state.error = action.payload?.message || "Login failed";
+        state.error = action.payload?.message || 'Login failed';
       })
-
-      // -------------------- GOOGLE LOGIN
       .addCase(googleLogin.pending, (state) => {
+        console.log("[AuthSlice:googleLogin] Pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(googleLogin.fulfilled, (state, action) => {
-        const { token, user } = action.payload;
-        state.token = token;
-        state.user = user;
+        console.log("[AuthSlice:googleLogin] Fulfilled", { userId: action.payload.user._id });
+        const { user, token } = action.payload;
+        if (token) localStorage.setItem("jwt", token);
+        state.user = { _id: user._id, name: user.name, email: user.email, role: user.role };
+        state.role = user.role;
         state.isAuthenticated = true;
+        state.token = token;
         state.loading = false;
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
       })
       .addCase(googleLogin.rejected, (state, action) => {
+        console.error("[AuthSlice:googleLogin] Rejected:", action.payload?.message);
         state.loading = false;
         state.error = action.payload?.message || "Google login failed";
       })
-
-      // -------------------- CHECK AUTH
       .addCase(checkAuth.pending, (state) => {
+        console.log('[AuthSlice:checkAuth] Pending');
         state.loading = true;
         state.error = null;
       })
       .addCase(checkAuth.fulfilled, (state, action) => {
-        state.user = action.payload;
+        console.log('[AuthSlice:checkAuth] Fulfilled', { userId: action.payload._id });
+        const { _id, name, email, role, token } = action.payload;
+        if (token) localStorage.setItem('jwt', token);
+        state.user = { _id, name, email, role };
+        state.role = role;
         state.isAuthenticated = true;
+        state.token = token;
         state.loading = false;
-        localStorage.setItem("user", JSON.stringify(action.payload));
       })
       .addCase(checkAuth.rejected, (state, action) => {
+        console.error('[AuthSlice:checkAuth] Rejected:', action.payload?.message);
         state.loading = false;
-        state.error = action.payload?.message || "Auth check failed";
-        state.token = null;
         state.user = null;
+        state.role = null;
         state.isAuthenticated = false;
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        state.token = null;
+        state.error = action.payload?.message || 'Auth check failed';
+        localStorage.removeItem('jwt');
       })
-
-      // -------------------- LOGOUT
+       .addCase(logout.pending, (state) => {
+        console.log('[AuthSlice:logout] Pending');
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(logout.fulfilled, (state) => {
-        state.token = null;
+        console.log('[AuthSlice:logout] Fulfilled');
         state.user = null;
+        state.role = null;
         state.isAuthenticated = false;
+        state.token = null;
         state.loading = false;
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        localStorage.removeItem('jwt');
       })
       .addCase(logout.rejected, (state, action) => {
+        console.error('[AuthSlice:logout] Rejected:', action.payload?.message);
+        state.user = null;
+        state.role = null;
+        state.isAuthenticated = false;
+        state.token = null;
         state.loading = false;
-        state.error = action.payload?.message || "Logout failed";
+        state.error = action.payload?.message || 'Logout failed';
+        localStorage.removeItem('jwt');
       });
   },
 });
 
-export const { setAuth, clearAuth } = authSlice.actions;
+export const { clearAuth } = authSlice.actions;
 export default authSlice.reducer;

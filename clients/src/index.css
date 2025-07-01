@@ -1,33 +1,66 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 @plugin "daisyui";
 
-:root{
+:root {
   background-color: #fff0f0;
   color: black;
 }
 
-
-
 @theme {
-  /* Reset default theme variables if you only want your custom colors */
+  /* Light theme variables */
+  --color-background-light: #ffffff;
+  --color-primary-light: #3b82f6;
+  --color-primary-hover-light: #2563eb;
+  --color-card-bg-light: #f9fafb;
+  --color-text-main-light: #111827;
+  --color-sub-text-light: #6b7280;
+  --color-white-text-light: #ffffff;
 
-
-  /* Map your colors to Tailwind's theme variables */
-  --color-background: #ffffff;
-  --color-header-gradient-start: #00296b ;
-  --color-header-gradient-end: #003f88 ;
-  --color-primary: #5c6ac4;
-  --color-primary-hover: #4a59aa;
-  --color-secondary: #ecc94b;
-  --color-text-main: #2d3748;
-  --color-sub-text: #5c677d;
-  --color-white-text: #ffffff;
-  --color-text-highlight: #5c6ac4;
-  --color-card-bg: #FFFFFF;
-  --color-scrollbar-track: #f0f0f0;
-  --color-scrollbar-thumb: #888;
-  --color-scrollbar-thumb-hover: #555;
+  /* Gradient stops (light mode) */
+  --gradient-start-light: #6366f1;   /* indigo-500 */
+  --gradient-mid-light: #a855f7;     /* purple-500 */
+  --gradient-end-light: #ec4899;     /* pink-500 */
 }
+
+.dark {
+  @theme {
+    /* Dark theme variables */
+    --color-background-dark: #0f172a;
+    --color-primary-dark: #60a5fa;
+    --color-primary-hover-dark: #3b82f6;
+    --color-card-bg-dark: #1e293b;
+    --color-text-main-dark: #f3f4f6;
+    --color-sub-text-dark: #9ca3af;
+    --color-white-text-dark: #ffffff;
+
+    /* Gradient stops (dark mode) */
+    --gradient-start-dark: #1e293b;  /* slate-800 */
+    --gradient-mid-dark: #334155;    /* slate-700 */
+    --gradient-end-dark: #0f172a;    /* slate-900 */
+  }
+}
+
+/* In your global CSS (e.g., index.css or tailwind.css) */
+.bg-gradient-theme {
+  background: linear-gradient(
+    to right,
+    var(--gradient-start-light),
+    var(--gradient-mid-light),
+    var(--gradient-end-light)
+  );
+}
+
+.dark .bg-gradient-theme {
+  background: linear-gradient(
+    to right,
+    var(--gradient-start-dark),
+    var(--gradient-mid-dark),
+    var(--gradient-end-dark)
+  );
+}
+
+
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
@@ -35,13 +68,13 @@
 
 /* Hide scrollbar for IE, Edge and Firefox */
 .no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;     /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
 ::-webkit-scrollbar {
-  width: 12px;          /* vertical scrollbar width */
-  height: 12px;         /* horizontal scrollbar height */
+  width: 12px; /* vertical scrollbar width */
+  height: 12px; /* horizontal scrollbar height */
 }
 
 /* Track */
@@ -61,7 +94,6 @@
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-scrollbar-thumb-hover);
 }
-
 
 /* src/index.css */
 .skeleton {

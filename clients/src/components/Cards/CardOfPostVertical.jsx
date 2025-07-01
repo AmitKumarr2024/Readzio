@@ -10,7 +10,7 @@ const CardOfPostVertical = ({
   commentsCount,
   viewsCount,
 }) => {
-  const fallbackImage = "https://via.placeholder.com/400x240.png?text=No+Image";
+  const fallbackImage = "https://placehold.co/150x100?text=Ad+Failed";
 
   return (
     <Link

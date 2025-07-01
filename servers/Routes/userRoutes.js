@@ -1,6 +1,8 @@
 import express from "express";
 import { protectedRoute } from "../Middlewares/authMiddleware.js";
 import {
+  clearOldActivity,
+  clearUserActivity,
   deleteUser,
   getAllUser,
   getProfile,
@@ -24,5 +26,7 @@ routes.patch(
   updateProfile
 );
 routes.delete("/delete-user", protectedRoute, deleteUser);
+routes.delete("/activity/clear", protectedRoute, clearUserActivity);
+routes.delete("/activity/clear-old", protectedRoute, clearOldActivity); 
 
 export default routes;

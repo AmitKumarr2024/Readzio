@@ -7,7 +7,8 @@ const ShareButton = ({ postUrl }) => {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(postUrl);
-      setCopySuccess("Link copied to clipboard!");
+      setCopySuccess("Link copied successfully!");
+      setTimeout(() => setCopySuccess(""), 2000);
     } catch {
       setCopySuccess("Failed to copy the link.");
     }
@@ -17,27 +18,27 @@ const ShareButton = ({ postUrl }) => {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition"
+        className="modal-share px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
       >
         Share
       </button>
 
       {isModalOpen && (
-        <div className="fixed  inset-0 bg-gray-800/75 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl relative">
-            <h3 className="text-2xl text-center  font-bold mb-4 text-gray-900">Share This Post</h3>
-            <p className="text-sm font-semibold text-gray-600 mb-4">Copy and share the post URL:</p>
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl relative mx-auto">
+            <h3 className="text-2xl font-bold mb-6 text-gray-900">Share This Post</h3>
+            <p className="text-sm font-semibold mb-4 text-gray-600">Copy and share the post URL:</p>
 
             <div className="flex items-center gap-2 mb-4">
               <input
                 type="text"
                 value={postUrl}
-                readOnly
+                readOnly={true}
                 className="flex-grow border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800"
               />
               <button
                 onClick={handleCopy}
-                className="bg-green-500 text-white font-semibold px-3 py-1.5 rounded hover:bg-green-600 transition"
+                className="modal-copy bg-green-500 text-white font-semibold px-4 py-2 rounded hover:bg-green-600 transition-colors"
               >
                 Copy
               </button>
@@ -45,17 +46,15 @@ const ShareButton = ({ postUrl }) => {
 
             {copySuccess && <p className="text-green-600 text-sm mb-4">{copySuccess}</p>}
 
-            <div className="text-top">
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setCopySuccess("");
-                }}
-                className="w-full text-lg bg-red-600 font-bold text-white px-3 py-1.5 rounded hover:bg-red-700 transition"
-              >
-                Close
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                setIsModalOpen(false);
+                setCopySuccess("");
+              }}
+              className="modal-close w-full bg-red-500 text-white font-semibold px-4 py-2 rounded hover:bg-red-600 transition-colors"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
@@ -63,4 +62,4 @@ const ShareButton = ({ postUrl }) => {
   );
 };
 
-export default ShareButton
+export default ShareButton;

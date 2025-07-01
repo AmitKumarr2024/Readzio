@@ -1,32 +1,30 @@
-import React, { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { useSelector, useDispatch } from "react-redux";
-import { toast } from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
-
-import FileBlock from "../PostFeature/FileBlock";
-import ListBlock from "../PostFeature/ListBlock";
-import VideoBlock from "../PostFeature/VideoBlock";
-import PostView from "./PostView";
-
-import { createPosts, getSinglePost, deletePost } from "../../store/postSlice";
-import ConfirmPostModal from "./ConfirmPostModal";
-import {
-  setIsFeatured,
-  setIsPinned,
-  setIsPublished,
-  setLanguage,
-  setStatus,
-  resetPostMeta,
-} from "../../store/Post/postMetaSlice"; // Corrected import path
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useSelector, useDispatch } from 'react-redux';
+import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import { PacmanLoader } from 'react-spinners';
+import FileBlock from '../PostFeature/FileBlock';
+import VideoBlock from '../PostFeature/VideoBlock';
+import TableBlock from '../PostFeature/TableBlock';
+import PostView from './PostView';
+import { getSinglePost, deletePost } from '../../store/postSlice';
+import ConfirmPostModal from './ConfirmPostModal';
+import { setIsFeatured, setIsPinned, setIsPublished, setLanguage, setStatus } from '../../store/Post/postMetaSlice';
 
 const PostPreviewList = ({
   currentDraftPost,
   onUpdateDraft,
   postType,
   category,
+  categoryName,
+  allPosts,
+  deletePost,
+  createLoading,
+  createError,
+  onCreatePost,
 }) => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -35,21 +33,29 @@ const PostPreviewList = ({
   const [countdown, setCountdown] = useState(5);
   const [postData, setPostData] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Local state for post metadata with non-default values
   const [isFeatured, setIsFeaturedLocal] = useState(true);
   const [isPinned, setIsPinnedLocal] = useState(true);
   const [isPublished, setIsPublishedLocal] = useState(true);
-  const [language, setLanguageLocal] = useState("es");
-  const [status, setStatusLocal] = useState("published");
+  const [language, setLanguageLocal] = useState('es');
+  const [status, setStatusLocal] = useState('published');
 
-  const modalRef = useRef(null);
+  const modalRef = useRef();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { singlePost, singlePostStatus } = useSelector((state) => state.post);
 
-  const { posts: allPosts, singlePost, singlePostStatus } = useSelector(
-    (state) => state.post
-  );
+  // Debug props
+  useEffect(() => {
+    console.log('[DEBUG] PostPreviewList: Props received:', {
+      currentDraftPost,
+      postType,
+      category,
+      categoryName,
+      allPosts,
+      createLoading,
+      createError,
+    });
+  }, [currentDraftPost, postType, category, categoryName, allPosts, createLoading, createError]);
 
   useEffect(() => {
     if (singlePost) setIsModalOpen(true);
@@ -66,66 +72,46 @@ const PostPreviewList = ({
 
   useEffect(() => {
     let timer;
-    if (isPostConfirmed && countdown > 0) {
+    if (isPostConfirmed && countdown > 0 && !createLoading) {
       timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
-    } else if (isPostConfirmed && countdown === 0) {
+    } else if (isPostConfirmed && countdown === 0 && !createLoading) {
       handleConfirmPublish();
     }
     return () => clearTimeout(timer);
-  }, [isPostConfirmed, countdown]);
+  }, [isPostConfirmed, countdown, createLoading]);
 
   const closeModal = () => {
     setIsModalOpen(false);
     setZoomLevel(1);
-    dispatch({ type: "post/clearSinglePost" });
+    dispatch({ type: 'post/clearSinglePost' });
   };
 
   const handleCopyCode = (code, i) => {
     navigator.clipboard.writeText(code);
     setCopiedIndex(i);
     setTimeout(() => setCopiedIndex(null), 2000);
+    toast.success('Code copied!');
   };
 
   const createPost = () => {
-    if (!currentDraftPost?.title) return toast.error("Please enter a title");
-    if (!currentDraftPost?.blocks?.length)
-      return toast.error("Please add content blocks");
-    if (!postType) return toast.error("Please select a post type");
-    if (!category) return toast.error("Please select a category");
-    if (!language.match(/^[a-z]{2}$/i))
-      return toast.error("Please enter a valid two-letter language code (e.g., 'en')");
-    if (!["draft", "review", "published", "archived"].includes(status))
-      return toast.error("Please select a valid status");
+    if (!currentDraftPost?.title) return toast.error('Please enter a title');
+    if (!currentDraftPost?.blocks?.length) return toast.error('Please add content blocks');
+    if (!postType) return toast.error('Please select a post type');
+    if (!category) return toast.error('Please select a category');
+    if (!language.match(/^[a-z]{2}$/i)) return toast.error('Invalid language code (e.g., "en")');
+    if (!['draft', 'review', 'published', 'archived'].includes(status)) return toast.error('Invalid status');
 
-    // Prevent submission with all default metadata
-    if (
-      !isFeatured &&
-      !isPinned &&
-      !isPublished &&
-      language === "en" &&
-      status === "draft"
-    ) {
-      toast.error(
-        "Please set at least one metadata field (e.g., feature, pin, publish, language, or status)"
-      );
+    if (!isFeatured && !isPinned && !isPublished && language === 'en' && status === 'draft') {
+      toast.error('Set at least one metadata field (feature, pin, publish, language, or status)');
       return;
     }
 
-    console.log("[DEBUG] createPost metadata:", {
-      isFeatured,
-      isPinned,
-      isPublished,
-      language,
-      status,
-    });
-
+    console.log('[DEBUG] createPost metadata:', { isFeatured, isPinned, isPublished, language, status, category, categoryName });
     setShowConfirmModal(true);
   };
 
-  const handleModalConfirm = ({ tags, thumbnail }) => {
-    console.log("[DEBUG] Tags received from ConfirmPostModal:", tags);
+  const handleModalConfirm = async ({ tags, thumbnail }) => {
     const newPostData = { tags, thumbnail, isFeatured, isPinned, isPublished, language, status };
-    console.log("[DEBUG] postData set:", newPostData);
     setShowConfirmModal(false);
     setPostData(newPostData);
     setIsPostConfirmed(true);
@@ -138,51 +124,17 @@ const PostPreviewList = ({
     dispatch(setStatus(status));
   };
 
-  const handleConfirmPublish = () => {
+  const handleConfirmPublish = async () => {
     setIsPostConfirmed(false);
-
-    const payload = {
-      postType,
-      category,
-      title: currentDraftPost.title,
-      blocks: currentDraftPost.blocks,
-      tags: postData?.tags ?? [], // Ensure tags are included
-      thumbnail: postData?.thumbnail ?? "",
-      isFeatured: postData?.isFeatured ?? false,
-      isPinned: postData?.isPinned ?? false,
-      isPublished: postData?.isPublished ?? false,
-      language: postData?.language ?? "es",
-      status: postData?.status ?? "published",
-    };
-
-    console.log("[DEBUG] Payload sent to createPosts:", payload);
-
-    // Validate tags
-    if (!payload.tags || !Array.isArray(payload.tags) || payload.tags.length === 0) {
-      toast.error("Please provide at least one tag");
+    console.log('[DEBUG] Initiating post creation with data:', postData);
+    const success = await onCreatePost(postData);
+    if (success) {
       setPostData(null);
-      setIsPostConfirmed(false);
       setCountdown(5);
-      return;
+    } else {
+      setIsPostConfirmed(true); // Re-enable countdown if creation fails
+      setCountdown(5);
     }
-
-    dispatch(createPosts(payload)).then((result) => {
-      if (createPosts.fulfilled.match(result)) {
-        toast.success("Post created successfully!");
-        if (onUpdateDraft) onUpdateDraft({ title: "", blocks: [] });
-        dispatch(resetPostMeta());
-        setIsFeaturedLocal(true);
-        setIsPinnedLocal(true);
-        setIsPublishedLocal(true);
-        setLanguageLocal("es");
-        setStatusLocal("published");
-        navigate("/");
-      } else {
-        toast.error(
-          "Failed to create post: " + (result.error?.message || "Unknown error")
-        );
-      }
-    });
   };
 
   const handleCancelPublish = () => {
@@ -190,309 +142,476 @@ const PostPreviewList = ({
     setIsPostConfirmed(false);
     setPostData(null);
     setCountdown(5);
-    toast("Post publishing cancelled.");
-  };
-
-  const deleteBlock = (index) => {
-    if (!onUpdateDraft) {
-      console.warn("No onUpdateDraft function provided");
-      return;
-    }
-    const updatedBlocks = currentDraftPost.blocks.filter((_, i) => i !== index);
-    onUpdateDraft({
-      ...currentDraftPost,
-      blocks: updatedBlocks,
-    });
-    toast.success("Block deleted");
+    toast('Post publishing cancelled.');
   };
 
   const handleDeletePost = (postId) => {
-    if (window.confirm("Are you sure you want to delete this post?")) {
+    if (window.confirm('Are you sure you want to delete this post?')) {
       dispatch(deletePost(postId))
         .unwrap()
-        .then(() => toast.success("Post deleted successfully"))
-        .catch((err) =>
-          toast.error("Failed to delete post: " + (err.message || err))
-        );
+        .then(() => toast.success('Post deleted successfully'))
+        .catch((err) => toast.error(`Failed to delete post: ${err.message || err}`));
     }
   };
 
-  const renderBlock = (block, i) => {
-    const blockProps = {
-      block,
-      index: i,
-      zoomLevel,
-      copiedIndex,
-      handleCopyCode,
-      deleteBlock,
-      className: "relative my-4",
-    };
-
-    switch (block.type) {
-      case "code":
-        return (
-          <div key={i} className="relative my-4">
-            <SyntaxHighlighter
-              language={block.language || "javascript"}
-              style={tomorrow}
-              showLineNumbers
-              wrapLines
-            >
-              {block.value}
-            </SyntaxHighlighter>
-            <button
-              onClick={() => handleCopyCode(block.value, i)}
-              className="absolute top-2 right-2 bg-gray-800 text-white px-2 py-1 rounded text-sm"
-            >
-              {copiedIndex === i ? "Copied!" : "Copy"}
-            </button>
-          </div>
-        );
-      case "file":
-        return <FileBlock key={i} {...blockProps} />;
-      case "list":
-        return <ListBlock key={i} {...blockProps} />;
-      case "video":
-        return <VideoBlock key={i} {...blockProps} />;
-      default:
-        return (
-          <div
-            key={i}
-            className="relative my-4"
-            dangerouslySetInnerHTML={{ __html: block.value }}
-          />
-        );
+  const deleteBlock = (index) => {
+    console.log('[DEBUG] Deleting block at index:', index);
+    if (!onUpdateDraft) {
+      toast.error('No update function provided');
+      return;
     }
+    const updatedBlocks = currentDraftPost.blocks.filter((_, i) => i !== index);
+    onUpdateDraft({ ...currentDraftPost, blocks: updatedBlocks });
+    toast.success('Block deleted');
   };
+
+  const renderBlock = useCallback(
+    (block, i) => {
+      if (!block || !block.type) {
+        console.warn(`[DEBUG] Invalid block at index ${i}:`, block);
+        toast.error('Invalid block detected');
+        return <div key={i} className="my-4 text-gray-500 italic">Invalid block</div>;
+      }
+
+      console.log(`[DEBUG] Rendering block ${i}:`, block);
+
+      if (block.type === 'table') {
+        console.log(`[DEBUG] Table block props before render:`, {
+          headers: block.headers || [],
+          rows: block.rows || [[]],
+          caption: block.caption || '',
+        });
+        if (!block.headers?.length && !block.rows?.some((row) => row.length)) {
+          console.warn(`[DEBUG] Empty table block at index ${i}:`, block);
+          toast.error('Table block is empty. Using default data.');
+          block = {
+            ...block,
+            headers: block.headers?.length ? block.headers : ['Header 1', 'Header 2'],
+            rows: block.rows?.some((row) => row.length) ? block.rows : [['Cell 1', 'Cell 2'], ['Cell 3', 'Cell 4']],
+            caption: block.caption || '',
+          };
+        }
+      }
+
+      const blockProps = {
+        block,
+        index: i,
+        zoomLevel,
+        copiedIndex,
+        handleCopyCode,
+        className: 'relative my-4',
+      };
+
+      switch (block.type) {
+        case 'code':
+          return (
+            <div key={i} className="relative my-4 bg-background-light dark:bg-background-dark  rounded-lg overflow-hidden">
+              <SyntaxHighlighter language={block.language || 'javascript'} style={tomorrow} showLineNumbers wrapLines>
+                {block.code || block.value || ''}
+              </SyntaxHighlighter>
+              <button
+                onClick={() => handleCopyCode(block.code || block.value || '', i)}
+                className="absolute top-2 right-2 bg-indigo-600  text-text-main-light dark:text-text-main-dark px-3 py-1 rounded-lg text-sm hover:bg-indigo-700 transition z-10"
+              >
+                {copiedIndex === i ? 'Copied!' : 'Copy'}
+              </button>
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-16 bg-red-600  text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete code block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case 'file':
+          return (
+            <div key={i} className="relative my-4">
+              <FileBlock {...blockProps} />
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-600  text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete file block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case 'list':
+          return (
+            <div key={i} className="relative my-4">
+              {block.ordered ? (
+                <ol className="list-decimal list-inside  text-text-main-light dark:text-text-main-dark space-y-1">
+                  {(block.items || []).map((item, j) => (
+                    <li key={j}>{item || 'Empty item'}</li>
+                  ))}
+                </ol>
+              ) : (
+                <ul className="list-disc list-inside  text-text-main-light dark:text-text-main-dark space-y-1">
+                  {(block.items || []).map((item, j) => (
+                    <li key={j}>{item || 'Empty item'}</li>
+                  ))}
+                </ul>
+              )}
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-600  text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete list block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case 'video':
+          return (
+            <div key={i} className="relative my-4">
+              <VideoBlock src={block.src || ''} caption={block.caption || ''} autoPlay={false} muted={false} loop={false} />
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-600  text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete video block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case 'image':
+          return (
+            <div key={i} className="relative my-4">
+              {block.src ? (
+                <img
+                  src={block.src}
+                  alt={block.caption || 'Image'}
+                  className="w-full h-auto max-h-96 object-contain rounded-lg"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-48 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg flex items-center justify-center ">
+                  No image source provided
+                </div>
+              )}
+              {block.caption && <p className="mt-2  text-text-main-light dark:text-text-main-dark text-sm italic">{block.caption}</p>}
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-600  text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete image block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case 'heading':
+          return (
+            <div key={i} className="relative my-4">
+              <h2
+                className={` text-text-main-light dark:text-text-main-dark font-semibold ${
+                  block.level === 1 ? 'text-2xl' : block.level === 3 ? 'text-lg' : 'text-xl'
+                }`}
+              >
+                {block.text || 'Empty heading'}
+              </h2>
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-600  text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete heading block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case 'hr':
+          return (
+            <div key={i} className="relative my-4">
+              <hr className="border-gray-300" />
+              {block.caption && <p className="mt-2  text-text-main-light dark:text-text-main-dark text-sm italic">{block.caption}</p>}
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-600  text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete HR block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case 'link':
+          return (
+            <div key={i} className="relative my-4">
+              <a href={block.href || '#'} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                {block.text || block.href || 'Empty link'}
+              </a>
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-600  text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete link block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case 'poll':
+          return (
+            <div key={i} className="relative my-4 p-4 bg-background-light dark:bg-background-dark  rounded-lg">
+              <h3 className="text-lg font-medium text-gray-800">{block.question || 'Poll'}</h3>
+              <ul className="mt-2 space-y-2">
+                {(block.options || []).map((opt, j) => (
+                  <li key={j} className="text-gray-700">{opt.option || 'Option'}</li>
+                ))}
+              </ul>
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-600  text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete poll block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case 'quote':
+          return (
+            <div key={i} className="relative my-4">
+              <blockquote className="border-l-4 border-indigo-500 pl-4 italic  text-text-main-light dark:text-text-main-dark">
+                <p>{block.text || 'Empty quote'}</p>
+                {block.author && <footer className="mt-2 text-sm  text-text-main-light dark:text-text-main-dark">— {block.author}</footer>}
+              </blockquote>
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-600  text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete quote block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case 'table':
+          return (
+            <div key={i} className="relative my-4">
+              <TableBlock headers={block.headers || []} rows={block.rows || [[]]} caption={block.caption || ''} />
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-600  text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete table block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case 'text':
+          return (
+            <div key={i} className="relative my-4">
+              <div className="text-gray-700 prose max-w-none" dangerouslySetInnerHTML={{ __html: block.value || 'Empty text' }} />
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-600  text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete text block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        default:
+          console.warn(`[DEBUG] Unsupported block type at index ${i}:`, block.type);
+          return (
+            <div key={i} className="relative my-4 text-gray-500 italic">
+              Unsupported block type: {block.type}
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-600 text-text-main-light dark:text-text-main-dark px-2 py-1 rounded-lg text-sm hover:bg-red-700 transition z-10"
+                aria-label="Delete unsupported block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+      }
+    },
+    [zoomLevel, copiedIndex, currentDraftPost, onUpdateDraft]
+  );
 
   return (
-    <>
-      <div className="mx-auto max-w-5xl px-2 sm:px-6 mt-6">
-        {currentDraftPost && (
-          <>
-            <h2 className="text-5xl text-center font-extrabold text-orange-400 mb-4">
-              Draft Preview Live
-            </h2>
-            <h1 className="text-4xl capitalize font-bold mb-4">
-              Title: {currentDraftPost.title}
-            </h1>
-            <div className="border border-gray-300 rounded-lg p-4 mb-12 shadow-lg bg-white">
-              {currentDraftPost.blocks.length === 0 ? (
-                <p className="text-gray-400 italic">
-                  No content blocks added yet.
-                </p>
-              ) : (
-                currentDraftPost.blocks.map((block, i) => renderBlock(block, i))
-              )}
-            </div>
-
-            <div className="mb-6 grid grid-cols-2 gap-4 bg-white p-4 rounded-lg shadow-md">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={isFeatured}
-                  onChange={() => {
-                    const newValue = !isFeatured;
-                    setIsFeaturedLocal(newValue);
-                    console.log("[DEBUG] isFeatured set to:", newValue);
-                  }}
-                />
-                <span>Feature this post</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={isPinned}
-                  onChange={() => {
-                    const newValue = !isPinned;
-                    setIsPinnedLocal(newValue);
-                    console.log("[DEBUG] isPinned set to:", newValue);
-                  }}
-                />
-                <span>Pin this post</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={isPublished}
-                  onChange={() => {
-                    const newValue = !isPublished;
-                    setIsPublishedLocal(newValue);
-                    console.log("[DEBUG] isPublished set to:", newValue);
-                  }}
-                />
-                <span>Mark as Published</span>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-red-500">Language (required)</span>
-                <input
-                  type="text"
-                  value={language}
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    setLanguageLocal(newValue);
-                    console.log("[DEBUG] language set to:", newValue);
-                  }}
-                  placeholder="e.g., en"
-                  className="border rounded px-2 py-1 text-sm"
-                />
-              </label>
-              <label className="flex flex-col gap-1 col-span-2">
-                <span className="text-red-500">Status (required)</span>
-                <select
-                  value={status}
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    setStatusLocal(newValue);
-                    console.log("[DEBUG] status set to:", newValue);
-                  }}
-                  className="border rounded px-2 py-1 text-sm"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="review">Review</option>
-                  <option value="published">Published</option>
-                  <option value="archived">Archived</option>
-                </select>
-              </label>
-            </div>
-
-            <button
-              onClick={createPost}
-              className="bg-blue-600 text-white px-4 py-2 text-3xl my-6 w-full rounded mt-6"
-            >
-              Create Post
-            </button>
-          </>
-        )}
-
-        {allPosts.length === 0 ? (
-          <p className="text-center text-gray-500 mt-16">
-            No posts available yet.
-          </p>
-        ) : (
-          <div className="grid gap-6 mt-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {allPosts.map((post) => {
-              const firstBlock = post.blocks.find((b) =>
-                ["image", "text", "file", "heading"].includes(b.type)
-              );
-
-              return (
-                <motion.div
-                  key={post._id}
-                  layout
-                  initial={{ opacity: 0.2, y: 20 }}
-                  animate={{ opacity: 0.9, y: 0 }}
-                  exit={{ opacity: 0.5, y: -20 }}
-                  transition={{ duration: 0.5 }}
-                  className="relative bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-300 cursor-pointer overflow-hidden"
-                >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeletePost(post._id);
-                    }}
-                    className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition"
-                    aria-label="Delete post"
-                    title="Delete post"
-                  >
-                    🗑
-                  </button>
-                  <div
-                    onClick={() => dispatch(getSinglePost(post.slug))}
-                    className="cursor-pointer"
-                  >
-                    {firstBlock?.type === "image" ? (
-                      <img
-                        src={firstBlock.src}
-                        alt={firstBlock.caption || "Post Image"}
-                        className="w-full h-48 object-cover rounded-t-lg hover:scale-105 transition-transform duration-200"
-                        onError={(e) => (e.target.style.display = "none")}
-                        loading="lazy"
-                      />
-                    ) : firstBlock?.type === "text" ? (
-                      <div
-                        className="p-6 text-gray-700 line-clamp-3"
-                        dangerouslySetInnerHTML={{ __html: firstBlock.value }}
-                      />
-                    ) : (
-                      <div className="p-6 text-gray-500 italic">
-                        No preview available
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
+    <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 bg-background-light dark:bg-background-dark  rounded-xl shadow-md">
+      {currentDraftPost && (
+        <>
+          <h2 className="text-3xl sm:text-4xl font-bold text-center text-indigo-600 mb-6">Draft Preview</h2>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-text-main-light dark:text-text-main-dark mb-4 capitalize">
+            {currentDraftPost.title || 'Untitled Draft'}
+          </h1>
+          <p className="text-text-main-light dark:text-text-main-dark mb-4">Category: {categoryName || 'Uncategorized'}</p>
+          <div className="bg-gray-50 rounded-xl p-6 mb-8 border border-gray-100">
+            {currentDraftPost.blocks?.length === 0 ? (
+              <p className="text-gray-500 italic text-center">No content blocks added yet.</p>
+            ) : (
+              currentDraftPost.blocks.map((block, i) => renderBlock(block, i))
+            )}
           </div>
-        )}
 
-        <AnimatePresence>
-          {showConfirmModal && (
-            <ConfirmPostModal
-              onConfirm={handleModalConfirm}
-              onCancel={handleCancelPublish}
-            />
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {isPostConfirmed && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="fixed top-28 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 rounded shadow-lg px-6 py-4 flex items-center space-x-4 z-50"
-            >
-              <p>Publishing post in {countdown} seconds...</p>
-              <button
-                onClick={handleConfirmPublish}
-                className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-background-light dark:bg-background-dark  p-6 rounded-xl border border-gray-100 mb-8">
+            <label className="flex items-center gap-3  text-text-main-light dark:text-text-main-dark">
+              <input
+                type="checkbox"
+                checked={isFeatured}
+                onChange={() => setIsFeaturedLocal(!isFeatured)}
+                className="h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500"
+              />
+              Feature Post
+            </label>
+            <label className="flex items-center gap-3  text-text-main-light dark:text-text-main-dark">
+              <input
+                type="checkbox"
+                checked={isPinned}
+                onChange={() => setIsPinnedLocal(!isPinned)}
+                className="h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500"
+              />
+              Pin Post
+            </label>
+            <label className="flex items-center gap-3  text-text-main-light dark:text-text-main-dark">
+              <input
+                type="checkbox"
+                checked={isPublished}
+                onChange={() => setIsPublishedLocal(!isPublished)}
+                className="h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500"
+              />
+              Publish Post
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className=" text-text-main-light dark:text-text-main-dark font-medium">Language</span>
+              <input
+                type="text"
+                value={language}
+                onChange={(e) => setLanguageLocal(e.target.value)}
+                placeholder="e.g., en"
+                className="px-3 py-2 border border-gray-300  text-text-main-light dark:text-text-main-dark rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              />
+            </label>
+            <label className="flex flex-col gap-1 sm:col-span-2">
+              <span className=" text-text-main-light dark:text-text-main-dark font-medium">Status</span>
+              <select
+                value={status}
+                onChange={(e) => setStatusLocal(e.target.value)}
+                className="px-3 py-2 border border-gray-300 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
               >
-                Publish Now
-              </button>
-              <button
-                onClick={handleCancelPublish}
-                className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-              >
-                Cancel
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <option value="draft">Draft</option>
+                <option value="review">Review</option>
+                <option value="published">Published</option>
+                <option value="archived">Archived</option>
+              </select>
+            </label>
+          </div>
 
-        <AnimatePresence>
-          {isModalOpen && singlePost && (
-            <motion.div
-              ref={modalRef}
-              key="modal"
-              initial={{ opacity: 0, y: 100 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 100 }}
-              transition={{ duration: 0.3 }}
-              className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex justify-center items-start p-4 pt-20"
-              onClick={closeModal}
-              aria-modal="true"
-              role="dialog"
-            >
+          <button
+            onClick={createPost}
+            disabled={createLoading}
+            className={`w-full flex items-center justify-center text-lg font-semibold py-3 rounded-lg shadow-sm transition duration-300 ${
+              createLoading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
+            } text-white`}
+          >
+            {createLoading ? (
+              <>
+                Creating...
+              </>
+            ) : (
+              'Create Post'
+            )}
+          </button>
+          {createError && <p className="mt-2 text-red-500 text-sm text-center">{createError}</p>}
+        </>
+      )}
+
+      {allPosts.length === 0 ? (
+        <p className="text-center  text-text-main-light dark:text-text-main-dark mt-8">No posts available yet.</p>
+      ) : (
+        <div className="grid gap-6 mt-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {allPosts.map((post) => {
+            const firstBlock = post.blocks.find((b) => ['image', 'text', 'file', 'heading'].includes(b.type));
+            return (
               <motion.div
+                key={post._id}
                 layout
-                onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-lg max-w-4xl w-full p-6 shadow-lg max-h-[80vh] overflow-y-auto"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="relative bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300"
               >
-                <PostView post={singlePost} />
-                <button
-                  onClick={closeModal}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                >
-                  Close
-                </button>
+             
+                <div onClick={() => dispatch(getSinglePost(post.slug))} className="cursor-pointer">
+                  {firstBlock?.type === 'image' ? (
+                    <img
+                      src={firstBlock.src}
+                      alt={firstBlock.caption || 'Post Image'}
+                      className="w-full h-40 object-cover rounded-t-xl hover:scale-105 transition-transform duration-300"
+                      onError={(e) => (e.target.style.display = 'none')}
+                      loading="lazy"
+                    />
+                  ) : firstBlock?.type === 'text' ? (
+                    <div className="p-4  text-text-main-light dark:text-text-main-dark line-clamp-3 text-sm" dangerouslySetInnerHTML={{ __html: firstBlock.value }} />
+                  ) : (
+                    <div className="p-4  text-text-main-light dark:text-text-main-dark italic text-sm">No preview available</div>
+                  )}
+                </div>
               </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      <AnimatePresence>
+        {showConfirmModal && (
+          <ConfirmPostModal onConfirm={handleModalConfirm} onCancel={handleCancelPublish} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isPostConfirmed && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 bg-background-light dark:bg-background-dark  rounded-xl shadow-lg p-4 flex items-center gap-4 z-50 border border-gray-100"
+          >
+            <p className=" text-text-main-light dark:text-text-main-dark">Publishing in {countdown}s...</p>
+            <button
+              onClick={handleConfirmPublish}
+              className="bg-green-600  text-text-main-light dark:text-text-main-dark px-3 py-1 rounded-lg hover:bg-green-700 text-sm"
+            >
+              Publish Now
+            </button>
+            <button
+              onClick={handleCancelPublish}
+              className="bg-red-600  text-text-main-light dark:text-text-main-dark px-3 py-1 rounded-lg hover:bg-red-700 text-sm"
+            >
+              Cancel
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isModalOpen && singlePost && (
+          <motion.div
+            ref={modalRef}
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed inset-0 z-50 bg-background-light dark:bg-background-dark  bg-opacity-60 flex items-center justify-center p-4"
+            onClick={closeModal}
+            aria-modal="true"
+            role="dialog"
+          >
+            <motion.div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-background-light dark:bg-background-dark rounded-xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-lg"
+            >
+              <PostView post={singlePost} />
+              <button
+                onClick={closeModal}
+                className="mt-4 w-full bg-indigo-600  text-text-main-light dark:text-text-main-dark py-2 rounded-lg hover:bg-indigo-700 transition text-sm"
+              >
+                Close
+              </button>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
 

@@ -10,9 +10,7 @@ export const protectedRoute = async (req, res, next) => {
 
     if (authHeader && authHeader.startsWith("Bearer ")) {
       token = authHeader.split(" ")[1];
-    }
-
-    if (!token) {
+    } else {
       token = req.cookies?.jwt;
     }
 
@@ -21,11 +19,15 @@ export const protectedRoute = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    if (!decoded) {
-      return next(new AppError("Unauthorized - Token verification failed", 401, "ProtectedRoute Middleware"));
+    // console.log("[ProtectedRoute] Token decoded:", { userId: decoded.userId, role: decoded.role });
+
+    if (!decoded || !decoded.userId) {
+      return next(new AppError("Unauthorized - Invalid token: missing userId", 401, "ProtectedRoute Middleware"));
     }
 
-    const user = await UserModel.findById(decoded.userId).select("-password");
+    const user = await UserModel.findById(decoded.userId)
+      .select("-password")
+      .maxTimeMS(15000);
     if (!user) {
       return next(new AppError("User not found", 404, "ProtectedRoute Middleware"));
     }
@@ -33,7 +35,7 @@ export const protectedRoute = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    console.error("Error in Protected Route Middleware:", error.message);
+    console.error("[ProtectedRoute] Error:", error.message, { token: token?.slice(0, 10) + "..." });
     if (!(error instanceof AppError)) {
       return next(new AppError(error.message || "Internal Server Error", 500, "ProtectedRoute Middleware"));
     }

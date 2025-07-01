@@ -1,11 +1,33 @@
-import mongoose from "mongoose";
-import slugify from "slugify";
+import mongoose from 'mongoose';
+import slugify from 'slugify';
 
-// Block Schema — used in post.blocks
 const blockSchema = new mongoose.Schema(
   {
     id: { type: String, required: true },
-    type: { type: String, required: true },
+    type: {
+      type: String,
+      required: true,
+      enum: [
+        "text",
+        "image",
+        "code",
+        "video",
+        "quote",
+        "list",
+        "heading",
+        "table",
+        "link",
+        "hr",
+        "file",
+        "poll",
+      ],
+    },
+    status: {
+      type: String,
+      enum: ["draft", "review", "published", "archived"],
+      default: "draft",
+      required: true,
+    },
     value: String,
     level: Number,
     text: String,
@@ -18,8 +40,6 @@ const blockSchema = new mongoose.Schema(
     size: Number,
     ordered: Boolean,
     author: String,
-
-    // Poll-specific fields
     question: String,
     options: [
       {
@@ -27,35 +47,52 @@ const blockSchema = new mongoose.Schema(
         votes: { type: Number, default: 0 },
       },
     ],
-    votedUserIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", default: [] }],
-
-    // Other structured data support
+    votedUserIds: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        votedAt: { type: Date, default: Date.now },
+      },
+    ],
     items: { type: [String], default: [] },
     data: { type: [[String]], default: [] },
   },
   { _id: false }
 );
 
-// Post Schema
 const postSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
     author: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    isSubscriberOnly: { type: Boolean, default: false }, // 👈 NEW FIELD
+    isSubscriberOnly: { type: Boolean, default: false },
     category: { type: String, required: true },
     tags: { type: [String], default: [] },
     thumbnail: String,
     excerpt: String,
-
+    timeSpent: { type: Number, default: 0 },
     blocks: {
       type: [blockSchema],
       validate: {
-        validator: (v) => Array.isArray(v) && v.length > 0,
-        message: "Blocks must be a non-empty array",
+        validator: function (v) {
+          if (!Array.isArray(v)) {
+            console.error("[DEBUG] Blocks is not an array:", v);
+            return false;
+          }
+          if (this.status !== "draft" && v.length === 0) {
+            console.error("[DEBUG] Non-draft post has no blocks");
+            return false;
+          }
+          return v.every((block, index) => {
+            if (!block || typeof block !== "object" || !block.type || !block.status) {
+              console.error(`[DEBUG] Invalid block at index ${index}:`, block);
+              return false;
+            }
+            return true;
+          });
+        },
+        message: "Blocks must be a valid non-empty array with type and status for non-draft posts",
       },
     },
-
     isPublished: { type: Boolean, default: false },
     blocked: { type: Boolean, default: false },
     status: {
@@ -65,14 +102,11 @@ const postSchema = new mongoose.Schema(
     },
     isFeatured: { type: Boolean, default: false },
     isPinned: { type: Boolean, default: false },
-
     readingTime: Number,
     language: { type: String, default: "en" },
     metaTitle: String,
     metaDescription: String,
     metaKeywords: { type: [String], default: [] },
-
-    reactions: { type: Map, of: Number, default: () => ({}) },
     views: { type: Number, default: 0 },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     bookmarksCount: { type: Number, default: 0 },
@@ -84,16 +118,26 @@ const postSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Indexes for optimized search
+// Indexes
 postSchema.index({ author: 1 });
 postSchema.index({ category: 1 });
+postSchema.index({ views: -1 });
+postSchema.index({ isPublished: 1, category: 1 });
 postSchema.index({ title: "text", excerpt: "text", tags: "text" });
 
-// Slug generation
-postSchema.pre("save", function (next) {
+postSchema.pre("save", async function (next) {
   if (this.isModified("title") || !this.slug) {
-    this.slug = slugify(this.title, { lower: true, strict: true });
+    let baseSlug = slugify(this.title, { lower: true, strict: true }).slice(0, 100);
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await mongoose.models.Post.findOne({ slug })) {
+      slug = `${baseSlug}-${counter++}`;
+    }
+
+    this.slug = slug;
   }
+
   next();
 });
 

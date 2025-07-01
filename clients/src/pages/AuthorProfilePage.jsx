@@ -1,47 +1,115 @@
-import React, { useState, useEffect } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  lazy,
+  Suspense,
+} from "react";
+import { FaAngleDoubleLeft, FaSpinner } from "react-icons/fa";
 import {
-  LayoutDashboard,
-  FileText,
-  User,
-  BarChart,
-  ThumbsUp,
-  History,
-  DollarSign,
-  Users,
-  Award,
-  PenLine,
-  Activity,
-} from "lucide-react";
-import { Button } from "../Utils/Button";
-
+  useParams,
+  useSearchParams,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { getUser, getUserById } from "../store/userSlice";
-import AboutAuthor from "../components/Author/AboutAuthor";
+import { Button } from "../Utils/Button";
+import {
+  getAllUsers,
+  getUser,
+  getUserById,
+  clearUserActivity,
+} from "../store/userSlice";
 import { getAllPosts } from "../store/postSlice";
-import AllPosts from "../components/Author/post/AllPosts";
-import PinnedPost from "../components/Author/post/PinnedPost";
-import { useParams } from "react-router-dom";
-import AuthorPolls from "../components/Author/polls/AuthorPolls";
-import AuthorActivityHistory from "../components/Author/History/AuthorActivityHistory";
-import AuthorPostHistory from "../components/Author/History/AuthorPostHistory";
-import FollowersFollowing from "../components/Author/followAndFollowing/FollowersFollowing";
+import { fetchMySubscriptionPlans } from "../store/subscriptionSlice";
+import { tabsConfig } from "../config/tabsConfig";
+import { debounce } from "lodash";
 
-// Placeholder components
-const AchievementsBadges = () => <div>Achievements & Badges Content</div>;
-const AuthorDraftWorkspace = () => <div>Draft Workspace Content</div>;
-const AuthorAnalytics = ({ analytics }) => <div>Analytics Content</div>;
+// Lazy-loaded components
+const AboutAuthor = lazy(() => import("../components/Author/AboutAuthor"));
+const AllPosts = lazy(() => import("../components/Author/post/AllPosts"));
+const PinnedPost = lazy(() => import("../components/Author/post/PinnedPost"));
+const AuthorPolls = lazy(() =>
+  import("../components/Author/polls/AuthorPolls")
+);
+const AuthorActivityHistory = lazy(() =>
+  import("../components/Author/History/AuthorActivityHistory")
+);
+const AuthorPostHistory = lazy(() =>
+  import("../components/Author/History/AuthorPostHistory")
+);
+const FollowersFollowing = lazy(() =>
+  import("../components/Author/followAndFollowing/FollowersFollowing")
+);
+const AuthorDashboard = lazy(() =>
+  import("../components/Author/Subscribe/subscription/AuthorDashboard")
+);
+const CategoryManagement = lazy(() =>
+  import("../components/Author/CategoryManagement/CategoryManagement")
+);
+const UserEarnings = lazy(() =>
+  import("../components/Author/earning/UserEarnings")
+);
+const UserAnalyticsDashboard = lazy(() =>
+  import("../components/Author/analytics/UserAnalyticsDashboard")
+);
+const BlockControl = lazy(() =>
+  import("../components/Author/blocks/BlockControl")
+);
+const AchievementsComponent = lazy(() =>
+  import("../components/Author/achivement/AchievementsComponent")
+);
+const CommentManager = lazy(() =>
+  import("../components/Author/comment/CommentManager")
+);
 
-function AuthorProfilePage() {
+class ErrorBoundary extends React.Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    console.error("ErrorBoundary caught:", error);
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 text-center text-red-600">
+          <h2>Something went wrong!</h2>
+          <p>{this.state.error?.message || "An unexpected error occurred."}</p>
+          <Button
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const AuthorProfilePage = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(
+    searchParams.get("tab") || "pinned"
+  );
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 640);
+  const [clearing, setClearing] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("pinned");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  // Redux selectors
   const loggedInUser = useSelector((state) => state.auth.user);
   const userLoading = useSelector((state) => state.user.loading);
   const userError = useSelector((state) => state.user.error);
+  const allUsers = useSelector((state) => state.user.users);
   const selectedUser = useSelector((state) => state.user.selectedUser);
   const selectedUserLoading = useSelector(
     (state) => state.user.selectedUserLoading
@@ -52,57 +120,107 @@ function AuthorProfilePage() {
   const posts = useSelector((state) => state.post.posts);
   const postLoading = useSelector((state) => state.post.loading);
   const postError = useSelector((state) => state.post.error);
-  const isAuthor = useSelector((state) => state.user.isAuthor);
-  const analytics = useSelector((state) => state.analytics);
+  const {
+    plans,
+    loading: subscriptionLoading,
+    error: subscriptionError,
+  } = useSelector((state) => state.subscription);
 
-  console.log("author user", selectedUser);
+  const isOwnProfile = loggedInUser?._id === id;
 
+  // Determine user role
+  const userRole = useMemo(() => {
+    if (!loggedInUser) return "non-logged-in";
+    return isOwnProfile ? "author" : "logged-in";
+  }, [loggedInUser, isOwnProfile]);
+
+  // Filter tabs based on user role
+  const filteredTabs = useMemo(
+    () => tabsConfig.filter((tab) => tab.roles.includes(userRole)),
+    [userRole]
+  );
+
+  // Scroll to URL fragment
   useEffect(() => {
-    // Consider fetching logged-in user once at app init to avoid repetition
-    dispatch(getUser());
-  }, [dispatch]);
-
-  useEffect(() => {
-    dispatch(getAllPosts());
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (id) {
-      dispatch(getUserById(id));
+    const fragment = location.hash;
+    if (fragment) {
+      const element = document.getElementById(fragment.replace("#", ""));
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+        element.classList.add("highlight");
+        setTimeout(() => element.classList.remove("highlight"), 2000);
+      }
     }
-  }, [dispatch, id]);
+  }, [location]);
 
-  // Responsive sidebar toggle for small screens
+  // Fetch data
   useEffect(() => {
-    if (window.innerWidth < 640) setIsSidebarOpen(false);
+    dispatch(getUser());
+    dispatch(getAllPosts());
+    if (id) dispatch(getUserById(id));
+    if (isOwnProfile) {
+      dispatch(getAllUsers());
+      dispatch(fetchMySubscriptionPlans());
+    }
+  }, [dispatch, id, isOwnProfile]);
+
+  // Responsive sidebar
+  useEffect(() => {
+    const handleResize = debounce(() => {
+      setIsSidebarOpen(window.innerWidth > 640);
+    }, 100);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const tabs = [
-    { id: "pinned", label: "Pinned Post", icon: <LayoutDashboard /> },
-    { id: "posts", label: "All Posts", icon: <FileText /> },
-    { id: "about", label: "About Author", icon: <User /> },
-    { id: "polls", label: "Polls", icon: <ThumbsUp /> },
-    { id: "activity", label: "Activity", icon: <Activity /> },
-    { id: "postHistory", label: "Post History", icon: <History /> },
-    { id: "subscription", label: "Subscription", icon: <DollarSign /> },
-    { id: "followers", label: "Followers & Following", icon: <Users /> },
-    { id: "achievements", label: "Achievements", icon: <Award /> },
-    ...(isAuthor
-      ? [
-          { id: "drafts", label: "Drafts", icon: <PenLine /> },
-          { id: "analytics", label: "Analytics", icon: <BarChart /> },
-        ]
-      : []),
-  ];
+  // Handlers
+  const handleTabChange = useCallback(
+    (tabId) => {
+      setActiveTab(tabId);
+      navigate(`${location.pathname}?tab=${tabId}${location.hash || ""}`);
+    },
+    [navigate, location]
+  );
 
-  const renderContent = () => {
+  const handleClearHistory = useCallback(async () => {
+    if (window.confirm("Clear all activity history? This cannot be undone.")) {
+      setClearing(true);
+      try {
+        await dispatch(clearUserActivity()).unwrap();
+        if (activeTab === "activity" && id) dispatch(getUserById(id));
+      } catch (error) {
+        console.error("Clear history failed:", error);
+      } finally {
+        setClearing(false);
+      }
+    }
+  }, [dispatch, id, activeTab]);
+
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarOpen((prev) => !prev);
+  }, []);
+
+  // Render content based on active tab
+  const renderContent = useMemo(() => {
+    if (!selectedUser?._id) {
+      return (
+        <p className="text-center text-gray-600 dark:text-gray-400">
+          Loading user...
+        </p>
+      );
+    }
+
+    const readOnly = !isOwnProfile; // Non-authors have view-only access
+
     switch (activeTab) {
       case "pinned":
         return (
           <PinnedPost
             posts={posts}
-            userId={selectedUser?._id}
+            userId={selectedUser._id}
             loggedInUserId={loggedInUser?._id}
+            readOnly={readOnly}
+            author={selectedUser}
           />
         );
       case "posts":
@@ -111,173 +229,264 @@ function AuthorProfilePage() {
             posts={posts}
             loading={postLoading}
             error={postError}
-            userId={selectedUser?._id}
-            userOnly={true}
+            userId={selectedUser._id}
+            userOnly={isOwnProfile}
+            readOnly={readOnly}
           />
         );
       case "about":
-        return <AboutAuthor author={selectedUser} />;
+        return <AboutAuthor author={selectedUser} readOnly={readOnly} />;
+      case "achievements":
+        return (
+          <AchievementsComponent
+            userId={selectedUser._id}
+            readOnly={readOnly}
+            author={selectedUser}
+          />
+        );
       case "polls":
         return (
           <AuthorPolls
             posts={posts}
-            authorId={selectedUser?._id}
+            authorId={selectedUser._id}
             currentUserId={loggedInUser?._id}
+            readOnly={readOnly}
           />
         );
       case "activity":
-        return <AuthorActivityHistory userId={selectedUser?._id} />;
+        return (
+          <AuthorActivityHistory
+            userId={selectedUser._id}
+            readOnly={readOnly}
+          />
+        );
       case "postHistory":
-        return <AuthorPostHistory userId={selectedUser?._id} />;
+        return (
+          <AuthorPostHistory userId={selectedUser._id} readOnly={readOnly} />
+        );
       case "subscription":
-        return ;
+        return (
+          <div id="bank-details">
+            <AuthorDashboard
+              userId={selectedUser._id}
+              plans={plans}
+              subscriptionLoading={subscriptionLoading}
+              subscriptionError={subscriptionError}
+            />
+          </div>
+        );
       case "followers":
-        return <FollowersFollowing />;
-      case "achievements":
-        return <AchievementsBadges />;
-      case "drafts":
-        return isAuthor ? (
-          <AuthorDraftWorkspace />
+        return <FollowersFollowing readOnly={readOnly} />;
+      case "BlocksUser":
+        return allUsers && Array.isArray(allUsers) ? (
+          <BlockControl
+            allUsers={allUsers}
+            refetchUsers={() => dispatch(getAllUsers())}
+          />
         ) : (
-          <p className="text-center text-gray-500">
-            Yeh section sirf author ke liye hai! 🔒
+          <p className="text-center text-gray-600 dark:text-gray-400">
+            {userError ? `Error: ${userError}` : "Loading users..."}
           </p>
         );
+      case "earnings":
       case "analytics":
-        return isAuthor ? (
-          <AuthorAnalytics analytics={analytics} />
-        ) : (
-          <p className="text-center text-gray-500">
-            Yeh section sirf author ke liye hai! 🔒
-          </p>
+      case "categories":
+      case "comments":
+        if (!isOwnProfile) {
+          return (
+            <p className="text-center text-gray-600 dark:text-gray-400">
+              This section is only for authors! 🔒
+            </p>
+          );
+        }
+        return (
+          <>
+            {activeTab === "earnings" && (
+              <UserEarnings userId={selectedUser._id} />
+            )}
+            {activeTab === "analytics" && (
+              <UserAnalyticsDashboard posts={posts} />
+            )}
+            {activeTab === "categories" && <CategoryManagement />}
+            {activeTab === "comments" && (
+              <CommentManager userId={selectedUser._id} />
+            )}
+          </>
+        );
+      case "clearHistory":
+        return (
+          <div className="text-center p-6">
+            <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">
+              Clear all your activity history? This action cannot be undone.
+            </p>
+            <Button
+              onClick={handleClearHistory}
+              disabled={clearing}
+              className={`px-6 py-2 rounded-lg ${
+                clearing ? "bg-red-400" : "bg-red-600 hover:bg-red-700"
+              } text-white`}
+            >
+              {clearing ? "Clearing..." : "Clear All History"}
+            </Button>
+          </div>
         );
       default:
-        return <PinnedPost />;
+        console.warn("Invalid tab:", activeTab);
+        return (
+          <p className="text-center text-gray-600 dark:text-gray-400">
+            Invalid tab selected
+          </p>
+        );
     }
-  };
+  }, [
+    activeTab,
+    selectedUser,
+    loggedInUser,
+    posts,
+    postLoading,
+    postError,
+    plans,
+    subscriptionLoading,
+    subscriptionError,
+    allUsers,
+    userError,
+    isOwnProfile,
+    handleClearHistory,
+    clearing,
+  ]);
 
-  if (userLoading || selectedUserLoading)
-    return <p className="text-center mt-20">Loading user data...</p>;
-
-  if (userError || selectedUserError)
+  // Loading and Error States
+  if (userLoading || selectedUserLoading || !selectedUser) {
     return (
-      <p className="text-center mt-20 text-red-600">
-        Error: {userError || selectedUserError}
-      </p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <FaSpinner className="w-12 h-12 text-indigo-600 animate-spin" />
+        <p className="text-lg font-semibold text-gray-600 dark:text-gray-400">
+          Loading...
+        </p>
+      </div>
     );
+  }
 
-  if (!selectedUser)
-    return <p className="text-center mt-20">No user data available.</p>;
+  if (userError || selectedUserError) {
+    return (
+      <div className="text-center mt-20">
+        <p className="text-red-600 mb-4">{userError || selectedUserError}</p>
+        <Button
+          onClick={() => {
+            dispatch(getAllUsers());
+            if (id) dispatch(getUserById(id));
+          }}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside
-        className={`hidden sm:flex fixed top-29 left-0 z-30 h-full flex-col items-center bg-white border-r border-gray-300 shadow-md transition-all duration-300 ${
-          isSidebarOpen ? "w-64 p-4" : "w-20 p-4"
-        }`}
-      >
-        <div className="w-full flex justify-between items-center mb-6">
-          {isSidebarOpen && (
-            <h2 className="text-lg font-bold text-gray-900">Author</h2>
-          )}
+    <ErrorBoundary>
+      <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+        {/* Desktop Sidebar Toggle */}
+        <div className="hidden sm:flex fixed top-16 left-4 z-30">
           <Button
             variant="ghost"
             size="icon"
-            className="text-3xl text-gray-700"
-            onClick={() => setIsSidebarOpen((prev) => !prev)}
+            className="text-2xl rounded-lg p-2 hover:bg-gray-200 dark:hover:bg-gray-700"
+            onClick={toggleSidebar}
             aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
           >
-            {isSidebarOpen ? "←" : "→"}
+            {isSidebarOpen ? <FaAngleDoubleLeft /> : "☰"}
           </Button>
         </div>
-        <nav
-          className="space-y-2 w-full"
-          role="tablist"
-          aria-orientation="vertical"
+
+        {/* Desktop Sidebar */}
+        <aside
+          className={`hidden sm:flex fixed top-28 left-0 z-30 bg-gray-100 dark:bg-gray-900 border-r border-gray-300 dark:border-gray-700 shadow-md transition-all duration-300 overflow-y-auto ${
+            isSidebarOpen ? "w-60 p-4" : "w-16 p-2"
+          }`}
+          style={{ height: "calc(100vh - 4rem)" }}
         >
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              title={tab.label}
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-all text-sm font-medium ${
-                activeTab === tab.id
-                  ? "bg-blue-600 text-white shadow"
-                  : "text-gray-700 hover:bg-gray-200 hover:text-gray-900"
-              }`}
-            >
-              <span className="text-lg">{tab.icon}</span>
-              <span
-                className={`${
-                  isSidebarOpen ? "inline" : "hidden"
-                } transition-all duration-300`}
+          <nav className="space-y-2 w-full flex-1 py-4" role="tablist">
+            {filteredTabs.map((tab) => (
+              <button
+                key={tab.id}
+                title={tab.label}
+                onClick={() => handleTabChange(tab.id)}
+                className={`flex items-center gap-2 w-full px-2 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-blue-600 text-white shadow"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
+                }`}
+                aria-selected={activeTab === tab.id}
               >
-                {tab.label}
-              </span>
-            </button>
-          ))}
-        </nav>
-      </aside>
+                <span className="text-lg">{tab.icon}</span>
+                <span className={isSidebarOpen ? "inline" : "hidden"}>
+                  {tab.label}
+                </span>
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-      {/* Mobile Toggle */}
-      <Button
-        className="sm:hidden fixed bottom-6 right-4 z-50 w-12 h-12 rounded-full shadow-lg bg-white text-gray-700"
-        onClick={() => setIsSidebarOpen((prev) => !prev)}
-        aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
-      >
-        {isSidebarOpen ? "✖" : "☰"}
-      </Button>
-
-      {/* Mobile Sidebar */}
-      {isSidebarOpen && (
-        <div
-          className="sm:hidden fixed inset-0 z-40 bg-black/10 backdrop-blur-sm"
-          onClick={() => setIsSidebarOpen(false)}
-          role="dialog"
-          aria-modal="true"
+        {/* Mobile Sidebar Toggle */}
+        <Button
+          className="sm:hidden fixed top-16 right-4 z-50 w-12 h-12 rounded-full shadow-lg bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700"
+          onClick={toggleSidebar}
+          aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
         >
-          <div
-            className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-white p-4 border-t border-gray-300 max-h-[75%] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <nav className="space-y-2">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`flex items-center gap-3 w-full px-4 py-2 rounded-lg text-left text-sm font-medium ${
-                    activeTab === tab.id
-                      ? "bg-blue-600 text-white shadow"
-                      : "text-gray-700 hover:bg-gray-200 hover:text-gray-900"
-                  }`}
-                  role="tab"
-                  aria-selected={activeTab === tab.id}
-                >
-                  <span className="text-xl">{tab.icon}</span>
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </nav>
-          </div>
-        </div>
-      )}
+          {isSidebarOpen ? "✖" : "☰"}
+        </Button>
 
-      {/* Main Content */}
-      <main
-        className={`flex-1 text-gray-900 transition-all duration-300 p-6 sm:p-8 ${
-          isSidebarOpen && window.innerWidth >= 640 ? "sm:ml-64" : "sm:ml-20"
-        }`}
-      >
-        <div className="max-w-7xl mx-auto">{renderContent()}</div>
-      </main>
-    </div>
+        {/* Mobile Sidebar */}
+        {isSidebarOpen && (
+          <div
+            className="sm:hidden fixed inset-0 z-40 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm"
+            onClick={toggleSidebar}
+          >
+            <div
+              className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-gray-100 dark:bg-gray-900 p-4 border-t border-gray-300 dark:border-gray-700 shadow-lg max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <nav className="space-y-2">
+                {filteredTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      handleTabChange(tab.id);
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`flex items-center gap-3 w-full px-4 py-2 rounded-lg text-left text-sm font-medium ${
+                      activeTab === tab.id
+                        ? "bg-blue-600 text-white shadow"
+                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
+                    }`}
+                    aria-selected={activeTab === tab.id}
+                  >
+                    <span className="text-xl">{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <main
+          className={`flex-1 p-4 md:p-6 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-all duration-300 ${
+            isSidebarOpen && window.innerWidth >= 640 ? "sm:ml-64" : "sm:ml-16"
+          }`}
+        >
+          <div className="max-w-7xl mx-auto">
+            <Suspense fallback={<div className="text-center">Loading...</div>}>
+              {renderContent}
+            </Suspense>
+          </div>
+        </main>
+      </div>
+    </ErrorBoundary>
   );
-}
+};
 
 export default AuthorProfilePage;

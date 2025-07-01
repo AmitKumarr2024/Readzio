@@ -9,17 +9,17 @@ const HrBlock = ({ block, onChange, onDelete }) => {
 
   return (
     <div className="my-6 text-center">
-      <hr className="border-t-2 border-gray-400 w-3/4 mx-auto" />
+      <hr className="border-t-2 border-gray-300 w-3/4 mx-auto" />
       <input
         type="text"
         value={caption}
         onChange={(e) => setCaption(e.target.value)}
-        placeholder="Add caption (optional)"
-        className="mt-2 text-sm text-gray-600 bg-transparent border-none outline-none w-full text-center"
+        placeholder="Caption (optional)"
+        className="mt-2 text-sm text-gray-500 bg-transparent border-none focus:outline-none w-full text-center"
       />
       <button
-        onClick={() => onDelete()}  // <-- Changed here: no argument passed
-        className="text-red-500 text-xs mt-1"
+        onClick={onDelete}
+        className="text-red-500 hover:text-red-700 text-xs mt-1 transition"
       >
         Delete
       </button>

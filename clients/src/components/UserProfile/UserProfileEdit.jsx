@@ -5,7 +5,6 @@ import { updateUser } from "../../store/userSlice";
 
 export default function UserProfileEdit({ user, isAdmin = false, onClose, onUpdateSuccess }) {
   const dispatch = useDispatch();
-
   const updateLoading = useSelector((state) => state.user.updateLoading);
   const updateSuccess = useSelector((state) => state.user.updateSuccess);
   const updateError = useSelector((state) => state.user.updateError);
@@ -41,18 +40,22 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose, onUpda
   }, [user]);
 
   useEffect(() => {
-  console.log("updateLoading:", updateLoading, "updateSuccess:", updateSuccess);
-  if (!updateLoading && updateSuccess) {
-    if (onUpdateSuccess) onUpdateSuccess();
-    if (onUpdateSuccess) onUpdateSuccess();
-    if (onClose) onClose();
-    
-  }
-}, [updateLoading, updateSuccess, onUpdateSuccess, onClose]);
-
+    if (!updateLoading && updateSuccess) {
+      toast.success("Profile updated successfully!");
+      if (onUpdateSuccess) onUpdateSuccess();
+      if (onClose) onClose();
+    }
+    if (updateError) {
+      toast.error(`Error: ${updateError}`);
+    }
+  }, [updateLoading, updateSuccess, updateError, onUpdateSuccess, onClose]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === "bio" && value.length > 200) {
+      toast.error("Bio cannot exceed 200 characters");
+      return;
+    }
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -67,235 +70,168 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose, onUpda
     }));
   };
 
-  const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async () => {
+    if (!form.name || !form.email) {
+      toast.error("Name and Email are required");
+      return;
+    }
 
-  const formData = new FormData();
-  formData.append("name", form.name);
-  formData.append("email", form.email);
-  formData.append("gender", form.gender);
-  formData.append("location", form.location);
-  formData.append("profession", form.profession);
-  formData.append("bio", form.bio);
+    const formData = new FormData();
+    formData.append("name", form.name);
+    formData.append("email", form.email);
+    formData.append("gender", form.gender);
+    formData.append("location", form.location);
+    formData.append("profession", form.profession);
+    formData.append("bio", form.bio);
 
-  if (isAdmin) {
-    formData.append("blocked", form.blocked);
-  }
+    if (isAdmin) {
+      formData.append("blocked", form.blocked);
+    }
 
-  if (form.avatarFile) {
-    formData.append("avatar", form.avatarFile);
-  }
+    if (form.avatarFile) {
+      formData.append("avatar", form.avatarFile);
+    }
 
-  if (form.bannerFile) {
-    formData.append("banner", form.bannerFile);
-  } else if (form.banner) {
-    formData.append("banner", form.banner);
-  }
+    if (form.bannerFile) {
+      formData.append("banner", form.bannerFile);
+    } else if (form.banner) {
+      formData.append("banner", form.banner);
+    }
 
-  try {
-    // wait for the update to finish
-    await dispatch(updateUser(formData)).unwrap();
-
-    // call success callback to reload page
-    if (onUpdateSuccess) onUpdateSuccess();
-
-    // close modal after success
-    if (onClose) onClose();
-  } catch (error) {
-    // you can handle error here or show toast inside the catch if you want
-    console.error("Update failed:", error);
-  }
-};
-
+    try {
+      await dispatch(updateUser(formData)).unwrap();
+    } catch (error) {
+      console.error("Update failed:", error);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="relative flex flex-col min-w-0 break-words w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-lg shadow-lg bg-white border-0">
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-pink-500 hover:text-pink-600 text-5xl font-bold"
-          aria-label="Close Modal"
-          disabled={updateLoading}
-        >
-          &times;
-        </button>
+    <div className="min-h-screen bg-white p-6 sm:p-8 max-w-3xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Edit Profile</h1>
+        <p className="text-gray-600">Update your profile details below</p>
+      </div>
 
-        <div className="rounded-t bg-white mb-0 px-6 py-6">
-          <div className="text-center flex justify-between">
-            <h6 className="text-blueGray-700 text-4xl font-bold">Edit User </h6>
-            
-          </div>
+      {updateError && (
+        <div className="mb-4 text-red-600 bg-red-50 p-3 rounded-lg text-sm">
+          Error: {updateError}
+        </div>
+      )}
+
+      <div className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium mb-1">Name *</label>
+          <input
+            name="name"
+            value={form.name}
+            onChange={handleChange}
+            disabled={updateLoading}
+            className="w-full p-3 rounded-lg bg-[#f0f2f5] focus:outline-none"
+            required
+          />
         </div>
 
-        <div className="flex-auto px-4 lg:px-10 py-10 pt-0">
-          {updateError && (
-            <div className="mb-4 text-red-600 font-semibold">
-              Error updating profile: {updateError}
-            </div>
-          )}
+        <div>
+          <label className="block text-sm font-medium mb-1">Email *</label>
+          <input
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={handleChange}
+            disabled={updateLoading}
+            className="w-full p-3 rounded-lg bg-[#f0f2f5] focus:outline-none"
+            required
+          />
+        </div>
 
-          <form onSubmit={handleSubmit} encType="multipart/form-data">
-            {/* Name */}
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-2" htmlFor="name">
-                Name
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                value={form.name}
-                onChange={handleChange}
-                disabled={updateLoading}
-                className="w-full px-3 py-2 border rounded"
-                required
-              />
-            </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Gender</label>
+          <select
+            name="gender"
+            value={form.gender}
+            onChange={handleChange}
+            className="w-full p-3 rounded-lg bg-[#f0f2f5] focus:outline-none"
+          >
+            <option>Male</option>
+            <option>Female</option>
+            <option>Other</option>
+          </select>
+        </div>
 
-            {/* Email */}
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-2" htmlFor="email">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={handleChange}
-                disabled={updateLoading}
-                className="w-full px-3 py-2 border rounded"
-                required
-              />
-            </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Location</label>
+          <input
+            name="location"
+            value={form.location}
+            onChange={handleChange}
+            className="w-full p-3 rounded-lg bg-[#f0f2f5] focus:outline-none"
+          />
+        </div>
 
-            {/* Gender */}
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-2" htmlFor="gender">
-                Gender
-              </label>
-              <select
-                id="gender"
-                name="gender"
-                value={form.gender}
-                onChange={handleChange}
-                disabled={updateLoading}
-                className="w-full px-3 py-2 border rounded"
-              >
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Profession</label>
+          <input
+            name="profession"
+            value={form.profession}
+            onChange={handleChange}
+            className="w-full p-3 rounded-lg bg-[#f0f2f5] focus:outline-none"
+          />
+        </div>
 
-            {/* Location */}
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-2" htmlFor="location">
-                Location
-              </label>
-              <input
-                id="location"
-                name="location"
-                type="text"
-                value={form.location}
-                onChange={handleChange}
-                disabled={updateLoading}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Bio (max 200 chars)</label>
+          <textarea
+            name="bio"
+            value={form.bio}
+            onChange={handleChange}
+            rows={4}
+            className="w-full p-3 rounded-lg bg-[#f0f2f5] focus:outline-none"
+          />
+          <p className="text-sm text-gray-500 mt-1">{form.bio.length}/200</p>
+        </div>
 
-            {/* Profession */}
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-2" htmlFor="profession">
-                Profession
-              </label>
-              <input
-                id="profession"
-                name="profession"
-                type="text"
-                value={form.profession}
-                onChange={handleChange}
-                disabled={updateLoading}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Avatar Image</label>
+          <input
+            type="file"
+            name="avatarFile"
+            accept="image/*"
+            onChange={handleFile}
+            className="w-full file:bg-blue-50 file:text-blue-600 file:px-4 file:py-2 file:rounded-lg"
+          />
+        </div>
 
-            {/* Bio */}
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-2" htmlFor="bio">
-                Bio
-              </label>
-              <textarea
-                id="bio"
-                name="bio"
-                value={form.bio}
-                onChange={handleChange}
-                disabled={updateLoading}
-                rows={4}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Banner Image</label>
+          <input
+            type="file"
+            name="bannerFile"
+            accept="image/*"
+            onChange={handleFile}
+            className="w-full file:bg-blue-50 file:text-blue-600 file:px-4 file:py-2 file:rounded-lg"
+          />
+        </div>
 
-            {/* Avatar File */}
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-2" htmlFor="avatarFile">
-                Avatar Image
-              </label>
-              <input
-                id="avatarFile"
-                name="avatarFile"
-                type="file"
-                accept="image/*"
-                onChange={handleFile}
-                disabled={updateLoading}
-                className="w-full"
-              />
-            </div>
+        {isAdmin && (
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              name="blocked"
+              checked={form.blocked}
+              onChange={handleChange}
+            />
+            <label className="text-sm font-medium">Blocked (Admin only)</label>
+          </div>
+        )}
 
-            {/* Banner File */}
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-2" htmlFor="bannerFile">
-                Banner Image
-              </label>
-              <input
-                id="bannerFile"
-                name="bannerFile"
-                type="file"
-                accept="image/*"
-                onChange={handleFile}
-                disabled={updateLoading}
-                className="w-full"
-              />
-            </div>
-
-            {/* Blocked (admin only) */}
-            {isAdmin && (
-              <div className="mb-4">
-                <label className="inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    name="blocked"
-                    checked={form.blocked}
-                    onChange={handleChange}
-                    disabled={updateLoading}
-                    className="form-checkbox"
-                  />
-                  <span className="ml-2">Blocked</span>
-                </label>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <div className="flex justify-end px-4 mt-4">
-              <button
-                type="submit"
-                disabled={updateLoading}
-                className="bg-pink-500 text-white active:bg-pink-600 font-bold uppercase text-sm px-6 py-3 rounded shadow hover:shadow-lg outline-none focus:outline-none ease-linear transition-all duration-150"
-              >
-                {updateLoading ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          </form>
+        <div className="pt-4">
+          <button
+            onClick={handleSubmit}
+            disabled={updateLoading}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold"
+          >
+            {updateLoading ? "Saving..." : "Save Changes"}
+          </button>
         </div>
       </div>
     </div>

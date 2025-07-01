@@ -123,9 +123,9 @@ const PollBlockOutput = ({ postId, question = "", options = [], caption = "", ..
   return (
     <div
       {...rest}
-      className="max-w-[600px] mx-auto p-6 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 font-sans"
+      className="max-w-[600px] mx-auto p-6 border border-gray-300 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark font-sans"
     >
-      <h4 className="text-xl font-semibold mb-4 text-gray-950">
+      <h4 className="text-xl font-semibold mb-4  text-text-main-light dark:text-text-main-dark">
         {pollFromStore.question || "No question provided"}
       </h4>
 
@@ -149,13 +149,13 @@ const PollBlockOutput = ({ postId, question = "", options = [], caption = "", ..
               </button>
 
               <div className="mt-2">
-                <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden w-full">
+                <div className="h-2.5 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-full overflow-hidden w-full">
                   <div
                     className="h-full bg-blue-500 transition-all duration-500"
                     style={{ width: `${percent}%` }}
                   />
                 </div>
-                <div className="text-xs text-gray-600 mt-1">
+                <div className="text-xs  text-text-main-light dark:text-text-main-dark mt-1">
                   {percent}% ({count} vote{count !== 1 ? "s" : ""})
                 </div>
               </div>
@@ -163,10 +163,10 @@ const PollBlockOutput = ({ postId, question = "", options = [], caption = "", ..
           );
         })
       ) : (
-        <p className="italic text-gray-600">No options available.</p>
+        <p className="italic  text-text-main-light dark:text-text-main-dark">No options available.</p>
       )}
 
-      <div className="mt-6 text-sm font-semibold text-gray-700">
+      <div className="mt-6 text-sm font-semibold  text-text-main-light dark:text-text-main-dark">
         Total votes: {totalVotes}
       </div>
 
@@ -188,7 +188,7 @@ const PollBlockOutput = ({ postId, question = "", options = [], caption = "", ..
       )}
 
       {caption && (
-        <div className="mt-6 italic text-gray-600 border-t border-gray-200 pt-3 text-xs">
+        <div className="mt-6 italic  text-text-main-light dark:text-text-main-dark border-t border-gray-200 pt-3 text-xs">
           {caption}
         </div>
       )}

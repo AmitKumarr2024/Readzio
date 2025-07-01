@@ -1,78 +1,105 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+
 import FiltersSidebar from "../components/SearchBar/FiltersSidebar";
 import SearchResults from "../components/SearchBar/SearchResults";
+import { getSearchPosts } from "../store/postSlice";
 
-const mockResults = [
-  "React Hooks Tutorial",
-  "Understanding useEffect",
-  "Full Stack Blog App",
-  "SEO for Blogs",
-  "Creating a Post Editor with Drag and Drop",
-];
-
-const useQuery = () => new URLSearchParams(useLocation().search);
+// Helper to get query param
+const useQuery = () => {
+  const params = new URLSearchParams(useLocation().search);
+  console.log("[SearchPage] Query params:", { params: params.toString() });
+  return params;
+};
 
 const SearchPage = () => {
   const location = useLocation();
   const query = useQuery();
   const searchTerm = query.get("query") || "";
+  console.log("[SearchPage] Search term:", { searchTerm });
 
-  const filtered = useMemo(() => {
-    const words = searchTerm.trim().toLowerCase().split(/\s+/);
-    if (words.length === 0 || !searchTerm.trim()) return [];
+  const dispatch = useDispatch();
+  const { searchPosts = [], searchLoading, searchError } = useSelector(
+    (state) => {
+      console.log("[SearchPage] Post state:", { postState: state.post });
+      return state.post || {};
+    }
+  );
 
-    return mockResults
+  // Fetch from server
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      console.log("[SearchPage] Dispatching getSearchPosts:", { query: searchTerm });
+      dispatch(getSearchPosts({ query: searchTerm }));
+    } else {
+      console.log("[SearchPage] Search term empty, skipping fetch");
+    }
+  }, [searchTerm, dispatch]);
+
+  // Merge and score results
+  const filteredResults = useMemo(() => {
+    console.log("[SearchPage] Computing filtered results:", { searchPostsCount: searchPosts.length, searchTerm });
+    if (!searchTerm.trim()) {
+      console.log("[SearchPage] No search term, returning empty results");
+      return [];
+    }
+
+    const words = searchTerm.toLowerCase().split(/\s+/);
+    console.log("[SearchPage] Search words:", { words });
+    
+    return searchPosts
       .map((item) => {
-        const title = item.toLowerCase();
-
-        // Count how many words match
+        const title = item.title?.toLowerCase() || "";
         let matchCount = 0;
         let score = 0;
-
         words.forEach((word) => {
           const index = title.indexOf(word);
           if (index !== -1) {
             matchCount++;
-            if (index === 0) score += 3;
-            else score += 1;
+            score += index === 0 ? 3 : 1;
           }
         });
-
-        // Only keep results where at least 2 words matched
-        if (matchCount >= 2) {
-          // Bonus score if all words matched
+        if (matchCount >= 1) {
           if (matchCount === words.length) score += 5;
+          console.log("[SearchPage] Scored item:", { itemId: item._id, title, score });
           return { item, score };
         }
-
         return null;
       })
       .filter(Boolean)
       .sort((a, b) => b.score - a.score)
       .map(({ item }) => item);
-  }, [searchTerm]);
+  }, [searchTerm, searchPosts]);
 
   return (
     <div className="min-h-screen px-4 py-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row gap-8">
-        {/* Results */}
         <div className="flex-1">
           {searchTerm && (
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg text-gray-700 font-medium">
-                Showing results for:{" "}
-                <span className="text-blue-600">{searchTerm}</span>
+                Showing results for: <span className="text-blue-600">{searchTerm}</span>
               </h2>
               <button
-                onClick={() => (window.location.href = location.pathname)}
+                onClick={() => {
+                  console.log("[SearchPage] Clearing search");
+                  window.location.href = location.pathname;
+                }}
                 className="text-sm text-red-600 hover:text-red-800 font-medium"
               >
                 Clear Search
               </button>
             </div>
           )}
-          <SearchResults results={filtered} searchTerm={searchTerm} />
+          {searchLoading && <p>Loading...</p>}
+          {searchError && (
+            <p className="text-red-600">
+              {console.log("[SearchPage] Search error:", { searchError })}
+              {searchError}
+            </p>
+          )}
+          <SearchResults results={filteredResults} searchTerm={searchTerm} />
         </div>
       </div>
     </div>

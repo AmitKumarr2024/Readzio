@@ -9,31 +9,24 @@ const backdrop = {
 };
 
 const modal = {
-  hidden: { opacity: 0, y: -30 },
-  visible: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: -50, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: "easeOut" } },
 };
 
 const SearchModal = ({ isOpen, onClose }) => {
   const modalRef = useRef(null);
 
-  // Close modal on Escape key
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
+      if (e.key === "Escape") onClose();
     };
 
     document.addEventListener("keydown", handleKeyDown);
-    // Lock background scroll
     document.body.style.overflow = "hidden";
 
-    // Focus modal container
-    if (modalRef.current) {
-      modalRef.current.focus();
-    }
+    if (modalRef.current) modalRef.current.focus();
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
@@ -45,7 +38,7 @@ const SearchModal = ({ isOpen, onClose }) => {
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 bg-black/50 z-50 flex items-start pt-20 px-4"
+          className="fixed inset-0 bg-black/70 z-50 flex items-start pt-16 sm:pt-20 px-4 backdrop-blur-md"
           initial="hidden"
           animate="visible"
           exit="hidden"
@@ -58,24 +51,18 @@ const SearchModal = ({ isOpen, onClose }) => {
           <motion.div
             ref={modalRef}
             tabIndex={-1}
-            className="relative w-full max-w-md mx-auto bg-white rounded-lg shadow-lg p-4"
+            className="relative w-full max-w-2xl mx-auto bg-white/90 rounded-3xl shadow-2xl p-6 backdrop-blur-lg"
             variants={modal}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close X button */}
             <button
               onClick={onClose}
-              className="absolute -top-5 -right-8 text-gray-500 hover:text-gray-800"
+              className="absolute -top-4 -right-4 bg-red-600 text-white rounded-full p-2 hover:bg-red-700 transition duration-300 shadow-md"
               aria-label="Close search modal"
               type="button"
             >
-              <FiX className="text-3xl text-red-500 font-bold" />
+              <FiX className="text-xl" />
             </button>
-
-            {/* Search input with Redux logic */}
             <SearchInput autoFocus onClose={onClose} />
           </motion.div>
         </motion.div>

@@ -3,11 +3,10 @@ import { useSelector } from "react-redux";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import TagsInput from "./TagsInput";
+import { toast } from "react-hot-toast"; // Make sure this is installed and imported
 
 const ConfirmPostModal = ({ onConfirm, onCancel }) => {
-  // Get initial tags from Redux and store locally to manage inside modal
-  const globalTags = useSelector((state) => state.postMeta.tags);
-  const [tags, setTags] = useState(globalTags || []);
+  const tags = useSelector((state) => state.postMeta.tags);
 
   const [selectedThumbnail, setSelectedThumbnail] = useState(null);
   const [activeTab, setActiveTab] = useState("upload");
@@ -42,12 +41,18 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
       alert("Please select a thumbnail by uploading a file or entering a URL.");
       return;
     }
+
+    if (tags.length < 1 || tags.length > 10) {
+      toast.error("Please enter between 1 and 10 tags.");
+      return;
+    }
+
     setIsConfirming(true);
   };
 
   const handleFinalConfirm = () => {
     setIsConfirming(false);
-    onConfirm({ tags, thumbnail: selectedThumbnail }); // Pass local tags and selected thumbnail
+    onConfirm({ tags, thumbnail: selectedThumbnail });
   };
 
   const handleCancel = () => {
@@ -84,7 +89,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                 <p className="text-sm text-gray-500 mb-2">
                   Enter tags separated by commas to create #tag pills.
                 </p>
-                <TagsInput tags={tags} setTags={setTags} />
+                <TagsInput />
               </div>
 
               <div className="mb-4">

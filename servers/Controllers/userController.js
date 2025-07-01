@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import cron from 'node-cron'; 
 import UserModel from "../Models/User.js";
 import { AppError } from "../utils/AppError.js";
 import { uploadToCloudinary } from "../Utils/uploadToCloudinary.js";
@@ -182,7 +183,7 @@ export const getSingleUserById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    console.log("[getSingleUserById] Requested user ID:", id);
+    // console.log("[getSingleUserById] Requested user ID:", id);
 
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       console.warn("[getSingleUserById] Invalid user ID format:", id);
@@ -199,7 +200,7 @@ export const getSingleUserById = async (req, res, next) => {
       throw new AppError("User not found", 404, "getSingleUserById");
     }
 
-    console.log("[getSingleUserById] User fetched successfully:", user.name);
+    // console.log("[getSingleUserById] User fetched successfully:", user.name);
 
     // Defensive check before calling recordActivity
     if (req.user && req.user._id) {
@@ -209,9 +210,9 @@ export const getSingleUserById = async (req, res, next) => {
         message: `Viewed profile of user ${id}`,
       });
     } else {
-      console.warn(
-        "[getSingleUserById] req.user is missing, skipping activity record"
-      );
+      // console.warn(
+      //   "[getSingleUserById] req.user is missing, skipping activity record"
+      // );
     }
 
     res.status(200).json({ success: true, data: user });
@@ -241,7 +242,7 @@ export const getUserActivity = async (req, res, next) => {
       throw new AppError("User not found", 404, "getUserActivity");
     }
 
-    console.log("[DEBUG] User fetched:", { userId, name: user.name });
+    // console.log("[DEBUG] User fetched:", { userId, name: user.name });
 
     // Fetch activity list
     const activityList = await ActivityModel.find({ user: userId })
@@ -272,3 +273,53 @@ export const getUserActivity = async (req, res, next) => {
     );
   }
 };
+
+export const clearUserActivity = async (req, res, next) => {
+  try {
+    const userId = req.user._id; // Authenticated user
+
+    await ActivityModel.deleteMany({ user: userId });
+
+    res.status(200).json({
+      success: true,
+      message: "Activity history cleared",
+    });
+  } catch (error) {
+    next(new AppError(error.message, 500, "clearUserActivity"));
+  }
+};
+
+// Clear activity older than 30 days for all users
+export const clearOldActivity = async (req, res, next) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const result = await ActivityModel.deleteMany({
+      createdAt: { $lt: thirtyDaysAgo },
+    });
+
+    const message = `Cleared ${result.deletedCount} old activity records`;
+    // console.log(message);
+
+    if (res) {
+      // If called via API route
+      res.status(200).json({
+        success: true,
+        message,
+      });
+    }
+  } catch (error) {
+    console.error("Error clearing old activity:", error.message);
+    if (next) {
+      // If called via API route
+      next(new AppError(error.message, 500, "clearOldActivity"));
+    }
+  }
+};
+
+// Schedule automatic cleanup daily at midnight IST
+cron.schedule('0 0 * * *', clearOldActivity, {
+  scheduled: true,
+  timezone: 'Asia/Kolkata', // IST, adjust as needed
+});

@@ -2,7 +2,7 @@ import React from "react";
 
 const HeadingBlock = ({ level = 2, text }) => {
   const Tag = `h${level}`;
-  const baseStyles = "w-full text-gray-900 font-extrabold tracking-wide";
+  const baseStyles = "w-full text-text-main-light dark:text-text-main-dark font-extrabold tracking-wide";
   
   const levelStyles = {
     1: "text-5xl md:text-6xl border-b-4 border-gray-800 pb-2 mb-6",

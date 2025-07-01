@@ -1,8 +1,8 @@
+
 import { createBrowserRouter } from "react-router-dom";
 import App from "../App";
 import LoginPage from "../pages/LoginPage";
 import SignupPage from "../pages/SignupPage";
-import Dashboard from "../pages/Admin/Dashboard";
 import MainPage from "../pages/MainPage";
 import CategoryWisePage from "../pages/CategoryWisePage";
 import DisplayPost from "../components/Post/DisplayPost";
@@ -19,9 +19,13 @@ import UserSettingsPage from "../pages/UserSettingPage";
 import FeatureComingSoon from "../pages/FeatureComingSoon";
 import DeleteModal from "../components/Post/DeleteModal";
 import AuthorProfilePage from "../pages/AuthorProfilePage";
-// import SubscriptionPlanDisplay from "../components/Author/Subscribe/SubscriptionPlanDisplay";
-// import PaymentPage from "../components/payment/PaymentPage";
-
+import UserPlanPage from "../components/PorductToBuy/UserPlanPage";
+import CategorySelectPage from "../pages/CategorySelectPage";
+import BookmarkComponent from "../components/Post/BookmarkComponent";
+import Dashboard from "../pages/Admin/Dashboard";
+import AcknowledgeConfirmation from "../pages/Admin/AcknowledgeConfirmation";
+import NotificationPage from "../components/Notification/NotificationPage";
+import UsersPage from "../pages/UsersPage";
 
 const routes = createBrowserRouter([
   {
@@ -30,7 +34,7 @@ const routes = createBrowserRouter([
     children: [
       { index: true, element: <MainPage /> },
       { path: "/createPost", element: <CreatePost /> },
-      { path: "/edit-post/:id", element: <EditPost /> },
+      { path: "/edit-post/:slug", element: <EditPost /> },
       { path: "/delete-post/:id", element: <DeleteModal /> },
       { path: "/category_page/:category", element: <CategoryWisePage /> },
       { path: "/post/:slug", element: <DisplayPost /> },
@@ -42,13 +46,17 @@ const routes = createBrowserRouter([
       { path: "/user", element: <UserProfilePage /> },
       { path: "/user-setting", element: <UserSettingsPage /> },
       { path: "/author-profile/:id", element: <AuthorProfilePage /> },
-      // { path: "/pricing/:authorId/:postId", element: <SubscriptionPlanDisplay /> },
-      // { path: "/authors/:authorId/plans", element: <SubscriptionPlanDisplay /> },
-      // { path: "/payment/:postId/:authorId/:planType/:amount/:currency", element: <PaymentPage /> },
+      { path: "/plans/:id", element: <UserPlanPage /> },
+      { path: "/plans/:authorId", element: <UserPlanPage /> },
+      { path: "/bookmark", element: <BookmarkComponent /> },
+      { path: "/acknowledge/:reportId", element: <AcknowledgeConfirmation /> },
+      { path: "/message-box", element: <NotificationPage /> },
+      { path: "/users", element: <UsersPage /> }, // Added UsersPage route
     ],
   },
+  { path: "/select-category", element: <CategorySelectPage /> },
   { path: "/login", element: <LoginPage /> },
-  { path: "/signin", element: <SignupPage /> },
+  { path: "/signup", element: <SignupPage /> },
   { path: "/Term&Condition", element: <TermsAndConditionPage /> },
   { path: "*", element: <PageNotFound /> },
 ]);

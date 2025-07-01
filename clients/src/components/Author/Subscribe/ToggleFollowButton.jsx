@@ -8,7 +8,7 @@ import {
   fetchFollowers,
   fetchFollowing,
   getFollowStatus,
-} from "../../../store/subscribeSlice";
+} from "../../../store/followSlice";
 
 function ToggleFollowButton({ followUserId, onFollowSuccess }) {
   const dispatch = useDispatch();
@@ -17,13 +17,24 @@ function ToggleFollowButton({ followUserId, onFollowSuccess }) {
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const [isFollowing, setIsFollowing] = useState(false);
 
+  console.log("followUserId", followUserId);
+  console.log("user", user);
+
   useEffect(() => {
-    if (!isAuthenticated || !user?._id) return;
-    dispatch(getFollowStatus(followUserId)).then((res) => {
-      if (getFollowStatus.fulfilled.match(res)) {
-        setIsFollowing(res.payload.isFollowing);
+    if (!isAuthenticated || !user?._id || !followUserId) return;
+
+    const fetchStatus = async () => {
+      try {
+        const res = await dispatch(getFollowStatus(followUserId));
+        if (getFollowStatus.fulfilled.match(res) && res.payload) {
+          setIsFollowing(res.payload.isFollowing);
+        }
+      } catch (error) {
+        console.error("Failed to fetch follow status", error);
       }
-    });
+    };
+
+    fetchStatus();
   }, [dispatch, followUserId, isAuthenticated, user?._id]);
 
   const handleToggleFollow = async () => {

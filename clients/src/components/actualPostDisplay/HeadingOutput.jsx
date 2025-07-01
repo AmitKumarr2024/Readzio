@@ -15,7 +15,7 @@ const HeadingOutput = ({ level = 2, text }) => {
 
   return (
     <Tag
-      className={`font-bold text-gray-800 my-6 ${fontSizeClass[level] || "text-2xl"}`}
+      className={`font-bold  text-text-main-light dark:text-text-main-dark my-6 ${fontSizeClass[level] || "text-2xl"}`}
     >
       {text}
     </Tag>

@@ -2,10 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { useDispatch, useSelector } from "react-redux";
-import { googleLogin, signup } from "../store/authSlice";
-
-// React Icons
-import { FaUserPlus, FaUserCircle, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { googleLogin, signup, login } from "../store/authSlice";
+import toast from "react-hot-toast";
+import { FaUserPlus, FaUserCircle, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 
 const SignupPage = () => {
   const dispatch = useDispatch();
@@ -14,7 +13,7 @@ const SignupPage = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/");
+      navigate("/select-category");
     }
   }, [isAuthenticated, navigate]);
 
@@ -25,8 +24,6 @@ const SignupPage = () => {
     confirmPassword: "",
     acceptedTerms: false,
   });
-
-  const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -40,67 +37,53 @@ const SignupPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match!");
+      toast.error("Passwords do not match!");
       return;
     }
-
     try {
-      const resultAction = await dispatch(
+      // Dispatch signup
+      await dispatch(
         signup({
           fullName: formData.name,
           email: formData.email,
           password: formData.password,
         })
-      );
-
-      if (signup.fulfilled.match(resultAction)) {
-        navigate("/");
-      } else {
-        const payload = resultAction.payload;
-        setError(
-          typeof payload === "string"
-            ? payload
-            : payload?.message || "Signup failed"
-        );
-      }
-    } catch {
-      setError("Signup failed");
+      ).unwrap();
+      // Dispatch login to authenticate user
+      await dispatch(
+        login({
+          email: formData.email,
+          password: formData.password,
+        })
+      ).unwrap();
+      toast.success("Account created and logged in!");
+      navigate("/select-category");
+    } catch (err) {
+      console.error("Signup or login failed: ", err);
+      toast.error(err?.message || "Signup failed, please try again.");
     }
   };
 
   const handleGoogleLoginSuccess = async (credentialResponse) => {
-    setError(null);
     try {
-      const token = credentialResponse.credential;
-      const resultAction = await dispatch(googleLogin(token));
-
-      if (googleLogin.fulfilled.match(resultAction)) {
-        navigate("/");
-      } else {
-        const payload = resultAction.payload;
-        setError(
-          typeof payload === "string"
-            ? payload
-            : payload?.message || "Google login failed"
-        );
-      }
-    } catch {
-      setError("Google login failed");
+      await dispatch(googleLogin(credentialResponse.credential)).unwrap();
+      toast.success("Google account created and logged in!");
+      navigate("/select-category");
+    } catch (err) {
+      console.error("Google signup failed: ", err);
+      toast.error(err?.message || "Google signup failed.");
     }
   };
 
   const handleGoogleLoginFailure = () => {
-    setError("Google login failed");
+    toast.error("Google signup failed");
   };
 
   return (
     <GoogleOAuthProvider clientId="784687781898-u7t28i5ahphgu5hbpcauppftgme77plr.apps.googleusercontent.com">
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-900 to-purple-900 via-pink-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-900 to-purple-900">
         <div className="max-w-4xl w-full bg-white rounded-xl shadow-2xl flex flex-col md:flex-row overflow-hidden">
-          {/* Left Side: Image with Quote */}
           <div className="md:w-1/2 relative flex items-center justify-center p-8">
             <img
               src="https://images.unsplash.com/photo-1631237631392-30f4f13cf509?q=80&w=1936&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
@@ -117,19 +100,12 @@ const SignupPage = () => {
               </p>
             </div>
           </div>
-
-          {/* Right Side: Signup Form */}
           <div className="md:w-1/2 flex items-center justify-center bg-gray-50 p-8">
             <div className="w-full max-w-sm">
               <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-900 flex items-center justify-center">
                 <FaUserPlus className="mr-2 text-indigo-600 text-2xl md:text-3xl" />
                 Create an Account
               </h2>
-
-              {error && (
-                <p className="text-red-600 bg-red-100 p-3 rounded-md text-center mb-6 text-sm md:text-base">{error}</p>
-              )}
-
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="relative">
                   <FaUserCircle className="absolute top-3 left-3 text-gray-500 text-lg md:text-xl" />
@@ -167,12 +143,12 @@ const SignupPage = () => {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Your Password"
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-900 text-base md:text-lg bg-gray-50"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-900 text-base md:text-lg bg-gray-50"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute top-3 right-3 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                    className="absolute top-3 right-3 text-gray-500 hover:text-indigo-600"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <FaEyeSlash className="text-lg md:text-xl" /> : <FaEye className="text-lg md:text-xl" />}
@@ -188,12 +164,12 @@ const SignupPage = () => {
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     placeholder="Confirm Password"
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-900 text-base md:text-lg bg-gray-50"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-900 text-base md:text-lg bg-gray-50"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute top-3 right-3 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                    className="absolute top-3 right-3 text-gray-500 hover:text-indigo-600"
                     aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
                   >
                     {showConfirmPassword ? <FaEyeSlash className="text-lg md:text-xl" /> : <FaEye className="text-lg md:text-xl" />}
@@ -209,9 +185,9 @@ const SignupPage = () => {
                     required
                     className="h-5 w-5 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-400"
                   />
-                  <label htmlFor="acceptedTerms" className="ml-2 text-sm md:text-base text-gray-700">
-                    I accept the{' '}
-                    <Link to="/Term&Condition" className="text-indigo-600 hover:underline font-medium">
+                  <label htmlFor="acceptedTerms" className="ml-2 text-sm text-gray-700">
+                    I accept the{" "}
+                    <Link to="/terms-and-conditions" className="text-indigo-600 hover:underline font-medium">
                       Terms and Conditions
                     </Link>
                   </label>
@@ -232,9 +208,7 @@ const SignupPage = () => {
                   {loading ? "Signing up..." : "Sign Up"}
                 </button>
               </form>
-
-              <div className="my-6 text-center text-gray-500 text-base md:text-lg">or</div>
-
+              <div className="my-6 text-center text-gray-500">or</div>
               <div className="flex justify-center">
                 <GoogleLogin
                   onSuccess={handleGoogleLoginSuccess}
@@ -248,9 +222,8 @@ const SignupPage = () => {
                   width="250"
                 />
               </div>
-
-              <p className="mt-6 text-center text-gray-600 text-base md:text-lg">
-                Already have an account?{' '}
+              <p className="mt-6 text-center text-gray-600">
+                Already have an account?{" "}
                 <Link to="/login" className="text-indigo-600 hover:underline font-medium">
                   Log in
                 </Link>

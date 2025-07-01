@@ -2,210 +2,252 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import PostEditor from "../CreatePost/PostEditor";
-import { updatePost, getSinglePost } from "../../store/postSlice";
+import { updatePost, getSinglePost, clearError } from "../../store/postSlice";
 import LoadingBar from "../../Utils/LoadingBar";
-import { toast } from "react-hot-toast";
+import { toast, Toaster } from "react-hot-toast";
 import TagsInput from "../CreatePost/TagsInput";
-import {
-  resetPostMeta,
-  setCategory,
-  setPostType,
-  setTags,
-} from "../../store/Post/postMetaSlice";
+import { resetPostMeta, setPostType, setTags } from "../../store/Post/postMetaSlice";
+import { fetchCategories, selectCategory } from "../../store/categorySlice";
+import { X } from "lucide-react";
+import { Transition } from "@headlessui/react";
+
+const ErrorBoundary = ({ children }) => {
+  const [hasError, setHasError] = useState(false);
+  if (hasError) {
+    return (
+      <div className="p-6 text-center text-red-500 bg-red-100 rounded-2xl mx-auto max-w-4xl">
+        Something went wrong. Please try refreshing the page.
+      </div>
+    );
+  }
+  return children;
+};
 
 const EditPost = () => {
-  const { id } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const {
-    currentPost,
-    loading,
-    error,
-    updateLoading,
-    updateError,
-    updateSuccess,
-  } = useSelector((state) => state.post);
-
-  const { postType, category, tags } = useSelector((state) => state.postMeta);
+  const { currentPost, loading, error, updateLoading, updateSuccess } = useSelector((state) => state.post);
+  const { postType, tags } = useSelector((state) => state.postMeta);
+  const { categories, selectedCategory } = useSelector((state) => state.categories);
 
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState([]);
+  const [isOpen, setIsOpen] = useState(true);
 
-  // Fetch post on mount
   useEffect(() => {
-    dispatch(getSinglePost(id));
-  }, [dispatch, id]);
-
-  // Set local state when post loads
-  useEffect(() => {
-    if (currentPost && currentPost._id === id) {
-      setTitle(currentPost.title || "");
-      dispatch(setCategory(currentPost.category || ""));
-      // Make sure postType is an array
-      dispatch(
-        setPostType(
-          Array.isArray(currentPost.postType) ? currentPost.postType : []
-        )
-      );
-      dispatch(setTags(currentPost.tags || []));
-      setBlocks(currentPost.blocks || []);
+    if (!slug || slug === "undefined") {
+      toast.error("Invalid post slug.");
+      navigate("/");
+      return;
     }
+
+    dispatch(getSinglePost(slug));
+    dispatch(fetchCategories());
 
     return () => {
+      dispatch(clearError());
       dispatch(resetPostMeta());
     };
-  }, [currentPost, id, dispatch]);
+  }, [dispatch, slug, navigate]);
 
-  // On successful update, redirect and toast
   useEffect(() => {
-    if (updateSuccess && currentPost?.slug) {
-      toast.success("Post updated successfully!");
-      navigate(`/post/${currentPost.slug}`);
-    }
-  }, [updateSuccess, currentPost, navigate]);
+    if (!currentPost) return;
 
-  // On error during update
+    if (title === "") setTitle(currentPost.title || "");
+    if (blocks.length === 0) setBlocks(currentPost.blocks || []);
+    if (!postType) dispatch(setPostType(currentPost.postType || ""));
+    if (tags.length === 0) dispatch(setTags(currentPost.tags || []));
+
+    const category = categories.find((cat) => cat._id === currentPost.category);
+    if (category && (!selectedCategory || selectedCategory._id !== category._id)) {
+      dispatch(selectCategory(category));
+    }
+  }, [currentPost, categories, dispatch]);
+
   useEffect(() => {
-    if (updateError) {
-      const msg =
-        typeof updateError === "string"
-          ? updateError
-          : updateError.message || "Update failed";
-      toast.error(msg);
+    if (updateSuccess) {
+      toast.success("Post updated successfully");
+      setTimeout(() => {
+        setIsOpen(false);
+        navigate(`/post/${currentPost.slug}`);
+      }, 2000);
     }
-  }, [updateError]);
+  }, [updateSuccess, navigate, currentPost?.slug]);
 
-  // Save handler
-  const handleSave = () => {
-    if (!title.trim()) {
-      toast.error("Title cannot be empty");
-      return;
-    }
-    if (blocks.length === 0) {
-      toast.error("Add some content blocks");
-      return;
-    }
+  const handleSave = async () => {
+    if (!title.trim()) return toast.error("Post title cannot be empty");
+    if (blocks.length === 0) return toast.error("Add at least one content block");
+    if (!selectedCategory) return toast.error("Please select a category");
+    if (!postType) return toast.error("Post type is required");
+    if (!currentPost?.slug) return toast.error("Invalid post. Please reload.");
 
     const updateData = {
       title,
-      category,
+      category: selectedCategory._id,
       postType,
       tags,
-      blocks,
+      blocks: blocks.map((block) => ({ ...block, status: block.status || "draft" })),
     };
 
-    dispatch(updatePost({ postId: id, updateData }));
-    toast.success("Post updated successfully!");
-    navigate(`/post/${currentPost.slug}`);
+    try {
+      const action = await dispatch(updatePost({ slug: currentPost.slug, updateData }));
+      if (updatePost.fulfilled.match(action)) {
+        dispatch(clearError());
+      } else {
+        throw new Error(action.error?.message || "Update failed");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to update post");
+    }
   };
 
+  const handleCategoryChange = (e) => {
+    const categoryId = e.target.value;
+    const selected = categories.find((cat) => cat._id === categoryId);
+    dispatch(selectCategory(selected || null));
+  };
+
+  if (!slug || slug === "undefined") {
+    return <div className="p-6 text-center text-red-500 bg-red-100 rounded-2xl mx-auto max-w-4xl">Invalid post slug.</div>;
+  }
+
   if (loading && !currentPost) {
-    return <div className="p-6 text-center">Loading post...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center text-gray-600 dark:text-gray-300 animate-pulse">Loading post...</div>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="p-6 text-center text-red-500">
-        Error:{" "}
-        {typeof error === "string" ? error : error.message || "Unknown error"}
+      <div className="p-6 text-center text-red-500 bg-red-100 rounded-2xl mx-auto max-w-4xl">
+        Error: {error.message || "Unknown error"}
       </div>
     );
   }
 
   if (!currentPost) {
-    return <div className="p-6 text-center text-red-500">Post not found.</div>;
+    return (
+      <div className="p-6 text-center text-red-500 bg-red-100 rounded-2xl mx-auto max-w-4xl">
+        Post not found.
+      </div>
+    );
   }
 
   return (
-    <>
+    <ErrorBoundary>
+      <Toaster position="top-center" reverseOrder={false} />
       <LoadingBar loading={updateLoading} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-        <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl p-6 md:p-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center text-white bg-red-500 hover:bg-red-600 rounded-full text-2xl transition-all duration-200"
-            aria-label="Close"
+      <Transition show={isOpen} as={React.Fragment}>
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+          <Transition.Child
+            as={React.Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0 scale-95"
+            enterTo="opacity-100 scale-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100 scale-100"
+            leaveTo="opacity-0 scale-95"
           >
-            &times;
-          </button>
+            <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 animate-slide-up">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate(-1);
+                }}
+                className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-white bg-red-500 rounded-full hover:bg-red-600 transition-colors"
+                aria-label="Close modal"
+              >
+                <X className="w-6 h-6" />
+              </button>
 
-          <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
-            Edit Post
-          </h1>
+              <h2 className="text-3xl font-semibold text-center mb-8 text-gray-900 dark:text-white">
+                Edit Post
+              </h2>
 
-          {/* Title */}
-          <div className="mb-5">
-            <label className="block mb-2 text-sm font-semibold text-gray-700">
-              Title
-            </label>
-            <input
-              type="text"
-              className="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
+              <div className="space-y-6">
+                <div>
+                  <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-white transition-all"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </div>
 
-          {/* Category */}
-          <div className="mb-5">
-            <label className="block mb-2 text-sm font-semibold text-gray-700">
-              Category
-            </label>
-            <input
-              type="text"
-              className="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={category}
-              onChange={(e) => dispatch(setCategory(e.target.value))}
-            />
-          </div>
+                <div>
+                  <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    Category
+                  </label>
+                  <select
+                    className="w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-white transition-all"
+                    value={selectedCategory?._id || ""}
+                    onChange={handleCategoryChange}
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((cat) => (
+                      <option key={cat._id} value={cat._id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-          {/* Post Type - Multi Select */}
-          <div className="mb-5">
-            <label className="block mb-2 text-sm font-semibold text-gray-700">
-              Post Type
-            </label>
-            <select
-              className="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={postType}
-              onChange={(e) => dispatch(setPostType(e.target.value))}
-            >
-              <option value="">Select post type</option>
-              <option value="Article">Article</option>
-              <option value="Blog">Blog</option>
-            </select>
-          </div>
+                <div>
+                  <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    Post Type
+                  </label>
+                  <select
+                    className="w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-white transition-all"
+                    value={postType}
+                    onChange={(e) => dispatch(setPostType(e.target.value))}
+                  >
+                    <option value="">Select post type</option>
+                    <option value="article">Article</option>
+                    <option value="blog">Blog</option>
+                  </select>
+                </div>
 
-          {/* Tags Input */}
-          <TagsInput />
+                <div>
+                  <TagsInput />
+                </div>
 
-          {/* Editor */}
-          <div className="mb-6">
-            <label className="block mb-2 text-sm font-semibold text-gray-700">
-              Content Blocks
-            </label>
-            <PostEditor
-              size={100}
-              blocks={blocks}
-              setBlocks={setBlocks}
-              postType={postType}
-              category={category}
-              title={title}
-              setTitle={setTitle}
-            />
-          </div>
+                <div>
+                  <label className="block mb-2 text-lg font-semibold text-gray-700 dark:text-gray-200">
+                    Content Blocks
+                  </label>
+                  <div className="border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm p-4 dark:bg-gray-900">
+                    <PostEditor
+                      size={100}
+                      blocks={blocks}
+                      setBlocks={setBlocks}
+                      postType={postType}
+                      category={selectedCategory?._id || ""}
+                      title={title}
+                      setTitle={setTitle}
+                    />
+                  </div>
+                </div>
 
-          {/* Save Button */}
-          <button
-            onClick={handleSave}
-            disabled={updateLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg font-medium py-3 rounded-xl transition-all duration-200 disabled:opacity-50"
-          >
-            {updateLoading ? "Saving..." : "Save Changes"}
-          </button>
+                <button
+                  onClick={handleSave}
+                  disabled={updateLoading}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-400 text-white font-medium text-lg py-3 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                >
+                  {updateLoading ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          </Transition.Child>
         </div>
-      </div>
-    </>
+      </Transition>
+    </ErrorBoundary>
   );
 };
 

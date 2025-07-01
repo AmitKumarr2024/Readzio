@@ -5,11 +5,11 @@ const QuoteBlockOutput = ({ text, author }) => {
     <blockquote
       className="
         relative max-w-3xl mx-auto my-12 px-8 py-6
-        bg-white
+        bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark
         border-l-8 border-teal-400
         rounded-r-3xl rounded-tl-xl rounded-bl-xl
         shadow-md
-        font-serif text-lg text-gray-800 leading-relaxed
+        font-serif text-lg  leading-relaxed
         before:absolute before:content-[''] before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-full
         before:border-[15px] before:border-transparent before:border-r-teal-400
       "

@@ -1,126 +1,65 @@
-import React, { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
-import {
-  enableSubscriptionPlan,
-  fetchSubscribeStatus,
-  subscribeToAuthor,
-  unsubscribeFromAuthor,
-} from "../../../store/subscribeSlice";
 
-function ToggleSubscribeButton({
-  authorId,
-  onSubscribeSuccess,
-  onEnableSubscriptionSuccess,
-}) {
-  const dispatch = useDispatch();
+const ToggleSubscribeButton = ({ authorId, isSubscribed: isSubscribedProp, currentUserId }) => {
   const navigate = useNavigate();
 
+  const { subscriptions = [], loading } = useSelector((state) => state.subscription);
   const { user, isAuthenticated } = useSelector((state) => state.auth);
-  const currentUserId = user?._id;
 
-  const { isSubscribed, isSubscriptionPlanEnabled } = useSelector(
-    (state) =>
-      state.subscribe.subscribeStatus[authorId] || {
-        isSubscribed: false,
-        isSubscriptionPlanEnabled: false,
-      }
-  );
+  const subscriberId = currentUserId || user?._id;
 
-  const loading = useSelector((state) => state.subscribe.loading);
+  const [isSubscribedInternal, setIsSubscribedInternal] = useState(false);
 
-  useEffect(() => {
-    if (authorId && currentUserId) {
-      dispatch(fetchSubscribeStatus(authorId));
-    }
-  }, [dispatch, authorId, currentUserId]);
+  const isSubscribed = typeof isSubscribedProp === "boolean" ? isSubscribedProp : isSubscribedInternal;
 
-  const handleToggleSubscribe = async () => {
-    if (!isAuthenticated) {
-      toast.error("Please sign in to subscribe.");
-      navigate("/signin");
+  React.useEffect(() => {
+    if (!isAuthenticated || !authorId || !subscriberId || authorId === subscriberId) {
+      setIsSubscribedInternal(false);
       return;
     }
 
-    if (loading) return;
+    const found = subscriptions.some(
+      (sub) =>
+        String(sub.authorId) === String(authorId) &&
+        String(sub.userId) === String(subscriberId) &&
+        sub.status === "active"
+    );
 
-    const action = isSubscribed ? unsubscribeFromAuthor : subscribeToAuthor;
-    const result = await dispatch(action(authorId));
+    setIsSubscribedInternal(found);
+  }, [subscriptions, authorId, subscriberId, isAuthenticated, isSubscribedProp]);
 
-    if (result.type.includes("fulfilled")) {
-      await dispatch(fetchSubscribeStatus(authorId));
-      toast.success(isSubscribed ? "Unsubscribed" : "Subscribed");
-      onSubscribeSuccess?.();
-      navigate(`/authors/${authorId}/plans`);
-    } else {
-      toast.error(result.payload || "Something went wrong.");
-    }
-  };
-
-  const handleEnableSubscriptionPlan = async () => {
+  const handleClick = () => {
     if (!isAuthenticated) {
-      toast.error("Please sign in to enable subscription plan.");
-      navigate("/signin");
+      alert("You must be logged in to subscribe.");
       return;
     }
 
-    if (loading) return;
-
-    const result = await dispatch(enableSubscriptionPlan(authorId));
-
-    if (enableSubscriptionPlan.fulfilled.match(result)) {
-      toast.success("Subscription plan enabled");
-      onEnableSubscriptionSuccess?.();
-      dispatch(fetchSubscribeStatus(authorId));
-      navigate(`/authors/${authorId}/plans`);
-    } else {
-      toast.error(result.payload || "Enable plan failed");
-    }
-  };
-
-  const handleViewSubscriptionPlan = () => {
-    if (!isAuthenticated) {
-      toast.error("Please sign in to view subscription plans.");
-      navigate("/signin");
+    if (authorId === subscriberId) {
+      console.log("⚠️ Cannot subscribe to self.");
       return;
     }
-    navigate(`/authors/${authorId}/plans`);
+
+    // Always navigate to plan page on click
+    navigate(`/plans/${authorId}`);
   };
 
-  const isAuthor = currentUserId === authorId;
+  if (!isAuthenticated || authorId === subscriberId) {
+    return null;
+  }
 
   return (
-    <div className="flex space-x-2">
-      <button
-        onClick={handleToggleSubscribe}
-        disabled={loading}
-        className={`px-3 py-1 rounded-md text-sm font-semibold text-white transition ${
-          isSubscribed ? "bg-yellow-500" : "bg-green-600"
-        } ${loading ? "opacity-50 cursor-not-allowed" : "hover:opacity-80"}`}
-      >
-        {isSubscribed ? "Unsubscribe" : "Subscribe"}
-      </button>
-
-      {isAuthor && (
-        <button
-          onClick={
-            isSubscriptionPlanEnabled
-              ? handleViewSubscriptionPlan
-              : handleEnableSubscriptionPlan
-          }
-          disabled={loading}
-          className={`px-3 py-1 rounded-md text-sm font-semibold bg-blue-600 text-white transition ${
-            loading ? "opacity-50 cursor-not-allowed" : "hover:opacity-80"
-          }`}
-        >
-          {isSubscriptionPlanEnabled
-            ? "Manage Subscription Plan"
-            : "Enable Subscription Plan"}
-        </button>
-      )}
-    </div>
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      className={`w-full py-2 rounded text-white transition-colors duration-200 ${
+        isSubscribed ? "bg-blue-600 hover:bg-blue-700" : "bg-green-500 hover:bg-green-600"
+      } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+    >
+      {loading ? "Processing..." : isSubscribed ? "You’re a Member" : "Subscribe Now"}
+    </button>
   );
-}
+};
 
 export default ToggleSubscribeButton;

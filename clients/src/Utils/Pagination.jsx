@@ -35,13 +35,13 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage <= 1}
-        className="px-3 py-1 bg-blue-500 text-white rounded disabled:bg-gray-400"
+        className="px-3 py-1 bg-blue-500   text-text-main-light dark:text-text-main-dark rounded disabled:bg-gray-400"
       >
         Prev
       </button>
 
       {/* Manual Input */}
-      <span className="text-sm text-gray-700 flex items-center gap-1">
+      <span className="text-sm   text-text-main-light dark:text-text-main-dark flex items-center gap-1">
         Page{" "}
         <input
           type="text"
