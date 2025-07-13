@@ -1,3 +1,4 @@
+// src/hooks/useAdBlockDetector.js
 import { useState, useEffect } from "react";
 
 const useAdBlockDetector = () => {
@@ -7,7 +8,6 @@ const useAdBlockDetector = () => {
     let isMounted = true;
 
     const checkAdBlock = async () => {
-      // DOM-based detection
       const bait = document.createElement("div");
       bait.className = "adsbox";
       bait.style.height = "1px";
@@ -15,7 +15,6 @@ const useAdBlockDetector = () => {
       bait.style.top = "-1000px";
       document.body.appendChild(bait);
 
-      // Network-based detection
       let networkBlocked = false;
       try {
         await fetch("https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js", {
@@ -26,7 +25,6 @@ const useAdBlockDetector = () => {
         networkBlocked = true;
       }
 
-      // Check both conditions
       setTimeout(() => {
         if (isMounted) {
           const domBlocked = bait.offsetHeight === 0;

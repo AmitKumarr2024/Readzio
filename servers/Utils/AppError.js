@@ -3,6 +3,7 @@ export class AppError extends Error {
     super(message);
     this.statusCode = statusCode;
     this.context = context;
+    this.isOperational = true;
     Error.captureStackTrace(this, this.constructor);
   }
 }

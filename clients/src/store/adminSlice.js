@@ -1,7 +1,7 @@
-// store/adminSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../connection/axiosInstance";
 
+// Fetch all users
 export const getAllUsers = createAsyncThunk(
   "admin/getAllUsers",
   async ({ page, limit, mode = "paged" }, { rejectWithValue }) => {
@@ -25,12 +25,15 @@ export const getAllUsers = createAsyncThunk(
   }
 );
 
+// Toggle block user
 export const toggleBlockUser = createAsyncThunk(
   "admin/toggleBlockUser",
   async (userId, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.patch(
-        `/admin/users/block/${userId}`
+        `/admin/users/block/${userId}`,
+        {},
+        { withCredentials: true }
       );
       return { userId, blocked: response.data.message.includes("blocked") };
     } catch (error) {
@@ -41,11 +44,16 @@ export const toggleBlockUser = createAsyncThunk(
   }
 );
 
+// Toggle user role
 export const toggleUserRole = createAsyncThunk(
   "admin/toggleUserRole",
   async (userId, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.patch(`/admin/users/role/${userId}`);
+      const response = await axiosInstance.patch(
+        `/admin/users/role/${userId}`,
+        {},
+        { withCredentials: true }
+      );
       return {
         userId,
         role: response.data.message.includes("admin") ? "admin" : "user",
@@ -58,11 +66,14 @@ export const toggleUserRole = createAsyncThunk(
   }
 );
 
+// Delete user
 export const deleteUser = createAsyncThunk(
   "admin/deleteUser",
   async (userId, { rejectWithValue }) => {
     try {
-      await axiosInstance.delete(`/admin/users/${userId}`);
+      await axiosInstance.delete(`/admin/users/${userId}`, {
+        withCredentials: true,
+      });
       return { userId };
     } catch (error) {
       return rejectWithValue(
@@ -72,12 +83,14 @@ export const deleteUser = createAsyncThunk(
   }
 );
 
+// Fetch all posts
 export const getAllPosts = createAsyncThunk(
   "admin/getAllPosts",
   async ({ page = 1, limit = 10 }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.get(
-        `/admin/posts?page=${page}&limit=${limit}`
+        `/admin/posts?page=${page}&limit=${limit}`,
+        { withCredentials: true }
       );
       return {
         posts: response.data.posts,
@@ -93,12 +106,15 @@ export const getAllPosts = createAsyncThunk(
   }
 );
 
+// Toggle block post
 export const toggleBlockPost = createAsyncThunk(
   "admin/toggleBlockPost",
   async (postId, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.patch(
-        `/admin/posts/block/${postId}`
+        `/admin/posts/block/${postId}`,
+        {},
+        { withCredentials: true }
       );
       return { postId, blocked: response.data.message.includes("blocked") };
     } catch (error) {
@@ -109,11 +125,14 @@ export const toggleBlockPost = createAsyncThunk(
   }
 );
 
+// Delete post
 export const deletePost = createAsyncThunk(
   "admin/deletePost",
   async (postId, { rejectWithValue }) => {
     try {
-      await axiosInstance.delete(`/admin/posts/${postId}`);
+      await axiosInstance.delete(`/admin/posts/${postId}`, {
+        withCredentials: true,
+      });
       return { postId };
     } catch (error) {
       return rejectWithValue(
@@ -123,16 +142,16 @@ export const deletePost = createAsyncThunk(
   }
 );
 
+// Create contact message
 export const createContactMessage = createAsyncThunk(
   "admin/createContactMessage",
   async ({ name, email, subject, message }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.post("/admin/contact", {
-        name,
-        email,
-        subject,
-        message,
-      });
+      const response = await axiosInstance.post(
+        "/admin/contact",
+        { name, email, subject, message },
+        { withCredentials: true }
+      );
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -142,12 +161,14 @@ export const createContactMessage = createAsyncThunk(
   }
 );
 
+// Fetch contact messages
 export const fetchContactMessages = createAsyncThunk(
   "admin/fetchContactMessages",
   async ({ page = 1, limit = 10 }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.get(
-        `/admin/contact-messages?page=${page}&limit=${limit}`
+        `/admin/contact-messages?page=${page}&limit=${limit}`,
+        { withCredentials: true }
       );
       return {
         messages: response.data.messages,
@@ -163,12 +184,15 @@ export const fetchContactMessages = createAsyncThunk(
   }
 );
 
+// Toggle contact message handled status
 export const toggleContactMessageHandled = createAsyncThunk(
   "admin/toggleContactMessageHandled",
   async (messageId, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.patch(
-        `/admin/contact-messages/${messageId}/handled`
+        `/admin/contact-messages/${messageId}/handled`,
+        {},
+        { withCredentials: true }
       );
       return { messageId, isHandled: response.data.isHandled };
     } catch (error) {
@@ -179,13 +203,15 @@ export const toggleContactMessageHandled = createAsyncThunk(
   }
 );
 
+// Reply to contact message
 export const replyContactMessage = createAsyncThunk(
   "admin/replyContactMessage",
   async ({ messageId, subject, message }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.post(
         `/admin/reply-contact/${messageId}`,
-        { subject, message }
+        { subject, message },
+        { withCredentials: true }
       );
       return { messageId, isHandled: true };
     } catch (error) {
@@ -196,15 +222,16 @@ export const replyContactMessage = createAsyncThunk(
   }
 );
 
+// Create report
 export const createReport = createAsyncThunk(
   "admin/createReport",
   async ({ postId, reason, details }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.post("/admin/reports", {
-        postId,
-        reason,
-        details,
-      });
+      const response = await axiosInstance.post(
+        "/admin/reports",
+        { postId, reason, details },
+        { withCredentials: true }
+      );
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -214,12 +241,14 @@ export const createReport = createAsyncThunk(
   }
 );
 
+// Fetch reported posts
 export const fetchReportedPosts = createAsyncThunk(
   "admin/fetchReportedPosts",
   async ({ page = 1, limit = 10 }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.get(
-        `/admin/reports?page=${page}&limit=${limit}`
+        `/admin/reports?page=${page}&limit=${limit}`,
+        { withCredentials: true }
       );
       return {
         reports: response.data.reports,
@@ -235,13 +264,16 @@ export const fetchReportedPosts = createAsyncThunk(
   }
 );
 
+// Review report
 export const reviewReport = createAsyncThunk(
   "admin/reviewReport",
   async ({ reportId, forwardToAuthor }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.patch(`/admin/reports/${reportId}`, {
-        forwardToAuthor,
-      });
+      const response = await axiosInstance.patch(
+        `/admin/reports/${reportId}`,
+        { forwardToAuthor },
+        { withCredentials: true }
+      );
       return { reportId, forwardToAuthor, isReviewed: true };
     } catch (error) {
       return rejectWithValue(
@@ -251,13 +283,15 @@ export const reviewReport = createAsyncThunk(
   }
 );
 
+// Send report notification
 export const sendReportNotification = createAsyncThunk(
   "admin/sendReportNotification",
   async ({ reportId, subject, message }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.post(
         "/admin/replies/send-notification",
-        { reportId, subject, message }
+        { reportId, subject, message },
+        { withCredentials: true }
       );
       return response.data;
     } catch (error) {
@@ -268,12 +302,15 @@ export const sendReportNotification = createAsyncThunk(
   }
 );
 
+// Acknowledge report
 export const acknowledgeReport = createAsyncThunk(
   "admin/acknowledgeReport",
   async ({ reportId }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.post(
-        `/admin/acknowledge-report/${reportId}`
+        `/admin/acknowledge-report/${reportId}`,
+        {},
+        { withCredentials: true }
       );
       return { reportId, isAcknowledged: true };
     } catch (error) {
@@ -284,6 +321,7 @@ export const acknowledgeReport = createAsyncThunk(
   }
 );
 
+// Fetch all users' earnings
 export const getAllUsersEarnings = createAsyncThunk(
   "admin/getAllUsersEarnings",
   async (_, { rejectWithValue }) => {
@@ -308,6 +346,7 @@ export const getAllUsersEarnings = createAsyncThunk(
   }
 );
 
+// Process bulk payouts
 export const processBulkPayouts = createAsyncThunk(
   "admin/processBulkPayouts",
   async ({ users }, { rejectWithValue }) => {
@@ -334,6 +373,7 @@ export const processBulkPayouts = createAsyncThunk(
   }
 );
 
+// Fetch site analytics
 export const fetchSiteAnalytics = createAsyncThunk(
   "admin/fetchSiteAnalytics",
   async ({ startDate, endDate }, { rejectWithValue }) => {
@@ -351,15 +391,303 @@ export const fetchSiteAnalytics = createAsyncThunk(
   }
 );
 
+// Clear error
 export const clearError = createAsyncThunk("admin/clearError", async () => {
   return null;
 });
+
+// Check email status
+export const checkEmailStatus = createAsyncThunk(
+  "admin/checkEmailStatus",
+  async ({ email, type }, { rejectWithValue }) => {
+    try {
+      console.log("[adminSlice:checkEmailStatus] 🚀 Fetching email status:", {
+        email,
+        type,
+      });
+      const response = await axiosInstance.get(
+        `/admin/email-status?email=${encodeURIComponent(
+          email
+        )}&type=${encodeURIComponent(type)}`,
+        { withCredentials: true }
+      );
+      console.log("[adminSlice:checkEmailStatus] ✅ Success:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "[adminSlice:checkEmailStatus] 🔥 Error:",
+        error.response?.data?.message || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch email status"
+      );
+    }
+  }
+);
+
+// Fetch all email statuses
+export const getAllEmailStatuses = createAsyncThunk(
+  "admin/getAllEmailStatuses",
+  async ({ page = 1, limit = 10, type }, { rejectWithValue }) => {
+    try {
+      console.log(
+        "[adminSlice:getAllEmailStatuses] 🚀 Fetching all email statuses:",
+        { page, limit, type }
+      );
+      const query = type
+        ? `page=${page}&limit=${limit}&type=${encodeURIComponent(type)}`
+        : `page=${page}&limit=${limit}`;
+      const response = await axiosInstance.get(
+        `/admin/all-email-statuses?${query}`,
+        { withCredentials: true }
+      );
+      console.log("[adminSlice:getAllEmailStatuses] ✅ Success:", {
+        logsLength: response.data.logs.length,
+        total: response.data.total,
+      });
+      return {
+        emailStatuses: response.data.logs,
+        totalEmails: response.data.total,
+        currentPage: page,
+        totalPages: Math.ceil(response.data.total / limit),
+      };
+    } catch (error) {
+      console.error(
+        "[adminSlice:getAllEmailStatuses] 🔥 Error:",
+        error.response?.data?.message || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch email statuses"
+      );
+    }
+  }
+);
+
+// Retry failed emails
+export const retryFailedEmails = createAsyncThunk(
+  "admin/retryFailedEmails",
+  async ({ type }, { rejectWithValue }) => {
+    try {
+      console.log("[adminSlice:retryFailedEmails] 🚀 Retrying failed emails:", {
+        type,
+      });
+      const response = await axiosInstance.post(
+        "/admin/retry-failed-emails",
+        { type },
+        { withCredentials: true }
+      );
+      console.log("[adminSlice:retryFailedEmails] ✅ Success:", response.data);
+      return response.data.results;
+    } catch (error) {
+      console.error(
+        "[adminSlice:retryFailedEmails] 🔥 Error:",
+        error.response?.data?.message || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to retry failed emails"
+      );
+    }
+  }
+);
+
+// Record reading time
+export const recordReadingTime = createAsyncThunk(
+  "admin/recordReadingTime",
+  async ({ postId, timeSpent }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        "/admin/reading-time",
+        { postId, timeSpent },
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to record reading time"
+      );
+    }
+  }
+);
+
+// Get reading details by post
+export const getReadingDetailsByPost = createAsyncThunk(
+  "admin/getReadingDetailsByPost",
+  async (postId, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get(
+        `/admin/reading-details/${postId}`,
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch reading details"
+      );
+    }
+  }
+);
+
+// Fetch daily post email report
+export const getDailyPostEmailReport = createAsyncThunk(
+  "admin/getDailyPostEmailReport",
+  async ({ page = 1, limit = 10, date }, { rejectWithValue }) => {
+    try {
+      console.log(
+        "[adminSlice:getDailyPostEmailReport] 🚀 Fetching daily post email report:",
+        { page, limit, date }
+      );
+      const query = date
+        ? `page=${page}&limit=${limit}&date=${encodeURIComponent(date)}`
+        : `page=${page}&limit=${limit}`;
+      const response = await axiosInstance.get(
+        `/dailyMail/daily-post-report?${query}`,
+        {
+          withCredentials: true,
+        }
+      );
+      console.log("[adminSlice:getDailyPostEmailReport] ✅ Success:", {
+        logsLength: response.data.logs.length,
+        total: response.data.total,
+      });
+      return {
+        emailReports: response.data.logs,
+        totalEmails: response.data.total,
+        currentPage: page,
+        totalPages: Math.ceil(response.data.total / limit),
+      };
+    } catch (error) {
+      console.error(
+        "[adminSlice:getDailyPostEmailReport] 🔥 Error:",
+        error.response?.data?.message || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Failed to fetch daily post email report"
+      );
+    }
+  }
+);
+
+// Fetch all banner notifications
+export const fetchBannerNotifications = createAsyncThunk(
+  "admin/fetchBannerNotifications",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get(
+        "/bannerNotification/get-Notification",
+        {
+          withCredentials: true,
+        }
+      );
+      return response.data.notifications;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch banner notifications"
+      );
+    }
+  }
+);
+
+// Create a new banner notification
+export const createBannerNotification = createAsyncThunk(
+  "admin/createBannerNotification",
+  async ({ title, message, region }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        "/bannerNotification/create",
+        { title, message, region },
+        { withCredentials: true }
+      );
+      return response.data.notification;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to create banner notification"
+      );
+    }
+  }
+);
+
+// Dismiss a banner notification
+export const dismissBannerNotification = createAsyncThunk(
+  "admin/dismissBannerNotification",
+  async (notificationId, { rejectWithValue }) => {
+    try {
+      await axiosInstance.patch(
+        `/bannerNotification/dismiss/${notificationId}`,
+        {},
+        { withCredentials: true }
+      );
+      return notificationId;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to dismiss notification"
+      );
+    }
+  }
+);
+
+export const deactivateBannerNotification = createAsyncThunk(
+  "admin/deactivateBannerNotification",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await axiosInstance.patch(
+        `/bannerNotification/deactivate/${id}`
+      );
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to deactivate notification"
+      );
+    }
+  }
+);
+
+export const deleteAllBannerNotifications = createAsyncThunk(
+  "admin/deleteAllBannerNotifications",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await axiosInstance.delete("/bannerNotification/delete-all");
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to delete all notifications"
+      );
+    }
+  }
+);
+
+// Download all data as CSV
+export const downloadAllDataCsv = createAsyncThunk(
+  "admin/downloadAllDataCsv",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get(
+        "/admin/download-csv",
+        { withCredentials: true, responseType: 'blob' }
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'all_data_export.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return { success: true };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to download CSV"
+      );
+    }
+  }
+);
 
 const adminSlice = createSlice({
   name: "admin",
   initialState: {
     users: [],
+    bannerNotifications: [],
     totalUsers: 0,
+    allUsers: [], // For full mode in getAllUsers
     posts: [],
     totalPosts: 0,
     contactMessages: [],
@@ -367,6 +695,11 @@ const adminSlice = createSlice({
     reports: [],
     totalReports: 0,
     userEarnings: [],
+    emailStatuses: [], // For email statuses
+    totalEmails: 0, // Total email statuses
+    currentPageEmails: 1, // Email status pagination
+    totalPagesEmails: 1, // Email status pagination
+    currentEmailStatus: null, // Single email status
     currentPageUsers: 1,
     totalPagesUsers: 1,
     currentPagePosts: 1,
@@ -390,6 +723,12 @@ const adminSlice = createSlice({
     notificationStatus: null,
     analyticsLoading: false,
     analyticsError: null,
+    emailLoading: false, // Email-specific loading state
+    emailError: null, // Email-specific error state
+    emailReports: [], // Daily post email reports
+    totalEmailReports: 0, // Total daily post email reports
+    currentPageEmailReports: 1, // Daily post email report pagination
+    totalPagesEmailReports: 1, // Daily post email report pagination
   },
   reducers: {
     clearNotificationStatus: (state) => {
@@ -453,9 +792,36 @@ const adminSlice = createSlice({
         msg._id === messageId ? { ...msg, isHandled: true } : msg
       );
     },
+    setNotificationStatus: (state, action) => {
+      console.log(
+        "[adminSlice:setNotificationStatus] 📢 Setting notification status:",
+        action.payload
+      );
+      state.notificationStatus = action.payload;
+    },
+    setEmailError: (state, action) => {
+      console.log(
+        "[adminSlice:setEmailError] 🔥 Setting email error:",
+        action.payload
+      );
+      state.emailError = action.payload;
+    },
+    [deactivateBannerNotification.fulfilled]: (state, action) => {
+      state.bannerNotifications = state.bannerNotifications.filter(
+        (n) => n._id !== action.payload.id
+      );
+    },
+    updatePostBlockStatus: (state, action) => {
+      const { postId, blocked } = action.payload;
+      const index = state.posts.findIndex((post) => post._id === postId);
+      if (index !== -1) {
+        state.posts[index].blocked = blocked;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
+      // getAllUsers
       .addCase(getAllUsers.pending, (state) => {
         console.log("[adminSlice:getAllUsers] ⏳ Pending");
         state.loading = true;
@@ -480,6 +846,7 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // toggleBlockUser
       .addCase(toggleBlockUser.fulfilled, (state, action) => {
         state.users = state.users.map((user) =>
           user._id === action.payload.userId
@@ -487,6 +854,10 @@ const adminSlice = createSlice({
             : user
         );
       })
+      .addCase(toggleBlockUser.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // toggleUserRole
       .addCase(toggleUserRole.fulfilled, (state, action) => {
         state.users = state.users.map((user) =>
           user._id === action.payload.userId
@@ -494,6 +865,10 @@ const adminSlice = createSlice({
             : user
         );
       })
+      .addCase(toggleUserRole.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // deleteUser
       .addCase(deleteUser.fulfilled, (state, action) => {
         state.users = state.users.filter(
           (user) => user._id !== action.payload.userId
@@ -501,6 +876,10 @@ const adminSlice = createSlice({
         state.totalUsers -= 1;
         state.totalPagesUsers = Math.ceil(state.totalUsers / 10);
       })
+      .addCase(deleteUser.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // getAllPosts
       .addCase(getAllPosts.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -516,6 +895,7 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // toggleBlockPost
       .addCase(toggleBlockPost.fulfilled, (state, action) => {
         state.posts = state.posts.map((post) =>
           post._id === action.payload.postId
@@ -523,6 +903,10 @@ const adminSlice = createSlice({
             : post
         );
       })
+      .addCase(toggleBlockPost.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // deletePost
       .addCase(deletePost.fulfilled, (state, action) => {
         state.posts = state.posts.filter(
           (post) => post._id !== action.payload.postId
@@ -530,6 +914,10 @@ const adminSlice = createSlice({
         state.totalPosts -= 1;
         state.totalPagesPosts = Math.ceil(state.totalPosts / 10);
       })
+      .addCase(deletePost.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // createContactMessage
       .addCase(createContactMessage.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -542,6 +930,7 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // fetchContactMessages
       .addCase(fetchContactMessages.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -557,6 +946,7 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // toggleContactMessageHandled
       .addCase(toggleContactMessageHandled.fulfilled, (state, action) => {
         state.contactMessages = state.contactMessages.map((msg) =>
           msg._id === action.payload.messageId
@@ -564,6 +954,10 @@ const adminSlice = createSlice({
             : msg
         );
       })
+      .addCase(toggleContactMessageHandled.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // replyContactMessage
       .addCase(replyContactMessage.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -575,13 +969,12 @@ const adminSlice = createSlice({
             : msg
         );
         state.notificationStatus = "Reply sent successfully";
-        // Do NOT set loading = false here — let the modal handle it
       })
       .addCase(replyContactMessage.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-
+      // createReport
       .addCase(createReport.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -594,6 +987,7 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // fetchReportedPosts
       .addCase(fetchReportedPosts.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -609,6 +1003,7 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // reviewReport
       .addCase(reviewReport.fulfilled, (state, action) => {
         state.reports = state.reports.map((report) =>
           report._id === action.payload.reportId
@@ -620,9 +1015,17 @@ const adminSlice = createSlice({
             : report
         );
       })
+      .addCase(reviewReport.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // sendReportNotification
       .addCase(sendReportNotification.fulfilled, (state) => {
         state.notificationStatus = "Notification sent successfully";
       })
+      .addCase(sendReportNotification.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // acknowledgeReport
       .addCase(acknowledgeReport.fulfilled, (state, action) => {
         state.reports = state.reports.map((report) =>
           report._id === action.payload.reportId
@@ -630,6 +1033,10 @@ const adminSlice = createSlice({
             : report
         );
       })
+      .addCase(acknowledgeReport.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // getAllUsersEarnings
       .addCase(getAllUsersEarnings.pending, (state) => {
         console.log("[adminSlice:getAllUsersEarnings] ⏳ Pending");
         state.loading = true;
@@ -650,6 +1057,7 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // processBulkPayouts
       .addCase(processBulkPayouts.pending, (state) => {
         console.log("[adminSlice:processBulkPayouts] ⏳ Pending");
         state.loading = true;
@@ -671,6 +1079,7 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // fetchSiteAnalytics
       .addCase(fetchSiteAnalytics.pending, (state) => {
         console.log("[adminSlice:fetchSiteAnalytics] ⏳ Pending");
         state.analyticsLoading = true;
@@ -692,10 +1101,187 @@ const adminSlice = createSlice({
         state.analyticsLoading = false;
         state.analyticsError = action.payload;
       })
+      // clearError
       .addCase(clearError.fulfilled, (state) => {
         console.log("[adminSlice:clearError] ✅ Fulfilled");
         state.error = null;
         state.analyticsError = null;
+        state.emailError = null;
+      })
+      // checkEmailStatus
+      .addCase(checkEmailStatus.pending, (state) => {
+        console.log("[adminSlice:checkEmailStatus] ⏳ Pending");
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(checkEmailStatus.fulfilled, (state, action) => {
+        console.log(
+          "[adminSlice:checkEmailStatus] ✅ Fulfilled:",
+          action.payload
+        );
+        state.emailLoading = false;
+        state.currentEmailStatus = action.payload;
+      })
+      .addCase(checkEmailStatus.rejected, (state, action) => {
+        console.log(
+          "[adminSlice:checkEmailStatus] 🔥 Rejected:",
+          action.payload
+        );
+        state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+      // getAllEmailStatuses
+      .addCase(getAllEmailStatuses.pending, (state) => {
+        console.log("[adminSlice:getAllEmailStatuses] ⏳ Pending");
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(getAllEmailStatuses.fulfilled, (state, action) => {
+        console.log(
+          "[adminSlice:getAllEmailStatuses] ✅ Fulfilled:",
+          action.payload
+        );
+        state.emailLoading = false;
+        state.emailStatuses = action.payload.emailStatuses;
+        state.totalEmails = action.payload.totalEmails;
+        state.currentPageEmails = action.payload.currentPage;
+        state.totalPagesEmails = action.payload.totalPages;
+      })
+      .addCase(getAllEmailStatuses.rejected, (state, action) => {
+        console.log(
+          "[adminSlice:getAllEmailStatuses] 🔥 Rejected:",
+          action.payload
+        );
+        state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+      // retryFailedEmails
+      .addCase(retryFailedEmails.pending, (state) => {
+        console.log("[adminSlice:retryFailedEmails] ⏳ Pending");
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(retryFailedEmails.fulfilled, (state, action) => {
+        console.log(
+          "[adminSlice:retryFailedEmails] ✅ Fulfilled:",
+          action.payload
+        );
+        state.emailLoading = false;
+        state.notificationStatus = "Failed emails retried successfully";
+        state.emailStatuses = state.emailStatuses.map((status) => {
+          const updated = action.payload.find(
+            (result) =>
+              result.email === status.email && result.type === status.type
+          );
+          return updated
+            ? { ...status, ...updated, stopEmailAttempts: !updated.success }
+            : status;
+        });
+      })
+      .addCase(retryFailedEmails.rejected, (state, action) => {
+        console.log(
+          "[adminSlice:retryFailedEmails] 🔥 Rejected:",
+          action.payload
+        );
+        state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+      // recordReadingTime
+      .addCase(recordReadingTime.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(recordReadingTime.fulfilled, (state) => {
+        state.loading = false;
+        state.notificationStatus = "Reading time recorded successfully";
+      })
+      .addCase(recordReadingTime.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // getReadingDetailsByPost
+      .addCase(getReadingDetailsByPost.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getReadingDetailsByPost.fulfilled, (state, action) => {
+        state.loading = false;
+        state.notificationStatus = "Reading details fetched successfully";
+      })
+      .addCase(getReadingDetailsByPost.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // getDailyPostEmailReport
+      .addCase(getDailyPostEmailReport.pending, (state) => {
+        console.log("[adminSlice:getDailyPostEmailReport] ⏳ Pending");
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(getDailyPostEmailReport.fulfilled, (state, action) => {
+        console.log(
+          "[adminSlice:getDailyPostEmailReport] ✅ Fulfilled:",
+          action.payload
+        );
+        state.emailLoading = false;
+        state.emailReports = action.payload.emailReports;
+        state.totalEmailReports = action.payload.totalEmails;
+        state.currentPageEmailReports = action.payload.currentPage;
+        state.totalPagesEmailReports = action.payload.totalPages;
+      })
+      .addCase(getDailyPostEmailReport.rejected, (state, action) => {
+        console.log(
+          "[adminSlice:getDailyPostEmailReport] 🔥 Rejected:",
+          action.payload
+        );
+        state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+      // fetchBannerNotifications
+      .addCase(fetchBannerNotifications.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchBannerNotifications.fulfilled, (state, action) => {
+        state.loading = false;
+        state.bannerNotifications = action.payload;
+      })
+      .addCase(fetchBannerNotifications.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // createBannerNotification
+      .addCase(createBannerNotification.fulfilled, (state, action) => {
+        state.bannerNotifications = [
+          action.payload,
+          ...state.bannerNotifications,
+        ];
+        state.notificationStatus = "Banner notification created";
+      })
+      .addCase(createBannerNotification.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // dismissBannerNotification
+      .addCase(dismissBannerNotification.fulfilled, (state, action) => {
+        state.bannerNotifications = state.bannerNotifications.filter(
+          (notification) => notification._id !== action.payload
+        );
+      })
+      .addCase(dismissBannerNotification.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // downloadAllDataCsv
+      .addCase(downloadAllDataCsv.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(downloadAllDataCsv.fulfilled, (state) => {
+        state.loading = false;
+        state.notificationStatus = "CSV downloaded successfully";
+      })
+      .addCase(downloadAllDataCsv.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
@@ -707,6 +1293,9 @@ export const {
   socketReportReviewed,
   socketReportAcknowledged,
   socketContactMessageReplied,
+  setNotificationStatus,
+  setEmailError,
+  updatePostBlockStatus,
 } = adminSlice.actions;
 
 export default adminSlice.reducer;

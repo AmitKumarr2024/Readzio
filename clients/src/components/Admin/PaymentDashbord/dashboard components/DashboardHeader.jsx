@@ -9,7 +9,7 @@ const DashboardHeader = () => (
     transition={{ duration: 0.3 }}
     className="flex flex-col sm:flex-row justify-between items-center mb-8"
   >
-    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 flex items-center gap-3">
+    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-text-main-light dark:text-text-main-dark flex items-center gap-3">
       <FaDollarSign className="w-8 h-8 text-blue-600" /> Payment Dashboard
     </h1>
   </motion.div>

@@ -1,12 +1,12 @@
 import { CLIENT_URL, SENDER_EMAIL } from "../config/dotenv.js";
 import transporter from "../config/nodeMailer.js";
 import ReportedPost from "../Models/ReportedPost.js";
-import User from "../Models/User.js";
 import { AppError } from "../utils/AppError.js";
 import mongoose from "mongoose";
 import validator from "validator";
 import ContactMessage from "../models/ContactMessage.js";
 import createMailOption from "../helpers/emailHelper.js";
+import { sendEmailWithRetries } from "../helpers/sendEmailWithRetries.js";
 
 // Create contact message
 export const createContactMessage = async (req, res, next) => {
@@ -28,7 +28,10 @@ export const createContactMessage = async (req, res, next) => {
 
     res.status(201).json({ success: true, message: "Message sent" });
   } catch (error) {
-    console.error("Error creating contact message", { error: error.message, stack: error.stack });
+    console.error("Error creating contact message", {
+      error: error.message,
+      stack: error.stack,
+    });
     next(new AppError(error.message, 500));
   }
 };
@@ -43,7 +46,10 @@ export const viewContactMessages = async (req, res, next) => {
 
     res.status(200).json({ success: true, messages, totalMessages });
   } catch (error) {
-    console.error("Error fetching contact messages", { error: error.message, stack: error.stack });
+    console.error("Error fetching contact messages", {
+      error: error.message,
+      stack: error.stack,
+    });
     next(new AppError(error.message, 500));
   }
 };
@@ -70,7 +76,10 @@ export const createReport = async (req, res, next) => {
 
     res.status(201).json({ success: true, message: "Report submitted" });
   } catch (error) {
-    console.error("Error creating report", { error: error.message, stack: error.stack });
+    console.error("Error creating report", {
+      error: error.message,
+      stack: error.stack,
+    });
     next(new AppError(error.message, 500));
   }
 };
@@ -91,7 +100,10 @@ export const getAllReportedPosts = async (req, res, next) => {
 
     res.status(200).json({ success: true, reports });
   } catch (error) {
-    console.error("Error fetching reported posts", { error: error.message, stack: error.stack });
+    console.error("Error fetching reported posts", {
+      error: error.message,
+      stack: error.stack,
+    });
     next(new AppError(error.message, 500, "GetAllReportedPosts"));
   }
 };
@@ -118,7 +130,10 @@ export const reviewReport = async (req, res, next) => {
 
     res.status(200).json({ success: true, message: "Report reviewed" });
   } catch (error) {
-    console.error("Error reviewing report", { error: error.message, stack: error.stack });
+    console.error("Error reviewing report", {
+      error: error.message,
+      stack: error.stack,
+    });
     next(new AppError(error.message, 500, "ReviewReport"));
   }
 };
@@ -127,7 +142,11 @@ export const reviewReport = async (req, res, next) => {
 export const sendReportNotification = async (req, res, next) => {
   try {
     const { reportId, subject, message, details } = req.body;
-    console.log("Sending report notification", { reportId, subject, requestBody: req.body });
+    console.log("Sending report notification", {
+      reportId,
+      subject,
+      requestBody: req.body,
+    });
     const finalMessage = message || details;
 
     if (!reportId) throw new AppError("Report ID required", 400);
@@ -169,7 +188,10 @@ export const sendReportNotification = async (req, res, next) => {
 
     try {
       await transporter.sendMail(mailOption);
-      console.log("Report notification email sent successfully", { to: report.post.author.email, reportId });
+      console.log("Report notification email sent successfully", {
+        to: report.post.author.email,
+        reportId,
+      });
     } catch (emailError) {
       console.error("Failed to send report notification email", {
         to: report.post.author.email,
@@ -180,16 +202,33 @@ export const sendReportNotification = async (req, res, next) => {
           host: transporter.options.host,
           port: transporter.options.port,
           secure: transporter.options.secure,
-          auth: transporter.options.auth ? { user: transporter.options.auth.user } : null,
+          auth: transporter.options.auth
+            ? { user: transporter.options.auth.user }
+            : null,
         },
       });
-      throw new AppError(`Failed to send email: ${emailError.message}`, 500, "SendReportNotificationEmail");
+      throw new AppError(
+        `Failed to send email: ${emailError.message}`,
+        500,
+        "SendReportNotificationEmail"
+      );
     }
 
-    res.status(200).json({ success: true, message: "Notification sent successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Notification sent successfully" });
   } catch (error) {
-    console.error("Error in sendReportNotification", { error: error.message, stack: error.stack });
-    next(new AppError(error.message, error.statusCode || 500, "SendReportNotification"));
+    console.error("Error in sendReportNotification", {
+      error: error.message,
+      stack: error.stack,
+    });
+    next(
+      new AppError(
+        error.message,
+        error.statusCode || 500,
+        "SendReportNotification"
+      )
+    );
   }
 };
 
@@ -227,13 +266,21 @@ export const replyContactMessage = async (req, res, next) => {
       message,
       hasButton: false,
     });
-    console.log("Preparing to send contact message reply email", { mailOption });
+    await sendEmailWithRetries(mailOption, null, "contact_reply");
+    contactMessage.isHandled = true;
+    await contactMessage.save();
+    console.log("Preparing to send contact message reply email", {
+      mailOption,
+    });
 
     try {
       await transporter.sendMail(mailOption);
       contactMessage.isHandled = true;
       await contactMessage.save();
-      console.log("Contact message reply email sent successfully", { to: contactMessage.email, messageId });
+      console.log("Contact message reply email sent successfully", {
+        to: contactMessage.email,
+        messageId,
+      });
     } catch (emailError) {
       console.error("Failed to send contact message reply email", {
         to: contactMessage.email,
@@ -244,16 +291,31 @@ export const replyContactMessage = async (req, res, next) => {
           host: transporter.options.host,
           port: transporter.options.port,
           secure: transporter.options.secure,
-          auth: transporter.options.auth ? { user: transporter.options.auth.user } : null,
+          auth: transporter.options.auth
+            ? { user: transporter.options.auth.user }
+            : null,
         },
       });
-      throw new AppError(`Failed to send email: ${emailError.message}`, 500, "ReplyContactMessageEmail");
+      throw new AppError(
+        `Failed to send email: ${emailError.message}`,
+        500,
+        "ReplyContactMessageEmail"
+      );
     }
 
     res.status(200).json({ success: true, message: "Reply sent successfully" });
   } catch (error) {
-    console.error("Error in replyContactMessage", { error: error.message, stack: error.stack });
-    next(new AppError(error.message, error.statusCode || 500, "ReplyContactMessage"));
+    console.error("Error in replyContactMessage", {
+      error: error.message,
+      stack: error.stack,
+    });
+    next(
+      new AppError(
+        error.message,
+        error.statusCode || 500,
+        "ReplyContactMessage"
+      )
+    );
   }
 };
 
@@ -277,16 +339,26 @@ export const acknowledgeReport = async (req, res, next) => {
     }
 
     if (report.post.author._id.toString() !== req.user._id.toString()) {
-      throw new AppError("Unauthorized: Only the post author can acknowledge this report", 403);
+      throw new AppError(
+        "Unauthorized: Only the post author can acknowledge this report",
+        403
+      );
     }
 
     report.isAcknowledged = true;
     await report.save();
     console.log("Report acknowledged", { reportId });
 
-    res.status(200).json({ success: true, message: "Report acknowledged successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Report acknowledged successfully" });
   } catch (error) {
-    console.error("Error acknowledging report", { error: error.message, stack: error.stack });
-    next(new AppError(error.message, error.statusCode || 500, "AcknowledgeReport"));
+    console.error("Error acknowledging report", {
+      error: error.message,
+      stack: error.stack,
+    });
+    next(
+      new AppError(error.message, error.statusCode || 500, "AcknowledgeReport")
+    );
   }
 };

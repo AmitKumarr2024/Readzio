@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import slugify from 'slugify';
+import mongoose from "mongoose";
+import slugify from "slugify";
 
 const blockSchema = new mongoose.Schema(
   {
@@ -22,12 +22,7 @@ const blockSchema = new mongoose.Schema(
         "poll",
       ],
     },
-    status: {
-      type: String,
-      enum: ["draft", "review", "published", "archived"],
-      default: "draft",
-      required: true,
-    },
+    blocked: { type: Boolean, default: false },
     value: String,
     level: Number,
     text: String,
@@ -40,19 +35,32 @@ const blockSchema = new mongoose.Schema(
     size: Number,
     ordered: Boolean,
     author: String,
-    question: String,
+    question: {
+      type: String,
+      required: function () {
+        return this.type === "poll";
+      },
+    },
     options: [
       {
-        option: { type: String, required: true },
+        option: {
+          type: String,
+          required: function () {
+            return this.parent().type === "poll";
+          },
+        },
         votes: { type: Number, default: 0 },
       },
     ],
-    votedUserIds: [
-      {
-        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        votedAt: { type: Date, default: Date.now },
-      },
-    ],
+    votedUserIds: {
+      type: [
+        {
+          userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+          votedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
     items: { type: [String], default: [] },
     data: { type: [[String]], default: [] },
   },
@@ -63,43 +71,68 @@ const postSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
-    author: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     isSubscriberOnly: { type: Boolean, default: false },
     category: { type: String, required: true },
     tags: { type: [String], default: [] },
     thumbnail: String,
     excerpt: String,
+    isPremium: { type: Boolean, default: false },
+    readTime: String,
+    blocked: { type: Boolean, default: false },
+    message: String,
+    viewsCount: { type: Number, default: 0 },
+    likesCount: { type: Number, default: 0 },
+    commentsCount: { type: Number, default: 0 },
+    shareCount: { type: Number, default: 0 },
+    sharedBy: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        sharedAt: { type: Date, default: Date.now },
+        platform: {
+          type: String,
+          enum: [
+            "copy",
+            "whatsapp",
+            "telegram",
+            "twitter",
+            "facebook",
+            "linkedin",
+            "other",
+          ],
+        },
+      },
+    ],
     timeSpent: { type: Number, default: 0 },
     blocks: {
       type: [blockSchema],
+      default: [],
       validate: {
         validator: function (v) {
           if (!Array.isArray(v)) {
-            console.error("[DEBUG] Blocks is not an array:", v);
-            return false;
-          }
-          if (this.status !== "draft" && v.length === 0) {
-            console.error("[DEBUG] Non-draft post has no blocks");
+            console.error("[PostModel] Blocks is not an array:", v);
             return false;
           }
           return v.every((block, index) => {
-            if (!block || typeof block !== "object" || !block.type || !block.status) {
-              console.error(`[DEBUG] Invalid block at index ${index}:`, block);
+            if (!block || typeof block !== "object" || !block.type) {
+              console.error(`[PostModel] Invalid block at index ${index}:`, block);
+              return false;
+            }
+            if (block.type === "poll" && (!block.question || !Array.isArray(block.options))) {
+              console.error(`[PostModel] Invalid poll block at index ${index}:`, block);
               return false;
             }
             return true;
           });
         },
-        message: "Blocks must be a valid non-empty array with type and status for non-draft posts",
+        message: "Blocks must be a valid array with required fields for each block type",
       },
     },
     isPublished: { type: Boolean, default: false },
-    blocked: { type: Boolean, default: false },
-    status: {
-      type: String,
-      enum: ["draft", "review", "published", "archived"],
-      default: "draft",
-    },
     isFeatured: { type: Boolean, default: false },
     isPinned: { type: Boolean, default: false },
     readingTime: Number,
@@ -107,22 +140,27 @@ const postSchema = new mongoose.Schema(
     metaTitle: String,
     metaDescription: String,
     metaKeywords: { type: [String], default: [] },
-    views: { type: Number, default: 0 },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     bookmarksCount: { type: Number, default: 0 },
-    commentsCount: { type: Number, default: 0 },
     lastEditedAt: Date,
     allowComments: { type: Boolean, default: true },
     canonicalUrl: String,
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-// Indexes
+postSchema.virtual("postType").get(function () {
+  return this.isPremium || this.isSubscriberOnly ? "premium" : "free";
+});
+
+postSchema.set("toObject", { virtuals: true });
+postSchema.set("toJSON", { virtuals: true });
+
 postSchema.index({ author: 1 });
 postSchema.index({ category: 1 });
-postSchema.index({ views: -1 });
-postSchema.index({ isPublished: 1, category: 1 });
+postSchema.index({ slug: 1, isPublished: 1 });
 postSchema.index({ title: "text", excerpt: "text", tags: "text" });
 
 postSchema.pre("save", async function (next) {
@@ -131,11 +169,22 @@ postSchema.pre("save", async function (next) {
     let slug = baseSlug;
     let counter = 1;
 
-    while (await mongoose.models.Post.findOne({ slug })) {
+    while (await mongoose.models.Post.findOne({ slug, _id: { $ne: this._id } })) {
       slug = `${baseSlug}-${counter++}`;
     }
 
     this.slug = slug;
+  }
+
+  // Only set isPublished to true if explicitly set or modified
+  if (this.isModified("isPublished") && this.isPublished !== false) {
+    this.isPublished = true;
+  }
+
+  // Ensure blocks is always an array
+  if (!Array.isArray(this.blocks)) {
+    console.warn("[PostModel] Blocks is not an array, setting to []:", this.blocks);
+    this.blocks = [];
   }
 
   next();

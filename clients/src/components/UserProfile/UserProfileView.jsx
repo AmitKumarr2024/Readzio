@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import UserAvatar from "./UserAvatar";
 import UserCoverImage from "./UserCoverImage";
-import Skeleton from "../UI/Skeleton";
+import Skeleton from "../Ui/Skeleton";
 import {
   FiMail,
   FiMapPin,
@@ -112,7 +112,7 @@ export default function UserProfileView({ user, loading }) {
         </motion.div>
 
         {/* Avatar */}
-        <div className=" flex items-center flex-col mt-10 md:mt-1 md:flex-row mb-10 md:mb-1 gap-1 md:gap-10 justify-start  h-52 px-10">
+        <div className=" flex font-(family-name:--font-Urbanist) items-center flex-col mt-10 md:mt-1 md:flex-row mb-10 md:mb-1 gap-1 md:gap-10 justify-start  h-52 px-10">
           <motion.div variants={fadeUp}>
             <UserAvatar
               src={
@@ -125,7 +125,7 @@ export default function UserProfileView({ user, loading }) {
           </motion.div>
 
           {/* Profile Info */}
-          <div className=" flex flex-col items-center px-6 md:px-12 pb-8 pt-1  text-center">
+          <div className=" flex flex-col font-(family-name:--font-Urbanist) items-center px-6 md:px-12 pb-8 pt-1  text-center">
             <motion.h2
               className="text-5xl font-extrabold text-gray-900"
               variants={fadeUp}
@@ -152,7 +152,7 @@ export default function UserProfileView({ user, loading }) {
           </div>
         </div>
 
-        <div className="px-6 md:px-12 pb-8 pt-1 text-center">
+        <div className="px-6 md:px-12 pb-8 pt-1 text-center font-(family-name:--font-Urbanist)">
           <motion.hr className="my-1 border-gray-300" variants={fadeUp} />
           {/* User Details */}
           <motion.div
@@ -196,8 +196,8 @@ export default function UserProfileView({ user, loading }) {
           <motion.hr className="my-2 border-gray-300" variants={fadeUp} />
 
           {/* Followers & Following */}
-          <motion.div
-            className="flex bg-gray-50 rounded-lg overflow-hidden shadow-inner"
+          <motion.div 
+            className="flex bg-gray-50 rounded-lg overflow-hidden shadow-inner font-(family-name:--font-Urbanist)"
             variants={fadeUp}
           >
             {[

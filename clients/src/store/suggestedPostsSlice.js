@@ -1,19 +1,19 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axiosInstance from '../connection/axiosInstance';
 
+// Async thunk to fetch suggested posts
 export const fetchSuggestedPosts = createAsyncThunk(
   'suggestedPosts/fetchSuggestedPosts',
-  async ({ limit = 10 } = {}, { rejectWithValue }) => {
+  async ({ limit = 4, category = '', exclude = '' } = {}, { rejectWithValue }) => {
     try {
-      console.log(`🔄 Sending FETCH SUGGESTED POSTS request with limit: ${limit}`);
       const response = await axiosInstance.get('/post/suggested-post/suggested', {
-        params: { limit },
+        params: { limit, category, exclude },
       });
-      console.log(`✅ FETCH SUGGESTED POSTS response:`, response.data);
       return response.data.posts;
     } catch (error) {
-      console.error(`❌ FETCH SUGGESTED POSTS failed:`, error.response?.data || error.message);
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch suggested posts');
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to fetch suggested posts'
+      );
     }
   }
 );

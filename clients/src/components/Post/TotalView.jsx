@@ -5,7 +5,7 @@ import { useParams } from "react-router-dom";
 import {
   incrementPostView,
   trackTimeSpent,
-} from "../../store/Post interactions";
+} from "../../store/PostInteractions";
 import { selectPostViews } from "../../Utils/postSelectors";
 
 const TotalView = ({ postId, slug: propSlug, authorId }) => {
@@ -56,7 +56,7 @@ const TotalView = ({ postId, slug: propSlug, authorId }) => {
       <Eye size={16} className="text-blue-500" />
       <span>{views} views</span>
       {isAuthor && (
-        <span className="text-gray-400 ml-2">(Your views not counted)</span>
+        <span className="text-gray-400 ml-2">(Author views not counted)</span>
       )}
       {message === "Author views not counted" && !isAuthor && (
         <span className="text-gray-400 ml-2">(Author views not counted)</span>

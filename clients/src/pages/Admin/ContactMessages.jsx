@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -75,6 +76,7 @@ const ContactMessages = () => {
       })
     );
   };
+
   const filteredMessages = contactMessages.filter(
     (msg) =>
       msg.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -84,26 +86,26 @@ const ContactMessages = () => {
   );
 
   return (
-    <div className="p-6 bg-white rounded-2xl shadow-lg">
-      <h2 className="text-2xl font-semibold text-gray-900 mb-6">
+    <div className="p-6 bg-background-light dark:bg-background-dark rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+      <h2 className="text-2xl font-semibold text-text-main-light dark:text-text-main-dark mb-6">
         Contact Messages ({totalMessages})
       </h2>
 
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search messages..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark transition"
           />
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => handleSort("createdAt")}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-text-main-light dark:text-text-main-dark rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
           >
             {sortField === "createdAt" && sortOrder === "asc" ? (
               <SortAsc className="w-5 h-5" />
@@ -114,7 +116,7 @@ const ContactMessages = () => {
           </button>
           <button
             onClick={() => handleSort("name")}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-text-main-light dark:text-text-main-dark rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
           >
             {sortField === "name" && sortOrder === "asc" ? (
               <SortAsc className="w-5 h-5" />
@@ -127,11 +129,11 @@ const ContactMessages = () => {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex justify-between items-center">
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-200 rounded-xl flex justify-between items-center">
           <span>{error}</span>
           <button
             onClick={() => dispatch(clearError())}
-            className="text-red-900 font-semibold hover:text-red-700 transition"
+            className="text-red-900 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"
           >
             Clear
           </button>
@@ -139,9 +141,9 @@ const ContactMessages = () => {
       )}
 
       {loading ? (
-        <div className="text-center py-4 flex items-center justify-center gap-2 text-gray-500">
+        <div className="text-center py-4 flex items-center justify-center gap-2 text-text-main-light dark:text-text-main-dark">
           <svg
-            className="animate-spin w-5 h-5 text-blue-500"
+            className="animate-spin w-5 h-5 text-blue-500 dark:text-blue-400"
             viewBox="0 0 24 24"
           >
             <circle
@@ -162,27 +164,14 @@ const ContactMessages = () => {
           <span>Loading...</span>
         </div>
       ) : filteredMessages.length === 0 ? (
-        <p className="text-gray-600 text-center py-4">
+        <p className="text-text-main-light dark:text-text-main-dark text-center py-4">
           No contact messages found.
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full bg-white rounded-lg shadow">
-            {/* your table content */}
-          </table>
-        </div>
-      )}
-
-      {!loading && filteredMessages.length === 0 && (
-        <p className="text-gray-600 text-center py-4">
-          No contact messages found.
-        </p>
-      )}
-      {!loading && filteredMessages.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white rounded-lg shadow">
+          <table className="min-w-full bg-background-light dark:bg-background-dark rounded-lg shadow border border-gray-100 dark:border-gray-700">
             <thead>
-              <tr className="bg-gray-50 text-gray-700">
+              <tr className="bg-gray-50 dark:bg-gray-700/50 text-text-main-light dark:text-text-main-dark">
                 <th className="p-4 text-left text-sm font-semibold">Name</th>
                 <th className="p-4 text-left text-sm font-semibold">Email</th>
                 <th className="p-4 text-left text-sm font-semibold">Subject</th>
@@ -198,42 +187,42 @@ const ContactMessages = () => {
               {filteredMessages.map((msg) => (
                 <tr
                   key={msg._id}
-                  className="border-t hover:bg-gray-50 transition"
+                  className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
                 >
-                  <td className="p-4 text-sm">{msg.name}</td>
-                  <td className="p-4 text-sm">{msg.email}</td>
-                  <td className="p-4 text-sm">{msg.subject || "N/A"}</td>
-                  <td className="p-4 text-sm truncate max-w-xs">
+                  <td className="p-4 text-sm text-text-main-light dark:text-text-main-dark">{msg.name}</td>
+                  <td className="p-4 text-sm text-text-main-light dark:text-text-main-dark">{msg.email}</td>
+                  <td className="p-4 text-sm text-text-main-light dark:text-text-main-dark">{msg.subject || "N/A"}</td>
+                  <td className="p-4 text-sm truncate max-w-xs text-text-main-light dark:text-text-main-dark">
                     {msg.message}
                   </td>
                   <td className="p-4 text-sm">
                     <span
                       className={`px-2 py-1 rounded-full text-xs ${
                         msg.isHandled
-                          ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700"
+                          ? "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-200"
+                          : "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-200"
                       }`}
                     >
                       {msg.isHandled ? "Handled" : "Pending"}
                     </span>
                   </td>
-                  <td className="p-4 text-sm">
+                  <td className="p-4 text-sm text-text-main-light dark:text-text-main-dark">
                     {new Date(msg.createdAt).toLocaleString()}
                   </td>
                   <td className="p-4">
                     <div className="flex space-x-2">
                       <button
-                        className={`px-3 py-1 rounded-lg text-sm text-white ${
+                        className={`px-3 py-1 rounded-lg text-sm text-text-main-light dark:text-text-main-dark ${
                           msg.isHandled
-                            ? "bg-gray-500 hover:bg-gray-600"
-                            : "bg-blue-500 hover:bg-blue-600"
+                            ? "bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-500"
+                            : "bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-500"
                         }`}
                         onClick={() => handleToggleHandled(msg._id)}
                       >
                         {msg.isHandled ? "Mark Pending" : "Mark Handled"}
                       </button>
                       <button
-                        className="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600"
+                        className="px-3 py-1 bg-green-500 dark:bg-green-600 text-text-main-light dark:text-text-main-dark rounded-lg text-sm hover:bg-green-600 dark:hover:bg-green-500"
                         onClick={() => setSelectedMessage(msg)}
                       >
                         Reply
@@ -246,7 +235,7 @@ const ContactMessages = () => {
           </table>
         </div>
       )}
-      {totalMessages > 100 && (
+      {totalMessages > 10 && (
         <Pagination
           currentPage={page}
           totalPages={totalPagesMessages}

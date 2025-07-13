@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
-import { X } from "lucide-react";
-import { FaPlus } from "react-icons/fa";
+import { X, Plus } from "lucide-react";
 import {
   fetchCategories,
   fetchUserSelectedCategories,
@@ -16,57 +15,57 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
-  const { user: loginUser, status: userStatus, error: userError } = useSelector((state) => state.user);
-  const { categories, userSelectedCategories, status, error } = useSelector((state) => state.categories);
-
-  console.log("loggin user", loginUser);
+  const {
+    user: loginUser,
+    status: userStatus,
+    error: userError,
+  } = useSelector((state) => state.user);
+  const { categories, userSelectedCategories, status, error } = useSelector(
+    (state) => state.categories
+  );
 
   const [selectedCategories, setSelectedCategories] = useState([]);
-  const [newCategory, setNewCategory] = useState({ name: "", slug: "", description: "" });
+  const [newCategory, setNewCategory] = useState({
+    name: "",
+    slug: "",
+    description: "",
+  });
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [formError, setFormError] = useState("");
+  const userId = loginUser?._id;
 
-  // Redirect if not logged in and fetch user
-  useEffect(() => {
-    console.log("Token:", token, "LoginUser:", loginUser);
-    if (!token) {
-      console.log("No token found, redirecting to login");
-      toast.error("Please log in to continue.");
-      navigate("/login");
-    } else if (!loginUser?.data?._id && userStatus !== "loading") {
-      console.log("No user found, dispatching getUser");
-      dispatch(getUser());
-    }
-  }, [token, loginUser, userStatus, dispatch, navigate]);
+ useEffect(() => {
+  if (!token) {
+    toast.error("Please log in to continue.");
+    navigate("/login");
+    return;
+  }
+  if (!userId && userStatus !== "loading") {
+    console.warn("[NewUserCategoryModal] User ID missing, dispatching getUser()");
+    dispatch(getUser());
+  }
+}, [token, userId, userStatus, dispatch, navigate]);
+
 
   useEffect(() => {
-    console.log("Fetching categories and user-selected categories");
     dispatch(fetchCategories());
-    if (loginUser?.data?._id) {
+    if (userId) {
       dispatch(fetchUserSelectedCategories());
     }
-  }, [dispatch, loginUser]);
+  }, [dispatch, userId]);
 
   useEffect(() => {
     if (userSelectedCategories.length > 0) {
-      console.log("Setting selected categories:", userSelectedCategories);
       setSelectedCategories(userSelectedCategories.map((cat) => cat._id));
     }
   }, [userSelectedCategories]);
 
   useEffect(() => {
-    if (error) {
-      console.error("Category error:", error);
-      toast.error(error);
-    }
-    if (userError) {
-      console.error("User fetch error:", userError);
-      toast.error(userError || "Failed to fetch user");
-    }
+    if (error) toast.error(error);
+    if (userError) toast.error(userError || "Failed to fetch user");
   }, [error, userError]);
 
   const handleCategoryToggle = (categoryId) => {
-    console.log("Toggling category:", categoryId);
     setSelectedCategories((prev) =>
       prev.includes(categoryId)
         ? prev.filter((id) => id !== categoryId)
@@ -76,31 +75,25 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
 
   const handleNewCategoryChange = (e) => {
     const { name, value } = e.target;
-    console.log(`Updating new category field ${name}:`, value);
     setNewCategory((prev) => ({ ...prev, [name]: value }));
     setFormError("");
   };
 
   const handleAddCategory = async () => {
-    console.log("Attempting to add category:", newCategory);
     if (!token) {
-      console.log("No token, cannot add category");
       toast.error("Please log in to add categories");
       return;
     }
-
     if (!newCategory.name || !newCategory.slug) {
-      console.log("Validation failed: Name or slug missing");
       setFormError("Name and slug are required");
       return;
     }
-
     if (!/^[a-z0-9-]+$/.test(newCategory.slug)) {
-      console.log("Validation failed: Invalid slug format");
-      setFormError("Slug must be lowercase, alphanumeric, and contain only dashes");
+      setFormError(
+        "Slug must be lowercase, alphanumeric, and contain only dashes"
+      );
       return;
     }
-
     try {
       const result = await dispatch(
         createCategory({
@@ -109,67 +102,51 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
           description: newCategory.description,
         })
       ).unwrap();
-      console.log("Category created successfully:", result);
       toast.success("Category created");
       setSelectedCategories((prev) => [...prev, result._id]);
       setNewCategory({ name: "", slug: "", description: "" });
       setShowAddCategory(false);
       dispatch(fetchCategories());
     } catch (err) {
-      console.error("Failed to create category:", err);
       toast.error(err || "Failed to create category");
     }
   };
 
   const handleSelect = async () => {
-    console.log("Saving selected categories:", selectedCategories);
-    console.log("Token:", token);
-    console.log("User:", loginUser);
     if (!token) {
-      console.log("No token, redirecting to login");
       toast.error("Please log in to save categories");
       navigate("/login");
       return;
     }
-
     if (selectedCategories.length === 0) {
-      console.log("No categories selected");
       toast.error("Please select at least one category");
       return;
     }
-
-    if (!loginUser?.data?._id) {
-      console.log("User not found, user object:", loginUser);
+    if (!userId) {
       toast.error("User not found");
       return;
     }
-
     try {
       await dispatch(
         assignCategoriesToUser({
-          userId: loginUser.data._id,
+          userId,
           categoryIds: selectedCategories,
           newCategories: [],
         })
       ).unwrap();
-      console.log("Categories saved successfully");
       toast.success("Categories saved");
       navigate(isNewUser ? "/" : "/create-post");
     } catch (err) {
-      console.error("Failed to save categories:", err);
       toast.error(err || "Failed to save categories");
     }
   };
 
   const handleSkip = () => {
-    console.log("Skipping category selection");
     navigate(isNewUser ? "/" : "/create-post");
   };
 
   const handleCloseModal = () => {
-    console.log("Attempting to close modal, selected categories:", selectedCategories);
     if (isNewUser && selectedCategories.length === 0) {
-      console.log("Cannot close: No categories selected for new user");
       toast.error("Please select at least one category before closing");
       return;
     }
@@ -179,71 +156,81 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
   return (
     <>
       <Toaster position="top-center" reverseOrder={false} />
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all duration-300">
+      <div className="fixed inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 flex items-center justify-center z-50 px-4 sm:px-6">
+        <div className="relative bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-[95vw] sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto max-h-[90vh] overflow-y-auto">
           <button
             onClick={handleCloseModal}
-            className="absolute top-4 right-4 text-gray-700 hover:text-red-600 transition"
+            className="absolute top-4 right-4 text-gray-500 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-400 transition-all duration-300"
             aria-label="Close"
           >
-            <X size={28} />
+            <X size={28} className="w-7 h-7 sm:w-8 sm:h-8" />
           </button>
 
-          <h2 className="text-3xl font-bold text-center text-gray-800 mb-4">
-            Select Your Interests
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-center text-gray-900 dark:text-gray-100 mb-4 sm:mb-6 tracking-tight">
+            Discover Your Interests
           </h2>
-          <p className="text-gray-600 text-center mb-6 text-sm">
-            Choose categories to personalize your experience
+          <p className="text-gray-500 dark:text-gray-400 text-center mb-6 sm:mb-8 text-base sm:text-lg md:text-xl">
+            Pick categories to tailor your experience
           </p>
 
           {status === "loading" && (
-            <p className="text-center text-gray-600">Loading categories...</p>
+            <p className="text-center text-gray-600 dark:text-gray-300 text-lg md:text-xl animate-pulse">
+              Loading categories...
+            </p>
           )}
           {status === "failed" && (
-            <p className="text-center text-red-600">Failed to load categories</p>
+            <p className="text-center text-red-500 dark:text-red-400 text-lg md:text-xl">
+              Failed to load categories
+            </p>
           )}
           {status === "succeeded" && categories.length === 0 && (
-            <p className="text-center text-gray-600">No categories available</p>
+            <p className="text-center text-gray-600 dark:text-gray-300 text-lg md:text-xl">
+              No categories available
+            </p>
           )}
 
           {status === "succeeded" && categories.length > 0 && (
-            <div className="mb-6">
-              <div className="flex flex-wrap gap-2 justify-center mb-4">
+            <div className="mb-6 sm:mb-8">
+              <div className="flex flex-wrap gap-2 sm:gap-3 md:gap-4 justify-center mb-4 sm:mb-6">
                 {categories.map((category) => (
                   <button
                     key={category._id}
                     onClick={() => handleCategoryToggle(category._id)}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
+                    className={`px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-full text-sm sm:text-base md:text-lg font-semibold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
                       selectedCategories.includes(category._id)
-                        ? "bg-indigo-600 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-indigo-100 hover:text-indigo-600"
+                        ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-indigo-100 dark:hover:bg-indigo-900 hover:text-indigo-700 dark:hover:text-indigo-300"
                     }`}
                   >
                     {category.name}
                     {category.createdBy && (
-                      <span className="ml-1 text-xs text-yellow-400">★</span>
+                      <span className="ml-2 text-yellow-400">★</span>
                     )}
                   </button>
                 ))}
               </div>
               <button
                 onClick={() => setShowAddCategory(!showAddCategory)}
-                className="flex items-center gap-2 mx-auto text-indigo-600 hover:text-indigo-800"
+                className="flex items-center gap-2 mx-auto text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-semibold text-sm sm:text-base md:text-lg transition-all duration-300"
               >
-                <FaPlus size={16} />
+                <Plus size={20} className="w-5 h-5 sm:w-6 sm:h-6" />
                 {showAddCategory ? "Hide Add Category" : "Add New Category"}
               </button>
 
               {showAddCategory && (
-                <div className="mt-4 space-y-4">
-                  {formError && <p className="text-red-600">{formError}</p>}
+                <div className="mt-4 sm:mt-6 space-y-4 bg-gray-50 dark:bg-gray-700/50 p-4 sm:p-6 rounded-2xl">
+                  {formError && (
+                    <p className="text-red-500 dark:text-red-400 text-center text-sm sm:text-base">
+                      {formError}
+                    </p>
+                  )}
                   <input
                     type="text"
                     name="name"
                     placeholder="Category Name"
                     value={newCategory.name}
                     onChange={handleNewCategoryChange}
-                    className="w-full p-3 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 sm:p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300"
                   />
                   <input
                     type="text"
@@ -251,18 +238,18 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
                     placeholder="Slug (e.g., custom-category)"
                     value={newCategory.slug}
                     onChange={handleNewCategoryChange}
-                    className="w-full p-3 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 sm:p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300"
                   />
                   <textarea
                     name="description"
                     placeholder="Description (optional)"
                     value={newCategory.description}
                     onChange={handleNewCategoryChange}
-                    className="w-full p-3 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 sm:p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300 resize-none h-24 sm:h-28 md:h-32"
                   />
                   <button
                     onClick={handleAddCategory}
-                    className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700"
+                    className="w-full px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-sm sm:text-base md:text-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-md active:scale-95"
                   >
                     Create Category
                   </button>
@@ -271,20 +258,20 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
             </div>
           )}
 
-          <div className="flex justify-between gap-4">
+          <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-4">
             <button
               onClick={handleSkip}
-              className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm hover:bg-gray-300 transition-all duration-200"
+              className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl font-semibold text-sm sm:text-base md:text-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300 shadow-sm active:scale-95"
             >
               Skip
             </button>
             <button
               onClick={handleSelect}
               disabled={selectedCategories.length === 0}
-              className={`flex-1 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 ${
+              className={`flex-1 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-semibold text-sm sm:text-base md:text-lg transition-all duration-300 shadow-md active:scale-95 ${
                 selectedCategories.length > 0
-                  ? "bg-emerald-500 text-white hover:bg-emerald-700"
-                  : "bg-emerald-300 text-white cursor-not-allowed"
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
+                  : "bg-emerald-300 dark:bg-emerald-700/50 text-white dark:text-gray-300 cursor-not-allowed"
               }`}
             >
               Select

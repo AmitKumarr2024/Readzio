@@ -1,13 +1,22 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchBookmarkAndLikeStatus, togglePostLike } from "../../store/Post interactions";
+import {
+  fetchBookmarkAndLikeStatus,
+  togglePostLike,
+} from "../../store/PostInteractions";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 const LikeButton = ({ postId }) => {
   const dispatch = useDispatch();
+  const { isAuthenticated } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
 
   const isValidObjectId = (id) => /^[a-f\d]{24}$/i.test(id);
 
-  const { likes, loading, error } = useSelector((state) => state.postInteraction);
+  const { likes, loading, error } = useSelector(
+    (state) => state.postInteraction
+  );
   const likeInfo = likes[postId] || { liked: false, likesCount: 0 };
 
   useEffect(() => {
@@ -20,6 +29,11 @@ const LikeButton = ({ postId }) => {
   }, [dispatch, postId]);
 
   const handleToggleLike = () => {
+    if (!isAuthenticated) {
+      toast.info("Please log in to like this post.");
+      navigate("/login");
+      return;
+    }
     if (!isValidObjectId(postId) || loading) {
       console.warn("[LikeButton] Cannot toggle like", { postId, loading });
       return;

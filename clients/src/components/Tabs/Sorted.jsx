@@ -18,7 +18,7 @@ const Sorted = ({ posts, onSortChange, className = "" }) => {
   }, [posts, sortOption, onSortChange]);
 
   return (
-    <div className={`w-full flex justify-end items-center max-w-5xl mx-auto p-2 ${className}`}>
+    <div className={`w-full flex justify-end items-center max-w-8xl  p-2 ${className}`}>
       <label htmlFor="sort" className="mr-2 text-text-main-light dark:text-text-main-dark font-medium">
         Sort by:
       </label>

@@ -66,14 +66,21 @@ export const deleteSubscriptionPlan = createAsyncThunk(
 
 export const subscribeToPlan = createAsyncThunk(
   "subscription/subscribe",
-  async (subscriptionData, { rejectWithValue }) => {
+  async (subscriptionData, { getState, rejectWithValue }) => {
     try {
-      console.log("📩 Subscribing to plan:", subscriptionData);
+      const token = getState().auth?.user?.token;
+      if (!token) throw new Error("Missing authentication token");
+
       const response = await axiosInstance.post(
         "/subscription/subscribe",
-        subscriptionData
+        subscriptionData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
-      console.log("✅ Subscribe to plan response:", response.data);
+
       return response.data;
     } catch (error) {
       console.error(
@@ -302,6 +309,27 @@ export const fetchMySubscribedPlans = createAsyncThunk(
     }
   }
 );
+
+export const checkEligibilityForSubscription = createAsyncThunk(
+  "subscription/checkEligibility",
+  async (_, { rejectWithValue }) => {
+    try {
+      console.log("📩 Checking subscription eligibility");
+      const response = await axiosInstance.get(
+        "/subscription/check-eligibility"
+      );
+      console.log("✅ Eligibility response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "❌ Error checking eligibility:",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 const subscriptionSlice = createSlice({
   name: "subscription",
   initialState: {
@@ -317,6 +345,9 @@ const subscriptionSlice = createSlice({
     subscriptionStatus: null,
     pendingPlans: [],
     count: 0,
+    isEligible: false, // Added for eligibility
+    followerCount: 0, // Added for follower progress
+    postCount: 0, // Added for post progress
   },
   reducers: {
     clearError: (state) => {
@@ -676,6 +707,27 @@ const subscriptionSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         state.hasFetchedSubscribedPlans = true; // Set flag even on error
+      })
+      // Eligibility Check
+      .addCase(checkEligibilityForSubscription.pending, (state) => {
+        console.log("subscriptionSlice: Checking eligibility");
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(checkEligibilityForSubscription.fulfilled, (state, action) => {
+        console.log("subscriptionSlice: Eligibility checked", action.payload);
+        state.loading = false;
+        state.isEligible = action.payload.isEligible;
+        state.followerCount = action.payload.followerCount;
+        state.postCount = action.payload.postCount;
+      })
+      .addCase(checkEligibilityForSubscription.rejected, (state, action) => {
+        console.error(
+          "subscriptionSlice: Error checking eligibility",
+          action.payload
+        );
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });

@@ -9,7 +9,7 @@ const DashboardTabs = ({ activeTab, setActiveTab }) => (
         className={`px-4 py-2 text-sm font-medium transition-all duration-300 rounded-md ${
           activeTab === tab
             ? "border-b-2 border-blue-600 text-blue-600"
-            : "text-gray-500 hover:text-blue-600"
+            : "text-text-main-light dark:text-text-main-dark hover:text-blue-600"
         }`}
       >
         {tab === "userEarnings"

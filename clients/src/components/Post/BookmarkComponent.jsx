@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { fetchBookmarkedPosts, togglePostBookmark } from '../../store/Post interactions';
+import { fetchBookmarkedPosts, togglePostBookmark } from '../../store/PostInteractions';
 
 const BookmarkComponent = () => {
   const dispatch = useDispatch();

@@ -3,7 +3,8 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   postType: "", // 'Article' or 'Blog'
   category: "",
-  selectedCategory: null, 
+  selectedCategory: null,
+
   visibility: "Public", // future: Public, Private, Unlisted
   tags: [], // future support
   isFeatured: false, // New field
@@ -16,6 +17,9 @@ const initialState = {
     visibilities: ["Public", "Private", "Unlisted"],
     categories: [], // can be fetched separately
   },
+
+  isSidebarOpen: false,
+  isMobile: typeof window !== "undefined" ? window.innerWidth < 1024 : true,
   interaction: {
     liked: false,
     likesCount: 0,
@@ -91,6 +95,15 @@ const postMetaSlice = createSlice({
     setViewCount: (state, action) => {
       state.interaction.views = action.payload;
     },
+    toggleSidebar: (state) => {
+      state.isSidebarOpen = !state.isSidebarOpen;
+    },
+    setSidebarOpen: (state, action) => {
+      state.isSidebarOpen = action.payload;
+    },
+    setIsMobile: (state, action) => {
+      state.isMobile = action.payload;
+    },
   },
 });
 
@@ -109,6 +122,9 @@ export const {
   setLikeInfo,
   setBookmarkInfo,
   setViewCount,
+  toggleSidebar,
+  setSidebarOpen,
+  setIsMobile,
 } = postMetaSlice.actions;
 
 export default postMetaSlice.reducer;

@@ -21,7 +21,6 @@ const ReportModal = ({ postId, slug, onClose }) => {
     try {
       setSuccessMsg(null);
       setErrorMsg(null);
-
       await dispatch(createReport({ slug, reason, details })).unwrap();
       setSuccessMsg("Report submitted successfully!");
       setTimeout(() => onClose(), 2000);
@@ -32,24 +31,28 @@ const ReportModal = ({ postId, slug, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-800 bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg p-6 max-w-md mx-auto shadow-xl relative">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-2xl p-6 max-w-md w-full shadow-2xl relative transition-all duration-200">
+        
+        {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 text-gray-600 hover:text-red-600 transition-colors p-2"
+          className="absolute top-3 right-3 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 transition"
           aria-label="Close modal"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Report Post</h2>
+        {/* Title */}
+        <h2 className="text-2xl font-bold mb-4">Report Post</h2>
 
+        {/* Reason */}
         <div className="mb-4">
-          <label className="block mb-2 text-sm font-semibold text-gray-700">Select Reason</label>
+          <label className="block mb-2 text-sm font-semibold">Select Reason</label>
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md border-gray-300 bg-white dark:bg-gray-800"
+            className="w-full px-4 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             <option value="">Select a Reason</option>
             <option value="spam">Spam</option>
@@ -60,30 +63,33 @@ const ReportModal = ({ postId, slug, onClose }) => {
           </select>
         </div>
 
+        {/* Details */}
         <div className="mb-4">
-          <label className="block mb-2 text-sm font-semibold text-gray-700">Additional Details (optional)</label>
+          <label className="block mb-2 text-sm font-semibold">Additional Details (optional)</label>
           <textarea
             value={details}
             onChange={(e) => setDetails(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md border-gray-300 resize-none h-24 dark:bg-gray-800"
             placeholder="Provide more context..."
+            className="w-full px-4 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 resize-none h-24 focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
 
+        {/* Messages */}
         {errorMsg && <p className="text-red-600 text-sm mb-3">{errorMsg}</p>}
         {successMsg && <p className="text-green-600 text-sm mb-3">{successMsg}</p>}
 
-        <div className="flex justify-end gap-3">
+        {/* Actions */}
+        <div className="flex justify-end gap-3 mt-4">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors"
+            className="px-4 py-2 rounded-full border border-gray-400 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
           >
             Cancel
           </button>
           <button
             onClick={submitReport}
             disabled={loading}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-75 transition-colors"
+            className="px-4 py-2 rounded-full bg-red-600 text-white hover:bg-red-700 disabled:opacity-75 transition"
           >
             {loading ? "Submitting..." : "Submit Report"}
           </button>

@@ -29,12 +29,12 @@ export default function UserMessagePanel({ onUserSelect, selectedUserId, searchT
 
   return (
     <div className="space-y-4 h-full overflow-y-auto pr-2">
-      <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+      <h3 className="text-lg font-semibold text-text-main-light dark:text-text-main-dark flex items-center gap-2">
         <FaUser className="text-blue-600" />
         Users
       </h3>
       {loading ? (
-        <p className="text-sm text-gray-500 text-center animate-pulse">Loading users...</p>
+        <p className="text-sm text-text-main-light dark:text-text-main-dark text-center animate-pulse">Loading users...</p>
       ) : (
         <ul className="space-y-2">
           {filteredUsers.length > 0 ? (
@@ -42,23 +42,23 @@ export default function UserMessagePanel({ onUserSelect, selectedUserId, searchT
               <li
                 key={u._id}
                 onClick={() => onUserSelect(u._id)}
-                className={`p-3 border border-gray-200 rounded-lg cursor-pointer text-sm transition-all duration-200 ${
+                className={`p-3 border border-gray-200 rounded-lg text-text-main-light dark:text-text-main-dark cursor-pointer text-sm transition-all duration-200 ${
                   selectedUserId === u._id
-                    ? 'bg-blue-100 border-blue-500 font-medium shadow-sm'
-                    : 'hover:bg-gray-100 hover:shadow'
+                    ? 'bg-background-light dark:bg-background-dark  border-blue-500 font-medium shadow-sm'
+                    : 'hover:bg-gray-400 hover:shadow'
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <FaUser className="text-gray-500" />
+                  <FaUser className="text-text-main-light dark:text-text-main-dark" />
                   <div>
                     {u.name || 'Unknown'} <br />
-                    <span className="text-xs text-gray-500">{u.email}</span>
+                    <span className="text-xs text-text-main-light dark:text-text-main-dark">{u.email}</span>
                   </div>
                 </div>
               </li>
             ))
           ) : (
-            <p className="text-sm text-gray-500 text-center">No users found.</p>
+            <p className="text-sm text-text-main-light dark:text-text-main-dark text-center">No users found.</p>
           )}
         </ul>
       )}

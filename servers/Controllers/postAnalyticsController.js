@@ -50,11 +50,6 @@ export const getPostStats = async (req, res, next) => {
  * @access Protected
  */
 
-/**
- * @desc Optimized: Get engagement stats for the logged-in user
- * @route GET /api/post/analytics/user-engagement
- * @access Protected
- */
 export const getUserEngagementStats = async (req, res, next) => {
   try {
     const userId = req.user._id;

@@ -55,7 +55,7 @@ const SortableBlock = ({ block, index, children }) => {
       <button
         {...attributes}
         {...listeners}
-        className="absolute left-0 top-0 bottom-0 flex items-center justify-center w-8 sm:w-10  bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark transition-all duration-200 rounded-l-lg cursor-move z-10 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+        className="absolute left-0 top-0 bottom-0 flex items-center justify-center w-8 sm:w-10 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark transition-all duration-200 rounded-l-lg cursor-move z-10 focus:ring-2 focus:ring-blue-500 focus:outline-none"
         title="Drag to reorder"
         aria-label="Drag to reorder block"
       >
@@ -92,49 +92,25 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
   const addBlock = (type, options = {}) => {
     const newBlock =
       type === "text"
-        ? { id: uuidv4(), type, value: "<p></p>", status: "draft" }
+        ? { id: uuidv4(), type, value: "<p></p>" }
         : type === "heading"
-        ? {
-            id: uuidv4(),
-            type,
-            level: 2,
-            text: "Heading Text",
-            status: "draft",
-          }
+        ? { id: uuidv4(), type, level: 2, text: "Heading Text" }
         : type === "code"
-        ? { id: uuidv4(), type, code: "", caption: "", status: "draft" }
+        ? { id: uuidv4(), type, code: "", caption: "" }
         : type === "image"
-        ? { id: uuidv4(), type, src: "", caption: "", status: "draft" }
+        ? { id: uuidv4(), type, src: "", caption: "" }
         : type === "file"
-        ? { id: uuidv4(), type, url: "", name: "", size: 0, status: "draft" }
+        ? { id: uuidv4(), type, url: "", name: "", size: 0 }
         : type === "hr"
-        ? { id: uuidv4(), type, status: "draft" }
+        ? { id: uuidv4(), type }
         : type === "link"
-        ? { id: uuidv4(), type, href: "", text: "Link Text", status: "draft" }
+        ? { id: uuidv4(), type, href: "", text: "Link Text" }
         : type === "list"
-        ? {
-            id: uuidv4(),
-            type,
-            items: [""],
-            ordered: options.ordered || false,
-            status: "draft",
-          }
+        ? { id: uuidv4(), type, items: [""], ordered: options.ordered || false }
         : type === "poll"
-        ? {
-            id: uuidv4(),
-            type,
-            question: "",
-            options: ["", ""],
-            status: "draft",
-          }
+        ? { id: uuidv4(), type, question: "", options: ["", ""] }
         : type === "quote"
-        ? {
-            id: uuidv4(),
-            type,
-            text: "Your quote here...",
-            author: "",
-            status: "draft",
-          }
+        ? { id: uuidv4(), type, text: "Your quote here...", author: "" }
         : type === "table"
         ? {
             id: uuidv4(),
@@ -142,10 +118,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
             headers: ["Header 1", "Header 2"],
             rows: [["", ""], ["", ""]],
             caption: "",
-            status: "draft",
           }
         : type === "video"
-        ? { id: uuidv4(), type, src: "", caption: "", status: "draft" }
+        ? { id: uuidv4(), type, src: "", caption: "" }
         : null;
 
     if (newBlock) {
@@ -232,9 +207,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     <div
       className={`min-w-[350px] ${sizeToWidthClass(
         size
-      )} max-w-[1200px] min-h-[600px] sm:min-h-[800px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300`}
+      )} max-w-[1200px] min-h-[600px] sm:min-h-[800px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300 border border-gray-200 dark:border-gray-800`}
     >
-      <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-center text-text-main-light dark:text-text-main-dark mb-4 sm:mb-6 tracking-wide">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-center mb-4 sm:mb-6 tracking-wide">
         Create Content
       </h1>
 
@@ -294,7 +269,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "file":
                       return (
-                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-800">
                           <FileBlock
                             url={block.url}
                             name={block.name}
@@ -303,12 +278,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           <input
                             type="file"
                             onChange={(e) => handleFileUpload(e, index)}
-                            className="mt-2 block w-full text-xs sm:text-sm text-text-main-light dark:text-text-main-dark file:mr-3 sm:mr-4 file:py-1.5 sm:py-2 file:px-3 sm:px-4 file:rounded file:border-0 file:text-xs  file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                            className="mt-2 block w-full text-xs sm:text-sm text-text-main-light dark:text-text-main-dark file:mr-3 sm:mr-4 file:py-1.5 sm:py-2 file:px-3 sm:px-4 file:rounded file:border-0 file:bg-blue-100 dark:file:bg-blue-900 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-200 dark:hover:file:bg-blue-800"
                             aria-label="Upload file"
                           />
                           <button
                             onClick={() => removeBlock(index)}
-                            className="mt-2 px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition-colors focus:ring-2 focus:ring-indigo-500"
+                            className="mt-2 px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition focus:ring-2 focus:ring-blue-500"
                             aria-label="Remove file block"
                           >
                             Remove File
@@ -317,10 +292,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "heading":
                       return (
-                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg space-y-3 sm:space-y-4">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg space-y-3 sm:space-y-4 border border-gray-200 dark:border-gray-800">
                           <HeadingBlock level={block.level} text={block.text} />
                           <div>
-                            <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
+                            <label className="block text-xs sm:text-sm font-medium mb-1">
                               Heading Text
                             </label>
                             <input
@@ -332,13 +307,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                   text: e.target.value,
                                 })
                               }
-                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               placeholder="Edit heading text"
                               aria-label="Heading text"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
+                            <label className="block text-xs sm:text-sm font-medium mb-1">
                               Heading Level
                             </label>
                             <select
@@ -349,7 +324,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                   level: +e.target.value,
                                 })
                               }
-                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Heading level"
                             >
                               {[1, 2, 3].map((lvl) => (
@@ -362,7 +337,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           <div className="text-right">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors focus:ring-2 focus:ring-indigo-500"
+                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition focus:ring-2 focus:ring-blue-500"
                               aria-label="Remove heading block"
                             >
                               ❌
@@ -382,8 +357,8 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "link":
                       return (
-                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg">
-                          <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-800">
+                          <label className="block text-xs sm:text-sm font-medium mb-1">
                             Link URL
                           </label>
                           <input
@@ -396,10 +371,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               })
                             }
                             placeholder="https://example.com"
-                            className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                            className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                             aria-label="Link URL"
                           />
-                          <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1 mt-2">
+                          <label className="block text-xs sm:text-sm font-medium mb-1 mt-2">
                             Link Text
                           </label>
                           <input
@@ -412,13 +387,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               })
                             }
                             placeholder="Link text"
-                            className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                            className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                             aria-label="Link text"
                           />
                           <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors focus:ring-2 focus:ring-indigo-500"
+                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition focus:ring-2 focus:ring-blue-500"
                               aria-label="Remove link block"
                             >
                               ❌
@@ -428,8 +403,8 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "list":
                       return (
-                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg">
-                          <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-800">
+                          <label className="block text-xs sm:text-sm font-medium mb-1">
                             {block.ordered
                               ? "Ordered List Items"
                               : "Unordered List Items"}
@@ -448,7 +423,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                   });
                                 }}
                                 placeholder={`Item ${i + 1}`}
-                                className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                                className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 aria-label={`List item ${i + 1}`}
                               />
                               {block.items.length > 1 && (
@@ -462,7 +437,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       items: newItems,
                                     });
                                   }}
-                                  className="px-2 py-1 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs rounded hover:bg-red-600"
+                                  className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition"
                                   aria-label={`Remove list item ${i + 1}`}
                                 >
                                   ❌
@@ -476,7 +451,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               const newItems = [...block.items, ""];
                               updateBlock(index, { ...block, items: newItems });
                             }}
-                            className="mt-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded-lg hover:bg-indigo-600 transition-colors"
+                            className="mt-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500 text-white text-xs sm:text-sm rounded-lg hover:bg-blue-600 transition"
                             aria-label="Add list item"
                           >
                             + Add Item
@@ -484,7 +459,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors"
+                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
                               aria-label="Remove list block"
                             >
                               ❌ Remove List
@@ -494,7 +469,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "poll":
                       return (
-                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-800">
                           <PollBlock
                             question={block.question}
                             options={block.options}
@@ -522,7 +497,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors"
+                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
                               aria-label="Remove poll block"
                             >
                               ❌
@@ -532,7 +507,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "quote":
                       return (
-                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-800">
                           <QuoteBlock text={block.text} author={block.author} />
                           <div className="space-y-2">
                             <input
@@ -545,7 +520,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 })
                               }
                               placeholder="Quote text"
-                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Quote text"
                             />
                             <input
@@ -558,13 +533,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 })
                               }
                               placeholder="Author (optional)"
-                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Quote author"
                             />
                             <div className="text-right">
                               <button
                                 onClick={() => removeBlock(index)}
-                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
                                 aria-label="Remove quote block"
                               >
                                 ❌
@@ -575,16 +550,15 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "table":
                       return (
-                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg max-w-full">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg max-w-full border border-gray-200 dark:border-gray-800">
                           <TableBlock
                             headers={block.headers || []}
                             rows={block.rows || [[]]}
                             caption={block.caption || ""}
                           />
                           <div className="mt-3 sm:mt-4 space-y-3 sm:space-y-4">
-                            {/* Headers Section */}
                             <div>
-                              <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
+                              <label className="block text-xs sm:text-sm font-medium mb-1">
                                 Headers
                               </label>
                               <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(100px,1fr))] gap-2 items-center">
@@ -604,7 +578,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                         });
                                       }}
                                       placeholder={`Header ${headerIndex + 1}`}
-                                      className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                      className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-200 dark:border-gray-800 rounded bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                                       aria-label={`Table header ${headerIndex + 1}`}
                                     />
                                   )
@@ -625,7 +599,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     });
                                     toast.success("Header added");
                                   }}
-                                  className="px-3 sm:px-4 py-1 sm:py-1.5 bg-indigo-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-indigo-600 transition-colors"
+                                  className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition"
                                   aria-label="Add table header"
                                 >
                                   + Add Header
@@ -633,7 +607,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               </div>
                             </div>
 
-                            {/* Rows Section */}
                             {(block.rows || []).map((row, rowIndex) => (
                               <div
                                 key={rowIndex}
@@ -656,16 +629,15 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     placeholder={`R${rowIndex + 1} C${
                                       cellIndex + 1
                                     }`}
-                                    className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-200 dark:border-gray-800 rounded bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     aria-label={`Table cell row ${rowIndex + 1} column ${cellIndex + 1}`}
                                   />
                                 ))}
                               </div>
                             ))}
 
-                            {/* Caption Section */}
                             <div>
-                              <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
+                              <label className="block text-xs sm:text-sm font-medium mb-1">
                                 Caption (optional)
                               </label>
                               <input
@@ -678,12 +650,11 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                   })
                                 }
                                 placeholder="Table caption"
-                                className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-200 dark:border-gray-800 rounded bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 aria-label="Table caption"
                               />
                             </div>
 
-                            {/* Action Buttons */}
                             <div className="flex flex-wrap gap-2">
                               <button
                                 onClick={() => {
@@ -697,7 +668,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                   });
                                   toast.success("Row added");
                                 }}
-                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-indigo-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-indigo-600 transition-colors"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition"
                                 aria-label="Add table row"
                               >
                                 + Add Row
@@ -718,7 +689,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                   });
                                   toast.success("Column added");
                                 }}
-                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-indigo-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-indigo-600 transition-colors"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition"
                                 aria-label="Add table column"
                               >
                                 + Add Column
@@ -736,7 +707,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     toast.error("At least one row is required");
                                   }
                                 }}
-                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
                                 aria-label="Remove table row"
                               >
                                 - Remove Row
@@ -761,18 +732,17 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     toast.error("At least one column is required");
                                   }
                                 }}
-                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
                                 aria-label="Remove table column"
                               >
                                 - Remove Column
                               </button>
                             </div>
 
-                            {/* Delete Table Button */}
                             <div className="flex justify-end mt-3 sm:mt-4">
                               <button
                                 onClick={() => removeBlock(index)}
-                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-600 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-700 transition-colors focus:ring-2 focus:ring-indigo-500"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-600 text-white text-xs sm:text-sm rounded hover:bg-red-700 transition"
                                 aria-label="Delete table block"
                               >
                                 ❌ Delete Table
@@ -783,10 +753,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       );
                     case "video":
                       return (
-                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg">
+                        <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-800">
                           <VideoBlock src={block.src} caption={block.caption} />
                           <div className="mt-2">
-                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-xs sm:text-sm font-medium mb-1">
                               Video URL (mp4)
                             </label>
                             <input
@@ -799,12 +769,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 })
                               }
                               placeholder="https://example.com/video.mp4"
-                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Video URL"
                             />
                           </div>
                           <div className="mt-2">
-                            <label className="block text-xs sm:text-sm font-medium text-text-main-light dark:text-text-main-dark mb-1">
+                            <label className="block text-xs sm:text-sm font-medium mb-1">
                               Caption (optional)
                             </label>
                             <input
@@ -817,14 +787,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 })
                               }
                               placeholder="Caption text"
-                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Video caption"
                             />
                           </div>
                           <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm rounded hover:bg-red-600 transition-colors focus:ring-2 focus:ring-indigo-500"
+                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
                               aria-label="Remove video block"
                             >
                               ❌

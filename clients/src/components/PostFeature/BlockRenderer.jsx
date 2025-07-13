@@ -1,4 +1,3 @@
-// BlockRenderer.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -16,17 +15,31 @@ import TableBlocksOutput from "../actualPostDisplay/TableBlocksOutput";
 import VideoBlockOutput from "../actualPostDisplay/VideoBlockOutput";
 import { getSubscriptionStatusByAuthor } from "../../store/subscriptionSlice";
 import Skeleton from "../ui/Skeleton";
-import AdCard from "../../Utils/AdCard";
+import GoogleAd from "../../Ads/GoogleAd";
 
 const placeholderAdImage = "https://placehold.co/150x100?text=Ad+Failed";
 
-const BlockRenderer = ({ blocks, postId, slug, loginUser, getUserById, isPostRestricted, canViewPost, authorId, isPublished }) => {
+const BlockRenderer = ({
+  blocks,
+  postId,
+  slug,
+  loginUser,
+  getUserById,
+  isPostRestricted,
+  canViewPost,
+  authorId,
+  isPublished,
+}) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { subscriptions = [], loading: subscriptionLoading } = useSelector((state) => state.subscription);
+  const { subscriptions = [], loading: subscriptionLoading } = useSelector(
+    (state) => state.subscription
+  );
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
-  const [showFullContent, setShowFullContent] = useState(!isPostRestricted || canViewPost);
+  const [showFullContent, setShowFullContent] = useState(
+    !isPostRestricted || canViewPost
+  );
 
   useEffect(() => {
     if (!isAuthenticated || !authorId || !user?._id || authorId === user?._id) {
@@ -67,33 +80,133 @@ const BlockRenderer = ({ blocks, postId, slug, loginUser, getUserById, isPostRes
   const renderBlock = (block, i) => {
     switch (block.type) {
       case "text":
-        return <TextBlock key={i} value={block.value} className="text-gray-700 dark:text-gray-200 mb-6" />;
+        return (
+          <TextBlock
+            key={i}
+            value={block.value}
+            className="text-gray-700 dark:text-gray-200 mb-6"
+          />
+        );
       case "image":
-        return <ImageBlockOutput key={i} src={block.src} caption={block.caption} className="my-6 rounded-lg shadow-md" />;
+        return (
+          <ImageBlockOutput
+            key={i}
+            src={block.src}
+            caption={block.caption}
+            className="my-6 rounded-lg shadow-md"
+          />
+        );
       case "code":
-        return <CodeBlockOutput key={i} code={block.code} language={block.language || "javascript"} caption={block.caption} className="my-6 bg-gray-800 rounded-lg p-4" />;
+        return (
+          <CodeBlockOutput
+            key={i}
+            code={block.code}
+            language={block.language || "javascript"}
+            caption={block.caption}
+            className="my-6 bg-gray-800 rounded-lg p-4"
+          />
+        );
       case "video":
-        return <VideoBlockOutput key={i} src={block.src} caption={block.caption} className="my-6 rounded-lg shadow-md" />;
+        return (
+          <VideoBlockOutput
+            key={i}
+            src={block.src}
+            caption={block.caption}
+            className="my-6 rounded-lg shadow-md"
+          />
+        );
       case "quote":
-        return <QuoteBlockOutput key={i} text={block.text} author={block.author} className="my-6 border-l-4 border-blue-600 pl-4 italic text-gray-700 dark:text-gray-200" />;
+        return (
+          <QuoteBlockOutput
+            key={i}
+            text={block.text}
+            author={block.author}
+            className="my-6 border-l-4 border-blue-600 pl-4 italic text-gray-700 dark:text-gray-200"
+          />
+        );
       case "list":
-        return <ListBlockOutput key={i} items={block.items} ordered={block.ordered} className="my-6 text-gray-700 dark:text-gray-200" />;
+        return (
+          <ListBlockOutput
+            key={i}
+            items={block.items}
+            ordered={block.ordered}
+            className="my-6 text-gray-700 dark:text-gray-200"
+          />
+        );
       case "heading":
-        return <HeadingOutput key={i} level={block.level || 2} text={block.text} className={`text-${block.level === 1 ? "4xl" : block.level === 2 ? "3xl" : "2xl"} font-bold text-gray-900 dark:text-white my-6`} />;
+        return (
+          <HeadingOutput
+            key={i}
+            level={block.level || 2}
+            text={block.text}
+            className={`text-${
+              block.level === 1 ? "4xl" : block.level === 2 ? "3xl" : "2xl"
+            } font-bold text-gray-900 dark:text-white my-6`}
+          />
+        );
       case "table":
-        return <TableBlocksOutput key={i} data={block.data} caption={block.caption} className="my-6 overflow-x-auto" />;
+        return (
+          <TableBlocksOutput
+            key={i}
+            data={block.data}
+            caption={block.caption}
+            className="my-6 overflow-x-auto"
+          />
+        );
       case "link":
-        return <LinkBlockOutput key={i} href={block.href} text={block.text} caption={block.caption} className="my-6 text-blue-600 hover:underline" />;
+        return (
+          <LinkBlockOutput
+            key={i}
+            href={block.href}
+            text={block.text}
+            caption={block.caption}
+            className="my-6 text-blue-600 hover:underline"
+          />
+        );
       case "hr":
-        return <HrOutput key={i} caption={block.caption} className="my-6 border-gray-200 dark:border-gray-700" />;
+        return (
+          <HrOutput
+            key={i}
+            caption={block.caption}
+            className="my-6 border-gray-200 dark:border-gray-700"
+          />
+        );
       case "file":
-        return <FileDownloadOutput key={i} url={block.url} name={block.name} className="my-6 text-blue-600 hover:underline" />;
+        return (
+          <FileDownloadOutput
+            key={i}
+            url={block.url}
+            name={block.name}
+            className="my-6 text-blue-600 hover:underline"
+          />
+        );
       case "poll":
-        return <PollBlockOutput key={i} postId={postId} question={block.question} options={block.options} caption={block.caption} className="my-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg" />;
+        return (
+          <PollBlockOutput
+            key={i}
+            slug={slug}
+            blockId={block.id} // Added blockId prop
+            question={block.question}
+            options={block.options}
+            caption={block.caption}
+            className="my-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg"
+          />
+        );
       case "ad":
-        return <AdCard key={`ad-${i}`} adIndex={block.adIndex} adContent={block.adContent} adImage={block.adImage} className="my-6 rounded-2xl shadow-lg" />;
+        return (
+          <GoogleAd
+            key={`ad-${i}`}
+            adSlot="1234567890"
+            postId={postId}
+            className="my-6 rounded-2xl shadow-lg"
+          />
+        );
       default:
-        return <div key={i} className="text-red-500 italic">Unsupported content block.</div>;
+        return (
+          <div key={i} className="text-red-500 italic">
+            Unsupported content block.
+          </div>
+        );
     }
   };
 
@@ -114,8 +227,13 @@ const BlockRenderer = ({ blocks, postId, slug, loginUser, getUserById, isPostRes
 
   const isAuthor = user?._id === authorId;
   const previewBlockLimit = 3;
-  const blocksWithAds = (isPostRestricted && !canViewPost && isAuthenticated) ? blocks : getAdBlocks(blocks);
-  const previewBlocks = blocks.slice(0, previewBlockLimit).filter((block) => ["text", "image", "heading"].includes(block.type));
+  const blocksWithAds =
+    isPostRestricted && !canViewPost && isAuthenticated
+      ? blocks
+      : getAdBlocks(blocks);
+  const previewBlocks = blocks
+    .slice(0, previewBlockLimit)
+    .filter((block) => ["text", "image", "heading"].includes(block.type));
   const displayedBlocks = showFullContent ? blocksWithAds : previewBlocks;
 
   const handleSeeMore = () => {
@@ -133,15 +251,21 @@ const BlockRenderer = ({ blocks, postId, slug, loginUser, getUserById, isPostRes
   return (
     <div className="relative">
       {displayedBlocks.map((block, i) => (
-        <div key={i} className="animate-slide-up">{renderBlock(block, i)}</div>
+        <div key={i} className="animate-slide-up">
+          {renderBlock(block, i)}
+        </div>
       ))}
       {isPostRestricted && !showFullContent && (
-        <div className="mt-6 p-6 bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl text-center shadow-lg animate-fade-in">
-          <p className="text-white mb-4 text-lg font-medium">Unlock the full story with a subscription.</p>
+        <div className="mt-6 p-6 bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl text-center shadow-lg animate-fade-in font-(family-name:--font-Urbanist)">
+          <p className="text-white mb-4 text-lg font-medium">
+            Unlock the full story with a subscription.
+          </p>
           <button
             onClick={handleSeeMore}
             disabled={subscriptionLoading}
-            className={`px-6 py-3 rounded-full bg-white text-blue-600 font-semibold hover:bg-gray-100 transition-colors duration-200 ${subscriptionLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`px-6 py-3 rounded-full bg-white text-blue-600 font-semibold hover:bg-gray-100 transition-colors duration-200 ${
+              subscriptionLoading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
             {subscriptionLoading
               ? "Processing..."

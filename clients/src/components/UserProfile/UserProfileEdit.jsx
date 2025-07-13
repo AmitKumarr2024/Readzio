@@ -1,81 +1,157 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
-import { updateUser } from "../../store/userSlice";
+import { updateUser, resetUpdateStatus } from "../../store/userSlice";
 
-export default function UserProfileEdit({ user, isAdmin = false, onClose, onUpdateSuccess }) {
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
+const compressImage = async (file) => {
+  if (!file) return null;
+  if (file.size <= MAX_FILE_SIZE) return file;
+
+  console.log("[UserProfileEdit] Compressing image:", file.name, file.size);
+  const image = new Image();
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  return new Promise((resolve) => {
+    reader.onload = (e) => {
+      image.src = e.target.result;
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const maxWidth = 800;
+        const maxHeight = 800;
+        let width = image.width;
+        let height = image.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height *= maxWidth / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width *= maxHeight / height;
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(image, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            console.log("[UserProfileEdit] Image compressed:", blob.size);
+            resolve(blob);
+          },
+          file.type,
+          0.7 // Quality
+        );
+      };
+    };
+  });
+};
+
+export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
   const dispatch = useDispatch();
-  const updateLoading = useSelector((state) => state.user.updateLoading);
-  const updateSuccess = useSelector((state) => state.user.updateSuccess);
-  const updateError = useSelector((state) => state.user.updateError);
-
+  const { updateLoading, updateSuccess, updateError } = useSelector((state) => state.user);
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    gender: "Other",
-    location: "",
-    profession: "",
-    blocked: false,
+    name: user?.name || "",
+    email: user?.email || "",
+    gender: user?.gender || "Other",
+    location: user?.location || "",
+    profession: user?.profession || "",
+    blocked: user?.blocked || false,
     avatarFile: null,
     bannerFile: null,
-    bio: "",
-    banner: "",
+    bio: user?.bio || "",
+    banner: user?.banner || "",
   });
+  const toastRef = useRef(false); // Track toast display
+
+  console.log("[UserProfileEdit] Props:", { user, isAdmin, updateLoading, updateSuccess, updateError });
+  console.log("[UserProfileEdit] Initial form state:", form);
 
   useEffect(() => {
-    if (user) {
-      setForm({
-        name: user.name || "",
-        email: user.email || "",
-        gender: user.gender || "Other",
-        location: user.location || "",
-        profession: user.profession || "",
-        blocked: user.blocked || false,
-        avatarFile: null,
-        bannerFile: null,
-        bio: user.bio || "",
-        banner: user.banner || "",
-      });
-    }
+    console.log("[UserProfileEdit] Resetting update status on mount");
+    dispatch(resetUpdateStatus());
+  }, [dispatch]);
+
+  useEffect(() => {
+    console.log("[UserProfileEdit] Syncing form with user prop:", user);
+    setForm({
+      name: user?.name || "",
+      email: user?.email || "",
+      gender: user?.gender || "Other",
+      location: user?.location || "",
+      profession: user?.profession || "",
+      blocked: user?.blocked || false,
+      avatarFile: null,
+      bannerFile: null,
+      bio: user?.bio || "",
+      banner: user?.banner || "",
+    });
   }, [user]);
 
   useEffect(() => {
-    if (!updateLoading && updateSuccess) {
+    if (updateSuccess && !toastRef.current) {
+      console.log("[UserProfileEdit] Update successful");
+      toastRef.current = true;
       toast.success("Profile updated successfully!");
-      if (onUpdateSuccess) onUpdateSuccess();
-      if (onClose) onClose();
+      dispatch(resetUpdateStatus());
+      onClose?.();
     }
-    if (updateError) {
+    if (updateError && !toastRef.current) {
+      console.log("[UserProfileEdit] Update error:", updateError);
+      toastRef.current = true;
       toast.error(`Error: ${updateError}`);
+      dispatch(resetUpdateStatus());
     }
-  }, [updateLoading, updateSuccess, updateError, onUpdateSuccess, onClose]);
+    return () => {
+      console.log("[UserProfileEdit] Cleaning up useEffect");
+      toastRef.current = false;
+      dispatch(resetUpdateStatus());
+    };
+  }, [updateSuccess, updateError, onClose, dispatch]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (name === "bio" && value.length > 200) {
+      console.log("[UserProfileEdit] Bio exceeds 200 characters:", value.length);
       toast.error("Bio cannot exceed 200 characters");
       return;
     }
+    console.log("[UserProfileEdit] Form change:", { name, value: type === "checkbox" ? checked : value });
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
   };
 
-  const handleFile = (e) => {
+  const handleFile = async (e) => {
     const { name, files } = e.target;
+    const file = files[0];
+    if (file && file.size > MAX_FILE_SIZE) {
+      console.log("[UserProfileEdit] File too large:", file.size);
+      toast.error("File size exceeds 2MB");
+      return;
+    }
+    const compressedFile = await compressImage(file);
+    console.log("[UserProfileEdit] File selected:", { name, file: compressedFile || file });
     setForm((prev) => ({
       ...prev,
-      [name]: files[0],
+      [name]: compressedFile || file,
     }));
   };
 
   const handleSubmit = async () => {
     if (!form.name || !form.email) {
+      console.log("[UserProfileEdit] Missing required fields:", { name: form.name, email: form.email });
       toast.error("Name and Email are required");
       return;
     }
 
+    console.log("[UserProfileEdit] Submitting form:", form);
     const formData = new FormData();
     formData.append("name", form.name);
     formData.append("email", form.email);
@@ -100,137 +176,222 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose, onUpda
 
     try {
       await dispatch(updateUser(formData)).unwrap();
+      console.log("[UserProfileEdit] Update dispatched successfully");
     } catch (error) {
-      console.error("Update failed:", error);
+      console.error("[UserProfileEdit] Update failed:", error);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white p-6 sm:p-8 max-w-3xl mx-auto">
+    <div className="relative min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark p-6 sm:p-8 max-w-3xl mx-auto rounded-xl shadow-lg">
+      {updateLoading && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <svg
+            className="animate-spin h-8 w-8 text-white"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+        </div>
+      )}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Edit Profile</h1>
-        <p className="text-gray-600">Update your profile details below</p>
+        <h1 className="text-3xl font-bold">Edit Profile</h1>
+        <p className="text-text-secondary-light dark:text-text-secondary-dark mt-2">Update your profile details below</p>
       </div>
 
       {updateError && (
-        <div className="mb-4 text-red-600 bg-red-50 p-3 rounded-lg text-sm">
+        <div className="mb-6 p-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-lg text-sm">
           Error: {updateError}
         </div>
       )}
 
       <div className="space-y-6">
         <div>
-          <label className="block text-sm font-medium mb-1">Name *</label>
+          <label htmlFor="name" className="block text-sm font-medium mb-1">Name *</label>
           <input
+            id="name"
             name="name"
             value={form.name}
             onChange={handleChange}
             disabled={updateLoading}
-            className="w-full p-3 rounded-lg bg-[#f0f2f5] focus:outline-none"
+            className="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition"
             required
+            aria-required="true"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Email *</label>
+          <label htmlFor="email" className="block text-sm font-medium mb-1">Email *</label>
           <input
+            id="email"
             name="email"
             type="email"
             value={form.email}
             onChange={handleChange}
             disabled={updateLoading}
-            className="w-full p-3 rounded-lg bg-[#f0f2f5] focus:outline-none"
+            className="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition"
             required
+            aria-required="true"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Gender</label>
+          <label htmlFor="gender" className="block text-sm font-medium mb-1">Gender</label>
           <select
+            id="gender"
             name="gender"
             value={form.gender}
             onChange={handleChange}
-            className="w-full p-3 rounded-lg bg-[#f0f2f5] focus:outline-none"
+            disabled={updateLoading}
+            className="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition"
           >
-            <option>Male</option>
-            <option>Female</option>
-            <option>Other</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
           </select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Location</label>
+          <label htmlFor="location" className="block text-sm font-medium mb-1">Location</label>
           <input
+            id="location"
             name="location"
             value={form.location}
             onChange={handleChange}
-            className="w-full p-3 rounded-lg bg-[#f0f2f5] focus:outline-none"
+            disabled={updateLoading}
+            className="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Profession</label>
+          <label htmlFor="profession" className="block text-sm font-medium mb-1">Profession</label>
           <input
+            id="profession"
             name="profession"
             value={form.profession}
             onChange={handleChange}
-            className="w-full p-3 rounded-lg bg-[#f0f2f5] focus:outline-none"
+            disabled={updateLoading}
+            className="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Bio (max 200 chars)</label>
+          <label htmlFor="bio" className="block text-sm font-medium mb-1">Bio (max 200 chars)</label>
           <textarea
+            id="bio"
             name="bio"
             value={form.bio}
             onChange={handleChange}
             rows={4}
-            className="w-full p-3 rounded-lg bg-[#f0f2f5] focus:outline-none"
+            disabled={updateLoading}
+            className="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition"
+            aria-describedby="bio-counter"
           />
-          <p className="text-sm text-gray-500 mt-1">{form.bio.length}/200</p>
+          <p id="bio-counter" className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
+            {form.bio.length}/200
+          </p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Avatar Image</label>
+          <label htmlFor="avatarFile" className="block text-sm font-medium mb-1">Avatar Image (max 2MB)</label>
           <input
+            id="avatarFile"
             type="file"
             name="avatarFile"
             accept="image/*"
             onChange={handleFile}
-            className="w-full file:bg-blue-50 file:text-blue-600 file:px-4 file:py-2 file:rounded-lg"
+            disabled={updateLoading}
+            className="w-full file:bg-blue-50 dark:file:bg-blue-900 file:text-blue-600 dark:file:text-blue-300 file:px-4 file:py-2 file:rounded-lg file:border-0 text-text-main-light dark:text-text-main-dark"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Banner Image</label>
+          <label htmlFor="bannerFile" className="block text-sm font-medium mb-1">Banner Image (max 2MB)</label>
           <input
+            id="bannerFile"
             type="file"
             name="bannerFile"
             accept="image/*"
             onChange={handleFile}
-            className="w-full file:bg-blue-50 file:text-blue-600 file:px-4 file:py-2 file:rounded-lg"
+            disabled={updateLoading}
+            className="w-full file:bg-blue-50 dark:file:bg-blue-900 file:text-blue-600 dark:file:text-blue-300 file:px-4 file:py-2 file:rounded-lg file:border-0 text-text-main-light dark:text-text-main-dark"
           />
         </div>
 
         {isAdmin && (
           <div className="flex items-center space-x-2">
             <input
+              id="blocked"
               type="checkbox"
               name="blocked"
               checked={form.blocked}
               onChange={handleChange}
+              disabled={updateLoading}
+              className="h-4 w-4 text-blue-600 dark:text-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400"
             />
-            <label className="text-sm font-medium">Blocked (Admin only)</label>
+            <label htmlFor="blocked" className="text-sm font-medium">Blocked (Admin only)</label>
           </div>
         )}
 
-        <div className="pt-4">
+        <div className="pt-4 flex space-x-4">
           <button
             onClick={handleSubmit}
             disabled={updateLoading}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold"
+            className="bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-busy={updateLoading}
           >
-            {updateLoading ? "Saving..." : "Save Changes"}
+            {updateLoading ? (
+              <>
+                <svg
+                  className="animate-spin h-5 w-5 mr-2 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Saving...
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </button>
+          <button
+            onClick={() => {
+              console.log("[UserProfileEdit] Cancel button clicked");
+              toast("Changes discarded", { icon: "ℹ️" });
+              onClose?.();
+            }}
+            disabled={updateLoading}
+            className="bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-text-main-light dark:text-text-main-dark px-6 py-2 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
           </button>
         </div>
       </div>

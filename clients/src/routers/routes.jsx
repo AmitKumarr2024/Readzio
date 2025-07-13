@@ -1,4 +1,3 @@
-
 import { createBrowserRouter } from "react-router-dom";
 import App from "../App";
 import LoginPage from "../pages/LoginPage";
@@ -26,6 +25,8 @@ import Dashboard from "../pages/Admin/Dashboard";
 import AcknowledgeConfirmation from "../pages/Admin/AcknowledgeConfirmation";
 import NotificationPage from "../components/Notification/NotificationPage";
 import UsersPage from "../pages/UsersPage";
+import ResetPassword from "../pages/ResetPasswordPage";
+import VerifyEmail from "../components/resetPassword/VerifyEmail";
 
 const routes = createBrowserRouter([
   {
@@ -52,10 +53,12 @@ const routes = createBrowserRouter([
       { path: "/acknowledge/:reportId", element: <AcknowledgeConfirmation /> },
       { path: "/message-box", element: <NotificationPage /> },
       { path: "/users", element: <UsersPage /> }, // Added UsersPage route
+      { path: "/verify", element: <VerifyEmail /> }, // Added UsersPage route
     ],
   },
   { path: "/select-category", element: <CategorySelectPage /> },
   { path: "/login", element: <LoginPage /> },
+  { path: "/reset-password", element: <ResetPassword /> },
   { path: "/signup", element: <SignupPage /> },
   { path: "/Term&Condition", element: <TermsAndConditionPage /> },
   { path: "*", element: <PageNotFound /> },

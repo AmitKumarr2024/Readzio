@@ -1,57 +1,107 @@
-import React, { useEffect, useRef } from "react";
-import { Outlet } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { useState, useEffect } from "react";
+import { Outlet, useNavigation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ScrollToTop from "./Utils/ScrollToTop";
-import { checkAuth } from "./store/authSlice";
-import { initializeSocket, disconnectSocket } from "./store/socketSlice";
-import { getToken } from "./Utils/getToken";
-import { fetchSiteAnalytics } from "./store/adminSlice";
-import { setTheme } from "./store/themeSlice";
+import SplashLoader from "./AppRootFile/components/SplashLoader";
+import GoogleLoginPopup from "./AppRootFile/components/GoogleLoginPopup";
+import BroadcastBanner from "./AppRootFile/components/BroadcastBanner";
+import LocationErrorPopup from "./AppRootFile/components/LocationErrorPopup";
+import PageTransitionLoader from "./AppRootFile/components/PageTransitionLoader";
+import { useThemeSetup } from "./AppRootFile/hook/useThemeSetup";
+import { useGeolocation } from "./AppRootFile/hook/useGeolocation";
+import { useSocketInit } from "./AppRootFile/hook/useSocketInit";
+import { useAdminAnalytics } from "./AppRootFile/hook/useAdminAnalytics";
+import { useGoogleLoginPopup } from "./AppRootFile/hook/useGoogleLoginPopup";
+import { useClearUserError } from "./AppRootFile/hook/useClearUserError";
+import { useBannerExpiration } from "./AppRootFile/hook/useBannerExpiration";
+import { useSelector, useDispatch } from "react-redux";
+import { dismissBannerNotification } from "./store/adminSlice";
+import { newNotificationReceived } from "./store/socketSlice";
+import { useSocketConnectionStatus } from "./AppRootFile/hook/useSocketConnectionStatus";
+import useAdBlockDetector from "./Ads/useAdBlockDetector";
+import AdBlockWarning from "./Ads/AdBlockWarning";
 
 export default function App() {
+  const navigation = useNavigation();
   const dispatch = useDispatch();
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
-  const { theme } = useSelector((state) => state.theme);
-  const socketInitialized = useRef(false);
+  const [booting, setBooting] = useState(true);
+  const isAdBlocked = useAdBlockDetector(); // Use the ad block detector hook
 
-  // Load theme on mount
   useEffect(() => {
-    const storedTheme = localStorage.getItem("theme");
-    if (storedTheme === "dark" || storedTheme === "light") {
-      dispatch(setTheme(storedTheme));
-    } else {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      dispatch(setTheme(prefersDark ? "dark" : "light"));
-    }
+    const timer = setTimeout(() => setBooting(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === "newNotification") {
+        if (e.newValue) {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            if (parsed && parsed._id) {
+              dispatch(newNotificationReceived(parsed));
+            }
+          } catch (err) {
+            console.error("Failed to parse storage event:", err);
+          }
+        } else {
+          dispatch(newNotificationReceived(null));
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, [dispatch]);
 
-  // Apply theme class to <html>
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme]);
+  const theme = useThemeSetup();
+  const locationError = useGeolocation();
+  const showGooglePopup = useGoogleLoginPopup();
+  useSocketConnectionStatus();
+  useSocketInit();
+  useAdminAnalytics();
+  useClearUserError();
+  useBannerExpiration();
 
-  // Auth + socket setup
-  useEffect(() => {
-    dispatch(checkAuth());
+  const { newNotification } = useSelector((state) => state.socket);
+  const isTransitionLoading = navigation.state === "loading";
 
-    if (isAuthenticated && user?._id && getToken()) {
-      if (user?.role === "admin") {
-        dispatch(fetchSiteAnalytics({ startDate: "", endDate: "" }));
-      }
-      dispatch(initializeSocket());
+  useEffect(() => {
+    if (newNotification && newNotification._id && newNotification.expiresAt) {
+      localStorage.setItem("newNotification", JSON.stringify(newNotification));
+    } else {
+      localStorage.removeItem("newNotification");
     }
+  }, [newNotification]);
 
-    return () => {
-      dispatch(disconnectSocket());
-    };
-  }, [dispatch, isAuthenticated, user?._id, user?.role]);
+  const handleDismiss = async (notificationId) => {
+    try {
+      await dispatch(dismissBannerNotification(notificationId)).unwrap();
+      dispatch(newNotificationReceived(null));
+      localStorage.removeItem("newNotification");
+    } catch (err) {
+      console.error("Dismiss error:", err);
+    }
+  };
+
+  if (booting) return <SplashLoader />;
 
   return (
-    <div className="bg-background text-text-main min-h-screen transition-colors duration-300">
-      <Navbar />
+    <div
+      className={`min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark`}
+    >
+      {isAdBlocked && <AdBlockWarning />}
       <ScrollToTop />
+      <Navbar />
+      {showGooglePopup && <GoogleLoginPopup />}
+      {newNotification && newNotification._id && (
+        <BroadcastBanner
+          newNotification={newNotification}
+          handleDismiss={handleDismiss}
+        />
+      )}
+      <PageTransitionLoader isLoading={isTransitionLoading} />
       <Outlet />
+      <LocationErrorPopup locationError={locationError} onDismiss={() => {}} />
     </div>
   );
 }

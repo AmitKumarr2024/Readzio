@@ -1,39 +1,29 @@
 import React, { useEffect, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { recordAdEarnings } from '../store/adsSlice';
-import useAdBlockDetector from '../hooks/useAdBlockDetector';
-import { socketInstance } from '../store/socketSlice';
+import useAdBlockDetector from './useAdBlockDetector';
+import { useSelector } from 'react-redux';
+import { selectSocketState } from '../store/socketSlice';
 
 const GoogleAd = ({ adSlot, adFormat = 'auto', className = '', postId }) => {
-  const dispatch = useDispatch();
   const isAdBlocked = useAdBlockDetector();
-  const { loading, error } = useSelector((state) => state.ads || {});
+  const { socketInstance } = useSelector(selectSocketState) || {};
   const adRef = useRef(null);
   const impressionSent = useRef(false);
 
   useEffect(() => {
-    if (isAdBlocked || loading || error || impressionSent.current) return;
+    if (isAdBlocked || impressionSent.current || !socketInstance?.connected) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !impressionSent.current) {
           impressionSent.current = true;
-          dispatch(recordAdEarnings({
-            postId,
-            adSlot,
-            adIndex: adSlot,
-            timeSpent: 30,
-            orderId: `order_${adSlot}_${Date.now()}`,
-            paymentId: `pay_${adSlot}_${Date.now()}`,
-            signature: `sig_${adSlot}_${Date.now()}`,
-          }));
 
-          socketInstance?.emit('adImpression', {
+          socketInstance.emit('adImpression', {
             postId,
             adIndex: adSlot,
             adSlot,
             timeSpent: 30,
           });
+
           console.log('[GoogleAd] Emitted adImpression', { postId, adSlot });
 
           try {
@@ -51,7 +41,7 @@ const GoogleAd = ({ adSlot, adFormat = 'auto', className = '', postId }) => {
     if (adRef.current) observer.observe(adRef.current);
 
     return () => observer.disconnect();
-  }, [dispatch, adSlot, postId, isAdBlocked, loading, error]);
+  }, [adSlot, postId, isAdBlocked, socketInstance]);
 
   return (
     <ins

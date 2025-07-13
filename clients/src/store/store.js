@@ -3,7 +3,7 @@ import authReducer from "../store/authSlice";
 import userReducer from "../store/userSlice";
 import postReducer from "../store/postSlice";
 import postMetaReducer from "../store/Post/postMetaSlice";
-import postInteractionReducer from "../store/Post interactions";
+import postInteractionReducer from "../store/PostInteractions";
 import followReducer from "../store/followSlice";
 import subscriptionReducer from "../store/subscriptionSlice";
 import categoriesReducer from "../store/categorySlice";
@@ -16,8 +16,8 @@ import suggestReducer from "../store/suggestedPostsSlice";
 import adminReducer from "../store/adminSlice";
 import notificationReducer from "../store/notificationSlice";
 import socketReducer from "../store/socketSlice";
-// import adsReducer from "../store/adsSlice";
 import themeReducer from "../store/themeSlice";
+import guestReducer from "../store/guestSlice";
 
 const store = configureStore({
   reducer: {
@@ -38,8 +38,8 @@ const store = configureStore({
     admin: adminReducer,
     notifications: notificationReducer,
     socket: socketReducer,
-    // ads: adsReducer,
     theme: themeReducer,
+     guest: guestReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -47,5 +47,4 @@ const store = configureStore({
     }),
 });
 
-console.log("Initial store state:", store.getState());
 export default store;

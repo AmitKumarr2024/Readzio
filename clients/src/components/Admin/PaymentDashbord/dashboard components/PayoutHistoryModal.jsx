@@ -2,20 +2,20 @@ import React from "react";
 import { motion } from "framer-motion";
 
 const PayoutHistoryModal = ({ payoutHistoryUser, payoutHistory, historyLoading, closePayoutHistoryModal }) => (
-  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+  <div className="fixed inset-0 text-text-main-light dark:text-text-main-dark flex items-center justify-center z-50 p-4">
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto bg-white border border-gray-100 shadow-2xl backdrop-blur-sm"
+      className="rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto bg-background-light dark:bg-background-dark border-gray-100 shadow-2xl backdrop-blur-sm"
     >
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+        <h3 className="text-lg sm:text-xl font-semibold text-text-main-light dark:text-text-main-dark">
           Payout History for {payoutHistoryUser.username}
         </h3>
         <button
           onClick={closePayoutHistoryModal}
-          className="text-gray-600 hover:text-gray-800 transition-all duration-300"
+          className="text-text-main-light dark:text-text-main-dark hover:text-gray-800 transition-all duration-300"
         >
           ✕
         </button>
@@ -43,7 +43,7 @@ const PayoutHistoryModal = ({ payoutHistoryUser, payoutHistory, historyLoading, 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="border-t border-gray-100 text-gray-800 hover:bg-blue-50/50 transition-all duration-200"
+                  className="border-t border-gray-100 text-text-main-light dark:text-text-main-dark hover:bg-blue-50/50 transition-all duration-200"
                 >
                   <td className="p-3 sm:p-4">{payout.date}</td>
                   <td className="p-3 sm:p-4">₹{payout.amount}</td>

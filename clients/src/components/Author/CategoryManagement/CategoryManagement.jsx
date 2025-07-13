@@ -7,22 +7,32 @@ import {
   createCategory,
   assignCategoriesToUser,
   clearError,
+  resetSlugAvailability,
+  checkSlugAvailability,
 } from "../../../store/categorySlice";
 import toast, { Toaster } from "react-hot-toast";
 import { motion } from "framer-motion";
-import { FaFolderPlus, FaPlus ,FaSpinner} from "react-icons/fa";
+import { FaFolderPlus, FaPlus, FaSpinner } from "react-icons/fa";
 
 const AddCategory = ({ onAdd }) => {
   const dispatch = useDispatch();
-  const { status, error } = useSelector((state) => state.categories);
+  const { status, error, slugAvailability } = useSelector(
+    (state) => state.categories
+  );
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
   const [formError, setFormError] = useState("");
+  const [slugTouched, setSlugTouched] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
+
+    if (slugAvailability.isAvailable === false) {
+      setFormError("Slug is already taken. Please choose a different one.");
+      return;
+    }
 
     if (!name || !slug) {
       setFormError("Name and slug are required");
@@ -50,6 +60,19 @@ const AddCategory = ({ onAdd }) => {
       toast.error(err || "Failed to create category");
     }
   };
+  useEffect(() => {
+    if (slug && /^[a-z0-9-]+$/.test(slug)) {
+      dispatch(checkSlugAvailability({ slug }));
+    } else {
+      dispatch(resetSlugAvailability());
+    }
+  }, [slug, dispatch]);
+
+  useEffect(() => {
+    return () => {
+      dispatch(resetSlugAvailability());
+    };
+  }, [dispatch]);
 
   return (
     <motion.form
@@ -85,23 +108,40 @@ const AddCategory = ({ onAdd }) => {
           />
         </div>
         <div>
-          <label
-            htmlFor="slug"
-            className="block text-sm font-semibold   text-text-main-light dark:text-text-main-dark mb-1"
-          >
+          <label htmlFor="slug" className="block text-sm font-semibold mb-1">
             Slug
           </label>
           <input
             id="slug"
             type="text"
             value={slug}
-            onChange={(e) => setSlug(e.target.value)}
+            onChange={(e) => {
+              setSlug(e.target.value.toLowerCase());
+              setSlugTouched(true);
+            }}
             className="w-full p-3 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
-            aria-required="true"
             placeholder="e.g., custom-category"
           />
+          {slugTouched && slug && (
+            <p
+              className={`mt-1 text-sm ${
+                slugAvailability.loading
+                  ? "text-gray-500"
+                  : slugAvailability.isAvailable
+                  ? "text-green-600"
+                  : "text-red-600"
+              }`}
+            >
+              {slugAvailability.loading
+                ? "Checking availability..."
+                : slugAvailability.isAvailable
+                ? "Slug is available ✅"
+                : "Slug is already taken ❌"}
+            </p>
+          )}
         </div>
+
         <div>
           <label
             htmlFor="description"

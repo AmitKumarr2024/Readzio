@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { Send, Loader2 } from "lucide-react";
 import SpaceBackground from "../Utils/SpaceBackground";
 import { createContactMessage } from "../store/adminSlice";
 
 const Contact = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.admin || {});
+  const { isAuthenticated } = useSelector((state) => state.auth);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -21,6 +24,11 @@ const Contact = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!isAuthenticated) {
+      toast.info("Please login to comment.");
+      return navigate("/login");
+    }
     setSuccess(null);
     setErrorMessage("");
 
@@ -45,13 +53,18 @@ const Contact = () => {
         <div className="w-full max-w-lg bg-white/90 backdrop-blur-md border border-gray-300 rounded-xl p-8 shadow-md">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Contact Us</h1>
           <p className="text-sm text-gray-600 mb-6">
-            Please fill out the form and we’ll get back to you as soon as we can.
+            Please fill out the form and we’ll get back to you as soon as we
+            can.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Name <span className="text-xs text-gray-400">e.g. John Doe</span>
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Name{" "}
+                <span className="text-xs text-gray-400">e.g. John Doe</span>
               </label>
               <input
                 id="name"
@@ -66,8 +79,12 @@ const Contact = () => {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email <span className="text-xs text-gray-400">we’ll reply here</span>
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Email{" "}
+                <span className="text-xs text-gray-400">we’ll reply here</span>
               </label>
               <input
                 id="email"
@@ -82,8 +99,12 @@ const Contact = () => {
             </div>
 
             <div>
-              <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
-                Subject <span className="text-xs text-gray-400">short and clear</span>
+              <label
+                htmlFor="subject"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Subject{" "}
+                <span className="text-xs text-gray-400">short and clear</span>
               </label>
               <input
                 id="subject"
@@ -97,8 +118,14 @@ const Contact = () => {
             </div>
 
             <div>
-              <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
-                Message <span className="text-xs text-gray-400">describe your issue or question</span>
+              <label
+                htmlFor="message"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Message{" "}
+                <span className="text-xs text-gray-400">
+                  describe your issue or question
+                </span>
               </label>
               <textarea
                 id="message"
@@ -117,17 +144,25 @@ const Contact = () => {
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition disabled:opacity-50"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
               {loading ? "Sending..." : "Send Message"}
             </button>
           </form>
 
           {/* Feedback Messages */}
           {success === true && (
-            <p className="mt-4 text-center text-sm text-green-600">✅ Message sent successfully!</p>
+            <p className="mt-4 text-center text-sm text-green-600">
+              ✅ Message sent successfully!
+            </p>
           )}
           {success === false && (
-            <p className="mt-4 text-center text-sm text-red-600">❌ {errorMessage}</p>
+            <p className="mt-4 text-center text-sm text-red-600">
+              ❌ {errorMessage}
+            </p>
           )}
           {error && !success && (
             <p className="mt-4 text-center text-sm text-red-600">❌ {error}</p>
@@ -135,7 +170,10 @@ const Contact = () => {
 
           <p className="mt-8 text-center text-xs text-gray-500">
             Or email us at{" "}
-            <a href="mailto:amit@example.com" className="text-blue-600 hover:underline">
+            <a
+              href="mailto:amit@example.com"
+              className="text-blue-600 hover:underline"
+            >
               amit@example.com
             </a>
           </p>

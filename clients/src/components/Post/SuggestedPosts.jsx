@@ -1,103 +1,122 @@
-import { useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
-import { fetchSuggestedPosts } from '../../store/suggestedPostsSlice';
-import AdCard from '../../Utils/AdCard';
-import Skeleton from '../ui/Skeleton';
-import toast from 'react-hot-toast';
+import React, { useEffect, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { Link } from "react-router-dom";
+import { fetchSuggestedPosts } from "../../store/suggestedPostsSlice";
+import GoogleAd from "../../Ads/GoogleAd"; 
+import Skeleton from "../ui/Skeleton";
+import toast from "react-hot-toast";
+import TimeAgo from "../../Utils/TimeAgo";
 
 const SuggestedPosts = () => {
   const dispatch = useDispatch();
-  const { posts, status, error } = useSelector((state) => state.suggestedPosts || {});
+  const hasFetched = useRef(false);
+  const { posts = [], status, error } = useSelector(
+    (state) => state.suggestedPosts || {}
+  );
 
+  // Fetch 6 posts
   useEffect(() => {
-    if (status === 'idle') {
-      dispatch(fetchSuggestedPosts({ limit: 10 }));
+    if (status === "idle" && !hasFetched.current) {
+      hasFetched.current = true;
+      if (process.env.NODE_ENV === "development") {
+        console.log("[SuggestedPosts] Fetching suggested posts, limit: 6");
+      }
+      dispatch(fetchSuggestedPosts({ limit: 6 }));
     }
   }, [dispatch, status]);
 
+  // Show error toast
   useEffect(() => {
-    if (status === 'failed' && error) {
-      toast.error(error || 'Failed to load suggested posts');
+    if (status === "failed" && error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[SuggestedPosts] Fetch error:", error);
+      }
+      toast.error(error || "Failed to load suggested posts");
     }
   }, [status, error]);
 
-  const getAdPositions = (postCount) => {
-    const positions = [];
-    let currentPos = 0;
-    while (currentPos < postCount) {
-      const gap = Math.floor(Math.random() * 3) + 2;
-      currentPos += gap;
-      if (currentPos < postCount) {
-        positions.push(currentPos);
-      }
-    }
-    return positions;
-  };
+  // Limit to 6 posts
+  const displayedPosts = posts.slice(0, 6);
+  const adPositions = displayedPosts.length >= 3 ? [3] : [];
 
-  const adPositions = useMemo(() => getAdPositions(posts.length), [posts.length]);
+  // Fallback image
+  const fallbackImage = "https://placehold.co/600x400?text=No+Image";
 
   return (
-    <div className="container mx-auto p-4">
-      <h2 className="text-2xl font-semibold mb-4">Suggested Posts</h2>
-      {status === 'loading' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className=" py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900">
+      <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-8 text-center">
+        Explore More Stories
+      </h2>
+
+      {status === "loading" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-full mx-auto">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white p-4 rounded-xl shadow-md">
-              <Skeleton width="w-full" height="h-40" className="mb-4" />
-              <Skeleton width="w-3/4" height="h-6" className="mb-2" />
-              <Skeleton width="w-1/2" height="h-4" />
+            <div
+              key={i}
+              className="bg-white dark:bg-gray-800 rounded-md shadow-md overflow-hidden"
+            >
+              <Skeleton width="w-full" height="h-48" className="rounded-t-md" />
+              <div className="p-4">
+                <Skeleton width="w-3/4" height="h-6" className="mb-2" />
+                <Skeleton width="w-1/2" height="h-4" />
+              </div>
             </div>
           ))}
         </div>
       )}
-      {status === 'failed' && (
-        <p className="text-lg text-center text-red-100 bg-red-600 py-3 rounded">{error || 'Failed to load posts'}</p>
+
+      {status === "failed" && (
+        <p className="text-lg text-center text-gray-900 dark:text-gray-100 bg-red-100 dark:bg-red-800 py-4 rounded-md max-w-2xl mx-auto shadow-md">
+          {error || "Failed to load posts"}
+        </p>
       )}
-      {status === 'succeeded' && posts.length === 0 && (
-        <p className="text-lg text-center text-gray-600 bg-white py-6 rounded">No suggested posts found.</p>
+
+      {status === "succeeded" && displayedPosts.length === 0 && (
+        <p className="text-lg text-center text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 py-4 rounded-md max-w-2xl mx-auto shadow-md">
+          No suggested posts available.
+        </p>
       )}
-      {status === 'succeeded' && posts.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {posts.map((post, index) => (
+
+      {status === "succeeded" && displayedPosts.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-w-8xl ">
+          {displayedPosts.map((post, index) => (
             <React.Fragment key={post._id}>
               <Link
                 to={`/post/${post.slug}`}
-                className="bg-white rounded-lg shadow-md overflow-hidden transition-shadow duration-200 hover:shadow-xl"
+                className="group bg-white dark:bg-gray-800 rounded-xs shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
               >
-                {post.thumbnail && (
+                <div className="relative">
                   <img
-                    src={post.thumbnail}
-                    alt={post.title}
-                    className="w-full h-48 object-cover"
+                    src={post.thumbnail || fallbackImage}
+                    alt={post.title || "Post"}
+                    className="w-full h-48 object-cover rounded-t-md transition-transform duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      if (process.env.NODE_ENV === "development") {
+                        console.warn(`[SuggestedPosts] Thumbnail failed for post ${post._id}:`, post.thumbnail);
+                      }
+                      e.target.src = fallbackImage;
+                    }}
                   />
-                )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </div>
                 <div className="p-4">
-                  <h4 className="text-lg font-semibold text-gray-900 line-clamp-2 mb-2">
-                    {post.title}
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 mb-2">
+                    {post.title || "Untitled"}
                   </h4>
-                  <p className="text-sm text-gray-600 mb-3">
-                    By {post.author.name} • <TimeAgo date={post.createdAt} />
+                  <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                    <span>{post.author?.name || "Unknown"}</span>
+                    <span className="text-gray-400">•</span>
+                    <TimeAgo date={post.createdAt} />
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {post.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs font-medium"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
                 </div>
               </Link>
+
               {adPositions.includes(index + 1) && (
-                <AdCard
+                <GoogleAd
                   key={`ad-${index}`}
-                  adIndex={index}
-                  adContent="Sponsored Content"
-                  adImage="https://placehold.co/150x100?text=Ad+Failed"
+                  adSlot="1234567890"
                   postId={post._id}
+                  className="bg-white dark:bg-gray-800 rounded-md shadow-md my-4"
                 />
               )}
             </React.Fragment>
@@ -108,4 +127,4 @@ const SuggestedPosts = () => {
   );
 };
 
-export default SuggestedPosts;
+export default React.memo(SuggestedPosts);

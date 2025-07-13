@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation, useNavigate, matchPath } from "react-router-dom";
 import { FiSearch } from "react-icons/fi";
 import { TfiWrite } from "react-icons/tfi";
@@ -9,11 +9,10 @@ import CategoryBox from "./CategoryBox";
 import SearchModal from "./SearchBar/SearchModal";
 import SearchInput from "./SearchBar/SearchInput";
 import NotificationDropdown from "./Notification/NotificationDropdown";
-import { logout, checkAuth } from "../store/authSlice";
-import { getUser, clearUser } from "../store/userSlice";
-import { addNotification } from "../store/notificationSlice";
-import { socketInstance } from "../store/socketSlice";
+import { checkAuth, logout } from "../store/authSlice";
+import { clearUser, getUser } from "../store/userSlice";
 import ThemeToggleButton from "../layout/ThemeToggleButton";
+import { disconnectSocket, initializeSocket } from "../store/socketSlice";
 
 const countVariants = {
   initial: { opacity: 0, y: 10 },
@@ -26,7 +25,7 @@ const dropdownVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 };
 
-export default function Navbar() {
+const Navbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,36 +35,68 @@ export default function Navbar() {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const { isAuthenticated, user: authUser, role } = useSelector((state) => state.auth || {});
-  const { user: userData } = useSelector((state) => state.user || {});
-  const { onlineUsersCount } = useSelector((state) => state.socket || {});
+  const {
+    isAuthenticated,
+    user: authUser,
+    role,
+    authInitialized,
+    authLoading,
+    sessionExpired,
+  } = useSelector((state) => state.auth ?? {});
+  const { onlineUsersCount, status, error } = useSelector(
+    (state) => state.socket ?? {}
+  );
+  const { user } = useSelector((state) => state.user ?? {});
 
-  const avatarUrl = userData?.data?.avatar || authUser?.avatar;
-  const userName = authUser?.name || userData?.data?.name;
-  const userId = authUser?._id || userData?.data?._id;
+  const avatarUrl = useMemo(
+    () => user?.avatar ,
+    [user?.avatar]
+  );
+  const userName = useMemo(() => authUser?.name || "User", [authUser?.name]);
+  const userId = useMemo(() => authUser?._id, [authUser?._id]);
+
+  const shouldHideCategory = useMemo(
+    () =>
+      [
+        "/user",
+        "/user-setting",
+        "/createPost",
+        "/author-profile/:id",
+        "/bookmark",
+        "/admin",
+      ].some((route) =>
+        matchPath({ path: route, end: false }, location.pathname)
+      ),
+    [location.pathname]
+  );
+
+  const statusClass = useMemo(
+    () =>
+      onlineUsersCount >= 1 ? "animate-pulse bg-green-500" : "bg-gray-500",
+    [onlineUsersCount]
+  );
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      dispatch(checkAuth());
-    } else if (isAuthenticated && !userData?.data) {
-      dispatch(getUser());
+    if (!authInitialized && !authLoading) {
+      dispatch(checkAuth()).catch((err) =>
+        console.error("Auth check failed:", err)
+      );
+      dispatch(getUser()).catch((err) =>
+        console.error("Get user failed:", err)
+      );
     }
-  }, [dispatch, isAuthenticated, userData?.data]);
+  }, [authInitialized, authLoading, dispatch]);
 
   useEffect(() => {
-    if (!socketInstance || !isAuthenticated || !userId) return;
-
-    const handleNewNotification = (data) => {
-      if (data?.user?.toString() === userId.toString()) {
-        dispatch(addNotification(data));
-      }
-    };
-
-    socketInstance.on("newNotification", handleNewNotification);
-    return () => {
-      socketInstance?.off("newNotification", handleNewNotification);
-    };
-  }, [dispatch, userId, isAuthenticated]);
+    if (isAuthenticated && authUser?._id) {
+      dispatch(initializeSocket()).catch((err) =>
+        console.error("Socket init failed:", err)
+      );
+      return () => {
+        dispatch(disconnectSocket());
+      };
+    }
+  }, [isAuthenticated, authUser?._id, dispatch]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -78,7 +109,8 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    setMobileMenuOpen(false); // close menu on route change
+    const timer = setTimeout(() => setMobileMenuOpen(false), 100);
+    return () => clearTimeout(timer);
   }, [location.pathname]);
 
   const toggleDropdown = () => setDropdownOpen((prev) => !prev);
@@ -87,99 +119,136 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
-      const result = await dispatch(logout());
-      if (logout.fulfilled.match(result)) {
-        dispatch(clearUser());
-        setDropdownOpen(false);
-        navigate("/login");
-      } else {
-        throw new Error(result.error?.message || "Logout failed");
-      }
+      await dispatch(logout()).unwrap();
+      dispatch(clearUser());
+      setDropdownOpen(false);
+      navigate("/login");
     } catch (err) {
-      alert(`Logout failed: ${err.message}`);
+      console.error("Logout failed:", err);
     }
   };
 
-  const hideCategoryRoutes = [
-    "/user",
-    "/user-setting",
-    "/createPost",
-    "/author-profile/:id",
-    "/bookmark",
-  ];
-  const shouldHideCategory = hideCategoryRoutes.some((route) =>
-    matchPath({ path: route, end: false }, location.pathname)
-  );
+  if (authLoading) {
+    return (
+      <div className="sticky top-0 z-50 bg-background-light dark:bg-background-dark h-16 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>
-      {/* NAVBAR */}
-      <nav className="sticky top-0 z-50 bg-gradient-theme text-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          {/* Logo + Online */}
-          <div className="flex items-center gap-2">
+      <AnimatePresence>
+        {sessionExpired && (
+          <motion.div
+            key="session-expired-banner"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="sticky top-0 z-50 bg-yellow-100 dark:bg-yellow-900/50 text-text-main-light dark:text-text-main-dark px-4 py-2 text-sm flex items-center justify-center gap-2 shadow-md"
+          >
+            <span>
+              Viewing as guest.{" "}
+              <Link
+                to="/login"
+                className="underline font-medium hover:text-blue-600"
+              >
+                Log in
+              </Link>{" "}
+              for full features.
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <nav className="sticky top-0 z-50 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2 md:gap-4">
             <Logo />
-            <Link to="/users" className="text-sm font-medium flex items-center ml-10 gap-1">
-              <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs px-3 py-1 rounded-full shadow-md">
-                <motion.span
-                  key={onlineUsersCount}
-                  variants={countVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                >
-                  {onlineUsersCount}
-                </motion.span>{" "}
-                online
-              </span>
+            <Link
+              to="/users"
+              className="text-sm font-medium flex items-center gap-2"
+              aria-label="Online users"
+            >
+              <span className={`w-3 h-3 rounded-full ${statusClass}`} />
+              <motion.span
+                key={onlineUsersCount}
+                variants={countVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="font-semibold"
+              >
+                {onlineUsersCount || 0}
+              </motion.span>
+              <span className="hidden sm:inline">online</span>
             </Link>
           </div>
 
-          {/* Desktop Search */}
-          <div className="hidden md:flex w-1/3 mx-4">
+          <div className="hidden md:flex w-full max-w-xs md:max-w-md mx-4">
             <SearchInput />
           </div>
 
-          {/* Right Controls */}
-          <div className="flex items-center gap-3">
-            {/* Mobile search + menu */}
-            <button onClick={toggleMobileSearch} className="md:hidden p-2 rounded-full hover:bg-white/10" aria-label="Search">
-              <FiSearch className="text-xl" />
+          <div className="flex items-center gap-2 md:gap-3">
+            <button
+              onClick={toggleMobileSearch}
+              className="md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+              aria-label="Search"
+            >
+              <FiSearch className="w-5 h-5" />
             </button>
-            <button onClick={toggleMobileMenu} className="md:hidden p-2 rounded-full hover:bg-white/10" aria-label="Toggle Menu">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 5.25h16.5M3.75 12h16.5M3.75 18.75h16.5" />
+            <button
+              onClick={toggleMobileMenu}
+              className="md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+              aria-label="Menu"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                className="w-6 h-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M3.75 5.25h16.5M3.75 12h16.5M3.75 18.75h16.5"
+                />
               </svg>
             </button>
 
             <ThemeToggleButton />
 
-            {isAuthenticated ? (
+            {isAuthenticated && authUser?._id ? (
               <>
-                {/* Write */}
                 <Link
                   to="/createPost"
                   className="hidden md:flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm"
+                  aria-label="Write a post"
                 >
-                  <TfiWrite />
-                  <span className="hidden sm:inline">Write</span>
+                  <TfiWrite size={17}/>
+                  <span className="text-xl ">Write</span>
                 </Link>
 
                 <NotificationDropdown />
 
-                {/* Profile Dropdown */}
                 <div ref={dropdownRef} className="relative hidden md:block">
-                  <button onClick={toggleDropdown} aria-label="User menu" aria-haspopup="true" aria-expanded={dropdownOpen}>
+                  <button
+                    onClick={toggleDropdown}
+                    className="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full"
+                    aria-label="User Menu"
+                  >
                     {avatarUrl ? (
                       <img
                         src={avatarUrl}
-                        alt={userName || "User"}
-                        className="w-10 h-10 rounded-full"
-                        onError={(e) => (e.currentTarget.src = "/default-avatar.png")}
+                        alt={userName}
+                        className="w-10 h-10 rounded-full object-cover"
+                        loading="lazy"
                       />
                     ) : (
-                      <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center text-white">
-                        {userName?.[0] || "U"}
+                      <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-text-main-light dark:text-text-main-dark font-medium text-lg">
+                        {userName[0]}
                       </div>
                     )}
                   </button>
@@ -190,31 +259,58 @@ export default function Navbar() {
                         initial="hidden"
                         animate="visible"
                         exit="hidden"
-                        className="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-md shadow-lg py-2 z-50"
+                        className="absolute right-0 mt-2 w-48 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-md shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-800"
                       >
                         {userId && (
-                          <Link to={`/author-profile/${userId}`} className="block px-4 py-2 hover:bg-gray-100" onClick={toggleDropdown}>
-                            Your Studio
+                          <Link
+                            to={`/author-profile/${userId}`}
+                            className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                            onClick={toggleDropdown}
+                          >
+                            Studio
                           </Link>
                         )}
-                        <Link to="/user" className="block px-4 py-2 hover:bg-gray-100" onClick={toggleDropdown}>
+                        <Link
+                          to="/user"
+                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                          onClick={toggleDropdown}
+                        >
                           Profile
                         </Link>
-                        <Link to="/user-setting" className="block px-4 py-2 hover:bg-gray-100" onClick={toggleDropdown}>
+                        <Link
+                          to="/user-setting"
+                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                          onClick={toggleDropdown}
+                        >
                           Settings
                         </Link>
-                        <Link to="/bookmark" className="block px-4 py-2 hover:bg-gray-100" onClick={toggleDropdown}>
+                        <Link
+                          to="/bookmark"
+                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                          onClick={toggleDropdown}
+                        >
                           Bookmarks
                         </Link>
-                        <Link to="/contact" className="block px-4 py-2 hover:bg-gray-100" onClick={toggleDropdown}>
+                        <Link
+                          to="/contact"
+                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                          onClick={toggleDropdown}
+                        >
                           Contact
                         </Link>
                         {role === "admin" && (
-                          <Link to="/admin" className="block px-4 py-2 hover:bg-gray-100" onClick={toggleDropdown}>
+                          <Link
+                            to="/admin"
+                            className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                            onClick={toggleDropdown}
+                          >
                             Admin Panel
                           </Link>
                         )}
-                        <button onClick={handleLogout} className="block w-full text-left px-4 py-2 hover:bg-gray-100">
+                        <button
+                          onClick={handleLogout}
+                          className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                        >
                           Logout
                         </button>
                       </motion.div>
@@ -224,10 +320,16 @@ export default function Navbar() {
               </>
             ) : (
               <div className="hidden md:flex gap-2">
-                <Link to="/login" className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm">
+                <Link
+                  to="/login"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm"
+                >
                   Login
                 </Link>
-                <Link to="/signup" className="bg-white text-gray-800 px-3 py-1.5 rounded-md text-sm">
+                <Link
+                  to="/signup"
+                  className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark px-3 py-1.5 rounded-md text-sm border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
                   Sign Up
                 </Link>
               </div>
@@ -236,47 +338,100 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
             key="mobile-menu"
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="md:hidden bg-blue-700 text-white px-4 py-4 space-y-2 shadow-xl"
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="md:hidden bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark px-4 py-4 space-y-2 shadow-xl border-t border-gray-200 dark:border-gray-800"
           >
-            {isAuthenticated ? (
+            {isAuthenticated && authUser?._id ? (
               <>
-                <Link to="/createPost" className="block py-2" onClick={toggleMobileMenu}>Write</Link>
-                <Link to="/user" className="block py-2" onClick={toggleMobileMenu}>Profile</Link>
-                <Link to="/user-setting" className="block py-2" onClick={toggleMobileMenu}>Settings</Link>
-                <Link to="/bookmark" className="block py-2" onClick={toggleMobileMenu}>Bookmarks</Link>
-                <Link to="/contact" className="block py-2" onClick={toggleMobileMenu}>Contact</Link>
+                <Link
+                  to="/createPost"
+                  onClick={toggleMobileMenu}
+                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                >
+                  Write
+                </Link>
+                <Link
+                  to="/user"
+                  onClick={toggleMobileMenu}
+                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                >
+                  Profile
+                </Link>
+                <Link
+                  to="/user-setting"
+                  onClick={toggleMobileMenu}
+                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                >
+                  Settings
+                </Link>
+                <Link
+                  to="/bookmark"
+                  onClick={toggleMobileMenu}
+                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 Hawkins"
+                >
+                  Bookmarks
+                </Link>
+                <Link
+                  to="/contact"
+                  onClick={toggleMobileMenu}
+                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                >
+                  Contact
+                </Link>
                 {role === "admin" && (
-                  <Link to="/admin" className="block py-2" onClick={toggleMobileMenu}>Admin Panel</Link>
+                  <Link
+                    to="/admin"
+                    onClick={toggleMobileMenu}
+                    className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                  >
+                    Admin Panel
+                  </Link>
                 )}
-                <button onClick={handleLogout} className="block w-full text-left py-2">Logout</button>
+                <button
+                  onClick={handleLogout}
+                  className="block w-full text-left py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                >
+                  Logout
+                </button>
               </>
             ) : (
               <>
-                <Link to="/login" className="block py-2" onClick={toggleMobileMenu}>Login</Link>
-                <Link to="/signup" className="block py-2" onClick={toggleMobileMenu}>Sign Up</Link>
+                <Link
+                  to="/login"
+                  onClick={toggleMobileMenu}
+                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/signup"
+                  onClick={toggleMobileMenu}
+                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                >
+                  Sign Up
+                </Link>
               </>
             )}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Search Modal */}
       <SearchModal isOpen={showMobileSearch} onClose={toggleMobileSearch} />
 
-      {/* Category Section */}
       {!shouldHideCategory && (
-        <div className="sticky top-16 z-30 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+        <div className="sticky top-16 z-30 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
           <CategoryBox />
         </div>
       )}
     </>
   );
-}
+};
+
+export default React.memo(Navbar);

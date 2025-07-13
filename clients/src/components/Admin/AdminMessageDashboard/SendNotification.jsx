@@ -36,9 +36,11 @@ export default function SendNotification() {
   }, [dispatch, page, user?._id]);
 
   const handleSubmit = async (e) => {
+    
     e.preventDefault();
     setError(null);
     setSuccess(null);
+
 
     if (!content.trim()) {
       setError('Message content is required');
@@ -67,13 +69,13 @@ export default function SendNotification() {
 
   return (
     <div className="p-6 space-y-4">
-      <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+      <h2 className="text-xl font-semibold text-text-main-light dark:text-text-main-dark flex items-center gap-2">
         <FaPaperPlane className="text-blue-600" />
         Send Notification
       </h2>
 
       {(userLoading || notificationLoading) && (
-        <p className="text-sm text-gray-500 animate-pulse">Loading...</p>
+        <p className="text-sm text-text-main-light dark:text-text-main-dark animate-pulse">Loading...</p>
       )}
       {(error || notificationError || userError) && (
         <p className="text-sm text-red-500">{error || notificationError || userError}</p>
@@ -82,7 +84,7 @@ export default function SendNotification() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="text-sm font-medium text-gray-700">Select Users (optional)</label>
+          <label className="text-sm font-medium text-text-main-light dark:text-text-main-dark">Select Users (optional)</label>
           <select
             multiple
             value={selectedUsers}
@@ -102,7 +104,7 @@ export default function SendNotification() {
               <option disabled>No users found</option>
             )}
           </select>
-          <p className="text-xs text-gray-500 mt-1">Leave empty to send to all users.</p>
+          <p className="text-xs text-text-main-light dark:text-text-main-dark mt-1">Leave empty to send to all users.</p>
         </div>
 
         <Pagination
@@ -115,7 +117,7 @@ export default function SendNotification() {
         />
 
         <div>
-          <label className="text-sm font-medium text-gray-700">Message</label>
+          <label className="text-sm font-medium text-text-main-light dark:text-text-main-dark">Message</label>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -128,7 +130,7 @@ export default function SendNotification() {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center gap-2"
+          className="w-full bg-blue-600 text-text-main-light dark:text-text-main-dark py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center gap-2"
           disabled={userLoading || notificationLoading}
         >
           <FaPaperPlane />

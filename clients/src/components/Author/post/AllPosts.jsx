@@ -5,17 +5,19 @@ import Pagination from "../../../Utils/Pagination";
 import { motion } from "framer-motion";
 import { FaSort, FaSpinner } from "react-icons/fa";
 
-function AllPosts({ posts, userOnly = false, userId, loading, error }) {
+function AllPosts({ posts = [], userOnly = false, userId, loading, error }) {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 20;
 
+  console.log("AllPosts props:", { userId, userOnly, postCount: posts.length });
+  console.log("Posts before filtering:", posts.map(p => ({ id: p._id, authorId: p.author?._id })));
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
         <motion.div
-          className="flex flex-col items-center space-y-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
@@ -30,26 +32,47 @@ function AllPosts({ posts, userOnly = false, userId, loading, error }) {
   if (error) {
     return (
       <motion.div
-        className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
+        className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
       >
         <p className="text-lg font-semibold text-red-600">Error: {error}</p>
       </motion.div>
     );
   }
 
-  let filteredPosts = [...posts];
-  if (userOnly && userId) {
-    filteredPosts = filteredPosts.filter((post) => post?.author?._id === userId);
+  // Filter posts to show only the specified author's posts
+  const filteredPosts = userOnly && userId
+    ? posts.filter((post) => {
+        const isMatch = post?.author?._id?.toString() === userId;
+        console.log(`Post ID: ${post?._id}, Author ID: ${post?.author?._id}, Matches userId (${userId}): ${isMatch}`);
+        return isMatch;
+      })
+    : posts;
+
+  // Show message if no posts match for the author
+  if (filteredPosts.length === 0 && userOnly && userId) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
+      >
+        <p className="text-lg font-semibold text-gray-600">
+          No posts found for this author.
+        </p>
+      </motion.div>
+    );
   }
 
+  // Sort posts based on filter
   const sortedPosts = [...filteredPosts].sort((a, b) => {
     if (filter === "mostViewed") return (b.views || 0) - (a.views || 0);
     if (filter === "mostLiked") return (b.likes?.length || 0) - (a.likes?.length || 0);
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
+  // Pagination logic
   const totalPages = Math.ceil(sortedPosts.length / postsPerPage);
   const startIndex = (currentPage - 1) * postsPerPage;
   const currentPosts = sortedPosts.slice(startIndex, startIndex + postsPerPage);
@@ -75,11 +98,12 @@ function AllPosts({ posts, userOnly = false, userId, loading, error }) {
           transition={{ type: "spring", stiffness: 300 }}
         >
           <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4 sm:mb-6">
-            All Posts
+            {userOnly ? "Author's Posts" : "All Posts"}
           </h2>
 
           {/* Filters */}
-          <div className="sticky top-0 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark backdrop-blur-xl rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 z-10">
+          <div className="sticky top-0 bg(RuntimeError: Evaluation failed: ReferenceError: p is not defined
+    at __puppeteer_evaluation_script__:6:39)ackground-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark backdrop-blur-xl rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 z-10">
             <div className="flex flex-wrap gap-2 sm:gap-3">
               {["newest", "mostViewed", "mostLiked"].map((f) => (
                 <motion.button

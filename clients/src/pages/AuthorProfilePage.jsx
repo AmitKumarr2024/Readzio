@@ -1,68 +1,31 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  lazy,
-  Suspense,
-} from "react";
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import { FaAngleDoubleLeft, FaSpinner } from "react-icons/fa";
-import {
-  useParams,
-  useSearchParams,
-  useNavigate,
-  useLocation,
-} from "react-router-dom";
+import { useParams, useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Button } from "../Utils/Button";
-import {
-  getAllUsers,
-  getUser,
-  getUserById,
-  clearUserActivity,
-} from "../store/userSlice";
-import { getAllPosts } from "../store/postSlice";
-import { fetchMySubscriptionPlans } from "../store/subscriptionSlice";
+import { getAllUsers, getUser, getUserById, clearUserActivity } from "../store/userSlice";
+import { getAllPosts } from "../store/postSlice"; // Removed getDraftAndPendingPosts
+import { fetchMySubscriptionPlans, checkEligibilityForSubscription } from "../store/subscriptionSlice";
 import { tabsConfig } from "../config/tabsConfig";
 import { debounce } from "lodash";
+import SubscriptionEligibilityProgress from "../components/Author/SubscriptionEligibilityProgress";
+import LocationDashboard from "../components/location/LocationDashboard";
 
 // Lazy-loaded components
 const AboutAuthor = lazy(() => import("../components/Author/AboutAuthor"));
 const AllPosts = lazy(() => import("../components/Author/post/AllPosts"));
 const PinnedPost = lazy(() => import("../components/Author/post/PinnedPost"));
-const AuthorPolls = lazy(() =>
-  import("../components/Author/polls/AuthorPolls")
-);
-const AuthorActivityHistory = lazy(() =>
-  import("../components/Author/History/AuthorActivityHistory")
-);
-const AuthorPostHistory = lazy(() =>
-  import("../components/Author/History/AuthorPostHistory")
-);
-const FollowersFollowing = lazy(() =>
-  import("../components/Author/followAndFollowing/FollowersFollowing")
-);
-const AuthorDashboard = lazy(() =>
-  import("../components/Author/Subscribe/subscription/AuthorDashboard")
-);
-const CategoryManagement = lazy(() =>
-  import("../components/Author/CategoryManagement/CategoryManagement")
-);
-const UserEarnings = lazy(() =>
-  import("../components/Author/earning/UserEarnings")
-);
-const UserAnalyticsDashboard = lazy(() =>
-  import("../components/Author/analytics/UserAnalyticsDashboard")
-);
-const BlockControl = lazy(() =>
-  import("../components/Author/blocks/BlockControl")
-);
-const AchievementsComponent = lazy(() =>
-  import("../components/Author/achivement/AchievementsComponent")
-);
-const CommentManager = lazy(() =>
-  import("../components/Author/comment/CommentManager")
-);
+const AuthorPolls = lazy(() => import("../components/Author/polls/AuthorPolls"));
+const AuthorActivityHistory = lazy(() => import("../components/Author/History/AuthorActivityHistory"));
+const AuthorPostHistory = lazy(() => import("../components/Author/History/AuthorPostHistory"));
+const FollowersFollowing = lazy(() => import("../components/Author/followAndFollowing/FollowersFollowing"));
+const AuthorDashboard = lazy(() => import("../components/Author/Subscribe/subscription/AuthorDashboard"));
+const CategoryManagement = lazy(() => import("../components/Author/CategoryManagement/CategoryManagement"));
+const UserEarnings = lazy(() => import("../components/Author/earning/UserEarnings"));
+const UserAnalyticsDashboard = lazy(() => import("../components/Author/analytics/UserAnalyticsDashboard"));
+const BlockControl = lazy(() => import("../components/Author/blocks/BlockControl"));
+const AchievementsComponent = lazy(() => import("../components/Author/achivement/AchievementsComponent"));
+const CommentManager = lazy(() => import("../components/Author/comment/CommentManager"));
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -100,9 +63,7 @@ const AuthorProfilePage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "pinned"
-  );
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "pinned");
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 640);
   const [clearing, setClearing] = useState(false);
 
@@ -111,33 +72,21 @@ const AuthorProfilePage = () => {
   const userError = useSelector((state) => state.user.error);
   const allUsers = useSelector((state) => state.user.users);
   const selectedUser = useSelector((state) => state.user.selectedUser);
-  const selectedUserLoading = useSelector(
-    (state) => state.user.selectedUserLoading
-  );
-  const selectedUserError = useSelector(
-    (state) => state.user.selectedUserError
-  );
+  const selectedUserLoading = useSelector((state) => state.user.selectedUserLoading);
+  const selectedUserError = useSelector((state) => state.user.selectedUserError);
   const posts = useSelector((state) => state.post.posts);
   const postLoading = useSelector((state) => state.post.loading);
   const postError = useSelector((state) => state.post.error);
-  const {
-    plans,
-    loading: subscriptionLoading,
-    error: subscriptionError,
-  } = useSelector((state) => state.subscription);
+  const { plans, loading: subscriptionLoading, error: subscriptionError, isEligible } = useSelector(
+    (state) => state.subscription
+  );
 
   const isOwnProfile = loggedInUser?._id === id;
 
-  // Determine user role
-  const userRole = useMemo(() => {
-    if (!loggedInUser) return "non-logged-in";
-    return isOwnProfile ? "author" : "logged-in";
-  }, [loggedInUser, isOwnProfile]);
-
-  // Filter tabs based on user role
+  // Filter tabs, assuming "drafts" is removed from tabsConfig
   const filteredTabs = useMemo(
-    () => tabsConfig.filter((tab) => tab.roles.includes(userRole)),
-    [userRole]
+    () => tabsConfig.filter((tab) => tab.roles.includes(isOwnProfile ? "author" : loggedInUser ? "logged-in" : "non-logged-in")),
+    [isOwnProfile, loggedInUser]
   );
 
   // Scroll to URL fragment
@@ -161,6 +110,7 @@ const AuthorProfilePage = () => {
     if (isOwnProfile) {
       dispatch(getAllUsers());
       dispatch(fetchMySubscriptionPlans());
+      dispatch(checkEligibilityForSubscription());
     }
   }, [dispatch, id, isOwnProfile]);
 
@@ -210,7 +160,7 @@ const AuthorProfilePage = () => {
       );
     }
 
-    const readOnly = !isOwnProfile; // Non-authors have view-only access
+    const readOnly = !isOwnProfile;
 
     switch (activeTab) {
       case "pinned":
@@ -230,7 +180,7 @@ const AuthorProfilePage = () => {
             loading={postLoading}
             error={postError}
             userId={selectedUser._id}
-            userOnly={isOwnProfile}
+            userOnly={true}
             readOnly={readOnly}
           />
         );
@@ -267,16 +217,44 @@ const AuthorProfilePage = () => {
       case "subscription":
         return (
           <div id="bank-details">
-            <AuthorDashboard
-              userId={selectedUser._id}
-              plans={plans}
-              subscriptionLoading={subscriptionLoading}
-              subscriptionError={subscriptionError}
-            />
+            {isOwnProfile ? (
+              <>
+                <SubscriptionEligibilityProgress userId={selectedUser._id} />
+                {isEligible && (
+                  <AuthorDashboard
+                    userId={selectedUser._id}
+                    plans={plans}
+                    subscriptionLoading={subscriptionLoading}
+                    subscriptionError={subscriptionError}
+                  />
+                )}
+              </>
+            ) : (
+              <p className="text-center text-gray-600 dark:text-gray-400">
+                This section is only for authors! 🔒
+              </p>
+            )}
           </div>
         );
+      case "earnings":
+        return (
+          <>
+            {isOwnProfile ? (
+              <>
+                <SubscriptionEligibilityProgress userId={selectedUser._id} />
+                {isEligible && <UserEarnings userId={selectedUser._id} />}
+              </>
+            ) : (
+              <p className="text-center text-gray-600 dark:text-gray-400">
+                This section is only for authors! 🔒
+              </p>
+            )}
+          </>
+        );
       case "followers":
-        return <FollowersFollowing readOnly={readOnly} />;
+        return (
+          <FollowersFollowing readOnly={readOnly} userId={selectedUser._id} />
+        );
       case "BlocksUser":
         return allUsers && Array.isArray(allUsers) ? (
           <BlockControl
@@ -288,31 +266,32 @@ const AuthorProfilePage = () => {
             {userError ? `Error: ${userError}` : "Loading users..."}
           </p>
         );
-      case "earnings":
       case "analytics":
-      case "categories":
-      case "comments":
-        if (!isOwnProfile) {
-          return (
-            <p className="text-center text-gray-600 dark:text-gray-400">
-              This section is only for authors! 🔒
-            </p>
-          );
-        }
-        return (
-          <>
-            {activeTab === "earnings" && (
-              <UserEarnings userId={selectedUser._id} />
-            )}
-            {activeTab === "analytics" && (
-              <UserAnalyticsDashboard posts={posts} />
-            )}
-            {activeTab === "categories" && <CategoryManagement />}
-            {activeTab === "comments" && (
-              <CommentManager userId={selectedUser._id} />
-            )}
-          </>
+        return isOwnProfile ? (
+          <UserAnalyticsDashboard posts={posts} />
+        ) : (
+          <p className="text-center text-gray-600 dark:text-gray-400">
+            This section is only for authors! 🔒
+          </p>
         );
+      case "categories":
+        return isOwnProfile ? (
+          <CategoryManagement />
+        ) : (
+          <p className="text-center text-gray-600 dark:text-gray-400">
+            This section is only for authors! 🔒
+          </p>
+        );
+      case "comments":
+        return isOwnProfile ? (
+          <CommentManager userId={selectedUser._id} />
+        ) : (
+          <p className="text-center text-gray-600 dark:text-gray-400">
+            This section is only for authors! 🔒
+          </p>
+        );
+      case "locations":
+        return <LocationDashboard />;
       case "clearHistory":
         return (
           <div className="text-center p-6">
@@ -348,6 +327,7 @@ const AuthorProfilePage = () => {
     plans,
     subscriptionLoading,
     subscriptionError,
+    isEligible,
     allUsers,
     userError,
     isOwnProfile,

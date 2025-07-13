@@ -27,7 +27,7 @@ const EditPost = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
+  const { isAuthenticated } = useSelector((state) => state.auth);
   const { currentPost, loading, error, updateLoading, updateSuccess } = useSelector((state) => state.post);
   const { postType, tags } = useSelector((state) => state.postMeta);
   const { categories, selectedCategory } = useSelector((state) => state.categories);
@@ -37,20 +37,25 @@ const EditPost = () => {
   const [isOpen, setIsOpen] = useState(true);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      toast.error("Please log in to edit posts.");
+      navigate("/login");
+      return;
+    }
     if (!slug || slug === "undefined") {
       toast.error("Invalid post slug.");
       navigate("/");
       return;
     }
 
-    dispatch(getSinglePost(slug));
+    dispatch(getSinglePost({ slug, isGuest: false }));
     dispatch(fetchCategories());
 
     return () => {
       dispatch(clearError());
       dispatch(resetPostMeta());
     };
-  }, [dispatch, slug, navigate]);
+  }, [dispatch, slug, navigate, isAuthenticated]);
 
   useEffect(() => {
     if (!currentPost) return;
@@ -88,7 +93,7 @@ const EditPost = () => {
       category: selectedCategory._id,
       postType,
       tags,
-      blocks: blocks.map((block) => ({ ...block, status: block.status || "draft" })),
+      blocks: blocks.map((block) => ({ ...block, blocked: false })),
     };
 
     try {
@@ -108,6 +113,8 @@ const EditPost = () => {
     const selected = categories.find((cat) => cat._id === categoryId);
     dispatch(selectCategory(selected || null));
   };
+
+  if (!isAuthenticated) return null;
 
   if (!slug || slug === "undefined") {
     return <div className="p-6 text-center text-red-500 bg-red-100 rounded-2xl mx-auto max-w-4xl">Invalid post slug.</div>;

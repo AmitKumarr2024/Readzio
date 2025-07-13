@@ -1,19 +1,22 @@
-
 export const replacePlaceholders = (template, values) => {
-  let result = template
-    .replace(/{{subject}}/g, values.subject || '')
-    .replace(/{{name}}/g, values.name || 'User')
-    .replace(/{{email}}/g, values.email || '')
-    .replace(/{{message}}/g, values.message || '')
-    .replace(/{{buttonText}}/g, values.buttonText || '')
-    .replace(/{{buttonUrl}}/g, values.buttonUrl || '');
+  const sanitize = (str) => (str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
-  // Handle conditional button rendering
-  if (values.hasButton) {
-    result = result.replace(/{{#if hasButton}}([\s\S]*?){{\/if}}/, '$1');
-  } else {
-    result = result.replace(/{{#if hasButton}}[\s\S]*?{{\/if}}/, '');
-  }
+  let result = template
+    .replace(/{{subject}}/g, sanitize(values.subject || ''))
+    .replace(/{{name}}/g, sanitize(values.name || 'User'))
+    .replace(/{{email}}/g, sanitize(values.email || ''))
+    .replace(/{{message}}/g, sanitize(values.message || ''))
+    .replace(/{{buttonText}}/g, sanitize(values.buttonText || ''))
+    .replace(/{{buttonUrl}}/g, sanitize(values.buttonUrl || ''));
+
+  result = values.hasButton
+    ? result.replace(/{{#if hasButton}}([\s\S]*?){{\/if}}/, '$1')
+    : result.replace(/{{#if hasButton}}[\s\S]*?{{\/if}}/, '');
 
   return result;
 };

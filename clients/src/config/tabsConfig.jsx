@@ -10,15 +10,17 @@ import {
   Award,
   Wallet,
   BarChart,
+  MapPin,
   Folder,
   MessageSquare,
   Trash2,
+  FileEdit,
 } from "lucide-react";
 
 export const tabsConfig = [
+  { id: "about", label: "About Author", icon: <User />, roles: ["non-logged-in", "logged-in", "author"] },
   { id: "pinned", label: "Pinned Post", icon: <LayoutDashboard />, roles: ["non-logged-in", "logged-in", "author"] },
   { id: "posts", label: "All Posts", icon: <FileText />, roles: ["non-logged-in", "logged-in", "author"] },
-  { id: "about", label: "About Author", icon: <User />, roles: ["non-logged-in", "logged-in", "author"] },
   { id: "achievements", label: "Achievements", icon: <Award />, roles: ["non-logged-in", "logged-in", "author"] },
   { id: "polls", label: "Polls", icon: <ThumbsUp />, roles: ["author"] },
   { id: "activity", label: "Activity", icon: <Activity />, roles: ["author"] },
@@ -30,5 +32,6 @@ export const tabsConfig = [
   { id: "categories", label: "Categories", icon: <Folder />, roles: ["author"] },
   { id: "BlocksUser", label: "Blocked Users", icon: <User />, roles: ["author"] },
   { id: "comments", label: "Comments", icon: <MessageSquare />, roles: ["author"] },
+  { id: "locations", label: "Follower Locations", icon: <MapPin />, roles: ["author"] },
   { id: "clearHistory", label: "Clear History", icon: <Trash2 />, roles: ["author"] },
 ];

@@ -21,8 +21,8 @@ const itemVariants = {
 
 const HeroSection = () => {
   return (
-    <section  className="relative bg-gradient-theme text-white min-h-[200px] sm:min-h-[250px] md:min-h-[270px] flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 py-10 sm:py-14">
-      {/* Decorative circles - responsive or hidden on small screens */}
+    <section className="relative bg-gradient-to-r from-background-light to-gray-200 dark:from-background-dark dark:to-gray-800 text-text-main-light dark:text-text-main-dark min-h-[200px] sm:min-h-[250px] md:min-h-[270px] flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 py-10 sm:py-14">
+      {/* Decorative circles */}
       <div className="absolute top-6 left-6 sm:top-10 sm:left-10 w-16 sm:w-24 h-16 sm:h-24 bg-pink-400 rounded-full opacity-30 animate-pulse blur-3xl"></div>
       <div className="absolute bottom-10 right-6 sm:bottom-20 sm:right-20 w-20 sm:w-32 h-20 sm:h-32 bg-indigo-400 rounded-full opacity-30 animate-pulse blur-3xl"></div>
 

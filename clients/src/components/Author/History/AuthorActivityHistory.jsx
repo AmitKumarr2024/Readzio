@@ -4,20 +4,20 @@ import { fetchUserActivity, clearUserActivity } from "../../../store/userSlice";
 import Pagination from "../../../Utils/Pagination";
 import DateFilter from "../../../Utils/DateFilter";
 import { motion } from "framer-motion";
-import { FaHistory,FaSpinner } from "react-icons/fa";
+import { FaHistory, FaSpinner, FaTrash } from "react-icons/fa";
 
 const PAGE_SIZE = 30;
-const AUTO_CLEAR_DAYS = 30; // Days after which activities are auto-cleared
+const AUTO_CLEAR_DAYS = 1; // Days after which activities are auto-cleared
 
-// Utility function to calculate days remaining until auto-clear
-const getDaysRemaining = (createdAt) => {
+// Utility function to calculate hours remaining until auto-clear
+const getHoursRemaining = (createdAt) => {
   const createdDate = new Date(createdAt);
   const clearDate = new Date(createdDate);
   clearDate.setDate(createdDate.getDate() + AUTO_CLEAR_DAYS);
   const now = new Date();
   const diffTime = clearDate - now;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays > 0 ? diffDays : 0;
+  const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+  return diffHours > 0 ? diffHours : 0;
 };
 
 function AuthorActivityHistory({ userId }) {
@@ -90,37 +90,47 @@ function AuthorActivityHistory({ userId }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="min-h-screen bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark py-12 px-4 sm:px-6 lg:px-8"
+      className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 py-12 px-4 sm:px-6 lg:px-8"
     >
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <motion.div
-          className="bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark backdrop-blur-xl rounded-2xl shadow-xl p-6"
+          className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-gray-200/50 dark:border-gray-700/50"
           whileHover={{ y: -5 }}
           transition={{ type: "spring", stiffness: 300 }}
         >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-3xl font-extrabold  text-text-main-light dark:text-text-main-dark flex items-center gap-3">
-              <FaHistory className="text-indigo-600" /> Activity History
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-4xl font-bold flex items-center gap-3 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
+              <FaHistory className="text-indigo-600 dark:text-indigo-400" /> Activity History
             </h2>
             <motion.button
               onClick={handleClearHistory}
               disabled={clearing}
-              className="px-4 py-2 bg-red-600   text-text-main-light dark:text-text-main-dark rounded-lg hover:bg-red-700 disabled:bg-red-400"
+              className="px-5 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 disabled:from-red-400 disabled:to-red-400 flex items-center gap-2 shadow-md transition-all duration-300"
               whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              {clearing ? "Clearing..." : "Clear History"}
+              {clearing ? (
+                <>
+                  <FaSpinner className="animate-spin" /> Clearing...
+                </>
+              ) : (
+                <>
+                  <FaTrash /> Clear History
+                </>
+              )}
             </motion.button>
           </div>
 
-          <div className="sticky top-0 bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark backdrop-blur-xl rounded-xl p-4 mb-6 z-10">
+          <div className="sticky top-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg rounded-2xl p-6 mb-8 z-10 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
             <div className="flex flex-col md:flex-row md:items-center gap-4">
               <motion.input
                 type="text"
                 placeholder="Search by type or content..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full md:w-1/3 p-3 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                whileHover={{ scale: 0.99 }}
+                className="w-full md:w-1/3 p-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+                whileHover={{ scale: 1.01 }}
+                whileFocus={{ scale: 1.01 }}
               />
               <DateFilter
                 sortFilter={sortFilter}
@@ -129,30 +139,30 @@ function AuthorActivityHistory({ userId }) {
                 onDateChange={setDateFilter}
               />
             </div>
-            <p className="text-sm   text-text-main-light dark:text-text-main-dark mt-2 italic">
-              Activities older than {AUTO_CLEAR_DAYS} days are automatically cleared.
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 italic">
+              Activities older than {AUTO_CLEAR_DAYS} day are automatically cleared.
             </p>
           </div>
 
           {activityLoading && (
-           <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark">
-        <motion.div
-          className="flex flex-col items-center space-y-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <FaSpinner className="w-12 h-12 text-indigo-600 animate-spin" />
-          <p className="text-lg font-semibold  text-text-main-light dark:text-text-main-dark">Loading...</p>
-        </motion.div>
-      </div>
+            <div className="min-h-[50vh] flex items-center justify-center">
+              <motion.div
+                className="flex flex-col items-center space-y-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <FaSpinner className="w-16 h-16 text-indigo-600 dark:text-indigo-400 animate-spin" />
+                <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">Loading Activities...</p>
+              </motion.div>
+            </div>
           )}
 
           {activityError && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center text-red-600 font-semibold text-lg py-6"
+              className="text-center text-red-600 dark:text-red-400 font-semibold text-lg py-6 bg-red-100/50 dark:bg-red-900/20 rounded-xl"
             >
               {activityError}
             </motion.p>
@@ -160,48 +170,48 @@ function AuthorActivityHistory({ userId }) {
 
           {!activityLoading && !activityError && paginatedActivity.length > 0 ? (
             <>
-              <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
-                <table className="min-w-full divide-y text-sm">
-                  <thead className="bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark">
+              <div className="overflow-x-auto rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                  <thead className="bg-gray-100 dark:bg-gray-900/80">
                     <tr>
-                      <th className="px-6 py-4 text-left font-semibold   text-text-main-light dark:text-text-main-dark uppercase tracking-wide">
+                      <th className="px-6 py-4 text-left font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                         Type
                       </th>
-                      <th className="px-6 py-4 text-left font-semibold">
+                      <th className="px-6 py-4 text-left font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                         Content
                       </th>
-                      <th className="px-6 py-4 text-left font-semibold">
+                      <th className="px-6 py-4 text-left font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                         Date
                       </th>
-                      <th className="px-6 py-4 text-left font-semibold">
+                      <th className="px-6 py-4 text-left font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                         Auto-Clear In
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
                     {paginatedActivity.map((item) => (
                       <motion.tr
                         key={item._id}
-                        className="hover:bg-indigo-500  transition-all duration-200"
+                        className="hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all duration-200"
                         whileHover={{ scale: 1.01 }}
                       >
-                        <td className="px-6 py-3 font-semibold uppercase  text-text-main-light dark:text-text-main-dark">
+                        <td className="px-6 py-4 font-semibold uppercase text-indigo-600 dark:text-indigo-400">
                           {item.action}
                         </td>
-                        <td className="px-6 py-3   text-text-main-light dark:text-text-main-dark">{item.message}</td>
-                        <td className="px-6 py-3   text-text-main-light dark:text-text-main-dark">
+                        <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{item.message}</td>
+                        <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
                           {item.createdAt ? new Date(item.createdAt).toLocaleString() : "N/A"}
                         </td>
-                        <td className="px-6 py-3   text-text-main-light dark:text-text-main-dark">
+                        <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
                           {item.createdAt ? (
                             <span
-                              className={`px-2 py-1 rounded-full text-xs ${
-                                getDaysRemaining(item.createdAt) <= 5
-                                  ? "bg-red-100 text-red-600"
-                                  : "bg-green-100 text-green-600"
+                              className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                                getHoursRemaining(item.createdAt) <= 4
+                                  ? "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400"
+                                  : "bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400"
                               }`}
                             >
-                              {getDaysRemaining(item.createdAt)} days
+                              {getHoursRemaining(item.createdAt)} hours
                             </span>
                           ) : (
                             "N/A"
@@ -216,7 +226,7 @@ function AuthorActivityHistory({ userId }) {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="mt-6 flex justify-center"
+                  className="mt-8 flex justify-center"
                 >
                   <Pagination
                     currentPage={currentPage}
@@ -231,7 +241,7 @@ function AuthorActivityHistory({ userId }) {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-center   text-text-main-light dark:text-text-main-dark text-lg py-20 italic"
+                className="text-center text-gray-600 dark:text-gray-400 text-lg py-20 italic bg-gray-100/50 dark:bg-gray-800/50 rounded-xl"
               >
                 No activity found. 📅
               </motion.p>

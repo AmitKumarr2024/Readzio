@@ -1,26 +1,26 @@
-import { recordActivity } from '../helpers/activityHelper.js';
-import PostModel from '../Models/Post.js';
-import ActivityModel from '../Models/ActivityModel.js';
-import { AppError } from '../utils/AppError.js';
+import { recordActivity } from "../helpers/activityHelper.js";
+import PostModel from "../Models/Post.js";
+import ActivityModel from "../Models/ActivityModel.js";
+import { AppError } from "../utils/AppError.js";
+import UserModel from "../Models/User.js";
 
 /**
  * @desc Search posts by title or tags
  */
 export const searchPosts = async (req, res, next) => {
   try {
-    const userId = req.user?._id?.toString();
-
-    if (!userId) {
-      throw new AppError("Unauthorized - No user found", 401, "searchPosts Controller");
-    }
-
+    const userId = req.user?._id?.toString(); // May be undefined for guests
     const { query } = req.query;
 
     if (!query) {
-      throw new AppError("Query parameter required", 400, "searchPosts Controller");
+      throw new AppError(
+        "Query parameter required",
+        400,
+        "searchPosts Controller"
+      );
     }
 
-    const regex = new RegExp(query, 'i');
+    const regex = new RegExp(query, "i");
 
     const posts = await PostModel.find({
       $or: [{ title: regex }, { tags: regex }],
@@ -28,11 +28,14 @@ export const searchPosts = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .populate("author", "name");
 
-    await recordActivity({
-      userId,
-      action: "SEARCHED_POSTS",
-      message: `Searched posts with query: ${query}`,
-    });
+    // Record search activity only for logged-in users
+    if (userId) {
+      await recordActivity({
+        userId,
+        action: "SEARCHED_POSTS",
+        message: `Searched posts with query: ${query}`,
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -143,10 +146,14 @@ export const suggestPosts = async (req, res, next) => {
 
     if (userId) {
       // For logged-in users: use activity to filter
-      const userActivities = await ActivityModel.find({ userId }).select("message");
+      const userActivities = await ActivityModel.find({ userId }).select(
+        "message"
+      );
 
       tags = userActivities
-        .filter((activity) => activity.message.includes("Searched posts with query"))
+        .filter((activity) =>
+          activity.message.includes("Searched posts with query")
+        )
         .map((activity) => activity.message.split(": ")[1])
         .slice(0, 5);
 
@@ -190,6 +197,66 @@ export const suggestPosts = async (req, res, next) => {
       error instanceof AppError
         ? error
         : new AppError(error.message, 500, "suggestPosts Controller")
+    );
+  }
+};
+
+/**
+ * @desc Search for a single user by name, email, or username
+ */
+export const searchUsers = async (req, res, next) => {
+  try {
+    const query = req.query.query?.trim();
+
+    console.log(`[searchUsers] Query: "${query}"`);
+
+    if (!query || query.length < 3) {
+      throw new AppError(
+        "Query must be at least 3 characters",
+        400,
+        "searchUsers"
+      );
+    }
+
+    const regex = new RegExp(query, "i");
+
+    const conditions = [{ name: regex }, { email: regex }];
+    if (UserModel.schema.paths.username) {
+      conditions.push({ username: regex });
+    }
+
+    const users = await UserModel.find({ $or: conditions })
+      .select("name email avatar username _id")
+      .limit(10); // optional: limit results
+
+    if (!users || users.length === 0) {
+      return res.status(200).json({ users: [] }); // not error, just empty
+    }
+
+    // Fetch total post counts in parallel
+    const userIds = users.map((u) => u._id);
+    const postCounts = await PostModel.aggregate([
+      { $match: { author: { $in: userIds } } },
+      { $group: { _id: "$author", count: { $sum: 1 } } },
+    ]);
+
+    const countMap = {};
+    postCounts.forEach((pc) => {
+      countMap[pc._id.toString()] = pc.count;
+    });
+
+    const enrichedUsers = users.map((user) => ({
+      ...user.toObject(),
+      totalPosts: countMap[user._id.toString()] || 0,
+    }));
+
+    res.status(200).json({ users: enrichedUsers });
+  } catch (error) {
+    console.error(`[searchUsers Controller] Error:`, error.message);
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "searchUsers")
     );
   }
 };

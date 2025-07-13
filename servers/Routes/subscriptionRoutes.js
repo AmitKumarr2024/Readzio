@@ -13,7 +13,8 @@ import {
   unsubscribeByAuthor,
   getSubscriptionStatusByAuthor,
   getSubscriptionHistoryByAuthor,
-  getMySubscribedPlans, // 👈 new controller
+  getMySubscribedPlans,
+  checkEligibilityForSubscription, // 👈 new controller
 } from "../Controllers/subscriptionController.js";
 import { protectedRoute } from "../Middlewares/authMiddleware.js";
 
@@ -45,6 +46,8 @@ router.get("/my-plans", protectedRoute, getAllMySubscriptionPlans);
 router.get("/plans/author/:authorId", protectedRoute, getSubscriptionPlansByAuthor);
 router.post("/unsubscribe/author", protectedRoute, unsubscribeByAuthor);
 router.post("/status", protectedRoute, getSubscriptionStatusByAuthor);
+// Add this below other routes
+router.get("/check-eligibility", protectedRoute, checkEligibilityForSubscription);
 
 // ✅ NEW: Get plans user has subscribed to
 router.get("/my-subscriptions", protectedRoute, getMySubscribedPlans);

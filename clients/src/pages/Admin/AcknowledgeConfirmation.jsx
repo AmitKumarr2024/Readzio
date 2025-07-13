@@ -42,17 +42,17 @@ const AcknowledgeConfirmation = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 w-full max-w-md"
+        className="bg-background-light dark:bg-background-dark rounded-2xl shadow-lg p-6 sm:p-8 w-full max-w-md border border-gray-100 dark:border-gray-700"
       >
         {status === 'pending' || loading ? (
           <div className="text-center">
             <ClipLoader color="#3B82F6" size={40} />
-            <p className="mt-4 text-gray-600">Processing acknowledgment...</p>
+            <p className="mt-4 text-text-main-light dark:text-text-main-dark">Processing acknowledgment...</p>
           </div>
         ) : status === 'success' ? (
           <div className="text-center">
@@ -61,27 +61,27 @@ const AcknowledgeConfirmation = () => {
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 200, damping: 10 }}
             >
-              <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
+              <CheckCircle className="w-16 h-16 mx-auto text-green-500 dark:text-green-400" />
             </motion.div>
-            <h2 className="text-2xl font-bold text-gray-900 mt-4">Report Acknowledged</h2>
-            <p className="mt-2 text-gray-600 text-sm">
+            <h2 className="text-2xl font-bold text-text-main-light dark:text-text-main-dark mt-4">Report Acknowledged</h2>
+            <p className="mt-2 text-text-main-light dark:text-text-main-dark text-sm">
               You have successfully acknowledged the report, confirming that the reported issue has been addressed.
             </p>
             {currentReport && (
-              <div className="mt-6 text-left bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold text-gray-800">Report Details</h3>
-                <p className="mt-1 text-gray-600 text-sm">
+              <div className="mt-6 text-left bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold text-text-main-light dark:text-text-main-dark">Report Details</h3>
+                <p className="mt-1 text-text-main-light dark:text-text-main-dark text-sm">
                   <span className="font-medium">Report ID:</span> {reportId}
                 </p>
-                <p className="mt-1 text-gray-600 text-sm">
+                <p className="mt-1 text-text-main-light dark:text-text-main-dark text-sm">
                   <span className="font-medium">Post Title:</span>{' '}
                   {currentReport.post?.title || 'N/A'}
                 </p>
-                <p className="mt-1 text-gray-600 text-sm">
+                <p className="mt-1 text-text-main-light dark:text-text-main-dark text-sm">
                   <span className="font-medium">Post Author:</span>{' '}
                   {currentReport.post?.author?.name || 'N/A'}
                 </p>
-                <p className="mt-1 text-gray-600 text-sm">
+                <p className="mt-1 text-text-main-light dark:text-text-main-dark text-sm">
                   <span className="font-medium">Reason for Report:</span>{' '}
                   {currentReport.reason || 'N/A'}
                 </p>
@@ -89,7 +89,7 @@ const AcknowledgeConfirmation = () => {
             )}
             <button
               onClick={handleNavigate}
-              className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition w-full text-sm"
+              className="mt-6 bg-blue-600 text-text-main-light dark:text-text-main-dark px-6 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition w-full text-sm"
             >
               Go to Dashboard
             </button>
@@ -101,15 +101,15 @@ const AcknowledgeConfirmation = () => {
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 200, damping: 10 }}
             >
-              <XCircle className="w-16 h-16 mx-auto text-red-500" />
+              <XCircle className="w-16 h-16 mx-auto text-red-500 dark:text-red-400" />
             </motion.div>
-            <h2 className="text-2xl font-bold text-gray-900 mt-4">Error</h2>
-            <p className="mt-2 text-gray-600 text-sm">
+            <h2 className="text-2xl font-bold text-text-main-light dark:text-text-main-dark mt-4">Error</h2>
+            <p className="mt-2 text-text-main-light dark:text-text-main-dark text-sm">
               {error || 'Failed to acknowledge the report. Please try again or contact support.'}
             </p>
             <button
               onClick={handleNavigate}
-              className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition w-full text-sm"
+              className="mt-6 bg-blue-600 text-text-main-light dark:text-text-main-dark px-6 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition w-full text-sm"
             >
               Go to Dashboard
             </button>

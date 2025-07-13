@@ -2,9 +2,16 @@ import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
 import { motion } from "framer-motion";
-import { getAllUsersEarnings, processBulkPayouts, clearError } from "../../../store/adminSlice";
-// import { fetchAllAdEarnings } from "../../../store/adsSlice";
-import { viewBankDetails, clearBankDetails, clearMessages } from "../../../store/bankSlice";
+import {
+  getAllUsersEarnings,
+  processBulkPayouts,
+  clearError,
+} from "../../../store/adminSlice";
+import {
+  viewBankDetails,
+  clearBankDetails,
+  clearMessages,
+} from "../../../store/bankSlice";
 import axiosInstance from "../../../connection/axiosInstance";
 import toast from "react-hot-toast";
 import DashboardHeader from "./dashboard components/DashboardHeader";
@@ -45,7 +52,11 @@ const PaymentDashboard = () => {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [payoutAmounts, setPayoutAmounts] = useState({});
   const [editingAmounts, setEditingAmounts] = useState({});
-  const [stats, setStats] = useState({ totalEarnings: 0, subscription: 0, ads: 0 });
+  const [stats, setStats] = useState({
+    totalEarnings: 0,
+    subscription: 0,
+    ads: 0,
+  });
   const [modalUser, setModalUser] = useState(null);
   const [fetchedBankDetails, setFetchedBankDetails] = useState(null);
   const [checkedUsers, setCheckedUsers] = useState({});
@@ -62,18 +73,29 @@ const PaymentDashboard = () => {
   useEffect(() => {
     if (activeTab === "payouts") {
       dispatch(getAllUsersEarnings());
-      // dispatch(fetchAllAdEarnings());
     }
   }, [dispatch, activeTab]);
 
   useEffect(() => {
     if (activeTab !== "payouts") return;
-    const validEarnings = Array.isArray(userEarnings) ? userEarnings.filter((e) => e.user && e.user._id) : [];
-    const validAdEarnings = Array.isArray(adEarnings) ? adEarnings.filter((e) => e.user && e.user._id) : [];
-    const adsTotal = validAdEarnings.reduce((sum, e) => sum + (e.totalEarnings || 0), 0);
+    const validEarnings = Array.isArray(userEarnings)
+      ? userEarnings.filter((e) => e.user && e.user._id)
+      : [];
+    const validAdEarnings = Array.isArray(adEarnings)
+      ? adEarnings.filter((e) => e.user && e.user._id)
+      : [];
+    const adsTotal = validAdEarnings.reduce(
+      (sum, e) => sum + (e.totalEarnings || 0),
+      0
+    );
     setStats({
-      totalEarnings: validEarnings.reduce((sum, e) => sum + (e.subscription / 100), 0) + adsTotal,
-      subscription: validEarnings.reduce((sum, e) => sum + (e.subscription / 100), 0),
+      totalEarnings:
+        validEarnings.reduce((sum, e) => sum + e.subscription / 100, 0) +
+        adsTotal,
+      subscription: validEarnings.reduce(
+        (sum, e) => sum + e.subscription / 100,
+        0
+      ),
       ads: adsTotal,
     });
     const combinedPayouts = {};
@@ -82,7 +104,8 @@ const PaymentDashboard = () => {
     });
     validEarnings.forEach((e) => {
       combinedPayouts[e.user._id] = (
-        parseFloat(combinedPayouts[e.user._id] || 0) + (e.subscription / 100)
+        parseFloat(combinedPayouts[e.user._id] || 0) +
+        e.subscription / 100
       ).toFixed(2);
     });
     setPayoutAmounts(combinedPayouts);
@@ -92,11 +115,17 @@ const PaymentDashboard = () => {
         dispatch(viewBankDetails(userId))
           .unwrap()
           .then((data) => {
-            setCheckedUsers((prev) => ({ ...prev, [userId]: !!data?.fundAccount }));
+            setCheckedUsers((prev) => ({
+              ...prev,
+              [userId]: !!data?.fundAccount,
+            }));
           })
           .catch((err) => {
             setCheckedUsers((prev) => ({ ...prev, [userId]: false }));
-            setPayoutErrors((prev) => ({ ...prev, [userId]: "Failed to fetch bank details" }));
+            setPayoutErrors((prev) => ({
+              ...prev,
+              [userId]: "Failed to fetch bank details",
+            }));
           });
       }
     });
@@ -117,14 +146,26 @@ const PaymentDashboard = () => {
   const fetchPayoutHistory = async (userId) => {
     try {
       setHistoryLoading(true);
-      const response = await axiosInstance.get(`/payment/records?userId=${userId}`);
-      const records = Array.isArray(response?.data?.records) ? response.data.records : [];
-      const validStatuses = ["payout_created", "payout_done", "queued", "processed", "rejected"];
+      const response = await axiosInstance.get(
+        `/payment/records?userId=${userId}`
+      );
+      const records = Array.isArray(response?.data?.records)
+        ? response.data.records
+        : [];
+      const validStatuses = [
+        "payout_created",
+        "payout_done",
+        "queued",
+        "processed",
+        "rejected",
+      ];
       const formattedHistory = records
         .filter((p) => p.userId === userId && validStatuses.includes(p.status))
         .map((p) => ({
           id: p.payoutId || `payout_${Date.now()}`,
-          date: p.createdAt ? new Date(p.createdAt).toISOString().split("T")[0] : "Unknown",
+          date: p.createdAt
+            ? new Date(p.createdAt).toISOString().split("T")[0]
+            : "Unknown",
           amount: p.amount ? (p.amount / 100).toFixed(2) : "0.00",
           status: p.status || "Unknown",
         }));
@@ -138,7 +179,9 @@ const PaymentDashboard = () => {
 
   const handleSelectUser = (userId) => {
     setSelectedUsers((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
     );
   };
 
@@ -162,7 +205,8 @@ const PaymentDashboard = () => {
     for (const userId of selectedUsers) {
       try {
         const bankDetails =
-          bankDetailsByUser[userId] || (await dispatch(viewBankDetails(userId)).unwrap());
+          bankDetailsByUser[userId] ||
+          (await dispatch(viewBankDetails(userId)).unwrap());
         if (!bankDetails || !bankDetails.fundAccount) {
           newErrors[userId] = "No bank details found";
           setCheckedUsers((prev) => ({ ...prev, [userId]: false }));
@@ -174,8 +218,8 @@ const PaymentDashboard = () => {
           continue;
         }
         const user =
-          (adEarnings.find((e) => e.user?._id === userId)?.user) ||
-          (userEarnings.find((e) => e.user?._id === userId)?.user);
+          adEarnings.find((e) => e.user?._id === userId)?.user ||
+          userEarnings.find((e) => e.user?._id === userId)?.user;
         if (!user) {
           newErrors[userId] = "User data not found";
           continue;
@@ -184,14 +228,15 @@ const PaymentDashboard = () => {
           userId,
           orderId: `order_${Date.now()}_${userId}`,
           amount,
-          name  : bankDetails.contactData?.name || user.username,
+          name: bankDetails.contactData?.name || user.username,
           email: bankDetails.contactData?.email || user.email,
           contact: bankDetails.contactData?.contact || "",
           bankAccount:
             bankDetails.fundAccount?.account_type === "bank_account"
               ? {
                   name: bankDetails.fundAccount.bank_account?.name,
-                  account_number: bankDetails.fundAccount.bank_account?.account_number,
+                  account_number:
+                    bankDetails.fundAccount.bank_account?.account_number,
                   ifsc_code: bankDetails.fundAccount.bank_account?.ifsc,
                 }
               : undefined,
@@ -218,7 +263,9 @@ const PaymentDashboard = () => {
     }
     setPayoutErrors(newErrors);
     if (!payouts.length) {
-      toast.error("No valid users with bank details or amounts to process payout.");
+      toast.error(
+        "No valid users with bank details or amounts to process payout."
+      );
       return;
     }
     try {
@@ -284,14 +331,18 @@ const PaymentDashboard = () => {
     })
     .filter((e) =>
       searchTerm
-        ? (e.user.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (e.user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+        ? (e.user.username || "")
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          (e.user.email || "").toLowerCase().includes(searchTerm.toLowerCase())
         : true
     )
     .sort((a, b) => {
-      const fieldA = a.user[sortField] ? a.user[sortField].toLowerCase() : '';
-      const fieldB = b.user[sortField] ? b.user[sortField].toLowerCase() : '';
-      return sortOrder === "asc" ? fieldA.localeCompare(fieldB) : fieldB.localeCompare(fieldA);
+      const fieldA = a.user[sortField] ? a.user[sortField].toLowerCase() : "";
+      const fieldB = b.user[sortField] ? b.user[sortField].toLowerCase() : "";
+      return sortOrder === "asc"
+        ? fieldA.localeCompare(fieldB)
+        : fieldB.localeCompare(fieldA);
     });
 
   return (
@@ -299,28 +350,35 @@ const PaymentDashboard = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen p-4 sm:p-6 md:p-8 bg-gradient-to-br from-gray-50 to-blue-100"
+      className="min-h-screen p-4 sm:p-6 md:p-8 bg-background-light dark:bg-background-dark"
     >
       <div className="max-w-7xl mx-auto">
         <DashboardHeader />
         <DashboardTabs activeTab={activeTab} setActiveTab={setActiveTab} />
         {activeTab === "payouts" ? (
           <>
-            {(error || bankError || adsError || Object.keys(payoutErrors).length > 0) && (
+            {(error ||
+              bankError ||
+              adsError ||
+              Object.keys(payoutErrors).length > 0) && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="mb-6 p-4 bg-red-50 text-red-800 rounded-2xl shadow-md flex flex-col sm:flex-row justify-between items-center"
+                className="mb-6 p-4 bg-red-50 dark:bg-red-900/50 text-red-800 dark:text-red-200 rounded-2xl shadow-md flex flex-col sm:flex-row justify-between items-center"
               >
                 <div>
                   <span className="font-medium">
-                    {error || bankError || adsError || "Payout errors occurred. Check user details."}
+                    {Error ||
+                      adsError ||
+                      "Payout errors occurred. Check user details."}
                   </span>
                   {Object.keys(payoutErrors).length > 0 && (
                     <ul className="mt-2 list-disc list-inside text-sm">
                       {Object.entries(payoutErrors).map(([userId, errMsg]) => (
-                        <li key={userId}>User {userId}: {errMsg}</li>
+                        <li key={userId}>
+                          User {userId}: {errMsg}
+                        </li>
                       ))}
                     </ul>
                   )}
@@ -331,7 +389,7 @@ const PaymentDashboard = () => {
                     dispatch(clearMessages());
                     setPayoutErrors({});
                   }}
-                  className="mt-2 sm:mt-0 text-red-600 hover:text-red-800 transition-colors"
+                  className="mt-2 sm:mt-0 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors"
                 >
                   ✕
                 </button>
@@ -340,15 +398,28 @@ const PaymentDashboard = () => {
             {(loading || bankLoading || adsLoading) && (
               <div className="text-center py-12">
                 <svg
-                  className="w-10 h-10 animate-spin mx-auto text-blue-600"
+                  className="w-10 h-10 animate-spin mx-auto text-blue-600 dark:text-blue-400"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                 >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                  ></path>
                 </svg>
-                <span className="text-lg font-medium text-blue-600">Loading...</span>
+                <span className="text-lg font-medium text-blue-600 dark:text-blue-400">
+                  Loading...
+                </span>
               </div>
             )}
             <StatsCards stats={stats} />

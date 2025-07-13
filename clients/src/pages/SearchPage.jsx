@@ -73,28 +73,28 @@ const SearchPage = () => {
   }, [searchTerm, searchPosts]);
 
   return (
-    <div className="min-h-screen px-4 py-6 max-w-7xl mx-auto">
+    <div className="min-h-screen px-4 py-6 max-w-7xl mx-auto bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
       <div className="flex flex-col md:flex-row gap-8">
         <div className="flex-1">
           {searchTerm && (
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg text-gray-700 font-medium">
-                Showing results for: <span className="text-blue-600">{searchTerm}</span>
+              <h2 className="text-lg font-medium">
+                Showing results for: <span className="text-indigo-600 dark:text-indigo-400">{searchTerm}</span>
               </h2>
               <button
                 onClick={() => {
                   console.log("[SearchPage] Clearing search");
                   window.location.href = location.pathname;
                 }}
-                className="text-sm text-red-600 hover:text-red-800 font-medium"
+                className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium"
               >
                 Clear Search
               </button>
             </div>
           )}
-          {searchLoading && <p>Loading...</p>}
+          {searchLoading && <p className="text-indigo-600 dark:text-indigo-400">Loading...</p>}
           {searchError && (
-            <p className="text-red-600">
+            <p className="text-red-600 dark:text-red-400">
               {console.log("[SearchPage] Search error:", { searchError })}
               {searchError}
             </p>

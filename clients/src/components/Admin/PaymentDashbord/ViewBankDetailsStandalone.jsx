@@ -34,7 +34,7 @@ const ViewBankDetailsStandalone = ({ bankDetails, loading, copyToClipboard, user
 
   if (loading) {
     return (
-      <div className="text-gray-500 text-sm animate-pulse text-center">
+      <div className="text-text-main-light dark:text-text-main-dark text-sm animate-pulse text-center">
         🔄 Loading bank details...
       </div>
     );
@@ -43,41 +43,41 @@ const ViewBankDetailsStandalone = ({ bankDetails, loading, copyToClipboard, user
   if (!bankDetails || !bankDetails.fundAccount) {
     return (
       <div className="space-y-4">
-        <p className="text-gray-400 italic text-sm text-center">
+        <p className="text-gray-400 dark:text-gray-500 italic text-sm text-center">
           No bank details available.
         </p>
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-lg p-6 space-y-4">
+        <div className="bg-background-light dark:bg-background-dark border border-gray-100 dark:border-gray-700 rounded-2xl shadow-lg p-6 space-y-4">
           <div>
-            <label className="text-sm font-medium text-gray-700">Message</label>
+            <label className="text-sm font-medium text-text-main-light dark:text-text-main-dark">Message</label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full mt-1 p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+              className="w-full mt-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
               placeholder="Enter notification message"
               rows="4"
               required
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">Navigation URL (optional)</label>
+            <label className="text-sm font-medium text-text-main-light dark:text-text-main-dark">Navigation URL (optional)</label>
             <input
               type="text"
               value={navigateTo}
               onChange={(e) => setNavigateTo(e.target.value)}
-              className="w-full mt-1 p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+              className="w-full mt-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
               placeholder="Enter navigation URL (e.g., /author-profile)"
             />
           </div>
           <button
             onClick={handleSendNotification}
             disabled={notificationLoading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full bg-blue-600 text-text-main-light dark:text-text-main-dark py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <FaPaperPlane />
             {notificationLoading ? "Sending..." : "Send Notification"}
           </button>
           {notificationError && (
-            <p className="text-sm text-red-500 mt-1">{notificationError}</p>
+            <p className="text-sm text-red-500 dark:text-red-400 mt-1">{notificationError}</p>
           )}
         </div>
       </div>
@@ -88,12 +88,12 @@ const ViewBankDetailsStandalone = ({ bankDetails, loading, copyToClipboard, user
 
   const InfoRow = ({ label, value, copyable }) => (
     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-sm">
-      <span className="w-36 font-medium text-gray-700">{label}:</span>
-      <span className="text-gray-900 break-all flex-1">{value || "N/A"}</span>
+      <span className="w-36 font-medium text-text-main-light dark:text-text-main-dark">{label}:</span>
+      <span className="text-text-main-light dark:text-text-main-dark break-all flex-1">{value || "N/A"}</span>
       {copyable && value && (
         <button
           onClick={() => copyToClipboard(value)}
-          className="text-blue-600 hover:text-blue-700 transition-all duration-300 text-xs"
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-300 text-xs"
         >
           Copy
         </button>
@@ -102,8 +102,8 @@ const ViewBankDetailsStandalone = ({ bankDetails, loading, copyToClipboard, user
   );
 
   const SectionCard = ({ title, children }) => (
-    <div className="bg-white border border-gray-100 rounded-xl p-4 sm:p-6 space-y-3 shadow-sm hover:shadow-md transition-all duration-300">
-      <h3 className="text-base font-semibold text-gray-800">{title}</h3>
+    <div className="bg-background-light dark:bg-background-dark border border-gray-100 dark:border-gray-700 rounded-xl p-4 sm:p-6 space-y-3 shadow-sm hover:shadow-md transition-all duration-300">
+      <h3 className="text-base font-semibold text-text-main-light dark:text-text-main-dark">{title}</h3>
       {children}
     </div>
   );
@@ -179,14 +179,14 @@ const ViewBankDetailsStandalone = ({ bankDetails, loading, copyToClipboard, user
       <div className="mt-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
         <button
           onClick={() => copyToClipboard(JSON.stringify(bankDetails, null, 2))}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 text-sm"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-text-main-light dark:text-text-main-dark hover:bg-blue-700 dark:hover:bg-blue-800 transition-all duration-300 text-sm"
         >
           <ClipboardCopy className="w-4 h-4" />
           Copy Raw Details
         </button>
         <button
           onClick={() => setContent("Please update your bank details to ensure timely payments.")}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition-all duration-300 text-sm"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-600 text-text-main-light dark:text-text-main-dark hover:bg-gray-700 dark:hover:bg-gray-800 transition-all duration-300 text-sm"
         >
           Default Message
         </button>

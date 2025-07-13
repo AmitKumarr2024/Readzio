@@ -8,8 +8,9 @@ import {
   updateCategory,
   deleteCategory,
   seedCategories,
-  assignCategoriesToUser, // Add import
-} from "../Controllers/Category Controller.js";
+  assignCategoriesToUser,
+  checkSlugAvailability, // Add import
+} from "../Controllers/CategoryController.js";
 
 const router = express.Router();
 
@@ -22,12 +23,19 @@ router.get("/user-selected", protectedRoute, getUserSelectedCategories);
 // Protected route to seed predefined categories (admin-only, adjust middleware if needed)
 router.post("/seed", protectedRoute, seedCategories);
 
+// Public slug check endpoint
+router.get("/check-slug", checkSlugAvailability);
+
 // Protected routes for category CRUD
 router.post("/", protectedRoute, createCategory);
 router.patch("/:categoryId", protectedRoute, updateCategory);
 router.delete("/:categoryId", protectedRoute, deleteCategory);
 
 // Protected route to assign categories to a user
-router.post("/users/:userId/categories", protectedRoute, assignCategoriesToUser);
+router.post(
+  "/users/:userId/categories",
+  protectedRoute,
+  assignCategoriesToUser
+);
 
 export default router;

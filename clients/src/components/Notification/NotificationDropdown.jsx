@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { FiBell } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,10 +10,8 @@ import {
   markAsRead,
   selectNotifications,
   selectUnreadCount,
-  addNotification,
-  updateUnreadCount,
 } from '../../store/notificationSlice.js';
-import { selectSocketState, socketInstance } from '../../store/socketSlice.js';
+import { selectSocketState } from '../../store/socketSlice.js';
 import { formatDistanceToNow } from 'date-fns';
 
 const badgeVariants = {
@@ -25,55 +23,15 @@ const badgeVariants = {
 export default function NotificationDropdown() {
   const [open, setOpen] = useState(false);
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const notifications = useSelector(selectNotifications) || [];
   const unreadCount = useSelector(selectUnreadCount) || 0;
   const { error, loading } = useSelector((state) => state.notifications || {});
   const { isConnected, error: socketError } = useSelector(selectSocketState) || {};
-  const listenersAttached = useRef(false);
-
-  const handleNewNotification = useCallback(
-    (notification) => {
-      dispatch(addNotification(notification));
-    },
-    [dispatch]
-  );
-
-  const handleUpdateUnreadCount = useCallback(
-    ({ count }) => {
-      dispatch(updateUnreadCount(count));
-    },
-    [dispatch]
-  );
-
-  const handleSocketError = useCallback(
-    (err) => {
-      console.error('[Socket:error]', { error: err });
-    },
-    []
-  );
 
   useEffect(() => {
     dispatch(fetchNotifications());
     dispatch(fetchUnreadCount());
   }, [dispatch]);
-
-  useEffect(() => {
-    if (!isConnected || listenersAttached.current || !socketInstance) return;
-
-    socketInstance.on('newNotification', handleNewNotification);
-    socketInstance.on('updateUnreadCount', handleUpdateUnreadCount);
-    socketInstance.on('error', handleSocketError);
-    listenersAttached.current = true;
-
-    return () => {
-      if (!socketInstance) return;
-      socketInstance.off('newNotification', handleNewNotification);
-      socketInstance.off('updateUnreadCount', handleUpdateUnreadCount);
-      socketInstance.off('error', handleSocketError);
-      listenersAttached.current = false;
-    };
-  }, [isConnected, handleNewNotification, handleUpdateUnreadCount, handleSocketError]);
 
   const toggleDropdown = () => setOpen((prev) => !prev);
   const handleMarkAllRead = () => dispatch(markAllAsRead());

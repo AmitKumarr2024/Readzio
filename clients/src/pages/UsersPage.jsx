@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, Users } from 'lucide-react';
-import { initializeSocket, socketInstance } from '../store/socketSlice';
+import { initializeSocket } from '../store/socketSlice';
 import { getAllUsers } from '../store/adminSlice';
 
 const UserCard = ({ user, isYou }) => {
@@ -33,7 +33,6 @@ const UserCard = ({ user, isYou }) => {
       <p className="mt-2 text-sm text-text-main-light dark:text-text-main-dark truncate">{user.bio || 'No bio'}</p>
       <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-text-main-light dark:text-text-main-dark">
         <p><strong>Gender:</strong> {user.gender || 'N/A'}</p>
-        <p><strong>Posts:</strong> {user.totalPosts || 0}</p>
       </div>
     </motion.div>
   );
@@ -48,7 +47,7 @@ const AllUsers = ({ users = [], loadMore, hasMore = false, loading = false, curr
     if (observer.current) observer.current.disconnect();
 
     observer.current = new IntersectionObserver(
-      entries => {
+      (entries) => {
         if (entries[0].isIntersecting) {
           loadMore();
         }
@@ -90,59 +89,14 @@ const AllUsers = ({ users = [], loadMore, hasMore = false, loading = false, curr
 
 const UsersPage = () => {
   const dispatch = useDispatch();
-  const {
-    users = [],
-    currentPageUsers = 1,
-    totalPagesUsers = 1,
-    loading = false,
-    error = null
-  } = useSelector(state => state.admin || {});
-  const { user: currentUser } = useSelector(state => state.auth || {});
-  const [onlineUserIds, setOnlineUserIds] = useState(new Set());
+  const { users = [], currentPageUsers = 1, totalPagesUsers = 1, loading = false, error = null } = useSelector((state) => state.admin || {});
+  const { user: currentUser } = useSelector((state) => state.auth || {});
+  const { userStatus } = useSelector((state) => state.socket || {});
 
   useEffect(() => {
     dispatch(initializeSocket());
     dispatch(getAllUsers({ page: 1, limit: 50 }));
   }, [dispatch]);
-
-  useEffect(() => {
-    let cleanup = () => {};
-    const interval = setInterval(() => {
-      if (socketInstance && socketInstance.connected) {
-        // Emit once socket is ready
-        socketInstance.emit('getOnlineUsers');
-
-        const handleOnlineList = (ids = []) => {
-          setOnlineUserIds(new Set(ids));
-        };
-
-        const handleStatus = ({ userId, isOnline }) => {
-          setOnlineUserIds(prev => {
-            const updated = new Set(prev);
-            isOnline ? updated.add(userId) : updated.delete(userId);
-            return updated;
-          });
-        };
-
-        socketInstance.on('onlineUsersList', handleOnlineList);
-        socketInstance.on('userStatus', handleStatus);
-
-        // Stop polling
-        clearInterval(interval);
-
-        // Set cleanup
-        cleanup = () => {
-          socketInstance.off('onlineUsersList', handleOnlineList);
-          socketInstance.off('userStatus', handleStatus);
-        };
-      }
-    }, 100);
-
-    return () => {
-      clearInterval(interval);
-      cleanup();
-    };
-  }, []);
 
   const loadMore = () => {
     if (currentPageUsers < totalPagesUsers && !loading) {
@@ -150,16 +104,10 @@ const UsersPage = () => {
     }
   };
 
-  let enrichedUsers = users.filter(
-    user => user && user._id && onlineUserIds.has(user._id.toString())
-  );
+  const onlineUserIds = Object.keys(userStatus).filter((userId) => userStatus[userId]?.isOnline);
+  let enrichedUsers = users.filter((user) => user && user._id && onlineUserIds.includes(user._id.toString()));
 
-  if (
-    currentUser &&
-    currentUser._id &&
-    onlineUserIds.has(currentUser._id.toString()) &&
-    !enrichedUsers.find(u => u._id === currentUser._id)
-  ) {
+  if (currentUser && currentUser._id && userStatus[currentUser._id]?.isOnline && !enrichedUsers.find((u) => u._id === currentUser._id)) {
     enrichedUsers.unshift(currentUser);
   }
 

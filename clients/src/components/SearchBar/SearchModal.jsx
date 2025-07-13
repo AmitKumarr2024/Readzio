@@ -4,8 +4,8 @@ import { FiX } from "react-icons/fi";
 import SearchInput from "./SearchInput";
 
 const backdrop = {
-  visible: { opacity: 1 },
   hidden: { opacity: 0 },
+  visible: { opacity: 1 },
 };
 
 const modal = {
@@ -38,7 +38,7 @@ const SearchModal = ({ isOpen, onClose }) => {
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 bg-black/70 z-50 flex items-start pt-16 sm:pt-20 px-4 backdrop-blur-md"
+          className="fixed inset-0 bg-black/70 dark:bg-black/80 z-50 flex items-start pt-16 sm:pt-20 px-4 backdrop-blur-md"
           initial="hidden"
           animate="visible"
           exit="hidden"
@@ -51,13 +51,13 @@ const SearchModal = ({ isOpen, onClose }) => {
           <motion.div
             ref={modalRef}
             tabIndex={-1}
-            className="relative w-full max-w-2xl mx-auto bg-white/90 rounded-3xl shadow-2xl p-6 backdrop-blur-lg"
+            className="relative w-full max-w-2xl mx-auto bg-background-light dark:bg-background-dark rounded-3xl shadow-2xl p-6"
             variants={modal}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={onClose}
-              className="absolute -top-4 -right-4 bg-red-600 text-white rounded-full p-2 hover:bg-red-700 transition duration-300 shadow-md"
+              className="absolute -top-4 -right-4 bg-red-600 text-white rounded-full p-2 hover:bg-red-700 dark:hover:bg-red-500 transition duration-300 shadow-md"
               aria-label="Close search modal"
               type="button"
             >

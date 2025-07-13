@@ -1,11 +1,13 @@
-// src/components/CategoryBox.js
-import React, { useEffect, useRef, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
-import { FaChevronDown } from 'react-icons/fa';
-import { motion, AnimatePresence } from 'framer-motion';
-import { fetchUserSelectedCategories, fetchCategories } from '../store/categorySlice';
-import toast from 'react-hot-toast';
+import React, { useEffect, useRef, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { Link, useNavigate } from "react-router-dom";
+import { FaChevronDown } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  fetchUserSelectedCategories,
+  fetchCategories,
+} from "../store/categorySlice";
+import toast from "react-hot-toast";
 
 const CategoryBox = () => {
   const dispatch = useDispatch();
@@ -37,24 +39,30 @@ const CategoryBox = () => {
         setOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const displayedCategories = user?._id
-    ? userSelectedCategories
-    : categories.slice(0, 5);
+    ? userSelectedCategories || []
+    : (categories || []).slice(0, 5);
 
   return (
-    <div className="relative bg-gradient-theme text-white shadow py-1 z-40">
-      <div className="max-w-7xl mx-auto px-4 flex justify-center" ref={dropdownRef}>
+    <div className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow py-2 z-40">
+      <div
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center"
+        ref={dropdownRef}
+      >
         <button
           onClick={() => setOpen((prev) => !prev)}
-          className="flex text-lg font-semibold items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-lg transition"
+          className="flex text-base sm:text-lg font-semibold items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
           aria-expanded={open}
           aria-label="Toggle categories dropdown"
         >
-          Categories <FaChevronDown className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+          Categories{" "}
+          <FaChevronDown
+            className={`transition-transform ${open ? "rotate-180" : ""}`}
+          />
         </button>
       </div>
 
@@ -65,49 +73,61 @@ const CategoryBox = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.25 }}
-            className="absolute left-0 w-full bg-gradient-theme text-white max-h-60 overflow-y-auto p-4 shadow-lg z-50"
+            className="absolute left-0 w-full bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark max-h-60 overflow-y-auto p-4 sm:p-6 shadow-lg z-50 border border-gray-200 dark:border-gray-800"
           >
-            {status === 'loading' && !displayedCategories.length ? (
-              <p className="text-center text-white/80">Loading categories...</p>
-            ) : status === 'failed' ? (
-              <p className="text-center text-red-300">Failed to load categories</p>
+            {status === "loading" && !displayedCategories.length ? (
+              <p className="text-center text-text-main-light dark:text-text-main-dark opacity-80">
+                Loading categories...
+              </p>
+            ) : status === "failed" ? (
+              <p className="text-center text-red-500">
+                Failed to load categories
+              </p>
             ) : displayedCategories.length === 0 ? (
-              <p className="text-center text-white/80">
-                {user?._id ? 'No categories selected. Visit Category Management to add some!' : 'Please log in to view your categories.'}
+              <p className="text-center text-text-main-light dark:text-text-main-dark opacity-80">
+                {user?._id
+                  ? "No categories selected. Visit Category Management to add some!"
+                  : "Please log in to view your categories."}
               </p>
             ) : (
-              <div className="flex flex-wrap gap-3 justify-center">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-15 gap-4 p-2 sm:p-4">
                 {displayedCategories.map((category) => (
                   <Link
                     to={`/category_page/${category.slug}`}
                     key={category._id}
                     title={`Go to ${category.name} category`}
-                    className="px-3 py-1 text-sm bg-white/20 text-white rounded-full hover:bg-white/30 transition flex items-center gap-1"
                     onClick={() => setOpen(false)}
+                    className="flex items-center justify-center gap-1 rounded-full bg-gray-100  py-2 text-base font-medium text-text-main-light transition-colors hover:bg-blue-100 dark:bg-gray-800 dark:text-text-main-dark dark:hover:bg-blue-900"
                   >
                     {category.name}
                     {category.createdBy && (
-                      <span className="text-xs text-yellow-400">★</span>
+                      <span
+                        className="text-xs text-yellow-400"
+                        aria-label="Featured category"
+                        role="img"
+                      >
+                        ★
+                      </span>
                     )}
                   </Link>
                 ))}
-
-                {!user?._id && categories.length > 5 && (
-                  <p className="text-center text-white/80 text-sm mt-2 w-full">
-                    Log in to see all your selected categories!
-                  </p>
-                )}
               </div>
             )}
 
+            {!user?._id && categories.length > 5 && (
+              <p className="text-center text-text-main-light dark:text-text-main-dark opacity-80 text-sm mt-4">
+                Log in to see all your selected categories!
+              </p>
+            )}
+
             {user?._id && (
-              <div className="mt-4 text-center w-full">
+              <div className="mt-4 text-center">
                 <button
                   onClick={() => {
                     navigate(`/author-profile/${user._id}?tab=categories`);
                     setOpen(false);
                   }}
-                  className="inline-block px-4 py-1.5 bg-white text-indigo-600 font-medium rounded-full hover:bg-gray-100 transition"
+                  className="inline-block px-4 py-1.5 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark font-medium rounded-full hover:bg-blue-100 dark:hover:bg-blue-900 transition border border-gray-200 dark:border-gray-800"
                 >
                   Manage Categories
                 </button>

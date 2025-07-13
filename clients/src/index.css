@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap");
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 @plugin "daisyui";
@@ -8,6 +9,9 @@
 }
 
 @theme {
+  /* Custom font families */
+  --font-Urbanist: "Urbanist", sans-serif;
+
   /* Light theme variables */
   --color-background-light: #ffffff;
   --color-primary-light: #3b82f6;
@@ -18,9 +22,9 @@
   --color-white-text-light: #ffffff;
 
   /* Gradient stops (light mode) */
-  --gradient-start-light: #6366f1;   /* indigo-500 */
-  --gradient-mid-light: #a855f7;     /* purple-500 */
-  --gradient-end-light: #ec4899;     /* pink-500 */
+  --gradient-start-light: #6366f1; /* indigo-500 */
+  --gradient-mid-light: #a855f7; /* purple-500 */
+  --gradient-end-light: #ec4899; /* pink-500 */
 }
 
 .dark {
@@ -35,12 +39,62 @@
     --color-white-text-dark: #ffffff;
 
     /* Gradient stops (dark mode) */
-    --gradient-start-dark: #1e293b;  /* slate-800 */
-    --gradient-mid-dark: #334155;    /* slate-700 */
-    --gradient-end-dark: #0f172a;    /* slate-900 */
+    --gradient-start-dark: #1e293b; /* slate-800 */
+    --gradient-mid-dark: #334155; /* slate-700 */
+    --gradient-end-dark: #0f172a; /* slate-900 */
   }
 }
 
+
+/* index.css */
+.toast-theme {
+  font-family: var(--font-urbanist);
+  background-color: var(--color-card-bg-light);
+  color: var(--color-text-main-light);
+}
+
+.dark .toast-theme {
+  background-color: var(--color-card-bg-dark);
+  color: var(--color-text-main-dark);
+}
+
+
+/* online indicator */
+
+@keyframes pulse-color {
+  0% {
+    background-color: #0eab25; /* dark green */
+  }
+  50% {
+    background-color: #4ed334; /* light green */
+  }
+  100% {
+    background-color: #1bb910; /* medium green */
+  }
+}
+
+.animate-pulse-color {
+  animation: pulse-color 1.5s ease-in-out infinite;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.status-default {
+  background-color: #9ca3af; /* gray */
+  color: white;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+/* map name hide */
+.leaflet-control-attribution {
+  display: none !important;
+}
 /* In your global CSS (e.g., index.css or tailwind.css) */
 .bg-gradient-theme {
   background: linear-gradient(
@@ -59,8 +113,6 @@
     var(--gradient-end-dark)
   );
 }
-
-
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;

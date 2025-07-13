@@ -1,7 +1,41 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../connection/axiosInstance";
 
-// Utility to detect blob URLs
+const initialState = {
+  loading: false,
+  error: null,
+  posts: [],
+  publicPosts: [],
+  followingPosts: [],
+  lastFetched: null,
+  currentPost: null,
+  createLoading: false,
+  createError: null,
+  updateLoading: false,
+  updateError: null,
+  updateMessage: null,
+  updateSuccess: false,
+  deleteLoading: false,
+  deleteError: null,
+  deleteMessage: null,
+  latestPosts: [],
+  latestLoading: false,
+  latestError: null,
+  trendingPosts: [],
+  trendingLoading: false,
+  trendingError: null,
+  searchPosts: [],
+  searchLoading: false,
+  searchError: null,
+  searchQuery: "",
+  sortOption: "newest",
+  startTime: null,
+  postId: null,
+  isTracking: false,
+  appealLoading: false,
+  appealError: null,
+};
+
 const containsBlobUrl = (data) => {
   if (!data) return false;
   if (typeof data === "string") return data.includes("blob:");
@@ -11,14 +45,61 @@ const containsBlobUrl = (data) => {
   return false;
 };
 
-// Create Post
+export const fetchFollowingPosts = createAsyncThunk(
+  "post/fetchFollowingPosts",
+  async ({ page = 1, limit = 50 } = {}, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      if (!auth.isAuthenticated) {
+        return rejectWithValue({ message: "Authentication required" });
+      }
+      const params = new URLSearchParams();
+      params.append("page", page);
+      params.append("limit", limit);
+      const response = await axiosInstance.get(`/post/following?${params.toString()}`);
+      return {
+        posts: response.data.posts,
+        total: response.data.total,
+        lastFetched: response.data.posts.length
+          ? response.data.posts[response.data.posts.length - 1].createdAt
+          : null,
+      };
+    } catch (error) {
+      const errMsg = error.response?.data?.message || "Failed to fetch following posts";
+      console.error("[postSlice] fetchFollowingPosts error:", errMsg);
+      return rejectWithValue({ message: errMsg });
+    }
+  }
+);
+
+export const fetchPublicPosts = createAsyncThunk(
+  "post/fetchPublicPosts",
+  async ({ tag = null, after = null }, { rejectWithValue }) => {
+    try {
+      const params = {
+        limit: 12,
+        ...(tag && { tag }),
+        ...(after && { after }),
+      };
+      const response = await axiosInstance.get("/post/public/posts", { params });
+      return {
+        posts: response.data.posts,
+        total: response.data.total,
+        lastFetched: response.data.posts.length
+          ? response.data.posts[response.data.posts.length - 1].createdAt
+          : null,
+      };
+    } catch (error) {
+      const errMsg = error.response?.data?.message || "Failed to fetch public posts";
+      console.error("[postSlice] Fetch public posts error:", errMsg);
+      return rejectWithValue({ message: errMsg });
+    }
+  }
+);
+
 export const createPosts = createAsyncThunk(
   "post/createPost",
-  async (postData, { rejectWithValue }) => {
-    console.log(
-      "[DEBUG] createPost called with:",
-      JSON.stringify(postData, null, 2)
-    );
+  async (postData, { rejectWithValue, getState }) => {
     if (
       !postData.blocks ||
       !Array.isArray(postData.blocks) ||
@@ -31,131 +112,165 @@ export const createPosts = createAsyncThunk(
       containsBlobUrl(postData.blocks)
     ) {
       return rejectWithValue({
-        message:
-          "Upload failed: Please convert Blob URLs to base64 or upload images properly before submitting.",
+        message: "Upload failed: Please convert Blob URLs to base64 or upload images properly.",
       });
     }
     try {
+      const { auth } = getState();
       const response = await axiosInstance.post("/post/post-create", postData);
-      console.log("createPost response:", response.data);
-      return response.data.data || response.data; // Adjust for potential data wrapper
+      return { ...response.data, authorId: auth.user?._id };
     } catch (error) {
-      const errMsg = error.response?.data || { message: error.message };
-      console.error("createPost error:", errMsg);
-      return rejectWithValue(errMsg);
+      const errMsg = error.response?.data?.message || "Failed to create post";
+      console.error("[postSlice] createPost error:", errMsg);
+      return rejectWithValue({ message: errMsg });
     }
   }
 );
 
-// Get all posts
 export const getAllPosts = createAsyncThunk(
   "post/getAllPosts",
-  async ({ userId } = {}, { rejectWithValue }) => {
+  async (
+    { userId, authorIds = [], page = 1, limit = 12, after = null } = {},
+    { rejectWithValue, getState }
+  ) => {
     try {
-      const query = userId ? `?authorId=${encodeURIComponent(userId)}` : "";
-      const response = await axiosInstance.get(`/post/all-post${query}`);
-      console.log("✅ getAllPosts response:", response.data);
-      return response.data.data || response.data;
+      const { auth } = getState();
+      if (!auth.isAuthenticated) {
+        return rejectWithValue({ message: "Authentication required" });
+      }
+      const params = new URLSearchParams();
+      params.append("page", page);
+      params.append("limit", limit);
+      if (after) params.append("after", after);
+      if (userId) params.append("authorId", userId);
+      if (authorIds.length) {
+        const validIds = authorIds.filter(Boolean);
+        if (validIds.length) params.append("authorIds", validIds.join(","));
+      }
+      const response = await axiosInstance.get(`/post/all-post?${params.toString()}`);
+      return {
+        posts: response.data.posts,
+        total: response.data.total,
+        lastFetched: response.data.posts.length
+          ? response.data.posts[response.data.posts.length - 1].createdAt
+          : null,
+        isMyPosts: !!userId,
+      };
     } catch (error) {
-      const errMsg = error.response?.data?.message || error.message;
-      console.error("❌ getAllPosts error:", errMsg);
-      return rejectWithValue(errMsg);
+      const errMsg = error.response?.data?.message || "Failed to fetch posts";
+      console.error("[postSlice] getAllPosts error:", errMsg);
+      return rejectWithValue({ message: errMsg });
     }
   }
 );
 
-// Get latest posts
 export const getLatestPosts = createAsyncThunk(
   "post/getLatestPosts",
-  async (_, { rejectWithValue }) => {
+  async ({ after = null } = {}, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get("/post/latest-post/latest");
-      console.log("getLatestPosts response:", response.data);
-      return response.data.data || response.data; // Adjust for potential data wrapper
+      const params = { limit: 12, ...(after && { after }) };
+      const response = await axiosInstance.get("/post/latest-post/latest", { params });
+      return {
+        posts: response.data.posts,
+        total: response.data.total,
+        lastFetched: response.data.posts.length
+          ? response.data.posts[response.data.posts.length - 1].createdAt
+          : null,
+      };
     } catch (error) {
-      const errMsg = error.response?.data?.message || error.message;
-      console.error("getLatestPosts error:", errMsg);
-      return rejectWithValue(errMsg);
+      const errMsg = error.response?.data?.message || "Failed to load latest posts";
+      console.error("[postSlice] getLatestPosts error:", errMsg);
+      return rejectWithValue({ message: errMsg });
     }
   }
 );
 
-// Get trending posts
 export const getTrendingPosts = createAsyncThunk(
   "post/getTrendingPosts",
-  async (_, { rejectWithValue }) => {
+  async ({ after = null } = {}, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get("/post/trending-post/trending");
-      console.log("getTrendingPosts response:", response.data);
-      return response.data.data || response.data; // Adjust for potential data wrapper
+      const params = { limit: 12, ...(after && { after }) };
+      const response = await axiosInstance.get("/post/trending-post/trending", { params });
+      return {
+        posts: response.data.posts,
+        total: response.data.total,
+        lastFetched: response.data.posts.length
+          ? response.data.posts[response.data.posts.length - 1].createdAt
+          : null,
+      };
     } catch (error) {
-      const errMsg = error.response?.data?.message || error.message;
-      console.error("getTrendingPosts error:", errMsg);
-      return rejectWithValue(errMsg);
+      const errMsg = error.response?.data?.message || "Failed to load trending posts";
+      console.error("[postSlice] getTrendingPosts error:", errMsg);
+      return rejectWithValue({ message: errMsg });
     }
   }
 );
 
-// Get search posts
 export const getSearchPosts = createAsyncThunk(
   "post/getSearchPosts",
-  async ({ query, userId }, { rejectWithValue }) => {
+  async ({ query, userId, after = null }, { rejectWithValue }) => {
     try {
       const queryParams = [
         `query=${encodeURIComponent(query)}`,
         userId ? `authorId=${encodeURIComponent(userId)}` : "",
+        `limit=12`,
+        after ? `after=${after}` : "",
       ]
         .filter(Boolean)
         .join("&");
-      const response = await axiosInstance.get(
-        `/post/search-post/search?${queryParams}`
-      );
-      console.log("getSearchPosts response:", response.data);
-      return response.data.data || response.data; // Adjust for potential data wrapper
+      const response = await axiosInstance.get(`/post/search-post/search?${queryParams}`);
+      return {
+        posts: response.data.posts,
+        total: response.data.total,
+        lastFetched: response.data.posts.length
+          ? response.data.posts[response.data.posts.length - 1].createdAt
+          : null,
+      };
     } catch (error) {
-      const errMsg = error.response?.data?.message || error.message;
-      console.error("getSearchPosts error:", errMsg);
-      return rejectWithValue(errMsg);
+      const errMsg = error.response?.data?.message || "Failed to load search results";
+      console.error("[postSlice] getSearchPosts error:", errMsg);
+      return rejectWithValue({ message: errMsg });
     }
   }
 );
 
-// Get single post by slug
 export const getSinglePost = createAsyncThunk(
   "post/getSinglePost",
-  async (slug, { rejectWithValue }) => {
+  async ({ slug, isGuest = false }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get(`/post/${slug}`);
+      if (!slug || typeof slug !== "string") {
+        console.error("[postSlice] Invalid slug:", slug);
+        return rejectWithValue({ message: "Invalid post slug" });
+      }
+      const endpoint = isGuest ? `/post/public/${slug}` : `/post/${slug}`;
+      const response = await axiosInstance.get(endpoint);
+      if (!response.data.post) {
+        console.error("[postSlice] Post not found for slug:", slug);
+        return rejectWithValue({ message: "Post not found" });
+      }
       return response.data.post;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch post"
-      );
+      const errMsg = error.response?.data?.message || "Failed to fetch post";
+      console.error("[postSlice] getSinglePost error:", errMsg);
+      return rejectWithValue({ message: errMsg });
     }
   }
 );
 
-// Update Post
 export const updatePost = createAsyncThunk(
   "post/updatePost",
   async ({ slug, updateData }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.patch(
-        `/post/update/${slug}`,
-        updateData
-      );
-      const post = response.data?.data || response.data;
-      console.log("[DEBUG] returned post:", post); // Add this
-      return post; // ✅ must include slug and isPinned
+      const response = await axiosInstance.patch(`/post/update/${slug}`, updateData);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data || { message: error.message }
-      );
+      const errMsg = error.response?.data?.message || "Failed to update post";
+      console.error("[postSlice] updatePost error:", errMsg);
+      return rejectWithValue({ message: errMsg });
     }
   }
 );
 
-// Delete Post
 export const deletePost = createAsyncThunk(
   "post/deletePost",
   async (postId, { rejectWithValue }) => {
@@ -163,29 +278,30 @@ export const deletePost = createAsyncThunk(
       const response = await axiosInstance.delete(`/post/delete/${postId}`);
       return { postId, message: response.data.message };
     } catch (error) {
-      const errMsg = error.response?.data || { message: error.message };
-      console.error("deletePost error:", errMsg);
-      return rejectWithValue(errMsg);
+      const errMsg = error.response?.data?.message || "Failed to delete post";
+      console.error("[postSlice] deletePost error:", errMsg);
+      return rejectWithValue({ message: errMsg });
     }
   }
 );
 
-// Fetch user posts
 export const fetchUserPosts = createAsyncThunk(
   "post/fetchUserPosts",
-  async ({ userId, page, limit, search, sort }, { rejectWithValue }) => {
+  async ({ userId, after = null, search, sort }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get(`/post/user/${userId}/posts`, {
-        params: { page, limit, search, sort },
-      });
-      console.log("fetchUserPosts response:", response.data);
-      return response.data.data || response.data; // Adjust for potential data wrapper
+      const params = { limit: 12, ...(after && { after }), search, sort };
+      const response = await axiosInstance.get(`/post/user/${userId}/posts`, { params });
+      return {
+        posts: response.data.posts,
+        total: response.data.total,
+        lastFetched: response.data.posts.length
+          ? response.data.posts[response.data.posts.length - 1].createdAt
+          : null,
+      };
     } catch (error) {
-      console.error(
-        "Error fetching user posts:",
-        error.response?.data || error.message
-      );
-      return rejectWithValue(error.response?.data?.message || error.message);
+      const errMsg = error.response?.data?.message || "Failed to fetch user posts";
+      console.error("[postSlice] fetchUserPosts error:", errMsg);
+      return rejectWithValue({ message: errMsg });
     }
   }
 );
@@ -196,7 +312,8 @@ export const startReading = createAsyncThunk(
     try {
       return { postId, startTime: Date.now() };
     } catch (error) {
-      return rejectWithValue("Failed to start reading");
+      console.error("[postSlice] startReading error:", error.message);
+      return rejectWithValue({ message: "Failed to start reading" });
     }
   }
 );
@@ -207,73 +324,57 @@ export const stopReading = createAsyncThunk(
     try {
       return null;
     } catch (error) {
-      return rejectWithValue("Failed to stop reading");
+      console.error("[postSlice] stopReading error:", error.message);
+      return rejectWithValue({ message: "Failed to stop reading" });
     }
   }
 );
-// Submit reading time
+
 export const submitReadingTime = createAsyncThunk(
   "post/submitReadingTime",
   async ({ postId, timeSpent }, { rejectWithValue }) => {
     try {
       if (!postId || typeof postId !== "string") {
-        console.error("❌ submitReadingTime called without valid postId");
-        return rejectWithValue("Invalid postId");
+        console.error("[postSlice] Invalid postId:", postId);
+        return rejectWithValue({ message: "Invalid postId" });
       }
-
-      console.log(
-        `⏱️ Submitting reading time for post: ${postId}, duration: ${timeSpent}s`
-      );
-
-      const response = await axiosInstance.post(`/post/time-spent/${postId}`, {
-        duration: timeSpent,
-      });
+      const response = await axiosInstance.post(`/post/time-spent/${postId}`, { duration: timeSpent });
       return response.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to submit reading time"
-      );
+      const errMsg = error.response?.data?.message || "Failed to submit reading time";
+      console.error("[postSlice] submitReadingTime error:", errMsg);
+      return rejectWithValue({ message: errMsg });
     }
   }
 );
 
-// Slice
+export const sendAdminAppeal = createAsyncThunk(
+  "post/sendAdminAppeal",
+  async ({ postId, message }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(`/post/appeal/${postId}`, { message });
+      return response.data;
+    } catch (error) {
+      const errMsg = error.response?.data?.message || "Failed to send appeal";
+      console.error("[postSlice] sendAdminAppeal error:", errMsg);
+      return rejectWithValue({ message: errMsg });
+    }
+  }
+);
+
 const postSlice = createSlice({
   name: "post",
-  initialState: {
-    loading: false,
-    error: null,
-    posts: [],
-    total: 0,
-    page: 1,
-    currentPost: null,
-    createLoading: false,
-    createError: null,
-    updateLoading: false,
-    updateError: null,
-    updateMessage: null,
-    updateSuccess: false,
-    deleteLoading: false,
-    deleteError: null,
-    deleteMessage: null,
-    latestPosts: [],
-    latestLoading: false,
-    latestError: null,
-    trendingPosts: [],
-    trendingLoading: false,
-    trendingError: null,
-    searchPosts: [],
-    searchLoading: false,
-    searchError: null,
-    totalPosts: 0,
-    searchQuery: "",
-    sortOption: "newest",
-    currentPage: 1,
-    startTime: null,
-    postId: null,
-    isTracking: false,
-  },
+  initialState,
   reducers: {
+    clearAllPosts: (state) => {
+      state.posts = [];
+      state.publicPosts = [];
+      state.followingPosts = [];
+      state.latestPosts = [];
+      state.trendingPosts = [];
+      state.searchPosts = [];
+      state.lastFetched = null;
+    },
     clearError: (state) => {
       state.error = null;
       state.createError = null;
@@ -286,107 +387,134 @@ const postSlice = createSlice({
     },
     setSearch: (state, action) => {
       state.searchQuery = action.payload;
-      state.currentPage = 1;
     },
     setSort: (state, action) => {
       state.sortOption = action.payload;
-      state.currentPage = 1;
-    },
-    setPage: (state, action) => {
-      state.currentPage = action.payload;
     },
     resetFetch: (state) => {
       state.searchQuery = "";
       state.sortOption = "newest";
-      state.currentPage = 1;
     },
-
     clearReadingError: (state) => {
       state.error = null;
     },
+    updateCurrentPostBlockedStatus: (state, action) => {
+      const { postId, blocked } = action.payload;
+      if (state.currentPost && state.currentPost._id === postId) {
+        state.currentPost.blocked = blocked;
+      }
+    },
   },
   extraReducers: (builder) => {
-    // Create
     builder
-      .addCase(createPosts.pending, (state) => {
-        state.createLoading = true;
-        state.createError = null;
+      .addCase(fetchFollowingPosts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
       })
-      .addCase(createPosts.fulfilled, (state, action) => {
-        state.createLoading = false;
-        state.posts.unshift(action.payload.post);
+      .addCase(fetchFollowingPosts.fulfilled, (state, action) => {
+        state.loading = false;
+        const newPosts = action.payload.posts;
+        const combinedPosts = [...state.followingPosts, ...newPosts];
+        state.followingPosts = combinedPosts.filter(
+          (post, index, self) => index === self.findIndex((p) => p._id === post._id)
+        );
+        state.lastFetched = action.payload.lastFetched;
       })
-      .addCase(createPosts.rejected, (state, action) => {
-        state.createLoading = false;
-        state.createError = action.payload?.message || "Failed to create post";
-      });
-
-    // Read (All)
-    builder
+      .addCase(fetchFollowingPosts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload.message;
+      })
       .addCase(getAllPosts.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(getAllPosts.fulfilled, (state, action) => {
-        const { posts, total, page } = action.payload;
         state.loading = false;
-        state.posts = posts || [];
-        state.total = total || 0;
-        state.page = page || 1;
-        console.log("✅ Posts stored in Redux:", posts?.length, posts);
+        const newPosts = action.payload.posts;
+        const combinedPosts = [...state.posts, ...newPosts];
+        state.posts = combinedPosts.filter(
+          (post, index, self) => index === self.findIndex((p) => p._id === post._id)
+        );
+        state.lastFetched = action.payload.lastFetched;
       })
       .addCase(getAllPosts.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Failed to fetch posts";
-      });
-
-    // Read (Latest)
-    builder
+        state.error = action.payload.message;
+      })
+      .addCase(fetchPublicPosts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchPublicPosts.fulfilled, (state, action) => {
+        state.loading = false;
+        const newPosts = action.payload.posts;
+        const combinedPosts = [...state.publicPosts, ...newPosts];
+        state.publicPosts = combinedPosts.filter(
+          (post, index, self) => index === self.findIndex((p) => p._id === post._id)
+        );
+        state.lastFetched = action.payload.lastFetched;
+      })
+      .addCase(fetchPublicPosts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload.message;
+      })
+      .addCase(createPosts.fulfilled, (state, action) => {
+        state.createLoading = false;
+        state.posts.unshift(action.payload.post);
+        state.followingPosts.unshift(action.payload.post);
+      })
+      .addCase(createPosts.rejected, (state, action) => {
+        state.createLoading = false;
+        state.createError = action.payload.message;
+      })
       .addCase(getLatestPosts.pending, (state) => {
         state.latestLoading = true;
         state.latestError = null;
       })
       .addCase(getLatestPosts.fulfilled, (state, action) => {
         state.latestLoading = false;
-        state.latestPosts = action.payload.posts || [];
+        const newPosts = action.payload.posts;
+        const combinedPosts = [...state.latestPosts, ...newPosts];
+        state.latestPosts = combinedPosts.filter(
+          (post, index, self) => index === self.findIndex((p) => p._id === post._id)
+        );
       })
       .addCase(getLatestPosts.rejected, (state, action) => {
         state.latestLoading = false;
-        state.latestError = action.payload || "Failed to load latest posts";
-      });
-
-    // Read (Trending)
-    builder
+        state.latestError = action.payload.message;
+      })
       .addCase(getTrendingPosts.pending, (state) => {
         state.trendingLoading = true;
         state.trendingError = null;
       })
       .addCase(getTrendingPosts.fulfilled, (state, action) => {
         state.trendingLoading = false;
-        state.trendingPosts = action.payload.posts || [];
+        const newPosts = action.payload.posts;
+        const combinedPosts = [...state.trendingPosts, ...newPosts];
+        state.trendingPosts = combinedPosts.filter(
+          (post, index, self) => index === self.findIndex((p) => p._id === post._id)
+        );
       })
       .addCase(getTrendingPosts.rejected, (state, action) => {
         state.trendingLoading = false;
-        state.trendingError = action.payload || "Failed to load trending posts";
-      });
-
-    // Read (Search)
-    builder
+        state.trendingError = action.payload.message;
+      })
       .addCase(getSearchPosts.pending, (state) => {
         state.searchLoading = true;
         state.searchError = null;
       })
       .addCase(getSearchPosts.fulfilled, (state, action) => {
         state.searchLoading = false;
-        state.searchPosts = action.payload.posts || [];
+        const newPosts = action.payload.posts;
+        const combinedPosts = [...state.searchPosts, ...newPosts];
+        state.searchPosts = combinedPosts.filter(
+          (post, index, self) => index === self.findIndex((p) => p._id === post._id)
+        );
       })
       .addCase(getSearchPosts.rejected, (state, action) => {
         state.searchLoading = false;
-        state.searchError = action.payload || "Failed to load search results";
-      });
-
-    // Read (Single)
-    builder
+        state.searchError = action.payload.message;
+      })
       .addCase(getSinglePost.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -397,11 +525,9 @@ const postSlice = createSlice({
       })
       .addCase(getSinglePost.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
-      });
-
-    // Update
-    builder
+        state.error = action.payload.message;
+        state.currentPost = null;
+      })
       .addCase(updatePost.pending, (state) => {
         state.updateLoading = true;
         state.updateError = null;
@@ -412,41 +538,32 @@ const postSlice = createSlice({
         state.updateLoading = false;
         state.updateMessage = action.payload.message;
         state.updateSuccess = true;
-        const updatedPost = action.payload.post; // Backend returns post directly in { post }
+        const updatedPost = action.payload.post || action.payload;
         const idx = state.posts.findIndex((p) => p.slug === updatedPost.slug);
         if (idx !== -1) {
-          state.posts[idx] = { ...state.posts[idx], ...updatedPost }; // Merge to preserve existing fields
+          state.posts[idx] = { ...state.posts[idx], ...updatedPost };
         }
         if (state.currentPost?.slug === updatedPost.slug) {
           state.currentPost = { ...state.currentPost, ...updatedPost };
         }
-        const latestIdx = state.latestPosts.findIndex(
-          (p) => p.slug === updatedPost.slug
-        );
+        const latestIdx = state.latestPosts.findIndex((p) => p.slug === updatedPost.slug);
         if (latestIdx !== -1) {
-          state.latestPosts[latestIdx] = {
-            ...state.latestPosts[latestIdx],
-            ...updatedPost,
-          };
+          state.latestPosts[latestIdx] = { ...state.latestPosts[latestIdx], ...updatedPost };
         }
-        const trendingIdx = state.trendingPosts.findIndex(
-          (p) => p.slug === updatedPost.slug
-        );
+        const trendingIdx = state.trendingPosts.findIndex((p) => p.slug === updatedPost.slug);
         if (trendingIdx !== -1) {
-          state.trendingPosts[trendingIdx] = {
-            ...state.trendingPosts[trendingIdx],
-            ...updatedPost,
-          };
+          state.trendingPosts[trendingIdx] = { ...state.trendingPosts[trendingIdx], ...updatedPost };
+        }
+        const followingIdx = state.followingPosts.findIndex((p) => p.slug === updatedPost.slug);
+        if (followingIdx !== -1) {
+          state.followingPosts[followingIdx] = { ...state.followingPosts[followingIdx], ...updatedPost };
         }
       })
       .addCase(updatePost.rejected, (state, action) => {
         state.updateLoading = false;
-        state.updateError = action.payload?.message || "Failed to update post";
+        state.updateError = action.payload.message;
         state.updateSuccess = false;
-      });
-
-    // Delete
-    builder
+      })
       .addCase(deletePost.pending, (state) => {
         state.deleteLoading = true;
         state.deleteError = null;
@@ -455,57 +572,53 @@ const postSlice = createSlice({
       .addCase(deletePost.fulfilled, (state, action) => {
         state.deleteLoading = false;
         state.deleteMessage = action.payload.message;
-        state.posts = state.posts.filter(
-          (p) => p._id !== action.payload.postId
-        );
-        state.latestPosts = state.latestPosts.filter(
-          (p) => p._id !== action.payload.postId
-        );
-        state.trendingPosts = state.trendingPosts.filter(
-          (p) => p._id !== action.payload.postId
-        );
-        state.searchPosts = state.searchPosts.filter(
-          (p) => p._id !== action.payload.postId
-        );
+        state.posts = state.posts.filter((p) => p._id !== action.payload.postId);
+        state.publicPosts = state.publicPosts.filter((p) => p._id !== action.payload.postId);
+        state.followingPosts = state.followingPosts.filter((p) => p._id !== action.payload.postId);
+        state.latestPosts = state.latestPosts.filter((p) => p._id !== action.payload.postId);
+        state.trendingPosts = state.trendingPosts.filter((p) => p._id !== action.payload.postId);
+        state.searchPosts = state.searchPosts.filter((p) => p._id !== action.payload.postId);
         if (state.currentPost?._id === action.payload.postId) {
           state.currentPost = null;
         }
       })
       .addCase(deletePost.rejected, (state, action) => {
         state.deleteLoading = false;
-        state.deleteError = action.payload?.message || "Failed to delete post";
-      });
-
-    // Fetch User Posts
-    builder
+        state.deleteError = action.payload.message;
+      })
       .addCase(fetchUserPosts.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchUserPosts.fulfilled, (state, action) => {
         state.loading = false;
-        state.posts = action.payload.posts || [];
-        state.totalPosts =
-          action.payload.total ||
-          action.payload.totalPosts ||
-          action.payload.posts?.length ||
-          0; // Fallback to posts.length
+        const newPosts = action.payload.posts;
+        const combinedPosts = [...state.posts, ...newPosts];
+        state.posts = combinedPosts.filter(
+          (post, index, self) => index === self.findIndex((p) => p._id === post._id)
+        );
+        state.lastFetched = action.payload.lastFetched;
       })
       .addCase(fetchUserPosts.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Failed to fetch user posts";
-      });
-
-    // Submit Reading Time
-    builder
-
+        state.error = action.payload.message;
+      })
       .addCase(startReading.fulfilled, (state, action) => {
-        state.startTime = action.payload.startTime;
-        state.postId = action.payload.postId; // 👈 add this
         state.isTracking = true;
+        state.postId = action.payload.postId;
+        state.startTime = action.payload.startTime;
+      })
+      .addCase(startReading.rejected, (state, action) => {
+        state.isTracking = false;
+        state.error = action.payload.message;
       })
       .addCase(stopReading.fulfilled, (state) => {
         state.isTracking = false;
+        state.postId = null;
+        state.startTime = null;
+      })
+      .addCase(stopReading.rejected, (state, action) => {
+        state.error = action.payload.message;
       })
       .addCase(submitReadingTime.pending, (state) => {
         state.loading = true;
@@ -513,24 +626,36 @@ const postSlice = createSlice({
       })
       .addCase(submitReadingTime.fulfilled, (state) => {
         state.loading = false;
-        state.startTime = null;
-        state.postId = null;
         state.isTracking = false;
-        state.error = null;
+        state.postId = null;
+        state.startTime = null;
       })
       .addCase(submitReadingTime.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Failed to submit reading time";
+        state.error = action.payload.message;
+      })
+      .addCase(sendAdminAppeal.pending, (state) => {
+        state.appealLoading = true;
+        state.appealError = null;
+      })
+      .addCase(sendAdminAppeal.fulfilled, (state) => {
+        state.appealLoading = false;
+      })
+      .addCase(sendAdminAppeal.rejected, (state, action) => {
+        state.appealLoading = false;
+        state.appealError = action.payload.message;
       });
   },
 });
 
 export const {
+  clearAllPosts,
   clearError,
   setSearch,
   setSort,
-  setPage,
   resetFetch,
   clearReadingError,
+  updateCurrentPostBlockedStatus,
 } = postSlice.actions;
+
 export default postSlice.reducer;

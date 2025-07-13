@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AspectRatio } from "@radix-ui/react-aspect-ratio";
-import Skeleton from "../UI/Skeleton";
+import Skeleton from "../Ui/Skeleton";
 
 export default function UserAvatar({ src, alt, loading }) {
   const [loaded, setLoaded] = useState(false);
