@@ -35,11 +35,11 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
 
   const handleCategorySelect = (categoryName) => {
     const selected = categories.find((cat) => cat.name === categoryName);
-    console.log("[DEBUG] CategorySelector: Selected category:", {
-      name: categoryName,
-      id: selected?._id,
-      fullCategory: selected,
-    });
+    // console.log("[DEBUG] CategorySelector: Selected category:", {
+    //   name: categoryName,
+    //   id: selected?._id,
+    //   fullCategory: selected,
+    // });
     setSelectedCategory(categoryName);
     dispatch(selectCategory(selected || null));
     onContinue({ id: selected._id, name: categoryName });

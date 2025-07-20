@@ -16,13 +16,13 @@ export const useSocketInit = () => {
       if (!isAuthenticated || !user?._id || socketInitialized.current) return;
 
       // Log initialization for debugging
-      console.log("[useSocketInit] Initializing socket for user:", user._id);
+      // console.log("[useSocketInit] Initializing socket for user:", user._id);
       socketInitialized.current = true;
 
       let token = getToken();
       if (!token) {
         // Attempt to refresh token if missing
-        console.log("[useSocketInit] No token, checking auth...");
+        // console.log("[useSocketInit] No token, checking auth...");
         try {
           await dispatch(checkAuth()).unwrap();
           token = getToken();
@@ -40,7 +40,7 @@ export const useSocketInit = () => {
     // Cleanup socket on unmount
     return () => {
       if (socketInitialized.current) {
-        console.log("[useSocketInit] Cleaning up socket...");
+        // console.log("[useSocketInit] Cleaning up socket...");
         dispatch(disconnectSocket());
         socketInitialized.current = false;
       }

@@ -16,13 +16,13 @@ function PinnedPost({ posts = [], userId, loggedInUserId, readOnly, author }) {
 
   // Filter posts for the viewed author
   useEffect(() => {
-    console.log("[PinnedPost] Input posts:", posts); // Debug
+    // console.log("[PinnedPost] Input posts:", posts); // Debug
     const filteredPosts = posts.filter(
       (post) =>
         getId(post.author) === getId(userId) &&
         (isOwner ? true : post.isPinned === true)
     );
-    console.log("[PinnedPost] Filtered localPosts:", filteredPosts); // Debug
+    // console.log("[PinnedPost] Filtered localPosts:", filteredPosts); // Debug
     setLocalPosts(filteredPosts);
   }, [posts, userId, isOwner]);
 
@@ -45,7 +45,7 @@ function PinnedPost({ posts = [], userId, loggedInUserId, readOnly, author }) {
         if (!currentPost) continue;
 
         const newPinStatus = !currentPost.isPinned;
-        console.log(`[PinnedPost] Updating post ${slug} to isPinned=${newPinStatus}`); // Debug
+        // console.log(`[PinnedPost] Updating post ${slug} to isPinned=${newPinStatus}`); // Debug
         await dispatch(
           updatePost({
             slug,
@@ -62,7 +62,7 @@ function PinnedPost({ posts = [], userId, loggedInUserId, readOnly, author }) {
       }
 
       // Refetch posts to update Redux store
-      console.log("[PinnedPost] Refetching posts for userId:", userId); // Debug
+      // console.log("[PinnedPost] Refetching posts for userId:", userId); // Debug
       await dispatch(getAllPosts({ userId })).unwrap();
       setSelectedSlugs([]);
     } catch (err) {

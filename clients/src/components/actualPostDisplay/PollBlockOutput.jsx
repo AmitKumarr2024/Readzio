@@ -32,7 +32,7 @@ const PollBlockOutput = ({
       options,
       votedUserIds: [],
     };
-    console.log("[PollBlockOutput] Poll block retrieved:", pollBlock);
+    // console.log("[PollBlockOutput] Poll block retrieved:", pollBlock);
     return pollBlock;
   }, [postFromStore, question, options, blockId]);
 
@@ -75,12 +75,12 @@ const PollBlockOutput = ({
 
   const handleVote = async (option, optionIndex) => {
     if (!isAuthenticated) {
-      console.log("[PollBlockOutput] Redirecting to login for voting");
+      // console.log("[PollBlockOutput] Redirecting to login for voting");
       navigate(`/login?redirect=/post/${slug}`);
       return;
     }
     if (userHasVoted) {
-      console.log("[PollBlockOutput] User already voted for slug:", slug);
+      // console.log("[PollBlockOutput] User already voted for slug:", slug);
       alert("You have already voted.");
       return;
     }
@@ -109,7 +109,7 @@ const PollBlockOutput = ({
           optionIndex,
         })
       ).unwrap();
-      console.log("[PollBlockOutput] Vote recorded for post:", postFromStore._id);
+      // console.log("[PollBlockOutput] Vote recorded for post:", postFromStore._id);
     } catch (err) {
       console.error("[PollBlockOutput] voteOnPoll failed:", err);
       setVotes(prevVotesRef.current);

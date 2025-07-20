@@ -129,12 +129,12 @@ const CategoryBox = () => {
                     title={`Go to ${category.name} category`}
                     onClick={() => {
                       setOpen(false);
-                      console.log("[CategoryBox] Category clicked:", {
-                        categoryId: category._id,
-                        categoryName: category.name,
-                        userId: user?._id || "unauthenticated",
-                        timestamp: new Date().toISOString(),
-                      });
+                      // console.log("[CategoryBox] Category clicked:", {
+                      //   categoryId: category._id,
+                      //   categoryName: category.name,
+                      //   userId: user?._id || "unauthenticated",
+                      //   timestamp: new Date().toISOString(),
+                      // });
                       // Example: logToAnalytics("[CategoryBox] Category clicked", { categoryId: category._id, categoryName: category.name });
                     }}
                     className="flex items-center justify-center gap-1 rounded-full bg-gray-100 py-2 text-base font-medium text-text-main-light transition-colors hover:bg-blue-100 dark:bg-gray-800 dark:text-text-main-dark dark:hover:bg-blue-900"
@@ -166,10 +166,10 @@ const CategoryBox = () => {
                   onClick={() => {
                     navigate(`/author-profile/${user._id}?tab=categories`);
                     setOpen(false);
-                    console.log("[CategoryBox] Manage Categories clicked:", {
-                      userId: user._id,
-                      timestamp: new Date().toISOString(),
-                    });
+                    // console.log("[CategoryBox] Manage Categories clicked:", {
+                    //   userId: user._id,
+                    //   timestamp: new Date().toISOString(),
+                    // });
                     // Example: logToAnalytics("[CategoryBox] Manage Categories clicked", { userId: user._id });
                   }}
                   className="inline-block px-4 py-1.5 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark font-medium rounded-full hover:bg-blue-100 dark:hover:bg-blue-900 transition border border-gray-200 dark:border-gray-800"

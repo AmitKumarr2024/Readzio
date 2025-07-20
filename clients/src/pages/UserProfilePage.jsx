@@ -17,26 +17,26 @@ const UserProfilePage = () => {
   const isAdmin = currentUser?.role === "admin";
 
   // Log initial state
-  console.log("[UserProfilePage] Initial state:", {
-    user,
-    currentUser,
-    loading,
-    error,
-    isConnected,
-    isEditing,
-    isAdmin,
-  });
+  // console.log("[UserProfilePage] Initial state:", {
+  //   user,
+  //   currentUser,
+  //   loading,
+  //   error,
+  //   isConnected,
+  //   isEditing,
+  //   isAdmin,
+  // });
 
   // Initialize socket and fetch user
   useEffect(() => {
     try {
-      console.log("[UserProfilePage] Initializing socket and fetching user");
+      // console.log("[UserProfilePage] Initializing socket and fetching user");
       dispatch(initializeSocket());
       if (!currentUser) {
-        console.log("[UserProfilePage] No currentUser, dispatching getUser");
+        // console.log("[UserProfilePage] No currentUser, dispatching getUser");
         dispatch(getUser());
       } else {
-        console.log("[UserProfilePage] currentUser exists:", currentUser._id);
+        // console.log("[UserProfilePage] currentUser exists:", currentUser._id);
       }
     } catch (e) {
       console.error("[UserProfilePage] Initialization error:", e);
@@ -46,16 +46,16 @@ const UserProfilePage = () => {
   // Setup socket listener for profile updates
   useEffect(() => {
     if (socket && isConnected && currentUser?._id) {
-      console.log("[UserProfilePage] Setting up userProfileUpdate listener");
+      // console.log("[UserProfilePage] Setting up userProfileUpdate listener");
       socket.on("userProfileUpdate", (updatedUser) => {
         try {
-          console.log("[UserProfilePage] Received userProfileUpdate:", updatedUser);
+          // console.log("[UserProfilePage] Received userProfileUpdate:", updatedUser);
           if (updatedUser._id === currentUser._id) {
-            console.log("[UserProfilePage] Updating user data for:", currentUser._id);
+            // console.log("[UserProfilePage] Updating user data for:", currentUser._id);
             dispatch(getUser());
             toast.success("Profile updated in real-time!");
           } else {
-            console.log("[UserProfilePage] Update ignored, user ID mismatch:", updatedUser._id);
+            // console.log("[UserProfilePage] Update ignored, user ID mismatch:", updatedUser._id);
           }
         } catch (e) {
           console.error("[UserProfilePage] Socket update error:", e);
@@ -63,36 +63,36 @@ const UserProfilePage = () => {
       });
 
       return () => {
-        console.log("[UserProfilePage] Cleaning up socket listener");
+        // console.log("[UserProfilePage] Cleaning up socket listener");
         socket.off("userProfileUpdate");
       };
     } else {
-      console.log("[UserProfilePage] Socket setup skipped:", {
-        socket: !!socket,
-        isConnected,
-        userId: currentUser?._id,
-      });
+      // console.log("[UserProfilePage] Socket setup skipped:", {
+      //   socket: !!socket,
+      //   isConnected,
+      //   userId: currentUser?._id,
+      // });
     }
   }, [socket, isConnected, currentUser, dispatch]);
 
   // Cleanup update status on unmount
   useEffect(() => {
     return () => {
-      console.log("[UserProfilePage] Resetting update status");
+      // console.log("[UserProfilePage] Resetting update status");
       dispatch(resetUpdateStatus());
     };
   }, [dispatch]);
 
   // Log render conditions
-  console.log("[UserProfilePage] Render conditions:", {
-    loading,
-    currentUser: !!currentUser,
-    error,
-  });
+  // console.log("[UserProfilePage] Render conditions:", {
+  //   loading,
+  //   currentUser: !!currentUser,
+  //   error,
+  // });
 
   // Render loading skeleton
   if (loading && !currentUser) {
-    console.log("[UserProfilePage] Rendering: Loading skeleton");
+    // console.log("[UserProfilePage] Rendering: Loading skeleton");
     return (
       <div className="p-4 sm:p-6 space-y-6 w-full sm:max-w-md mx-auto bg-background-light dark:bg-background-dark rounded-2xl shadow-md">
         <Skeleton height="h-48" rounded="rounded-lg" />
@@ -112,7 +112,7 @@ const UserProfilePage = () => {
         <button
           className="btn btn-sm btn-outline btn-error"
           onClick={() => {
-            console.log("[UserProfilePage] Retry button clicked, dispatching getUser");
+            // console.log("[UserProfilePage] Retry button clicked, dispatching getUser");
             dispatch(getUser());
           }}
         >
@@ -129,10 +129,10 @@ const UserProfilePage = () => {
   }
 
   // Log main render
-  console.log("[UserProfilePage] Rendering: Main content", {
-    isEditing,
-    isAdmin,
-  });
+  // console.log("[UserProfilePage] Rendering: Main content", {
+  //   isEditing,
+  //   isAdmin,
+  // });
 
   return (
     <div className="relative p-4 sm:p-6 w-full sm:max-w-full mx-auto bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
@@ -140,7 +140,7 @@ const UserProfilePage = () => {
       <button
         className="sticky top-4 z-50 text-lg right-12 p-5 font-(family-name:--font-Urbanist) btn btn-sm bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg shadow-md transition transform hover:scale-105"
         onClick={() => {
-          console.log("[UserProfilePage] Edit/View button clicked, toggling isEditing:", !isEditing);
+          // console.log("[UserProfilePage] Edit/View button clicked, toggling isEditing:", !isEditing);
           setIsEditing((prev) => !prev);
         }}
         disabled={!currentUser || loading}
@@ -156,7 +156,7 @@ const UserProfilePage = () => {
             user={currentUser}
             isAdmin={isAdmin}
             onClose={() => {
-              console.log("[UserProfilePage] Closing edit mode");
+              // console.log("[UserProfilePage] Closing edit mode");
               setIsEditing(false);
             }}
           />

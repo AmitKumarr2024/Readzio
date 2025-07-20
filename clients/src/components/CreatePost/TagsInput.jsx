@@ -28,7 +28,7 @@ const TagsInput = () => {
 
   const removeTag = useCallback((tagToRemove) => {
     dispatch(setTags(tags.filter((tag) => tag !== tagToRemove)));
-    console.log('Tag removed:', tagToRemove, 'New tags:', tags.filter((tag) => tag !== tagToRemove));
+    // console.log('Tag removed:', tagToRemove, 'New tags:', tags.filter((tag) => tag !== tagToRemove));
   }, [tags, dispatch]);
 
   const handleKeyDown = useCallback((e) => {
@@ -38,7 +38,7 @@ const TagsInput = () => {
     }
   }, [addTag]);
 
-  console.log('TagsInput rendered, tags:', tags);
+  // console.log('TagsInput rendered, tags:', tags);
 
   return (
     <div className="mb-6">

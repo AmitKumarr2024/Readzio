@@ -19,7 +19,7 @@ const SuggestedPosts = () => {
     if (status === "idle" && !hasFetched.current) {
       hasFetched.current = true;
       if (process.env.NODE_ENV === "development") {
-        console.log("[SuggestedPosts] Fetching suggested posts, limit: 6");
+        // console.log("[SuggestedPosts] Fetching suggested posts, limit: 6");
       }
       dispatch(fetchSuggestedPosts({ limit: 6 }));
     }

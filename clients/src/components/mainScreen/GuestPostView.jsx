@@ -10,22 +10,22 @@ const GuestPostView = () => {
   const isSidebarOpen = useSelector((state) => state.postMeta?.isSidebarOpen || false);
 
   useEffect(() => {
-    console.log("[GuestPostView] Fetching public posts");
+    // console.log("[GuestPostView] Fetching public posts");
     dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
   }, [dispatch]);
 
-  useEffect(() => {
-    if (posts.length > 0) {
-      console.log("[GuestPostView] Posts loaded:", {
-        count: posts.length,
-        blocks: posts.map(post => ({
-          id: post._id,
-          slug: post.slug,
-          blocks: Array.isArray(post.blocks) ? post.blocks.length : "not an array",
-        })),
-      });
-    }
-  }, [posts]);
+  // useEffect(() => {
+  //   if (posts.length > 0) {
+  //     console.log("[GuestPostView] Posts loaded:", {
+  //       count: posts.length,
+  //       blocks: posts.map(post => ({
+  //         id: post._id,
+  //         slug: post.slug,
+  //         blocks: Array.isArray(post.blocks) ? post.blocks.length : "not an array",
+  //       })),
+  //     });
+  //   }
+  // }, [posts]);
 
   if (loading) {
     return <div className="text-center py-8 text-gray-500">Loading posts...</div>;

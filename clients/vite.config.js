@@ -5,7 +5,7 @@ import path from "path";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
-  console.log("[ViteConfig] Environment:", { mode, VITE_API_BASE_URL: env.VITE_API_BASE_URL });
+  // console.log("[ViteConfig] Environment:", { mode, VITE_API_BASE_URL: env.VITE_API_BASE_URL });
 
   return {
     plugins: [react(), tailwindcss()],
@@ -24,17 +24,17 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/api/, ""),
           configure: (proxy) => {
-            console.log("[ViteConfig:Proxy] Proxy configured for /api", {
-              target: env.VITE_API_BASE_URL || "http://localhost:8001",
-            });
+            // console.log("[ViteConfig:Proxy] Proxy configured for /api", {
+            //   target: env.VITE_API_BASE_URL || "http://localhost:8001",
+            // });
             proxy.on("error", (err) => {
-              console.error("[ViteConfig:Proxy] /api error:", err.message);
+              // console.error("[ViteConfig:Proxy] /api error:", err.message);
             });
             proxy.on("proxyReq", (proxyReq, req) => {
-              console.log("[ViteConfig:Proxy] /api request:", req.method, req.url);
+              // console.log("[ViteConfig:Proxy] /api request:", req.method, req.url);
             });
             proxy.on("proxyRes", (proxyRes, req) => {
-              console.log("[ViteConfig:Proxy] /api response:", proxyRes.statusCode, req.url);
+              // console.log("[ViteConfig:Proxy] /api response:", proxyRes.statusCode, req.url);
             });
           },
         },
@@ -44,17 +44,17 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path,
           configure: (proxy) => {
-            console.log("[ViteConfig:Proxy] Proxy configured for /socket.io", {
-              target: env.VITE_API_BASE_URL || "http://localhost:8001",
-            });
+            // console.log("[ViteConfig:Proxy] Proxy configured for /socket.io", {
+            //   target: env.VITE_API_BASE_URL || "http://localhost:8001",
+            // });
             proxy.on("error", (err) => {
               console.error("[ViteConfig:Proxy] /socket.io error:", err.message);
             });
             proxy.on("proxyReq", (proxyReq, req) => {
-              console.log("[ViteConfig:Proxy] /socket.io request:", req.url);
+              // console.log("[ViteConfig:Proxy] /socket.io request:", req.url);
             });
             proxy.on("proxyRes", (proxyRes, req) => {
-              console.log("[ViteConfig:Proxy] /socket.io response:", proxyRes.statusCode, req.url);
+              // console.log("[ViteConfig:Proxy] /socket.io response:", proxyRes.statusCode, req.url);
             });
           },
         },

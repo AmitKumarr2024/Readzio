@@ -9,7 +9,7 @@ const compressImage = async (file) => {
   if (!file) return null;
   if (file.size <= MAX_FILE_SIZE) return file;
 
-  console.log("[UserProfileEdit] Compressing image:", file.name, file.size);
+  // console.log("[UserProfileEdit] Compressing image:", file.name, file.size);
   const image = new Image();
   const reader = new FileReader();
   reader.readAsDataURL(file);
@@ -41,7 +41,7 @@ const compressImage = async (file) => {
         ctx.drawImage(image, 0, 0, width, height);
         canvas.toBlob(
           (blob) => {
-            console.log("[UserProfileEdit] Image compressed:", blob.size);
+            // console.log("[UserProfileEdit] Image compressed:", blob.size);
             resolve(blob);
           },
           file.type,
@@ -69,16 +69,16 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
   });
   const toastRef = useRef(false); // Track toast display
 
-  console.log("[UserProfileEdit] Props:", { user, isAdmin, updateLoading, updateSuccess, updateError });
-  console.log("[UserProfileEdit] Initial form state:", form);
+  // console.log("[UserProfileEdit] Props:", { user, isAdmin, updateLoading, updateSuccess, updateError });
+  // console.log("[UserProfileEdit] Initial form state:", form);
 
   useEffect(() => {
-    console.log("[UserProfileEdit] Resetting update status on mount");
+    // console.log("[UserProfileEdit] Resetting update status on mount");
     dispatch(resetUpdateStatus());
   }, [dispatch]);
 
   useEffect(() => {
-    console.log("[UserProfileEdit] Syncing form with user prop:", user);
+    // console.log("[UserProfileEdit] Syncing form with user prop:", user);
     setForm({
       name: user?.name || "",
       email: user?.email || "",
@@ -95,20 +95,20 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
 
   useEffect(() => {
     if (updateSuccess && !toastRef.current) {
-      console.log("[UserProfileEdit] Update successful");
+      // console.log("[UserProfileEdit] Update successful");
       toastRef.current = true;
       toast.success("Profile updated successfully!");
       dispatch(resetUpdateStatus());
       onClose?.();
     }
     if (updateError && !toastRef.current) {
-      console.log("[UserProfileEdit] Update error:", updateError);
+      // console.log("[UserProfileEdit] Update error:", updateError);
       toastRef.current = true;
       toast.error(`Error: ${updateError}`);
       dispatch(resetUpdateStatus());
     }
     return () => {
-      console.log("[UserProfileEdit] Cleaning up useEffect");
+      // console.log("[UserProfileEdit] Cleaning up useEffect");
       toastRef.current = false;
       dispatch(resetUpdateStatus());
     };
@@ -117,11 +117,11 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (name === "bio" && value.length > 200) {
-      console.log("[UserProfileEdit] Bio exceeds 200 characters:", value.length);
+      // console.log("[UserProfileEdit] Bio exceeds 200 characters:", value.length);
       toast.error("Bio cannot exceed 200 characters");
       return;
     }
-    console.log("[UserProfileEdit] Form change:", { name, value: type === "checkbox" ? checked : value });
+    // console.log("[UserProfileEdit] Form change:", { name, value: type === "checkbox" ? checked : value });
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -132,12 +132,12 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
     const { name, files } = e.target;
     const file = files[0];
     if (file && file.size > MAX_FILE_SIZE) {
-      console.log("[UserProfileEdit] File too large:", file.size);
+      // console.log("[UserProfileEdit] File too large:", file.size);
       toast.error("File size exceeds 2MB");
       return;
     }
     const compressedFile = await compressImage(file);
-    console.log("[UserProfileEdit] File selected:", { name, file: compressedFile || file });
+    // console.log("[UserProfileEdit] File selected:", { name, file: compressedFile || file });
     setForm((prev) => ({
       ...prev,
       [name]: compressedFile || file,
@@ -146,12 +146,12 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
 
   const handleSubmit = async () => {
     if (!form.name || !form.email) {
-      console.log("[UserProfileEdit] Missing required fields:", { name: form.name, email: form.email });
+      // console.log("[UserProfileEdit] Missing required fields:", { name: form.name, email: form.email });
       toast.error("Name and Email are required");
       return;
     }
 
-    console.log("[UserProfileEdit] Submitting form:", form);
+    // console.log("[UserProfileEdit] Submitting form:", form);
     const formData = new FormData();
     formData.append("name", form.name);
     formData.append("email", form.email);
@@ -176,7 +176,7 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
 
     try {
       await dispatch(updateUser(formData)).unwrap();
-      console.log("[UserProfileEdit] Update dispatched successfully");
+      // console.log("[UserProfileEdit] Update dispatched successfully");
     } catch (error) {
       console.error("[UserProfileEdit] Update failed:", error);
     }
@@ -384,7 +384,7 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
           </button>
           <button
             onClick={() => {
-              console.log("[UserProfileEdit] Cancel button clicked");
+              // console.log("[UserProfileEdit] Cancel button clicked");
               toast("Changes discarded", { icon: "ℹ️" });
               onClose?.();
             }}

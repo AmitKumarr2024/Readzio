@@ -22,30 +22,30 @@ const CommentManager = ({ userId }) => {
   const [editContent, setEditContent] = useState("");
 
   useEffect(() => {
-    console.log("CommentManager: Fetching comments for userId:", userId);
+    // console.log("CommentManager: Fetching comments for userId:", userId);
     // Fetch comments for all posts by the user
     const userPosts = posts.filter((post) => post.author._id === userId);
-    console.log("CommentManager: User posts:", userPosts);
+    // console.log("CommentManager: User posts:", userPosts);
     userPosts.forEach((post) => {
       dispatch(fetchComments(post._id));
     });
   }, [dispatch, userId, posts]);
 
-  useEffect(() => {
-    console.log("CommentManager: Comments state:", comments);
-  }, [comments]);
+  // useEffect(() => {
+    // console.log("CommentManager: Comments state:", comments);
+  // }, [comments]);
 
   const handleEdit = (comment) => {
-    console.log("CommentManager: Editing comment:", comment);
+    // console.log("CommentManager: Editing comment:", comment);
     setEditingComment(comment.id);
     setEditContent(comment.content);
   };
 
   const handleSaveEdit = (commentId) => {
-    console.log("CommentManager: Saving edited comment:", {
-      commentId,
-      editContent,
-    });
+    // console.log("CommentManager: Saving edited comment:", {
+    //   commentId,
+    //   editContent,
+    // });
     dispatch(editComment({ commentId, content: editContent }));
     setEditingComment(null);
     setEditContent("");
@@ -53,7 +53,7 @@ const CommentManager = ({ userId }) => {
 
   const handleDelete = (commentId) => {
     if (window.confirm("Delete this comment?")) {
-      console.log("CommentManager: Deleting comment:", commentId);
+      // console.log("CommentManager: Deleting comment:", commentId);
       dispatch(deleteComment(commentId));
     }
   };
@@ -62,19 +62,19 @@ const CommentManager = ({ userId }) => {
     if (
       window.confirm(blocked ? "Unblock this comment?" : "Block this comment?")
     ) {
-      console.log("CommentManager: Toggling block for comment:", {
-        commentId,
-        blocked,
-      });
+      // console.log("CommentManager: Toggling block for comment:", {
+      //   commentId,
+      //   blocked,
+      // });
       dispatch(blockComment(commentId));
     }
   };
 
   const renderComment = (comment, level = 0) => {
-    console.log("CommentManager: Rendering comment:", {
-      id: comment.id,
-      user: comment.user,
-    });
+    // console.log("CommentManager: Rendering comment:", {
+    //   id: comment.id,
+    //   user: comment.user,
+    // });
     return (
       <motion.div
         key={comment.id}

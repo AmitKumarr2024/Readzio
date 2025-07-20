@@ -17,8 +17,8 @@ function ToggleFollowButton({ followUserId, onFollowSuccess }) {
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const [isFollowing, setIsFollowing] = useState(false);
 
-  console.log("followUserId", followUserId);
-  console.log("user", user);
+  // console.log("followUserId", followUserId);
+  // console.log("user", user);
 
   useEffect(() => {
     if (!isAuthenticated || !user?._id || !followUserId) return;

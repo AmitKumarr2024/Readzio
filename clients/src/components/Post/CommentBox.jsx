@@ -5,7 +5,7 @@ import { addComment, fetchComments, optimisticAddComment, clearError } from '../
 import Comment from './Comment';
 
 export default function CommentBox({ postId, parentId = null, postAuthorId, onCommentAdded }) {
-  console.log('[CommentBox:Render] Rendering', { postId, parentId, postAuthorId });
+  // console.log('[CommentBox:Render] Rendering', { postId, parentId, postAuthorId });
   const dispatch = useDispatch();
   const { comments, loading, error, commentCounts } = useSelector((state) => state.comment || {});
   const { user } = useSelector((state) => state.auth || {});
@@ -15,7 +15,7 @@ export default function CommentBox({ postId, parentId = null, postAuthorId, onCo
 
   useEffect(() => {
     if (postId && !parentId) {
-      console.log('[CommentBox:useEffect] Dispatching fetchComments', { postId });
+      // console.log('[CommentBox:useEffect] Dispatching fetchComments', { postId });
       dispatch(fetchComments(postId));
     }
   }, [dispatch, postId, parentId]);
@@ -29,7 +29,7 @@ export default function CommentBox({ postId, parentId = null, postAuthorId, onCo
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('[CommentBox:handleSubmit] Submitting', { postId, parentId, content, userId: user?._id });
+    // console.log('[CommentBox:handleSubmit] Submitting', { postId, parentId, content, userId: user?._id });
     if (!content.trim()) {
       console.error('[CommentBox:handleSubmit] Empty comment');
       dispatch(clearError());
@@ -42,20 +42,20 @@ export default function CommentBox({ postId, parentId = null, postAuthorId, onCo
     }
     try {
       const tempId = `temp-${Date.now()}`;
-      console.log('[CommentBox:handleSubmit] Dispatching optimisticAddComment', { tempId });
+      // console.log('[CommentBox:handleSubmit] Dispatching optimisticAddComment', { tempId });
       dispatch(optimisticAddComment({ tempId, postId, content, parentId, user }));
       const result = await dispatch(addComment({ postId, content, parentId, tempId }));
-      console.log('[CommentBox:handleSubmit] Result:', { fulfilled: addComment.fulfilled.match(result) });
+      // console.log('[CommentBox:handleSubmit] Result:', { fulfilled: addComment.fulfilled.match(result) });
       if (addComment.fulfilled.match(result)) {
-        console.log('[CommentBox:handleSubmit] Success');
+        // console.log('[CommentBox:handleSubmit] Success');
         setContent('');
         dispatch(clearError());
         if (!parentId) {
-          console.log('[CommentBox:handleSubmit] Refreshing comments');
+          // console.log('[CommentBox:handleSubmit] Refreshing comments');
           dispatch(fetchComments(postId));
         }
         if (onCommentAdded) {
-          console.log('[CommentBox:handleSubmit] Calling onCommentAdded');
+          // console.log('[CommentBox:handleSubmit] Calling onCommentAdded');
           onCommentAdded();
         }
       } else {
@@ -90,7 +90,7 @@ export default function CommentBox({ postId, parentId = null, postAuthorId, onCo
           <textarea
             value={content}
             onChange={(e) => {
-              console.log('[CommentBox:TextChange] Updating', { newLength: e.target.value.length });
+              // console.log('[CommentBox:TextChange] Updating', { newLength: e.target.value.length });
               setContent(e.target.value);
               if (error) dispatch(clearError());
             }}
@@ -135,7 +135,7 @@ export default function CommentBox({ postId, parentId = null, postAuthorId, onCo
                   <button
                     key={index}
                     onClick={() => {
-                      console.log('[CommentBox:Pagination] Changing page', { page: index + 1 });
+                      // console.log('[CommentBox:Pagination] Changing page', { page: index + 1 });
                       setCurrentPage(index + 1);
                     }}
                     className={`px-3 py-1 text-sm rounded-full ${

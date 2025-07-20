@@ -115,15 +115,15 @@ const DisplayPost = () => {
     fetchData();
   }, [dispatch, slug, isAuthenticated]);
 
-  useEffect(() => {
-    if (activePost && Array.isArray(activePost.blocks)) {
-      console.log("[DisplayPost] Post data:", {
-        slug,
-        postId: activePost._id,
-        blocks: activePost.blocks.length,
-      });
-    }
-  }, [activePost, slug]);
+  // useEffect(() => {
+  //   if (activePost && Array.isArray(activePost.blocks)) {
+  //     console.log("[DisplayPost] Post data:", {
+  //       slug,
+  //       postId: activePost._id,
+  //       blocks: activePost.blocks.length,
+  //     });
+  //   }
+  // }, [activePost, slug]);
 
   useEffect(() => {
     if (!isAuthenticated || !activePost?._id || !activePost?.author?._id || hasFetchedStatus.current) return;

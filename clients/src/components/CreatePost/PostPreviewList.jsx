@@ -43,17 +43,17 @@ const PostPreviewList = ({
   const navigate = useNavigate();
   const { singlePost, singlePostStatus } = useSelector((state) => state.post);
 
-  useEffect(() => {
-    console.log("[DEBUG] PostPreviewList: Props received:", {
-      currentDraftPost,
-      postType,
-      category,
-      categoryName,
-      allPosts,
-      createLoading,
-      createError,
-    });
-  }, [currentDraftPost, postType, category, categoryName, allPosts, createLoading, createError]);
+  // useEffect(() => {
+  //   console.log("[DEBUG] PostPreviewList: Props received:", {
+  //     currentDraftPost,
+  //     postType,
+  //     category,
+  //     categoryName,
+  //     allPosts,
+  //     createLoading,
+  //     createError,
+  //   });
+  // }, [currentDraftPost, postType, category, categoryName, allPosts, createLoading, createError]);
 
   useEffect(() => {
     if (singlePost) setIsModalOpen(true);
@@ -103,7 +103,7 @@ const PostPreviewList = ({
       return;
     }
 
-    console.log("[DEBUG] createPost metadata:", { isFeatured, isPinned, isPublished, language, category, categoryName });
+    // console.log("[DEBUG] createPost metadata:", { isFeatured, isPinned, isPublished, language, category, categoryName });
     setShowConfirmModal(true);
   };
 
@@ -122,7 +122,7 @@ const PostPreviewList = ({
 
   const handleConfirmPublish = async () => {
     setIsPostConfirmed(false);
-    console.log("[DEBUG] Initiating post creation with data:", postData);
+    // console.log("[DEBUG] Initiating post creation with data:", postData);
     await onCreatePost(postData);
     setPostData(null);
     setCountdown(5);
@@ -146,7 +146,7 @@ const PostPreviewList = ({
   };
 
   const deleteBlock = (index) => {
-    console.log("[DEBUG] Deleting block at index:", index);
+    // console.log("[DEBUG] Deleting block at index:", index);
     if (!onUpdateDraft) {
       toast.error("No update function provided");
       return;
@@ -164,14 +164,14 @@ const PostPreviewList = ({
         return <div key={i} className="my-4 text-red-500 italic">Invalid block</div>;
       }
 
-      console.log(`[DEBUG] Rendering block ${i}:`, block);
+      // console.log(`[DEBUG] Rendering block ${i}:`, block);
 
       if (block.type === "table") {
-        console.log(`[DEBUG] Table block props before render:`, {
-          headers: block.headers || [],
-          rows: block.rows || [[]],
-          caption: block.caption || "",
-        });
+        // console.log(`[DEBUG] Table block props before render:`, {
+        //   headers: block.headers || [],
+        //   rows: block.rows || [[]],
+        //   caption: block.caption || "",
+        // });
         if (!block.headers?.length && !block.rows?.some((row) => row.length)) {
           console.warn(`[DEBUG] Empty table block at index ${i}:`, block);
           toast.error("Table block is empty. Using default data.");

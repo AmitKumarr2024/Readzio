@@ -180,10 +180,10 @@ const Postbox = ({
     );
 
     if (category) {
-      console.log("🔍 Filtering posts by slug:", category.toLowerCase());
+      // console.log("🔍 Filtering posts by slug:", category.toLowerCase());
 
       validPosts = validPosts.filter((post) => {
-        console.log("➡️ post.category value:", post.category);
+        // console.log("➡️ post.category value:", post.category);
         let postCategorySlug = "";
 
         if (typeof post.category === "object" && post.category?.slug) {

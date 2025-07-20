@@ -13,7 +13,7 @@ const ChangePassword = ({ email, otp, setStep, setError }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("[ChangePassword] Submitting new password:", { email });
+    // console.log("[ChangePassword] Submitting new password:", { email });
     if (newPassword !== confirmPassword) {
       setLocalError("Passwords do not match");
       toast.error("Passwords do not match");
@@ -32,7 +32,7 @@ const ChangePassword = ({ email, otp, setStep, setError }) => {
         otp,
         newPassword,
       });
-      console.log("[ChangePassword] Success:", { email });
+      // console.log("[ChangePassword] Success:", { email });
       setStep("success");
       toast.success("Password reset successfully!");
     } catch (err) {
@@ -64,7 +64,7 @@ const ChangePassword = ({ email, otp, setStep, setError }) => {
             required
             value={newPassword}
             onChange={(e) => {
-              console.log("[ChangePassword] New password input changed");
+              // console.log("[ChangePassword] New password input changed");
               setNewPassword(e.target.value);
             }}
             placeholder="New Password"
@@ -73,7 +73,7 @@ const ChangePassword = ({ email, otp, setStep, setError }) => {
           <button
             type="button"
             onClick={() => {
-              console.log("[ChangePassword] Toggling new password visibility:", { showNewPassword: !showNewPassword });
+              // console.log("[ChangePassword] Toggling new password visibility:", { showNewPassword: !showNewPassword });
               setShowNewPassword(!showNewPassword);
             }}
             className="absolute top-3 right-3 text-gray-500 hover:text-indigo-600 transition-colors duration-200"
@@ -89,7 +89,7 @@ const ChangePassword = ({ email, otp, setStep, setError }) => {
             required
             value={confirmPassword}
             onChange={(e) => {
-              console.log("[ChangePassword] Confirm password input changed");
+              // console.log("[ChangePassword] Confirm password input changed");
               setConfirmPassword(e.target.value);
             }}
             placeholder="Confirm Password"
@@ -98,7 +98,7 @@ const ChangePassword = ({ email, otp, setStep, setError }) => {
           <button
             type="button"
             onClick={() => {
-              console.log("[ChangePassword] Toggling confirm password visibility:", { showConfirmPassword: !showConfirmPassword });
+              // console.log("[ChangePassword] Toggling confirm password visibility:", { showConfirmPassword: !showConfirmPassword });
               setShowConfirmPassword(!showConfirmPassword);
             }}
             className="absolute top-3 right-3 text-gray-500 hover:text-indigo-600 transition-colors duration-200"

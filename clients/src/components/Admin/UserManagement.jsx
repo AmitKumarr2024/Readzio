@@ -22,18 +22,18 @@ const UserManagement = () => {
   const [sortOrder, setSortOrder] = useState('asc');
 
   useEffect(() => {
-    console.log('[useEffect] Fetching users with params:', { page, limit: 10, search: searchQuery, sortField, sortOrder });
+    // console.log('[useEffect] Fetching users with params:', { page, limit: 10, search: searchQuery, sortField, sortOrder });
     dispatch(getAllUsers({ page, limit: 10, search: searchQuery, sortField, sortOrder }));
   }, [dispatch, page, searchQuery, sortField, sortOrder]);
 
   const handleToggleBlock = async (userId) => {
-    console.log("[handleToggleBlock] Toggling block for userId:", userId);
+    // console.log("[handleToggleBlock] Toggling block for userId:", userId);
     try {
       const result = await dispatch(toggleBlockUser(userId)).unwrap();
       toast.success(`User ${result.blocked ? "blocked" : "unblocked"} successfully`);
-      console.log("[handleToggleBlock] ✅ Toggle successful:", result);
+      // console.log("[handleToggleBlock] ✅ Toggle successful:", result);
       await dispatch(getAllUsers({ page, limit: 10, search: searchQuery, sortField, sortOrder }));
-      console.log("[handleToggleBlock] 🔄 Refetched user list after toggle");
+      // console.log("[handleToggleBlock] 🔄 Refetched user list after toggle");
     } catch (err) {
       console.error("[handleToggleBlock] ❌ Error toggling user:", err);
       toast.error("Toggle failed: " + err.message);
@@ -41,24 +41,24 @@ const UserManagement = () => {
   };
 
   const handleToggleRole = (userId) => {
-    console.log('[handleToggleRole] Toggling role for userId:', userId);
+    // console.log('[handleToggleRole] Toggling role for userId:', userId);
     dispatch(toggleUserRole(userId));
   };
 
   const handleDelete = (userId) => {
-    console.log('[handleDelete] Attempt to delete userId:', userId);
+    // console.log('[handleDelete] Attempt to delete userId:', userId);
     if (window.confirm('Are you sure you want to delete this user?')) {
       dispatch(deleteUser(userId));
     }
   };
 
   const handlePageChange = (newPage) => {
-    console.log('[handlePageChange] New page:', newPage);
+    // console.log('[handlePageChange] New page:', newPage);
     setPage(newPage);
   };
 
   const handleSort = (field) => {
-    console.log('[handleSort] Sorting by:', field);
+    // console.log('[handleSort] Sorting by:', field);
     setSortField(field);
     setSortOrder(sortField === field && sortOrder === 'asc' ? 'desc' : 'asc');
   };
@@ -67,11 +67,11 @@ const UserManagement = () => {
     const match =
       user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase());
-    console.log(`[filter] User ${user._id} match:`, match);
+    // console.log(`[filter] User ${user._id} match:`, match);
     return match;
   });
 
-  console.log('[render] Filtered users:', filteredUsers);
+  // console.log('[render] Filtered users:', filteredUsers);
 
   return (
     <div className="p-6 bg-background-light dark:bg-background-dark rounded-2xl shadow-lg">
@@ -84,7 +84,7 @@ const UserManagement = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => {
-              console.log('[search] Query changed to:', e.target.value);
+              // console.log('[search] Query changed to:', e.target.value);
               setSearchQuery(e.target.value);
             }}
             placeholder="Search users..."
@@ -114,7 +114,7 @@ const UserManagement = () => {
           <span>{error}</span>
           <button
             onClick={() => {
-              console.log('[clearError] Clearing error');
+              // console.log('[clearError] Clearing error');
               dispatch(clearError());
             }}
             className="text-red-900 dark:text-red-400 font-semibold hover:text-red-700 dark:hover:text-red-300 transition"

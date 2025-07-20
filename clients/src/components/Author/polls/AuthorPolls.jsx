@@ -15,11 +15,11 @@ function AuthorPolls({ authorId }) {
 
   useEffect(() => {
     if (!posts.length) {
-      console.log("[AuthorPolls] Fetching posts for authorId:", authorId);
+      // console.log("[AuthorPolls] Fetching posts for authorId:", authorId);
       dispatch(getAllPosts({ userId: authorId }))
         .unwrap()
         .then(() => {
-          console.log("[AuthorPolls] Posts fetched:", posts);
+          // console.log("[AuthorPolls] Posts fetched:", posts);
         })
         .catch((err) => {
           console.error("[AuthorPolls] Fetch error:", err);
@@ -28,7 +28,7 @@ function AuthorPolls({ authorId }) {
   }, [dispatch, posts.length, authorId]);
 
   const polls = useMemo(() => {
-    console.log("[AuthorPolls] Filtering posts for authorId:", authorId, "posts:", posts);
+    // console.log("[AuthorPolls] Filtering posts for authorId:", authorId, "posts:", posts);
     return posts
       .filter(
         (post) =>

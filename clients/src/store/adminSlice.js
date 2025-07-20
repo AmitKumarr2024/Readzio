@@ -274,7 +274,7 @@ export const reviewReport = createAsyncThunk(
         { forwardToAuthor },
         { withCredentials: true }
       );
-      console.log("[reviewReport] response", response);
+      // console.log("[reviewReport] response", response);
 
       return { reportId, forwardToAuthor, isReviewed: true };
     } catch (error) {
@@ -328,13 +328,13 @@ export const getAllUsersEarnings = createAsyncThunk(
   "admin/getAllUsersEarnings",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("[adminSlice:getAllUsersEarnings] 🚀 Fetching earnings");
+      // console.log("[adminSlice:getAllUsersEarnings] 🚀 Fetching earnings");
       const response = await axiosInstance.get("/earning/admin/earnings", {
         withCredentials: true,
       });
-      console.log("[adminSlice:getAllUsersEarnings] ✅ Success:", {
-        dataLength: response.data?.length,
-      });
+      // console.log("[adminSlice:getAllUsersEarnings] ✅ Success:", {
+      //   dataLength: response.data?.length,
+      // });
       return response.data || [];
     } catch (error) {
       console.error(
@@ -353,15 +353,15 @@ export const processBulkPayouts = createAsyncThunk(
   "admin/processBulkPayouts",
   async ({ users }, { rejectWithValue }) => {
     try {
-      console.log("[adminSlice:processBulkPayouts] 🚀 Processing payouts:", {
-        users,
-      });
+      // console.log("[adminSlice:processBulkPayouts] 🚀 Processing payouts:", {
+      //   users,
+      // });
       const response = await axiosInstance.post(
         "/earning/admin/payouts",
         { users },
         { withCredentials: true }
       );
-      console.log("[adminSlice:processBulkPayouts] ✅ Success:", response.data);
+      // console.log("[adminSlice:processBulkPayouts] ✅ Success:", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -380,12 +380,12 @@ export const fetchSiteAnalytics = createAsyncThunk(
   "admin/fetchSiteAnalytics",
   async ({ startDate, endDate }, { rejectWithValue }) => {
     try {
-      console.log("[adminSlice:fetchSiteAnalytics] ⏳ Pending");
+      // console.log("[adminSlice:fetchSiteAnalytics] ⏳ Pending");
       const response = await axiosInstance.get(
         `/admin/analytics?startDate=${startDate}&endDate=${endDate}`,
         { withCredentials: true }
       );
-      console.log("[adminSlice:fetchSiteAnalytics] ✅ Success:", response.data);
+      // console.log("[adminSlice:fetchSiteAnalytics] ✅ Success:", response.data);
       return response.data.data;
     } catch (error) {
       console.error(
@@ -409,17 +409,17 @@ export const checkEmailStatus = createAsyncThunk(
   "admin/checkEmailStatus",
   async ({ email, type }, { rejectWithValue }) => {
     try {
-      console.log("[adminSlice:checkEmailStatus] 🚀 Fetching email status:", {
-        email,
-        type,
-      });
+      // console.log("[adminSlice:checkEmailStatus] 🚀 Fetching email status:", {
+      //   email,
+      //   type,
+      // });
       const response = await axiosInstance.get(
         `/admin/email-status?email=${encodeURIComponent(
           email
         )}&type=${encodeURIComponent(type)}`,
         { withCredentials: true }
       );
-      console.log("[adminSlice:checkEmailStatus] ✅ Success:", response.data);
+      // console.log("[adminSlice:checkEmailStatus] ✅ Success:", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -438,10 +438,10 @@ export const getAllEmailStatuses = createAsyncThunk(
   "admin/getAllEmailStatuses",
   async ({ page = 1, limit = 10, type }, { rejectWithValue }) => {
     try {
-      console.log(
-        "[adminSlice:getAllEmailStatuses] 🚀 Fetching all email statuses:",
-        { page, limit, type }
-      );
+      // console.log(
+      //   "[adminSlice:getAllEmailStatuses] 🚀 Fetching all email statuses:",
+      //   { page, limit, type }
+      // );
       const query = type
         ? `page=${page}&limit=${limit}&type=${encodeURIComponent(type)}`
         : `page=${page}&limit=${limit}`;
@@ -449,10 +449,10 @@ export const getAllEmailStatuses = createAsyncThunk(
         `/admin/all-email-statuses?${query}`,
         { withCredentials: true }
       );
-      console.log("[adminSlice:getAllEmailStatuses] ✅ Success:", {
-        logsLength: response.data.logs.length,
-        total: response.data.total,
-      });
+      // console.log("[adminSlice:getAllEmailStatuses] ✅ Success:", {
+      //   logsLength: response.data.logs.length,
+      //   total: response.data.total,
+      // });
       return {
         emailStatuses: response.data.logs,
         totalEmails: response.data.total,
@@ -476,15 +476,15 @@ export const retryFailedEmails = createAsyncThunk(
   "admin/retryFailedEmails",
   async ({ type }, { rejectWithValue }) => {
     try {
-      console.log("[adminSlice:retryFailedEmails] 🚀 Retrying failed emails:", {
-        type,
-      });
+      // console.log("[adminSlice:retryFailedEmails] 🚀 Retrying failed emails:", {
+      //   type,
+      // });
       const response = await axiosInstance.post(
         "/admin/retry-failed-emails",
         { type },
         { withCredentials: true }
       );
-      console.log("[adminSlice:retryFailedEmails] ✅ Success:", response.data);
+      // console.log("[adminSlice:retryFailedEmails] ✅ Success:", response.data);
       return response.data.results;
     } catch (error) {
       console.error(
@@ -540,10 +540,10 @@ export const getDailyPostEmailReport = createAsyncThunk(
   "admin/getDailyPostEmailReport",
   async ({ page = 1, limit = 10, date }, { rejectWithValue }) => {
     try {
-      console.log(
-        "[adminSlice:getDailyPostEmailReport] 🚀 Fetching daily post email report:",
-        { page, limit, date }
-      );
+      // console.log(
+      //   "[adminSlice:getDailyPostEmailReport] 🚀 Fetching daily post email report:",
+      //   { page, limit, date }
+      // );
       const query = date
         ? `page=${page}&limit=${limit}&date=${encodeURIComponent(date)}`
         : `page=${page}&limit=${limit}`;
@@ -551,10 +551,10 @@ export const getDailyPostEmailReport = createAsyncThunk(
         `/dailyMail/daily-post-report?${query}`,
         { withCredentials: true }
       );
-      console.log("[adminSlice:getDailyPostEmailReport] ✅ Success:", {
-        logsLength: response.data.logs.length,
-        total: response.data.total,
-      });
+      // console.log("[adminSlice:getDailyPostEmailReport] ✅ Success:", {
+      //   logsLength: response.data.logs.length,
+      //   total: response.data.total,
+      // });
       return {
         emailReports: response.data.logs,
         totalEmails: response.data.total,
@@ -696,15 +696,15 @@ export const getAllSubscriptionPlans = createAsyncThunk(
   "admin/getAllSubscriptionPlans",
   async (_, { rejectWithValue }) => {
     try {
-      console.log(
-        "[adminSlice:getAllSubscriptionPlans] 🚀 Fetching subscription plans"
-      );
+      // console.log(
+      //   "[adminSlice:getAllSubscriptionPlans] 🚀 Fetching subscription plans"
+      // );
       const response = await axiosInstance.get("/admin/subscriptions/plans", {
         withCredentials: true,
       });
-      console.log("[adminSlice:getAllSubscriptionPlans] ✅ Success:", {
-        count: response.data.count,
-      });
+      // console.log("[adminSlice:getAllSubscriptionPlans] ✅ Success:", {
+      //   count: response.data.count,
+      // });
       return response.data;
     } catch (error) {
       console.error(
@@ -723,19 +723,19 @@ export const toggleUserEligibility = createAsyncThunk(
   "admin/toggleUserEligibility",
   async ({ userId, enable }, { rejectWithValue }) => {
     try {
-      console.log(
-        "[adminSlice:toggleUserEligibility] 🚀 Toggling eligibility:",
-        { userId, enable }
-      );
+      // console.log(
+      //   "[adminSlice:toggleUserEligibility] 🚀 Toggling eligibility:",
+      //   { userId, enable }
+      // );
       const response = await axiosInstance.post(
         "/admin/subscriptions/eligibility/toggle",
         { userId, enable },
         { withCredentials: true }
       );
-      console.log(
-        "[adminSlice:toggleUserEligibility] ✅ Success:",
-        response.data
-      );
+      // console.log(
+      //   "[adminSlice:toggleUserEligibility] ✅ Success:",
+      //   response.data
+      // );
       return response.data;
     } catch (error) {
       console.error(
@@ -757,24 +757,24 @@ export const updateGlobalEligibilityCriteria = createAsyncThunk(
     { rejectWithValue, dispatch }
   ) => {
     try {
-      console.log(
-        "[adminSlice:updateGlobalEligibilityCriteria] 🚀 Updating criteria:",
-        {
-          minFollowers,
-          minPosts,
-          minEngagementRate,
-          minAccountAgeDays,
-        }
-      );
+      // console.log(
+      //   "[adminSlice:updateGlobalEligibilityCriteria] 🚀 Updating criteria:",
+      //   {
+      //     minFollowers,
+      //     minPosts,
+      //     minEngagementRate,
+      //     minAccountAgeDays,
+      //   }
+      // );
       const response = await axiosInstance.patch(
         "/admin/subscriptions/criteria",
         { minFollowers, minPosts, minEngagementRate, minAccountAgeDays },
         { withCredentials: true }
       );
-      console.log(
-        "[adminSlice:updateGlobalEligibilityCriteria] ✅ Success:",
-        response.data
-      );
+      // console.log(
+      //   "[adminSlice:updateGlobalEligibilityCriteria] ✅ Success:",
+      //   response.data
+      // );
       // Dispatch sync action to subscriptionSlice
       dispatch({
         type: "subscription/syncSubscriptionCriteria",
@@ -809,18 +809,18 @@ export const checkUserEligibility = createAsyncThunk(
   "admin/checkUserEligibility",
   async (userId, { rejectWithValue }) => {
     try {
-      console.log(
-        "[adminSlice:checkUserEligibility] 🚀 Checking eligibility:",
-        { userId }
-      );
+      // console.log(
+      //   "[adminSlice:checkUserEligibility] 🚀 Checking eligibility:",
+      //   { userId }
+      // );
       const response = await axiosInstance.get(
         `/admin/subscriptions/eligibility/${userId}`,
         { withCredentials: true }
       );
-      console.log(
-        "[adminSlice:checkUserEligibility] ✅ Success:",
-        response.data
-      );
+      // console.log(
+      //   "[adminSlice:checkUserEligibility] ✅ Success:",
+      //   response.data
+      // );
       return {
         ...response.data,
         criteria: response.data.criteria || {
@@ -885,19 +885,19 @@ export const grantSubscriptionAccess = createAsyncThunk(
   "admin/grantSubscriptionAccess",
   async ({ userId, grant }, { rejectWithValue }) => {
     try {
-      console.log("[adminSlice:grantSubscriptionAccess] 🚀 Granting access:", {
-        userId,
-        grant,
-      });
+      // console.log("[adminSlice:grantSubscriptionAccess] 🚀 Granting access:", {
+      //   userId,
+      //   grant,
+      // });
       const response = await axiosInstance.post(
         "/admin/subscriptions/grant",
         { userId, grant },
         { withCredentials: true }
       );
-      console.log(
-        "[adminSlice:grantSubscriptionAccess] ✅ Success:",
-        response.data
-      );
+      // console.log(
+      //   "[adminSlice:grantSubscriptionAccess] ✅ Success:",
+      //   response.data
+      // );
       return response.data;
     } catch (error) {
       console.error(
@@ -998,16 +998,16 @@ const adminSlice = createSlice({
   },
   reducers: {
     clearNotificationStatus: (state) => {
-      console.log(
-        "[adminSlice:clearNotificationStatus] 🗑️ Clearing notification status"
-      );
+      // console.log(
+      //   "[adminSlice:clearNotificationStatus] 🗑️ Clearing notification status"
+      // );
       state.notificationStatus = null;
     },
     socketNewContactMessage: (state, action) => {
-      console.log(
-        "[adminSlice:socketNewContactMessage] 📬 New contact message:",
-        action.payload
-      );
+      // console.log(
+      //   "[adminSlice:socketNewContactMessage] 📬 New contact message:",
+      //   action.payload
+      // );
       const newMessage = action.payload;
       state.contactMessages = [newMessage, ...state.contactMessages].slice(
         0,
@@ -1017,20 +1017,20 @@ const adminSlice = createSlice({
       state.totalPagesMessages = Math.ceil(state.totalMessages / 10);
     },
     socketNewReport: (state, action) => {
-      console.log(
-        "[adminSlice:socketNewReport] 🚨 New report:",
-        action.payload
-      );
+      // console.log(
+      //   "[adminSlice:socketNewReport] 🚨 New report:",
+      //   action.payload
+      // );
       const newReport = action.payload;
       state.reports = [newReport, ...state.reports].slice(0, 10);
       state.totalReports += 1;
       state.totalPagesReports = Math.ceil(state.totalReports / 10);
     },
     socketReportReviewed: (state, action) => {
-      console.log(
-        "[adminSlice:socketReportReviewed] ✅ Report reviewed:",
-        action.payload
-      );
+      // console.log(
+      //   "[adminSlice:socketReportReviewed] ✅ Report reviewed:",
+      //   action.payload
+      // );
       const { reportId, forwardToAuthor } = action.payload;
       state.reports = state.reports.map((report) =>
         report._id === reportId
@@ -1039,37 +1039,37 @@ const adminSlice = createSlice({
       );
     },
     socketReportAcknowledged: (state, action) => {
-      console.log(
-        "[adminSlice:socketReportAcknowledged] ✅ Report acknowledged:",
-        action.payload
-      );
+      // console.log(
+      //   "[adminSlice:socketReportAcknowledged] ✅ Report acknowledged:",
+      //   action.payload
+      // );
       const { reportId } = action.payload;
       state.reports = state.reports.map((report) =>
         report._id === reportId ? { ...report, isAcknowledged: true } : report
       );
     },
     socketContactMessageReplied: (state, action) => {
-      console.log(
-        "[adminSlice:socketContactMessageReplied] ✅ Message replied:",
-        action.payload
-      );
+      // console.log(
+      //   "[adminSlice:socketContactMessageReplied] ✅ Message replied:",
+      //   action.payload
+      // );
       const { messageId } = action.payload;
       state.contactMessages = state.contactMessages.map((msg) =>
         msg._id === messageId ? { ...msg, isHandled: true } : msg
       );
     },
     setNotificationStatus: (state, action) => {
-      console.log(
-        "[adminSlice:setNotificationStatus] 📢 Setting notification status:",
-        action.payload
-      );
+      // console.log(
+      //   "[adminSlice:setNotificationStatus] 📢 Setting notification status:",
+      //   action.payload
+      // );
       state.notificationStatus = action.payload;
     },
     setEmailError: (state, action) => {
-      console.log(
-        "[adminSlice:setEmailError] 🔥 Setting email error:",
-        action.payload
-      );
+      // console.log(
+      //   "[adminSlice:setEmailError] 🔥 Setting email error:",
+      //   action.payload
+      // );
       state.emailError = action.payload;
     },
     updatePostBlockStatus: (state, action) => {
@@ -1087,22 +1087,22 @@ const adminSlice = createSlice({
       }
     },
     logSubscriptionCriteria: (state) => {
-      console.log(
-        "[adminSlice:logSubscriptionCriteria] 📋 Current subscriptionCriteria state:",
-        state.subscriptionCriteria
-      );
+      // console.log(
+      //   "[adminSlice:logSubscriptionCriteria] 📋 Current subscriptionCriteria state:",
+      //   state.subscriptionCriteria
+      // );
     },
   },
   extraReducers: (builder) => {
     builder
       // getAllUsers
       .addCase(getAllUsers.pending, (state) => {
-        console.log("[adminSlice:getAllUsers] ⏳ Pending");
+        // console.log("[adminSlice:getAllUsers] ⏳ Pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(getAllUsers.fulfilled, (state, action) => {
-        console.log("[adminSlice:getAllUsers] ✅ Fulfilled:", action.payload);
+        // console.log("[adminSlice:getAllUsers] ✅ Fulfilled:", action.payload);
         const { users, totalUsers, currentPage, totalPages, mode } =
           action.payload;
         if (mode === "full") {
@@ -1116,7 +1116,7 @@ const adminSlice = createSlice({
         state.loading = false;
       })
       .addCase(getAllUsers.rejected, (state, action) => {
-        console.log("[adminSlice:getAllUsers] 🔥 Rejected:", action.payload);
+        // console.log("[adminSlice:getAllUsers] 🔥 Rejected:", action.payload);
         state.loading = false;
         state.error = action.payload;
       })
@@ -1313,73 +1313,73 @@ const adminSlice = createSlice({
       })
       // getAllUsersEarnings
       .addCase(getAllUsersEarnings.pending, (state) => {
-        console.log("[adminSlice:getAllUsersEarnings] ⏳ Pending");
+        // console.log("[adminSlice:getAllUsersEarnings] ⏳ Pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(getAllUsersEarnings.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:getAllUsersEarnings] ✅ Fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:getAllUsersEarnings] ✅ Fulfilled:",
+        //   action.payload
+        // );
         state.loading = false;
         state.userEarnings = action.payload || [];
       })
       .addCase(getAllUsersEarnings.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:getAllUsersEarnings] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:getAllUsersEarnings] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.loading = false;
         state.error = action.payload;
       })
       // processBulkPayouts
       .addCase(processBulkPayouts.pending, (state) => {
-        console.log("[adminSlice:processBulkPayouts] ⏳ Pending");
+        // console.log("[adminSlice:processBulkPayouts] ⏳ Pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(processBulkPayouts.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:processBulkPayouts] ✅ Fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:processBulkPayouts] ✅ Fulfilled:",
+        //   action.payload
+        // );
         state.loading = false;
         state.notificationStatus = "Bulk payouts processed successfully";
       })
       .addCase(processBulkPayouts.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:processBulkPayouts] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:processBulkPayouts] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.loading = false;
         state.error = action.payload;
       })
       // fetchSiteAnalytics
       .addCase(fetchSiteAnalytics.pending, (state) => {
-        console.log("[adminSlice:fetchSiteAnalytics] ⏳ Pending");
+        // console.log("[adminSlice:fetchSiteAnalytics] ⏳ Pending");
         state.analyticsLoading = true;
         state.analyticsError = null;
       })
       .addCase(fetchSiteAnalytics.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:fetchSiteAnalytics] ✅ Fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:fetchSiteAnalytics] ✅ Fulfilled:",
+        //   action.payload
+        // );
         state.analyticsLoading = false;
         state.analytics = action.payload;
       })
       .addCase(fetchSiteAnalytics.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:fetchSiteAnalytics] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:fetchSiteAnalytics] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.analyticsLoading = false;
         state.analyticsError = action.payload;
       })
       // clearError
       .addCase(clearError.fulfilled, (state) => {
-        console.log("[adminSlice:clearError] ✅ Fulfilled");
+        // console.log("[adminSlice:clearError] ✅ Fulfilled");
         state.error = null;
         state.analyticsError = null;
         state.emailError = null;
@@ -1387,37 +1387,37 @@ const adminSlice = createSlice({
       })
       // checkEmailStatus
       .addCase(checkEmailStatus.pending, (state) => {
-        console.log("[adminSlice:checkEmailStatus] ⏳ Pending");
+        // console.log("[adminSlice:checkEmailStatus] ⏳ Pending");
         state.emailLoading = true;
         state.emailError = null;
       })
       .addCase(checkEmailStatus.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:checkEmailStatus] ✅ Fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:checkEmailStatus] ✅ Fulfilled:",
+        //   action.payload
+        // );
         state.emailLoading = false;
         state.currentEmailStatus = action.payload;
       })
       .addCase(checkEmailStatus.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:checkEmailStatus] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:checkEmailStatus] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.emailLoading = false;
         state.emailError = action.payload;
       })
       // getAllEmailStatuses
       .addCase(getAllEmailStatuses.pending, (state) => {
-        console.log("[adminSlice:getAllEmailStatuses] ⏳ Pending");
+        // console.log("[adminSlice:getAllEmailStatuses] ⏳ Pending");
         state.emailLoading = true;
         state.emailError = null;
       })
       .addCase(getAllEmailStatuses.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:getAllEmailStatuses] ✅ Fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:getAllEmailStatuses] ✅ Fulfilled:",
+        //   action.payload
+        // );
         state.emailLoading = false;
         state.emailStatuses = action.payload.emailStatuses;
         state.totalEmails = action.payload.totalEmails;
@@ -1425,24 +1425,24 @@ const adminSlice = createSlice({
         state.totalPagesEmails = action.payload.totalPages;
       })
       .addCase(getAllEmailStatuses.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:getAllEmailStatuses] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:getAllEmailStatuses] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.emailLoading = false;
         state.emailError = action.payload;
       })
       // retryFailedEmails
       .addCase(retryFailedEmails.pending, (state) => {
-        console.log("[adminSlice:retryFailedEmails] ⏳ Pending");
+        // console.log("[adminSlice:retryFailedEmails] ⏳ Pending");
         state.emailLoading = true;
         state.emailError = null;
       })
       .addCase(retryFailedEmails.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:retryFailedEmails] ✅ Fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:retryFailedEmails] ✅ Fulfilled:",
+        //   action.payload
+        // );
         state.emailLoading = false;
         state.notificationStatus = "Failed emails retried successfully";
         state.emailStatuses = state.emailStatuses.map((status) => {
@@ -1456,10 +1456,10 @@ const adminSlice = createSlice({
         });
       })
       .addCase(retryFailedEmails.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:retryFailedEmails] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:retryFailedEmails] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.emailLoading = false;
         state.emailError = action.payload;
       })
@@ -1491,15 +1491,15 @@ const adminSlice = createSlice({
       })
       // getDailyPostEmailReport
       .addCase(getDailyPostEmailReport.pending, (state) => {
-        console.log("[adminSlice:getDailyPostEmailReport] ⏳ Pending");
+        // console.log("[adminSlice:getDailyPostEmailReport] ⏳ Pending");
         state.emailLoading = true;
         state.emailError = null;
       })
       .addCase(getDailyPostEmailReport.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:getDailyPostEmailReport] ✅ Fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:getDailyPostEmailReport] ✅ Fulfilled:",
+        //   action.payload
+        // );
         state.emailLoading = false;
         state.emailReports = action.payload.emailReports;
         state.totalEmailReports = action.payload.totalEmails;
@@ -1507,10 +1507,10 @@ const adminSlice = createSlice({
         state.totalPagesEmailReports = action.payload.totalPages;
       })
       .addCase(getDailyPostEmailReport.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:getDailyPostEmailReport] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:getDailyPostEmailReport] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.emailLoading = false;
         state.emailError = action.payload;
       })
@@ -1579,16 +1579,16 @@ const adminSlice = createSlice({
       })
       // getAllSubscriptionPlans
       .addCase(getAllSubscriptionPlans.pending, (state) => {
-        console.log("[adminSlice:getAllSubscriptionPlans] ⏳ Pending");
+        // console.log("[adminSlice:getAllSubscriptionPlans] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       // In adminSlice.js, update the getAllSubscriptionPlans case
       .addCase(getAllSubscriptionPlans.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:getAllSubscriptionPlans] ✅ Fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:getAllSubscriptionPlans] ✅ Fulfilled:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.plans =
           action.payload.currentPage === 1
@@ -1601,24 +1601,24 @@ const adminSlice = createSlice({
           action.payload.currentPage < action.payload.totalPages;
       })
       .addCase(getAllSubscriptionPlans.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:getAllSubscriptionPlans] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:getAllSubscriptionPlans] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
       })
       // toggleUserEligibility
       .addCase(toggleUserEligibility.pending, (state) => {
-        console.log("[adminSlice:toggleUserEligibility] ⏳ Pending");
+        // console.log("[adminSlice:toggleUserEligibility] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       .addCase(toggleUserEligibility.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:toggleUserEligibility] ✅ Fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:toggleUserEligibility] ✅ Fulfilled:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.users = state.users.map((user) =>
           user._id === action.payload.user.id
@@ -1632,47 +1632,47 @@ const adminSlice = createSlice({
         state.notificationStatus = action.payload.message;
       })
       .addCase(toggleUserEligibility.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:toggleUserEligibility] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:toggleUserEligibility] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
       })
       // updateGlobalEligibilityCriteria
       .addCase(updateGlobalEligibilityCriteria.pending, (state) => {
-        console.log("[adminSlice:updateGlobalEligibilityCriteria] ⏳ Pending");
+        // console.log("[adminSlice:updateGlobalEligibilityCriteria] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       .addCase(updateGlobalEligibilityCriteria.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:updateGlobalEligibilityCriteria] ✅ Fulfilled, updating state with:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:updateGlobalEligibilityCriteria] ✅ Fulfilled, updating state with:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.subscriptionCriteria = action.payload;
         state.notificationStatus = "Eligibility criteria updated successfully";
       })
       .addCase(updateGlobalEligibilityCriteria.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:updateGlobalEligibilityCriteria] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:updateGlobalEligibilityCriteria] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
       })
       // checkUserEligibility
       .addCase(checkUserEligibility.pending, (state) => {
-        console.log("[adminSlice:checkUserEligibility] ⏳ Pending");
+        // console.log("[adminSlice:checkUserEligibility] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       .addCase(checkUserEligibility.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:checkUserEligibility] ✅ Fulfilled, updating userEligibility with:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:checkUserEligibility] ✅ Fulfilled, updating userEligibility with:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.userEligibility = action.payload;
         state.subscriptionCriteria = action.payload.criteria || {
@@ -1690,10 +1690,10 @@ const adminSlice = createSlice({
           : null;
       })
       .addCase(checkUserEligibility.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:checkUserEligibility] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:checkUserEligibility] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.subscriptionError =
           action.payload.message || "Failed to check user eligibility";
@@ -1710,15 +1710,15 @@ const adminSlice = createSlice({
       })
       // toggleSubscriptionPlanStatus
       .addCase(toggleSubscriptionPlanStatus.pending, (state) => {
-        console.log("[adminSlice:toggleSubscriptionPlanStatus] ⏳ Pending");
+        // console.log("[adminSlice:toggleSubscriptionPlanStatus] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       .addCase(toggleSubscriptionPlanStatus.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:toggleSubscriptionPlanStatus] ✅ Fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:toggleSubscriptionPlanStatus] ✅ Fulfilled:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.plans = state.plans.map((plan) =>
           plan.id === action.payload.id
@@ -1728,24 +1728,24 @@ const adminSlice = createSlice({
         state.notificationStatus = `Plan ${action.payload.status} successfully`;
       })
       .addCase(toggleSubscriptionPlanStatus.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:toggleSubscriptionPlanStatus] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:toggleSubscriptionPlanStatus] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
       })
       // grantSubscriptionAccess
       .addCase(grantSubscriptionAccess.pending, (state) => {
-        console.log("[adminSlice:grantSubscriptionAccess] ⏳ Pending");
+        // console.log("[adminSlice:grantSubscriptionAccess] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       .addCase(grantSubscriptionAccess.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:grantSubscriptionAccess] ✅ Fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:grantSubscriptionAccess] ✅ Fulfilled:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.users = state.users.map((user) =>
           user._id === action.payload.user.id
@@ -1759,24 +1759,24 @@ const adminSlice = createSlice({
         state.notificationStatus = action.payload.message;
       })
       .addCase(grantSubscriptionAccess.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:grantSubscriptionAccess] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:grantSubscriptionAccess] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
       })
       // setUserEligibilityOverride
       .addCase(setUserEligibilityOverride.pending, (state) => {
-        console.log("[adminSlice:setUserEligibilityOverride] ⏳ Pending");
+        // console.log("[adminSlice:setUserEligibilityOverride] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       .addCase(setUserEligibilityOverride.fulfilled, (state, action) => {
-        console.log(
-          "[adminSlice:setUserEligibilityOverride] ✅ Fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:setUserEligibilityOverride] ✅ Fulfilled:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.users = state.users.map((user) =>
           user._id === action.payload.userId
@@ -1793,10 +1793,10 @@ const adminSlice = createSlice({
           "User eligibility override updated successfully";
       })
       .addCase(setUserEligibilityOverride.rejected, (state, action) => {
-        console.log(
-          "[adminSlice:setUserEligibilityOverride] 🔥 Rejected:",
-          action.payload
-        );
+        // console.log(
+        //   "[adminSlice:setUserEligibilityOverride] 🔥 Rejected:",
+        //   action.payload
+        // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
       });

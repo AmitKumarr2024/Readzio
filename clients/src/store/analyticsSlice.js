@@ -5,9 +5,9 @@ export const fetchPostAnalytics = createAsyncThunk(
   "analytics/fetchPostAnalytics",
   async (postId, { rejectWithValue }) => {
     try {
-      console.log("Fetching post stats for postId:", postId);
+      // console.log("Fetching post stats for postId:", postId);
       const response = await axiosInstance.get(`/post/analytics/post/${postId}`);
-      console.log("API response for post stats:", response.data);
+      // console.log("API response for post stats:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error fetching post stats:", error);
@@ -20,9 +20,9 @@ export const fetchUserEngagementStats = createAsyncThunk(
   "analytics/fetchUserEngagementStats",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("Fetching user engagement stats");
+      // console.log("Fetching user engagement stats");
       const response = await axiosInstance.get("/post/analytics/user-engagement");
-      console.log("API response for user engagement stats:", response.data);
+      // console.log("API response for user engagement stats:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error fetching user engagement stats:", error);
@@ -45,7 +45,7 @@ const analyticsSlice = createSlice({
   },
   reducers: {
     clearLogs(state) {
-      console.log("Clearing logs, previous logs:", state.logs);
+      // console.log("Clearing logs, previous logs:", state.logs);
       state.logs = [];
     },
   },
@@ -122,7 +122,7 @@ export const { clearLogs } = analyticsSlice.actions;
 
 // Selectors
 export const selectAnalytics = (state) => {
-  console.log("Selecting analytics state:", state.analytics || {});
+  // console.log("Selecting analytics state:", state.analytics || {});
   return state.analytics || {};
 };
 

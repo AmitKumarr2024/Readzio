@@ -21,7 +21,7 @@ const LikeButton = ({ postId }) => {
 
   useEffect(() => {
     if (isValidObjectId(postId)) {
-      console.log("[LikeButton] Fetching status for postId:", postId);
+      // console.log("[LikeButton] Fetching status for postId:", postId);
       dispatch(fetchBookmarkAndLikeStatus(postId));
     } else {
       console.warn("[LikeButton] Invalid postId provided:", postId);

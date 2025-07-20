@@ -77,7 +77,7 @@ const AuthorDashboard = ({ userId }) => {
   }, [dispatch, plans.length]);
 
   useEffect(() => {
-    console.log("🔄 plans updated:", plans);
+    // console.log("🔄 plans updated:", plans);
   }, [plans]);
 
   const userPosts = posts.filter((post) => post.author._id === userId);

@@ -31,7 +31,7 @@ export default function EmailStatusBulletin() {
   const [page, setPage] = useState(1);
   const limit = 10;
 
-  console.log("emailStatuses",emailStatuses);
+  // console.log("emailStatuses",emailStatuses);
   
   useEffect(() => {
     if (!isAuthenticated) {

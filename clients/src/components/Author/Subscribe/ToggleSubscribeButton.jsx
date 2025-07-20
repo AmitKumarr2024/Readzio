@@ -36,7 +36,7 @@ const ToggleSubscribeButton = ({ authorId, isSubscribed: isSubscribedProp, curre
     }
 
     if (authorId === subscriberId) {
-      console.log('⚠️ Cannot subscribe to self.');
+      // console.log('⚠️ Cannot subscribe to self.');
       return;
     }
 

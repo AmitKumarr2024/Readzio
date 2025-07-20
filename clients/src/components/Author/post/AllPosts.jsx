@@ -11,8 +11,8 @@ function AllPosts({ posts = [], userOnly = false, userId, loading, error }) {
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 20;
 
-  console.log("AllPosts props:", { userId, userOnly, postCount: posts.length });
-  console.log("Posts before filtering:", posts.map(p => ({ id: p._id, authorId: p.author?._id })));
+  // console.log("AllPosts props:", { userId, userOnly, postCount: posts.length });
+  // console.log("Posts before filtering:", posts.map(p => ({ id: p._id, authorId: p.author?._id })));
 
   if (loading) {
     return (
@@ -45,7 +45,7 @@ function AllPosts({ posts = [], userOnly = false, userId, loading, error }) {
   const filteredPosts = userOnly && userId
     ? posts.filter((post) => {
         const isMatch = post?.author?._id?.toString() === userId;
-        console.log(`Post ID: ${post?._id}, Author ID: ${post?.author?._id}, Matches userId (${userId}): ${isMatch}`);
+        // console.log(`Post ID: ${post?._id}, Author ID: ${post?.author?._id}, Matches userId (${userId}): ${isMatch}`);
         return isMatch;
       })
     : posts;

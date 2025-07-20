@@ -8,7 +8,7 @@ export const useBannerExpiration = () => {
   const dispatch = useDispatch();
   const { newNotification } = useSelector((state) => state.socket);
   // Log new notification for debugging
-  console.log("useBannerExpiration", newNotification);
+  // console.log("useBannerExpiration", newNotification);
 
   // Effect to handle banner expiration
   useEffect(() => {

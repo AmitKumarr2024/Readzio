@@ -30,7 +30,7 @@ const PostView = ({ post }) => {
   };
 
   const renderBlock = (block, i) => {
-    console.log("[DEBUG] Rendering block", i, block);
+    // console.log("[DEBUG] Rendering block", i, block);
 
     switch (block.type) {
       case "text":

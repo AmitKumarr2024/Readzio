@@ -12,15 +12,15 @@ export const useInitialPostLoader = ({ page = 1, limit = 12 } = {}) => {
     const fetchPosts = async () => {
       try {
         if (isAuthenticated === undefined) {
-          console.log("[useInitialPostLoader] Checking auth...");
+          // console.log("[useInitialPostLoader] Checking auth...");
           await dispatch(checkAuth()).unwrap();
         }
 
         if (isAuthenticated) {
-          console.log("[useInitialPostLoader] Fetching all posts for user");
+          // console.log("[useInitialPostLoader] Fetching all posts for user");
           dispatch(getAllPosts({ page, limit }));
         } else {
-          console.log("[useInitialPostLoader] Fetching guest posts");
+          // console.log("[useInitialPostLoader] Fetching guest posts");
           dispatch(fetchPublicPosts({ page, limit }));
         }
       } catch (err) {

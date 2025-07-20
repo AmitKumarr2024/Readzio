@@ -11,7 +11,7 @@ import TimeAgo from "../../Utils/TimeAgo";
 import CommentBox from "./CommentBox";
 
 export default function Comment({ comment, postId, level = 0, postAuthorId }) {
-  console.log("[Comment: Render] Rendering", { commentId: comment._id, postId, level, content: comment.content });
+  // console.log("[Comment: Render] Rendering", { commentId: comment._id, postId, level, content: comment.content });
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.content);
   const [showReplyBox, setShowReplyBox] = useState(false);
@@ -30,7 +30,7 @@ export default function Comment({ comment, postId, level = 0, postAuthorId }) {
       console.error("[Comment: handleToggleLike] Not authenticated user");
       return;
     }
-    console.log("[Comment: handleToggleLike] Toggling", { commentId: comment._id, reactionType: "like" });
+    // console.log("[Comment: handleToggleLike] Toggling", { commentId: comment._id, reactionType: "like" });
     dispatch(toggleReaction({ commentId: comment._id, reactionType: "like" }));
   };
 
@@ -40,11 +40,11 @@ export default function Comment({ comment, postId, level = 0, postAuthorId }) {
       toast.error("Edit text or unauthorized");
       return;
     }
-    console.log("Submitting edit:", { commentId: comment._id, content: editText });
+    // console.log("Submitting edit:", { commentId: comment._id, content: editText });
     dispatch(editComment({ commentId: comment._id, content: editText.trim() }))
       .unwrap()
       .then(() => {
-        console.log("Edit successful");
+        // console.log("Edit successful");
         setIsEditing(false);
       })
       .catch((err) => {
@@ -58,7 +58,7 @@ export default function Comment({ comment, postId, level = 0, postAuthorId }) {
       console.error("Not authorized to block:", { isCommentAuthor, isPostAuthor });
       return;
     }
-    console.log("Blocking comment:", { commentId: comment._id });
+    // console.log("Blocking comment:", { commentId: comment._id });
     dispatch(blockComment(comment._id));
   };
 
@@ -67,17 +67,17 @@ export default function Comment({ comment, postId, level = 0, postAuthorId }) {
       console.error("Not authorized to delete:", { isCommentAuthor, isPostAuthor });
       return;
     }
-    console.log("Deleting comment:", { commentId: comment._id });
+    // console.log("Deleting comment:", { commentId: comment._id });
     dispatch(deleteComment(comment._id));
   };
 
   const handleCommentAdded = () => {
-    console.log("Hiding reply box");
+    // console.log("Hiding reply box");
     setShowReplyBox(false);
   };
 
   if (comment.blocked || comment.isBlocked) {
-    console.log("Comment blocked:", { commentId: comment._id });
+    // console.log("Comment blocked:", { commentId: comment._id });
     return <p className="text-gray-500 text-sm ml-4">[Comment removed]</p>;
     
   };

@@ -24,7 +24,7 @@ const GoogleAd = ({ adSlot, adFormat = 'auto', className = '', postId }) => {
             timeSpent: 30,
           });
 
-          console.log('[GoogleAd] Emitted adImpression', { postId, adSlot });
+          // console.log('[GoogleAd] Emitted adImpression', { postId, adSlot });
 
           try {
             if (typeof window !== 'undefined') {

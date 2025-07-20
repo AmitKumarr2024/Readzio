@@ -2,7 +2,7 @@ import React from "react";
 
 const TableBlock = ({ headers = [], rows = [[]], caption = "" }) => {
   // Debug table data
-  console.log("[DEBUG] TableBlock props:", { headers, rows, caption });
+  // console.log("[DEBUG] TableBlock props:", { headers, rows, caption });
 
   // Warn if data is empty or malformed
   const isEmpty = headers.length === 0 && (rows.length === 0 || rows.every(row => row.length === 0));

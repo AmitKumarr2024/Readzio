@@ -37,7 +37,7 @@ const VerifyOtp = ({ email, setOtp, setStep, setError }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const otp = otpDigits.join("");
-    console.log("[VerifyOtp] Submitting OTP:", { email, otp });
+    // console.log("[VerifyOtp] Submitting OTP:", { email, otp });
     try {
       await dispatch(verifyResetOtp({ email, otp })).unwrap();
       setOtp(otp);

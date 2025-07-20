@@ -14,7 +14,7 @@ const UpdatePlanForm = ({ userId, posts, updatePlan, setUpdatePlan }) => {
 
   const handleUpdatePlan = async (e) => {
     e.preventDefault();
-    console.log("UpdatePlanForm: Updating plan", { price: updatePlan.price, plan: updatePlan });
+    // console.log("UpdatePlanForm: Updating plan", { price: updatePlan.price, plan: updatePlan });
     if (updatePlan.price <= 0) {
       toast.error("Price must be positive");
       return;
@@ -25,17 +25,17 @@ const UpdatePlanForm = ({ userId, posts, updatePlan, setUpdatePlan }) => {
         authorId: userId,
         price: Number(updatePlan.price), // Ensure price is a number (in paise)
       };
-      console.log("UpdatePlanForm: Sending to backend", { planData });
+      // console.log("UpdatePlanForm: Sending to backend", { planData });
       const result = await dispatch(
         updateSubscriptionPlan({
           planId: updatePlan._id,
           planData,
         })
       ).unwrap();
-      console.log("UpdatePlanForm: Plan updated successfully", {
-        planId: result.plan._id,
-        returnedPrice: result.plan.price,
-      });
+      // console.log("UpdatePlanForm: Plan updated successfully", {
+      //   planId: result.plan._id,
+      //   returnedPrice: result.plan.price,
+      // });
       toast.success("Plan updated successfully");
       setUpdatePlan(null);
     } catch (error) {
@@ -47,7 +47,7 @@ const UpdatePlanForm = ({ userId, posts, updatePlan, setUpdatePlan }) => {
   };
 
   const handleUpdatePlanPostIds = (postId) => {
-    console.log("UpdatePlanForm: Toggling post ID", { postId });
+    // console.log("UpdatePlanForm: Toggling post ID", { postId });
     setUpdatePlan((prev) => ({
       ...prev,
       postIds: prev.postIds?.includes(postId)
@@ -138,7 +138,7 @@ const UpdatePlanForm = ({ userId, posts, updatePlan, setUpdatePlan }) => {
             value={priceInRupees}
             onChange={(e) => {
               const newPrice = rupeesToPaise(e.target.value);
-              console.log("Price input changed", { input: e.target.value, paise: newPrice });
+              // console.log("Price input changed", { input: e.target.value, paise: newPrice });
               setUpdatePlan({ ...updatePlan, price: newPrice });
             }}
             className="w-full p-4 rounded-lg border border-gray-300  text-text-main-light dark:text-text-main-dark focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-300 hover:shadow-sm"

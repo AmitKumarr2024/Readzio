@@ -10,13 +10,13 @@ const RenewalReminders = () => {
   const [loading, setLoading] = useState(false);
 
   const handleSendReminders = async () => {
-    console.log("RenewalReminders: Sending renewal reminders", { reminderDays });
+    // console.log("RenewalReminders: Sending renewal reminders", { reminderDays });
     setLoading(true);
     setErrorMessage(null);
 
     try {
       await dispatch(sendRenewalReminders({ daysBeforeExpiry: reminderDays })).unwrap();
-      console.log("RenewalReminders: Renewal reminders sent successfully");
+      // console.log("RenewalReminders: Renewal reminders sent successfully");
       toast.success("Renewal reminders sent successfully");
     } catch (error) {
       console.error("RenewalReminders: Failed to send reminders", { error: error.message });
