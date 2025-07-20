@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -17,7 +16,10 @@ import {
   selectNotificationTotal,
 } from "../../store/notificationSlice";
 import { getUser } from "../../store/userSlice";
-import { selectSocketState, newNotificationReceived } from "../../store/socketSlice";
+import {
+  selectSocketState,
+  newNotificationReceived,
+} from "../../store/socketSlice";
 import { formatDistanceToNow } from "date-fns";
 
 // Define tabs
@@ -59,232 +61,309 @@ class ErrorBoundary extends React.Component {
 }
 
 // Notification Item Component
-const NotificationItem = React.memo(({ notification, userId, dispatch, loading, handleReply, toggleSelect, selectedIds, navigate, index }) => {
-  const isAdmin = ["admin", "admin_reply"].includes(notification.type);
-  const [replyContent, setReplyContent] = useState("");
-  const [isReplying, setIsReplying] = useState(false);
-  const [replyError, setReplyError] = useState(null);
-  const [replySuccess, setReplySuccess] = useState(null);
+const NotificationItem = React.memo(
+  ({
+    notification,
+    userId,
+    dispatch,
+    loading,
+    handleReply,
+    toggleSelect,
+    selectedIds,
+    navigate,
+    index,
+  }) => {
+    const isAdmin = ["admin", "admin_reply"].includes(notification.type);
+    const [replyContent, setReplyContent] = useState("");
+    const [isReplying, setIsReplying] = useState(false);
+    const [replyError, setReplyError] = useState(null);
+    const [replySuccess, setReplySuccess] = useState(null);
 
-  const debouncedMarkAsRead = useCallback(
-    debounce((id) => dispatch(markAsRead(id)), 300),
-    [dispatch]
-  );
+    const debouncedMarkAsRead = useCallback(
+      debounce((id) => dispatch(markAsRead(id)), 300),
+      [dispatch]
+    );
 
-  const debouncedDelete = useCallback(
-    debounce((id) => dispatch(deleteNotification(id)), 300),
-    [dispatch]
-  );
+    const debouncedDelete = useCallback(
+      debounce((id) => dispatch(deleteNotification(id)), 300),
+      [dispatch]
+    );
 
-  useEffect(() => {
-    if (replySuccess || replyError) {
-      const timer = setTimeout(() => {
-        setReplySuccess(null);
-        setReplyError(null);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [replySuccess, replyError]);
+    useEffect(() => {
+      if (replySuccess || replyError) {
+        const timer = setTimeout(() => {
+          setReplySuccess(null);
+          setReplyError(null);
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
+    }, [replySuccess, replyError]);
 
-  return (
-    <motion.li
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -100 }}
-      transition={{ duration: 0.3, delay: index * 0.1 }}
-      className={`rounded-lg border border-gray-200 shadow-sm overflow-hidden ${notification.read ? "bg-background-light dark:bg-background-dark" : "bg-blue-50 dark:bg-blue-900"}`}
-    >
-      <div className="flex items-start gap-4 p-4 relative">
-        <motion.input
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          type="checkbox"
-          checked={selectedIds.includes(notification._id)}
-          onChange={() => toggleSelect(notification._id)}
-          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1"
-          aria-label={`Select notification from ${notification.sender?.name || "User"}`}
-        />
-        <img
-          src={notification.sender?.avatar || "/default-avatar.png"}
-          alt="Avatar"
-          className="w-10 h-10 rounded-full border border-gray-300"
-        />
-        <div className="flex-1">
-          {isAdmin ? (
-            <div
-              className="text-sm font-medium bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
-              onClick={() => !notification.read && debouncedMarkAsRead(notification._id)}
-            >
-              <span className="font-semibold">{notification.sender?.name || "User"}</span>{" "}
-              {notification.type === "admin" ? "sent a message" : "replied to your message"}
-              {notification.content ? `: ${notification.content}` : ""}
-              <div className="mt-2 flex gap-2">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setIsReplying(true)}
-                  disabled={loading}
-                  className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
-                >
-                  Reply
-                </motion.button>
-                {notification.type === "admin" && notification.navigateTo && (
+    return (
+      <motion.li
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, x: -100 }}
+        transition={{ duration: 0.3, delay: index * 0.1 }}
+        className={`rounded-lg border border-gray-200 shadow-sm overflow-hidden ${
+          notification.read
+            ? "bg-background-light dark:bg-background-dark"
+            : "bg-blue-50 dark:bg-blue-900"
+        }`}
+      >
+        <div className="flex items-start gap-4 p-4 relative">
+          <motion.input
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            type="checkbox"
+            checked={selectedIds.includes(notification._id)}
+            onChange={() => toggleSelect(notification._id)}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1"
+            aria-label={`Select notification from ${
+              notification.sender?.name || "User"
+            }`}
+          />
+          {notification.sender?.avatar ? (
+            <img
+              src={notification.sender.avatar}
+              alt="Avatar"
+              className="w-10 h-10 rounded-full border border-gray-300"
+            />
+          ) : (
+            <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-700 text-white font-bold border border-gray-300">
+              {notification.sender?.name
+                ? `${
+                    notification.sender.name[0]
+                  }${notification.sender.name.slice(-1)}`
+                : "??"}
+            </div>
+          )}
+
+          <div className="flex-1">
+            {isAdmin ? (
+              <div
+                className="text-sm font-medium bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
+                onClick={() =>
+                  !notification.read && debouncedMarkAsRead(notification._id)
+                }
+              >
+                <span className="font-semibold">
+                  {notification.sender?.name || "User"}
+                </span>{" "}
+                {notification.type === "admin"
+                  ? "sent a message"
+                  : "replied to your message"}
+                {notification.content ? `: ${notification.content}` : ""}
+                <div className="mt-2 flex gap-2">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => navigate(notification.navigateTo)}
+                    onClick={() => setIsReplying(true)}
                     disabled={loading}
-                    className="text-sm text-green-600 hover:text-green-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
-                    Open Message
+                    Reply
                   </motion.button>
+                  {notification.type === "admin" && notification.navigateTo && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => navigate(notification.navigateTo)}
+                      disabled={loading}
+                      className="text-sm text-green-600 hover:text-green-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    >
+                      Open Message
+                    </motion.button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <Link
+                to={
+                  notification.post?.slug
+                    ? `/post/${notification.post.slug}`
+                    : "#"
+                }
+                onClick={() =>
+                  !notification.read && debouncedMarkAsRead(notification._id)
+                }
+                className="block text-sm font-medium text-text-main-light dark:text-text-main-dark hover:text-blue-600"
+              >
+                <span className="font-semibold">
+                  {notification.sender?.name || "User"}
+                </span>{" "}
+                {notification.type === "like"
+                  ? "liked"
+                  : notification.type === "post"
+                  ? "posted"
+                  : notification.type === "follow"
+                  ? "followed you"
+                  : notification.type === "comment"
+                  ? "commented on"
+                  : notification.type === "reply"
+                  ? "replied to"
+                  : notification.type.toUpperCase()}{" "}
+                {notification.post
+                  ? `your post "${notification.post.title || "unknown"}"`
+                  : ""}
+                {notification.content ? `: ${notification.content}` : ""}
+              </Link>
+            )}
+            <p className="text-xs text-text-main-light dark:text-text-main-dark mt-1">
+              {formatDistanceToNow(new Date(notification.createdAt), {
+                addSuffix: true,
+              })}
+            </p>
+            {isAdmin && isReplying && (
+              <motion.form
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                onSubmit={(e) =>
+                  handleReply(
+                    e,
+                    notification._id,
+                    replyContent,
+                    setReplyContent,
+                    setIsReplying,
+                    setReplyError,
+                    setReplySuccess
+                  )
+                }
+                className="mt-2 space-y-2"
+              >
+                {replyError && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-sm text-red-600"
+                  >
+                    {replyError}
+                  </motion.p>
                 )}
-              </div>
-            </div>
-          ) : (
-            <Link
-              to={notification.post?.slug ? `/post/${notification.post.slug}` : "#"}
-              onClick={() => !notification.read && debouncedMarkAsRead(notification._id)}
-              className="block text-sm font-medium text-text-main-light dark:text-text-main-dark hover:text-blue-600"
-            >
-              <span className="font-semibold">{notification.sender?.name || "User"}</span>{" "}
-              {notification.type === "like" ? "liked" :
-               notification.type === "post" ? "posted" :
-               notification.type === "follow" ? "followed you" :
-               notification.type === "comment" ? "commented on" :
-               notification.type === "reply" ? "replied to" : notification.type.toUpperCase()}{" "}
-              {notification.post ? `your post "${notification.post.title || "unknown"}"` : ""}
-              {notification.content ? `: ${notification.content}` : ""}
-            </Link>
-          )}
-          <p className="text-xs text-text-main-light dark:text-text-main-dark mt-1">
-            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
-          </p>
-          {isAdmin && isReplying && (
-            <motion.form
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              onSubmit={(e) => handleReply(e, notification._id, replyContent, setReplyContent, setIsReplying, setReplyError, setReplySuccess)}
-              className="mt-2 space-y-2"
-            >
-              {replyError && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-sm text-red-600"
-                >
-                  {replyError}
-                </motion.p>
-              )}
-              {replySuccess && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-sm text-green-600"
-                >
-                  {replySuccess}
-                </motion.p>
-              )}
-              <textarea
-                value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg text-sm text-text-main-light dark:text-text-main-dark bg-background-light dark:bg-background-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Type your reply..."
-                rows="3"
-                required
-                disabled={loading}
-              />
-              <div className="flex gap-2">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  type="submit"
+                {replySuccess && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-sm text-green-600"
+                  >
+                    {replySuccess}
+                  </motion.p>
+                )}
+                <textarea
+                  value={replyContent}
+                  onChange={(e) => setReplyContent(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-lg text-sm text-text-main-light dark:text-text-main-dark bg-background-light dark:bg-background-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Type your reply..."
+                  rows="3"
+                  required
                   disabled={loading}
-                  className="px-4 py-1 bg-blue-600 text-text-main-light dark:text-text-main-dark rounded-lg text-sm hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  Send
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setIsReplying(false);
-                    setReplyContent("");
-                    setReplyError(null);
-                    setReplySuccess(null);
-                  }}
-                  className="px-4 py-1 bg-gray-500 text-text-main-light dark:text-text-main-dark rounded-lg text-sm hover:bg-gray-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  disabled={loading}
-                >
-                  Cancel
-                </motion.button>
-              </div>
-            </motion.form>
-          )}
+                />
+                <div className="flex gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-1 bg-blue-600 text-text-main-light dark:text-text-main-dark rounded-lg text-sm hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    Send
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setIsReplying(false);
+                      setReplyContent("");
+                      setReplyError(null);
+                      setReplySuccess(null);
+                    }}
+                    className="px-4 py-1 bg-gray-500 text-text-main-light dark:text-text-main-dark rounded-lg text-sm hover:bg-gray-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    disabled={loading}
+                  >
+                    Cancel
+                  </motion.button>
+                </div>
+              </motion.form>
+            )}
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => debouncedDelete(notification._id)}
+            disabled={loading}
+            className="absolute top-4 right-4 text-red-500 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+            aria-label="Delete notification"
+          >
+            <FaTrash size={16} />
+          </motion.button>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05, rotate: 5 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => debouncedDelete(notification._id)}
-          disabled={loading}
-          className="absolute top-4 right-4 text-red-500 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed"
-          aria-label="Delete notification"
-        >
-          <FaTrash size={16} />
-        </motion.button>
-      </div>
-    </motion.li>
-  );
-});
+      </motion.li>
+    );
+  }
+);
 
 // Tabs Component
-const Tabs = React.memo(({ tabs, activeTab, setActiveTab, setSelectedIds, setSelectAll, unreadCounts, newCounts, clearNewNotifications }) => (
-  <div className="flex gap-4 border-b border-gray-200 mb-6 relative">
-    {tabs.map((tab) => (
-      <motion.button
-        key={tab}
-        whileHover={{ y: -2 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => {
-          setActiveTab(tab);
-          setSelectedIds([]);
-          setSelectAll(false);
-          clearNewNotifications(tab);
-        }}
-        className={`relative pb-2 text-sm font-medium text-text-main-light dark:text-text-main-dark transition-colors duration-200 ${
-          activeTab === tab ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
-        } flex items-center gap-2`}
-      >
-        {tab} {unreadCounts[tab] > 0 && (
-          <span className="text-xs text-white bg-blue-600 rounded-full px-2 py-0.5">
-            {unreadCounts[tab]}
-          </span>
-        )}
-        {newCounts[tab] > 0 && (
-          <motion.span
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 500 }}
-            className="text-xs text-white bg-red-600 rounded-full px-2 py-0.5"
-          >
-            {newCounts[tab]}
-          </motion.span>
-        )}
-        {activeTab === tab && (
-          <motion.div
-            layoutId="underline"
-            className="absolute left-0 bottom-0 w-full h-1 bg-blue-600 rounded-full"
-            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-          />
-        )}
-      </motion.button>
-    ))}
-  </div>
-));
+const Tabs = React.memo(
+  ({
+    tabs,
+    activeTab,
+    setActiveTab,
+    setSelectedIds,
+    setSelectAll,
+    unreadCounts,
+    newCounts,
+    clearNewNotifications,
+  }) => (
+    <div className="flex gap-4 border-b border-gray-200 mb-6 relative">
+      {tabs.map((tab) => (
+        <motion.button
+          key={tab}
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => {
+            setActiveTab(tab);
+            setSelectedIds([]);
+            setSelectAll(false);
+            clearNewNotifications(tab);
+          }}
+          className={`relative pb-2 text-sm font-medium text-text-main-light dark:text-text-main-dark transition-colors duration-200 ${
+            activeTab === tab
+              ? "text-blue-600"
+              : "text-gray-500 hover:text-gray-700"
+          } flex items-center gap-2`}
+        >
+          {tab}{" "}
+          {unreadCounts[tab] > 0 && (
+            <span className="text-xs text-white bg-blue-600 rounded-full px-2 py-0.5">
+              {unreadCounts[tab]}
+            </span>
+          )}
+          {newCounts[tab] > 0 && (
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 500 }}
+              className="text-xs text-white bg-red-600 rounded-full px-2 py-0.5"
+            >
+              {newCounts[tab]}
+            </motion.span>
+          )}
+          {activeTab === tab && (
+            <motion.div
+              layoutId="underline"
+              className="absolute left-0 bottom-0 w-full h-1 bg-blue-600 rounded-full"
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            />
+          )}
+        </motion.button>
+      ))}
+    </div>
+  )
+);
 
 export default function NotificationPage() {
   const dispatch = useDispatch();
@@ -310,7 +389,8 @@ export default function NotificationPage() {
   const total = useSelector(selectNotificationTotal) || 0;
   const { loading, error } = useSelector((state) => state.notifications || {});
   const { user } = useSelector((state) => state.user || {});
-  const { error: socketError, newNotification } = useSelector(selectSocketState);
+  const { error: socketError, newNotification } =
+    useSelector(selectSocketState);
 
   // Calculate unread counts per tab
   const unreadCounts = useMemo(() => {
@@ -336,15 +416,21 @@ export default function NotificationPage() {
 
   // Handle new notifications from socket
   useEffect(() => {
-    if (newNotification && newNotification.user?.toString() === user?._id?.toString() && !newNotification.read) {
+    if (
+      newNotification &&
+      newNotification.user?.toString() === user?._id?.toString() &&
+      !newNotification.read
+    ) {
       setNewNotifications((prev) => {
         const newCounts = { ...prev };
         newCounts.All += 1;
         if (newNotification.type === "like") newCounts.Like += 1;
         if (newNotification.type === "post") newCounts.Post += 1;
         if (newNotification.type === "follow") newCounts.Follow += 1;
-        if (["comment", "reply"].includes(newNotification.type)) newCounts.Comment += 1;
-        if (["admin", "admin_reply"].includes(newNotification.type)) newCounts.Admin += 1;
+        if (["comment", "reply"].includes(newNotification.type))
+          newCounts.Comment += 1;
+        if (["admin", "admin_reply"].includes(newNotification.type))
+          newCounts.Admin += 1;
         return newCounts;
       });
       // Clear new notification counts after 10 seconds
@@ -352,11 +438,16 @@ export default function NotificationPage() {
         setNewNotifications((prev) => {
           const newCounts = { ...prev };
           newCounts.All = Math.max(0, newCounts.All - 1);
-          if (newNotification.type === "like") newCounts.Like = Math.max(0, newCounts.Like - 1);
-          if (newNotification.type === "post") newCounts.Post = Math.max(0, newCounts.Post - 1);
-          if (newNotification.type === "follow") newCounts.Follow = Math.max(0, newCounts.Follow - 1);
-          if (["comment", "reply"].includes(newNotification.type)) newCounts.Comment = Math.max(0, newCounts.Comment - 1);
-          if (["admin", "admin_reply"].includes(newNotification.type)) newCounts.Admin = Math.max(0, newCounts.Admin - 1);
+          if (newNotification.type === "like")
+            newCounts.Like = Math.max(0, newCounts.Like - 1);
+          if (newNotification.type === "post")
+            newCounts.Post = Math.max(0, newCounts.Post - 1);
+          if (newNotification.type === "follow")
+            newCounts.Follow = Math.max(0, newCounts.Follow - 1);
+          if (["comment", "reply"].includes(newNotification.type))
+            newCounts.Comment = Math.max(0, newCounts.Comment - 1);
+          if (["admin", "admin_reply"].includes(newNotification.type))
+            newCounts.Admin = Math.max(0, newCounts.Admin - 1);
           return newCounts;
         });
       }, 10000);
@@ -391,7 +482,8 @@ export default function NotificationPage() {
   // Handle query params
   useEffect(() => {
     if (typeFromQuery) {
-      const formatted = typeFromQuery.charAt(0).toUpperCase() + typeFromQuery.slice(1);
+      const formatted =
+        typeFromQuery.charAt(0).toUpperCase() + typeFromQuery.slice(1);
       if (tabs.includes(formatted)) {
         setActiveTab(formatted);
         clearNewNotifications(formatted);
@@ -404,14 +496,22 @@ export default function NotificationPage() {
           setNewNotifications((prev) => {
             const newCounts = { ...prev };
             newCounts.All = Math.max(0, newCounts.All - 1);
-            if (notification.type === "like") newCounts.Like = Math.max(0, newCounts.Like - 1);
-            if (notification.type === "post") newCounts.Post = Math.max(0, newCounts.Post - 1);
-            if (notification.type === "follow") newCounts.Follow = Math.max(0, newCounts.Follow - 1);
-            if (["comment", "reply"].includes(notification.type)) newCounts.Comment = Math.max(0, newCounts.Comment - 1);
-            if (["admin", "admin_reply"].includes(notification.type)) newCounts.Admin = Math.max(0, newCounts.Admin - 1);
+            if (notification.type === "like")
+              newCounts.Like = Math.max(0, newCounts.Like - 1);
+            if (notification.type === "post")
+              newCounts.Post = Math.max(0, newCounts.Post - 1);
+            if (notification.type === "follow")
+              newCounts.Follow = Math.max(0, newCounts.Follow - 1);
+            if (["comment", "reply"].includes(notification.type))
+              newCounts.Comment = Math.max(0, newCounts.Comment - 1);
+            if (["admin", "admin_reply"].includes(notification.type))
+              newCounts.Admin = Math.max(0, newCounts.Admin - 1);
             return newCounts;
           });
-          if (notification.post?.slug && !["admin", "admin_reply"].includes(notification.type)) {
+          if (
+            notification.post?.slug &&
+            !["admin", "admin_reply"].includes(notification.type)
+          ) {
             navigate(`/post/${notification.post.slug}`);
           } else if (notification.navigateTo && notification.type === "admin") {
             navigate(notification.navigateTo);
@@ -419,7 +519,14 @@ export default function NotificationPage() {
         });
       }
     }
-  }, [dispatch, typeFromQuery, notificationId, notifications, navigate, clearNewNotifications]);
+  }, [
+    dispatch,
+    typeFromQuery,
+    notificationId,
+    notifications,
+    navigate,
+    clearNewNotifications,
+  ]);
 
   // Filter notifications by tab
   const filteredNotifications = useMemo(() => {
@@ -446,14 +553,24 @@ export default function NotificationPage() {
 
   // Handle reply submission
   const handleReply = useCallback(
-    async (e, notificationId, replyContent, setReplyContent, setIsReplying, setReplyError, setReplySuccess) => {
+    async (
+      e,
+      notificationId,
+      replyContent,
+      setReplyContent,
+      setIsReplying,
+      setReplyError,
+      setReplySuccess
+    ) => {
       e.preventDefault();
       if (!replyContent.trim()) {
         setReplyError("Reply content is required");
         return;
       }
       try {
-        await dispatch(replyToAdminNotification({ notificationId, content: replyContent })).unwrap();
+        await dispatch(
+          replyToAdminNotification({ notificationId, content: replyContent })
+        ).unwrap();
         setReplySuccess("Reply sent successfully!");
         setReplyContent("");
         setIsReplying(false);
@@ -502,15 +619,22 @@ export default function NotificationPage() {
       setSelectAll(false);
       setNewNotifications((prev) => {
         const newCounts = { ...prev };
-        const deletedNotifications = notifications.filter((n) => selectedIds.includes(n._id));
+        const deletedNotifications = notifications.filter((n) =>
+          selectedIds.includes(n._id)
+        );
         deletedNotifications.forEach((n) => {
           if (!n.read) {
             newCounts.All = Math.max(0, newCounts.All - 1);
-            if (n.type === "like") newCounts.Like = Math.max(0, newCounts.Like - 1);
-            if (n.type === "post") newCounts.Post = Math.max(0, newCounts.Post - 1);
-            if (n.type === "follow") newCounts.Follow = Math.max(0, newCounts.Follow - 1);
-            if (["comment", "reply"].includes(n.type)) newCounts.Comment = Math.max(0, newCounts.Comment - 1);
-            if (["admin", "admin_reply"].includes(n.type)) newCounts.Admin = Math.max(0, newCounts.Admin - 1);
+            if (n.type === "like")
+              newCounts.Like = Math.max(0, newCounts.Like - 1);
+            if (n.type === "post")
+              newCounts.Post = Math.max(0, newCounts.Post - 1);
+            if (n.type === "follow")
+              newCounts.Follow = Math.max(0, newCounts.Follow - 1);
+            if (["comment", "reply"].includes(n.type))
+              newCounts.Comment = Math.max(0, newCounts.Comment - 1);
+            if (["admin", "admin_reply"].includes(n.type))
+              newCounts.Admin = Math.max(0, newCounts.Admin - 1);
           }
         });
         return newCounts;
@@ -557,7 +681,9 @@ export default function NotificationPage() {
             onClick={handleMarkAllRead}
             disabled={unreadCount === 0 || loading}
             className={`text-sm font-semibold ${
-              unreadCount === 0 || loading ? "text-gray-400 cursor-not-allowed" : "text-blue-600 hover:text-blue-800"
+              unreadCount === 0 || loading
+                ? "text-gray-400 cursor-not-allowed"
+                : "text-blue-600 hover:text-blue-800"
             }`}
           >
             Mark All Read
@@ -608,7 +734,9 @@ export default function NotificationPage() {
               onClick={handleDeleteSelected}
               disabled={selectedIds.length === 0}
               className={`text-sm font-semibold ${
-                selectedIds.length === 0 ? "text-gray-400 cursor-not-allowed" : "text-red-600 hover:text-red-800"
+                selectedIds.length === 0
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-red-600 hover:text-red-800"
               }`}
             >
               Delete Selected ({selectedIds.length})
@@ -670,4 +798,4 @@ export default function NotificationPage() {
       </motion.div>
     </ErrorBoundary>
   );
-};
+}

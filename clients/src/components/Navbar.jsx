@@ -43,17 +43,20 @@ const Navbar = () => {
     authLoading,
     sessionExpired,
   } = useSelector((state) => state.auth ?? {});
-  const { onlineUsersCount, status, error } = useSelector(
+  const { onlineUsersCount, status } = useSelector(
     (state) => state.socket ?? {}
   );
-  const { user } = useSelector((state) => state.user ?? {});
+  const { user, userLocations } = useSelector((state) => state.user ?? {});
 
-  const avatarUrl = useMemo(
-    () => user?.avatar ,
-    [user?.avatar]
-  );
+  const avatarUrl = useMemo(() => user?.avatar, [user?.avatar]);
   const userName = useMemo(() => authUser?.name || "User", [authUser?.name]);
   const userId = useMemo(() => authUser?._id, [authUser?._id]);
+
+  // Find current user's location
+  const userLocation = useMemo(
+    () => userLocations.list.find((loc) => loc.userId === authUser?._id),
+    [userLocations.list, authUser?._id]
+  );
 
   const shouldHideCategory = useMemo(
     () =>
@@ -164,25 +167,35 @@ const Navbar = () => {
       <nav className="sticky top-0 z-50 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-4">
-            <Logo />
-            <Link
-              to="/users"
-              className="text-sm font-medium flex items-center gap-2"
-              aria-label="Online users"
-            >
-              <span className={`w-3 h-3 rounded-full ${statusClass}`} />
-              <motion.span
-                key={onlineUsersCount}
-                variants={countVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="font-semibold"
+            <div className="relative">
+              <Logo />
+              {isAuthenticated && userLocation?.country && (
+                <span className="text-md font-semibold absolute -top-4 -right-3 text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                  {userLocation?.country.slice(0, 3).toUpperCase()}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link
+                to="/users"
+                className="text-sm font-medium flex items-center gap-2"
+                aria-label="Online users"
               >
-                {onlineUsersCount || 0}
-              </motion.span>
-              <span className="hidden sm:inline">online</span>
-            </Link>
+                <span className={`w-3 h-3 rounded-full ${statusClass}`} />
+                <motion.span
+                  key={onlineUsersCount}
+                  variants={countVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="font-semibold"
+                >
+                  {onlineUsersCount || 0}
+                </motion.span>
+                <span className="hidden sm:inline">online</span>
+              </Link>
+            </div>
           </div>
 
           <div className="hidden md:flex w-full max-w-xs md:max-w-md mx-4">
@@ -227,8 +240,8 @@ const Navbar = () => {
                   className="hidden md:flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm"
                   aria-label="Write a post"
                 >
-                  <TfiWrite size={17}/>
-                  <span className="text-xl ">Write</span>
+                  <TfiWrite size={17} />
+                  <span className="text-xl">Write</span>
                 </Link>
 
                 <NotificationDropdown />
@@ -374,7 +387,7 @@ const Navbar = () => {
                 <Link
                   to="/bookmark"
                   onClick={toggleMobileMenu}
-                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 Hawkins"
+                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
                   Bookmarks
                 </Link>
