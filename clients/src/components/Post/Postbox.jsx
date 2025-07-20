@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { debounce } from "lodash";
 import CardOfPost from "../Cards/CardOfPost";
@@ -6,7 +12,10 @@ import { getAllPosts, fetchFollowingPosts } from "../../store/postSlice";
 import { fetchCommentCount } from "../../store/commentSlice";
 import { fetchCategories } from "../../store/categorySlice";
 import { fetchFollowers } from "../../store/followSlice";
-import { selectSocketState, fetchInitialPostCounts } from "../../store/socketSlice";
+import {
+  selectSocketState,
+  fetchInitialPostCounts,
+} from "../../store/socketSlice";
 import Sorted from "../Tabs/Sorted";
 import GoogleAd from "../../Ads/GoogleAd";
 import Skeleton from "../ui/Skeleton";
@@ -27,9 +36,13 @@ const Postbox = ({
   } = useSelector((state) => state.post || {});
   const { commentCounts = {} } = useSelector((state) => state.comment || {});
   const { categories = [] } = useSelector((state) => state.categories || {});
-  const isSidebarOpen = useSelector((state) => state.postMeta?.isSidebarOpen ?? false);
+  const isSidebarOpen = useSelector(
+    (state) => state.postMeta?.isSidebarOpen ?? false
+  );
   const currentUser = useSelector((state) => state.auth?.user ?? { _id: null });
-  const { followers = { list: [] } } = useSelector((state) => state.follow || {});
+  const { followers = { list: [] } } = useSelector(
+    (state) => state.follow || {}
+  );
   const { socket, postCounts } = useSelector(selectSocketState);
 
   const postsPerPage = 12;
@@ -49,7 +62,9 @@ const Postbox = ({
     if (filterType === "Following") {
       dispatch(fetchFollowingPosts(options));
     } else if (filterType === "Followers" && followers.list.length) {
-      dispatch(getAllPosts({ authorIds: followers.list.map((u) => u._id), ...options }));
+      dispatch(
+        getAllPosts({ authorIds: followers.list.map((u) => u._id), ...options })
+      );
     } else if (filterType === "My Posts" && user?._id) {
       dispatch(getAllPosts({ userId: user._id, ...options }));
     } else {
@@ -66,8 +81,15 @@ const Postbox = ({
         type: "socket/setPostCounts",
         payload: {
           allPostsCount: postCounts.allPostsCount + 1,
-          myPostsCount: newPost.authorId === user?._id ? postCounts.myPostsCount + 1 : postCounts.myPostsCount,
-          followingPostsCount: followers.list.map(u => u._id).includes(newPost.authorId) ? postCounts.followingPostsCount + 1 : postCounts.followingPostsCount,
+          myPostsCount:
+            newPost.authorId === user?._id
+              ? postCounts.myPostsCount + 1
+              : postCounts.myPostsCount,
+          followingPostsCount: followers.list
+            .map((u) => u._id)
+            .includes(newPost.authorId)
+            ? postCounts.followingPostsCount + 1
+            : postCounts.followingPostsCount,
         },
       });
       const options = { page: 1, limit: postsPerPage };
@@ -98,8 +120,15 @@ const Postbox = ({
         type: "socket/setPostCounts",
         payload: {
           allPostsCount: Math.max(0, postCounts.allPostsCount - 1),
-          myPostsCount: data.authorId === user?._id ? Math.max(0, postCounts.myPostsCount - 1) : postCounts.myPostsCount,
-          followingPostsCount: followers.list.map(u => u._id).includes(data.authorId) ? Math.max(0, postCounts.followingPostsCount - 1) : postCounts.followingPostsCount,
+          myPostsCount:
+            data.authorId === user?._id
+              ? Math.max(0, postCounts.myPostsCount - 1)
+              : postCounts.myPostsCount,
+          followingPostsCount: followers.list
+            .map((u) => u._id)
+            .includes(data.authorId)
+            ? Math.max(0, postCounts.followingPostsCount - 1)
+            : postCounts.followingPostsCount,
         },
       });
       const options = { page: 1, limit: postsPerPage };
@@ -121,7 +150,16 @@ const Postbox = ({
       socket.off("postUpdated", handlePostUpdated);
       socket.off("postDeleted", handlePostDeleted);
     };
-  }, [socket, dispatch, customPosts.length, postsPerPage, filterType, user?._id, postCounts, followers.list]);
+  }, [
+    socket,
+    dispatch,
+    customPosts.length,
+    postsPerPage,
+    filterType,
+    user?._id,
+    postCounts,
+    followers.list,
+  ]);
 
   const categoryMap = useMemo(() => {
     return categories.reduce((map, cat) => {
@@ -170,7 +208,15 @@ const Postbox = ({
     }
 
     return validPosts;
-  }, [customPosts, posts, filterType, user?._id, followers.list, category, currentUser._id]);
+  }, [
+    customPosts,
+    posts,
+    filterType,
+    user?._id,
+    followers.list,
+    category,
+    currentUser._id,
+  ]);
 
   const sortedPosts = useMemo(() => {
     const seen = new Set();
@@ -199,9 +245,7 @@ const Postbox = ({
       },
       categoryName:
         categoryMap[
-          typeof post.category === "string"
-            ? post.category
-            : post.category?._id
+          typeof post.category === "string" ? post.category : post.category?._id
         ] || "Uncategorized",
       likesCount: post.likes?.length ?? 0,
       viewsCount: post.viewsCount ?? 0,
@@ -209,6 +253,7 @@ const Postbox = ({
       shareCount: post.shareCount ?? 0,
       isSubscriberOnly: post.isSubscriberOnly ?? false,
       postType: post.postType ?? "free",
+      tags: post.tags || [],
     }));
   }, [sortedPosts, categoryMap]);
 
@@ -234,13 +279,17 @@ const Postbox = ({
       if (filterType === "Following") {
         dispatch(fetchFollowingPosts({ page: nextPage, limit: postsPerPage }));
       } else if (filterType === "Followers") {
-        dispatch(getAllPosts({
-          authorIds: followers.list.map((user) => user._id),
-          page: nextPage,
-          limit: postsPerPage,
-        }));
+        dispatch(
+          getAllPosts({
+            authorIds: followers.list.map((user) => user._id),
+            page: nextPage,
+            limit: postsPerPage,
+          })
+        );
       } else if (filterType === "My Posts" && user?._id) {
-        dispatch(getAllPosts({ userId: user._id, page: nextPage, limit: postsPerPage }));
+        dispatch(
+          getAllPosts({ userId: user._id, page: nextPage, limit: postsPerPage })
+        );
       } else {
         dispatch(getAllPosts({ page: nextPage, limit: postsPerPage }));
       }

@@ -11,9 +11,9 @@ import mongoose from "mongoose";
 import transporter from "../config/nodeMailer.js";
 import { createNotification } from "../utils/createNotification.js";
 import createMailOption from "../helpers/emailHelper.js";
-import UserModel from "../models/User.js";
 import { sendEmailWithRetries } from "../helpers/sendEmailWithRetries.js";
 import PostModel from "../Models/Post.js";
+import UserModel from "../Models/User.js";
 
 const validateObjectId = (id, type = "ID") => {
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
@@ -186,13 +186,11 @@ export const deleteSubscriptionPlan = asyncHandler(async (req, res, next) => {
     plan: { name: plan.name, subscriptionPlanId: plan._id },
   });
 
-  res
-    .status(200)
-    .json({
-      success: true,
-      message: "Plan and associated records permanently deleted",
-      plan: { name: plan.name, subscriptionPlanId: plan._id },
-    });
+  res.status(200).json({
+    success: true,
+    message: "Plan and associated records permanently deleted",
+    plan: { name: plan.name, subscriptionPlanId: plan._id },
+  });
 });
 
 export const subscribeToPlan = asyncHandler(async (req, res, next) => {
@@ -449,13 +447,11 @@ export const getSubscriptionHistoryByAuthor = asyncHandler(
       "_id"
     );
     if (!plans.length) {
-      return res
-        .status(200)
-        .json({
-          success: true,
-          subscriptions: [],
-          message: "No plans found for this author",
-        });
+      return res.status(200).json({
+        success: true,
+        subscriptions: [],
+        message: "No plans found for this author",
+      });
     }
 
     const subscriptions = await UserSubscriptionModel.find({
@@ -481,13 +477,11 @@ export const getSubscriptionHistoryByAuthor = asyncHandler(
       }))
     );
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        subscriptions: enrichedSubscriptions,
-        count: enrichedSubscriptions.length,
-      });
+    res.status(200).json({
+      success: true,
+      subscriptions: enrichedSubscriptions,
+      count: enrichedSubscriptions.length,
+    });
   }
 );
 
@@ -532,15 +526,13 @@ export const getSubscriptionAnalytics = asyncHandler(async (req, res, next) => {
     await transporter.sendMail(mailOption);
   }
 
-  res
-    .status(200)
-    .json({
-      success: true,
-      plan,
-      totalSubscribers,
-      activeSubscribers,
-      totalRevenue: totalRevenue / 100,
-    });
+  res.status(200).json({
+    success: true,
+    plan,
+    totalSubscribers,
+    activeSubscribers,
+    totalRevenue: totalRevenue / 100,
+  });
 });
 
 export const sendRenewalReminders = asyncHandler(async (req, res, next) => {
@@ -583,12 +575,10 @@ export const sendRenewalReminders = asyncHandler(async (req, res, next) => {
     });
   }
 
-  res
-    .status(200)
-    .json({
-      success: true,
-      message: `Sent reminders to ${subscriptions.length} users`,
-    });
+  res.status(200).json({
+    success: true,
+    message: `Sent reminders to ${subscriptions.length} users`,
+  });
 });
 
 export const getAllMySubscriptionPlans = asyncHandler(
@@ -700,14 +690,12 @@ export const unsubscribeByAuthor = asyncHandler(async (req, res, next) => {
     });
   }
 
-  res
-    .status(200)
-    .json({
-      success: true,
-      message: `Cancelled ${updatedSubscriptions.modifiedCount} subscription(s)`,
-      authorId,
-      userId,
-    });
+  res.status(200).json({
+    success: true,
+    message: `Cancelled ${updatedSubscriptions.modifiedCount} subscription(s)`,
+    authorId,
+    userId,
+  });
 });
 
 export const getSubscriptionStatusByAuthor = asyncHandler(
@@ -771,7 +759,8 @@ export const getSubscriptionStatusByAuthor = asyncHandler(
                 tags: post.tags || [],
                 excerpt: post.excerpt || "No excerpt available.",
                 readingTime: post.readingTime || 0,
-                 postType: (post.isPremium || post.isSubscriberOnly) ? "premium" : "free",
+                postType:
+                  post.isPremium || post.isSubscriberOnly ? "premium" : "free",
               })) || [],
             subscriberCount,
             paymentId: activeSubscription.paymentId,
@@ -826,31 +815,252 @@ export const getMySubscribedPlans = asyncHandler(async (req, res, next) => {
 
 // ✅ controllers/subscriptionController.js
 
-// Checks if the user is eligible to create subscription plans
-export const checkEligibilityForSubscription = asyncHandler(
-  async (req, res) => {
-    const userId = req.user?._id;
-    if (!userId) throw new AppError("Unauthorized", 401);
+// Admin: Get all subscription plans with detailed analytics
+export const getAllSubscriptionPlans = asyncHandler(async (req, res, next) => {
+  if (!req.user?.isAdmin) throw new AppError("Admin access required", 403);
 
-    const user = await UserModel.findById(userId).lean();
+  const plans = await UserSubscriptionModel.find({ deletedAt: null })
+    .populate("author", "name email")
+    .lean();
+
+  const enrichedPlans = await Promise.all(
+    plans.map(async (plan) => {
+      const subscriptions = await UserSubscriptionModel.find({
+        planId: plan._id,
+      }).lean();
+      const activeSubscribers = subscriptions.filter(
+        (sub) => sub.status === "active"
+      ).length;
+      const totalRevenue = subscriptions.reduce(
+        (sum, sub) =>
+          sub.status === "active"
+            ? sum + (sub.amountPaid || plan.price || 0)
+            : sum,
+        0
+      );
+
+      return {
+        ...plan,
+        totalSubscribers: subscriptions.length,
+        activeSubscribers,
+        totalRevenue: totalRevenue / 100,
+        subscriptionCount: subscriptions.length,
+      };
+    })
+  );
+
+  res.status(200).json({
+    success: true,
+    count: enrichedPlans.length,
+    plans: enrichedPlans,
+  });
+});
+
+// Admin: Toggle eligibility criteria for a user
+export const toggleEligibilityCriteria = asyncHandler(
+  async (req, res, next) => {
+    if (!req.user?.isAdmin) throw new AppError("Admin access required", 403);
+    const { userId, enable } = req.body;
+
+    validateObjectId(userId, "User ID");
+    const user = await UserModel.findById(userId);
     if (!user) throw new AppError("User not found", 404);
 
-    const followerCount = user.followers?.length || 0;
-    const postCount = await PostModel.countDocuments({
-      author: userId,
-      isPublished: true,
-    });
+    user.isEligibleForSubscription = enable;
+    await user.save();
 
-    const isEligible = followerCount >= 10000 && postCount >= 30;
+    await recordActivity({
+      userId: req.user._id.toString(),
+      action: "TOGGLED_ELIGIBILITY_CRITERIA",
+      message: `Admin ${
+        enable ? "enabled" : "disabled"
+      } subscription eligibility for user ${userId}`,
+      targetUserId: userId,
+    });
 
     res.status(200).json({
       success: true,
-      isEligible,
-      followerCount,
-      postCount,
-      message: isEligible
-        ? "You are eligible to create subscription plans."
-        : "You need at least 10,000 followers and 30 published posts to enable subscriptions.",
+      message: `Subscription eligibility ${
+        enable ? "enabled" : "disabled"
+      } for user ${userId}`,
+      user: {
+        id: user._id,
+        isEligibleForSubscription: user.isEligibleForSubscription,
+      },
+    });
+  }
+);
+
+// Admin: Update global eligibility criteria
+export const updateGlobalEligibilityCriteria = asyncHandler(
+  async (req, res, next) => {
+    if (!req.user?.isAdmin) throw new AppError("Admin access required", 403);
+    const { minFollowers = 10000, minPosts = 30 } = req.body;
+
+    if (minFollowers < 0 || minPosts < 0) {
+      throw new AppError("Criteria values must be non-negative", 400);
+    }
+
+    // Store global criteria in a config collection or environment
+    // For simplicity, assume a Config model exists
+    const config = await ConfigModel.findOneAndUpdate(
+      { key: "subscriptionEligibility" },
+      { minFollowers, minPosts },
+      { upsert: true, new: true }
+    );
+
+    await recordActivity({
+      userId: req.user._id.toString(),
+      action: "UPDATED_ELIGIBILITY_CRITERIA",
+      message: `Updated global eligibility criteria to ${minFollowers} followers and ${minPosts} posts`,
+    });
+
+    res.status(200).json({
+      success: true,
+      criteria: { minFollowers, minPosts },
+    });
+  }
+);
+
+// Admin: Export subscription data to Excel
+export const exportSubscriptionData = asyncHandler(async (req, res, next) => {
+  if (!req.user?.isAdmin) throw new AppError("Admin access required", 403);
+
+  const plans = await UserSubscriptionModel.find({ deletedAt: null })
+    .populate("author", "name email")
+    .lean();
+  const subscriptions = await UserSubscriptionModel.find({})
+    .populate("userId", "name email")
+    .lean();
+
+  // Prepare Excel workbook
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Subscription Plans
+  const planData = plans.map((plan) => ({
+    PlanID: plan._id.toString(),
+    Name: plan.name,
+    Author: plan.author?.name || "Unknown",
+    AuthorEmail: plan.author?.email || "N/A",
+    Price: (plan.price / 100).toFixed(2),
+    DurationDays: plan.durationDays,
+    Type: plan.type,
+    Status: plan.status,
+    CreatedAt: plan.createdAt.toISOString(),
+  }));
+  const planWs = XLSX.utils.json_to_sheet(planData);
+  XLSX.utils.book_append_sheet(wb, planWs, "Plans");
+
+  // Sheet 2: Subscriptions
+  const subscriptionData = subscriptions.map((sub) => ({
+    SubscriptionID: sub._id.toString(),
+    UserID: sub.userId?._id.toString() || "N/A",
+    UserName: sub.userId?.name || "Unknown",
+    UserEmail: sub.userId?.email || "N/A",
+    PlanID: sub.planId.toString(),
+    PaymentID: sub.paymentId || "N/A",
+    Status: sub.status,
+    ExpiryDate: sub.expiryDate.toISOString(),
+    CreatedAt: sub.createdAt.toISOString(),
+  }));
+  const subscriptionWs = XLSX.utils.json_to_sheet(subscriptionData);
+  XLSX.utils.book_append_sheet(wb, subscriptionWs, "Subscriptions");
+
+  // Sheet 3: Payments
+  const payments = await PaymentModel.find().lean();
+  const paymentData = payments.map((payment) => ({
+    PaymentID: payment.paymentId,
+    OrderID: payment.orderId,
+    UserID: payment.userId.toString(),
+    Amount: (payment.amount / 100).toFixed(2),
+    Currency: payment.currency,
+    Status: payment.status,
+    CreatedAt: payment.createdAt.toISOString(),
+  }));
+  const paymentWs = XLSX.utils.json_to_sheet(paymentData);
+  XLSX.utils.book_append_sheet(wb, paymentWs, "Payments");
+
+  // Generate Excel file
+  const buffer = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
+  res.setHeader(
+    "Content-Disposition",
+    "attachment; filename=subscriptions.xlsx"
+  );
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+  res.status(200).send(buffer);
+});
+
+// Admin: Check user eligibility status
+export const checkUserEligibility = asyncHandler(async (req, res, next) => {
+  if (!req.user?.isAdmin) throw new AppError("Admin access required", 403);
+  const { userId } = req.params;
+
+  validateObjectId(userId, "User ID");
+  const user = await UserModel.findById(userId).lean();
+  if (!user) throw new AppError("User not found", 404);
+
+  const followerCount = user.followers?.length || 0;
+  const postCount = await PostModel.countDocuments({
+    author: userId,
+    isPublished: true,
+  });
+
+  // Fetch global criteria (assume ConfigModel exists)
+  const config = (await ConfigModel.findOne({
+    key: "subscriptionEligibility",
+  })) || {
+    minFollowers: 10000,
+    minPosts: 30,
+  };
+
+  const isEligible =
+    user.isEligibleForSubscription ||
+    (followerCount >= config.minFollowers && postCount >= config.minPosts);
+
+  res.status(200).json({
+    success: true,
+    userId,
+    isEligible,
+    followerCount,
+    postCount,
+    criteria: { minFollowers: config.minFollowers, minPosts: config.minPosts },
+    manuallySet: !!user.isEligibleForSubscription,
+  });
+});
+
+// Admin: Suspend or activate a subscription plan
+export const toggleSubscriptionPlanStatus = asyncHandler(
+  async (req, res, next) => {
+    if (!req.user?.isAdmin) throw new AppError("Admin access required", 403);
+    const { planId, status } = req.body;
+
+    validateObjectId(planId, "Plan ID");
+    if (!["active", "suspended"].includes(status)) {
+      throw new AppError(
+        "Invalid status. Must be 'active' or 'suspended'",
+        400
+      );
+    }
+
+    const plan = await UserSubscriptionModel.findById(planId);
+    if (!plan) throw new AppError("Plan not found", 404);
+
+    plan.status = status;
+    await plan.save();
+
+    await recordActivity({
+      userId: req.user._id.toString(),
+      action: "TOGGLED_SUBSCRIPTION_PLAN_STATUS",
+      message: `Admin set plan ${planId} to ${status}`,
+      plan: { planId: plan._id, name: plan.name, status },
+    });
+
+    res.status(200).json({
+      success: true,
+      plan: { id: plan._id, name: plan.name, status },
     });
   }
 );

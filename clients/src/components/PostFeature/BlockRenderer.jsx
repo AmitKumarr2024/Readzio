@@ -16,6 +16,7 @@ import VideoBlockOutput from "../actualPostDisplay/VideoBlockOutput";
 import { getSubscriptionStatusByAuthor } from "../../store/subscriptionSlice";
 import Skeleton from "../ui/Skeleton";
 import GoogleAd from "../../Ads/GoogleAd";
+import PostTags from "../Post/DisplayPost/PostTags";
 
 const placeholderAdImage = "https://placehold.co/150x100?text=Ad+Failed";
 
@@ -29,6 +30,7 @@ const BlockRenderer = ({
   canViewPost,
   authorId,
   isPublished,
+  tags,
 }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -277,6 +279,8 @@ const BlockRenderer = ({
           </button>
         </div>
       )}
+      {/* ✅ Tags rendered after full content */}
+      {showFullContent && tags?.length > 0 && <PostTags tags={tags} />}
     </div>
   );
 };

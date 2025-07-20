@@ -27,6 +27,7 @@ import NotificationPage from "../components/Notification/NotificationPage";
 import UsersPage from "../pages/UsersPage";
 import ResetPassword from "../pages/ResetPasswordPage";
 import VerifyEmail from "../components/resetPassword/VerifyEmail";
+import TagWisePage from "../pages/TagWisePage";
 
 const routes = createBrowserRouter([
   {
@@ -54,6 +55,7 @@ const routes = createBrowserRouter([
       { path: "/message-box", element: <NotificationPage /> },
       { path: "/users", element: <UsersPage /> }, // Added UsersPage route
       { path: "/verify", element: <VerifyEmail /> }, // Added UsersPage route
+      { path: "/tag/:tag", element: <TagWisePage /> }, // Added UsersPage route
     ],
   },
   { path: "/select-category", element: <CategorySelectPage /> },

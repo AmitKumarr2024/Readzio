@@ -25,9 +25,12 @@ const CardOfPost = ({
   timeSpent = 0,
   loading = false,
   postType = "free",
+  tags = [],
 }) => {
   const dispatch = useDispatch();
-  const { plans = [], isSubscribed = {} } = useSelector((state) => state.subscription || {});
+  const { plans = [], isSubscribed = {} } = useSelector(
+    (state) => state.subscription || {}
+  );
   const currentUser = useSelector((state) => state.auth.user);
 
   const authorId = author?._id || "";
@@ -108,6 +111,17 @@ const CardOfPost = ({
             Subscribed
           </span>
         )}
+        <div className="flex flex-wrap mt-3 gap-2">
+          {tags?.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {tags.map((tag) => (
+                <div className="text-indigo-500 hover:underline text-sm font-medium">
+                  #{tag}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </Link>
   );

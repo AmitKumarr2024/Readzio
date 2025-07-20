@@ -15,10 +15,19 @@ const BlockContentRenderer = ({
 }) => (
   <div className="relative">
     {post.blocked && !isAuthor && !showAnyway && (
-      <BlockedPostOverlay post={post} isAuthor={isAuthor} showAnyway={showAnyway} setShowAnyway={setShowAnyway} />
+      <BlockedPostOverlay
+        post={post}
+        isAuthor={isAuthor}
+        showAnyway={showAnyway}
+        setShowAnyway={setShowAnyway}
+      />
     )}
     {(!canViewPost || post.blocked || !post.isPublished) && !isAuthor && (
-      <RestrictedNotice isBlocked={post.blocked} isAuthor={isAuthor} showAnyway={showAnyway} />
+      <RestrictedNotice
+        isBlocked={post.blocked}
+        isAuthor={isAuthor}
+        showAnyway={showAnyway}
+      />
     )}
     {(canViewPost || isAuthor) && post.isPublished && (
       <BlockRenderer
@@ -31,6 +40,7 @@ const BlockContentRenderer = ({
         canViewPost={canViewPost}
         authorId={post.author?._id}
         isPublished={post.isPublished}
+        tags={post.tags}
       />
     )}
   </div>
