@@ -1,29 +1,78 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FaAlignLeft, FaAlignCenter, FaAlignRight, FaRedo, FaUndo, FaBackspace, FaBold, FaItalic, FaUnderline, FaStrikethrough, FaLink } from "react-icons/fa";
+import {
+  FaAlignLeft,
+  FaAlignCenter,
+  FaAlignRight,
+  FaRedo,
+  FaUndo,
+  FaBackspace,
+  FaBold,
+  FaItalic,
+  FaUnderline,
+  FaStrikethrough,
+  FaLink,
+} from "react-icons/fa";
 import { toast } from "react-hot-toast";
 
+// Emoji options
 const emojiOptions = [
-  "😀", "😂", "😊", "😍", "😎", "😢", "😡", "😴", "🤔", "😭",
-  "👍", "👎", "👏", "🙏", "💪", "🔥", "🎉", "✨", "💯", "🎂",
-  "❤️", "💔", "💕", "💖", "💙", "📌", "📎", "📚", "🧠", "💡",
-  "⚡", "🌟", "🌈", "☀️", "🌙",
+  "😀",
+  "😂",
+  "😊",
+  "😍",
+  "😎",
+  "😢",
+  "😡",
+  "😴",
+  "🤔",
+  "😭",
+  "👍",
+  "👎",
+  "👏",
+  "🙏",
+  "💪",
+  "🔥",
+  "🎉",
+  "✨",
+  "💯",
+  "🎂",
+  "❤️",
+  "💔",
+  "💕",
+  "💖",
+  "💙",
+  "📌",
+  "📎",
+  "📚",
+  "🧠",
+  "💡",
+  "⚡",
+  "🌟",
+  "🌈",
+  "☀️",
+  "🌙",
 ];
 
-const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
+const EditorTextBlock = ({ value, onUpdate }) => {
   const contentRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [activeCommands, setActiveCommands] = useState({});
 
+  // Load initial content
   useEffect(() => {
     if (contentRef.current && value !== contentRef.current.innerHTML) {
       contentRef.current.innerHTML = value || "";
     }
   }, [value]);
 
+  // Close emoji picker on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target)
+      ) {
         setEmojiPickerOpen(false);
       }
     };
@@ -31,6 +80,7 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Check which buttons are active
   const checkActiveCommands = () => {
     const commands = [
       "bold",
@@ -47,15 +97,26 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
     commands.forEach((cmd) => {
       try {
         newActiveCommands[cmd] = document.queryCommandState(cmd);
-      } catch (e) {
+      } catch {
         newActiveCommands[cmd] = false;
       }
     });
     setActiveCommands(newActiveCommands);
   };
 
+  // Execute formatting commands
   const execCommand = (command, val = null) => {
     try {
+      const selection = window.getSelection();
+      // ✅ Check if removeFormat has selection
+      if (
+        command === "removeFormat" &&
+        (!selection || selection.isCollapsed || !selection.toString().trim())
+      ) {
+        toast.error("Please select text to remove formatting.");
+        return;
+      }
+
       const success = document.execCommand(command, false, val);
       if (success) {
         onUpdate(contentRef.current?.innerHTML);
@@ -65,16 +126,19 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
         toast.error(`Failed to apply ${command}`);
       }
     } catch (e) {
+      console.error(`[EditorTextBlock] Error executing ${command}:`, e);
       toast.error(`Error executing ${command}`);
     }
   };
 
+  // Handle content change
   const handleInput = () => {
     const html = contentRef.current?.innerHTML;
     onUpdate(html);
     checkActiveCommands();
   };
 
+  // Clear entire editor
   const clearContent = () => {
     if (contentRef.current) {
       contentRef.current.innerHTML = "";
@@ -84,6 +148,7 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
     }
   };
 
+  // Insert link around selected text
   const insertLink = () => {
     const url = prompt("Enter the URL:");
     if (!url) return;
@@ -108,6 +173,7 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
     checkActiveCommands();
   };
 
+  // Insert emoji at cursor
   const insertEmoji = (emoji) => {
     const sel = window.getSelection();
     if (!sel.rangeCount) return;
@@ -125,28 +191,53 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
 
   return (
     <div className="mb-4 border rounded-xl p-3 sm:p-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md transition-shadow hover:shadow-lg">
-      <div className="flex flex-wrap gap-1 sm:gap-2 mb-3 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark p-2 sm:p-3 rounded-lg">
+      {/* Toolbar */}
+      <div className="flex flex-wrap gap-1 sm:gap-2 mb-3 p-2 sm:p-3 rounded-lg">
         {[
           { icon: <FaBold />, command: "bold", title: "Bold" },
           { icon: <FaItalic />, command: "italic", title: "Italic" },
           { icon: <FaUnderline />, command: "underline", title: "Underline" },
-          { icon: <FaStrikethrough />, command: "strikeThrough", title: "Strikethrough" },
-          { icon: <FaAlignLeft />, command: "justifyLeft", title: "Align Left" },
-          { icon: <FaAlignCenter />, command: "justifyCenter", title: "Align Center" },
-          { icon: <FaAlignRight />, command: "justifyRight", title: "Align Right" },
+          {
+            icon: <FaStrikethrough />,
+            command: "strikeThrough",
+            title: "Strikethrough",
+          },
+          {
+            icon: <FaAlignLeft />,
+            command: "justifyLeft",
+            title: "Align Left",
+          },
+          {
+            icon: <FaAlignCenter />,
+            command: "justifyCenter",
+            title: "Align Center",
+          },
+          {
+            icon: <FaAlignRight />,
+            command: "justifyRight",
+            title: "Align Right",
+          },
           { icon: "1.", command: "insertOrderedList", title: "Ordered List" },
           { icon: "•", command: "insertUnorderedList", title: "Bullet List" },
-          { icon: <FaLink className="text-indigo-500" />, command: insertLink, title: "Insert Link" },
+          {
+            icon: <FaLink className="text-indigo-500" />,
+            command: insertLink,
+            title: "Insert Link",
+          },
           { icon: <FaUndo />, command: "undo", title: "Undo" },
           { icon: <FaRedo />, command: "redo", title: "Redo" },
           { icon: "🚫", command: "removeFormat", title: "Remove Format" },
         ].map(({ icon, command, title }, i) => (
           <button
             key={i}
-            onClick={() => (typeof command === "function" ? command() : execCommand(command))}
+            onClick={() =>
+              typeof command === "function" ? command() : execCommand(command)
+            }
             title={title}
             className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
-              activeCommands[command] ? "bg-indigo-500 text-white" : "hover:bg-gray-200"
+              activeCommands[command]
+                ? "bg-indigo-500 text-white"
+                : "hover:bg-gray-200"
             } focus:ring-2 focus:ring-indigo-500 focus:outline-none`}
             aria-pressed={activeCommands[command] || false}
             aria-label={title}
@@ -154,19 +245,23 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
             {icon}
           </button>
         ))}
+
+        {/* Text Color Picker */}
         <input
           type="color"
           onChange={(e) => execCommand("foreColor", e.target.value)}
-          title="Text Color"
           defaultValue="#000000"
+          title="Text Color"
           className="w-6 h-6 sm:w-8 sm:h-8 p-1 rounded-lg border focus:ring-2 focus:ring-indigo-500"
           aria-label="Text color picker"
         />
+
+        {/* Font Size Selector */}
         <select
           onChange={(e) => execCommand("fontSize", e.target.value)}
           defaultValue="3"
           title="Font Size"
-          className="border rounded-lg px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500"
+          className="border rounded-lg px-1 bg-background-light dark:bg-background-dark  sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500"
           aria-label="Font size selector"
         >
           <option value="1">10px</option>
@@ -177,6 +272,8 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
           <option value="6">32px</option>
           <option value="7">48px</option>
         </select>
+
+        {/* Emoji Picker */}
         <div className="relative" ref={emojiPickerRef}>
           <button
             onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
@@ -188,12 +285,12 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
             😀
           </button>
           {emojiPickerOpen && (
-            <div className="absolute z-20 mt-2 p-2 sm:p-3 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark border rounded-lg shadow-xl grid grid-cols-5 sm:grid-cols-6 gap-1 sm:gap-2 max-h-40 sm:max-h-48 overflow-y-auto w-40 sm:w-48">
+            <div className="absolute right-0 z-20 mt-2 p-2 sm:p-3 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark border rounded-lg shadow-xl grid grid-cols-5 sm:grid-cols-6 gap-1 sm:gap-2 max-h-40 sm:max-h-48 overflow-y-auto w-64 sm:w-72">
               {emojiOptions.map((emoji) => (
                 <button
                   key={emoji}
                   onClick={() => insertEmoji(emoji)}
-                  className="text-lg sm:text-xl hover:bg-gray-100 rounded p-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-8 h-8 sm:w-10 sm:h-10 text-xl flex items-center justify-center hover:bg-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   aria-label={`Insert ${emoji} emoji`}
                 >
                   {emoji}
@@ -202,15 +299,19 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
             </div>
           )}
         </div>
+
+        {/* Clear Content Button */}
         <button
           onClick={clearContent}
           title="Clear Block Content"
-          className="p-1.5 sm:p-2 hover:bg-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="p-1.5 sm:p-2 hover:bg-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none"
           aria-label="Clear text block content"
         >
           <FaBackspace className="text-red-500" size={16} />
         </button>
       </div>
+
+      {/* Editable Area */}
       <div
         ref={contentRef}
         contentEditable
@@ -218,7 +319,16 @@ const EditorTextBlock = ({ value, onUpdate, onRemove }) => {
         onInput={handleInput}
         onClick={checkActiveCommands}
         onKeyUp={checkActiveCommands}
-        className="min-h-[100px] sm:min-h-[120px] p-3 sm:p-4 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+        className="
+          min-h-[100px] sm:min-h-[120px] p-3 sm:p-4 rounded-lg
+          bg-background-light dark:bg-background-dark
+          text-text-main-light dark:text-text-main-dark
+          border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500
+          text-xs sm:text-sm
+          prose prose-sm dark:prose-invert
+          [&>ul]:list-disc [&>ul]:pl-5
+          [&>ol]:list-decimal [&>ol]:pl-5
+        "
         role="textbox"
         aria-multiline="true"
         aria-label="Text editor"
