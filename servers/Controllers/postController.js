@@ -427,6 +427,7 @@ export const getAllPosts = async (req, res, next) => {
           .skip(skip)
           .limit(limit)
           .populate("author", "name avatar")
+          .populate("category", "name slug")
           .lean(),
         PostModel.countDocuments(query),
         PostModel.countDocuments({ blocked: { $ne: true }, isPublished: true }),

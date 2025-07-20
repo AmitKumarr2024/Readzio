@@ -1,14 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { Filter, X } from "lucide-react";
 import Postbox from "../components/Post/Postbox";
 
-// Displays posts filtered by category
 const CategoryWisePage = () => {
   const { category } = useParams();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [sortOption, setSortOption] = useState("recent");
   const [filterTags, setFilterTags] = useState([]);
+
+  const { posts } = useSelector((state) => state.post || {});
 
   const toggleFilter = () => setIsFilterOpen((prev) => !prev);
 
@@ -28,11 +30,19 @@ const CategoryWisePage = () => {
     { value: "trending", label: "Trending" },
   ];
 
-  const sampleTags = ["Technology", "Innovation", "News", "Tips"];
+  const availableTags = useMemo(() => {
+    const tagSet = new Set();
+    posts?.forEach((post) => {
+      if (post?.tags?.length) {
+        post.tags.forEach((tag) => tagSet.add(tag));
+      }
+    });
+    return Array.from(tagSet);
+  }, [posts]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 text-gray-900 dark:text-gray-100 pt-20 pb-12 overflow-x-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-start capitalize mt-8 mb-10 tracking-tight">
           Explore{" "}
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
@@ -43,8 +53,9 @@ const CategoryWisePage = () => {
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
           {/* Main content */}
           <div className="w-full lg:w-3/4">
-            <Postbox category={category} />
+            <Postbox category={category} selectedTags={filterTags} />
           </div>
+
           {/* Filter sidebar */}
           <aside
             className={`w-full lg:w-1/4 space-y-6 transition-all duration-500 ease-in-out ${
@@ -69,8 +80,8 @@ const CategoryWisePage = () => {
                     </button>
                   )}
                 </div>
+
                 <div className="space-y-6">
-                  {/* Sort options */}
                   <div>
                     <label className="block text-sm sm:text-base font-medium mb-2 text-gray-700 dark:text-gray-300">
                       Sort By
@@ -87,13 +98,13 @@ const CategoryWisePage = () => {
                       ))}
                     </select>
                   </div>
-                  {/* Tag filters */}
+
                   <div>
                     <label className="block text-sm sm:text-base font-medium mb-2 text-gray-700 dark:text-gray-300">
                       Filter by Tags
                     </label>
                     <div className="flex flex-wrap gap-2 sm:gap-3">
-                      {sampleTags.map((tag) => (
+                      {availableTags.map((tag) => (
                         <button
                           key={tag}
                           onClick={() => handleTagToggle(tag)}
@@ -112,7 +123,7 @@ const CategoryWisePage = () => {
               </div>
             </div>
           </aside>
-          {/* Mobile filter toggle */}
+
           <button
             onClick={toggleFilter}
             className="lg:hidden fixed bottom-6 right-6 p-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full shadow-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-110 z-40"

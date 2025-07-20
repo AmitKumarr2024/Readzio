@@ -124,7 +124,7 @@ const CategoryBox = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-15 gap-4 p-2 sm:p-4">
                 {displayedCategories.map((category) => (
                   <Link
-                    to={`/category_page/${category.slug}`}
+                    to={`/category/${category.slug}`}
                     key={category._id}
                     title={`Go to ${category.name} category`}
                     onClick={() => {

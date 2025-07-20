@@ -180,12 +180,21 @@ const Postbox = ({
     );
 
     if (category) {
-      validPosts = validPosts.filter(
-        (post) =>
-          (typeof post.category === "string"
-            ? post.category
-            : post.category?._id) === category
-      );
+      console.log("🔍 Filtering posts by slug:", category.toLowerCase());
+
+      validPosts = validPosts.filter((post) => {
+        console.log("➡️ post.category value:", post.category);
+        let postCategorySlug = "";
+
+        if (typeof post.category === "object" && post.category?.slug) {
+          postCategorySlug = post.category.slug.toLowerCase();
+        } else if (typeof post.category === "string") {
+          const matched = categories.find((cat) => cat._id === post.category);
+          if (matched) postCategorySlug = matched.slug?.toLowerCase();
+        }
+
+        return postCategorySlug === category.toLowerCase();
+      });
     }
 
     if (filterType === "My Posts") {

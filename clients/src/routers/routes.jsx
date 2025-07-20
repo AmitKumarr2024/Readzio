@@ -38,7 +38,7 @@ const routes = createBrowserRouter([
       { path: "/createPost", element: <CreatePost /> },
       { path: "/edit-post/:slug", element: <EditPost /> },
       { path: "/delete-post/:id", element: <DeleteModal /> },
-      { path: "/category_page/:category", element: <CategoryWisePage /> },
+      { path: "/category/:category", element: <CategoryWisePage /> },
       { path: "/post/:slug", element: <DisplayPost /> },
       { path: "/search", element: <SearchPage /> },
       { path: "/admin", element: <Dashboard /> },
