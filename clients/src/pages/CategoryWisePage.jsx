@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Filter, X } from "lucide-react";
 import Postbox from "../components/Post/Postbox";
 
+// Displays posts filtered by category
 const CategoryWisePage = () => {
   const { category } = useParams();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -13,14 +14,12 @@ const CategoryWisePage = () => {
 
   const handleSortChange = (e) => {
     setSortOption(e.target.value);
-    // Add logic to update Postbox sorting if needed
   };
 
   const handleTagToggle = (tag) => {
     setFilterTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
-    // Add logic to filter posts by tags if needed
   };
 
   const filterOptions = [
@@ -29,7 +28,7 @@ const CategoryWisePage = () => {
     { value: "trending", label: "Trending" },
   ];
 
-  const sampleTags = ["Technology", "Innovation", "News", "Tips"]; // Replace with dynamic tags if available
+  const sampleTags = ["Technology", "Innovation", "News", "Tips"];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 text-gray-900 dark:text-gray-100 pt-20 pb-12 overflow-x-hidden">
@@ -41,14 +40,12 @@ const CategoryWisePage = () => {
           </span>{" "}
           Posts
         </h1>
-
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-          {/* Main Content */}
+          {/* Main content */}
           <div className="w-full lg:w-3/4">
             <Postbox category={category} />
           </div>
-
-          {/* Right Sidebar (Filter) */}
+          {/* Filter sidebar */}
           <aside
             className={`w-full lg:w-1/4 space-y-6 transition-all duration-500 ease-in-out ${
               isFilterOpen
@@ -57,7 +54,6 @@ const CategoryWisePage = () => {
             }`}
           >
             <div className="lg:sticky lg:top-20">
-              {/* Filter Section */}
               <div className="bg-white/80 dark:bg-gray-800/80 rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-200/50 dark:border-gray-700/50">
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
                   <h2 className="text-xl sm:text-2xl font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">
@@ -74,7 +70,7 @@ const CategoryWisePage = () => {
                   )}
                 </div>
                 <div className="space-y-6">
-                  {/* Sort Options */}
+                  {/* Sort options */}
                   <div>
                     <label className="block text-sm sm:text-base font-medium mb-2 text-gray-700 dark:text-gray-300">
                       Sort By
@@ -91,8 +87,7 @@ const CategoryWisePage = () => {
                       ))}
                     </select>
                   </div>
-
-                  {/* Tag Filters */}
+                  {/* Tag filters */}
                   <div>
                     <label className="block text-sm sm:text-base font-medium mb-2 text-gray-700 dark:text-gray-300">
                       Filter by Tags
@@ -117,8 +112,7 @@ const CategoryWisePage = () => {
               </div>
             </div>
           </aside>
-
-          {/* Mobile Filter Toggle */}
+          {/* Mobile filter toggle */}
           <button
             onClick={toggleFilter}
             className="lg:hidden fixed bottom-6 right-6 p-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full shadow-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-110 z-40"

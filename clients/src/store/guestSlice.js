@@ -14,7 +14,10 @@ export const fetchPublicPosts = createAsyncThunk(
   "guest/fetchPublicPosts",
   async ({ page = 1, limit = 12 }, { rejectWithValue }) => {
     try {
-      console.log("[guestSlice:fetchPublicPosts] Fetching posts:", { page, limit });
+      console.log("[guestSlice:fetchPublicPosts] Fetching posts:", {
+        page,
+        limit,
+      });
       const res = await axiosInstance.get("/public/posts", {
         params: { page, limit },
       });
@@ -25,7 +28,8 @@ export const fetchPublicPosts = createAsyncThunk(
       console.log("[guestSlice:fetchPublicPosts] Fetched posts:", posts.length);
       return { posts, total: res.data.total, page: res.data.page };
     } catch (err) {
-      const errMsg = err.response?.data?.message || "Failed to fetch public posts";
+      const errMsg =
+        err.response?.data?.message || "Failed to fetch public posts";
       console.error("[guestSlice:fetchPublicPosts] Error:", errMsg);
       return rejectWithValue(errMsg);
     }
@@ -43,7 +47,12 @@ export const fetchPublicPostBySlug = createAsyncThunk(
         ...res.data.post,
         blocks: Array.isArray(res.data.post.blocks) ? res.data.post.blocks : [],
       };
-      console.log("[guestSlice:fetchPublicPostBySlug] Fetched post:", post._id, "blocks:", post.blocks.length);
+      console.log(
+        "[guestSlice:fetchPublicPostBySlug] Fetched post:",
+        post._id,
+        "blocks:",
+        post.blocks.length
+      );
       return post;
     } catch (err) {
       const errMsg = err.response?.data?.message || "Post not found";
@@ -60,7 +69,10 @@ export const trackGuestView = createAsyncThunk(
     try {
       console.log("[guestSlice:trackGuestView] Tracking view:", slug);
       const res = await axiosInstance.post(`/public/post/${slug}/view`);
-      console.log("[guestSlice:trackGuestView] View tracked:", res.data.message);
+      console.log(
+        "[guestSlice:trackGuestView] View tracked:",
+        res.data.message
+      );
       return res.data.message;
     } catch (err) {
       const errMsg = err.response?.data?.message || "Failed to track view";
@@ -75,7 +87,11 @@ export const searchPublicPosts = createAsyncThunk(
   "guest/searchPublicPosts",
   async ({ query, page = 1, limit = 12 }, { rejectWithValue }) => {
     try {
-      console.log("[guestSlice:searchPublicPosts] Searching posts:", { query, page, limit });
+      console.log("[guestSlice:searchPublicPosts] Searching posts:", {
+        query,
+        page,
+        limit,
+      });
       const res = await axiosInstance.get("/public/search-posts", {
         params: { query, page, limit },
       });
@@ -83,10 +99,14 @@ export const searchPublicPosts = createAsyncThunk(
         ...post,
         blocks: Array.isArray(post.blocks) ? post.blocks : [],
       }));
-      console.log("[guestSlice:searchPublicPosts] Fetched posts:", posts.length);
+      console.log(
+        "[guestSlice:searchPublicPosts] Fetched posts:",
+        posts.length
+      );
       return { posts, total: res.data.total, page: res.data.page };
     } catch (err) {
-      const errMsg = err.response?.data?.message || "Failed to search public posts";
+      const errMsg =
+        err.response?.data?.message || "Failed to search public posts";
       console.error("[guestSlice:searchPublicPosts] Error:", errMsg);
       return rejectWithValue(errMsg);
     }
@@ -126,7 +146,10 @@ const guestSlice = createSlice({
         state.page = action.payload.page;
       })
       .addCase(fetchPublicPosts.rejected, (state, action) => {
-        console.error("[guestSlice:fetchPublicPosts] Rejected:", action.payload);
+        console.error(
+          "[guestSlice:fetchPublicPosts] Rejected:",
+          action.payload
+        );
         state.loading = false;
         state.error = action.payload;
       })
@@ -143,7 +166,10 @@ const guestSlice = createSlice({
         state.singlePost = action.payload;
       })
       .addCase(fetchPublicPostBySlug.rejected, (state, action) => {
-        console.error("[guestSlice:fetchPublicPostBySlug] Rejected:", action.payload);
+        console.error(
+          "[guestSlice:fetchPublicPostBySlug] Rejected:",
+          action.payload
+        );
         state.loading = false;
         state.error = action.payload;
       })
@@ -177,7 +203,10 @@ const guestSlice = createSlice({
         state.page = action.payload.page;
       })
       .addCase(searchPublicPosts.rejected, (state, action) => {
-        console.error("[guestSlice:searchPublicPosts] Rejected:", action.payload);
+        console.error(
+          "[guestSlice:searchPublicPosts] Rejected:",
+          action.payload
+        );
         state.loading = false;
         state.error = action.payload;
       });

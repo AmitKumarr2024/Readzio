@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { Send, Loader2 } from "lucide-react";
 import SpaceBackground from "../Utils/SpaceBackground";
 import { createContactMessage } from "../store/adminSlice";
+import toast from "react-hot-toast";
 
+// Handles contact form submission
 const Contact = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -24,17 +26,16 @@ const Contact = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!isAuthenticated) {
       toast.info("Please login to comment.");
       return navigate("/login");
     }
     setSuccess(null);
     setErrorMessage("");
-
     try {
-      const result = await dispatch(createContactMessage(formData)).unwrap();
+      await dispatch(createContactMessage(formData)).unwrap();
       setSuccess(true);
+      toast.success("Message sent successfully!");
       setFormData({
         name: "",
         email: "",
@@ -42,29 +43,26 @@ const Contact = () => {
         message: "",
       });
     } catch (err) {
+      console.error("[Contact] Send message failed:", err);
       setSuccess(false);
       setErrorMessage(err || "Failed to send message.");
+      toast.error(err || "Failed to send message.");
     }
   };
 
   return (
     <SpaceBackground>
       <section className="min-h-screen pt-6 pb-20 px-4 flex items-center justify-center">
-        <div className="w-full max-w-lg bg-white/90 backdrop-blur-md border border-gray-300 rounded-xl p-8 shadow-md">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Contact Us</h1>
-          <p className="text-sm text-gray-600 mb-6">
-            Please fill out the form and we’ll get back to you as soon as we
-            can.
+        <div className="w-full max-w-lg backdrop-blur-md border border-gray-300 rounded-xl p-8 shadow-md bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
+          <h1 className="text-2xl font-bold mb-2">Contact Us</h1>
+          <p className="text-sm mb-6">
+            Please fill out the form and we’ll get back to you as soon as we can.
           </p>
-
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            {/* Name input */}
             <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Name{" "}
-                <span className="text-xs text-gray-400">e.g. John Doe</span>
+              <label htmlFor="name" className="block text-sm font-medium mb-1">
+                Name <span className="text-xs">e.g. John Doe</span>
               </label>
               <input
                 id="name"
@@ -74,17 +72,13 @@ const Contact = () => {
                 onChange={handleChange}
                 placeholder="Enter your full name"
                 required
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
+            {/* Email input */}
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Email{" "}
-                <span className="text-xs text-gray-400">we’ll reply here</span>
+              <label htmlFor="email" className="block text-sm font-medium mb-1">
+                Email <span className="text-xs">we’ll reply here</span>
               </label>
               <input
                 id="email"
@@ -94,17 +88,13 @@ const Contact = () => {
                 onChange={handleChange}
                 placeholder="your@email.com"
                 required
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
+            {/* Subject input */}
             <div>
-              <label
-                htmlFor="subject"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Subject{" "}
-                <span className="text-xs text-gray-400">short and clear</span>
+              <label htmlFor="subject" className="block text-sm font-medium mb-1">
+                Subject <span className="text-xs">short and clear</span>
               </label>
               <input
                 id="subject"
@@ -113,19 +103,13 @@ const Contact = () => {
                 value={formData.subject}
                 onChange={handleChange}
                 placeholder="Account issue, bug report, etc."
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
+            {/* Message input */}
             <div>
-              <label
-                htmlFor="message"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Message{" "}
-                <span className="text-xs text-gray-400">
-                  describe your issue or question
-                </span>
+              <label htmlFor="message" className="block text-sm font-medium mb-1">
+                Message <span className="text-xs">describe your issue or question</span>
               </label>
               <textarea
                 id="message"
@@ -135,10 +119,10 @@ const Contact = () => {
                 onChange={handleChange}
                 required
                 placeholder="Write your message here..."
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
               ></textarea>
             </div>
-
+            {/* Submit button */}
             <button
               type="submit"
               disabled={loading}
@@ -152,28 +136,9 @@ const Contact = () => {
               {loading ? "Sending..." : "Send Message"}
             </button>
           </form>
-
-          {/* Feedback Messages */}
-          {success === true && (
-            <p className="mt-4 text-center text-sm text-green-600">
-              ✅ Message sent successfully!
-            </p>
-          )}
-          {success === false && (
-            <p className="mt-4 text-center text-sm text-red-600">
-              ❌ {errorMessage}
-            </p>
-          )}
-          {error && !success && (
-            <p className="mt-4 text-center text-sm text-red-600">❌ {error}</p>
-          )}
-
-          <p className="mt-8 text-center text-xs text-gray-500">
+          <p className="mt-8 text-center text-xs">
             Or email us at{" "}
-            <a
-              href="mailto:amit@example.com"
-              className="text-blue-600 hover:underline"
-            >
+            <a href="mailto:amit@example.com" className="text-blue-600 hover:underline">
               amit@example.com
             </a>
           </p>

@@ -3,29 +3,26 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, SkipForward } from "lucide-react";
 import NewUserCategoryModal from "../components/Cards/NewUserCategoryModal";
 
+// Displays category selection for new users
 const CategorySelectPage = () => {
   const navigate = useNavigate();
 
   const handleBack = () => {
-    console.log("CategorySelectPage.jsx: Navigating back");
     navigate(-1);
   };
 
   const handleClose = () => {
-    console.log("CategorySelectPage.jsx: Closing modal, navigating to home");
     navigate("/");
   };
 
   const handleSkip = () => {
-    console.log("CategorySelectPage.jsx: Skipping category selection, navigating to home");
     navigate("/");
   };
 
   return (
     <main className="relative min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 text-gray-900 dark:text-gray-100 flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
-      {/* Starry background with subtle animation */}
+      {/* Background animation */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 animate-pulse-slow"></div>
-
       {/* Header */}
       <header className="absolute top-4 sm:top-6 left-4 sm:left-6 right-4 sm:right-6 flex justify-between items-center z-20">
         <div className="flex items-center gap-2">
@@ -48,12 +45,10 @@ const CategorySelectPage = () => {
           Skip
         </button>
       </header>
-
-      {/* Category Modal */}
+      {/* Category modal */}
       <div className="z-10 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl">
         <NewUserCategoryModal onClose={handleClose} isNewUser={true} />
       </div>
-
       {/* Decorative elements */}
       <div className="absolute bottom-0 left-0 w-32 h-32 sm:w-48 sm:h-48 bg-indigo-200/30 dark:bg-indigo-800/30 rounded-full blur-3xl -translate-x-1/4 translate-y-1/4"></div>
       <div className="absolute top-0 right-0 w-32 h-32 sm:w-48 sm:h-48 bg-purple-200/30 dark:bg-purple-800/30 rounded-full blur-3xl translate-x-1/4 -translate-y-1/4"></div>
@@ -62,4 +57,3 @@ const CategorySelectPage = () => {
 };
 
 export default CategorySelectPage;
-

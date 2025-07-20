@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { PacmanLoader } from "react-spinners";
 
-// ✅ Accept `text` as a prop with a default value
+// Displays loading overlay with text
 const LoadingBar = ({ loading, text = "Loading..." }) => {
   const [showBar, setShowBar] = useState(false);
 
+  // Manage loading state with delay
   useEffect(() => {
     console.log("[DEBUG] LoadingBar: loading state changed:", loading);
     if (loading) {
@@ -18,6 +19,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
   return (
     <>
       {showBar && (
+        // Full-screen loading overlay
         <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
             <PacmanLoader color="#ff002b" size={40} />

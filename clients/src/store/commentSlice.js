@@ -1,4 +1,3 @@
-// commentSlice.js (updated for better error handling)
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axiosInstance from '../connection/axiosInstance';
 

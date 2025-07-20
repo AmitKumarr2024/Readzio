@@ -8,17 +8,18 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Provider } from "react-redux";
 import store from "./store/store.js";
 
+// Renders app with Redux, Google OAuth, and routing
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <Provider store={store}>
-      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+    <Provider store={store}> {/* Redux store provider */}
+      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}> {/* Google OAuth setup */}
         <Toaster
           position="top-center"
           toastOptions={{
             className: "toast-theme text-base px-4 py-2 rounded-md shadow-md",
           }}
-        />
-        <RouterProvider router={routes} />
+        /> {/* Toast notifications */}
+        <RouterProvider router={routes} /> {/* App routes */}
       </GoogleOAuthProvider>
     </Provider>
   </StrictMode>

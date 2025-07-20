@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../connection/axiosInstance";
 
-// Async Thunks
 export const createSubscriptionPlan = createAsyncThunk(
   "subscription/createPlan",
   async (planData, { rejectWithValue }) => {
@@ -9,7 +8,8 @@ export const createSubscriptionPlan = createAsyncThunk(
       console.log("📩 Creating subscription plan:", planData);
       const response = await axiosInstance.post(
         "/subscription/plans",
-        planData
+        planData,
+        { withCredentials: true }
       );
       console.log("✅ Create subscription plan response:", response.data);
       return response.data;
@@ -30,7 +30,8 @@ export const updateSubscriptionPlan = createAsyncThunk(
       console.log("📩 Updating subscription plan:", { planId, planData });
       const response = await axiosInstance.patch(
         `/subscription/plans/${planId}`,
-        planData
+        planData,
+        { withCredentials: true }
       );
       console.log("✅ Update subscription plan response:", response.data);
       return response.data;
@@ -44,13 +45,36 @@ export const updateSubscriptionPlan = createAsyncThunk(
   }
 );
 
+export const activateSubscriptionPlan = createAsyncThunk(
+  "subscription/activatePlan",
+  async (planId, { rejectWithValue }) => {
+    try {
+      console.log("📩 Activating subscription plan:", planId);
+      const response = await axiosInstance.post(
+        `/subscription/plans/${planId}/activate`,
+        {},
+        { withCredentials: true }
+      );
+      console.log("✅ Activate subscription plan response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "❌ Error activating subscription plan:",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 export const deleteSubscriptionPlan = createAsyncThunk(
   "subscription/deletePlan",
   async (planId, { rejectWithValue }) => {
     try {
       console.log("📩 Deleting subscription plan:", planId);
       const response = await axiosInstance.delete(
-        `/subscription/plans/${planId}`
+        `/subscription/plans/${planId}`,
+        { withCredentials: true }
       );
       console.log("✅ Delete subscription plan response:", response.data);
       return response.data;
@@ -68,19 +92,21 @@ export const subscribeToPlan = createAsyncThunk(
   "subscription/subscribe",
   async (subscriptionData, { getState, rejectWithValue }) => {
     try {
-      const token = getState().auth?.user?.token;
+      const token = getState().auth?.user?.token || localStorage.getItem("jwt");
       if (!token) throw new Error("Missing authentication token");
 
+      if (!subscriptionData.planId) throw new Error("Missing plan ID");
+
+      console.log("📩 Subscribing to plan with data:", subscriptionData);
       const response = await axiosInstance.post(
         "/subscription/subscribe",
         subscriptionData,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
         }
       );
-
+      console.log("✅ Subscribed to plan:", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -99,7 +125,8 @@ export const cancelSubscription = createAsyncThunk(
       console.log("📩 Cancelling subscription:", subscriptionId);
       const response = await axiosInstance.patch(
         `/subscription/subscriptions/${subscriptionId}/cancel`,
-        {}
+        {},
+        { withCredentials: true }
       );
       console.log("✅ Cancel subscription response:", response.data);
       return response.data;
@@ -119,11 +146,9 @@ export const refundSubscription = createAsyncThunk(
     try {
       console.log("📩 Refunding subscription:", subscriptionId);
       const response = await axiosInstance.patch(
-        `/subscription/${subscriptionId}/refund`,
-        {
-          reason,
-          bankDetails,
-        }
+        `/subscription/subscriptions/${subscriptionId}/refund`,
+        { reason, bankDetails },
+        { withCredentials: true }
       );
       console.log("✅ Refund subscription response:", response.data);
       return response.data;
@@ -143,7 +168,8 @@ export const getSubscriptionAnalytics = createAsyncThunk(
     try {
       console.log("📩 Fetching subscription analytics for plan:", planId);
       const response = await axiosInstance.get(
-        `/subscription/plans/${planId}/analytics`
+        `/subscription/plans/${planId}/analytics`,
+        { withCredentials: true }
       );
       console.log("✅ Subscription analytics response:", response.data);
       return response.data;
@@ -162,10 +188,11 @@ export const getSubscriptionStatusByAuthor = createAsyncThunk(
   async ({ userId, authorId }, { rejectWithValue }) => {
     try {
       console.log("📩 Fetching subscription status for:", { userId, authorId });
-      const response = await axiosInstance.post("/subscription/status", {
-        userId,
-        authorId,
-      });
+      const response = await axiosInstance.post(
+        "/subscription/status",
+        { userId, authorId },
+        { withCredentials: true }
+      );
       console.log("✅ Subscription status response:", response.data);
       return { authorId, ...response.data };
     } catch (error) {
@@ -185,7 +212,8 @@ export const sendRenewalReminders = createAsyncThunk(
       console.log("📩 Sending renewal reminders:", reminderData);
       const response = await axiosInstance.post(
         "/subscription/reminders",
-        reminderData
+        reminderData,
+        { withCredentials: true }
       );
       console.log("✅ Send renewal reminders response:", response.data);
       return response.data;
@@ -205,7 +233,8 @@ export const fetchMySubscriptionPlans = createAsyncThunk(
     try {
       console.log("📩 Fetching my subscription plans (including deleted)");
       const response = await axiosInstance.get(
-        "/subscription/my-plans?includeDeleted=true"
+        "/subscription/my-plans?includeDeleted=true",
+        { withCredentials: true }
       );
       console.log("✅ Fetch my plans response:", {
         count: response.data.plans?.length,
@@ -231,7 +260,8 @@ export const unsubscribeFromPlanByAuthor = createAsyncThunk(
       });
       const response = await axiosInstance.post(
         "/subscription/unsubscribe/author",
-        { authorId, userId }
+        { authorId, userId },
+        { withCredentials: true }
       );
       console.log("✅ Unsubscribe from author plans response:", response.data);
       return response.data;
@@ -251,7 +281,8 @@ export const fetchSubscriptionPlansByAuthor = createAsyncThunk(
     try {
       console.log("📩 Fetching plans by author:", authorId);
       const response = await axiosInstance.get(
-        `/subscription/plans/author/${authorId}`
+        `/subscription/plans/author/${authorId}`,
+        { withCredentials: true }
       );
       console.log("✅ Fetch plans by author response:", {
         count: response.data.plans?.length,
@@ -271,11 +302,13 @@ export const fetchSubscriptionHistoryByAuthor = createAsyncThunk(
   "subscription/fetchSubscriptionHistoryByAuthor",
   async (authorId, { rejectWithValue }) => {
     try {
+      console.log("📩 Fetching subscription history for author:", authorId);
       const response = await axiosInstance.get(
-        `/subscription/author/${authorId}/subscriptions`
+        `/subscription/author/${authorId}/subscriptions`,
+        { withCredentials: true }
       );
       console.log("✅ Subscription history:", response.data.subscriptions);
-      return response.data.subscriptions; // Must be array
+      return response.data.subscriptions;
     } catch (error) {
       console.error(
         "❌ Fetch history error:",
@@ -292,7 +325,8 @@ export const fetchMySubscribedPlans = createAsyncThunk(
     try {
       console.log("📩 Fetching plans I have subscribed to");
       const response = await axiosInstance.get(
-        "/subscription/my-subscriptions"
+        "/subscription/my-subscriptions",
+        { withCredentials: true }
       );
       console.log("✅ Subscribed plans response:", {
         count: response.data.count,
@@ -316,16 +350,47 @@ export const checkEligibilityForSubscription = createAsyncThunk(
     try {
       console.log("📩 Checking subscription eligibility");
       const response = await axiosInstance.get(
-        "/subscription/check-eligibility"
+        "/subscription/check-eligibility",
+        { withCredentials: true }
       );
       console.log("✅ Eligibility response:", response.data);
-      return response.data;
+      return {
+        ...response.data,
+        criteria: response.data.criteria || {
+          minFollowers: 10000,
+          minPosts: 30,
+          minEngagementRate: 0.05,
+          minAccountAgeDays: 180,
+        },
+      };
     } catch (error) {
       console.error(
         "❌ Error checking eligibility:",
         error.response?.data || error.message
       );
-      return rejectWithValue(error.response?.data?.message || error.message);
+      if (
+        error.response?.data?.message === "Subscription configuration not found"
+      ) {
+        return {
+          isEligible: false,
+          followerCount: 0,
+          postCount: 0,
+          engagementRate: 0,
+          accountAgeDays: 0,
+          criteria: {
+            minFollowers: 10000,
+            minPosts: 30,
+            minEngagementRate: 0.05,
+            minAccountAgeDays: 180,
+          },
+          message:
+            "Subscription configuration not found, using default criteria",
+        };
+      }
+      return rejectWithValue({
+        message: error.response?.data?.message || "Failed to check eligibility",
+        details: error.response?.data || error.message,
+      });
     }
   }
 );
@@ -334,20 +399,29 @@ const subscriptionSlice = createSlice({
   name: "subscription",
   initialState: {
     plans: [],
-    subscriptions: [],
+    subscriptions: [
+      {
+        subscriptionId: null,
+        planId: null,
+        planName: "",
+      },
+    ],
+    isSubscribed: {},
     subscriptionHistory: [],
     subscribedPlans: [],
     analytics: {},
     loading: false,
     error: null,
-    isSubscribed: {},
-    subscriptionInfo: null,
     subscriptionStatus: null,
     pendingPlans: [],
     count: 0,
-    isEligible: false, // Added for eligibility
-    followerCount: 0, // Added for follower progress
-    postCount: 0, // Added for post progress
+    isEligible: false,
+    followerCount: 0,
+    postCount: 0,
+    engagementRate: 0,
+    accountAgeDays: 0,
+    criteria: null,
+    hasFetchedSubscribedPlans: false,
   },
   reducers: {
     clearError: (state) => {
@@ -359,6 +433,17 @@ const subscriptionSlice = createSlice({
       console.log("subscriptionSlice: Clearing subscription status");
       state.isSubscribed = {};
       state.subscriptionStatus = null;
+    },
+    syncSubscriptionCriteria: (state, action) => {
+      console.log(
+        "subscriptionSlice: Syncing subscription criteria:",
+        action.payload
+      );
+      state.criteria = action.payload;
+    },
+    resetSubscribedPlansFetch: (state) => {
+      console.log("subscriptionSlice: Resetting hasFetchedSubscribedPlans");
+      state.hasFetchedSubscribedPlans = false; // Added reducer
     },
   },
   extraReducers: (builder) => {
@@ -373,11 +458,43 @@ const subscriptionSlice = createSlice({
           planId: action.payload.plan?._id,
         });
         state.loading = false;
-        state.plans.push(action.payload.plan);
+        if (action.payload.plan) {
+          state.plans.push(action.payload.plan);
+        }
       })
       .addCase(createSubscriptionPlan.rejected, (state, action) => {
         console.error(
           "subscriptionSlice: Error creating subscription plan:",
+          action.payload
+        );
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(activateSubscriptionPlan.pending, (state) => {
+        console.log("subscriptionSlice: Activate subscription plan pending");
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(activateSubscriptionPlan.fulfilled, (state, action) => {
+        console.log(
+          "subscriptionSlice: Activated subscription plan:",
+          action.payload.plan?._id
+        );
+        state.loading = false;
+        if (action.payload.plan) {
+          const index = state.plans.findIndex(
+            (plan) => plan._id === action.payload.plan._id
+          );
+          if (index !== -1) {
+            state.plans[index] = action.payload.plan;
+          } else {
+            state.plans.push(action.payload.plan);
+          }
+        }
+      })
+      .addCase(activateSubscriptionPlan.rejected, (state, action) => {
+        console.error(
+          "subscriptionSlice: Error activating subscription plan:",
           action.payload
         );
         state.loading = false;
@@ -391,14 +508,16 @@ const subscriptionSlice = createSlice({
       .addCase(updateSubscriptionPlan.fulfilled, (state, action) => {
         console.log(
           "subscriptionSlice: Updated subscription plan:",
-          action.payload.plan._id
+          action.payload.plan?._id
         );
         state.loading = false;
-        const index = state.plans.findIndex(
-          (plan) => plan._id === action.payload.plan._id
-        );
-        if (index !== -1) {
-          state.plans[index] = action.payload.plan;
+        if (action.payload.plan) {
+          const index = state.plans.findIndex(
+            (plan) => plan._id === action.payload.plan._id
+          );
+          if (index !== -1) {
+            state.plans[index] = action.payload.plan;
+          }
         }
       })
       .addCase(updateSubscriptionPlan.rejected, (state, action) => {
@@ -433,20 +552,16 @@ const subscriptionSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(subscribeToPlan.pending, (state) => {
-        console.log("subscriptionSlice: Subscribing to plan");
+        console.log("subscriptionSlice: Subscribe to plan pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(subscribeToPlan.fulfilled, (state, action) => {
-        console.log(
-          "subscriptionSlice: Subscribed to plan:",
-          action.payload.subscription?._id
-        );
+        console.log("subscriptionSlice: Subscribed to plan:", action.payload);
         state.loading = false;
         state.subscriptions.push(action.payload.subscription);
-        if (action.payload.subscription?.authorId) {
-          state.isSubscribed[action.payload.subscription.authorId] = true;
-        }
+        state.isSubscribed[action.payload.planId] = true;
+        state.subscriptionStatus = "Subscribed successfully";
       })
       .addCase(subscribeToPlan.rejected, (state, action) => {
         console.error(
@@ -463,96 +578,77 @@ const subscriptionSlice = createSlice({
       })
       .addCase(cancelSubscription.fulfilled, (state, action) => {
         console.log(
-          "subscriptionSlice: Canceled subscription:",
-          action.payload.subscription?._id
+          "subscriptionSlice: Cancelled subscription:",
+          action.payload
         );
         state.loading = false;
-        const index = state.subscriptions.findIndex(
-          (sub) => sub._id === action.payload.subscription?._id
+        state.subscriptions = state.subscriptions.map((sub) =>
+          sub.subscriptionId === action.payload.subscriptionId
+            ? { ...sub, status: "cancelled" }
+            : sub
         );
-        if (index !== -1) {
-          state.subscriptions[index] = action.payload.subscription;
-          if (
-            action.payload.subscription?.authorId &&
-            action.payload.subscription?.status !== "active"
-          ) {
-            state.isSubscribed[action.payload.subscription.authorId] = false;
-          }
-        }
+        state.isSubscribed[action.payload.planId] = false;
+        state.subscriptionStatus = "Subscription cancelled successfully";
+        state.hasFetchedSubscribedPlans = false;
       })
       .addCase(cancelSubscription.rejected, (state, action) => {
         console.error(
-          "subscriptionSlice: Error canceling subscription:",
+          "subscriptionSlice: Error cancelling subscription:",
           action.payload
         );
         state.loading = false;
         state.error = action.payload;
       })
       .addCase(refundSubscription.pending, (state) => {
-        console.log("subscriptionSlice: Refunding subscription");
+        console.log("subscriptionSlice: Refund subscription pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(refundSubscription.fulfilled, (state, action) => {
         console.log(
           "subscriptionSlice: Refunded subscription:",
-          action.payload.subscription?._id
+          action.payload
         );
         state.loading = false;
-        const index = state.subscriptions.findIndex(
-          (sub) => sub._id === action.payload.subscription?._id
+        state.subscriptions = state.subscriptions.map((sub) =>
+          sub.subscriptionId === action.payload.subscriptionId
+            ? { ...sub, status: "refunded" }
+            : sub
         );
-        if (index !== -1) {
-          state.subscriptions[index] = action.payload.subscription;
-          if (
-            action.payload.subscription?.authorId &&
-            action.payload.subscription?.status !== "active"
-          ) {
-            state.isSubscribed[action.payload.subscription.authorId] = false;
-          }
-        }
-        const historyIndex = state.subscriptionHistory.findIndex(
-          (sub) => sub._id === action.payload.subscription?._id
-        );
-        if (historyIndex !== -1) {
-          state.subscriptionHistory[historyIndex] = action.payload.subscription;
-        } else {
-          state.subscriptionHistory.push(action.payload.subscription);
-        }
+        state.isSubscribed[action.payload.planId] = false;
+        state.subscriptionStatus = "Subscription refunded successfully";
       })
       .addCase(refundSubscription.rejected, (state, action) => {
-        console.error("subscriptionSlice: Error refunding:", action.payload);
+        console.error(
+          "subscriptionSlice: Error refunding subscription:",
+          action.payload
+        );
         state.loading = false;
         state.error = action.payload;
       })
       .addCase(getSubscriptionAnalytics.pending, (state) => {
-        console.log("subscriptionSlice: Fetching analytics");
+        console.log("subscriptionSlice: Get subscription analytics pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(getSubscriptionAnalytics.fulfilled, (state, action) => {
-        console.log("subscriptionSlice: Fetched analytics:", action.payload);
+        console.log(
+          "subscriptionSlice: Fetched subscription analytics:",
+          action.payload
+        );
         state.loading = false;
-        const { planId, totalSubscribers, activeSubscribers, totalRevenue } =
-          action.payload;
-        state.analytics[planId] = {
-          totalSubscribers,
-          activeSubscribers,
-          totalRevenue,
-        };
+        state.analytics = action.payload;
       })
       .addCase(getSubscriptionAnalytics.rejected, (state, action) => {
         console.error(
-          "subscriptionSlice: Error fetching analytics:",
+          "subscriptionSlice: Error fetching subscription analytics:",
           action.payload
         );
         state.loading = false;
         state.error = action.payload;
       })
       .addCase(getSubscriptionStatusByAuthor.pending, (state) => {
-        console.log(
-          "subscriptionSlice: Fetching subscription status by author"
-        );
+        console.log("subscriptionSlice: Get subscription status pending");
         state.loading = true;
         state.error = null;
       })
@@ -562,9 +658,9 @@ const subscriptionSlice = createSlice({
           action.payload
         );
         state.loading = false;
-        const { authorId, isSubscribed } = action.payload;
-        state.isSubscribed[authorId] = isSubscribed;
-        state.subscriptionStatus = action.payload;
+        state.isSubscribed[action.payload.authorId] =
+          action.payload.isSubscribed;
+        state.subscriptionStatus = action.payload.status;
       })
       .addCase(getSubscriptionStatusByAuthor.rejected, (state, action) => {
         console.error(
@@ -573,16 +669,19 @@ const subscriptionSlice = createSlice({
         );
         state.loading = false;
         state.error = action.payload;
-        state.subscriptionStatus = null;
       })
       .addCase(sendRenewalReminders.pending, (state) => {
-        console.log("subscriptionSlice: Sending renewal reminders");
+        console.log("subscriptionSlice: Send renewal reminders pending");
         state.loading = true;
         state.error = null;
       })
-      .addCase(sendRenewalReminders.fulfilled, (state) => {
-        console.log("subscriptionSlice: Renewal reminders sent");
+      .addCase(sendRenewalReminders.fulfilled, (state, action) => {
+        console.log(
+          "subscriptionSlice: Sent renewal reminders:",
+          action.payload
+        );
         state.loading = false;
+        state.subscriptionStatus = "Renewal reminders sent successfully";
       })
       .addCase(sendRenewalReminders.rejected, (state, action) => {
         console.error(
@@ -593,46 +692,43 @@ const subscriptionSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(fetchMySubscriptionPlans.pending, (state) => {
-        console.log("subscriptionSlice: Fetching my plans");
+        console.log("subscriptionSlice: Fetch my subscription plans pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchMySubscriptionPlans.fulfilled, (state, action) => {
-        console.log("subscriptionSlice: Fetched my plans:", {
-          count: action.payload.plans?.length,
-        });
+        console.log(
+          "subscriptionSlice: Fetched my subscription plans:",
+          action.payload
+        );
         state.loading = false;
         state.plans = action.payload.plans || [];
         state.count = action.payload.count || 0;
-        state.hasFetchedPlans = true;
       })
       .addCase(fetchMySubscriptionPlans.rejected, (state, action) => {
         console.error(
-          "subscriptionSlice: Error fetching my plans:",
+          "subscriptionSlice: Error fetching my subscription plans:",
           action.payload
         );
         state.loading = false;
         state.error = action.payload;
       })
       .addCase(unsubscribeFromPlanByAuthor.pending, (state) => {
-        console.log("subscriptionSlice: Unsubscribing from author plans");
+        console.log("subscriptionSlice: Unsubscribe from author plans pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(unsubscribeFromPlanByAuthor.fulfilled, (state, action) => {
         console.log(
           "subscriptionSlice: Unsubscribed from author plans:",
-          action.payload.authorId
+          action.payload
         );
         state.loading = false;
         state.subscriptions = state.subscriptions.filter(
-          (sub) =>
-            sub.authorId !== action.payload.authorId ||
-            sub.userId !== action.payload.userId
+          (sub) => sub.authorId !== action.payload.authorId
         );
-        if (action.payload.authorId) {
-          state.isSubscribed[action.payload.authorId] = false;
-        }
+        state.isSubscribed[action.payload.authorId] = false;
+        state.subscriptionStatus = "Unsubscribed successfully";
       })
       .addCase(unsubscribeFromPlanByAuthor.rejected, (state, action) => {
         console.error(
@@ -643,18 +739,18 @@ const subscriptionSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(fetchSubscriptionPlansByAuthor.pending, (state) => {
-        console.log("subscriptionSlice: Fetching plans by author");
+        console.log("subscriptionSlice: Fetch plans by author pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchSubscriptionPlansByAuthor.fulfilled, (state, action) => {
-        console.log("subscriptionSlice: Fetched plans by author:", {
-          count: action.payload.plans?.length,
-        });
+        console.log(
+          "subscriptionSlice: Fetched plans by author:",
+          action.payload
+        );
         state.loading = false;
         state.plans = action.payload.plans || [];
         state.count = action.payload.count || 0;
-        state.hasFetchedPlans = true;
       })
       .addCase(fetchSubscriptionPlansByAuthor.rejected, (state, action) => {
         console.error(
@@ -665,16 +761,19 @@ const subscriptionSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(fetchSubscriptionHistoryByAuthor.pending, (state) => {
-        console.log("subscriptionSlice: Fetching subscription history");
+        console.log(
+          "subscriptionSlice: Fetch subscription history by author pending"
+        );
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchSubscriptionHistoryByAuthor.fulfilled, (state, action) => {
-        console.log("subscriptionSlice: Fetched subscription history:", {
-          count: action.payload?.length,
-        });
+        console.log(
+          "subscriptionSlice: Fetched subscription history:",
+          action.payload
+        );
         state.loading = false;
-        state.subscriptionHistory = action.payload || []; // Set to subscriptions array
+        state.subscriptionHistory = action.payload || [];
       })
       .addCase(fetchSubscriptionHistoryByAuthor.rejected, (state, action) => {
         console.error(
@@ -683,21 +782,21 @@ const subscriptionSlice = createSlice({
         );
         state.loading = false;
         state.error = action.payload;
-        state.subscriptionHistory = []; // Clear history on error
       })
       .addCase(fetchMySubscribedPlans.pending, (state) => {
-        console.log("subscriptionSlice: Fetching my subscribed plans");
+        console.log("subscriptionSlice: Fetch my subscribed plans pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchMySubscribedPlans.fulfilled, (state, action) => {
-        console.log("subscriptionSlice: Fetched my subscribed plans:", {
-          count: action.payload.plans?.length,
-        });
+        console.log(
+          "subscriptionSlice: Fetched my subscribed plans:",
+          action.payload
+        );
         state.loading = false;
         state.subscribedPlans = action.payload.plans || [];
-        state.count = action.payload.count || 0; // Update count
-        state.hasFetchedSubscribedPlans = true; // Set flag
+        state.count = action.payload.count || 0;
+        state.hasFetchedSubscribedPlans = true;
       })
       .addCase(fetchMySubscribedPlans.rejected, (state, action) => {
         console.error(
@@ -706,32 +805,58 @@ const subscriptionSlice = createSlice({
         );
         state.loading = false;
         state.error = action.payload;
-        state.hasFetchedSubscribedPlans = true; // Set flag even on error
+        state.hasFetchedSubscribedPlans = true;
       })
-      // Eligibility Check
       .addCase(checkEligibilityForSubscription.pending, (state) => {
-        console.log("subscriptionSlice: Checking eligibility");
+        console.log("subscriptionSlice: Check eligibility pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(checkEligibilityForSubscription.fulfilled, (state, action) => {
-        console.log("subscriptionSlice: Eligibility checked", action.payload);
-        state.loading = false;
-        state.isEligible = action.payload.isEligible;
-        state.followerCount = action.payload.followerCount;
-        state.postCount = action.payload.postCount;
-      })
-      .addCase(checkEligibilityForSubscription.rejected, (state, action) => {
-        console.error(
-          "subscriptionSlice: Error checking eligibility",
+        console.log(
+          "subscriptionSlice: Subscription eligibility checked:",
           action.payload
         );
         state.loading = false;
-        state.error = action.payload;
+        state.isEligible = action.payload.isEligible || false;
+        state.followerCount = action.payload.followerCount || 0;
+        state.postCount = action.payload.postCount || 0;
+        state.engagementRate = action.payload.engagementRate || 0;
+        state.accountAgeDays = action.payload.accountAgeDays || 0;
+        state.criteria = action.payload.criteria || {
+          minFollowers: 10000,
+          minPosts: 30,
+          minEngagementRate: 0.05,
+          minAccountAgeDays: 180,
+        };
+        state.error = action.payload.message
+          ? { message: action.payload.message }
+          : null;
+      })
+      .addCase(checkEligibilityForSubscription.rejected, (state, action) => {
+        console.error(
+          "subscriptionSlice: Error checking subscription eligibility:",
+          action.payload
+        );
+        state.loading = false;
+        state.error = action.payload.message || "Failed to check eligibility";
+        if (action.payload.criteria) {
+          state.criteria = action.payload.criteria;
+          state.isEligible = action.payload.isEligible || false;
+          state.followerCount = action.payload.followerCount || 0;
+          state.postCount = action.payload.postCount || 0;
+          state.engagementRate = action.payload.engagementRate || 0;
+          state.accountAgeDays = action.payload.accountAgeDays || 0;
+        }
       });
   },
 });
 
-export const { clearError, clearSubscriptionStatus } =
-  subscriptionSlice.actions;
+export const {
+  clearError,
+  clearSubscriptionStatus,
+  syncSubscriptionCriteria,
+  resetSubscribedPlansFetch,
+} = subscriptionSlice.actions;
+
 export default subscriptionSlice.reducer;

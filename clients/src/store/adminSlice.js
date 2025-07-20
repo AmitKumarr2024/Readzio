@@ -274,6 +274,8 @@ export const reviewReport = createAsyncThunk(
         { forwardToAuthor },
         { withCredentials: true }
       );
+      console.log("[reviewReport] response", response);
+
       return { reportId, forwardToAuthor, isReviewed: true };
     } catch (error) {
       return rejectWithValue(
@@ -378,12 +380,18 @@ export const fetchSiteAnalytics = createAsyncThunk(
   "admin/fetchSiteAnalytics",
   async ({ startDate, endDate }, { rejectWithValue }) => {
     try {
+      console.log("[adminSlice:fetchSiteAnalytics] ⏳ Pending");
       const response = await axiosInstance.get(
         `/admin/analytics?startDate=${startDate}&endDate=${endDate}`,
         { withCredentials: true }
       );
+      console.log("[adminSlice:fetchSiteAnalytics] ✅ Success:", response.data);
       return response.data.data;
     } catch (error) {
+      console.error(
+        "[adminSlice:fetchSiteAnalytics] 🔥 Error:",
+        error.response?.data?.message || error.message
+      );
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch site analytics"
       );
@@ -541,9 +549,7 @@ export const getDailyPostEmailReport = createAsyncThunk(
         : `page=${page}&limit=${limit}`;
       const response = await axiosInstance.get(
         `/dailyMail/daily-post-report?${query}`,
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
       console.log("[adminSlice:getDailyPostEmailReport] ✅ Success:", {
         logsLength: response.data.logs.length,
@@ -575,9 +581,7 @@ export const fetchBannerNotifications = createAsyncThunk(
     try {
       const response = await axiosInstance.get(
         "/bannerNotification/get-Notification",
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
       return response.data.notifications;
     } catch (error) {
@@ -626,12 +630,15 @@ export const dismissBannerNotification = createAsyncThunk(
   }
 );
 
+// Deactivate a banner notification
 export const deactivateBannerNotification = createAsyncThunk(
   "admin/deactivateBannerNotification",
   async (id, { rejectWithValue }) => {
     try {
       const res = await axiosInstance.patch(
-        `/bannerNotification/deactivate/${id}`
+        `/bannerNotification/deactivate/${id}`,
+        {},
+        { withCredentials: true }
       );
       return res.data.data;
     } catch (err) {
@@ -642,11 +649,14 @@ export const deactivateBannerNotification = createAsyncThunk(
   }
 );
 
+// Delete all banner notifications
 export const deleteAllBannerNotifications = createAsyncThunk(
   "admin/deleteAllBannerNotifications",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.delete("/bannerNotification/delete-all");
+      const res = await axiosInstance.delete("/bannerNotification/delete-all", {
+        withCredentials: true,
+      });
       return res.data;
     } catch (err) {
       return rejectWithValue(
@@ -656,26 +666,273 @@ export const deleteAllBannerNotifications = createAsyncThunk(
   }
 );
 
-// Download all data as CSV
+// Download all data as Excel
 export const downloadAllDataCsv = createAsyncThunk(
   "admin/downloadAllDataCsv",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get(
-        "/admin/download-csv",
-        { withCredentials: true, responseType: 'blob' }
-      );
+      const response = await axiosInstance.get("/admin/download-csv", {
+        withCredentials: true,
+        responseType: "blob",
+      });
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.setAttribute('download', 'all_data_export.csv');
+      link.setAttribute("download", "all_data_export.xlsx");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       return { success: true };
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to download CSV"
+        error.response?.data?.message || "Failed to download Excel"
+      );
+    }
+  }
+);
+
+// Fetch all subscription plans
+export const getAllSubscriptionPlans = createAsyncThunk(
+  "admin/getAllSubscriptionPlans",
+  async (_, { rejectWithValue }) => {
+    try {
+      console.log(
+        "[adminSlice:getAllSubscriptionPlans] 🚀 Fetching subscription plans"
+      );
+      const response = await axiosInstance.get("/admin/subscriptions/plans", {
+        withCredentials: true,
+      });
+      console.log("[adminSlice:getAllSubscriptionPlans] ✅ Success:", {
+        count: response.data.count,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(
+        "[adminSlice:getAllSubscriptionPlans] 🔥 Error:",
+        error.response?.data?.message || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch subscription plans"
+      );
+    }
+  }
+);
+
+// Toggle user eligibility for subscription creation
+export const toggleUserEligibility = createAsyncThunk(
+  "admin/toggleUserEligibility",
+  async ({ userId, enable }, { rejectWithValue }) => {
+    try {
+      console.log(
+        "[adminSlice:toggleUserEligibility] 🚀 Toggling eligibility:",
+        { userId, enable }
+      );
+      const response = await axiosInstance.post(
+        "/admin/subscriptions/eligibility/toggle",
+        { userId, enable },
+        { withCredentials: true }
+      );
+      console.log(
+        "[adminSlice:toggleUserEligibility] ✅ Success:",
+        response.data
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "[adminSlice:toggleUserEligibility] 🔥 Error:",
+        error.response?.data?.message || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to toggle user eligibility"
+      );
+    }
+  }
+);
+
+// Update global eligibility criteria
+export const updateGlobalEligibilityCriteria = createAsyncThunk(
+  "admin/updateGlobalEligibilityCriteria",
+  async (
+    { minFollowers, minPosts, minEngagementRate, minAccountAgeDays },
+    { rejectWithValue, dispatch }
+  ) => {
+    try {
+      console.log(
+        "[adminSlice:updateGlobalEligibilityCriteria] 🚀 Updating criteria:",
+        {
+          minFollowers,
+          minPosts,
+          minEngagementRate,
+          minAccountAgeDays,
+        }
+      );
+      const response = await axiosInstance.patch(
+        "/admin/subscriptions/criteria",
+        { minFollowers, minPosts, minEngagementRate, minAccountAgeDays },
+        { withCredentials: true }
+      );
+      console.log(
+        "[adminSlice:updateGlobalEligibilityCriteria] ✅ Success:",
+        response.data
+      );
+      // Dispatch sync action to subscriptionSlice
+      dispatch({
+        type: "subscription/syncSubscriptionCriteria",
+        payload: response.data.criteria || {
+          minFollowers,
+          minPosts,
+          minEngagementRate,
+          minAccountAgeDays,
+        },
+      });
+      return (
+        response.data.criteria || {
+          minFollowers,
+          minPosts,
+          minEngagementRate,
+          minAccountAgeDays,
+        }
+      );
+    } catch (error) {
+      console.error(
+        "[adminSlice:updateGlobalEligibilityCriteria] 🔥 Error:",
+        error.response?.data?.message || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update eligibility criteria"
+      );
+    }
+  }
+);
+// Check user eligibility status
+export const checkUserEligibility = createAsyncThunk(
+  "admin/checkUserEligibility",
+  async (userId, { rejectWithValue }) => {
+    try {
+      console.log(
+        "[adminSlice:checkUserEligibility] 🚀 Checking eligibility:",
+        { userId }
+      );
+      const response = await axiosInstance.get(
+        `/admin/subscriptions/eligibility/${userId}`,
+        { withCredentials: true }
+      );
+      console.log(
+        "[adminSlice:checkUserEligibility] ✅ Success:",
+        response.data
+      );
+      return {
+        ...response.data,
+        criteria: response.data.criteria || {
+          minFollowers: 10000,
+          minPosts: 30,
+          minEngagementRate: 0.05,
+          minAccountAgeDays: 30,
+        },
+      };
+    } catch (error) {
+      console.error(
+        "[adminSlice:checkUserEligibility] 🔥 Error:",
+        error.response?.data?.message || error.message
+      );
+      if (
+        error.response?.data?.message === "Subscription configuration not found"
+      ) {
+        return {
+          isEligible: false,
+          followerCount: 0,
+          postCount: 0,
+          engagementRate: 0,
+          accountAgeDays: 0,
+          criteria: {
+            minFollowers: 10000,
+            minPosts: 30,
+            minEngagementRate: 0.05,
+            minAccountAgeDays: 30,
+          },
+          message:
+            "Subscription configuration not found, using default criteria",
+        };
+      }
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to check user eligibility"
+      );
+    }
+  }
+);
+
+// Toggle subscription plan status
+export const toggleSubscriptionPlanStatus = createAsyncThunk(
+  "admin/toggleSubscriptionPlanStatus",
+  async ({ planId, status }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.patch(
+        `/admin/subscriptions/plan/status`,
+        { planId, status },
+        { withCredentials: true }
+      );
+      return response.data.plan;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || { message: error.message }
+      );
+    }
+  }
+);
+
+// Grant/revoke subscription creation access
+export const grantSubscriptionAccess = createAsyncThunk(
+  "admin/grantSubscriptionAccess",
+  async ({ userId, grant }, { rejectWithValue }) => {
+    try {
+      console.log("[adminSlice:grantSubscriptionAccess] 🚀 Granting access:", {
+        userId,
+        grant,
+      });
+      const response = await axiosInstance.post(
+        "/admin/subscriptions/grant",
+        { userId, grant },
+        { withCredentials: true }
+      );
+      console.log(
+        "[adminSlice:grantSubscriptionAccess] ✅ Success:",
+        response.data
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "[adminSlice:grantSubscriptionAccess] 🔥 Error:",
+        error.response?.data?.message || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to grant subscription access"
+      );
+    }
+  }
+);
+
+// Set per-user subscription eligibility override
+export const setUserEligibilityOverride = createAsyncThunk(
+  "admin/setUserEligibilityOverride",
+  async (
+    { userId, isEligibleForSubscription, bypassSubscriptionCriteria },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await axiosInstance.patch(
+        `/admin/subscriptions/user-override/${userId}`,
+        { isEligibleForSubscription, bypassSubscriptionCriteria },
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "[adminSlice:setUserEligibilityOverride] 🔥 Error:",
+        error.response?.data?.message || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Failed to update user eligibility override"
       );
     }
   }
@@ -687,19 +944,24 @@ const adminSlice = createSlice({
     users: [],
     bannerNotifications: [],
     totalUsers: 0,
-    allUsers: [], // For full mode in getAllUsers
+    allUsers: [],
     posts: [],
+    plans: [],
     totalPosts: 0,
     contactMessages: [],
     totalMessages: 0,
     reports: [],
+    totalPlans: 0, // Add totalPlans
+    currentPagePlans: 1, // Add currentPagePlans
+    totalPagesPlans: 1, // Add totalPagesPlans
+    hasMorePlans: true, // Add hasMorePlans
     totalReports: 0,
     userEarnings: [],
-    emailStatuses: [], // For email statuses
-    totalEmails: 0, // Total email statuses
-    currentPageEmails: 1, // Email status pagination
-    totalPagesEmails: 1, // Email status pagination
-    currentEmailStatus: null, // Single email status
+    emailStatuses: [],
+    totalEmails: 0,
+    currentPageEmails: 1,
+    totalPagesEmails: 1,
+    currentEmailStatus: null,
     currentPageUsers: 1,
     totalPagesUsers: 1,
     currentPagePosts: 1,
@@ -708,6 +970,8 @@ const adminSlice = createSlice({
     totalPagesMessages: 1,
     currentPageReports: 1,
     totalPagesReports: 1,
+    subscriptionCriteria: null,
+    userEligibility: null,
     analytics: {
       traffic: {
         totalVisits: 0,
@@ -723,12 +987,14 @@ const adminSlice = createSlice({
     notificationStatus: null,
     analyticsLoading: false,
     analyticsError: null,
-    emailLoading: false, // Email-specific loading state
-    emailError: null, // Email-specific error state
-    emailReports: [], // Daily post email reports
-    totalEmailReports: 0, // Total daily post email reports
-    currentPageEmailReports: 1, // Daily post email report pagination
-    totalPagesEmailReports: 1, // Daily post email report pagination
+    emailLoading: false,
+    emailError: null,
+    emailReports: [],
+    totalEmailReports: 0,
+    currentPageEmailReports: 1,
+    totalPagesEmailReports: 1,
+    subscriptionLoading: false,
+    subscriptionError: null,
   },
   reducers: {
     clearNotificationStatus: (state) => {
@@ -806,17 +1072,25 @@ const adminSlice = createSlice({
       );
       state.emailError = action.payload;
     },
-    [deactivateBannerNotification.fulfilled]: (state, action) => {
-      state.bannerNotifications = state.bannerNotifications.filter(
-        (n) => n._id !== action.payload.id
-      );
-    },
     updatePostBlockStatus: (state, action) => {
       const { postId, blocked } = action.payload;
       const index = state.posts.findIndex((post) => post._id === postId);
       if (index !== -1) {
         state.posts[index].blocked = blocked;
       }
+    },
+    updateSubscriptionPlanStatus: (state, action) => {
+      const { planId, status } = action.payload;
+      const plan = state.plans.find((p) => p._id === planId);
+      if (plan) {
+        plan.status = status;
+      }
+    },
+    logSubscriptionCriteria: (state) => {
+      console.log(
+        "[adminSlice:logSubscriptionCriteria] 📋 Current subscriptionCriteria state:",
+        state.subscriptionCriteria
+      );
     },
   },
   extraReducers: (builder) => {
@@ -963,6 +1237,7 @@ const adminSlice = createSlice({
         state.error = null;
       })
       .addCase(replyContactMessage.fulfilled, (state, action) => {
+        state.loading = false;
         state.contactMessages = state.contactMessages.map((msg) =>
           msg._id === action.payload.messageId
             ? { ...msg, isHandled: true }
@@ -1043,9 +1318,10 @@ const adminSlice = createSlice({
         state.error = null;
       })
       .addCase(getAllUsersEarnings.fulfilled, (state, action) => {
-        console.log("[adminSlice:getAllUsersEarnings] ✅ Fulfilled:", {
-          payload: action.payload,
-        });
+        console.log(
+          "[adminSlice:getAllUsersEarnings] ✅ Fulfilled:",
+          action.payload
+        );
         state.loading = false;
         state.userEarnings = action.payload || [];
       })
@@ -1107,6 +1383,7 @@ const adminSlice = createSlice({
         state.error = null;
         state.analyticsError = null;
         state.emailError = null;
+        state.subscriptionError = null;
       })
       // checkEmailStatus
       .addCase(checkEmailStatus.pending, (state) => {
@@ -1204,7 +1481,7 @@ const adminSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(getReadingDetailsByPost.fulfilled, (state, action) => {
+      .addCase(getReadingDetailsByPost.fulfilled, (state) => {
         state.loading = false;
         state.notificationStatus = "Reading details fetched successfully";
       })
@@ -1270,6 +1547,23 @@ const adminSlice = createSlice({
       .addCase(dismissBannerNotification.rejected, (state, action) => {
         state.error = action.payload;
       })
+      // deactivateBannerNotification
+      .addCase(deactivateBannerNotification.fulfilled, (state, action) => {
+        state.bannerNotifications = state.bannerNotifications.filter(
+          (n) => n._id !== action.payload.id
+        );
+      })
+      .addCase(deactivateBannerNotification.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // deleteAllBannerNotifications
+      .addCase(deleteAllBannerNotifications.fulfilled, (state) => {
+        state.bannerNotifications = [];
+        state.notificationStatus = "All banner notifications deleted";
+      })
+      .addCase(deleteAllBannerNotifications.rejected, (state, action) => {
+        state.error = action.payload;
+      })
       // downloadAllDataCsv
       .addCase(downloadAllDataCsv.pending, (state) => {
         state.loading = true;
@@ -1277,11 +1571,234 @@ const adminSlice = createSlice({
       })
       .addCase(downloadAllDataCsv.fulfilled, (state) => {
         state.loading = false;
-        state.notificationStatus = "CSV downloaded successfully";
+        state.notificationStatus = "Excel downloaded successfully";
       })
       .addCase(downloadAllDataCsv.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // getAllSubscriptionPlans
+      .addCase(getAllSubscriptionPlans.pending, (state) => {
+        console.log("[adminSlice:getAllSubscriptionPlans] ⏳ Pending");
+        state.subscriptionLoading = true;
+        state.subscriptionError = null;
+      })
+      // In adminSlice.js, update the getAllSubscriptionPlans case
+      .addCase(getAllSubscriptionPlans.fulfilled, (state, action) => {
+        console.log(
+          "[adminSlice:getAllSubscriptionPlans] ✅ Fulfilled:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.plans =
+          action.payload.currentPage === 1
+            ? action.payload.plans
+            : [...state.plans, ...action.payload.plans];
+        state.totalPlans = action.payload.totalPlans || 0;
+        state.currentPagePlans = action.payload.currentPage || 1;
+        state.totalPagesPlans = action.payload.totalPages || 1;
+        state.hasMorePlans =
+          action.payload.currentPage < action.payload.totalPages;
+      })
+      .addCase(getAllSubscriptionPlans.rejected, (state, action) => {
+        console.log(
+          "[adminSlice:getAllSubscriptionPlans] 🔥 Rejected:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.subscriptionError = action.payload;
+      })
+      // toggleUserEligibility
+      .addCase(toggleUserEligibility.pending, (state) => {
+        console.log("[adminSlice:toggleUserEligibility] ⏳ Pending");
+        state.subscriptionLoading = true;
+        state.subscriptionError = null;
+      })
+      .addCase(toggleUserEligibility.fulfilled, (state, action) => {
+        console.log(
+          "[adminSlice:toggleUserEligibility] ✅ Fulfilled:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.users = state.users.map((user) =>
+          user._id === action.payload.user.id
+            ? {
+                ...user,
+                isEligibleForSubscription:
+                  action.payload.user.isEligibleForSubscription,
+              }
+            : user
+        );
+        state.notificationStatus = action.payload.message;
+      })
+      .addCase(toggleUserEligibility.rejected, (state, action) => {
+        console.log(
+          "[adminSlice:toggleUserEligibility] 🔥 Rejected:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.subscriptionError = action.payload;
+      })
+      // updateGlobalEligibilityCriteria
+      .addCase(updateGlobalEligibilityCriteria.pending, (state) => {
+        console.log("[adminSlice:updateGlobalEligibilityCriteria] ⏳ Pending");
+        state.subscriptionLoading = true;
+        state.subscriptionError = null;
+      })
+      .addCase(updateGlobalEligibilityCriteria.fulfilled, (state, action) => {
+        console.log(
+          "[adminSlice:updateGlobalEligibilityCriteria] ✅ Fulfilled, updating state with:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.subscriptionCriteria = action.payload;
+        state.notificationStatus = "Eligibility criteria updated successfully";
+      })
+      .addCase(updateGlobalEligibilityCriteria.rejected, (state, action) => {
+        console.log(
+          "[adminSlice:updateGlobalEligibilityCriteria] 🔥 Rejected:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.subscriptionError = action.payload;
+      })
+      // checkUserEligibility
+      .addCase(checkUserEligibility.pending, (state) => {
+        console.log("[adminSlice:checkUserEligibility] ⏳ Pending");
+        state.subscriptionLoading = true;
+        state.subscriptionError = null;
+      })
+      .addCase(checkUserEligibility.fulfilled, (state, action) => {
+        console.log(
+          "[adminSlice:checkUserEligibility] ✅ Fulfilled, updating userEligibility with:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.userEligibility = action.payload;
+        state.subscriptionCriteria = action.payload.criteria || {
+          minFollowers: 10000,
+          minPosts: 30,
+          minEngagementRate: 0.05,
+          minAccountAgeDays: 30,
+        };
+        console.log(
+          "[adminSlice:checkUserEligibility] 📋 Updated subscriptionCriteria state:",
+          state.subscriptionCriteria
+        );
+        state.error = action.payload.message
+          ? { message: action.payload.message }
+          : null;
+      })
+      .addCase(checkUserEligibility.rejected, (state, action) => {
+        console.log(
+          "[adminSlice:checkUserEligibility] 🔥 Rejected:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.subscriptionError =
+          action.payload.message || "Failed to check user eligibility";
+        if (action.payload.criteria) {
+          state.subscriptionCriteria = action.payload.criteria;
+          state.userEligibility = {
+            isEligible: action.payload.isEligible || false,
+            followerCount: action.payload.followerCount || 0,
+            postCount: action.payload.postCount || 0,
+            engagementRate: action.payload.engagementRate || 0,
+            accountAgeDays: action.payload.accountAgeDays || 0,
+          };
+        }
+      })
+      // toggleSubscriptionPlanStatus
+      .addCase(toggleSubscriptionPlanStatus.pending, (state) => {
+        console.log("[adminSlice:toggleSubscriptionPlanStatus] ⏳ Pending");
+        state.subscriptionLoading = true;
+        state.subscriptionError = null;
+      })
+      .addCase(toggleSubscriptionPlanStatus.fulfilled, (state, action) => {
+        console.log(
+          "[adminSlice:toggleSubscriptionPlanStatus] ✅ Fulfilled:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.plans = state.plans.map((plan) =>
+          plan.id === action.payload.id
+            ? { ...plan, status: action.payload.status }
+            : plan
+        );
+        state.notificationStatus = `Plan ${action.payload.status} successfully`;
+      })
+      .addCase(toggleSubscriptionPlanStatus.rejected, (state, action) => {
+        console.log(
+          "[adminSlice:toggleSubscriptionPlanStatus] 🔥 Rejected:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.subscriptionError = action.payload;
+      })
+      // grantSubscriptionAccess
+      .addCase(grantSubscriptionAccess.pending, (state) => {
+        console.log("[adminSlice:grantSubscriptionAccess] ⏳ Pending");
+        state.subscriptionLoading = true;
+        state.subscriptionError = null;
+      })
+      .addCase(grantSubscriptionAccess.fulfilled, (state, action) => {
+        console.log(
+          "[adminSlice:grantSubscriptionAccess] ✅ Fulfilled:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.users = state.users.map((user) =>
+          user._id === action.payload.user.id
+            ? {
+                ...user,
+                isEligibleForSubscription:
+                  action.payload.user.isEligibleForSubscription,
+              }
+            : user
+        );
+        state.notificationStatus = action.payload.message;
+      })
+      .addCase(grantSubscriptionAccess.rejected, (state, action) => {
+        console.log(
+          "[adminSlice:grantSubscriptionAccess] 🔥 Rejected:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.subscriptionError = action.payload;
+      })
+      // setUserEligibilityOverride
+      .addCase(setUserEligibilityOverride.pending, (state) => {
+        console.log("[adminSlice:setUserEligibilityOverride] ⏳ Pending");
+        state.subscriptionLoading = true;
+        state.subscriptionError = null;
+      })
+      .addCase(setUserEligibilityOverride.fulfilled, (state, action) => {
+        console.log(
+          "[adminSlice:setUserEligibilityOverride] ✅ Fulfilled:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.users = state.users.map((user) =>
+          user._id === action.payload.userId
+            ? {
+                ...user,
+                isEligibleForSubscription:
+                  action.payload.isEligibleForSubscription,
+                bypassSubscriptionCriteria:
+                  action.payload.bypassSubscriptionCriteria,
+              }
+            : user
+        );
+        state.notificationStatus =
+          "User eligibility override updated successfully";
+      })
+      .addCase(setUserEligibilityOverride.rejected, (state, action) => {
+        console.log(
+          "[adminSlice:setUserEligibilityOverride] 🔥 Rejected:",
+          action.payload
+        );
+        state.subscriptionLoading = false;
+        state.subscriptionError = action.payload;
       });
   },
 });
@@ -1296,6 +1813,8 @@ export const {
   setNotificationStatus,
   setEmailError,
   updatePostBlockStatus,
+  updateSubscriptionPlanStatus,
+  logSubscriptionCriteria,
 } = adminSlice.actions;
 
 export default adminSlice.reducer;

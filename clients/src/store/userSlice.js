@@ -387,6 +387,24 @@ export const searchUsers = createAsyncThunk(
   }
 );
 
+export const saveUserConsent = createAsyncThunk(
+  "user/saveUserConsent",
+  async (consent, { rejectWithValue }) => {
+    try {
+      const res = await axiosInstance.post(
+        "/user/consent",
+        { consent },
+        { withCredentials: true }
+      );
+      return consent; // just return what was sent
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || err.message || "Failed to save consent"
+      );
+    }
+  }
+);
+
 export const clearSearchedUsers = () => ({
   type: "user/clearSearchedUsers",
 });
@@ -430,6 +448,7 @@ const initialState = {
     loading: false,
     error: null,
   },
+  cookieConsent: localStorage.getItem("userCookieConsent") || null,
 };
 
 const userSlice = createSlice({
@@ -787,6 +806,13 @@ const userSlice = createSlice({
         console.log("[UserSlice] searchUsers: Rejected", action.payload);
         state.searchedUsersLoading = false;
         state.searchedUsersError = action.payload;
+      })
+      .addCase(saveUserConsent.fulfilled, (state, action) => {
+        console.log("[UserSlice] saveUserConsent: Fulfilled", action.payload);
+        state.cookieConsent = action.payload;
+      })
+      .addCase(saveUserConsent.rejected, (state, action) => {
+        console.error("[UserSlice] saveUserConsent: Error", action.payload);
       });
   },
 });

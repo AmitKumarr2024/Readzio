@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Outlet, useNavigation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ScrollToTop from "./Utils/ScrollToTop";
@@ -20,32 +20,36 @@ import { newNotificationReceived } from "./store/socketSlice";
 import { useSocketConnectionStatus } from "./AppRootFile/hook/useSocketConnectionStatus";
 import useAdBlockDetector from "./Ads/useAdBlockDetector";
 import AdBlockWarning from "./Ads/AdBlockWarning";
+import CookieConsentBanner from "./AppRootFile/components/CookieConsentBanner";
 
+// Root component for app layout and initialization
 export default function App() {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const [booting, setBooting] = useState(true);
-  const isAdBlocked = useAdBlockDetector(); // Use the ad block detector hook
+  const isAdBlocked = useAdBlockDetector(); // Detect ad blocker
 
+  // Simulate boot delay
   useEffect(() => {
     const timer = setTimeout(() => setBooting(false), 1000);
     return () => clearTimeout(timer);
   }, []);
 
+  // Handle storage changes for notifications
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === "newNotification") {
-        if (e.newValue) {
-          try {
+        try {
+          if (e.newValue) {
             const parsed = JSON.parse(e.newValue);
             if (parsed && parsed._id) {
               dispatch(newNotificationReceived(parsed));
             }
-          } catch (err) {
-            console.error("Failed to parse storage event:", err);
+          } else {
+            dispatch(newNotificationReceived(null));
           }
-        } else {
-          dispatch(newNotificationReceived(null));
+        } catch (err) {
+          console.error("[App] Storage event parse error:", err);
         }
       }
     };
@@ -53,6 +57,7 @@ export default function App() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, [dispatch]);
 
+  // Initialize hooks
   const theme = useThemeSetup();
   const locationError = useGeolocation();
   const showGooglePopup = useGoogleLoginPopup();
@@ -65,27 +70,35 @@ export default function App() {
   const { newNotification } = useSelector((state) => state.socket);
   const isTransitionLoading = navigation.state === "loading";
 
+  // Sync notifications to localStorage
   useEffect(() => {
-    if (newNotification && newNotification._id && newNotification.expiresAt) {
-      localStorage.setItem("newNotification", JSON.stringify(newNotification));
-    } else {
-      localStorage.removeItem("newNotification");
+    try {
+      if (newNotification && newNotification._id && newNotification.expiresAt) {
+        localStorage.setItem("newNotification", JSON.stringify(newNotification));
+      } else {
+        localStorage.removeItem("newNotification");
+      }
+    } catch (e) {
+      console.error("[App] localStorage error:", e);
     }
   }, [newNotification]);
 
+  // Dismiss notification
   const handleDismiss = async (notificationId) => {
     try {
       await dispatch(dismissBannerNotification(notificationId)).unwrap();
       dispatch(newNotificationReceived(null));
       localStorage.removeItem("newNotification");
     } catch (err) {
-      console.error("Dismiss error:", err);
+      console.error("[App] Dismiss error:", err);
     }
   };
 
+  // Show splash loader during boot
   if (booting) return <SplashLoader />;
 
   return (
+    // Main app layout with theme support
     <div
       className={`min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark`}
     >
@@ -102,6 +115,7 @@ export default function App() {
       <PageTransitionLoader isLoading={isTransitionLoading} />
       <Outlet />
       <LocationErrorPopup locationError={locationError} onDismiss={() => {}} />
+      <CookieConsentBanner />
     </div>
   );
 }

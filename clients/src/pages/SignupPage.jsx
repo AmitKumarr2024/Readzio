@@ -6,11 +6,13 @@ import { googleLogin, signup, login } from "../store/authSlice";
 import toast from "react-hot-toast";
 import { FaUserPlus, FaUserCircle, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 
+// Handles user signup with form and Google OAuth
 const SignupPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, loading } = useSelector((state) => state.auth);
 
+  // Redirect if authenticated
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/select-category");
@@ -27,6 +29,7 @@ const SignupPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Update form data
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -35,6 +38,7 @@ const SignupPage = () => {
     }));
   };
 
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
@@ -42,7 +46,6 @@ const SignupPage = () => {
       return;
     }
     try {
-      // Dispatch signup
       await dispatch(
         signup({
           fullName: formData.name,
@@ -50,7 +53,6 @@ const SignupPage = () => {
           password: formData.password,
         })
       ).unwrap();
-      // Dispatch login to authenticate user
       await dispatch(
         login({
           email: formData.email,
@@ -60,30 +62,35 @@ const SignupPage = () => {
       toast.success("Account created and logged in!");
       navigate("/select-category");
     } catch (err) {
-      console.error("Signup or login failed: ", err);
+      console.error("[SignupPage] Signup or login failed:", err);
       toast.error(err?.message || "Signup failed, please try again.");
     }
   };
 
+  // Handle Google login success
   const handleGoogleLoginSuccess = async (credentialResponse) => {
     try {
       await dispatch(googleLogin(credentialResponse.credential)).unwrap();
       toast.success("Google account created and logged in!");
       navigate("/select-category");
     } catch (err) {
-      console.error("Google signup failed: ", err);
+      console.error("[SignupPage] Google signup failed:", err);
       toast.error(err?.message || "Google signup failed.");
     }
   };
 
+  // Handle Google login failure
   const handleGoogleLoginFailure = () => {
+    console.error("[SignupPage] Google signup failed");
     toast.error("Google signup failed");
   };
 
   return (
     <GoogleOAuthProvider clientId="784687781898-u7t28i5ahphgu5hbpcauppftgme77plr.apps.googleusercontent.com">
+      {/* Main layout with gradient background */}
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-900 to-purple-900">
         <div className="max-w-4xl w-full bg-white rounded-xl shadow-2xl flex flex-col md:flex-row overflow-hidden">
+          {/* Left section with image */}
           <div className="md:w-1/2 relative flex items-center justify-center p-8">
             <img
               src="https://images.unsplash.com/photo-1631237631392-30f4f13cf509?q=80&w=1936&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
@@ -100,6 +107,7 @@ const SignupPage = () => {
               </p>
             </div>
           </div>
+          {/* Right section with signup form */}
           <div className="md:w-1/2 flex items-center justify-center bg-gray-50 p-8">
             <div className="w-full max-w-sm">
               <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-900 flex items-center justify-center">
@@ -107,6 +115,7 @@ const SignupPage = () => {
                 Create an Account
               </h2>
               <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Name input */}
                 <div className="relative">
                   <FaUserCircle className="absolute top-3 left-3 text-gray-500 text-lg md:text-xl" />
                   <input
@@ -120,6 +129,7 @@ const SignupPage = () => {
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-900 text-base md:text-lg bg-gray-50"
                   />
                 </div>
+                {/* Email input */}
                 <div className="relative">
                   <FaUserCircle className="absolute top-3 left-3 text-gray-500 text-lg md:text-xl" />
                   <input
@@ -133,6 +143,7 @@ const SignupPage = () => {
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-900 text-base md:text-lg bg-gray-50"
                   />
                 </div>
+                {/* Password input */}
                 <div className="relative">
                   <FaLock className="absolute top-3 left-3 text-gray-500 text-lg md:text-xl" />
                   <input
@@ -154,6 +165,7 @@ const SignupPage = () => {
                     {showPassword ? <FaEyeSlash className="text-lg md:text-xl" /> : <FaEye className="text-lg md:text-xl" />}
                   </button>
                 </div>
+                {/* Confirm password input */}
                 <div className="relative">
                   <FaLock className="absolute top-3 left-3 text-gray-500 text-lg md:text-xl" />
                   <input
@@ -175,6 +187,7 @@ const SignupPage = () => {
                     {showConfirmPassword ? <FaEyeSlash className="text-lg md:text-xl" /> : <FaEye className="text-lg md:text-xl" />}
                   </button>
                 </div>
+                {/* Terms checkbox */}
                 <div className="flex items-center">
                   <input
                     id="acceptedTerms"
@@ -192,6 +205,7 @@ const SignupPage = () => {
                     </Link>
                   </label>
                 </div>
+                {/* Submit button */}
                 <button
                   type="submit"
                   className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold text-base md:text-lg hover:bg-indigo-700 transition duration-300 disabled:opacity-50 flex items-center justify-center"
@@ -208,6 +222,7 @@ const SignupPage = () => {
                   {loading ? "Signing up..." : "Sign Up"}
                 </button>
               </form>
+              {/* Google login */}
               <div className="my-6 text-center text-gray-500">or</div>
               <div className="flex justify-center">
                 <GoogleLogin
@@ -222,6 +237,7 @@ const SignupPage = () => {
                   width="250"
                 />
               </div>
+              {/* Login link */}
               <p className="mt-6 text-center text-gray-600">
                 Already have an account?{" "}
                 <Link to="/login" className="text-indigo-600 hover:underline font-medium">

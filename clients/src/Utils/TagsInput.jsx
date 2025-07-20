@@ -1,31 +1,36 @@
 import React, { useState } from "react";
 
+// Input for adding/removing tags
 const TagsInput = ({ tags, setTags }) => {
   const [inputValue, setInputValue] = useState("");
 
+  // Add new tags from input
   const addTags = (value) => {
-    // Split by comma and trim whitespace
     const newTags = value
       .split(",")
       .map(tag => tag.trim())
       .filter(tag => tag.length > 0 && !tags.includes(tag));
-
     if (newTags.length) {
       setTags([...tags, ...newTags]);
     }
   };
 
+  // Handle Enter/comma to add tags
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      addTags(inputValue);
-      setInputValue("");
-    } else if (e.key === "Backspace" && !inputValue) {
-      // Remove last tag if input empty and backspace pressed
-      setTags(tags.slice(0, -1));
+    try {
+      if (e.key === "Enter" || e.key === ",") {
+        e.preventDefault();
+        addTags(inputValue);
+        setInputValue("");
+      } else if (e.key === "Backspace" && !inputValue) {
+        setTags(tags.slice(0, -1));
+      }
+    } catch (e) {
+      console.error("[TagsInput] Keydown error:", e);
     }
   };
 
+  // Remove tag by index
   const removeTag = (index) => {
     setTags(tags.filter((_, i) => i !== index));
   };
@@ -43,7 +48,7 @@ const TagsInput = ({ tags, setTags }) => {
             onClick={() => removeTag(index)}
             className="text-red-600 hover:text-red-800"
           >
-            &times;
+            ×
           </button>
         </div>
       ))}

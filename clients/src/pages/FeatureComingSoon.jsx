@@ -20,6 +20,7 @@ const textVariants = {
   })
 };
 
+// Displays coming soon placeholder
 const FeatureComingSoon = () => {
   return (
     <motion.div
@@ -73,7 +74,7 @@ const FeatureComingSoon = () => {
         }}
         whileHover={{ scale: 1.05, boxShadow: "0 12px 20px rgba(59, 130, 246, 0.5)" }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => window.location.href = "/"} // Redirect home or elsewhere
+        onClick={() => window.location.href = "/"}
       >
         Go Back Home
       </motion.div>

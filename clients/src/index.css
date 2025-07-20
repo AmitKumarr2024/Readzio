@@ -3,16 +3,15 @@
 @custom-variant dark (&:where(.dark, .dark *));
 @plugin "daisyui";
 
+/* Root styles for light mode */
 :root {
   background-color: #fff0f0;
   color: black;
 }
 
 @theme {
-  /* Custom font families */
-  --font-Urbanist: "Urbanist", sans-serif;
-
   /* Light theme variables */
+  --font-Urbanist: "Urbanist", sans-serif;
   --color-background-light: #ffffff;
   --color-primary-light: #3b82f6;
   --color-primary-hover-light: #2563eb;
@@ -20,16 +19,14 @@
   --color-text-main-light: #111827;
   --color-sub-text-light: #6b7280;
   --color-white-text-light: #ffffff;
-
-  /* Gradient stops (light mode) */
   --gradient-start-light: #6366f1; /* indigo-500 */
   --gradient-mid-light: #a855f7; /* purple-500 */
   --gradient-end-light: #ec4899; /* pink-500 */
 }
 
+/* Dark theme variables*/
 .dark {
   @theme {
-    /* Dark theme variables */
     --color-background-dark: #0f172a;
     --color-primary-dark: #60a5fa;
     --color-primary-hover-dark: #3b82f6;
@@ -37,16 +34,13 @@
     --color-text-main-dark: #f3f4f6;
     --color-sub-text-dark: #9ca3af;
     --color-white-text-dark: #ffffff;
-
-    /* Gradient stops (dark mode) */
     --gradient-start-dark: #1e293b; /* slate-800 */
     --gradient-mid-dark: #334155; /* slate-700 */
     --gradient-end-dark: #0f172a; /* slate-900 */
   }
 }
 
-
-/* index.css */
+/* Toast styling */
 .toast-theme {
   font-family: var(--font-urbanist);
   background-color: var(--color-card-bg-light);
@@ -58,18 +52,16 @@
   color: var(--color-text-main-dark);
 }
 
-
-/* online indicator */
-
+/* Online indicator animation */
 @keyframes pulse-color {
   0% {
-    background-color: #0eab25; /* dark green */
+    background-color: #0eab25;
   }
   50% {
-    background-color: #4ed334; /* light green */
+    background-color: #4ed334;
   }
   100% {
-    background-color: #1bb910; /* medium green */
+    background-color: #1bb910;
   }
 }
 
@@ -83,7 +75,7 @@
 }
 
 .status-default {
-  background-color: #9ca3af; /* gray */
+  background-color: #9ca3af;
   color: white;
   padding: 4px 12px;
   border-radius: 9999px;
@@ -91,11 +83,12 @@
   font-size: 0.9rem;
 }
 
-/* map name hide */
+/* Hide Leaflet attribution */
 .leaflet-control-attribution {
   display: none !important;
 }
-/* In your global CSS (e.g., index.css or tailwind.css) */
+
+/* Gradient background */
 .bg-gradient-theme {
   background: linear-gradient(
     to right,
@@ -109,45 +102,43 @@
   background: linear-gradient(
     to right,
     var(--gradient-start-dark),
-    var(--gradient-mid-dark),
-    var(--gradient-end-dark)
+    --gradient-mid-dark,
+    --gradient-end-dark
   );
 }
 
+/* Hide scrollbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
-/* Hide scrollbar for IE, Edge and Firefox */
 .no-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
+/* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 12px; /* vertical scrollbar width */
-  height: 12px; /* horizontal scrollbar height */
+  width: 12px;
+  height: 12px;
 }
 
-/* Track */
 ::-webkit-scrollbar-track {
   background: var(--color-scrollbar-track);
   border-radius: 8px;
 }
 
-/* Thumb (the draggable handle) */
 ::-webkit-scrollbar-thumb {
   background-color: var(--color-scrollbar-thumb);
   border-radius: 8px;
   border: 3px solid var(--color-scrollbar-track);
 }
 
-/* Thumb on hover */
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-scrollbar-thumb-hover);
 }
 
-/* src/index.css */
+/* Skeleton loading animation */
 .skeleton {
   overflow: hidden;
   background-size: 200% 100%;

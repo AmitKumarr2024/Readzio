@@ -9,6 +9,7 @@ import { fetchPublicPosts } from "../store/guestSlice";
 import { getAllPosts } from "../store/postSlice";
 import GuestPostView from "../components/mainScreen/GuestPostView";
 
+// Displays main page with posts and sidebar
 const MainPage = () => {
   const dispatch = useDispatch();
   const { isAuthenticated, user, loading: authLoading } = useSelector((state) => state.auth);
@@ -16,16 +17,22 @@ const MainPage = () => {
   const { posts: authPosts = [], loading: authPostLoading } = useSelector((state) => state.post || {});
   const { isSidebarOpen, isMobile } = useSelector((state) => state.postMeta);
 
+  // Fetch posts based on auth status
   useEffect(() => {
-    if (!authLoading) {
-      if (isAuthenticated) {
-        dispatch(getAllPosts({ page: 1, limit: 12 }));
-      } else {
-        dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
+    try {
+      if (!authLoading) {
+        if (isAuthenticated) {
+          dispatch(getAllPosts({ page: 1, limit: 12 }));
+        } else {
+          dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
+        }
       }
+    } catch (e) {
+      console.error("[MainPage] Fetch error:", e);
     }
   }, [dispatch, isAuthenticated, authLoading]);
 
+  // Handle mobile detection
   useLayoutEffect(() => {
     const handleResize = () => {
       dispatch(setIsMobile(window.innerWidth < 1024));
@@ -35,6 +42,7 @@ const MainPage = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, [dispatch]);
 
+  // Control body overflow for mobile sidebar
   useEffect(() => {
     document.body.style.overflow = isMobile && isSidebarOpen ? "hidden" : "auto";
     return () => {
@@ -67,7 +75,7 @@ const MainPage = () => {
           </div>
           {isSidebarOpen && (
             <aside
-              className={`fixed top-0 right-0 h-full min-w-[300px] md:w-96 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-2xl z-50 overflow-y-auto transition-transform duration-300 ease-in-out
+              className={`fixed top-0 right-0 h-full min-w-[400px] md:w-96 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-2xl z-50 overflow-y-auto transition-transform duration-300 ease-in-out
               ${isMobile ? "translate-x-0" : ""}
               lg:static lg:z-auto lg:shadow-none lg:w-96`}
             >

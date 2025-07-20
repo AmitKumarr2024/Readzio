@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
 
+// Pagination with prev/next and manual input
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   const [inputValue, setInputValue] = useState(currentPage.toString());
 
+  // Sync input with current page
   useEffect(() => {
     setInputValue(currentPage.toString());
   }, [currentPage]);
 
+  // Handle input changes
   const handleInputChange = (e) => {
     const value = e.target.value;
     if (value === "" || /^[0-9]+$/.test(value)) {
@@ -14,15 +17,21 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
     }
   };
 
+  // Validate and change page on blur
   const handleInputBlur = () => {
-    const page = parseInt(inputValue, 10);
-    if (!isNaN(page) && page >= 1 && page <= totalPages) {
-      onPageChange(page);
-    } else {
-      setInputValue(currentPage.toString()); // Reset to current page if invalid
+    try {
+      const page = parseInt(inputValue, 10);
+      if (!isNaN(page) && page >= 1 && page <= totalPages) {
+        onPageChange(page);
+      } else {
+        setInputValue(currentPage.toString());
+      }
+    } catch (e) {
+      console.error("[Pagination] Input error:", e);
     }
   };
 
+  // Handle Enter key for page change
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       handleInputBlur();
@@ -31,17 +40,14 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
   return (
     <div className="w-full flex flex-wrap items-center justify-between gap-3 mt-4 mb-10">
-      {/* Prev Button */}
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage <= 1}
-        className="px-3 py-1 bg-blue-500   text-text-main-light dark:text-text-main-dark rounded disabled:bg-gray-400"
+        className="px-3 py-1 bg-blue-500 text-text-main-light dark:text-text-main-dark rounded disabled:bg-gray-400"
       >
         Prev
       </button>
-
-      {/* Manual Input */}
-      <span className="text-sm   text-text-main-light dark:text-text-main-dark flex items-center gap-1">
+      <span className="text-sm text-text-main-light dark:text-text-main-dark flex items-center gap-1">
         Page{" "}
         <input
           type="text"
@@ -53,8 +59,6 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
         />{" "}
         of {totalPages}
       </span>
-
-      {/* Next Button */}
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage >= totalPages}

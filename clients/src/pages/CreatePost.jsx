@@ -15,29 +15,40 @@ import {
   resetPostMeta,
 } from "../store/Post/postMetaSlice";
 
+// Creates new post with category and type selection
 const CreatePost = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
   const [showPostTypeModal, setShowPostTypeModal] = useState(true);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState([]);
-
   const { post, createLoading, createError } = useSelector((state) => state.post);
   const { postType, category: selectedCategoryId } = useSelector((state) => state.postMeta);
   const { categories } = useSelector((state) => state.categories);
 
+  // Fetch categories
   useEffect(() => {
-    dispatch(fetchCategories());
+    try {
+      dispatch(fetchCategories());
+    } catch (e) {
+      console.error("[CreatePost] Fetch categories error:", e);
+      toast.error("Failed to load categories.");
+    }
   }, [dispatch]);
 
+  // Create category map
   const categoryMap = useMemo(() => {
-    const map = {};
-    categories.forEach((cat) => {
-      map[cat._id] = cat.name;
-    });
-    return map;
+    try {
+      const map = {};
+      categories.forEach((cat) => {
+        map[cat._id] = cat.name;
+      });
+      return map;
+    } catch (e) {
+      console.error("[CreatePost] Category map error:", e);
+      return {};
+    }
   }, [categories]);
 
   const posts = post ? [post] : [];
@@ -45,12 +56,14 @@ const CreatePost = () => {
     ? posts.filter((p) => p.category === selectedCategoryId)
     : posts;
 
+  // Handle category selection
   const handleCategoryContinue = (selectedCategory) => {
     if (!selectedCategory?.id) return toast.error("Please select a category");
     dispatch(setCategory(selectedCategory.id));
     setShowCategoryModal(false);
   };
 
+  // Handle post creation
   const handleCreatePost = async (metaData) => {
     if (!title.trim()) return toast.error("Please enter a title");
     if (!blocks.length) return toast.error("Please add content blocks");
@@ -61,7 +74,7 @@ const CreatePost = () => {
 
     const updatedBlocks = blocks.map((block) => ({
       ...block,
-      blocked: false, // Ensure backend alignment
+      blocked: false,
     }));
 
     const postData = {
@@ -73,28 +86,30 @@ const CreatePost = () => {
     };
 
     try {
-      const resultAction = await dispatch(createPosts(postData));
-      if (createPosts.fulfilled.match(resultAction)) {
-        toast.success("Post created successfully!");
-        setTitle("");
-        setBlocks([]);
-        dispatch(resetPostMeta());
-        navigate(`/post/${resultAction.payload.post.slug}`);
-      } else {
-        toast.error(resultAction.error?.message || "Post creation failed");
-      }
+      const resultAction = await dispatch(createPosts(postData)).unwrap();
+      toast.success("Post created successfully!");
+      setTitle("");
+      setBlocks([]);
+      dispatch(resetPostMeta());
+      navigate(`/post/${resultAction.post.slug}`);
     } catch (err) {
-      toast.error("An error occurred during post creation");
+      console.error("[CreatePost] Post creation failed:", err);
+      toast.error(err?.message || "Post creation failed");
     }
   };
 
+  // Handle post deletion
   const handleDeletePost = (id) => {
     dispatch(deletePost(id))
       .unwrap()
       .then(() => toast.success("Post deleted"))
-      .catch((err) => toast.error(err.message || "Failed to delete post"));
+      .catch((err) => {
+        console.error("[CreatePost] Delete post failed:", err);
+        toast.error(err.message || "Failed to delete post");
+      });
   };
 
+  // Update draft
   const handleUpdateDraft = (draft) => {
     setTitle(draft.title || "");
     setBlocks(draft.blocks || []);
@@ -104,7 +119,6 @@ const CreatePost = () => {
     <div className="flex flex-col md:flex-row bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
       <Toaster position="top-right" />
       <LoadingBar loading={createLoading} />
-
       {showPostTypeModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
           <PostTypeSelector
@@ -118,7 +132,6 @@ const CreatePost = () => {
           />
         </div>
       )}
-
       {showCategoryModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
           <CategorySelector
@@ -131,7 +144,6 @@ const CreatePost = () => {
           />
         </div>
       )}
-
       {!showPostTypeModal && !showCategoryModal && (
         <div className="min-w-full flex container justify-around items-center flex-col flex-wrap md:flex-row">
           <div className="w-full flex justify-start px-4 pt-10 pl-11">
@@ -142,7 +154,6 @@ const CreatePost = () => {
               ⬅ Cancel & Go Back
             </button>
           </div>
-
           <div className="w-full md:w-3/5 my-4">
             <PostEditor
               size={55}
@@ -155,7 +166,6 @@ const CreatePost = () => {
               categoryName={categoryMap[selectedCategoryId] || selectedCategoryId}
             />
           </div>
-
           <div className="w-full md:w-2/5 md:pl-1">
             <PostPreviewList
               currentDraftPost={{ title, blocks }}

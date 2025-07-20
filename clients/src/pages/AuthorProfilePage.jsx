@@ -21,17 +21,17 @@ import {
   getUserById,
   clearUserActivity,
 } from "../store/userSlice";
-import { getAllPosts } from "../store/postSlice"; // Removed getDraftAndPendingPosts
+import { getAllPosts } from "../store/postSlice";
 import {
   fetchMySubscriptionPlans,
   checkEligibilityForSubscription,
 } from "../store/subscriptionSlice";
+import { checkUserEligibility } from "../store/adminSlice";
 import { tabsConfig } from "../config/tabsConfig";
 import { debounce } from "lodash";
 import SubscriptionEligibilityProgress from "../components/Author/SubscriptionEligibilityProgress";
 import LocationDashboard from "../components/location/LocationDashboard";
 
-// Lazy-loaded components
 const AboutAuthor = lazy(() => import("../components/Author/AboutAuthor"));
 const AllPosts = lazy(() => import("../components/Author/post/AllPosts"));
 const PinnedPost = lazy(() => import("../components/Author/post/PinnedPost"));
@@ -69,11 +69,12 @@ const CommentManager = lazy(() =>
   import("../components/Author/comment/CommentManager")
 );
 
+// Catches component errors
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
 
   static getDerivedStateFromError(error) {
-    console.error("ErrorBoundary caught:", error);
+    console.error("[ErrorBoundary] Caught:", error);
     return { hasError: true, error };
   }
 
@@ -99,6 +100,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// Displays author profile with tabs
 const AuthorProfilePage = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
@@ -108,7 +110,7 @@ const AuthorProfilePage = () => {
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "pinned"
   );
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 640);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
   const [clearing, setClearing] = useState(false);
 
   const loggedInUser = useSelector((state) => state.auth.user);
@@ -129,12 +131,10 @@ const AuthorProfilePage = () => {
     plans,
     loading: subscriptionLoading,
     error: subscriptionError,
-    isEligible,
   } = useSelector((state) => state.subscription);
-
+  const { userEligibility } = useSelector((state) => state.admin);
   const isOwnProfile = loggedInUser?._id === id;
 
-  // Filter tabs, assuming "drafts" is removed from tabsConfig
   const filteredTabs = useMemo(
     () =>
       tabsConfig.filter((tab) =>
@@ -145,41 +145,49 @@ const AuthorProfilePage = () => {
     [isOwnProfile, loggedInUser]
   );
 
-  // Scroll to URL fragment
+  // Handle fragment scrolling
   useEffect(() => {
-    const fragment = location.hash;
-    if (fragment) {
-      const element = document.getElementById(fragment.replace("#", ""));
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "start" });
-        element.classList.add("highlight");
-        setTimeout(() => element.classList.remove("highlight"), 2000);
+    try {
+      const fragment = location.hash;
+      if (fragment) {
+        const element = document.getElementById(fragment.replace("#", ""));
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+          element.classList.add("highlight");
+          setTimeout(() => element.classList.remove("highlight"), 2000);
+        }
       }
+    } catch (e) {
+      console.error("[AuthorProfilePage] Scroll error:", e);
     }
   }, [location]);
 
-  // Fetch data
+  // Fetch user data and posts
   useEffect(() => {
-    dispatch(getUser());
-    dispatch(getAllPosts());
-    if (id) dispatch(getUserById(id));
-    if (isOwnProfile) {
-      dispatch(getAllUsers());
-      dispatch(fetchMySubscriptionPlans());
-      dispatch(checkEligibilityForSubscription());
+    try {
+      dispatch(getUser());
+      dispatch(getAllPosts());
+      if (id) dispatch(getUserById(id));
+      if (isOwnProfile) {
+        dispatch(getAllUsers());
+        dispatch(fetchMySubscriptionPlans());
+        dispatch(checkEligibilityForSubscription());
+        dispatch(checkUserEligibility(id));
+      }
+    } catch (e) {
+      console.error("[AuthorProfilePage] Fetch error:", e);
     }
   }, [dispatch, id, isOwnProfile]);
 
-  // Responsive sidebar
+  // Handle resize for sidebar
   useEffect(() => {
     const handleResize = debounce(() => {
-      setIsSidebarOpen(window.innerWidth > 640);
+      setIsSidebarOpen(window.innerWidth >= 768);
     }, 100);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Handlers
   const handleTabChange = useCallback(
     (tabId) => {
       setActiveTab(tabId);
@@ -188,6 +196,7 @@ const AuthorProfilePage = () => {
     [navigate, location]
   );
 
+  // Clear activity history
   const handleClearHistory = useCallback(async () => {
     if (window.confirm("Clear all activity history? This cannot be undone.")) {
       setClearing(true);
@@ -195,7 +204,7 @@ const AuthorProfilePage = () => {
         await dispatch(clearUserActivity()).unwrap();
         if (activeTab === "activity" && id) dispatch(getUserById(id));
       } catch (error) {
-        console.error("Clear history failed:", error);
+        console.error("[AuthorProfilePage] Clear history failed:", error);
       } finally {
         setClearing(false);
       }
@@ -206,18 +215,18 @@ const AuthorProfilePage = () => {
     setIsSidebarOpen((prev) => !prev);
   }, []);
 
-  // Render content based on active tab
+  // Render tab content
   const renderContent = useMemo(() => {
     if (!selectedUser?._id) {
       return (
         <p className="text-center text-gray-600 dark:text-gray-400">
-          Loading user...
+          {typeof userError?.message === "string"
+            ? userError.message
+            : JSON.stringify(userError || selectedUserError || "Unknown error")}
         </p>
       );
     }
-
     const readOnly = !isOwnProfile;
-
     switch (activeTab) {
       case "pinned":
         return (
@@ -273,18 +282,28 @@ const AuthorProfilePage = () => {
       case "subscription":
         return (
           <div id="bank-details">
-            <AuthorDashboard
-              userId={selectedUser._id}
-              plans={plans}
-              subscriptionLoading={subscriptionLoading}
-              subscriptionError={subscriptionError}
-            />
             {isOwnProfile ? (
-              <>
-                <SubscriptionEligibilityProgress userId={selectedUser._id} />
-                {/* {isEligible && (
-                )} */}
-              </>
+              userEligibility ? (
+                <>
+                  <SubscriptionEligibilityProgress userId={selectedUser._id} />
+                  {userEligibility.isEligible && (
+                    <AuthorDashboard
+                      userId={selectedUser._id}
+                      plans={plans}
+                      subscriptionLoading={subscriptionLoading}
+                      subscriptionError={
+                        subscriptionError
+                          ? JSON.stringify(subscriptionError)
+                          : null
+                      }
+                    />
+                  )}
+                </>
+              ) : (
+                <p className="text-center text-gray-600 dark:text-gray-400">
+                  Checking eligibility...
+                </p>
+              )
             ) : (
               <p className="text-center text-gray-600 dark:text-gray-400">
                 This section is only for authors! 🔒
@@ -296,10 +315,18 @@ const AuthorProfilePage = () => {
         return (
           <>
             {isOwnProfile ? (
-              <>
-                <SubscriptionEligibilityProgress userId={selectedUser._id} />
-                {isEligible && <UserEarnings userId={selectedUser._id} />}
-              </>
+              userEligibility ? (
+                <>
+                  <SubscriptionEligibilityProgress userId={selectedUser._id} />
+                  {userEligibility.isEligible && (
+                    <UserEarnings userId={selectedUser._id} />
+                  )}
+                </>
+              ) : (
+                <p className="text-center text-gray-600 dark:text-gray-400">
+                  Checking eligibility...
+                </p>
+              )
             ) : (
               <p className="text-center text-gray-600 dark:text-gray-400">
                 This section is only for authors! 🔒
@@ -319,7 +346,9 @@ const AuthorProfilePage = () => {
           />
         ) : (
           <p className="text-center text-gray-600 dark:text-gray-400">
-            {userError ? `Error: ${userError}` : "Loading users..."}
+            {userError
+              ? `Error: ${JSON.stringify(userError)}`
+              : "Loading users..."}
           </p>
         );
       case "analytics":
@@ -366,7 +395,7 @@ const AuthorProfilePage = () => {
           </div>
         );
       default:
-        console.warn("Invalid tab:", activeTab);
+        console.error("[AuthorProfilePage] Invalid tab:", activeTab);
         return (
           <p className="text-center text-gray-600 dark:text-gray-400">
             Invalid tab selected
@@ -383,7 +412,7 @@ const AuthorProfilePage = () => {
     plans,
     subscriptionLoading,
     subscriptionError,
-    isEligible,
+    userEligibility,
     allUsers,
     userError,
     isOwnProfile,
@@ -391,12 +420,11 @@ const AuthorProfilePage = () => {
     clearing,
   ]);
 
-  // Loading and Error States
   if (userLoading || selectedUserLoading || !selectedUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
         <FaSpinner className="w-12 h-12 text-indigo-600 animate-spin" />
-        <p className="text-lg font-semibold text-gray-600 dark:text-gray-400">
+        <p className="text-lg font-semibold text-gray-600 dark:text-gray-400 ml-4">
           Loading...
         </p>
       </div>
@@ -406,7 +434,11 @@ const AuthorProfilePage = () => {
   if (userError || selectedUserError) {
     return (
       <div className="text-center mt-20">
-        <p className="text-red-600 mb-4">{userError || selectedUserError}</p>
+        <p className="text-red-600 mb-4">
+          {userError
+            ? userError.message || JSON.stringify(userError)
+            : selectedUserError.message || JSON.stringify(selectedUserError)}
+        </p>
         <Button
           onClick={() => {
             dispatch(getAllUsers());
@@ -423,8 +455,8 @@ const AuthorProfilePage = () => {
   return (
     <ErrorBoundary>
       <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        {/* Desktop Sidebar Toggle */}
-        <div className="hidden sm:flex fixed top-16 left-4 z-30">
+        {/* Sidebar */}
+        <div className="hidden md:flex fixed top-16 left-4 z-30">
           <Button
             variant="ghost"
             size="icon"
@@ -435,13 +467,11 @@ const AuthorProfilePage = () => {
             {isSidebarOpen ? <FaAngleDoubleLeft /> : "☰"}
           </Button>
         </div>
-
-        {/* Desktop Sidebar */}
         <aside
-          className={`hidden sm:flex fixed top-28 left-0 z-30 bg-gray-100 dark:bg-gray-900 border-r border-gray-300 dark:border-gray-700 shadow-md transition-all duration-300 overflow-y-auto ${
-            isSidebarOpen ? "w-60 p-4" : "w-16 p-2"
+          className={`fixed top-28 left-0 z-30 bg-gray-100 dark:bg-gray-900 border-r border-gray-300 dark:border-gray-700 shadow-md transition-all duration-300 overflow-y-auto md:flex ${
+            isSidebarOpen ? "w-full md:w-60 p-4" : "w-16 p-2"
           }`}
-          style={{ height: "calc(100vh - 4rem)" }}
+          style={{ height: "calc(100vh - 7rem)" }}
         >
           <nav className="space-y-2 w-full flex-1 py-4" role="tablist">
             {filteredTabs.map((tab) => (
@@ -457,68 +487,30 @@ const AuthorProfilePage = () => {
                 aria-selected={activeTab === tab.id}
               >
                 <span className="text-lg">{tab.icon}</span>
-                <span className={isSidebarOpen ? "inline" : "hidden"}>
+                <span className={isSidebarOpen ? "inline" : "hidden md:inline"}>
                   {tab.label}
                 </span>
               </button>
             ))}
           </nav>
         </aside>
-
-        {/* Mobile Sidebar Toggle */}
+        {/* Mobile sidebar toggle */}
         <Button
-          className="sm:hidden fixed top-16 right-4 z-50 w-12 h-12 rounded-full shadow-lg bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700"
+          className="md:hidden fixed top-16 right-4 z-50 w-12 h-12 rounded-full shadow-lg bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700"
           onClick={toggleSidebar}
           aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
         >
           {isSidebarOpen ? "✖" : "☰"}
         </Button>
-
-        {/* Mobile Sidebar */}
         {isSidebarOpen && (
           <div
-            className="sm:hidden fixed inset-0 z-40 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm"
+            className="md:hidden fixed inset-0 z-40 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm"
             onClick={toggleSidebar}
-          >
-            <div
-              className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-gray-100 dark:bg-gray-900 p-4 border-t border-gray-300 dark:border-gray-700 shadow-lg max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <nav className="space-y-2">
-                {filteredTabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => {
-                      handleTabChange(tab.id);
-                      setIsSidebarOpen(false);
-                    }}
-                    className={`flex items-center gap-3 w-full px-4 py-2 rounded-lg text-left text-sm font-medium ${
-                      activeTab === tab.id
-                        ? "bg-blue-600 text-white shadow"
-                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
-                    }`}
-                    aria-selected={activeTab === tab.id}
-                  >
-                    <span className="text-xl">{tab.icon}</span>
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
-              </nav>
-            </div>
-          </div>
+          ></div>
         )}
-
-        {/* Main Content */}
-        <main
-          className={`flex-1 p-4 md:p-6 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-all duration-300 ${
-            isSidebarOpen && window.innerWidth >= 640 ? "sm:ml-64" : "sm:ml-16"
-          }`}
-        >
-          <div className="max-w-7xl mx-auto">
-            <Suspense fallback={<div className="text-center">Loading...</div>}>
-              {renderContent}
-            </Suspense>
-          </div>
+        {/* Main content */}
+        <main className="flex-1 p-4 md:p-6 lg:p-8 ml-0 md:ml-16 lg:ml-60">
+          <Suspense fallback={<div>Loading...</div>}>{renderContent}</Suspense>
         </main>
       </div>
     </ErrorBoundary>

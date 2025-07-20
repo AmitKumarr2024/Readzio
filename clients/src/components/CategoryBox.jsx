@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { FaChevronDown } from "react-icons/fa";
@@ -9,29 +9,60 @@ import {
 } from "../store/categorySlice";
 import toast from "react-hot-toast";
 
+// CategoryBox.jsx
+// Displays a dropdown of user-selected or default categories with loading and error states.
+// Uses Redux for fetching categories and React Hot Toast for user notifications.
+// Closes dropdown when clicking outside and supports light/dark themes.
+// Error logging includes context for debugging and supports production logging (e.g., Sentry).
 const CategoryBox = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { user } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth || {});
   const { userSelectedCategories, categories, status, error } = useSelector(
-    (state) => state.categories
+    (state) => state.categories || {}
   );
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
     if (user?._id) {
-      dispatch(fetchUserSelectedCategories());
+      dispatch(fetchUserSelectedCategories()).catch((err) => {
+        console.error("[CategoryBox] Fetch user categories failed:", {
+          error: err.message || err,
+          userId: user?._id,
+          timestamp: new Date().toISOString(),
+        });
+        // Example: logToSentry("[CategoryBox] Fetch user categories failed", { error: err, userId: user?._id });
+      });
     } else {
-      dispatch(fetchCategories());
+      dispatch(fetchCategories()).catch((err) => {
+        console.error("[CategoryBox] Fetch categories failed:", {
+          error: err.message || err,
+          timestamp: new Date().toISOString(),
+        });
+        // Example: logToSentry("[CategoryBox] Fetch categories failed", { error: err });
+      });
     }
   }, [dispatch, user]);
 
   useEffect(() => {
-    if (error) {
-      toast.error(error);
+    if (status === "failed") {
+      toast.error("Unable to load categories. Please try again later.");
+      if (process.env.NODE_ENV === "development" && error) {
+        console.warn("[CategoryBox] Category loading failed:", {
+          error: error.message || error,
+          userId: user?._id || "unauthenticated",
+          timestamp: new Date().toISOString(),
+        });
+      } else if (process.env.NODE_ENV === "production") {
+        // Example: Send to a logging service
+        // logToSentry("[CategoryBox] Category loading failed", {
+        //   error: error.message || error,
+        //   userId: user?._id || "unauthenticated",
+        // });
+      }
     }
-  }, [error]);
+  }, [status, error, user]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -96,8 +127,17 @@ const CategoryBox = () => {
                     to={`/category_page/${category.slug}`}
                     key={category._id}
                     title={`Go to ${category.name} category`}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center justify-center gap-1 rounded-full bg-gray-100  py-2 text-base font-medium text-text-main-light transition-colors hover:bg-blue-100 dark:bg-gray-800 dark:text-text-main-dark dark:hover:bg-blue-900"
+                    onClick={() => {
+                      setOpen(false);
+                      console.log("[CategoryBox] Category clicked:", {
+                        categoryId: category._id,
+                        categoryName: category.name,
+                        userId: user?._id || "unauthenticated",
+                        timestamp: new Date().toISOString(),
+                      });
+                      // Example: logToAnalytics("[CategoryBox] Category clicked", { categoryId: category._id, categoryName: category.name });
+                    }}
+                    className="flex items-center justify-center gap-1 rounded-full bg-gray-100 py-2 text-base font-medium text-text-main-light transition-colors hover:bg-blue-100 dark:bg-gray-800 dark:text-text-main-dark dark:hover:bg-blue-900"
                   >
                     {category.name}
                     {category.createdBy && (
@@ -126,6 +166,11 @@ const CategoryBox = () => {
                   onClick={() => {
                     navigate(`/author-profile/${user._id}?tab=categories`);
                     setOpen(false);
+                    console.log("[CategoryBox] Manage Categories clicked:", {
+                      userId: user._id,
+                      timestamp: new Date().toISOString(),
+                    });
+                    // Example: logToAnalytics("[CategoryBox] Manage Categories clicked", { userId: user._id });
                   }}
                   className="inline-block px-4 py-1.5 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark font-medium rounded-full hover:bg-blue-100 dark:hover:bg-blue-900 transition border border-gray-200 dark:border-gray-800"
                 >

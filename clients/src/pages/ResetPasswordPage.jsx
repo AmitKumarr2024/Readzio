@@ -7,7 +7,7 @@ import { FaEnvelope, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import VerifyOtp from "../components/resetPassword/VerifyOtp";
 import ChangePassword from "../components/resetPassword/ChangePassword";
 
-// Component for requesting OTP
+// Requests OTP for password reset
 const RequestOtp = ({ setEmail, setStep }) => {
   const dispatch = useDispatch();
   const { loading, error } = useSelector((state) => state.auth);
@@ -15,7 +15,6 @@ const RequestOtp = ({ setEmail, setStep }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("[RequestOtp] Submitting email:", { email: localEmail });
     try {
       await dispatch(sendResetOtp({ email: localEmail })).unwrap();
       setEmail(localEmail);
@@ -43,10 +42,7 @@ const RequestOtp = ({ setEmail, setStep }) => {
             type="email"
             required
             value={localEmail}
-            onChange={(e) => {
-              console.log("[RequestOtp] Email input changed:", { email: e.target.value });
-              setLocalEmail(e.target.value);
-            }}
+            onChange={(e) => setLocalEmail(e.target.value)}
             placeholder="Your Email"
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-900 text-base"
           />
@@ -58,9 +54,24 @@ const RequestOtp = ({ setEmail, setStep }) => {
           disabled={loading}
         >
           {loading ? (
-            <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" />
+            <svg
+              className="animate-spin h-5 w-5 mr-2 text-white"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+                fill="none"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+              />
             </svg>
           ) : (
             <FaEnvelope className="mr-2 text-lg" />
@@ -72,13 +83,16 @@ const RequestOtp = ({ setEmail, setStep }) => {
   );
 };
 
-// Component for success message
+// Displays success message
 const ResetSuccess = () => (
   <div className="w-full max-w-md text-center">
     <FaCheckCircle className="text-green-500 text-5xl mx-auto mb-4" />
-    <h2 className="text-2xl font-bold mb-4 text-gray-900">Password Reset Successful</h2>
+    <h2 className="text-2xl font-bold mb-4 text-gray-900">
+      Password Reset Successful
+    </h2>
     <p className="text-gray-600 mb-6">
-      Your password has been successfully reset. You can now log in with your new password.
+      Your password has been successfully reset. You can now log in with your
+      new password.
     </p>
     <Link
       to="/login"
@@ -89,11 +103,13 @@ const ResetSuccess = () => (
   </div>
 );
 
-// Component for failure message
+// Displays failure message
 const ResetFailure = ({ setStep, error }) => (
   <div className="w-full max-w-md text-center">
     <FaTimesCircle className="text-red-500 text-5xl mx-auto mb-4" />
-    <h2 className="text-2xl font-bold mb-4 text-gray-900">Password Reset Failed</h2>
+    <h2 className="text-2xl font-bold mb-4 text-gray-900">
+      Password Reset Failed
+    </h2>
     <p className="text-gray-600 mb-6">
       {error || "Something went wrong. Please try again."}
     </p>
@@ -106,7 +122,7 @@ const ResetFailure = ({ setStep, error }) => (
   </div>
 );
 
-// Main ResetPassword page
+// Manages password reset flow
 const ResetPassword = () => {
   const [step, setStep] = useState("request"); // Steps: request, verify, change, success, failure
   const [email, setEmail] = useState("");
@@ -116,15 +132,34 @@ const ResetPassword = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-200">
       <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8">
-        {step === "request" && <RequestOtp setEmail={setEmail} setStep={setStep} />}
-        {step === "verify" && <VerifyOtp email={email} setOtp={setOtp} setStep={setStep} setError={setError} />}
-        {step === "change" && <ChangePassword email={email} otp={otp} setStep={setStep} setError={setError} />}
+        {step === "request" && (
+          <RequestOtp setEmail={setEmail} setStep={setStep} />
+        )}
+        {step === "verify" && (
+          <VerifyOtp
+            email={email}
+            setOtp={setOtp}
+            setStep={setStep}
+            setError={setError}
+          />
+        )}
+        {step === "change" && (
+          <ChangePassword
+            email={email}
+            otp={otp}
+            setStep={setStep}
+            setError={setError}
+          />
+        )}
         {step === "success" && <ResetSuccess />}
         {step === "failure" && <ResetFailure setStep={setStep} error={error} />}
         {step !== "success" && step !== "failure" && (
           <p className="mt-6 text-center text-gray-600">
             Back to{" "}
-            <Link to={"/login"} className="text-indigo-600 hover:underline font-medium">
+            <Link
+              to={"/login"}
+              className="text-indigo-600 hover:underline font-medium"
+            >
               Login
             </Link>
           </p>
