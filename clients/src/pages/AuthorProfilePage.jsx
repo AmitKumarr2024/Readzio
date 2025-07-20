@@ -69,12 +69,11 @@ const CommentManager = lazy(() =>
   import("../components/Author/comment/CommentManager")
 );
 
-// Catches component errors
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
 
   static getDerivedStateFromError(error) {
-    console.error("[ErrorBoundary] Caught:", error);
+    console.error("ErrorBoundary caught:", error);
     return { hasError: true, error };
   }
 
@@ -100,7 +99,6 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Displays author profile with tabs
 const AuthorProfilePage = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
@@ -133,6 +131,7 @@ const AuthorProfilePage = () => {
     error: subscriptionError,
   } = useSelector((state) => state.subscription);
   const { userEligibility } = useSelector((state) => state.admin);
+
   const isOwnProfile = loggedInUser?._id === id;
 
   const filteredTabs = useMemo(
@@ -145,41 +144,30 @@ const AuthorProfilePage = () => {
     [isOwnProfile, loggedInUser]
   );
 
-  // Handle fragment scrolling
   useEffect(() => {
-    try {
-      const fragment = location.hash;
-      if (fragment) {
-        const element = document.getElementById(fragment.replace("#", ""));
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "start" });
-          element.classList.add("highlight");
-          setTimeout(() => element.classList.remove("highlight"), 2000);
-        }
+    const fragment = location.hash;
+    if (fragment) {
+      const element = document.getElementById(fragment.replace("#", ""));
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+        element.classList.add("highlight");
+        setTimeout(() => element.classList.remove("highlight"), 2000);
       }
-    } catch (e) {
-      console.error("[AuthorProfilePage] Scroll error:", e);
     }
   }, [location]);
 
-  // Fetch user data and posts
   useEffect(() => {
-    try {
-      dispatch(getUser());
-      dispatch(getAllPosts());
-      if (id) dispatch(getUserById(id));
-      if (isOwnProfile) {
-        dispatch(getAllUsers());
-        dispatch(fetchMySubscriptionPlans());
-        dispatch(checkEligibilityForSubscription());
-        dispatch(checkUserEligibility(id));
-      }
-    } catch (e) {
-      console.error("[AuthorProfilePage] Fetch error:", e);
+    dispatch(getUser());
+    dispatch(getAllPosts());
+    if (id) dispatch(getUserById(id));
+    if (isOwnProfile) {
+      dispatch(getAllUsers());
+      dispatch(fetchMySubscriptionPlans());
+      dispatch(checkEligibilityForSubscription());
+      dispatch(checkUserEligibility(id));
     }
   }, [dispatch, id, isOwnProfile]);
 
-  // Handle resize for sidebar
   useEffect(() => {
     const handleResize = debounce(() => {
       setIsSidebarOpen(window.innerWidth >= 768);
@@ -196,7 +184,6 @@ const AuthorProfilePage = () => {
     [navigate, location]
   );
 
-  // Clear activity history
   const handleClearHistory = useCallback(async () => {
     if (window.confirm("Clear all activity history? This cannot be undone.")) {
       setClearing(true);
@@ -204,7 +191,7 @@ const AuthorProfilePage = () => {
         await dispatch(clearUserActivity()).unwrap();
         if (activeTab === "activity" && id) dispatch(getUserById(id));
       } catch (error) {
-        console.error("[AuthorProfilePage] Clear history failed:", error);
+        console.error("Clear history failed:", error);
       } finally {
         setClearing(false);
       }
@@ -215,7 +202,6 @@ const AuthorProfilePage = () => {
     setIsSidebarOpen((prev) => !prev);
   }, []);
 
-  // Render tab content
   const renderContent = useMemo(() => {
     if (!selectedUser?._id) {
       return (
@@ -226,7 +212,9 @@ const AuthorProfilePage = () => {
         </p>
       );
     }
+
     const readOnly = !isOwnProfile;
+
     switch (activeTab) {
       case "pinned":
         return (
@@ -395,7 +383,7 @@ const AuthorProfilePage = () => {
           </div>
         );
       default:
-        console.error("[AuthorProfilePage] Invalid tab:", activeTab);
+        console.warn("Invalid tab:", activeTab);
         return (
           <p className="text-center text-gray-600 dark:text-gray-400">
             Invalid tab selected
@@ -455,7 +443,6 @@ const AuthorProfilePage = () => {
   return (
     <ErrorBoundary>
       <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        {/* Sidebar */}
         <div className="hidden md:flex fixed top-16 left-4 z-30">
           <Button
             variant="ghost"
@@ -467,6 +454,7 @@ const AuthorProfilePage = () => {
             {isSidebarOpen ? <FaAngleDoubleLeft /> : "☰"}
           </Button>
         </div>
+
         <aside
           className={`fixed top-28 left-0 z-30 bg-gray-100 dark:bg-gray-900 border-r border-gray-300 dark:border-gray-700 shadow-md transition-all duration-300 overflow-y-auto md:flex ${
             isSidebarOpen ? "w-full md:w-60 p-4" : "w-16 p-2"
@@ -494,7 +482,7 @@ const AuthorProfilePage = () => {
             ))}
           </nav>
         </aside>
-        {/* Mobile sidebar toggle */}
+
         <Button
           className="md:hidden fixed top-16 right-4 z-50 w-12 h-12 rounded-full shadow-lg bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700"
           onClick={toggleSidebar}
@@ -502,15 +490,50 @@ const AuthorProfilePage = () => {
         >
           {isSidebarOpen ? "✖" : "☰"}
         </Button>
+
         {isSidebarOpen && (
           <div
             className="md:hidden fixed inset-0 z-40 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm"
             onClick={toggleSidebar}
-          ></div>
+          >
+            <div
+              className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-gray-100 dark:bg-gray-900 p-4 border-t border-gray-300 dark:border-gray-700 shadow-lg max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <nav className="space-y-2">
+                {filteredTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      handleTabChange(tab.id);
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`flex items-center gap-3 w-full px-4 py-2 rounded-lg text-left text-sm font-medium ${
+                      activeTab === tab.id
+                        ? "bg-blue-600 text-white shadow"
+                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
+                    }`}
+                    aria-selected={activeTab === tab.id}
+                  >
+                    <span className="text-xl">{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
         )}
-        {/* Main content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8 ml-0 md:ml-16 lg:ml-60">
-          <Suspense fallback={<div>Loading...</div>}>{renderContent}</Suspense>
+
+        <main
+          className={`flex-1 p-4 sm:p-6 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-all duration-300 ${
+            isSidebarOpen && window.innerWidth >= 768 ? "md:ml-64" : "md:ml-16"
+          }`}
+        >
+          <div className="max-w-7xl mx-auto">
+            <Suspense fallback={<div className="text-center">Loading...</div>}>
+              {renderContent}
+            </Suspense>
+          </div>
         </main>
       </div>
     </ErrorBoundary>

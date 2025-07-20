@@ -1,91 +1,145 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { checkEligibilityForSubscription } from '../../store/subscriptionSlice';
+import { checkUserEligibility } from '../../store/adminSlice';
 import Progress from '../../Utils/Progress';
 import { FaSpinner, FaExclamationCircle, FaRocket } from 'react-icons/fa';
+import { motion } from 'framer-motion';
 
 const SubscriptionEligibilityProgress = ({ userId }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isEligible, followerCount, postCount, loading, error } = useSelector(
-    (state) => state.subscription
-  );
+  const {
+    userEligibility,
+    subscriptionCriteria,
+    subscriptionLoading,
+    subscriptionError,
+  } = useSelector((state) => state.admin);
 
   React.useEffect(() => {
-    dispatch(checkEligibilityForSubscription());
-  }, [dispatch]);
+    if (userId) {
+      dispatch(checkUserEligibility(userId));
+    }
+  }, [dispatch, userId]);
 
-  if (loading) {
+  if (subscriptionLoading) {
     return (
       <div className="flex items-center justify-center w-screen h-screen bg-gray-100 dark:bg-gray-900">
-        <FaSpinner className="w-12 h-12 text-indigo-600 animate-spin" />
-        <span className="ml-4 text-2xl font-medium text-gray-600 dark:text-gray-300">
+        <FaSpinner className="w-6 h-6 text-indigo-600 animate-spin" />
+        <span className="ml-3 text-lg font-medium text-gray-600 dark:text-gray-300">
           Checking eligibility...
         </span>
       </div>
     );
   }
 
-  if (error) {
+  if (subscriptionError) {
     return (
       <div className="flex items-center justify-center w-screen h-screen bg-gray-100 dark:bg-gray-900 text-red-600">
-        <FaExclamationCircle className="w-10 h-10 mr-4" />
-        <span className="text-2xl font-medium">{error}</span>
+        <FaExclamationCircle className="w-6 h-6 mr-3" />
+        <span className="text-lg font-medium">{subscriptionError}</span>
       </div>
     );
   }
 
-  if (isEligible) return null; // Render nothing if eligible
+  if (userEligibility?.isEligible) return null;
 
-  const followerProgress = (followerCount / 10000) * 100;
-  const postProgress = (postCount / 30) * 100;
+  const { followerCount = 0, postCount = 0, engagementRate = 0, accountAgeDays = 0 } =
+    userEligibility || {};
+  const {
+    minFollowers = 10000,
+    minPosts = 30,
+    minEngagementRate = 5,
+    minAccountAgeDays = 180,
+  } = subscriptionCriteria || {};
+
+  const followerProgress = minFollowers > 0 ? Math.min((followerCount / minFollowers) * 100, 100) : 0;
+  const postProgress = minPosts > 0 ? Math.min((postCount / minPosts) * 100, 100) : 0;
+  const engagementProgress = minEngagementRate > 0
+    ? Math.min((engagementRate / minEngagementRate) * 100, 100)
+    : 0;
+  const ageProgress = minAccountAgeDays > 0
+    ? Math.min((accountAgeDays / minAccountAgeDays) * 100, 100)
+    : 0;
 
   return (
-    <div className="w-full max-w-6xl  overflow-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8 md:p-12">
-      <div className="w-full max-w-5xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8 md:p-12 transform transition-all duration-300 hover:shadow-3xl">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-gray-100">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: 'easeOut' }}
+      className="w-full max-w-4xl overflow-auto bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 sm:p-6"
+    >
+      <div className="w-full max-w-3xl bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 sm:p-6 transform transition-all duration-300 hover:shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
             Unlock Subscriptions & Earnings
           </h2>
-          <FaRocket className="w-12 h-12 text-indigo-600 dark:text-indigo-400" />
+          <FaRocket className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
         </div>
-        <p className="text-lg sm:text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-1">
-          Reach <span className="font-semibold">10,000 followers</span> and{' '}
-          <span className="font-semibold">30 published posts</span> to start monetizing your content!
+        <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 mb-4">
+          Reach{' '}
+          <span className="font-medium">{minFollowers.toLocaleString()} followers</span>,{' '}
+          <span className="font-medium">{minPosts} published posts</span>,{' '}
+          <span className="font-medium">{minEngagementRate}% engagement</span>, and{' '}
+          <span className="font-medium">{minAccountAgeDays} days account age</span>{' '}
+          to start monetizing your content!
         </p>
-        <div className="space-y-8">
+        <div className="space-y-4">
           <div>
-            <div className="flex justify-between items-center mb-3">
-              <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200">
-                Followers: {followerCount.toLocaleString()}/10,000
+            <div className="flex justify-between items-center mb-1">
+              <p className="text-base sm:text-lg font-medium text-gray-700 dark:text-gray-200">
+                Followers: {followerCount.toLocaleString()} / {minFollowers.toLocaleString()}
               </p>
-              <span className="text-base sm:text-lg md:text-xl text-gray-500 dark:text-gray-400">
-                {followerProgress >= 100 ? '✅ Complete' : `${Math.round(followerProgress)}%`}
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {followerProgress.toFixed(0)}%
               </span>
             </div>
-            <Progress value={followerProgress} className="h-8 rounded-full" />
+            <Progress value={followerProgress} className="h-2 bg-indigo-600" />
           </div>
           <div>
-            <div className="flex justify-between items-center mb-3">
-              <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200">
-                Published Posts: {postCount}/30
+            <div className="flex justify-between items-center mb-1">
+              <p className="text-base sm:text-lg font-medium text-gray-700 dark:text-gray-200">
+                Posts: {postCount} / {minPosts}
               </p>
-              <span className="text-base sm:text-lg md:text-xl text-gray-500 dark:text-gray-400">
-                {postProgress >= 100 ? '✅ Complete' : `${Math.round(postProgress)}%`}
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {postProgress.toFixed(0)}%
               </span>
             </div>
-            <Progress value={postProgress} className="h-8 rounded-full" />
+            <Progress value={postProgress} className="h-2 bg-indigo-600" />
+          </div>
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <p className="text-base sm:text-lg font-medium text-gray-700 dark:text-gray-200">
+                Engagement Rate: {engagementRate.toFixed(1)}% / {minEngagementRate}%
+              </p>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {engagementProgress.toFixed(0)}%
+              </span>
+            </div>
+            <Progress value={engagementProgress} className="h-2 bg-indigo-600" />
+          </div>
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <p className="text-base sm:text-lg font-medium text-gray-700 dark:text-gray-200">
+                Account Age: {accountAgeDays} / {minAccountAgeDays} days
+              </p>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {ageProgress.toFixed(0)}%
+              </span>
+            </div>
+            <Progress value={ageProgress} className="h-2 bg-indigo-600" />
           </div>
         </div>
-        <div className="mt-10">
-          <p className="text-base sm:text-lg md:text-xl text-gray-500 dark:text-gray-400 mb-6">
-            Grow your audience and share more content to unlock this feature!
-          </p>
-          
-        </div>
+        <motion.button
+          onClick={() => navigate('/profile')}
+          className="mt-6 w-full py-3 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all duration-300"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          View Profile
+        </motion.button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
