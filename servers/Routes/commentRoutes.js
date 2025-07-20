@@ -11,25 +11,21 @@ import {
 
 const router = express.Router();
 
-// ✅ Public route: Get comments for a post
+// Public route
+// GET /all-comments/:postId - Fetches comments for a post
 router.get("/all-comments/:postId", getPostComments);
 
-// All routes below this require auth
+// Protected routes
 router.use(protectedRoute);
-
-// 🔒 Add a new comment or reply
+// POST /add-comment/:postId - Adds a comment or reply to a post
 router.post("/add-comment/:postId", addComment);
-
-// 🔒 Toggle emoji reaction
+// POST /reaction/:commentId - Toggles a reaction on a comment
 router.post("/reaction/:commentId", toggleCommentReaction);
-
-// 🔒 Edit comment (owner only)
+// PUT /edit/:commentId - Edits a comment (owner only)
 router.put("/edit/:commentId", editComment);
-
-// 🔒 Block/hide comment (owner or post author)
+// PUT /block/:commentId - Blocks/hides a comment (owner or post author)
 router.put("/block/:commentId", blockComment);
-
-// 🔒 Delete permanently (owner, post author, or admin)
+// DELETE /delete/:commentId - Deletes a comment (owner, post author, or admin)
 router.delete("/delete/:commentId", deleteComment);
 
 export default router;

@@ -1,9 +1,15 @@
+import mongoose from "mongoose";
 import { recordActivity } from "../helpers/activityHelper.js";
 import UserLocation from "../Models/UserLocation.js";
+import { AppError } from "../utils/AppError.js";
 
+// Attaches geolocation data to request based on IP address
 export const geoLocationMiddleware = async (req, res, next) => {
   try {
+    // Extracts IP address
     const ip = req.ip || req.connection?.remoteAddress || "0.0.0.0";
+
+    // Initializes default location data
     let locationData = {
       userId: req.user?._id || null,
       ip,
@@ -17,9 +23,8 @@ export const geoLocationMiddleware = async (req, res, next) => {
       reqUserExists: !!req.user,
     };
 
-    // Handle localhost (::1) with mock coordinates for development
+    // Handles localhost with mock coordinates
     if (ip === "::1" || ip === "127.0.0.1") {
-      console.log("[GeoLocationMiddleware] Localhost detected, using mock location");
       locationData = {
         ...locationData,
         latitude: 28.6139, // Mock: New Delhi, India
@@ -31,14 +36,17 @@ export const geoLocationMiddleware = async (req, res, next) => {
         coordinates: { type: "Point", coordinates: [77.2090, 28.6139] },
       };
     } else {
-      // Use ip-api.com for IP-based geolocation
+      // Fetches geolocation data from ip-api.com
       const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,lat,lon,city,country,regionName,zip`);
       const data = await response.json();
 
       if (data.status !== "success" || !data.lat || !data.lon) {
-        console.warn("[GeoLocationMiddleware] Invalid IP geolocation data:", data);
-        req.geoLocation = null;
-        return next();
+        throw new AppError(
+          "Failed to fetch geolocation",
+          400,
+          "GeoLocationMiddleware",
+          "Invalid or missing geolocation data from ip-api.com"
+        );
       }
 
       locationData = {
@@ -53,32 +61,43 @@ export const geoLocationMiddleware = async (req, res, next) => {
       };
     }
 
-    if (!locationData.userId || isNaN(locationData.latitude) || isNaN(locationData.longitude)) {
-      console.warn("[GeoLocationMiddleware] Skipping location logging:", {
-        userId: locationData.userId,
-        lat: locationData.latitude,
-        lng: locationData.longitude,
-        ip,
-        reqUserExists: locationData.reqUserExists,
-      });
+    // Validates data before logging
+    if (
+      !locationData.userId ||
+      isNaN(locationData.latitude) ||
+      isNaN(locationData.longitude)
+    ) {
       req.geoLocation = null;
       return next();
     }
 
+    // Saves location data
     await UserLocation.create(locationData);
 
-    await recordActivity({
-      userId: locationData.userId,
-      action: "LOCATION_LOGGED",
-      message: `User ${req.user?.name || "Unknown"} location logged: ${locationData.city}, ${locationData.country}`,
-    });
+    // Logs activity for authenticated users
+    if (locationData.userId) {
+      await recordActivity({
+        userId: locationData.userId,
+        action: "LOCATION_LOGGED",
+        message: `User ${req.user?.name || "Unknown"} location logged: ${locationData.city}, ${locationData.country}`,
+      });
+    }
 
-    console.log("[GeoLocationMiddleware] Location set:", locationData);
+    // Attaches location data to request
     req.geoLocation = locationData;
     next();
   } catch (error) {
-    console.error("[GeoLocationMiddleware] Error:", error.message);
+    // AppError with context for geolocation middleware
     req.geoLocation = null;
-    next();
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to process geolocation",
+            500,
+            "GeoLocationMiddleware",
+            "Error in geoLocationMiddleware"
+          )
+    );
   }
 };

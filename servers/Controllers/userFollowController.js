@@ -6,44 +6,52 @@ import UserLocation from "../Models/UserLocation.js";
 import UserModel from "../Models/User.js";
 import mongoose from "mongoose";
 
+// Allows a user to follow another user
 export const followUser = async (req, res, next) => {
   try {
+    // Validates authentication
     if (!req.user || !req.user._id) {
-      throw new AppError("Unauthorized: User not found in request", 401, "FollowUser");
+      throw new AppError("Unauthorized: User not found in request", 401, "FollowUser", "User not authenticated");
     }
 
     const userId = req.user._id.toString();
     const { targetUserId } = req.params;
 
+    // Validates target user ID
     if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
-      throw new AppError("Invalid target user ID", 400, "FollowUser");
+      throw new AppError("Invalid target user ID", 400, "FollowUser", "Invalid MongoDB ObjectId for target user");
     }
     if (userId === targetUserId) {
-      throw new AppError("You can't follow yourself", 400, "FollowUser");
+      throw new AppError("You can't follow yourself", 400, "FollowUser", "Self-follow not allowed");
     }
 
+    // Fetches both users
     const [me, targetUser] = await Promise.all([
       UserModel.findById(userId),
       UserModel.findById(targetUserId),
     ]);
 
     if (!me || !targetUser) {
-      throw new AppError("User not found", 404, "FollowUser");
+      throw new AppError("User not found", 404, "FollowUser", "Either current user or target user does not exist");
     }
 
+    // Updates follow relationships
     await Promise.all([
       UserModel.updateOne({ _id: userId }, { $addToSet: { following: targetUserId } }),
       UserModel.updateOne({ _id: targetUserId }, { $addToSet: { followers: userId } }),
     ]);
 
+    // Fetches updated user data
     const updatedUser = await UserModel.findById(userId).select("following");
 
+    // Creates notification for target user
     const notification = await createNotification({
       user: targetUserId,
       sender: userId,
       type: "follow",
     });
 
+    // Emits notification if created
     if (notification && req.io?.to) {
       req.io.to(targetUserId).emit("newNotification", {
         notificationId: notification._id,
@@ -52,12 +60,14 @@ export const followUser = async (req, res, next) => {
       });
     }
 
+    // Logs activity
     await recordActivity({
       userId,
       action: "FOLLOWED_USER",
       message: `Followed ${targetUser.name} from ${req.geoLocation ? `${req.geoLocation.city}, ${req.geoLocation.country}` : "unknown location"}`,
     });
 
+    // Caches follow status
     await setCache(`follow:${userId}:${targetUserId}`, true);
 
     res.status(200).json({
@@ -65,50 +75,62 @@ export const followUser = async (req, res, next) => {
       message: "Followed user.",
       data: { following: updatedUser.following },
     });
-  } catch (err) {
-    console.error("[followUser] Error:", err);
-    next(err instanceof AppError ? err : new AppError(err.message, 500, "FollowUser"));
+  } catch (error) {
+    // AppError with context for following user
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message || "Failed to follow user", 500, "FollowUser", "Error in followUser")
+    );
   }
 };
 
+// Allows a user to unfollow another user
 export const unfollowUser = async (req, res, next) => {
   try {
+    // Validates authentication
     if (!req.user || !req.user._id) {
-      throw new AppError("Unauthorized: User not found in request", 401, "UnfollowUser");
+      throw new AppError("Unauthorized: User not found in request", 401, "UnfollowUser", "User not authenticated");
     }
 
     const userId = req.user._id.toString();
     const { targetUserId } = req.params;
 
+    // Validates target user ID
     if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
-      throw new AppError("Invalid target user ID", 400, "UnfollowUser");
+      throw new AppError("Invalid target user ID", 400, "UnfollowUser", "Invalid MongoDB ObjectId for target user");
     }
     if (userId === targetUserId) {
-      throw new AppError("You can't unfollow yourself", 400, "UnfollowUser");
+      throw new AppError("You can't unfollow yourself", 400, "UnfollowUser", "Self-unfollow not allowed");
     }
 
+    // Fetches both users
     const [me, targetUser] = await Promise.all([
       UserModel.findById(userId),
       UserModel.findById(targetUserId),
     ]);
 
     if (!me || !targetUser) {
-      throw new AppError("User not found", 404, "UnfollowUser");
+      throw new AppError("User not found", 404, "UnfollowUser", "Either current user or target user does not exist");
     }
 
+    // Updates follow relationships
     await Promise.all([
       UserModel.updateOne({ _id: userId }, { $pull: { following: targetUserId } }),
       UserModel.updateOne({ _id: targetUserId }, { $pull: { followers: userId } }),
     ]);
 
+    // Fetches updated user data
     const updatedUser = await UserModel.findById(userId).select("following");
 
+    // Logs activity
     await recordActivity({
       userId,
       action: "UNFOLLOWED_USER",
       message: `Unfollowed user ${targetUser.name} from ${req.geoLocation ? `${req.geoLocation.city}, ${req.geoLocation.country}` : "unknown location"}`,
     });
 
+    // Removes follow status from cache
     await delCache(`follow:${userId}:${targetUserId}`);
 
     res.status(200).json({
@@ -116,38 +138,53 @@ export const unfollowUser = async (req, res, next) => {
       message: "Unfollowed user.",
       data: { following: updatedUser.following },
     });
-  } catch (err) {
-    console.error("[unfollowUser] Error:", err);
-    next(err instanceof AppError ? err : new AppError(err.message, 500, "UnfollowUser"));
+  } catch (error) {
+    // AppError with context for unfollowing user
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message || "Failed to unfollow user", 500, "UnfollowUser", "Error in unfollowUser")
+    );
   }
 };
 
+// Retrieves paginated list of followers for the authenticated user
 export const fetchFollowers = async (req, res, next) => {
   try {
+    // Validates authentication
     const userId = req.user._id;
+    if (!userId) {
+      throw new AppError("Unauthorized: User not found in request", 401, "FetchFollowers", "User not authenticated");
+    }
+
     const { page = 1, limit = 12 } = req.query;
-    const pageNum = parseInt(page);
+    const pageNum = Math.max(parseInt(page), 1);
     const limitNum = Math.min(parseInt(limit), 100);
 
+    // Validates pagination parameters
     if (isNaN(pageNum) || pageNum < 1) {
-      throw new AppError("Invalid page number", 400, "FetchFollowers");
+      throw new AppError("Invalid page number", 400, "FetchFollowers", "Page number must be a positive integer");
     }
     if (isNaN(limitNum) || limitNum < 1) {
-      throw new AppError("Invalid limit", 400, "FetchFollowers");
+      throw new AppError("Invalid limit", 400, "FetchFollowers", "Limit must be a positive integer");
     }
 
     const skip = (pageNum - 1) * limitNum;
 
+    // Fetches user with followers
     const user = await UserModel.findById(userId).populate({
       path: "followers",
       select: "_id name username email avatar location",
       options: { skip, limit: limitNum },
     });
 
-    if (!user) throw new AppError("User not found", 404, "FetchFollowers");
+    if (!user) {
+      throw new AppError("User not found", 404, "FetchFollowers", "Authenticated user does not exist");
+    }
 
     const total = user.followers.length;
 
+    // Logs activity
     await recordActivity({
       userId,
       action: "FETCHED_FOLLOWERS",
@@ -161,38 +198,53 @@ export const fetchFollowers = async (req, res, next) => {
       page: pageNum,
       totalPages: Math.ceil(total / limitNum),
     });
-  } catch (err) {
-    console.error("[fetchFollowers] Error:", err);
-    next(err instanceof AppError ? err : new AppError(err.message, 500, "FetchFollowers"));
+  } catch (error) {
+    // AppError with context for fetching followers
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message || "Failed to fetch followers", 500, "FetchFollowers", "Error in fetchFollowers")
+    );
   }
 };
 
+// Retrieves paginated list of users the authenticated user is following
 export const fetchFollowing = async (req, res, next) => {
   try {
+    // Validates authentication
     const userId = req.user._id;
+    if (!userId) {
+      throw new AppError("Unauthorized: User not found in request", 401, "FetchFollowing", "User not authenticated");
+    }
+
     const { page = 1, limit = 12 } = req.query;
-    const pageNum = parseInt(page);
+    const pageNum = Math.max(parseInt(page), 1);
     const limitNum = Math.min(parseInt(limit), 100);
 
+    // Validates pagination parameters
     if (isNaN(pageNum) || pageNum < 1) {
-      throw new AppError("Invalid page number", 400, "FetchFollowing");
+      throw new AppError("Invalid page number", 400, "FetchFollowing", "Page number must be a positive integer");
     }
     if (isNaN(limitNum) || limitNum < 1) {
-      throw new AppError("Invalid limit", 400, "FetchFollowing");
+      throw new AppError("Invalid limit", 400, "FetchFollowing", "Limit must be a positive integer");
     }
 
     const skip = (pageNum - 1) * limitNum;
 
+    // Fetches user with following
     const user = await UserModel.findById(userId).populate({
       path: "following",
       select: "_id name username email avatar location",
       options: { skip, limit: limitNum },
     });
 
-    if (!user) throw new AppError("User not found", 404, "FetchFollowing");
+    if (!user) {
+      throw new AppError("User not found", 404, "FetchFollowing", "Authenticated user does not exist");
+    }
 
     const total = user.following.length;
 
+    // Logs activity
     await recordActivity({
       userId,
       action: "FETCHED_FOLLOWING",
@@ -206,61 +258,93 @@ export const fetchFollowing = async (req, res, next) => {
       page: pageNum,
       totalPages: Math.ceil(total / limitNum),
     });
-  } catch (err) {
-    console.error("[fetchFollowing] Error:", err);
-    next(err instanceof AppError ? err : new AppError(err.message, 500, "FetchFollowing"));
+  } catch (error) {
+    // AppError with context for fetching following
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message || "Failed to fetch following", 500, "FetchFollowing", "Error in fetchFollowing")
+    );
   }
 };
 
+// Checks if the authenticated user is following a target user
 export const getFollowStatus = async (req, res, next) => {
   try {
+    // Validates authentication
     const userId = req.user._id.toString();
-    const { targetUserId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
-      throw new AppError("Invalid target user ID", 400, "GetFollowStatus");
+    if (!userId) {
+      throw new AppError("Unauthorized: User not found in request", 401, "GetFollowStatus", "User not authenticated");
     }
 
+    const { targetUserId } = req.params;
+
+    // Validates target user ID
+    if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+      throw new AppError("Invalid target user ID", 400, "GetFollowStatus", "Invalid MongoDB ObjectId for target user");
+    }
+
+    // Checks cache for follow status
     const cacheKey = `follow:${userId}:${targetUserId}`;
     const cached = await getCache(cacheKey);
     if (cached !== null) {
       return res.status(200).json({ success: true, isFollowing: cached === true });
     }
 
+    // Fetches target user
     const targetUser = await UserModel.findById(targetUserId);
-    if (!targetUser) throw new AppError("Target user not found", 404, "GetFollowStatus");
+    if (!targetUser) {
+      throw new AppError("Target user not found", 404, "GetFollowStatus", "Target user does not exist");
+    }
 
+    // Determines follow status
     const isFollowing = targetUser.followers?.includes(userId) || false;
 
+    // Caches result
     await setCache(cacheKey, isFollowing);
 
     res.status(200).json({ success: true, isFollowing });
-  } catch (err) {
-    console.error("[getFollowStatus] Error:", err);
-    next(err instanceof AppError ? err : new AppError(err.message, 500, "GetFollowStatus"));
+  } catch (error) {
+    // AppError with context for checking follow status
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message || "Failed to check follow status", 500, "GetFollowStatus", "Error in getFollowStatus")
+    );
   }
 };
 
+// Retrieves paginated locations of the authenticated user's followers
 export const getFollowerLocations = async (req, res, next) => {
   try {
+    // Validates authentication
+    const userId = req.user._id;
+    if (!userId) {
+      throw new AppError("Unauthorized: User not found in request", 401, "GetFollowerLocations", "User not authenticated");
+    }
+
     const { page = 1, limit = 12 } = req.query;
-    const pageNum = parseInt(page);
+    const pageNum = Math.max(parseInt(page), 1);
     const limitNum = Math.min(parseInt(limit), 100);
 
+    // Validates pagination parameters
     if (isNaN(pageNum) || pageNum < 1) {
-      throw new AppError("Invalid page number", 400, "GetFollowerLocations");
+      throw new AppError("Invalid page number", 400, "GetFollowerLocations", "Page number must be a positive integer");
     }
     if (isNaN(limitNum) || limitNum < 1) {
-      throw new AppError("Invalid limit", 400, "GetFollowerLocations");
+      throw new AppError("Invalid limit", 400, "GetFollowerLocations", "Limit must be a positive integer");
     }
 
-    const user = await UserModel.findById(req.user._id).select("followers");
-    if (!user) throw new AppError("User not found", 404, "GetFollowerLocations");
+    // Fetches user and their followers
+    const user = await UserModel.findById(userId).select("followers");
+    if (!user) {
+      throw new AppError("User not found", 404, "GetFollowerLocations", "Authenticated user does not exist");
+    }
 
     const followerIds = user.followers || [];
 
+    // Handles case with no followers
     if (!followerIds.length) {
-      console.warn("[getFollowerLocations] No followers found for user:", req.user._id);
       return res.status(200).json({
         success: true,
         list: [],
@@ -270,11 +354,13 @@ export const getFollowerLocations = async (req, res, next) => {
       });
     }
 
+    // Fetches follower names
     const followerUsers = await UserModel.find({ _id: { $in: followerIds } }).select("_id name");
     const userIdToName = Object.fromEntries(
       followerUsers.map(u => [u._id.toString(), u.name || "Unknown"])
     );
 
+    // Aggregates latest locations for followers
     const locations = await UserLocation.aggregate([
       { $match: { userId: { $in: followerIds } } },
       { $sort: { timestamp: -1 } },
@@ -296,10 +382,7 @@ export const getFollowerLocations = async (req, res, next) => {
 
     const total = followerIds.length;
 
-    if (locations.length === 0) {
-      console.warn("[getFollowerLocations] No location records found for followers of user:", req.user._id);
-    }
-
+    // Formats location data
     const formatted = locations.map(loc => ({
       userId: loc.userId.toString(),
       name: userIdToName[loc.userId.toString()] || "Unknown",
@@ -322,7 +405,11 @@ export const getFollowerLocations = async (req, res, next) => {
       totalPages: Math.ceil(total / limitNum),
     });
   } catch (error) {
-    console.error("[getFollowerLocations] Error:", error.message);
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "GetFollowerLocations"));
+    // AppError with context for fetching follower locations
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message || "Failed to fetch follower locations", 500, "GetFollowerLocations", "Error in getFollowerLocations")
+    );
   }
 };

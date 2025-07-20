@@ -8,14 +8,28 @@ import ContactMessage from "../models/ContactMessage.js";
 import createMailOption from "../helpers/emailHelper.js";
 import { sendEmailWithRetries } from "../helpers/sendEmailWithRetries.js";
 
-// Create contact message
+// Creates a new contact message
 export const createContactMessage = async (req, res, next) => {
   try {
     const { name, email, subject, message } = req.body;
-    console.log("Creating contact message", { name, email, subject });
-    if (!name || !email || !message) {
-      throw new AppError("Name, email, and message required", 400);
-    }
+
+    // Validates required fields
+    if (!name || !email || !message)
+      throw new AppError(
+        "Name, email, and message required",
+        400,
+        "CreateContactMessage",
+        "Missing required fields"
+      );
+
+    // Validates email format
+    if (!validator.isEmail(email))
+      throw new AppError(
+        "Invalid email format",
+        400,
+        "CreateContactMessage",
+        "Invalid email"
+      );
 
     const contactMessage = new ContactMessage({
       name,
@@ -24,46 +38,69 @@ export const createContactMessage = async (req, res, next) => {
       message,
     });
     await contactMessage.save();
-    console.log("Contact message saved", { email, subject });
 
     res.status(201).json({ success: true, message: "Message sent" });
   } catch (error) {
-    console.error("Error creating contact message", {
-      error: error.message,
-      stack: error.stack,
-    });
-    next(new AppError(error.message, 500));
+    // AppError with context for creating contact message
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "CreateContactMessage",
+            "Failed to create contact message"
+          )
+    );
   }
 };
 
-// View all contact messages
+// Retrieves all contact messages
 export const viewContactMessages = async (req, res, next) => {
   try {
-    console.log("Fetching all contact messages");
+    // Fetches all contact messages, sorted by creation date
     const messages = await ContactMessage.find().sort({ createdAt: -1 });
     const totalMessages = await ContactMessage.countDocuments();
-    console.log("Retrieved contact messages", { totalMessages });
 
     res.status(200).json({ success: true, messages, totalMessages });
   } catch (error) {
-    console.error("Error fetching contact messages", {
-      error: error.message,
-      stack: error.stack,
-    });
-    next(new AppError(error.message, 500));
+    // AppError with context for fetching contact messages
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "ViewContactMessages",
+            "Failed to fetch contact messages"
+          )
+    );
   }
 };
 
-// Create report
+// Creates a new report for a post
 export const createReport = async (req, res, next) => {
   try {
     const { postId, reason, details } = req.body;
     const reporter = req.user._id;
-    console.log("Creating report", { postId, reporter });
 
-    if (!postId || !reason) {
-      throw new AppError("Post ID and reason required", 400);
-    }
+    // Validates required fields
+    if (!postId || !reason)
+      throw new AppError(
+        "Post ID and reason required",
+        400,
+        "CreateReport",
+        "Missing required fields"
+      );
+
+    // Validates postId format
+    if (!mongoose.isValidObjectId(postId))
+      throw new AppError(
+        "Invalid post ID",
+        400,
+        "CreateReport",
+        "Invalid post ID format"
+      );
 
     const report = new ReportedPost({
       post: postId,
@@ -72,22 +109,27 @@ export const createReport = async (req, res, next) => {
       details,
     });
     await report.save();
-    console.log("Report saved", { postId, reason });
 
     res.status(201).json({ success: true, message: "Report submitted" });
   } catch (error) {
-    console.error("Error creating report", {
-      error: error.message,
-      stack: error.stack,
-    });
-    next(new AppError(error.message, 500));
+    // AppError with context for creating report
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "CreateReport",
+            "Failed to create report"
+          )
+    );
   }
 };
 
-// Get all reported posts
+// Retrieves all reported posts
 export const getAllReportedPosts = async (req, res, next) => {
   try {
-    console.log("Fetching all reported posts");
+    // Fetches all reports with populated post and reporter details
     const reports = await ReportedPost.find()
       .populate({
         path: "post",
@@ -96,84 +138,126 @@ export const getAllReportedPosts = async (req, res, next) => {
       })
       .populate("reporter", "name email")
       .sort({ createdAt: -1 });
-    console.log("Retrieved reported posts", { count: reports.length });
 
     res.status(200).json({ success: true, reports });
   } catch (error) {
-    console.error("Error fetching reported posts", {
-      error: error.message,
-      stack: error.stack,
-    });
-    next(new AppError(error.message, 500, "GetAllReportedPosts"));
+    // AppError with context for fetching reported posts
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "GetAllReportedPosts",
+            "Failed to fetch reported posts"
+          )
+    );
   }
 };
 
-// Review reported post
+// Reviews a reported post
 export const reviewReport = async (req, res, next) => {
   try {
     const { reportId } = req.params;
     const { forwardToAuthor } = req.body;
-    console.log("Reviewing report", { reportId, forwardToAuthor });
 
+    // Validates report ID
+    if (!mongoose.isValidObjectId(reportId))
+      throw new AppError(
+        "Invalid report ID",
+        400,
+        "ReviewReport",
+        "Invalid report ID format"
+      );
+
+    // Fetches report with populated post and author
     const report = await ReportedPost.findById(reportId).populate({
       path: "post",
       select: "title author",
       populate: { path: "author", select: "name email" },
     });
 
-    if (!report) throw new AppError("Report not found", 404, "ReviewReport");
+    if (!report)
+      throw new AppError(
+        "Report not found",
+        404,
+        "ReviewReport",
+        "Report does not exist"
+      );
 
+    // Marks report as reviewed
     report.isReviewed = true;
     report.forwardedToAuthor = forwardToAuthor;
     await report.save();
-    console.log("Report reviewed", { reportId });
 
     res.status(200).json({ success: true, message: "Report reviewed" });
   } catch (error) {
-    console.error("Error reviewing report", {
-      error: error.message,
-      stack: error.stack,
-    });
-    next(new AppError(error.message, 500, "ReviewReport"));
+    // AppError with context for reviewing report
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "ReviewReport",
+            "Failed to review report"
+          )
+    );
   }
 };
 
-// Send report notification
+// Sends a report notification to the post author
 export const sendReportNotification = async (req, res, next) => {
   try {
     const { reportId, subject, message, details } = req.body;
-    console.log("Sending report notification", {
-      reportId,
-      subject,
-      requestBody: req.body,
-    });
     const finalMessage = message || details;
 
-    if (!reportId) throw new AppError("Report ID required", 400);
-    if (!subject) throw new AppError("Subject required", 400);
-    if (!finalMessage) throw new AppError("Message or details required", 400);
+    // Validates required fields
+    if (!reportId || !subject || !finalMessage)
+      throw new AppError(
+        "Report ID, subject, and message/details required",
+        400,
+        "SendReportNotification",
+        "Missing required fields"
+      );
 
+    // Validates field types
     if (
       typeof reportId !== "string" ||
       typeof subject !== "string" ||
       typeof finalMessage !== "string"
-    ) {
+    )
       throw new AppError(
         "Invalid field types for reportId, subject, or message/details",
-        400
+        400,
+        "SendReportNotification",
+        "Invalid field types"
       );
-    }
 
+    // Fetches report with populated post and author
     const report = await ReportedPost.findById(reportId).populate({
       path: "post",
       select: "title author",
       populate: { path: "author", select: "name email" },
     });
 
-    if (!report) throw new AppError("Report not found", 404);
-    if (!report.post?.author?.email)
-      throw new AppError("Author email not found", 404);
+    if (!report)
+      throw new AppError(
+        "Report not found",
+        404,
+        "SendReportNotification",
+        "Report does not exist"
+      );
 
+    if (!report.post?.author?.email)
+      throw new AppError(
+        "Author email not found",
+        404,
+        "SendReportNotification",
+        "Missing author email"
+      );
+
+    // Prepares and sends notification email
     const mailOption = createMailOption({
       to: report.post.author.email,
       subject,
@@ -184,80 +268,80 @@ export const sendReportNotification = async (req, res, next) => {
       buttonText: "Acknowledge",
       buttonUrl: `${CLIENT_URL}/acknowledge/${reportId}`,
     });
-    console.log("Preparing to send report notification email", { mailOption });
 
-    try {
-      await transporter.sendMail(mailOption);
-      console.log("Report notification email sent successfully", {
-        to: report.post.author.email,
-        reportId,
-      });
-    } catch (emailError) {
-      console.error("Failed to send report notification email", {
-        to: report.post.author.email,
-        reportId,
-        error: emailError.message,
-        stack: emailError.stack,
-        smtpConfig: {
-          host: transporter.options.host,
-          port: transporter.options.port,
-          secure: transporter.options.secure,
-          auth: transporter.options.auth
-            ? { user: transporter.options.auth.user }
-            : null,
-        },
-      });
-      throw new AppError(
-        `Failed to send email: ${emailError.message}`,
-        500,
-        "SendReportNotificationEmail"
-      );
-    }
+    await sendEmailWithRetries(mailOption, null, "report");
 
     res
       .status(200)
       .json({ success: true, message: "Notification sent successfully" });
   } catch (error) {
-    console.error("Error in sendReportNotification", {
-      error: error.message,
-      stack: error.stack,
-    });
+    // AppError with context for sending report notification
     next(
-      new AppError(
-        error.message,
-        error.statusCode || 500,
-        "SendReportNotification"
-      )
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "SendReportNotification",
+            "Failed to send report notification"
+          )
     );
   }
 };
 
-// Reply to contact message
+// Replies to a contact message
 export const replyContactMessage = async (req, res, next) => {
   try {
     const { messageId } = req.params;
     const { subject, message } = req.body;
-    console.log("Replying to contact message", { messageId, subject });
 
-    if (!messageId) throw new AppError("Message ID required", 400);
-    if (!subject) throw new AppError("Subject required", 400);
-    if (!message) throw new AppError("Message required", 400);
+    // Validates required fields
+    if (!messageId || !subject || !message)
+      throw new AppError(
+        "Message ID, subject, and message required",
+        400,
+        "ReplyContactMessage",
+        "Missing required fields"
+      );
 
-    if (!mongoose.isValidObjectId(messageId)) {
-      throw new AppError("Invalid message ID format", 400);
-    }
+    // Validates message ID format
+    if (!mongoose.isValidObjectId(messageId))
+      throw new AppError(
+        "Invalid message ID format",
+        400,
+        "ReplyContactMessage",
+        "Invalid message ID"
+      );
 
-    if (typeof subject !== "string" || typeof message !== "string") {
-      throw new AppError("Invalid field types for subject or message", 400);
-    }
+    // Validates field types
+    if (typeof subject !== "string" || typeof message !== "string")
+      throw new AppError(
+        "Invalid field types for subject or message",
+        400,
+        "ReplyContactMessage",
+        "Invalid field types"
+      );
 
+    // Fetches contact message
     const contactMessage = await ContactMessage.findById(messageId);
-    if (!contactMessage) throw new AppError("Contact message not found", 404);
+    if (!contactMessage)
+      throw new AppError(
+        "Contact message not found",
+        404,
+        "ReplyContactMessage",
+        "Message does not exist"
+      );
 
-    if (!validator.isEmail(contactMessage.email)) {
-      throw new AppError("Invalid recipient email format", 400);
-    }
+    // Validates recipient email
+    if (!validator.isEmail(contactMessage.email))
+      throw new AppError(
+        "Invalid recipient email format",
+        400,
+        "ReplyContactMessage",
+        "Invalid email format"
+      );
 
+    // Prepares and sends reply email
     const mailOption = createMailOption({
       to: contactMessage.email,
       subject,
@@ -266,99 +350,85 @@ export const replyContactMessage = async (req, res, next) => {
       message,
       hasButton: false,
     });
+
     await sendEmailWithRetries(mailOption, null, "contact_reply");
+
+    // Marks message as handled
     contactMessage.isHandled = true;
     await contactMessage.save();
-    console.log("Preparing to send contact message reply email", {
-      mailOption,
-    });
-
-    try {
-      await transporter.sendMail(mailOption);
-      contactMessage.isHandled = true;
-      await contactMessage.save();
-      console.log("Contact message reply email sent successfully", {
-        to: contactMessage.email,
-        messageId,
-      });
-    } catch (emailError) {
-      console.error("Failed to send contact message reply email", {
-        to: contactMessage.email,
-        messageId,
-        error: emailError.message,
-        stack: emailError.stack,
-        smtpConfig: {
-          host: transporter.options.host,
-          port: transporter.options.port,
-          secure: transporter.options.secure,
-          auth: transporter.options.auth
-            ? { user: transporter.options.auth.user }
-            : null,
-        },
-      });
-      throw new AppError(
-        `Failed to send email: ${emailError.message}`,
-        500,
-        "ReplyContactMessageEmail"
-      );
-    }
 
     res.status(200).json({ success: true, message: "Reply sent successfully" });
   } catch (error) {
-    console.error("Error in replyContactMessage", {
-      error: error.message,
-      stack: error.stack,
-    });
+    // AppError with context for replying to contact message
     next(
-      new AppError(
-        error.message,
-        error.statusCode || 500,
-        "ReplyContactMessage"
-      )
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "ReplyContactMessage",
+            "Failed to reply to contact message"
+          )
     );
   }
 };
 
-// Acknowledge report
+// Acknowledges a report
 export const acknowledgeReport = async (req, res, next) => {
   try {
     const { reportId } = req.params;
-    console.log("Acknowledging report", { reportId, userId: req.user?._id });
 
-    if (!mongoose.isValidObjectId(reportId)) {
-      throw new AppError("Invalid report ID", 400);
-    }
+    // Validates report ID
+    if (!mongoose.isValidObjectId(reportId))
+      throw new AppError(
+        "Invalid report ID",
+        400,
+        "AcknowledgeReport",
+        "Invalid report ID format"
+      );
 
+    // Fetches report with populated post and author
     const report = await ReportedPost.findById(reportId).populate({
       path: "post",
       select: "author",
       populate: { path: "author", select: "_id" },
     });
-    if (!report) {
-      throw new AppError("Report not found", 404);
-    }
 
-    if (report.post.author._id.toString() !== req.user._id.toString()) {
+    if (!report)
+      throw new AppError(
+        "Report not found",
+        404,
+        "AcknowledgeReport",
+        "Report does not exist"
+      );
+
+    // Validates user authorization
+    if (report.post.author._id.toString() !== req.user._id.toString())
       throw new AppError(
         "Unauthorized: Only the post author can acknowledge this report",
-        403
+        403,
+        "AcknowledgeReport",
+        "User not authorized"
       );
-    }
 
+    // Marks report as acknowledged
     report.isAcknowledged = true;
     await report.save();
-    console.log("Report acknowledged", { reportId });
 
     res
       .status(200)
       .json({ success: true, message: "Report acknowledged successfully" });
   } catch (error) {
-    console.error("Error acknowledging report", {
-      error: error.message,
-      stack: error.stack,
-    });
+    // AppError with context for acknowledging report
     next(
-      new AppError(error.message, error.statusCode || 500, "AcknowledgeReport")
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "AcknowledgeReport",
+            "Failed to acknowledge report"
+          )
     );
   }
 };

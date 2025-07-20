@@ -4,27 +4,27 @@ import mongoose from "mongoose";
 import { AppError } from "../utils/AppError.js";
 import Notification from "../Models/Notification.js";
 
+// Adds a new comment or reply to a post
 export const addComment = async (req, res, next) => {
-  console.log('[Comment:addComment] Starting', { postId: req.params.postId, userId: req.user._id });
   try {
     const { postId } = req.params;
     const { content, parentId } = req.body;
     const userId = req.user._id;
-    console.log('[Comment:addComment] Fetching post');
+
+    // Validates post existence
     const post = await PostModel.findById(postId).select('author slug title');
-    if (!post) {
-      console.error('[Comment:addComment] Post not found');
-      throw new AppError('Post not found', 404);
-    }
-    console.log('[Comment:addComment] Creating comment');
+    if (!post)
+      throw new AppError("Post not found", 404, "AddComment", "Post does not exist");
+
+    // Creates new comment
     const newComment = await CommentModel.create({
       post: postId,
       user: userId,
       content,
       parent: parentId || null,
     });
-    console.log('[Comment:addComment] Comment created:', { commentId: newComment._id });
-    console.log('[Comment:addComment] Creating notification');
+
+    // Creates notification for comment or reply
     const notification = await Notification.create({
       user: parentId ? (await CommentModel.findById(parentId))?.user || post.author : post.author,
       sender: userId,
@@ -32,11 +32,13 @@ export const addComment = async (req, res, next) => {
       post: postId,
       commentId: newComment._id,
     });
-    console.log('[Comment:addComment] Notification created:', { notificationId: notification._id });
+
+    // Determines target user for notification
     const targetUserId = parentId
       ? (await CommentModel.findById(parentId))?.user.toString() || post.author.toString()
       : post.author.toString();
-    console.log('[Comment:addComment] Emitting to:', { targetUserId });
+
+    // Emits notification to target user
     req.io.to(targetUserId).emit('newNotification', {
       _id: notification._id,
       type: parentId ? 'reply' : 'comment',
@@ -46,19 +48,24 @@ export const addComment = async (req, res, next) => {
       read: false,
       createdAt: newComment.createdAt,
     });
-    console.log('[Comment:addComment] Responding');
+
     res.status(201).json({ success: true, comment: newComment });
   } catch (error) {
-    console.error('[Comment:addComment] Error:', { error: error.message, stack: error.stack });
-    next(error);
+    // AppError with context for adding comment
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "AddComment", "Failed to add comment")
+    );
   }
 };
 
-// Other controller functions (unchanged)
+// Fetches all top-level comments and their replies for a post
 export const getPostComments = async (req, res, next) => {
   try {
     const { postId } = req.params;
-    console.log('[Comment:getPostComments] Fetching for:', { postId });
+
+    // Fetches top-level comments
     const topComments = await CommentModel.find({
       post: postId,
       parent: null,
@@ -66,7 +73,8 @@ export const getPostComments = async (req, res, next) => {
     })
       .populate("user", "name avatar _id")
       .sort({ createdAt: -1 });
-    console.log('[Comment:getPostComments] Top comments:', { count: topComments.length });
+
+    // Fetches replies for each top-level comment
     const commentsWithReplies = await Promise.all(
       topComments.map(async (comment) => {
         const replies = await CommentModel.find({
@@ -78,22 +86,31 @@ export const getPostComments = async (req, res, next) => {
         return { ...comment.toObject(), replies };
       })
     );
-    console.log('[Comment:getPostComments] Success:', { totalComments: commentsWithReplies.length });
+
     res.status(200).json({ success: true, comments: commentsWithReplies });
-  } catch (err) {
-    console.error('[Comment:getPostComments] Error:', { error: err.message });
-    next(err);
+  } catch (error) {
+    // AppError with context for fetching comments
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "GetPostComments", "Failed to fetch comments")
+    );
   }
 };
 
+// Toggles a reaction on a comment
 export const toggleCommentReaction = async (req, res, next) => {
   try {
     const { commentId } = req.params;
     const { reactionType } = req.body;
     const userId = req.user._id;
-    console.log('[Comment:toggleCommentReaction] Starting:', { commentId, reactionType, userId });
+
+    // Validates comment existence and status
     const comment = await CommentModel.findById(commentId);
-    if (!comment || comment.blocked) throw new AppError("Comment not found", 404);
+    if (!comment || comment.blocked)
+      throw new AppError("Comment not found", 404, "ToggleCommentReaction", "Comment does not exist or is blocked");
+
+    // Toggles reaction
     const users = comment.reactions.get(reactionType) || [];
     const reacted = users.includes(userId.toString());
     if (reacted) {
@@ -105,77 +122,118 @@ export const toggleCommentReaction = async (req, res, next) => {
       comment.reactions.set(reactionType, [...users, userId]);
     }
     await comment.save();
-    console.log('[Comment:toggleCommentReaction] Success:', { reactions: comment.reactions });
+
     res.status(200).json({ success: true, reactions: comment.reactions });
-  } catch (err) {
-    console.error('[Comment:toggleCommentReaction] Error:', { error: err.message });
-    next(err);
+  } catch (error) {
+    // AppError with context for toggling reaction
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "ToggleCommentReaction", "Failed to toggle reaction")
+    );
   }
 };
+
+// Edits a comment
 export const editComment = async (req, res, next) => {
   try {
     const { commentId } = req.params;
     const { content } = req.body;
     const userId = req.user._id;
-    console.log('[Comment:editComment] Starting:', { commentId, content, userId });
+
+    // Validates comment existence
     const comment = await CommentModel.findById(commentId);
-    if (!comment) throw new AppError("Comment not found", 404);
-    if (comment.user.toString() !== userId.toString()) {
-      throw new AppError("Unauthorized", 403);
-    }
+    if (!comment)
+      throw new AppError("Comment not found", 404, "EditComment", "Comment does not exist");
+
+    // Checks user authorization
+    if (comment.user.toString() !== userId.toString())
+      throw new AppError("Unauthorized", 403, "EditComment", "User not authorized to edit this comment");
+
+    // Updates comment content
     comment.content = content;
     comment.edited = true;
     await comment.save();
-    console.log('[Comment:editComment] Success:', { commentId });
+
     res.status(200).json({ success: true, comment });
-  } catch (err) {
-    console.error('[Comment:editComment] Error:', { error: err.message });
-    next(err);
+  } catch (error) {
+    // AppError with context for editing comment
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "EditComment", "Failed to edit comment")
+    );
   }
 };
+
+// Blocks a comment
 export const blockComment = async (req, res, next) => {
   try {
     const { commentId } = req.params;
     const userId = req.user._id;
-    console.log('[Comment:blockComment] Starting:', { commentId, userId });
+
+    // Validates comment existence
     const comment = await CommentModel.findById(commentId);
-    if (!comment) throw new AppError("Comment not found", 404);
+    if (!comment)
+      throw new AppError("Comment not found", 404, "BlockComment", "Comment does not exist");
+
+    // Validates post existence
     const post = await PostModel.findById(comment.post);
-    if (!post) throw new AppError("Post not found", 404);
+    if (!post)
+      throw new AppError("Post not found", 404, "BlockComment", "Post does not exist");
+
+    // Checks user authorization
     const isOwner = comment.user.toString() === userId.toString();
     const isPostAuthor = post.author.toString() === userId.toString();
-    if (!isOwner && !isPostAuthor) {
-      throw new AppError("Not authorized to block this comment", 403);
-    }
+    if (!isOwner && !isPostAuthor)
+      throw new AppError("Not authorized to block this comment", 403, "BlockComment", "User not authorized");
+
+    // Blocks comment
     comment.blocked = true;
     await comment.save();
-    console.log('[Comment:blockComment] Success:', { commentId });
+
     res.status(200).json({ success: true, message: "Comment blocked" });
-  } catch (err) {
-    console.error('[Comment:blockComment] Error:', { error: err.message });
-    next(err);
+  } catch (error) {
+    // AppError with context for blocking comment
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "BlockComment", "Failed to block comment")
+    );
   }
 };
 
+// Deletes a comment
 export const deleteComment = async (req, res, next) => {
   try {
     const { commentId } = req.params;
     const userId = req.user._id;
     const isAdmin = req.user.role === "admin";
-    console.log('[Comment:deleteComment] Starting:', { commentId, userId, isAdmin });
+
+    // Validates comment existence
     const comment = await CommentModel.findById(commentId);
-    if (!comment) throw new AppError("Comment not found", 404);
+    if (!comment)
+      throw new AppError("Comment not found", 404, "DeleteComment", "Comment does not exist");
+
+    // Validates post existence
     const post = await PostModel.findById(comment.post);
     const isOwner = comment.user.toString() === userId.toString();
     const isPostAuthor = post && post.author.toString() === userId.toString();
-    if (!isOwner && !isPostAuthor && !isAdmin) {
-      throw new AppError("Not authorized to delete this comment", 403);
-    }
+
+    // Checks user authorization
+    if (!isOwner && !isPostAuthor && !isAdmin)
+      throw new AppError("Not authorized to delete this comment", 403, "DeleteComment", "User not authorized");
+
+    // Deletes comment
     await CommentModel.findByIdAndDelete(commentId);
-    console.log('[Comment:deleteComment] Success:', { commentId });
+
     res.status(200).json({ success: true, message: "Comment deleted permanently", postId: comment.post });
-  } catch (err) {
-    console.error('[Comment:deleteComment] Error:', { error: err.message });
-    next(err);
+  } catch (error) {
+    // AppError with context for deleting comment
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "DeleteComment", "Failed to delete comment")
+    );
   }
 };

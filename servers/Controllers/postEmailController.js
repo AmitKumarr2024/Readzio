@@ -1,91 +1,94 @@
-import EmailLog from '../Models/EmailLog.js';
-import UserModel from '../Models/User.js';
-import PostModel from '../Models/Post.js';
-import Notification from '../Models/Notification.js';
-import { AppError } from '../utils/AppError.js';
-import transporter from '../config/nodeMailer.js';
-import createMailOption from '../helpers/emailHelper.js';
-import { recordActivity } from '../helpers/activityHelper.js';
+import EmailLog from "../Models/EmailLog.js";
+import UserModel from "../Models/User.js";
+import PostModel from "../Models/Post.js";
+import Notification from "../Models/Notification.js";
+import { AppError } from "../utils/AppError.js";
+import transporter from "../config/nodeMailer.js";
+import createMailOption from "../helpers/emailHelper.js";
+import { recordActivity } from "../helpers/activityHelper.js";
 
-// Send daily post email to all verified users
+// Sends daily post email to verified users with published posts
 export const sendDailyPostEmail = async (req, res, next) => {
   try {
-    console.log('[sendDailyPostEmail] Starting email processing...');
-    const users = await UserModel.find({ isAccountVerified: true, stopEmailAttempts: false }).lean();
-    console.log(`[sendDailyPostEmail] Found ${users.length} verified users`);
-
+    // Fetches verified users who haven't opted out of emails
+    const users = await UserModel.find({
+      isAccountVerified: true,
+      stopEmailAttempts: false,
+    }).lean();
     if (users.length === 0) {
-      console.log('[sendDailyPostEmail] No verified users found, aborting email sending');
-      return res.status(200).json({ message: 'No verified users to send emails to', results: [], postCount: 0 });
+      return res
+        .status(200)
+        .json({
+          message: "No verified users to send emails to",
+          results: [],
+          postCount: 0,
+        });
     }
 
-    // Fetch today's posts (created within the last 24 hours)
+    // Fetches posts created today
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    console.log('[sendDailyPostEmail] Fetching today\'s posts...');
     let posts = await PostModel.find({
       createdAt: { $gte: todayStart },
-      status: 'published', // Only include published posts
+      status: "published",
     })
-      .select('title slug thumbnail author')
-      .populate('author', 'name')
+      .select("title slug thumbnail author")
+      .populate("author", "name")
       .limit(10)
       .lean();
 
-    // If fewer than 10 posts, fetch most popular posts to fill up to 10
+    // Fills up to 10 posts with popular posts if needed
     if (posts.length < 10) {
-      console.log(`[sendDailyPostEmail] Found ${posts.length} posts, fetching additional popular posts...`);
       const additionalPostsNeeded = 10 - posts.length;
       const popularPosts = await PostModel.find({
         createdAt: { $lt: todayStart },
-        status: 'published', // Only include published posts
+        status: "published",
       })
         .sort({ views: -1 })
-        .select('title slug thumbnail author') // Fixed typo: 'tell' → 'title'
-        .populate('author', 'name')
+        .select("title slug thumbnail author")
+        .populate("author", "name")
         .limit(additionalPostsNeeded)
         .lean();
       posts = [...posts, ...popularPosts];
     }
-    console.log(`[sendDailyPostEmail] Total posts to include: ${posts.length}`);
 
+    // Sends fallback email if no posts are found
     if (posts.length === 0) {
-      console.log('[sendDailyPostEmail] No published posts found, sending fallback email');
       const fallbackMailOption = createMailOption({
-        to: users.map(user => user.email),
-        subject: 'Your Daily Post Digest (No New Posts)',
-        name: 'User',
-        email: '',
-        message: 'No new posts today. Check out our platform for more content!',
+        to: users.map((user) => user.email),
+        subject: "Your Daily Post Digest (No New Posts)",
+        name: "User",
+        email: "",
+        message: "No new posts today. Check out our platform for more content!",
         hasButton: true,
-        buttonText: 'Visit Platform',
-        buttonUrl: 'https://yourplatform.com/posts',
+        buttonText: "Visit Platform",
+        buttonUrl: "https://yourplatform.com/posts",
         posts: [],
       });
 
-      try {
-        await transporter.sendMail(fallbackMailOption);
-        console.log('[sendDailyPostEmail] Fallback email sent to users');
-        return res.status(200).json({ message: 'No posts available, sent fallback email', results: [], postCount: 0 });
-      } catch (error) {
-        console.error(`[sendDailyPostEmail] Failed to send fallback email: ${error.message}`);
-        throw new AppError(`Failed to send fallback email: ${error.message}`, 500, 'SendDailyPostEmail Fallback');
-      }
+      await transporter.sendMail(fallbackMailOption);
+      return res
+        .status(200)
+        .json({
+          message: "No posts available, sent fallback email",
+          results: [],
+          postCount: 0,
+        });
     }
 
-    const postSlugs = posts.map(post => post.slug);
+    const postSlugs = posts.map((post) => post.slug);
     const results = [];
 
+    // Sends emails to each user
     for (const user of users) {
-      console.log(`[sendDailyPostEmail] Preparing email for user: ${user.email}`);
       const mailOption = createMailOption({
         to: user.email,
         subject: `Your Daily Post Digest (${posts.length} Posts)`,
-        name: user.name || 'User',
+        name: user.name || "User",
         email: user.email,
         hasButton: true,
-        buttonText: 'Read Posts',
-        buttonUrl: 'https://yourplatform.com/posts',
+        buttonText: "Read Posts",
+        buttonUrl: "https://yourplatform.com/posts",
         posts,
       });
 
@@ -94,68 +97,85 @@ export const sendDailyPostEmail = async (req, res, next) => {
         const emailLog = new EmailLog({
           userId: user._id,
           email: user.email,
-          type: 'daily_digest',
-          emailStatus: 'sent',
+          type: "daily_digest",
+          emailStatus: "sent",
           emailAttempts: emailResult.attempts,
           postSlugs,
           sentAt: new Date(),
         });
         await emailLog.save();
-        results.push({ email: user.email, success: true, attempts: emailResult.attempts });
-        console.log(`[sendDailyPostEmail] Email sent to ${user.email}`);
+        results.push({
+          email: user.email,
+          success: true,
+          attempts: emailResult.attempts,
+        });
       } catch (error) {
         const emailLog = new EmailLog({
           userId: user._id,
           email: user.email,
-          type: 'daily_digest',
-          emailStatus: 'failed',
+          type: "daily_digest",
+          emailStatus: "failed",
           emailAttempts: error.attempts || 3,
           emailLastError: error.message,
           postSlugs,
           sentAt: new Date(),
         });
         await emailLog.save();
-        results.push({ email: user.email, success: false, error: error.message });
-        console.log(`[sendDailyPostEmail] Failed to send email to ${user.email}: ${error.message}`);
+        results.push({
+          email: user.email,
+          success: false,
+          error: error.message,
+        });
       }
     }
 
-    // Notify admin about email send results
-    const admin = await UserModel.findOne({ role: 'admin' }).lean();
+    // Notifies admin of email send results
+    const admin = await UserModel.findOne({ role: "admin" }).lean();
     if (admin) {
-      console.log('[sendDailyPostEmail] Sending admin notification...');
       const adminMailOption = createMailOption({
         to: admin.email,
-        subject: 'Daily Post Email Report',
-        name: admin.name || 'Admin',
+        subject: "Daily Post Email Report",
+        name: admin.name || "Admin",
         email: admin.email,
         message: `Daily post email sent to ${results.length} users. Success: ${
-          results.filter(r => r.success).length
-        }, Failed: ${results.filter(r => !r.success).length}, Posts included: ${posts.length}`,
+          results.filter((r) => r.success).length
+        }, Failed: ${
+          results.filter((r) => !r.success).length
+        }, Posts included: ${posts.length}`,
         hasButton: false,
       });
-      try {
-        await sendEmailWithRetries(adminMailOption, admin._id);
-        console.log('[sendDailyPostEmail] Admin notification sent');
-      } catch (error) {
-        console.error(`[sendDailyPostEmail] Failed to send admin notification: ${error.message}`);
-      }
+      await sendEmailWithRetries(adminMailOption, admin._id);
     }
 
-    console.log('[sendDailyPostEmail] Email processing completed');
-    res.status(200).json({ message: 'Daily post emails processed', results, postCount: posts.length });
+    res
+      .status(200)
+      .json({
+        message: "Daily post emails processed",
+        results,
+        postCount: posts.length,
+      });
   } catch (error) {
-    console.error(`[sendDailyPostEmail] Error: ${error.message}`);
-    next(new AppError(error.message, 500, 'SendDailyPostEmail Controller'));
+    // AppError with context for sending daily emails
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to process daily post emails",
+            500,
+            "SendDailyPostEmail",
+            "Error in sendDailyPostEmail"
+          )
+    );
   }
 };
 
-// Fetch daily post email report
+// Retrieves daily post email report with pagination and optional date filter
 export const getDailyPostEmailReport = async (req, res, next) => {
   try {
-    console.log('[getDailyPostEmailReport] Fetching email report...');
     const { page = 1, limit = 10, date } = req.query;
-    const query = { type: 'daily_digest' };
+    const query = { type: "daily_digest" };
+
+    // Applies date filter if provided
     if (date) {
       const startDate = new Date(date);
       startDate.setHours(0, 0, 0, 0);
@@ -164,15 +184,17 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       query.sentAt = { $gte: startDate, $lte: endDate };
     }
 
+    // Fetches email logs with pagination
     const logs = await EmailLog.find(query)
-      .select('userId email type emailStatus emailAttempts emailLastError postSlugs sentAt')
-      .populate('userId', 'name')
+      .select(
+        "userId email type emailStatus emailAttempts emailLastError postSlugs sentAt"
+      )
+      .populate("userId", "name")
       .skip((page - 1) * limit)
       .limit(Number(limit))
       .lean();
 
     const total = await EmailLog.countDocuments(query);
-    console.log(`[getDailyPostEmailReport] Found ${logs.length} logs, total: ${total}`);
 
     res.status(200).json({
       logs,
@@ -181,28 +203,46 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error(`[getDailyPostEmailReport] Error: ${error.message}`);
-    next(new AppError(error.message, 500, 'GetDailyPostEmailReport Controller'));
+    // AppError with context for fetching email report
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch email report",
+            500,
+            "GetDailyPostEmailReport",
+            "Error in getDailyPostEmailReport"
+          )
+    );
   }
 };
 
-// Delete all notifications
+// Deletes all notifications
 export const deleteAllNotifications = async (req, res, next) => {
   try {
-    console.log('[deleteAllNotifications] Deleting notifications...');
+    // Deletes all notifications in the database
     const result = await Notification.deleteMany({});
-    console.log(`[deleteAllNotifications] Deleted ${result.deletedCount} notifications`);
+
     res.status(200).json({
       message: `Deleted ${result.deletedCount} notifications`,
       deletedCount: result.deletedCount,
     });
   } catch (error) {
-    console.error(`[deleteAllNotifications] Error: ${error.message}`);
-    next(new AppError(error.message, 500, 'DeleteAllNotifications Controller'));
+    // AppError with context for deleting notifications
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to delete notifications",
+            500,
+            "DeleteAllNotifications",
+            "Error in deleteAllNotifications"
+          )
+    );
   }
 };
 
-// Helper function to send email with retries
+// Sends email with retry logic for reliability
 const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
   let attempts = 0;
   let lastError = null;
@@ -210,38 +250,37 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
   while (attempts < maxAttempts) {
     try {
       attempts++;
-      console.log(`[sendEmailWithRetries] Attempt ${attempts} to send email to ${mailOption.to}`);
       await transporter.sendMail(mailOption);
       await recordActivity({
         userId,
-        action: 'EMAIL_SENT',
+        action: "EMAIL_SENT",
         message: `Daily post email sent to ${mailOption.to} after ${attempts} attempt(s)`,
       });
-      console.log(`[sendEmailWithRetries] Email sent successfully to ${mailOption.to}`);
       return { success: true, attempts };
     } catch (error) {
       lastError = error;
-      console.error(`[sendEmailWithRetries] Attempt ${attempts} failed for ${mailOption.to}: ${error.message}`);
       await recordActivity({
         userId,
-        action: 'EMAIL_FAILED',
+        action: "EMAIL_FAILED",
         message: `Daily post email failed for ${mailOption.to} on attempt ${attempts}: ${error.message}`,
       });
       if (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempts ** 2));
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 * attempts ** 2)
+        );
       }
     }
   }
 
   await recordActivity({
     userId,
-    action: 'EMAIL_FAILED_ALL_ATTEMPTS',
+    action: "EMAIL_FAILED_ALL_ATTEMPTS",
     message: `All ${attempts} daily post email attempts failed for ${mailOption.to}: ${lastError.message}`,
   });
-  console.error(`[sendEmailWithRetries] All attempts failed for ${mailOption.to}: ${lastError.message}`);
   throw new AppError(
-    `Failed to send daily post email after ${attempts} attempts: ${lastError.message}`,
+    `Failed to send email after ${attempts} attempts: ${lastError.message}`,
     500,
-    'SendEmailWithRetries'
+    "SendEmailWithRetries",
+    "All email attempts failed"
   );
 };

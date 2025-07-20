@@ -5,14 +5,18 @@ import { recordActivity } from "../helpers/activityHelper.js";
 import { io } from "../sockets/socket.js";
 import DismissedBannerNotification from "../Models/DismissedBannerNotification.js";
 
+// Creates a new banner notification
 export const createNotification = async (req, res) => {
   try {
     const { title, message, region, expiresAt, link } = req.body;
-    if (!message || !title) {
-      return res
-        .status(400)
-        .json({ message: "Title and message are required" });
-    }
+    // Validates required fields
+    if (!message || !title)
+      throw new AppError(
+        "Title and message are required",
+        400,
+        "CreateNotification",
+        "Missing required fields"
+      );
 
     const notification = new BannerNotifyModel({
       title,
@@ -25,7 +29,7 @@ export const createNotification = async (req, res) => {
     });
     await notification.save();
 
-    // Emit notification to clients
+    // Emits notification to connected clients
     io.emit("newBroadcastNotification", {
       _id: notification._id,
       title,
@@ -36,7 +40,7 @@ export const createNotification = async (req, res) => {
       timestamp: Date.now(),
     });
 
-    // Log activity
+    // Logs creation activity
     await recordActivity({
       userId: req.user.userId,
       action: "CREATED_NOTIFICATION",
@@ -46,13 +50,21 @@ export const createNotification = async (req, res) => {
 
     res.status(201).json({ notification });
   } catch (error) {
-    res.status(500).json({
-      message: "Error creating notification",
-      error: error.message,
-    });
+    // AppError with context for notification creation issues
+    const err =
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "CreateNotification",
+            "Failed to create notification"
+          );
+    res.status(err.statusCode).json({ success: false, message: err.message });
   }
 };
 
+// Fetches all notifications with dismissal counts
 export const getNotifications = async (req, res) => {
   try {
     const notifications = await BannerNotifyModel.find({})
@@ -61,7 +73,7 @@ export const getNotifications = async (req, res) => {
 
     const ids = notifications.map((n) => n._id);
 
-    // Count dismissals per notification
+    // Aggregates dismissal counts per notification
     const dismissCounts = await DismissedBannerNotification.aggregate([
       { $match: { notificationId: { $in: ids } } },
       {
@@ -77,7 +89,7 @@ export const getNotifications = async (req, res) => {
       dismissMap[d._id.toString()] = d.count;
     });
 
-    // Attach `dismissedCount` instead of empty dismissedBy
+    // Enriches notifications with dismissal count
     const enriched = notifications.map((n) => ({
       ...n,
       dismissedCount: dismissMap[n._id.toString()] || 0,
@@ -85,61 +97,82 @@ export const getNotifications = async (req, res) => {
 
     res.status(200).json({ success: true, notifications: enriched });
   } catch (error) {
-    const err =
-      error instanceof AppError
-        ? error
-        : new AppError("Error fetching notifications", 500, "GetNotifications");
-    res.status(err.statusCode).json({ success: false, message: err.message });
-  }
-};
-
-export const getNotificationById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!isValidObjectId(id)) {
-      throw new AppError("Invalid ID", 400, "GetNotificationById");
-    }
-
-    const notification = await BannerNotifyModel.findById(id);
-
-    if (!notification || !notification.isActive) {
-      throw new AppError("Notification not found", 404, "GetNotificationById");
-    }
-
-    res.status(200).json({ success: true, data: notification });
-  } catch (error) {
+    // AppError with context for fetching notifications
     const err =
       error instanceof AppError
         ? error
         : new AppError(
-            "Failed to get notification",
+            error.message,
             500,
-            "GetNotificationById"
+            "GetNotifications",
+            "Failed to fetch notifications"
           );
-
     res.status(err.statusCode).json({ success: false, message: err.message });
   }
 };
 
+// Fetches a single notification by ID
+export const getNotificationById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Validates ObjectId
+    if (!isValidObjectId(id))
+      throw new AppError(
+        "Invalid ID",
+        400,
+        "GetNotificationById",
+        "Invalid notification ID"
+      );
+
+    const notification = await BannerNotifyModel.findById(id);
+    // Checks if notification exists and is active
+    if (!notification || !notification.isActive)
+      throw new AppError(
+        "Notification not found",
+        404,
+        "GetNotificationById",
+        "Notification does not exist or is inactive"
+      );
+
+    res.status(200).json({ success: true, data: notification });
+  } catch (error) {
+    // AppError with context for fetching single notification
+    const err =
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "GetNotificationById",
+            "Failed to get notification"
+          );
+    res.status(err.statusCode).json({ success: false, message: err.message });
+  }
+};
+
+// Dismisses a notification for a user
 export const dismissNotification = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("[dismissNotification] req.user:", req.user);
+    // Validates ObjectId
+    if (!isValidObjectId(id))
+      throw new AppError(
+        "Invalid notification ID",
+        400,
+        "DismissNotification",
+        "Invalid notification ID"
+      );
 
-    if (!isValidObjectId(id)) {
-      throw new AppError("Invalid notification ID", 400, "DismissNotification");
-    }
-
-    // Record dismissal in DismissedNotification model
+    // Records dismissal in database
     await DismissedBannerNotification.create({
       userId: req.user.userId,
       notificationId: id,
     });
 
-    // Emit dismissal event
+    // Emits dismissal event to clients
     io.emit("broadcastNotificationDismissed", { id });
 
-    // Log activity
+    // Logs dismissal activity
     await recordActivity({
       userId: req.user.userId,
       action: "DISMISSED_NOTIFICATION",
@@ -151,28 +184,32 @@ export const dismissNotification = async (req, res) => {
       .status(200)
       .json({ success: true, message: "Notification dismissed", data: { id } });
   } catch (error) {
+    // AppError with context for dismissing notification
     const err =
       error instanceof AppError
         ? error
         : new AppError(
-            "Error dismissing notification",
+            error.message,
             500,
-            "DismissNotification"
+            "DismissNotification",
+            "Failed to dismiss notification"
           );
     res.status(err.statusCode).json({ success: false, message: err.message });
   }
 };
 
+// Checks if a notification is dismissed by a user
 export const checkDismissedNotification = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!isValidObjectId(id)) {
+    // Validates ObjectId
+    if (!isValidObjectId(id))
       throw new AppError(
         "Invalid notification ID",
         400,
-        "CheckDismissedNotification"
+        "CheckDismissedNotification",
+        "Invalid notification ID"
       );
-    }
 
     const dismissed = await DismissedBannerNotification.findOne({
       userId: req.user.userId,
@@ -181,47 +218,51 @@ export const checkDismissedNotification = async (req, res) => {
 
     res.status(200).json({ success: true, dismissed: !!dismissed });
   } catch (error) {
+    // AppError with context for checking dismissed notification
     const err =
       error instanceof AppError
         ? error
         : new AppError(
-            "Error checking dismissed notification",
+            error.message,
             500,
-            "CheckDismissedNotification"
+            "CheckDismissedNotification",
+            "Failed to check dismissed notification"
           );
     res.status(err.statusCode).json({ success: false, message: err.message });
   }
 };
 
+// Deactivates a notification
 export const deactivateNotification = async (req, res) => {
   try {
     const { id } = req.params;
-
-    if (!isValidObjectId(id)) {
+    // Validates ObjectId
+    if (!isValidObjectId(id))
       throw new AppError(
         "Invalid notification ID",
         400,
-        "DeactivateNotification"
+        "DeactivateNotification",
+        "Invalid notification ID"
       );
-    }
 
     const notification = await BannerNotifyModel.findById(id);
-    console.log("[deactivateNotification]", notification);
-
-    if (!notification) {
+    // Checks if notification exists
+    if (!notification)
       throw new AppError(
         "Notification not found",
         404,
-        "DeactivateNotification"
+        "DeactivateNotification",
+        "Notification does not exist"
       );
-    }
 
     await BannerNotifyModel.updateOne({ _id: id }, { isActive: false });
 
+    // Emits deactivation event to clients
     io.emit("broadcastNotificationDeactivated", { id });
 
+    // Logs deactivation activity
     await recordActivity({
-      userId: req.user.userId, // ✅ Fix here
+      userId: req.user.userId,
       action: "DEACTIVATED_NOTIFICATION",
       message: `Admin ${req.user.userId} deactivated notification: ${id}`,
       targetUser: req.user.userId,
@@ -233,35 +274,49 @@ export const deactivateNotification = async (req, res) => {
       data: { id },
     });
   } catch (error) {
-    console.error("[deactivateNotification] ❌ Error:", error);
-
+    // AppError with context for deactivating notification
     const err =
       error instanceof AppError
         ? error
         : new AppError(
-            error.message || "Error deactivating notification",
+            error.message,
             500,
-            "DeactivateNotification"
+            "DeactivateNotification",
+            "Failed to deactivate notification"
           );
-
-    res.status(err.statusCode).json({
-      success: false,
-      message: err.message,
-    });
+    res.status(err.statusCode).json({ success: false, message: err.message });
   }
 };
 
-// In bannerNotificationController.js
+// Deletes all notifications
 export const deleteAllNotifications = async (req, res) => {
   try {
     await BannerNotifyModel.deleteMany({});
+    // Emits event for all notifications deleted
     io.emit("broadcastNotificationDeletedAll");
+
+    // Logs deletion activity
+    await recordActivity({
+      userId: req.user.userId,
+      action: "DELETED_ALL_NOTIFICATIONS",
+      message: `Admin ${req.user.userId} deleted all notifications`,
+      targetUser: req.user.userId,
+    });
+
     res
       .status(200)
-      .json({ success: true, message: "All notifications deleted." });
+      .json({ success: true, message: "All notifications deleted" });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to delete all notifications." });
+    // AppError with context for deleting all notifications
+    const err =
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "DeleteAllNotifications",
+            "Failed to delete all notifications"
+          );
+    res.status(err.statusCode).json({ success: false, message: err.message });
   }
 };

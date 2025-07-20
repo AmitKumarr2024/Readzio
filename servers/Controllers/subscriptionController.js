@@ -1,757 +1,1396 @@
 import asyncHandler from "express-async-handler";
-import SubscriptionPlanModel from "../Models/SubscriptionPlanModel.js";
-import UserSubscriptionModel from "../Models/UserSubscriptionModel.js";
+import UserModel from "../Models/User.js";
+import PostModel from "../Models/Post.js";
+import SubscriptionConfig from "../Models/SubscriptionConfigModel.js";
+import { AppError } from "../utils/AppError.js";
 import PaymentModel from "../Models/PaymentModel.js";
 import { recordActivity } from "../helpers/activityHelper.js";
 import crypto from "crypto";
-import { RAZORPAY_KEY_SECRET, SENDER_EMAIL } from "../config/dotenv.js";
-import { AppError } from "../utils/AppError.js";
+import { RAZORPAY_KEY_SECRET } from "../config/dotenv.js";
 import axiosInstance from "../utils/axiosInstance.js";
 import mongoose from "mongoose";
 import transporter from "../config/nodeMailer.js";
 import { createNotification } from "../utils/createNotification.js";
 import createMailOption from "../helpers/emailHelper.js";
 import { sendEmailWithRetries } from "../helpers/sendEmailWithRetries.js";
-import PostModel from "../Models/Post.js";
-import UserModel from "../Models/User.js";
+import UserSubscriptionPlan from "../Models/UserSubscriptionModel.js";
+import UserSubscription from "../Models/UserSubscription.js";
 
+// Validates MongoDB ObjectId
 const validateObjectId = (id, type = "ID") => {
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-    throw new AppError(`Invalid ${type}`, 400);
+    throw new AppError(
+      `Invalid ${type}`,
+      400,
+      "ValidateObjectId",
+      `Invalid MongoDB ObjectId for ${type}`
+    );
   }
 };
 
+// Validates and converts amount to paise (cents)
+const validateAndConvertAmount = (amount, field) => {
+  const parsed = parseFloat(amount);
+  if (isNaN(parsed) || parsed < 0) {
+    throw new AppError(
+      `${field} must be a valid positive number`,
+      400,
+      "ValidateAndConvertAmount",
+      `Invalid ${field} value`
+    );
+  }
+  if (parsed > 10000) {
+    return Math.round(parsed);
+  }
+  return Math.round(parsed * 100);
+};
+
+// Validates subscription plan type
 const validatePlanType = (type) => {
-  const validTypes = ["silver", "gold", "platinum", "custom"];
+  const validTypes = ["basic", "silver", "gold", "platinum", "custom"];
   if (!validTypes.includes(type.toLowerCase())) {
     throw new AppError(
       `Invalid plan type. Must be one of ${validTypes.join(", ")}`,
-      400
+      400,
+      "ValidatePlanType",
+      "Invalid subscription plan type"
     );
   }
   return type.toLowerCase();
 };
 
+// Validates that a value is positive
 const validatePositive = (value, field) => {
-  if (value <= 0) throw new AppError(`${field} must be positive`, 400);
+  if (value <= 0) {
+    throw new AppError(
+      `${field} must be positive`,
+      400,
+      "ValidatePositive",
+      `Non-positive ${field} value`
+    );
+  }
 };
 
+// Validates subscription duration
+const validateDuration = (durationDays) => {
+  const validDurations = [30, 90, 365];
+  if (!validDurations.includes(Number(durationDays))) {
+    throw new AppError(
+      "Duration must be 30, 90, or 365 days",
+      400,
+      "ValidateDuration",
+      "Invalid subscription duration"
+    );
+  }
+};
+
+// Checks for existing subscription plan with the same name
 const checkExistingPlan = async (userId, name, planId = null) => {
-  const query = { author: userId, name };
+  const query = { author: userId, name, deletedAt: null };
   if (planId) query._id = { $ne: planId };
-  const existing = await SubscriptionPlanModel.findOne(query);
-  if (existing) throw new AppError(`Plan "${name}" already exists`, 400);
+  const existing = await UserSubscriptionPlan.findOne(query);
+  if (existing) {
+    throw new AppError(
+      `Plan "${name}" already exists`,
+      400,
+      "CheckExistingPlan",
+      "Duplicate plan name detected"
+    );
+  }
 };
 
-const checkActivePlan = async (userId, planId = null) => {
-  const query = { author: userId, status: "active" };
+// Checks subscription plan limit for a user
+const checkPlanLimit = async (userId, planId = null) => {
+  const query = { author: userId, deletedAt: null };
   if (planId) query._id = { $ne: planId };
-  const existing = await SubscriptionPlanModel.findOne(query);
-  if (existing) throw new AppError("An active plan already exists", 400);
+  const plans = await UserSubscriptionPlan.find(query);
+  if (plans.length >= 3) {
+    throw new AppError(
+      "Maximum 3 plans allowed per author",
+      400,
+      "CheckPlanLimit",
+      "Plan limit exceeded"
+    );
+  }
 };
 
+// Creates a new subscription plan
 export const createSubscriptionPlan = asyncHandler(async (req, res, next) => {
-  const {
-    name,
-    description = "",
-    price,
-    postIds = [],
-    durationDays,
-    type = "custom",
-    authorId,
-  } = req.body;
-  if (!req.user?._id) throw new AppError("Unauthorized", 401);
-  if (!name || price === undefined || !durationDays || !authorId) {
-    throw new AppError("Missing required fields", 400);
-  }
-  if (authorId !== req.user._id.toString())
-    throw new AppError("Author ID mismatch", 403);
+  try {
+    const {
+      name,
+      description = "",
+      price,
+      postIds = [],
+      durationDays,
+      type = "custom",
+      authorId,
+    } = req.body;
 
-  validateObjectId(authorId, "Author ID");
-  validatePositive(price, "Price");
-  validatePositive(durationDays, "Duration");
-  validatePlanType(type);
-
-  for (const postId of postIds) validateObjectId(postId, "Post ID");
-  await checkActivePlan(req.user._id);
-  await checkExistingPlan(req.user._id, name);
-
-  const priceInPaise = Math.round(Number(price));
-  const plan = await SubscriptionPlanModel.create({
-    name,
-    description,
-    price: priceInPaise,
-    postIds,
-    durationDays,
-    type,
-    author: req.user._id,
-    status: "not_confirmed",
-  });
-
-  await recordActivity({
-    userId: req.user._id.toString(),
-    action: "CREATED_SUBSCRIPTION",
-    message: `Created ${type} subscription plan ${name} for ₹${(
-      priceInPaise / 100
-    ).toFixed(2)} with ${postIds.length} post(s)`,
-    plan: { name, subscriptionPlanId: plan._id, type, postIds },
-  });
-
-  res.status(201).json({ success: true, plan });
-});
-
-export const updateSubscriptionPlan = asyncHandler(async (req, res, next) => {
-  const { planId } = req.params;
-  const { name, description, price, postIds, durationDays, type, status } =
-    req.body;
-  if (!req.user?._id) throw new AppError("Unauthorized", 401);
-  validateObjectId(planId, "Plan ID");
-
-  const plan = await SubscriptionPlanModel.findOne({
-    _id: planId,
-    author: req.user._id,
-  });
-  if (!plan) throw new AppError("Plan not found or unauthorized", 404);
-
-  if (name && name !== plan.name)
-    await checkExistingPlan(req.user._id, name, planId);
-  if (name) plan.name = name;
-  if (description !== undefined) plan.description = description;
-  if (price !== undefined) {
-    validatePositive(price, "Price");
-    plan.price = Math.round(Number(price));
-  }
-  if (postIds?.length) {
-    for (const postId of postIds) validateObjectId(postId, "Post ID");
-    plan.postIds = postIds;
-  }
-  if (durationDays !== undefined) {
-    validatePositive(durationDays, "Duration");
-    plan.durationDays = durationDays;
-  }
-  if (type) plan.type = validatePlanType(type);
-  if (status) {
-    if (!["active", "pending", "not_confirmed"].includes(status)) {
+    // Validates authentication and author ID
+    if (!req.user?._id) {
       throw new AppError(
-        "Invalid status. Must be active, pending, or not_confirmed",
-        400
+        "Unauthorized",
+        401,
+        "CreateSubscriptionPlan",
+        "User not authenticated"
       );
     }
-    if (status === "active") await checkActivePlan(req.user._id, planId);
-    plan.status = status;
-  }
+    if (!name || price === undefined || !durationDays || !authorId) {
+      throw new AppError(
+        "Missing required fields",
+        400,
+        "CreateSubscriptionPlan",
+        "Required fields not provided"
+      );
+    }
+    if (authorId !== req.user._id.toString()) {
+      throw new AppError(
+        "Author ID mismatch",
+        403,
+        "CreateSubscriptionPlan",
+        "User not authorized for this author ID"
+      );
+    }
 
-  await plan.save();
-  await recordActivity({
-    userId: req.user._id.toString(),
-    action: "UPDATED_SUBSCRIPTION_PLAN",
-    message: `Updated subscription plan "${plan.name}" to ₹${(
-      plan.price / 100
-    ).toFixed(2)} for ${durationDays || plan.durationDays} days`,
-    plan: {
-      name: plan.name,
-      subscriptionPlanId: plan._id,
-      type: plan.type,
-      status: plan.status,
-    },
-  });
+    validateObjectId(authorId, "Author ID");
+    const priceInPaise = validateAndConvertAmount(price, "Price");
+    validateDuration(durationDays);
+    validatePlanType(type);
 
-  res.status(200).json({ success: true, plan });
-});
+    // Validates post IDs
+    for (const postId of postIds) {
+      validateObjectId(postId, "Post ID");
+    }
 
-export const deleteSubscriptionPlan = asyncHandler(async (req, res, next) => {
-  const { planId } = req.params;
-  if (!req.user?._id) throw new AppError("Unauthorized", 401);
-  validateObjectId(planId, "Plan ID");
+    await checkPlanLimit(req.user._id);
+    await checkExistingPlan(req.user._id, name);
 
-  const plan = await SubscriptionPlanModel.findById(planId);
-  if (!plan) throw new AppError("Subscription plan not found", 404);
-  if (plan.author.toString() !== req.user._id.toString()) {
-    throw new AppError("You are not authorized to delete this plan", 403);
-  }
-
-  const subscriptions = await UserSubscriptionModel.find({ planId });
-  const paymentIds = subscriptions
-    .map((sub) => sub.paymentId)
-    .filter((id) => id);
-  if (subscriptions.length) await UserSubscriptionModel.deleteMany({ planId });
-  if (paymentIds.length)
-    await PaymentModel.deleteMany({ paymentId: { $in: paymentIds } });
-
-  await SubscriptionPlanModel.findByIdAndDelete(planId);
-  await recordActivity({
-    userId: req.user._id.toString(),
-    action: "DELETED_SUBSCRIPTION_PLAN",
-    message: `Permanently deleted subscription plan "${plan.name}"`,
-    plan: { name: plan.name, subscriptionPlanId: plan._id },
-  });
-
-  res.status(200).json({
-    success: true,
-    message: "Plan and associated records permanently deleted",
-    plan: { name: plan.name, subscriptionPlanId: plan._id },
-  });
-});
-
-export const subscribeToPlan = asyncHandler(async (req, res, next) => {
-  const { planId, razorpay_payment_id, razorpay_order_id, razorpay_signature } =
-    req.body;
-  if (!req.user?._id) throw new AppError("Unauthorized", 401);
-  if (
-    !planId ||
-    !razorpay_payment_id ||
-    !razorpay_order_id ||
-    !razorpay_signature
-  ) {
-    throw new AppError("Plan ID and Razorpay payment details required", 400);
-  }
-  validateObjectId(planId, "Plan ID");
-
-  const plan = await SubscriptionPlanModel.findById(planId);
-  if (!plan) throw new AppError("Plan not found", 404);
-  if (plan.status !== "active") throw new AppError("Plan is not active", 400);
-  if (!plan.author || !mongoose.Types.ObjectId.isValid(plan.author)) {
-    throw new AppError("Invalid plan author", 400);
-  }
-  if (plan.author.toString() === req.user._id.toString()) {
-    throw new AppError("Cannot subscribe to own plan", 403);
-  }
-
-  const existingSubscription = await UserSubscriptionModel.findOne({
-    userId: req.user._id,
-    planId,
-    status: "active",
-    expiryDate: { $gt: new Date() },
-  });
-  if (existingSubscription)
-    throw new AppError(
-      "You already have an active subscription to this plan",
-      400
-    );
-
-  const generatedSignature = crypto
-    .createHmac("sha256", RAZORPAY_KEY_SECRET)
-    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-    .digest("hex");
-  if (generatedSignature !== razorpay_signature)
-    throw new AppError("Invalid Razorpay signature", 400);
-
-  let payment = await PaymentModel.findOne({ orderId: razorpay_order_id });
-  if (!payment) {
-    payment = await PaymentModel.create({
-      orderId: razorpay_order_id,
-      paymentId: razorpay_payment_id,
-      signature: razorpay_signature,
-      userId: req.user._id,
-      amount: plan.price,
-      currency: "INR",
-      status: "paid",
+    // Creates new subscription plan
+    const plan = await UserSubscriptionPlan.create({
+      name,
+      description,
+      price: priceInPaise,
+      postIds,
+      durationDays,
+      type,
+      author: req.user._id,
+      status: "not_confirmed",
     });
-  } else if (payment.status !== "paid") {
-    payment.paymentId = razorpay_payment_id;
-    payment.signature = razorpay_signature;
-    payment.status = "paid";
-    await payment.save();
-  }
 
-  const expiryDate = new Date(
-    Date.now() + plan.durationDays * 24 * 60 * 60 * 1000
-  );
-  const subscription = await UserSubscriptionModel.create({
-    userId: req.user._id,
-    planId,
-    paymentId: razorpay_payment_id,
-    expiryDate,
-    status: "active",
-  });
-
-  // Send subscription confirmation email
-  const mailOption = createMailOption({
-    to: req.user.email,
-    subject: "Subscription Confirmation",
-    name: req.user.fullName || "User",
-    email: req.user.email,
-    message: `You have successfully subscribed to the plan "${
-      plan.name
-    }" for ₹${(plan.price / 100).toFixed(
-      2
-    )}. Your subscription will expire on ${expiryDate.toDateString()}.`,
-    hasButton: false,
-  });
-  await sendEmailWithRetries(mailOption, req.user._id, "subscription");
-  await transporter.sendMail(mailOption);
-
-  const notification = await createNotification({
-    user: req.user._id,
-    targetUser: plan.author,
-    type: "subscription",
-    planId,
-  });
-  req.io.to(plan.author.toString()).emit("newNotification", {
-    notificationId: notification._id,
-    type: "subscription",
-    planId,
-    userId: req.user._id,
-  });
-
-  await recordActivity({
-    userId: req.user._id.toString(),
-    action: "SUBSCRIBED_TO_PLAN",
-    message: `Subscribed to plan "${plan.name}" for ₹${plan.price / 100}`,
-    plan: { planId: plan._id, name: plan.name },
-    subscriptionId: subscription._id,
-  });
-
-  res.status(201).json({
-    success: true,
-    subscription: {
-      _id: subscription._id,
-      userId: subscription.userId,
-      planId: subscription.planId,
-      paymentId: subscription.paymentId,
-      expiryDate: subscription.expiryDate,
-      status: subscription.status,
-      createdAt: subscription.createdAt,
-    },
-  });
-});
-
-export const cancelSubscription = asyncHandler(async (req, res, next) => {
-  const { subscriptionId } = req.params;
-  if (!req.user?._id) throw new AppError("Unauthorized", 401);
-  validateObjectId(subscriptionId, "Subscription ID");
-
-  const subscription = await UserSubscriptionModel.findOneAndUpdate(
-    { _id: subscriptionId, userId: req.user._id },
-    { status: "cancelled" },
-    { new: true }
-  );
-  if (!subscription)
-    throw new AppError("Subscription not found or unauthorized", 404);
-
-  const plan = await SubscriptionPlanModel.findById(subscription.planId);
-  // Send cancellation confirmation email
-  const mailOption = createMailOption({
-    to: req.user.email,
-    subject: "Subscription Cancellation Confirmation",
-    name: req.user.fullName || "User",
-    email: req.user.email,
-    message: `Your subscription to "${plan.name}" has been successfully cancelled.`,
-    hasButton: false,
-  });
-  await transporter.sendMail(mailOption);
-
-  await recordActivity({
-    userId: req.user._id.toString(),
-    action: "CANCELLED_SUBSCRIPTION",
-    message: `Cancelled subscription ${subscriptionId}`,
-    subscriptionId,
-  });
-
-  res.status(200).json({ success: true, subscription });
-});
-
-export const refundSubscription = asyncHandler(async (req, res, next) => {
-  const { subscriptionId } = req.params;
-  if (!req.user?._id) throw new AppError("Unauthorized", 401);
-  validateObjectId(subscriptionId, "Subscription ID");
-
-  const subscription = await UserSubscriptionModel.findOne({
-    _id: subscriptionId,
-    userId: req.user._id,
-  });
-  if (!subscription)
-    throw new AppError("Subscription not found or unauthorized", 404);
-
-  const payment = await PaymentModel.findOne({
-    paymentId: subscription.paymentId,
-  });
-  if (!payment) throw new AppError("Payment not found", 404);
-
-  const timeSincePayment =
-    Date.now() - new Date(subscription.createdAt).getTime();
-  if (timeSincePayment > 1 * 60 * 60 * 1000) {
-    throw new AppError("Refund period has expired (within 1 hour only)", 403);
-  }
-
-  const razorpayMode = (process.env.RAZORPAY_MODE || "test").toLowerCase();
-  const isTestMode = razorpayMode === "test";
-  const isPaymentTest = payment.paymentId.startsWith("pay_test_");
-  if (isTestMode && !isPaymentTest)
-    throw new AppError("Razorpay in TEST mode but payment ID is LIVE", 400);
-  if (!isTestMode && isPaymentTest)
-    throw new AppError("Razorpay in LIVE mode but payment ID is TEST", 400);
-
-  try {
-    await axiosInstance.get(`/payments/${payment.paymentId}`, {
-      headers: { "X-Api-Type": "razorpay" },
-    });
-  } catch (err) {
-    throw new AppError("Payment not found on Razorpay", 404);
-  }
-
-  try {
-    const refundResponse = await axiosInstance.post(
-      `/payments/${payment.paymentId}/refund`,
-      {},
-      { headers: { "X-Api-Type": "razorpay" } }
-    );
-    subscription.status = "refunded";
-    await subscription.save();
-    await PaymentModel.findOneAndUpdate(
-      { paymentId: subscription.paymentId },
-      { status: "refunded" }
-    );
-
+    // Logs activity
     await recordActivity({
       userId: req.user._id.toString(),
-      action: "REFUNDED_SUBSCRIPTION",
-      message: `Refunded subscription ${subscriptionId}`,
+      action: "CREATED_SUBSCRIPTION",
+      message: `Created ${type} subscription plan ${name} for ₹${(
+        priceInPaise / 100
+      ).toFixed(2)} with ${postIds.length} post(s)`,
+      plan: { name, subscriptionPlanId: plan._id, type, postIds },
+    });
+
+    res.status(201).json({
+      success: true,
+      plan: { ...plan.toObject(), price: plan.price / 100 },
+    });
+  } catch (error) {
+    // AppError with context for creating subscription plan
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to create subscription plan",
+            500,
+            "CreateSubscriptionPlan",
+            "Error in createSubscriptionPlan"
+          )
+    );
+  }
+});
+
+// Updates an existing subscription plan
+export const updateSubscriptionPlan = asyncHandler(async (req, res, next) => {
+  try {
+    const { planId } = req.params;
+    const { name, description, price, postIds, durationDays, type, status } =
+      req.body;
+
+    // Validates authentication and plan ID
+    if (!req.user?._id) {
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "UpdateSubscriptionPlan",
+        "User not authenticated"
+      );
+    }
+    validateObjectId(planId, "Plan ID");
+
+    // Fetches plan
+    const plan = await UserSubscriptionPlan.findOne({
+      _id: planId,
+      author: req.user._id,
+    });
+    if (!plan) {
+      throw new AppError(
+        "Plan not found or unauthorized",
+        404,
+        "UpdateSubscriptionPlan",
+        "Plan does not exist or user not authorized"
+      );
+    }
+
+    // Validates and updates fields
+    if (name && name !== plan.name) {
+      await checkExistingPlan(req.user._id, name, planId);
+      plan.name = name;
+    }
+    if (description !== undefined) plan.description = description;
+    if (price !== undefined) {
+      validatePositive(price, "Price");
+      plan.price = Math.round(Number(price) * 100);
+    }
+    if (postIds?.length) {
+      for (const postId of postIds) validateObjectId(postId, "Post ID");
+      plan.postIds = postIds;
+    }
+    if (durationDays !== undefined) {
+      validateDuration(durationDays);
+      const existingPlans = await UserSubscriptionPlan.find({
+        author: req.user._id,
+        durationDays,
+        deletedAt: null,
+        _id: { $ne: planId },
+      });
+      if (existingPlans.length > 0) {
+        throw new AppError(
+          `A plan with ${durationDays} days already exists`,
+          400,
+          "UpdateSubscriptionPlan",
+          "Duplicate duration detected"
+        );
+      }
+      await checkPlanLimit(req.user._id, planId);
+      plan.durationDays = durationDays;
+    }
+    if (type) plan.type = validatePlanType(type);
+    if (status) {
+      if (!["active", "pending", "not_confirmed"].includes(status)) {
+        throw new AppError(
+          "Invalid status. Must be active, pending, or not_confirmed",
+          400,
+          "UpdateSubscriptionPlan",
+          "Invalid status value"
+        );
+      }
+      plan.status = status;
+    }
+
+    await plan.save();
+
+    // Logs activity
+    await recordActivity({
+      userId: req.user._id.toString(),
+      action: "UPDATED_SUBSCRIPTION_PLAN",
+      message: `Updated subscription plan "${plan.name}" to ₹${(
+        plan.price / 100
+      ).toFixed(2)} for ${durationDays || plan.durationDays} days`,
+      plan: {
+        name: plan.name,
+        subscriptionPlanId: plan._id,
+        type: plan.type,
+        status: plan.status,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      plan: { ...plan.toObject(), price: plan.price / 100 },
+    });
+  } catch (error) {
+    // AppError with context for updating subscription plan
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to update subscription plan",
+            500,
+            "UpdateSubscriptionPlan",
+            "Error in updateSubscriptionPlan"
+          )
+    );
+  }
+});
+
+// Deletes a subscription plan and associated records
+export const deleteSubscriptionPlan = asyncHandler(async (req, res, next) => {
+  try {
+    const { planId } = req.params;
+
+    // Validates authentication and plan ID
+    if (!req.user?._id) {
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "DeleteSubscriptionPlan",
+        "User not authenticated"
+      );
+    }
+    validateObjectId(planId, "Plan ID");
+
+    // Fetches plan
+    const plan = await UserSubscriptionPlan.findById(planId);
+    if (!plan) {
+      throw new AppError(
+        "Subscription plan not found",
+        404,
+        "DeleteSubscriptionPlan",
+        "Plan does not exist"
+      );
+    }
+    if (plan.author.toString() !== req.user._id.toString()) {
+      throw new AppError(
+        "You are not authorized to delete this plan",
+        403,
+        "DeleteSubscriptionPlan",
+        "User not authorized for this plan"
+      );
+    }
+
+    // Deletes associated subscriptions and payments
+    const subscriptions = await UserSubscription.find({ planId });
+    const paymentIds = subscriptions
+      .map((sub) => sub.paymentId)
+      .filter((id) => id);
+    if (subscriptions.length) await UserSubscription.deleteMany({ planId });
+    if (paymentIds.length)
+      await PaymentModel.deleteMany({ paymentId: { $in: paymentIds } });
+
+    await UserSubscriptionPlan.findByIdAndDelete(planId);
+
+    // Logs activity
+    await recordActivity({
+      userId: req.user._id.toString(),
+      action: "DELETED_SUBSCRIPTION_PLAN",
+      message: `Permanently deleted subscription plan "${plan.name}"`,
+      plan: { name: plan.name, subscriptionPlanId: plan._id },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Plan and associated records permanently deleted",
+      plan: { name: plan.name, subscriptionPlanId: plan._id },
+    });
+  } catch (error) {
+    // AppError with context for deleting subscription plan
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to delete subscription plan",
+            500,
+            "DeleteSubscriptionPlan",
+            "Error in deleteSubscriptionPlan"
+          )
+    );
+  }
+});
+
+// Activates a subscription plan
+export const activateSubscriptionPlan = asyncHandler(async (req, res, next) => {
+  try {
+    const { planId } = req.params;
+
+    // Validates authentication and plan ID
+    if (!req.user?._id) {
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "ActivateSubscriptionPlan",
+        "User not authenticated"
+      );
+    }
+    validateObjectId(planId, "Plan ID");
+
+    // Fetches plan
+    const plan = await UserSubscriptionPlan.findOne({
+      _id: planId,
+      author: req.user._id,
+    });
+    if (!plan) {
+      throw new AppError(
+        "Plan not found or unauthorized",
+        404,
+        "ActivateSubscriptionPlan",
+        "Plan does not exist or user not authorized"
+      );
+    }
+    if (plan.status === "active") {
+      throw new AppError(
+        "Plan is already active",
+        400,
+        "ActivateSubscriptionPlan",
+        "Plan already in active state"
+      );
+    }
+    if (plan.status === "deleted" || plan.deletedAt) {
+      throw new AppError(
+        "Plan is deleted",
+        400,
+        "ActivateSubscriptionPlan",
+        "Cannot activate a deleted plan"
+      );
+    }
+
+    plan.status = "active";
+    await plan.save();
+
+    // Logs activity
+    await recordActivity({
+      userId: req.user._id.toString(),
+      action: "ACTIVATED_SUBSCRIPTION_PLAN",
+      message: `Activated subscription plan "${plan.name}"`,
+      plan: { name: plan.name, subscriptionPlanId: plan._id, type: plan.type },
+    });
+
+    res.status(200).json({ success: true, plan });
+  } catch (error) {
+    // AppError with context for activating subscription plan
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to activate subscription plan",
+            500,
+            "ActivateSubscriptionPlan",
+            "Error in activateSubscriptionPlan"
+          )
+    );
+  }
+});
+
+// Subscribes a user to a plan with Razorpay payment verification
+export const subscribeToPlan = asyncHandler(async (req, res, next) => {
+  try {
+    const {
+      planId,
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature,
+    } = req.body;
+
+    // Validates authentication and required fields
+    if (!req.user?._id) {
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "SubscribeToPlan",
+        "User not authenticated"
+      );
+    }
+    if (
+      !planId ||
+      !razorpay_payment_id ||
+      !razorpay_order_id ||
+      !razorpay_signature
+    ) {
+      throw new AppError(
+        "Plan ID and Razorpay payment details required",
+        400,
+        "SubscribeToPlan",
+        "Missing required payment fields"
+      );
+    }
+    validateObjectId(planId, "Plan ID");
+
+    // Fetches plan
+    const plan = await UserSubscriptionPlan.findById(planId);
+    if (!plan) {
+      throw new AppError(
+        "Plan not found",
+        404,
+        "SubscribeToPlan",
+        "Plan does not exist"
+      );
+    }
+    if (plan.status !== "active") {
+      throw new AppError(
+        "Plan is not active",
+        400,
+        "SubscribeToPlan",
+        "Plan not in active state"
+      );
+    }
+    if (!plan.author || !mongoose.Types.ObjectId.isValid(plan.author)) {
+      throw new AppError(
+        "Invalid plan author",
+        400,
+        "SubscribeToPlan",
+        "Plan has invalid author"
+      );
+    }
+    if (plan.author.toString() === req.user._id.toString()) {
+      throw new AppError(
+        "Cannot subscribe to own plan",
+        403,
+        "SubscribeToPlan",
+        "User cannot subscribe to their own plan"
+      );
+    }
+
+    // Verifies Razorpay signature
+    const generatedSignature = crypto
+      .createHmac("sha256", RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest("hex");
+    if (generatedSignature !== razorpay_signature) {
+      throw new AppError(
+        "Invalid Razorpay signature",
+        400,
+        "SubscribeToPlan",
+        "Payment signature verification failed"
+      );
+    }
+
+    // Manages payment record
+    let payment = await PaymentModel.findOne({ orderId: razorpay_order_id });
+    if (!payment) {
+      payment = await PaymentModel.create({
+        orderId: razorpay_order_id,
+        paymentId: razorpay_payment_id,
+        signature: razorpay_signature,
+        userId: req.user._id,
+        amount: plan.price,
+        currency: "INR",
+        status: "paid",
+      });
+    } else if (payment.status !== "paid") {
+      payment.paymentId = razorpay_payment_id;
+      payment.signature = razorpay_signature;
+      payment.status = "paid";
+      await payment.save();
+    }
+
+    // Creates subscription
+    const expiryDate = new Date(
+      Date.now() + plan.durationDays * 24 * 60 * 60 * 1000
+    );
+    const subscription = await UserSubscription.create({
+      userId: req.user._id,
+      planId,
+      paymentId: razorpay_payment_id,
+      expiryDate,
+      status: "active",
+      amountPaid: plan.price,
+    });
+
+    // Sends confirmation email
+    const mailOption = createMailOption({
+      to: req.user.email,
+      subject: "Subscription Confirmation",
+      name: req.user.fullName || "User",
+      email: req.user.email,
+      message: `You have successfully subscribed to the plan "${
+        plan.name
+      }" for ₹${(plan.price / 100).toFixed(
+        2
+      )}. Your subscription will expire on ${expiryDate.toDateString()}.`,
+      hasButton: false,
+    });
+    await sendEmailWithRetries(mailOption, req.user._id, "subscription");
+
+    // Sends notification to plan author
+    const notification = await createNotification({
+      user: plan.author,
+      sender: { _id: req.user._id },
+      type: "subscription",
+      planId: plan._id,
+      content: `${req.user.fullName || "Someone"} subscribed to your plan "${
+        plan.name
+      }"`,
+      navigateTo: `/plans/${plan._id}`,
+    });
+
+    req.io.to(plan.author.toString()).emit("newNotification", {
+      notificationId: notification._id,
+      type: "subscription",
+      planId,
+      userId: req.user._id,
+    });
+
+    // Logs activity
+    await recordActivity({
+      userId: req.user._id.toString(),
+      action: "SUBSCRIBED_TO_PLAN",
+      message: `Subscribed to plan "${plan.name}" for ₹${(
+        plan.price / 100
+      ).toFixed(2)}`,
+      plan: { planId: plan._id, name: plan.name },
+      subscriptionId: subscription._id,
+    });
+
+    res.status(201).json({
+      success: true,
+      subscription: {
+        _id: subscription._id,
+        userId: subscription.userId,
+        planId: subscription.planId,
+        paymentId: subscription.paymentId,
+        expiryDate: subscription.expiryDate,
+        status: subscription.status,
+        amountPaid: subscription.amountPaid / 100,
+      },
+    });
+  } catch (error) {
+    // AppError with context for subscribing to plan
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to subscribe to plan",
+            500,
+            "SubscribeToPlan",
+            "Error in subscribeToPlan"
+          )
+    );
+  }
+});
+
+// Cancels a subscription
+export const cancelSubscription = asyncHandler(async (req, res, next) => {
+  try {
+    const { subscriptionId } = req.params;
+
+    // Validates authentication and subscription ID
+    if (!req.user?._id) {
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "CancelSubscription",
+        "User not authenticated"
+      );
+    }
+    validateObjectId(subscriptionId, "Subscription ID");
+
+    // Updates subscription status
+    const subscription = await UserSubscription.findOneAndUpdate(
+      { _id: subscriptionId, userId: req.user._id },
+      { status: "cancelled" },
+      { new: true }
+    );
+    if (!subscription) {
+      throw new AppError(
+        "Subscription not found or unauthorized",
+        404,
+        "CancelSubscription",
+        "Subscription does not exist or user not authorized"
+      );
+    }
+
+    // Sends cancellation email
+    const plan = await UserSubscriptionPlan.findById(subscription.planId);
+    const mailOption = createMailOption({
+      to: req.user.email,
+      subject: "Subscription Cancellation Confirmation",
+      name: req.user.fullName || "User",
+      email: req.user.email,
+      message: `Your subscription to "${plan.name}" has been successfully cancelled.`,
+      hasButton: false,
+    });
+    await transporter.sendMail(mailOption);
+
+    // Logs activity
+    await recordActivity({
+      userId: req.user._id.toString(),
+      action: "CANCELLED_SUBSCRIPTION",
+      message: `Cancelled subscription ${subscriptionId}`,
       subscriptionId,
     });
 
-    const plan = await SubscriptionPlanModel.findById(subscription.planId);
-    const mailOption = createMailOption({
-      to: req.user.email,
-      subject: "Refund Processed Successfully",
-      name: req.user.fullName || "User",
-      email: req.user.email,
-      message: `Your refund of ₹${(payment.amount / 100).toFixed(
-        2
-      )} for the plan "${plan.name}" has been successfully processed.`,
-      hasButton: false,
-    });
-    await transporter.sendMail(mailOption);
-
-    res.status(200).json({ success: true, refund: refundResponse.data });
-  } catch (refundError) {
-    throw new AppError(
-      refundError.response?.data?.error?.description || "Refund failed",
-      refundError.response?.status || 500
+    res.status(200).json({ success: true, subscription });
+  } catch (error) {
+    // AppError with context for cancelling subscription
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to cancel subscription",
+            500,
+            "CancelSubscription",
+            "Error in cancelSubscription"
+          )
     );
   }
 });
 
-export const getSubscriptionHistoryByAuthor = asyncHandler(
-  async (req, res, next) => {
-    const { authorId } = req.params;
-    if (!req.user?._id) throw new AppError("Unauthorized", 401);
-    validateObjectId(authorId, "Author ID");
-    if (authorId !== req.user._id.toString())
+// Refunds a subscription
+export const refundSubscription = asyncHandler(async (req, res, next) => {
+  try {
+    const { subscriptionId } = req.params;
+
+    // Validates authentication and subscription ID
+    if (!req.user?._id) {
       throw new AppError(
-        "Unauthorized: Can only fetch history for own plans",
-        403
+        "Unauthorized",
+        401,
+        "RefundSubscription",
+        "User not authenticated"
+      );
+    }
+    validateObjectId(subscriptionId, "Subscription ID");
+
+    // Fetches subscription and payment
+    const subscription = await UserSubscription.findOne({
+      _id: subscriptionId,
+      userId: req.user._id,
+    });
+    if (!subscription) {
+      throw new AppError(
+        "Subscription not found or unauthorized",
+        404,
+        "RefundSubscription",
+        "Subscription does not exist or user not authorized"
+      );
+    }
+
+    const payment = await PaymentModel.findOne({
+      paymentId: subscription.paymentId,
+    });
+    if (!payment) {
+      throw new AppError(
+        "Payment not found",
+        404,
+        "RefundSubscription",
+        "Payment record not found"
+      );
+    }
+
+    // Checks refund eligibility
+    const timeSincePayment =
+      Date.now() - new Date(subscription.createdAt).getTime();
+    if (timeSincePayment > 1 * 60 * 60 * 1000) {
+      throw new AppError(
+        "Refund period has expired (within 1 hour only)",
+        403,
+        "RefundSubscription",
+        "Refund window exceeded"
+      );
+    }
+
+    const razorpayMode = (process.env.RAZORPAY_MODE || "test").toLowerCase();
+    const isTestMode = razorpayMode === "test";
+    const isPaymentTest = payment.paymentId.startsWith("pay_test_");
+    if (isTestMode && !isPaymentTest) {
+      throw new AppError(
+        "Razorpay in TEST mode but payment ID is LIVE",
+        400,
+        "RefundSubscription",
+        "Mode mismatch with payment ID"
+      );
+    }
+    if (!isTestMode && isPaymentTest) {
+      throw new AppError(
+        "Razorpay in LIVE mode but payment ID is TEST",
+        400,
+        "RefundSubscription",
+        "Mode mismatch with payment ID"
+      );
+    }
+
+    // Verifies payment with Razorpay
+    try {
+      await axiosInstance.get(`/payments/${payment.paymentId}`, {
+        headers: { "X-Api-Type": "razorpay" },
+      });
+    } catch (err) {
+      throw new AppError(
+        "Payment not found on Razorpay",
+        404,
+        "RefundSubscription",
+        "Payment not found in Razorpay system"
+      );
+    }
+
+    // Processes refund
+    try {
+      const refundResponse = await axiosInstance.post(
+        `/payments/${payment.paymentId}/refund`,
+        {},
+        { headers: { "X-Api-Type": "razorpay" } }
+      );
+      subscription.status = "refunded";
+      await subscription.save();
+      await PaymentModel.findOneAndUpdate(
+        { paymentId: subscription.paymentId },
+        { status: "refunded" }
       );
 
-    const plans = await SubscriptionPlanModel.find({ author: authorId }).select(
-      "_id"
+      // Logs activity
+      await recordActivity({
+        userId: req.user._id.toString(),
+        action: "REFUNDED_SUBSCRIPTION",
+        message: `Refunded subscription ${subscriptionId}`,
+        subscriptionId,
+      });
+
+      // Sends refund confirmation email
+      const plan = await UserSubscriptionPlan.findById(subscription.planId);
+      const mailOption = createMailOption({
+        to: req.user.email,
+        subject: "Refund Processed Successfully",
+        name: req.user.fullName || "User",
+        email: req.user.email,
+        message: `Your refund of ₹${(payment.amount / 100).toFixed(
+          2
+        )} for the plan "${plan.name}" has been successfully processed.`,
+        hasButton: false,
+      });
+      await transporter.sendMail(mailOption);
+
+      res.status(200).json({ success: true, refund: refundResponse.data });
+    } catch (refundError) {
+      throw new AppError(
+        refundError.response?.data?.error?.description || "Refund failed",
+        refundError.response?.status || 500,
+        "RefundSubscription",
+        "Error processing refund with Razorpay"
+      );
+    }
+  } catch (error) {
+    // AppError with context for refunding subscription
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to refund subscription",
+            500,
+            "RefundSubscription",
+            "Error in refundSubscription"
+          )
     );
-    if (!plans.length) {
-      return res.status(200).json({
+  }
+});
+
+// Retrieves subscription history for an author
+export const getSubscriptionHistoryByAuthor = asyncHandler(
+  async (req, res, next) => {
+    try {
+      const { authorId } = req.params;
+
+      // Validates authentication and author ID
+      if (!req.user?._id) {
+        throw new AppError(
+          "Unauthorized",
+          401,
+          "GetSubscriptionHistoryByAuthor",
+          "User not authenticated"
+        );
+      }
+      validateObjectId(authorId, "Author ID");
+      if (authorId !== req.user._id.toString()) {
+        throw new AppError(
+          "Unauthorized: Can only fetch history for own plans",
+          403,
+          "GetSubscriptionHistoryByAuthor",
+          "User not authorized for this author ID"
+        );
+      }
+
+      // Fetches plans for the author
+      const plans = await UserSubscriptionPlan.find({
+        author: authorId,
+      }).select("_id");
+      if (!plans.length) {
+        return res.status(200).json({
+          success: true,
+          subscriptions: [],
+          message: "No plans found for this author",
+        });
+      }
+
+      // Fetches subscriptions for the plans
+      const subscriptions = await UserSubscription.find({
+        planId: { $in: plans.map((p) => p._id) },
+      })
+        .populate("userId", "name email")
+        .populate("planId", "name price durationDays")
+        .lean();
+
+      // Enriches subscriptions with payment status and amount
+      const enrichedSubscriptions = await Promise.all(
+        subscriptions.map(async (sub) => ({
+          ...sub,
+          paymentStatus:
+            (
+              await PaymentModel.findOne({ paymentId: sub.paymentId }).lean()
+            )?.status || "not_paid",
+          amount:
+            (
+              await PaymentModel.findOne({ paymentId: sub.paymentId }).lean()
+            )?.amount / 100 ||
+            sub.planId?.price / 100 ||
+            0,
+        }))
+      );
+
+      res.status(200).json({
         success: true,
-        subscriptions: [],
-        message: "No plans found for this author",
+        subscriptions: enrichedSubscriptions,
+        count: enrichedSubscriptions.length,
+      });
+    } catch (error) {
+      // AppError with context for fetching subscription history
+      next(
+        error instanceof AppError
+          ? error
+          : new AppError(
+              error.message || "Failed to fetch subscription history",
+              500,
+              "GetSubscriptionHistoryByAuthor",
+              "Error in getSubscriptionHistoryByAuthor"
+            )
+      );
+    }
+  }
+);
+
+// Retrieves analytics for a subscription plan
+export const getSubscriptionAnalytics = asyncHandler(async (req, res, next) => {
+  try {
+    const { planId } = req.params;
+
+    // Validates authentication and plan ID
+    if (!req.user?._id) {
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "GetSubscriptionAnalytics",
+        "User not authenticated"
+      );
+    }
+    validateObjectId(planId, "Plan ID");
+
+    // Fetches plan
+    const plan = await UserSubscriptionPlan.findById(planId);
+    if (!plan) {
+      throw new AppError(
+        "Plan not found",
+        404,
+        "GetSubscriptionAnalytics",
+        "Plan does not exist"
+      );
+    }
+    if (plan.author.toString() !== req.user._id.toString()) {
+      throw new AppError(
+        "Unauthorized access to this plan",
+        403,
+        "GetSubscriptionAnalytics",
+        "User not authorized for this plan"
+      );
+    }
+
+    // Calculates analytics
+    const subscriptions = await UserSubscription.find({ planId }).lean();
+    const totalSubscribers = subscriptions.length;
+    const activeSubscribers = subscriptions.filter(
+      (sub) => sub.status === "active"
+    ).length;
+    const totalRevenue = (
+      await Promise.all(
+        subscriptions.map(
+          async (sub) =>
+            (
+              await PaymentModel.findOne({ paymentId: sub.paymentId })
+            )?.amount || 0
+        )
+      )
+    ).reduce((sum, amount) => sum + amount, 0);
+
+    // Sends analytics email if requested
+    if (req.query.sendEmail === "true") {
+      const mailOption = createMailOption({
+        to: req.user.email,
+        subject: "Subscription Analytics Report",
+        name: req.user.fullName || "User",
+        email: req.user.email,
+        message: `Your plan "${
+          plan.name
+        }" has ${activeSubscribers} active subscribers and has generated ₹${(
+          totalRevenue / 100
+        ).toFixed(2)} in total revenue.`,
+        hasButton: false,
+      });
+      await transporter.sendMail(mailOption);
+    }
+
+    res.status(200).json({
+      success: true,
+      plan,
+      totalSubscribers,
+      activeSubscribers,
+      totalRevenue: totalRevenue / 100,
+    });
+  } catch (error) {
+    // AppError with context for fetching subscription analytics
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch subscription analytics",
+            500,
+            "GetSubscriptionAnalytics",
+            "Error in getSubscriptionAnalytics"
+          )
+    );
+  }
+});
+
+// Sends renewal reminders for subscriptions nearing expiry
+export const sendRenewalReminders = asyncHandler(async (req, res, next) => {
+  try {
+    const { daysBeforeExpiry = 7 } = req.body;
+
+    // Validates days before expiry
+    if (daysBeforeExpiry <= 0) {
+      throw new AppError(
+        "Days before expiry must be positive",
+        400,
+        "SendRenewalReminders",
+        "Invalid days before expiry"
+      );
+    }
+
+    // Fetches subscriptions nearing expiry
+    const subscriptions = await UserSubscription.find({
+      status: "active",
+      expiryDate: {
+        $lte: new Date(Date.now() + daysBeforeExpiry * 24 * 60 * 60 * 1000),
+      },
+      lastReminderSent: { $exists: false },
+    });
+
+    // Sends reminders for each subscription
+    for (const sub of subscriptions) {
+      const user = await UserModel.findById(sub.userId);
+      const plan = await UserSubscriptionPlan.findById(sub.planId);
+      const mailOption = createMailOption({
+        to: user.email,
+        subject: "Subscription Renewal Reminder",
+        name: user.fullName || "User",
+        email: user.email,
+        message: `Your subscription to "${
+          plan.name
+        }" will expire on ${sub.expiryDate.toDateString()}. Renew now to continue enjoying premium content!`,
+        hasButton: true,
+        buttonText: "Renew Now",
+        buttonUrl: `https://yourapp.com/renew/${sub._id}`,
+      });
+      await transporter.sendMail(mailOption);
+      sub.lastReminderSent = new Date();
+      await sub.save();
+
+      // Logs activity
+      await recordActivity({
+        userId: sub.userId.toString(),
+        action: "SENT_RENEWAL_REMINDER",
+        message: `Sent renewal reminder for subscription ${sub._id}`,
+        subscriptionId: sub._id,
       });
     }
 
-    const subscriptions = await UserSubscriptionModel.find({
-      planId: { $in: plans.map((p) => p._id) },
-    })
-      .populate("userId", "name email")
-      .populate("planId", "name price durationDays")
-      .lean();
-
-    const enrichedSubscriptions = await Promise.all(
-      subscriptions.map(async (sub) => ({
-        ...sub,
-        paymentStatus:
-          (
-            await PaymentModel.findOne({ paymentId: sub.paymentId }).lean()
-          )?.status || "not_paid",
-        amount:
-          (
-            await PaymentModel.findOne({ paymentId: sub.paymentId }).lean()
-          )?.amount / 100 ||
-          sub.planId?.price / 100 ||
-          0,
-      }))
-    );
-
     res.status(200).json({
       success: true,
-      subscriptions: enrichedSubscriptions,
-      count: enrichedSubscriptions.length,
+      message: `Sent reminders to ${subscriptions.length} users`,
     });
+  } catch (error) {
+    // AppError with context for sending renewal reminders
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to send renewal reminders",
+            500,
+            "SendRenewalReminders",
+            "Error in sendRenewalReminders"
+          )
+    );
   }
-);
-
-export const getSubscriptionAnalytics = asyncHandler(async (req, res, next) => {
-  const { planId } = req.params;
-  if (!req.user?._id) throw new AppError("Unauthorized", 401);
-  validateObjectId(planId, "Plan ID");
-
-  const plan = await SubscriptionPlanModel.findById(planId);
-  if (!plan) throw new AppError("Plan not found", 404);
-  if (plan.author.toString() !== req.user._id.toString())
-    throw new AppError("Unauthorized access to this plan", 403);
-
-  const subscriptions = await UserSubscriptionModel.find({ planId }).lean();
-  const totalSubscribers = subscriptions.length;
-  const activeSubscribers = subscriptions.filter(
-    (sub) => sub.status === "active"
-  ).length;
-  const totalRevenue = (
-    await Promise.all(
-      subscriptions.map(
-        async (sub) =>
-          (await PaymentModel.findOne({ paymentId: sub.paymentId }))?.amount ||
-          0
-      )
-    )
-  ).reduce((sum, amount) => sum + amount, 0);
-
-  if (req.query.sendEmail === "true") {
-    const mailOption = createMailOption({
-      to: req.user.email,
-      subject: "Subscription Analytics Report",
-      name: req.user.fullName || "User",
-      email: req.user.email,
-      message: `Your plan "${
-        plan.name
-      }" has ${activeSubscribers} active subscribers and has generated ₹${
-        totalRevenue / 100
-      } in total revenue.`,
-      hasButton: false,
-    });
-    await transporter.sendMail(mailOption);
-  }
-
-  res.status(200).json({
-    success: true,
-    plan,
-    totalSubscribers,
-    activeSubscribers,
-    totalRevenue: totalRevenue / 100,
-  });
 });
 
-export const sendRenewalReminders = asyncHandler(async (req, res, next) => {
-  const { daysBeforeExpiry = 7 } = req.body;
-  if (daysBeforeExpiry <= 0)
-    throw new AppError("Days before expiry must be positive", 400);
-
-  const subscriptions = await UserSubscriptionModel.find({
-    status: "active",
-    expiryDate: {
-      $lte: new Date(Date.now() + daysBeforeExpiry * 24 * 60 * 60 * 1000),
-    },
-    lastReminderSent: { $exists: false },
-  });
-
-  for (const sub of subscriptions) {
-    const user = await UserModel.findById(sub.userId);
-    const plan = await SubscriptionPlanModel.findById(sub.planId);
-    const mailOption = createMailOption({
-      to: user.email,
-      subject: "Subscription Renewal Reminder",
-      name: user.fullName || "User",
-      email: user.email,
-      message: `Your subscription to "${
-        plan.name
-      }" will expire on ${sub.expiryDate.toDateString()}. Renew now to continue enjoying premium content!`,
-      hasButton: true,
-      buttonText: "Renew Now",
-      buttonUrl: `https://yourapp.com/renew/${sub._id}`,
-    });
-    await transporter.sendMail(mailOption);
-    sub.lastReminderSent = new Date();
-    await sub.save();
-
-    await recordActivity({
-      userId: sub.userId.toString(),
-      action: "SENT_RENEWAL_REMINDER",
-      message: `Sent renewal reminder for subscription ${sub._id}`,
-      subscriptionId: sub._id,
-    });
-  }
-
-  res.status(200).json({
-    success: true,
-    message: `Sent reminders to ${subscriptions.length} users`,
-  });
-});
-
+// Retrieves all subscription plans for the authenticated user
 export const getAllMySubscriptionPlans = asyncHandler(
   async (req, res, next) => {
-    if (!req.user?._id) throw new AppError("Unauthorized", 401);
-    const filter = {
-      author: req.user._id,
-      ...(req.query.includeDeleted !== "true" && { deletedAt: null }),
-    };
-    const plans = await SubscriptionPlanModel.find(filter).sort({
-      createdAt: -1,
-    });
-
-    const enrichedPlans = await Promise.all(
-      plans.map(async (plan) => {
-        const subscriptions = await UserSubscriptionModel.find({
-          planId: plan._id,
-        });
-        const totalSubscribers = subscriptions.length;
-        const activeSubscribers = subscriptions.filter(
-          (sub) => sub.status === "active"
-        ).length;
-        const totalRevenue = subscriptions.reduce(
-          (sum, sub) =>
-            sub.status === "active"
-              ? sum + (sub.amountPaid || plan.price || 0)
-              : sum,
-          0
+    try {
+      // Validates authentication
+      if (!req.user?._id) {
+        throw new AppError(
+          "Unauthorized",
+          401,
+          "GetAllMySubscriptionPlans",
+          "User not authenticated"
         );
+      }
 
-        return {
-          ...plan.toObject(),
-          totalSubscribers,
-          activeSubscribers,
-          totalRevenue: totalRevenue / 100,
-          subscriptionHistory: subscriptions.map((sub) => ({
-            userId: sub.userId,
-            status: sub.status,
-            amountPaid: (sub.amountPaid || 0) / 100,
-            createdAt: sub.createdAt,
-            updatedAt: sub.updatedAt,
-            cancelledAt: sub.cancelledAt || null,
-          })),
-        };
-      })
-    );
+      const filter = {
+        author: req.user._id,
+        ...(req.query.includeDeleted !== "true" && { deletedAt: null }),
+      };
 
-    res.status(200).json({
-      success: true,
-      count: enrichedPlans.length,
-      plans: enrichedPlans,
-      analytics: enrichedPlans.reduce(
-        (acc, plan) => ({
-          ...acc,
-          [plan._id]: {
-            totalSubscribers: plan.totalSubscribers,
-            activeSubscribers: plan.activeSubscribers,
-            totalRevenue: plan.totalRevenue,
-          },
-        }),
-        {}
-      ),
-    });
+      // Fetches plans
+      const plans = await UserSubscriptionPlan.find(filter).sort({
+        createdAt: -1,
+      });
+
+      // Enriches plans with subscription analytics
+      const enrichedPlans = await Promise.all(
+        plans.map(async (plan) => {
+          const subscriptions = await UserSubscription.find({
+            planId: plan._id,
+          });
+          const totalSubscribers = subscriptions.length;
+          const activeSubscribers = subscriptions.filter(
+            (sub) => sub.status === "active"
+          ).length;
+          const totalRevenue = subscriptions.reduce(
+            (sum, sub) =>
+              sub.status === "active"
+                ? sum + (sub.amountPaid || plan.price || 0)
+                : sum,
+            0
+          );
+
+          return {
+            ...plan.toObject(),
+            totalSubscribers,
+            activeSubscribers,
+            totalRevenue: totalRevenue / 100,
+            subscriptionHistory: subscriptions.map((sub) => ({
+              userId: sub.userId,
+              status: sub.status,
+              amountPaid: (sub.amountPaid || 0) / 100,
+              createdAt: sub.createdAt,
+              updatedAt: sub.updatedAt,
+              cancelledAt: sub.cancelledAt || null,
+            })),
+          };
+        })
+      );
+
+      res.status(200).json({
+        success: true,
+        count: enrichedPlans.length,
+        plans: enrichedPlans,
+        analytics: enrichedPlans.reduce(
+          (acc, plan) => ({
+            ...acc,
+            [plan._id]: {
+              totalSubscribers: plan.totalSubscribers,
+              activeSubscribers: plan.activeSubscribers,
+              totalRevenue: plan.totalRevenue,
+            },
+          }),
+          {}
+        ),
+      });
+    } catch (error) {
+      // AppError with context for fetching all subscription plans
+      next(
+        error instanceof AppError
+          ? error
+          : new AppError(
+              error.message || "Failed to fetch subscription plans",
+              500,
+              "GetAllMySubscriptionPlans",
+              "Error in getAllMySubscriptionPlans"
+            )
+      );
+    }
   }
 );
 
+// Retrieves subscription plans by author
 export const getSubscriptionPlansByAuthor = asyncHandler(
   async (req, res, next) => {
-    const { authorId } = req.params;
-    if (!req.user?._id) throw new AppError("Unauthorized", 401);
-    validateObjectId(authorId, "Author ID");
+    try {
+      const { authorId } = req.params;
 
-    const plans = await SubscriptionPlanModel.find({
-      author: authorId,
-      status: { $ne: "deleted" },
-    }).sort({ createdAt: -1 });
-    res.status(200).json({ success: true, count: plans.length, plans });
+      // Validates authentication and author ID
+      if (!req.user?._id) {
+        throw new AppError(
+          "Unauthorized",
+          401,
+          "GetSubscriptionPlansByAuthor",
+          "User not authenticated"
+        );
+      }
+      validateObjectId(authorId, "Author ID");
+
+      // Fetches active plans for the author
+      const plans = await UserSubscriptionPlan.find({
+        author: authorId,
+        status: { $ne: "deleted" },
+      }).sort({ createdAt: -1 });
+
+      res.status(200).json({ success: true, count: plans.length, plans });
+    } catch (error) {
+      // AppError with context for fetching plans by author
+      next(
+        error instanceof AppError
+          ? error
+          : new AppError(
+              error.message || "Failed to fetch subscription plans by author",
+              500,
+              "GetSubscriptionPlansByAuthor",
+              "Error in getSubscriptionPlansByAuthor"
+            )
+      );
+    }
   }
 );
 
+// Unsubscribes a user from all plans by an author
 export const unsubscribeByAuthor = asyncHandler(async (req, res, next) => {
-  const { authorId, userId } = req.body;
-  if (!req.user?._id) throw new AppError("Unauthorized", 401);
-  validateObjectId(authorId, "Author ID");
-  validateObjectId(userId, "User ID");
-  if (userId !== req.user._id.toString())
-    throw new AppError("Unauthorized: User ID mismatch", 403);
+  try {
+    const { authorId, userId } = req.body;
 
-  const plans = await SubscriptionPlanModel.find({ author: authorId }).select(
-    "_id"
-  );
-  if (!plans.length)
-    return res
-      .status(200)
-      .json({ success: true, message: "No subscriptions to cancel" });
-
-  const updatedSubscriptions = await UserSubscriptionModel.updateMany(
-    { userId, planId: { $in: plans.map((p) => p._id) }, status: "active" },
-    { status: "cancelled" },
-    { new: true }
-  );
-
-  if (updatedSubscriptions.modifiedCount > 0) {
-    await recordActivity({
-      userId: req.user._id.toString(),
-      action: "UNSUBSCRIBED_FROM_AUTHOR",
-      message: `Unsubscribed from all plans by author ${authorId}`,
-      authorId,
-    });
-  }
-
-  res.status(200).json({
-    success: true,
-    message: `Cancelled ${updatedSubscriptions.modifiedCount} subscription(s)`,
-    authorId,
-    userId,
-  });
-});
-
-export const getSubscriptionStatusByAuthor = asyncHandler(
-  async (req, res, next) => {
-    const userId = req.user?._id.toString();
-    const { authorId } = req.body;
-    if (!userId) throw new AppError("Unauthorized", 401);
+    // Validates authentication and IDs
+    if (!req.user?._id) {
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "UnsubscribeByAuthor",
+        "User not authenticated"
+      );
+    }
     validateObjectId(authorId, "Author ID");
-    if (authorId === userId)
-      throw new AppError("You cannot subscribe to your own plans", 400);
+    validateObjectId(userId, "User ID");
+    if (userId !== req.user._id.toString()) {
+      throw new AppError(
+        "Unauthorized: User ID mismatch",
+        403,
+        "UnsubscribeByAuthor",
+        "User ID does not match authenticated user"
+      );
+    }
 
-    const activeSubscription = await UserSubscriptionModel.findOne({
-      userId,
-      status: "active",
-      expiryDate: { $gt: new Date() },
-      planId: {
-        $in: await SubscriptionPlanModel.find({ author: authorId }).distinct(
-          "_id"
-        ),
-      },
-    }).populate({
-      path: "planId",
-      select:
-        "_id author name price status description postIds durationDays type",
-      populate: {
-        path: "postIds",
-        model: "Post",
-        select: "title _id isSubscriberOnly category tags excerpt readingTime",
-      },
-    });
+    // Fetches plans by author
+    const plans = await UserSubscriptionPlan.find({ author: authorId }).select(
+      "_id"
+    );
+    if (!plans.length) {
+      return res
+        .status(200)
+        .json({ success: true, message: "No subscriptions to cancel" });
+    }
 
-    const isSubscribed = !!activeSubscription;
-    const subscriberCount = activeSubscription?.planId?._id
-      ? await UserSubscriptionModel.countDocuments({
-          planId: activeSubscription.planId._id,
-          status: "active",
-          expiryDate: { $gt: new Date() },
-        })
-      : 0;
+    // Cancels active subscriptions
+    const updatedSubscriptions = await UserSubscription.updateMany(
+      { userId, planId: { $in: plans.map((p) => p._id) }, status: "active" },
+      { status: "cancelled" },
+      { new: true }
+    );
+
+    // Logs activity if subscriptions were cancelled
+    if (updatedSubscriptions.modifiedCount > 0) {
+      await recordActivity({
+        userId: req.user._id.toString(),
+        action: "UNSUBSCRIBED_FROM_AUTHOR",
+        message: `Unsubscribed from all plans by author ${authorId}`,
+        authorId,
+      });
+    }
 
     res.status(200).json({
       success: true,
-      isSubscribed,
-      subscriptionInfo: isSubscribed
-        ? {
-            subscriptionId: activeSubscription._id,
-            planId: activeSubscription.planId._id,
-            planName: activeSubscription.planId.name,
-            planType: activeSubscription.planId.type || "Silver",
-            price: activeSubscription.planId.price / 100,
-            durationDays: activeSubscription.planId.durationDays,
+      message: `Cancelled ${updatedSubscriptions.modifiedCount} subscription(s)`,
+      authorId,
+      userId,
+    });
+  } catch (error) {
+    // AppError with context for unsubscribing by author
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to unsubscribe from author",
+            500,
+            "UnsubscribeByAuthor",
+            "Error in unsubscribeByAuthor"
+          )
+    );
+  }
+});
+
+// Retrieves subscription status for plans by an author
+export const getSubscriptionStatusByAuthor = asyncHandler(
+  async (req, res, next) => {
+    try {
+      const userId = req.user?._id.toString();
+      const { authorId } = req.body;
+
+      // Validates authentication and author ID
+      if (!userId) {
+        throw new AppError(
+          "Unauthorized",
+          401,
+          "GetSubscriptionStatusByAuthor",
+          "User not authenticated"
+        );
+      }
+      validateObjectId(authorId, "Author ID");
+
+      if (authorId === userId) {
+        throw new AppError(
+          "You cannot subscribe to your own plans",
+          400,
+          "GetSubscriptionStatusByAuthor",
+          "User cannot subscribe to own plans"
+        );
+      }
+
+      // Fetches plans by author
+      const authorPlanIds = await UserSubscriptionPlan.find({
+        author: authorId,
+      }).distinct("_id");
+
+      // Fetches active subscriptions
+      const activeSubscriptions = await UserSubscription.find({
+        userId,
+        planId: { $in: authorPlanIds },
+        status: "active",
+        expiryDate: { $gt: new Date() },
+      }).populate({
+        path: "planId",
+        select:
+          "_id author name price status description postIds durationDays type",
+        populate: {
+          path: "postIds",
+          model: "Post",
+          select:
+            "title _id isSubscriberOnly category tags excerpt readingTime",
+        },
+      });
+
+      // Enriches subscriptions with additional details
+      const subscriptions = await Promise.all(
+        activeSubscriptions.map(async (sub) => {
+          const subscriberCount = await UserSubscription.countDocuments({
+            planId: sub.planId._id,
+            status: "active",
+            expiryDate: { $gt: new Date() },
+          });
+
+          return {
+            subscriptionId: sub._id,
+            planId: sub.planId._id,
+            planName: sub.planId.name,
+            planType: sub.planId.type || "silver",
+            price: sub.planId.price / 100,
+            durationDays: sub.planId.durationDays,
             description:
-              activeSubscription.planId.description ||
+              sub.planId.description ||
               "Unlock exclusive content with this plan.",
             posts:
-              activeSubscription.planId.postIds?.map((post) => ({
+              sub.planId.postIds?.map((post) => ({
                 id: post._id,
                 title: post.title || "Untitled Post",
                 isSubscriberOnly: post.isSubscriberOnly || false,
@@ -763,304 +1402,194 @@ export const getSubscriptionStatusByAuthor = asyncHandler(
                   post.isPremium || post.isSubscriberOnly ? "premium" : "free",
               })) || [],
             subscriberCount,
-            paymentId: activeSubscription.paymentId,
-            subscribedAt: activeSubscription.createdAt,
-            expiresAt: activeSubscription.expiryDate,
-          }
-        : null,
-    });
+            paymentId: sub.paymentId,
+            subscribedAt: sub.createdAt,
+            expiresAt: sub.expiryDate,
+          };
+        })
+      );
+
+      res.status(200).json({
+        success: true,
+        isSubscribed: subscriptions.length > 0,
+        subscriptions,
+      });
+    } catch (error) {
+      // AppError with context for fetching subscription status
+      next(
+        error instanceof AppError
+          ? error
+          : new AppError(
+              error.message || "Failed to fetch subscription status",
+              500,
+              "GetSubscriptionStatusByAuthor",
+              "Error in getSubscriptionStatusByAuthor"
+            )
+      );
+    }
   }
 );
 
+// Retrieves all subscribed plans for the authenticated user
 export const getMySubscribedPlans = asyncHandler(async (req, res, next) => {
-  const userId = req.user?._id?.toString();
-  if (!userId) throw new AppError("Unauthorized", 401);
+  try {
+    const userId = req.user?._id?.toString();
 
-  const query = {
-    userId,
-    ...(req.query.includeCancelled !== "true" && {
-      status: { $ne: "cancelled" },
-    }),
-    ...(req.query.includeExpired !== "true" && {
-      expiryDate: { $gt: new Date() },
-    }),
-  };
-  const subscriptions = await UserSubscriptionModel.find(query)
-    .populate({
-      path: "planId",
-      select: "name author price durationDays type status",
-    })
-    .sort({ createdAt: -1 })
-    .lean();
-
-  const enriched = subscriptions
-    .filter((sub) => sub.planId)
-    .map((sub) => ({
-      subscriptionId: sub._id,
-      planId: sub.planId._id,
-      planName: sub.planId.name,
-      authorId: sub.planId.author,
-      planType: sub.planId.type,
-      price: (sub.planId.price || 0) / 100,
-      durationDays: sub.planId.durationDays,
-      status: sub.status,
-      expiresAt: sub.expiryDate,
-      subscribedAt: sub.createdAt,
-    }));
-
-  res
-    .status(200)
-    .json({ success: true, count: enriched.length, plans: enriched });
-});
-
-// ✅ controllers/subscriptionController.js
-
-// Admin: Get all subscription plans with detailed analytics
-export const getAllSubscriptionPlans = asyncHandler(async (req, res, next) => {
-  if (!req.user?.isAdmin) throw new AppError("Admin access required", 403);
-
-  const plans = await UserSubscriptionModel.find({ deletedAt: null })
-    .populate("author", "name email")
-    .lean();
-
-  const enrichedPlans = await Promise.all(
-    plans.map(async (plan) => {
-      const subscriptions = await UserSubscriptionModel.find({
-        planId: plan._id,
-      }).lean();
-      const activeSubscribers = subscriptions.filter(
-        (sub) => sub.status === "active"
-      ).length;
-      const totalRevenue = subscriptions.reduce(
-        (sum, sub) =>
-          sub.status === "active"
-            ? sum + (sub.amountPaid || plan.price || 0)
-            : sum,
-        0
-      );
-
-      return {
-        ...plan,
-        totalSubscribers: subscriptions.length,
-        activeSubscribers,
-        totalRevenue: totalRevenue / 100,
-        subscriptionCount: subscriptions.length,
-      };
-    })
-  );
-
-  res.status(200).json({
-    success: true,
-    count: enrichedPlans.length,
-    plans: enrichedPlans,
-  });
-});
-
-// Admin: Toggle eligibility criteria for a user
-export const toggleEligibilityCriteria = asyncHandler(
-  async (req, res, next) => {
-    if (!req.user?.isAdmin) throw new AppError("Admin access required", 403);
-    const { userId, enable } = req.body;
-
-    validateObjectId(userId, "User ID");
-    const user = await UserModel.findById(userId);
-    if (!user) throw new AppError("User not found", 404);
-
-    user.isEligibleForSubscription = enable;
-    await user.save();
-
-    await recordActivity({
-      userId: req.user._id.toString(),
-      action: "TOGGLED_ELIGIBILITY_CRITERIA",
-      message: `Admin ${
-        enable ? "enabled" : "disabled"
-      } subscription eligibility for user ${userId}`,
-      targetUserId: userId,
-    });
-
-    res.status(200).json({
-      success: true,
-      message: `Subscription eligibility ${
-        enable ? "enabled" : "disabled"
-      } for user ${userId}`,
-      user: {
-        id: user._id,
-        isEligibleForSubscription: user.isEligibleForSubscription,
-      },
-    });
-  }
-);
-
-// Admin: Update global eligibility criteria
-export const updateGlobalEligibilityCriteria = asyncHandler(
-  async (req, res, next) => {
-    if (!req.user?.isAdmin) throw new AppError("Admin access required", 403);
-    const { minFollowers = 10000, minPosts = 30 } = req.body;
-
-    if (minFollowers < 0 || minPosts < 0) {
-      throw new AppError("Criteria values must be non-negative", 400);
-    }
-
-    // Store global criteria in a config collection or environment
-    // For simplicity, assume a Config model exists
-    const config = await ConfigModel.findOneAndUpdate(
-      { key: "subscriptionEligibility" },
-      { minFollowers, minPosts },
-      { upsert: true, new: true }
-    );
-
-    await recordActivity({
-      userId: req.user._id.toString(),
-      action: "UPDATED_ELIGIBILITY_CRITERIA",
-      message: `Updated global eligibility criteria to ${minFollowers} followers and ${minPosts} posts`,
-    });
-
-    res.status(200).json({
-      success: true,
-      criteria: { minFollowers, minPosts },
-    });
-  }
-);
-
-// Admin: Export subscription data to Excel
-export const exportSubscriptionData = asyncHandler(async (req, res, next) => {
-  if (!req.user?.isAdmin) throw new AppError("Admin access required", 403);
-
-  const plans = await UserSubscriptionModel.find({ deletedAt: null })
-    .populate("author", "name email")
-    .lean();
-  const subscriptions = await UserSubscriptionModel.find({})
-    .populate("userId", "name email")
-    .lean();
-
-  // Prepare Excel workbook
-  const wb = XLSX.utils.book_new();
-
-  // Sheet 1: Subscription Plans
-  const planData = plans.map((plan) => ({
-    PlanID: plan._id.toString(),
-    Name: plan.name,
-    Author: plan.author?.name || "Unknown",
-    AuthorEmail: plan.author?.email || "N/A",
-    Price: (plan.price / 100).toFixed(2),
-    DurationDays: plan.durationDays,
-    Type: plan.type,
-    Status: plan.status,
-    CreatedAt: plan.createdAt.toISOString(),
-  }));
-  const planWs = XLSX.utils.json_to_sheet(planData);
-  XLSX.utils.book_append_sheet(wb, planWs, "Plans");
-
-  // Sheet 2: Subscriptions
-  const subscriptionData = subscriptions.map((sub) => ({
-    SubscriptionID: sub._id.toString(),
-    UserID: sub.userId?._id.toString() || "N/A",
-    UserName: sub.userId?.name || "Unknown",
-    UserEmail: sub.userId?.email || "N/A",
-    PlanID: sub.planId.toString(),
-    PaymentID: sub.paymentId || "N/A",
-    Status: sub.status,
-    ExpiryDate: sub.expiryDate.toISOString(),
-    CreatedAt: sub.createdAt.toISOString(),
-  }));
-  const subscriptionWs = XLSX.utils.json_to_sheet(subscriptionData);
-  XLSX.utils.book_append_sheet(wb, subscriptionWs, "Subscriptions");
-
-  // Sheet 3: Payments
-  const payments = await PaymentModel.find().lean();
-  const paymentData = payments.map((payment) => ({
-    PaymentID: payment.paymentId,
-    OrderID: payment.orderId,
-    UserID: payment.userId.toString(),
-    Amount: (payment.amount / 100).toFixed(2),
-    Currency: payment.currency,
-    Status: payment.status,
-    CreatedAt: payment.createdAt.toISOString(),
-  }));
-  const paymentWs = XLSX.utils.json_to_sheet(paymentData);
-  XLSX.utils.book_append_sheet(wb, paymentWs, "Payments");
-
-  // Generate Excel file
-  const buffer = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
-  res.setHeader(
-    "Content-Disposition",
-    "attachment; filename=subscriptions.xlsx"
-  );
-  res.setHeader(
-    "Content-Type",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  );
-  res.status(200).send(buffer);
-});
-
-// Admin: Check user eligibility status
-export const checkUserEligibility = asyncHandler(async (req, res, next) => {
-  if (!req.user?.isAdmin) throw new AppError("Admin access required", 403);
-  const { userId } = req.params;
-
-  validateObjectId(userId, "User ID");
-  const user = await UserModel.findById(userId).lean();
-  if (!user) throw new AppError("User not found", 404);
-
-  const followerCount = user.followers?.length || 0;
-  const postCount = await PostModel.countDocuments({
-    author: userId,
-    isPublished: true,
-  });
-
-  // Fetch global criteria (assume ConfigModel exists)
-  const config = (await ConfigModel.findOne({
-    key: "subscriptionEligibility",
-  })) || {
-    minFollowers: 10000,
-    minPosts: 30,
-  };
-
-  const isEligible =
-    user.isEligibleForSubscription ||
-    (followerCount >= config.minFollowers && postCount >= config.minPosts);
-
-  res.status(200).json({
-    success: true,
-    userId,
-    isEligible,
-    followerCount,
-    postCount,
-    criteria: { minFollowers: config.minFollowers, minPosts: config.minPosts },
-    manuallySet: !!user.isEligibleForSubscription,
-  });
-});
-
-// Admin: Suspend or activate a subscription plan
-export const toggleSubscriptionPlanStatus = asyncHandler(
-  async (req, res, next) => {
-    if (!req.user?.isAdmin) throw new AppError("Admin access required", 403);
-    const { planId, status } = req.body;
-
-    validateObjectId(planId, "Plan ID");
-    if (!["active", "suspended"].includes(status)) {
+    // Validates authentication
+    if (!userId) {
       throw new AppError(
-        "Invalid status. Must be 'active' or 'suspended'",
-        400
+        "Unauthorized",
+        401,
+        "GetMySubscribedPlans",
+        "User not authenticated"
       );
     }
 
-    const plan = await UserSubscriptionModel.findById(planId);
-    if (!plan) throw new AppError("Plan not found", 404);
+    const query = {
+      userId,
+      ...(req.query.includeCancelled !== "true" && {
+        status: { $ne: "cancelled" },
+      }),
+      ...(req.query.includeExpired !== "true" && {
+        expiryDate: { $gt: new Date() },
+      }),
+    };
 
-    plan.status = status;
-    await plan.save();
+    // Fetches subscriptions
+    const subscriptions = await UserSubscription.find(query)
+      .populate({
+        path: "planId",
+        select: "name author price durationDays type status",
+      })
+      .sort({ createdAt: -1 })
+      .lean();
 
-    await recordActivity({
-      userId: req.user._id.toString(),
-      action: "TOGGLED_SUBSCRIPTION_PLAN_STATUS",
-      message: `Admin set plan ${planId} to ${status}`,
-      plan: { planId: plan._id, name: plan.name, status },
-    });
+    // Enriches subscriptions with plan details
+    const enriched = subscriptions
+      .filter((sub) => sub.planId)
+      .map((sub) => ({
+        subscriptionId: sub._id,
+        planId: sub.planId._id,
+        planName: sub.planId.name,
+        authorId: sub.planId.author,
+        planType: sub.planId.type,
+        price: (sub.planId.price || 0) / 100,
+        durationDays: sub.planId.durationDays,
+        status: sub.status,
+        expiresAt: sub.expiryDate,
+        subscribedAt: sub.createdAt,
+      }));
 
-    res.status(200).json({
-      success: true,
-      plan: { id: plan._id, name: plan.name, status },
-    });
+    res
+      .status(200)
+      .json({ success: true, count: enriched.length, plans: enriched });
+  } catch (error) {
+    // AppError with context for fetching subscribed plans
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch subscribed plans",
+            500,
+            "GetMySubscribedPlans",
+            "Error in getMySubscribedPlans"
+          )
+    );
+  }
+});
+
+// Checks eligibility for creating subscription plans
+export const checkEligibilityForSubscription = asyncHandler(
+  async (req, res) => {
+    try {
+      const userId = req.user?._id;
+
+      // Validates authentication
+      if (!userId) {
+        throw new AppError(
+          "Unauthorized",
+          401,
+          "CheckEligibilityForSubscription",
+          "User not authenticated"
+        );
+      }
+
+      // Fetches user and subscription config
+      const user = await UserModel.findById(userId).lean();
+      if (!user) {
+        throw new AppError(
+          "User not found",
+          404,
+          "CheckEligibilityForSubscription",
+          "User does not exist"
+        );
+      }
+
+      const config = await SubscriptionConfig.findOne({
+        key: "subscriptionEligibility",
+      }).lean();
+      if (!config) {
+        throw new AppError(
+          "Subscription configuration not found",
+          500,
+          "CheckEligibilityForSubscription",
+          "Missing subscription eligibility configuration"
+        );
+      }
+
+      // Calculates eligibility criteria
+      const followerCount = user.followers?.length || 0;
+      const postCount = await PostModel.countDocuments({
+        author: userId,
+        isPublished: true,
+      });
+
+      const isEligible =
+        followerCount >= config.minFollowers &&
+        postCount >= config.minPosts &&
+        (user.engagementRate || 0) >= config.minEngagementRate &&
+        (Date.now() - new Date(user.createdAt).getTime()) /
+          (1000 * 60 * 60 * 24) >=
+          config.minAccountAgeDays;
+
+      res.status(200).json({
+        success: true,
+        isEligible,
+        followerCount,
+        postCount,
+        engagementRate: user.engagementRate || 0,
+        accountAgeDays: Math.floor(
+          (Date.now() - new Date(user.createdAt).getTime()) /
+            (1000 * 60 * 60 * 24)
+        ),
+        criteria: {
+          minFollowers: config.minFollowers,
+          minPosts: config.minPosts,
+          minEngagementRate: config.minEngagementRate,
+          minAccountAgeDays: config.minAccountAgeDays,
+        },
+        message: isEligible
+          ? "You are eligible to create subscription plans."
+          : `You need at least ${config.minFollowers} followers, ${
+              config.minPosts
+            } published posts, ${
+              config.minEngagementRate * 100
+            }% engagement rate, and an account age of ${
+              config.minAccountAgeDays
+            } days to enable subscriptions.`,
+      });
+    } catch (error) {
+      // AppError with context for checking subscription eligibility
+      next(
+        error instanceof AppError
+          ? error
+          : new AppError(
+              error.message || "Failed to check subscription eligibility",
+              500,
+              "CheckEligibilityForSubscription",
+              "Error in checkEligibilityForSubscription"
+            )
+      );
+    }
   }
 );

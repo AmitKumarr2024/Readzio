@@ -1,18 +1,41 @@
 import { AppError } from "../utils/AppError.js";
 
+// Restricts access to admin users only
 export const adminOnly = (req, res, next) => {
-  if (!req.user) {
-    console.error('[AdminOnlyMiddleware] ❌ No user in request');
-    return next(new AppError("Unauthorized", 401, "AdminMiddleware"));
+  try {
+    // Validates user presence
+    if (!req.user) {
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "AdminOnly",
+        "No user found in request"
+      );
+    }
+
+    // Validates admin role
+    if (req.user.role !== "admin") {
+      throw new AppError(
+        "Forbidden",
+        403,
+        "AdminOnly",
+        "User does not have admin role"
+      );
+    }
+
+    // Proceeds if user is admin
+    next();
+  } catch (error) {
+    // AppError with context for admin-only middleware
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to verify admin access",
+            500,
+            "AdminOnly",
+            "Error in adminOnly middleware"
+          )
+    );
   }
-
-  console.log('[AdminOnlyMiddleware] Checking admin role:', { userId: req.user._id, role: req.user.role });
-
-  if (req.user.role !== "admin") {
-    console.error('[AdminOnlyMiddleware] ❌ Access denied: Not admin');
-    return next(new AppError("Admin access only", 403, "AdminMiddleware"));
-  }
-
-  console.log('[AdminOnlyMiddleware] ✅ Admin access granted');
-  next();
 };

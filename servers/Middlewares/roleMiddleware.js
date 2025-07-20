@@ -1,11 +1,32 @@
+import { AppError } from "../utils/AppError.js";
+
+// Restricts access to specified roles
 export const restrictTo = (...allowedRoles) => {
   return (req, res, next) => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: "You do not have permission to perform this action",
-      });
+    try {
+      // Validates user and role
+      if (!req.user || !allowedRoles.includes(req.user.role)) {
+        throw new AppError(
+          "Forbidden",
+          403,
+          "RestrictTo",
+          `User role '${req.user?.role || "none"}' not in allowed roles: ${allowedRoles.join(", ")}`
+        );
+      }
+
+      next();
+    } catch (error) {
+      // AppError with context for role restriction
+      next(
+        error instanceof AppError
+          ? error
+          : new AppError(
+              error.message || "Failed to verify role access",
+              403,
+              "RestrictTo",
+              "Error in restrictTo middleware"
+            )
+      );
     }
-    next();
   };
 };

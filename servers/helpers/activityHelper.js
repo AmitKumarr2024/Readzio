@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import ActivityModel from "../Models/ActivityModel.js";
 import { AppError } from "../utils/AppError.js";
 
-// All valid actions
+// Defines all valid actions for activity logging
 export const VALID_ACTIONS = new Set([
   "POST_CREATED",
   "POST_EDITED",
@@ -78,7 +78,6 @@ export const VALID_ACTIONS = new Set([
   "PASSWORD_RESET",
   "SENDER_EMAIL",
   "EMAIL_SKIPPED",
-  "SENDER_EMAIL",
   "EMAIL_FAILED_ALL_ATTEMPTS",
   "DISMISSED_NOTIFICATION",
   "DEACTIVATED_NOTIFICATION",
@@ -89,9 +88,21 @@ export const VALID_ACTIONS = new Set([
   "TIMEOUT",
   "LOCATION_LOGGED",
   "POLL_VOTED",
-  "VIEWED_FOLLOWING_POSTS"
+  "VIEWED_FOLLOWING_POSTS",
+  "GRANTED_FULL_ACCESS",
+  "REMOVED_USER_FROM_PLAN",
+  "TOGGLED_PLAN_RESTRICTIONS",
+  "UPDATED_SUBSCRIPTION_CRITERIA",
+  "TOGGLED_SUBSCRIPTION_PLAN_STATUS",
+  "VITE_BACKEND_URL",
+  "ERR_CONNECTION_REFUSED",
+  "JWT_SECRET",
+  "ERR_BLOCKED_BY_CLIENT",
+  "PASSWORD_VERIFIED_FOR_DELETION",
+  "PASSWORD_UPDATED",
 ]);
 
+// Records user activity with validation
 export const recordActivity = async ({
   userId,
   action,
@@ -102,30 +113,46 @@ export const recordActivity = async ({
   targetCategory,
 }) => {
   try {
-    // Validate user ID
+    // Validates user ID
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      throw new AppError("Invalid userId", 400, "ActivityLogger");
+      throw new AppError(
+        "Invalid userId",
+        400,
+        "RecordActivity",
+        "User ID must be a valid MongoDB ObjectId"
+      );
     }
 
-    // Validate action
+    // Validates action against allowed set
     if (!VALID_ACTIONS.has(action)) {
-      throw new AppError(`Invalid action: ${action}`, 400, "ActivityLogger");
+      throw new AppError(
+        `Invalid action: ${action}`,
+        400,
+        "RecordActivity",
+        `Action must be one of ${[...VALID_ACTIONS].join(", ")}`
+      );
     }
 
-    // Validate message
+    // Validates message
     const msg = typeof message === "string" ? message.trim() : "";
     if (!msg) {
       throw new AppError(
         "Message must be a non-empty string",
         400,
-        "ActivityLogger"
+        "RecordActivity",
+        "Activity message cannot be empty"
       );
     }
 
-    // Validate optional references
+    // Validates optional reference IDs
     const validateId = (id, label) => {
       if (id && !mongoose.Types.ObjectId.isValid(id)) {
-        throw new AppError(`Invalid ${label} ID`, 400, "ActivityLogger");
+        throw new AppError(
+          `Invalid ${label} ID`,
+          400,
+          "RecordActivity",
+          `${label} must be a valid MongoDB ObjectId`
+        );
       }
     };
 
@@ -133,14 +160,19 @@ export const recordActivity = async ({
     validateId(targetComment, "targetComment");
     validateId(targetUser, "targetUser");
 
-    // Validate category if given
+    // Validates category if provided
     const cleanCategory =
       typeof targetCategory === "string" ? targetCategory.trim() : undefined;
     if (targetCategory && !cleanCategory) {
-      throw new AppError("Invalid targetCategory", 400, "ActivityLogger");
+      throw new AppError(
+        "Invalid targetCategory",
+        400,
+        "RecordActivity",
+        "Category must be a non-empty string"
+      );
     }
 
-    // Save to DB
+    // Creates activity record
     const newActivity = await ActivityModel.create({
       user: userId,
       action,
@@ -152,15 +184,15 @@ export const recordActivity = async ({
     });
 
     return newActivity;
-  } catch (err) {
-    console.error("[recordActivity] Error recording activity", {
-      message: err.message,
-      stack: err.stack,
-      userId,
-      action,
-    });
-    throw err instanceof AppError
-      ? err
-      : new AppError("Failed to record activity", 500, "ActivityLogger");
+  } catch (error) {
+    // AppError with context for recording activity
+    throw error instanceof AppError
+      ? error
+      : new AppError(
+          error.message || "Failed to record activity",
+          500,
+          "RecordActivity",
+          "Error in recordActivity"
+        );
   }
 };

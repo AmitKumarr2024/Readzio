@@ -120,7 +120,11 @@ export const createPost = async (req, res, next) => {
 
     const blocksWithIds = blocks.map((block, index) => {
       if (!block || typeof block !== "object" || !block.type) {
-        throw new AppError(`Invalid block at index ${index}`, 400, "CreatePost");
+        throw new AppError(
+          `Invalid block at index ${index}`,
+          400,
+          "CreatePost"
+        );
       }
       return {
         id: block.id || uuidv4(),
@@ -134,39 +138,76 @@ export const createPost = async (req, res, next) => {
       try {
         let buffer;
         if (source.startsWith("data:image")) {
-          const [, base64Data] = source.match(/^data:image\/[a-z]+;base64,(.+)$/) || [];
+          const [, base64Data] =
+            source.match(/^data:image\/[a-z]+;base64,(.+)$/) || [];
           if (!base64Data)
-            throw new AppError("Invalid base64 image", 400, "CreatePost");
+            throw new AppError(
+              "Invalid base64 image",
+              400,
+              "CreatePost",
+              "Invalid image data"
+            );
           buffer = Buffer.from(base64Data, "base64");
         } else if (source.startsWith("http")) {
-          const response = await axios.get(source, { responseType: "arraybuffer", timeout: 5000 });
+          const response = await axios.get(source, {
+            responseType: "arraybuffer",
+            timeout: 5000,
+          });
           buffer = Buffer.from(response.data, "binary");
         } else {
-          console.warn(`Unsupported image source for ${id}: ${source}`);
-          throw new AppError("Unsupported image format", 400, "CreatePost");
+          throw new AppError(
+            "Unsupported image source",
+            400,
+            "CreatePost",
+            "Invalid image source"
+          );
         }
 
         const image = sharp(buffer);
         const metadata = await image.metadata();
-        if (!["jpeg", "png", "webp"].includes(metadata.format)) {
-          console.warn(`Unsupported image format for ${id}: ${metadata.format}`);
-          throw new AppError("Unsupported image format", 400, "CreatePost");
+        if (!["jpeg", "png", "webp"].includes(metadata.format))
+          throw new AppError(
+            "Unsupported image format",
+            400,
+            "CreatePost",
+            "Invalid image format"
+          );
+
+        // Resize only if necessary, preserving aspect ratio
+        if (metadata.width > 1200 || metadata.height > 1200) {
+          image.resize({
+            width: 1200,
+            height: 1200,
+            fit: "inside",
+            withoutEnlargement: true,
+          });
         }
-        if (metadata.width > 1200) image.resize({ width: 1200 });
+
+        // Convert to WebP for better compression
         const compressedBuffer = await image
-          .jpeg({ quality: 80, mozjpeg: true })
+          .webp({ quality: 75, effort: 4 }) // effort: 4 balances speed and compression
           .toBuffer();
+
         const result = await uploadToCloudinary({
           buffer: compressedBuffer,
           folder,
         });
         if (!result?.secure_url)
-          throw new AppError("Image upload failed", 500, "CreatePost");
-        console.log(`Image uploaded for ${id}: ${result.secure_url}`);
+          throw new AppError(
+            "Image upload failed",
+            500,
+            "CreatePost",
+            "Cloudinary upload failed"
+          );
+
         return result.secure_url;
       } catch (err) {
-        console.error(`Image processing failed for ${id}: ${err.message}`);
-        throw new AppError(`Image processing failed: ${err.message}`, 400, "CreatePost");
+        throw new AppError(
+          err.message || `Image processing failed: ${id}`,
+          400,
+          "CreatePost",
+          "Error processing image"
+        );
       }
     };
 
@@ -174,11 +215,19 @@ export const createPost = async (req, res, next) => {
       blocksWithIds.map(async (block) => {
         const processed = { ...block };
         if (block.type === "image" && block.src) {
-          processed.src = await processImage(block.src, `block ${block.id}`, "blogs/post/blocks/images/");
+          processed.src = await processImage(
+            block.src,
+            `block ${block.id}`,
+            "blogs/post/blocks/images/"
+          );
         }
         if (block.type === "poll") {
           if (!block.question || !Array.isArray(block.options)) {
-            throw new AppError("Poll requires question and options array", 400, "CreatePost");
+            throw new AppError(
+              "Poll requires question and options array",
+              400,
+              "CreatePost"
+            );
           }
           processed.options = block.options.map((opt) => ({
             option: typeof opt === "string" ? opt : opt.option,
@@ -187,7 +236,9 @@ export const createPost = async (req, res, next) => {
           processed.votedUserIds = block.votedUserIds || [];
         }
         if (block.type === "list" && Array.isArray(block.items)) {
-          processed.items = block.items.map((item) => (item == null ? "" : String(item)));
+          processed.items = block.items.map((item) =>
+            item == null ? "" : String(item)
+          );
         }
         const allowedFields = [
           "id",
@@ -212,14 +263,20 @@ export const createPost = async (req, res, next) => {
           "blocked",
         ];
         return Object.fromEntries(
-          Object.entries(processed).filter(([key]) => allowedFields.includes(key))
+          Object.entries(processed).filter(([key]) =>
+            allowedFields.includes(key)
+          )
         );
       })
     );
 
     let processedThumbnail = rawThumbnail;
     if (rawThumbnail) {
-      processedThumbnail = await processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/");
+      processedThumbnail = await processImage(
+        rawThumbnail,
+        "thumbnail",
+        "blogs/post/thumbnails/"
+      );
     }
 
     const moderateContent = async (text) => {
@@ -240,7 +297,11 @@ export const createPost = async (req, res, next) => {
       const reasons = Object.entries(moderation.categories)
         .filter(([_, flagged]) => flagged)
         .map(([key]) => key);
-      throw new AppError(`Restricted content: ${reasons.join(", ")}`, 400, "CreatePost");
+      throw new AppError(
+        `Restricted content: ${reasons.join(", ")}`,
+        400,
+        "CreatePost"
+      );
     }
 
     const slug = slugify(title, { lower: true, strict: true });
@@ -276,22 +337,32 @@ export const createPost = async (req, res, next) => {
 
       io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
 
-      const [allPostsCount, myPostsCount, followingPostsCount] = await Promise.all([
-        PostModel.countDocuments({ blocked: { $ne: true }, isPublished: true }),
-        PostModel.countDocuments({ author: req.user._id, blocked: { $ne: true }, isPublished: true }),
-        PostModel.countDocuments({
-          author: { $in: req.user.following || [] },
-          blocked: { $ne: true },
-          isPublished: true,
-        }),
-      ]);
+      const [allPostsCount, myPostsCount, followingPostsCount] =
+        await Promise.all([
+          PostModel.countDocuments({
+            blocked: { $ne: true },
+            isPublished: true,
+          }),
+          PostModel.countDocuments({
+            author: req.user._id,
+            blocked: { $ne: true },
+            isPublished: true,
+          }),
+          PostModel.countDocuments({
+            author: { $in: req.user.following || [] },
+            blocked: { $ne: true },
+            isPublished: true,
+          }),
+        ]);
       io.to(req.user._id).emit("postCountsUpdated", {
         allPostsCount,
         myPostsCount,
         followingPostsCount,
       });
 
-      res.status(201).json({ success: true, message: "Post created", post: newPost });
+      res
+        .status(201)
+        .json({ success: true, message: "Post created", post: newPost });
     } catch (err) {
       await session.abortTransaction();
       throw err;
@@ -302,7 +373,11 @@ export const createPost = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message || "Failed to create post", 500, "CreatePost")
+        : new AppError(
+            error.message || "Failed to create post",
+            500,
+            "CreatePost"
+          )
     );
   }
 };
@@ -336,35 +411,40 @@ export const getAllPosts = async (req, res, next) => {
       }
     }
 
-    const [posts, total, allPostsCount, myPostsCount, followingPostsCount] = await Promise.all([
-      PostModel.find(query)
-        .select(
-          `
+    const [posts, total, allPostsCount, myPostsCount, followingPostsCount] =
+      await Promise.all([
+        PostModel.find(query)
+          .select(
+            `
           title slug category excerpt thumbnail author createdAt
           isPublished isPinned isPremium isSubscriberOnly blocked message readTime
           likesCount commentsCount viewsCount bookmarksCount likes
           tags language isFeatured allowComments timeSpent updatedAt
           shareCount sharedBy blocks
         `
-        )
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate("author", "name avatar")
-        .lean(),
-      PostModel.countDocuments(query),
-      PostModel.countDocuments({ blocked: { $ne: true }, isPublished: true }),
-      req.user?._id
-        ? PostModel.countDocuments({ author: req.user._id, blocked: { $ne: true }, isPublished: true })
-        : Promise.resolve(0),
-      req.user?._id
-        ? PostModel.countDocuments({
-            author: { $in: req.user.following || [] },
-            blocked: { $ne: true },
-            isPublished: true,
-          })
-        : Promise.resolve(0),
-    ]);
+          )
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .populate("author", "name avatar")
+          .lean(),
+        PostModel.countDocuments(query),
+        PostModel.countDocuments({ blocked: { $ne: true }, isPublished: true }),
+        req.user?._id
+          ? PostModel.countDocuments({
+              author: req.user._id,
+              blocked: { $ne: true },
+              isPublished: true,
+            })
+          : Promise.resolve(0),
+        req.user?._id
+          ? PostModel.countDocuments({
+              author: { $in: req.user.following || [] },
+              blocked: { $ne: true },
+              isPublished: true,
+            })
+          : Promise.resolve(0),
+      ]);
 
     if (req.user?._id && !isGuest) {
       await recordActivity({
@@ -385,7 +465,11 @@ export const getAllPosts = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message || "Failed to fetch posts", 500, "GetAllPosts")
+        : new AppError(
+            error.message || "Failed to fetch posts",
+            500,
+            "GetAllPosts"
+          )
     );
   }
 };
@@ -752,15 +836,20 @@ export const deletePost = async (req, res, next) => {
 
     io.emit("postDeleted", { postId, authorId: req.user._id });
 
-    const [allPostsCount, myPostsCount, followingPostsCount] = await Promise.all([
-      PostModel.countDocuments({ blocked: { $ne: true }, isPublished: true }),
-      PostModel.countDocuments({ author: req.user._id, blocked: { $ne: true }, isPublished: true }),
-      PostModel.countDocuments({
-        author: { $in: req.user.following || [] },
-        blocked: { $ne: true },
-        isPublished: true,
-      }),
-    ]);
+    const [allPostsCount, myPostsCount, followingPostsCount] =
+      await Promise.all([
+        PostModel.countDocuments({ blocked: { $ne: true }, isPublished: true }),
+        PostModel.countDocuments({
+          author: req.user._id,
+          blocked: { $ne: true },
+          isPublished: true,
+        }),
+        PostModel.countDocuments({
+          author: { $in: req.user.following || [] },
+          blocked: { $ne: true },
+          isPublished: true,
+        }),
+      ]);
     io.to(req.user._id).emit("postCountsUpdated", {
       allPostsCount,
       myPostsCount,
@@ -772,7 +861,11 @@ export const deletePost = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message || "Failed to delete post", 500, "DeletePost")
+        : new AppError(
+            error.message || "Failed to delete post",
+            500,
+            "DeletePost"
+          )
     );
   }
 };

@@ -1,22 +1,45 @@
 import mongoose from "mongoose";
 import { AppError } from "../utils/AppError.js";
 
+// Validates MongoDB ObjectId in request parameters
 export const validateObjectId = (paramName) => {
   return (req, res, next) => {
-    const id = req.params[paramName];
-    console.log(`[validateObjectId] Checking ${paramName}:`, id);
+    try {
+      const id = req.params[paramName];
 
-    if (!id) {
-      console.error(`[validateObjectId] Missing ${paramName}`);
-      return next(new AppError(`Missing ${paramName}`, 400, "validateObjectId"));
+      // Validates parameter presence
+      if (!id) {
+        throw new AppError(
+          `Missing ${paramName}`,
+          400,
+          "ValidateObjectId",
+          `${paramName} parameter is required`
+        );
+      }
+
+      // Validates ObjectId format
+      if (!mongoose.isValidObjectId(id)) {
+        throw new AppError(
+          `Invalid ${paramName}`,
+          400,
+          "ValidateObjectId",
+          `${paramName} must be a valid MongoDB ObjectId`
+        );
+      }
+
+      next();
+    } catch (error) {
+      // AppError with context for ObjectId validation
+      next(
+        error instanceof AppError
+          ? error
+          : new AppError(
+              error.message || "Failed to validate ObjectId",
+              400,
+              "ValidateObjectId",
+              "Error in validateObjectId middleware"
+            )
+      );
     }
-
-   if (!mongoose.isValidObjectId(id)) {
-  console.error(`[validateObjectId] Invalid ${paramName}:`, id);
-  return next(new AppError(`Invalid ${paramName}`, 400, "validateObjectId"));
-}
-
-    console.log(`[validateObjectId] Valid ${paramName}:`, id);
-    next();
   };
 };

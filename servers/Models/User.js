@@ -1,11 +1,27 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+// Defines schema for users
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: [true, "Name is required"], trim: true },
-    role: { type: String, enum: ["user", "admin"], default: "user" },
-    isAdmin: { type: Boolean, default: false },
+    // User's name
+    name: { 
+      type: String, 
+      required: [true, "Name is required"], 
+      trim: true 
+    },
+    // User role (user or admin)
+    role: { 
+      type: String, 
+      enum: ["user", "admin"], 
+      default: "user" 
+    },
+    // Indicates if user is admin
+    isAdmin: { 
+      type: Boolean, 
+      default: false 
+    },
+    // Unique email address
     email: {
       type: String,
       required: [true, "Email is required"],
@@ -14,74 +30,217 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email format"],
     },
+    // Password (optional for Google sign-ups)
     password: {
       type: String,
       required: [
-        function () { return !this.googleId; },
+        function () {
+          return !this.googleId;
+        },
         "Password is required unless signed up with Google",
       ],
+      select: false,
       minlength: 6,
     },
-    googleId: { type: String, unique: true, sparse: true },
-    avatar: { type: String, default: "" },
-    banner: { type: String, default: "" },
-    gender: { type: String, enum: ["Male", "Female", "Other"], default: "Other" },
-    location: { type: String, default: "" },
-    profession: { type: String, default: "" },
-    bio: { type: String, maxlength: 500, default: "" },
-    joiningDate: { type: Date, default: Date.now },
-    blocked: { type: Boolean, default: false },
-    bookmarks: [{ type: mongoose.SchemaTypes.ObjectId, ref: "Post" }],
-    totalPosts: { type: Number, default: 0 },
-    totalViews: { type: Number, default: 0 },
-    totalTimeSpent: { type: Number, default: 0 },
-    following: [{ type: mongoose.SchemaTypes.ObjectId, ref: "User" }],
-    followers: [{ type: mongoose.SchemaTypes.ObjectId, ref: "User" }],
-    blockedUsers: [{ type: mongoose.SchemaTypes.ObjectId, ref: "User" }],
+    // Google account ID
+    googleId: { 
+      type: String, 
+      unique: true, 
+      sparse: true 
+    },
+    // Profile avatar URL
+    avatar: { 
+      type: String, 
+      default: "" 
+    },
+    // Profile banner URL
+    banner: { 
+      type: String, 
+      default: "" 
+    },
+    // User's gender
+    gender: {
+      type: String,
+      enum: ["Male", "Female", "Other"],
+      default: "Other",
+    },
+    // User's location
+    location: { 
+      type: String, 
+      default: "" 
+    },
+    // User's profession
+    profession: { 
+      type: String, 
+      default: "" 
+    },
+    // User's bio
+    bio: { 
+      type: String, 
+      maxlength: 500, 
+      default: "" 
+    },
+    // Date of account creation
+    joiningDate: { 
+      type: Date, 
+      default: Date.now 
+    },
+    // Indicates if user is blocked
+    blocked: { 
+      type: Boolean, 
+      default: false 
+    },
+    // Bookmarked posts
+    bookmarks: [{ 
+      type: mongoose.SchemaTypes.ObjectId, 
+      ref: "Post" 
+    }],
+    // Total number of posts
+    totalPosts: { 
+      type: Number, 
+      default: 0 
+    },
+    // Total views across posts
+    totalViews: { 
+      type: Number, 
+      default: 0 
+    },
+    // Total time spent on posts
+    totalTimeSpent: { 
+      type: Number, 
+      default: 0 
+    },
+    // Users followed by this user
+    following: [{ 
+      type: mongoose.SchemaTypes.ObjectId, 
+      ref: "User" 
+    }],
+    // Users following this user
+    followers: [{ 
+      type: mongoose.SchemaTypes.ObjectId, 
+      ref: "User" 
+    }],
+    // Users blocked by this user
+    blockedUsers: [{ 
+      type: mongoose.SchemaTypes.ObjectId, 
+      ref: "User" 
+    }],
+    // Recently visited categories
     recentCategories: [
       {
         category: { type: String },
         lastVisited: { type: Date, default: Date.now },
       },
     ],
-    subscribedAuthors: [{ type: mongoose.SchemaTypes.ObjectId, ref: "User" }],
-    subscribers: [{ type: mongoose.SchemaTypes.ObjectId, ref: "User" }],
-    hasSubscriptionPlan: { type: Boolean, default: false },
+    // Cookie consent status
+    cookieConsent: {
+      type: Boolean,
+      default: null, // null = not asked, true = accepted, false = declined
+    },
+    // Authors subscribed to by the user
+    subscribedAuthors: [{ 
+      type: mongoose.SchemaTypes.ObjectId, 
+      ref: "User" 
+    }],
+    // Users subscribed to this user
+    subscribers: [{ 
+      type: mongoose.SchemaTypes.ObjectId, 
+      ref: "User" 
+    }],
+    // Indicates if user has a subscription plan
+    hasSubscriptionPlan: { 
+      type: Boolean, 
+      default: false 
+    },
+    // User's subscription plan
     subscriptionPlan: {
       type: mongoose.SchemaTypes.ObjectId,
       ref: "SubscriptionPlan",
       default: null,
     },
-    subscriptionDate: { type: Date },
-    categories: [{ type: mongoose.SchemaTypes.ObjectId, ref: "Category" }],
-    emailAttempts: { type: Number, default: 0 },
+    // Date of subscription
+    subscriptionDate: { 
+      type: Date 
+    },
+    // Eligibility for subscription
+    isEligibleForSubscription: { 
+      type: Boolean, 
+      default: null 
+    },
+    // Subscribed categories
+    categories: [{ 
+      type: mongoose.SchemaTypes.ObjectId, 
+      ref: "Category" 
+    }],
+    // Email send attempts
+    emailAttempts: { 
+      type: Number, 
+      default: 0 
+    },
+    // Email send status
     emailStatus: {
       type: String,
       enum: ["not_sent", "sent", "failed"],
       default: "not_sent",
     },
-    emailLastError: { type: String },
-    stopEmailAttempts: { type: Boolean, default: false },
-    // Added fields for OTP functionality
-    isAccountVerified: { type: Boolean, default: false },
-    verifyOtp: { type: String, default: "" },
-    verifyOtpExpireAt: { type: Number, default: 0 },
-    resetOtp: { type: String, default: "" },
-    resetOtpExpireAt: { type: Number, default: 0 },
+    // Last email error
+    emailLastError: { 
+      type: String 
+    },
+    // Flag to stop email attempts
+    stopEmailAttempts: { 
+      type: Boolean, 
+      default: false 
+    },
+    // Indicates if account is verified
+    isAccountVerified: { 
+      type: Boolean, 
+      default: false 
+    },
+    // OTP for account verification
+    verifyOtp: { 
+      type: String, 
+      default: "" 
+    },
+    // OTP expiration for verification
+    verifyOtpExpireAt: { 
+      type: Number, 
+      default: 0 
+    },
+    // OTP for password reset
+    resetOtp: { 
+      type: String, 
+      default: "" 
+    },
+    // OTP expiration for password reset
+    resetOtpExpireAt: { 
+      type: Number, 
+      default: 0 
+    },
   },
-  { timestamps: true }
+  { timestamps: true } // Adds createdAt and updatedAt
 );
 
-userSchema.index({ role: 1 });
-userSchema.index({ isAdmin: 1 });
-userSchema.index({ bookmarks: 1 });
-userSchema.index({ following: 1 });
-userSchema.index({ followers: 1 });
+// Hashes password before saving if modified
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
 
+// Compares entered password with stored hash
 userSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-const UserModel = mongoose.models.User || mongoose.model("User", userSchema);
+// Indexes for efficient querying
+userSchema.index({ role: 1 }); // For role-based queries
+userSchema.index({ isAdmin: 1 }); // For admin queries
+userSchema.index({ bookmarks: 1 }); // For bookmark queries
+userSchema.index({ following: 1 }); // For following queries
+userSchema.index({ followers: 1 }); // For follower queries
 
+// Creates and exports the User model
+const UserModel = mongoose.models.User || mongoose.model("User", userSchema);
 export default UserModel;

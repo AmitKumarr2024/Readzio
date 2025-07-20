@@ -1,23 +1,54 @@
 import { verifyToken } from '../utils/verifyToken.js';
+import { AppError } from "../utils/AppError.js";
 
+// Verifies user token and attaches user data to request
 export const verifyUser = (req, res, next) => {
   try {
+    // Retrieves token from cookie or header
     const token =
-      req.cookies.token || req.headers.authorization?.split(" ")[1];
+      req.cookies?.token || req.headers.authorization?.split(" ")[1];
 
+    // Validates token presence
+    if (!token) {
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "VerifyUser",
+        "No token provided in cookie or header"
+      );
+    }
+
+    // Verifies token using utility function
     const decoded = verifyToken(token);
+    if (!decoded?.userId) {
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "VerifyUser",
+        "Invalid or expired token"
+      );
+    }
 
-    // ✅ Set req.user with both _id and userId
+    // Attaches user data to request
     req.user = {
-      _id: decoded.userId,        // ✅ So that req.user._id is defined
-      userId: decoded.userId,     // keep existing support
+      _id: decoded.userId,
+      userId: decoded.userId,
       role: decoded.role,
       isAdmin: decoded.isAdmin,
     };
 
     next();
-  } catch (err) {
-    console.error("[verifyUser] ❌ Token verification failed:", err.message);
-    res.status(401).json({ message: "Unauthorized: " + err.message });
+  } catch (error) {
+    // AppError with context for user verification
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to verify user",
+            401,
+            "VerifyUser",
+            "Error in verifyUser middleware"
+          )
+    );
   }
 };

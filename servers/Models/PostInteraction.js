@@ -1,20 +1,39 @@
 import mongoose from "mongoose";
 
+// Defines schema for tracking user interactions with posts
 const postInteractionSchema = new mongoose.Schema(
   {
-    postId: { type: mongoose.Schema.Types.ObjectId, ref: "Post", required: true },
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    timeSpent: { type: Number, default: 0 }, // In seconds
-    lastInteractedAt: { type: Date, default: Date.now },
+    // Post being interacted with
+    postId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "Post", 
+      required: true 
+    },
+    // User performing the interaction
+    userId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "User", 
+      required: true 
+    },
+    // Time spent on the post (in seconds)
+    timeSpent: { 
+      type: Number, 
+      default: 0 
+    },
+    // Timestamp of last interaction
+    lastInteractedAt: { 
+      type: Date, 
+      default: Date.now 
+    },
   },
-  { timestamps: true }
+  { timestamps: true } // Adds createdAt and updatedAt
 );
 
-// Ensure one user interacts per post (upsert will work reliably)
+// Ensures one interaction per user per post
 postInteractionSchema.index({ postId: 1, userId: 1 }, { unique: true });
 
+// Creates and exports the PostInteraction model
 const PostInteraction =
   mongoose.models.PostInteraction ||
   mongoose.model("PostInteraction", postInteractionSchema);
-
 export default PostInteraction;

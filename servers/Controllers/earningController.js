@@ -7,78 +7,70 @@ import { SENDER_EMAIL } from "../config/dotenv.js";
 import transporter from "../config/nodeMailer.js";
 import createMailOption from "../helpers/emailHelper.js";
 import axiosInstance from "../utils/axiosInstance.js";
-import UserModel from "../models/User.js";
+import UserModel from "../Models/User.js";
 
-// Helper function to check if today is the auto-email date
+// Checks if today matches the auto-email date
 const isAutoEmailDate = () => {
   const today = new Date();
   const autoEmailDate = parseInt(process.env.AUTO_EMAIL_DATE || "1", 10);
   return today.getDate() === autoEmailDate;
 };
 
-// Helper function to send email with retries
-const sendEmailWithRetries = async (mailOption, maxAttempts = 3) => {
+// Sends email with retry logic
+const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
   let attempts = 0;
   let lastError = null;
 
   while (attempts < maxAttempts) {
     try {
       attempts++;
-      console.log("Attempting to send email", {
-        to: mailOption.to,
-        attempt: attempts,
-      });
       await transporter.sendMail(mailOption);
-      console.log("Email sent successfully", {
-        to: mailOption.to,
-        attempt: attempts,
+      await recordActivity({
+        userId,
+        action: "EMAIL_SENT",
+        message: `Email sent to ${mailOption.to} after ${attempts} attempt(s)`,
       });
       return { success: true, attempts };
     } catch (error) {
       lastError = error;
-      console.error("Email sending failed", {
-        to: mailOption.to,
-        attempt: attempts,
-        error: error.message,
-        stack: error.stack,
-        smtpConfig: {
-          host: transporter.options.host,
-          port: transporter.options.port,
-          secure: transporter.options.secure,
-          auth: transporter.options.auth
-            ? { user: transporter.options.auth.user }
-            : null,
-        },
+      await recordActivity({
+        userId,
+        action: "EMAIL_FAILED",
+        message: `Email failed for ${mailOption.to} on attempt ${attempts}: ${error.message}`,
       });
       if (attempts < maxAttempts) {
-        console.log("Retrying email send", {
-          to: mailOption.to,
-          attempt: attempts + 1,
-        });
-        await new Promise((resolve) => setTimeout(resolve, 1000 * attempts)); // Exponential backoff: 1s, 2s, 3s
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
       }
     }
   }
 
-  console.error("All email attempts failed", {
-    to: mailOption.to,
-    attempts,
-    lastError: lastError.message,
+  await recordActivity({
+    userId,
+    action: "EMAIL_FAILED_ALL_ATTEMPTS",
+    message: `All ${attempts} email attempts failed for ${mailOption.to}: ${lastError.message}`,
   });
-  return { success: false, attempts, lastError: lastError.message };
+  // AppError with context for email retry failures
+  throw new AppError(
+    `Failed to send email after ${attempts} attempts: ${lastError.message}`,
+    500,
+    "SendEmailWithRetries",
+    "Email delivery failed"
+  );
 };
 
-// Get total earnings and status for a user
+// Gets total earnings and payment status for a user
 export const getUserEarnings = asyncHandler(async (req, res, next) => {
   try {
     const userId = req.user?._id;
-    console.log("Fetching user earnings", { userId });
-    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-      throw new AppError("Unauthorized or invalid user ID", 401);
-    }
 
+    // Validates user ID
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId))
+      throw new AppError("Unauthorized or invalid user ID", 401, "GetUserEarnings", "Invalid user ID");
+
+    // Fetches paid payments for user
     const payments = await PaymentModel.find({ userId, status: "paid" });
 
+    // Calculates earnings
     const subscriptionEarnings = payments
       .filter((p) => p.notes?.type === "subscription")
       .reduce((sum, p) => sum + p.amount * 0.8, 0); // 80% to user
@@ -89,16 +81,11 @@ export const getUserEarnings = asyncHandler(async (req, res, next) => {
 
     const totalEarnings = subscriptionEarnings + adsEarnings;
 
+    // Logs earnings view activity
     await recordActivity({
       userId: userId.toString(),
       action: "VIEWED_EARNINGS",
-      message: `User viewed earnings: ₹${totalEarnings / 100} (Subscription: ₹${
-        subscriptionEarnings / 100
-      }, Ads: ₹${adsEarnings / 100})`,
-    });
-    console.log("User earnings retrieved", {
-      userId,
-      totalEarnings: totalEarnings / 100,
+      message: `User viewed earnings: ₹${totalEarnings / 100} (Subscription: ₹${subscriptionEarnings / 100}, Ads: ₹${adsEarnings / 100})`,
     });
 
     res.status(200).json({
@@ -115,32 +102,32 @@ export const getUserEarnings = asyncHandler(async (req, res, next) => {
       })),
     });
   } catch (error) {
-    console.error("Error fetching user earnings", {
-      error: error.message,
-      stack: error.stack,
-    });
-    next(new AppError(error.message, error.statusCode || 500));
+    // AppError with context for fetching earnings
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "GetUserEarnings", "Failed to fetch user earnings")
+    );
   }
 });
 
-// Admin: Get all users' earnings
+// Admin: Gets all users' earnings
 export const getAllUsersEarnings = asyncHandler(async (req, res, next) => {
   try {
-    console.log("Fetching all users earnings", { adminId: req.user?._id });
-    if (!req.user?._id || req.user.role !== "admin") {
-      throw new AppError("Unauthorized: Admin access required", 403);
-    }
+    // Validates admin access
+    if (!req.user?._id || req.user.role !== "admin")
+      throw new AppError("Unauthorized: Admin access required", 403, "GetAllUsersEarnings", "Admin privileges required");
 
+    // Fetches all paid payments
     const payments = await PaymentModel.find({ status: "paid" })
       .populate("userId", "username email")
       .lean();
 
     const userEarnings = {};
     payments.forEach((p) => {
-      if (!p.userId || !p.userId._id) {
-        console.warn("Skipping payment with invalid userId:", p);
-        return;
-      }
+      // Skips invalid payments
+      if (!p.userId || !p.userId._id) return;
+
       const userId = p.userId._id.toString();
       if (!userEarnings[userId]) {
         userEarnings[userId] = {
@@ -174,77 +161,71 @@ export const getAllUsersEarnings = asyncHandler(async (req, res, next) => {
       userEarnings[userId].total += share;
     });
 
+    // Logs admin earnings view activity
     await recordActivity({
       userId: req.user?._id.toString(),
       action: "VIEWED_ALL_EARNINGS",
       message: "Admin viewed all users' earnings",
     });
-    console.log("All users earnings retrieved", { adminId: req.user._id });
 
     res.status(200).json(Object.values(userEarnings));
   } catch (error) {
-    console.error("Error fetching all users earnings", {
-      error: error.message,
-      stack: error.stack,
-    });
-    next(new AppError(error.message, error.statusCode || 500));
+    // AppError with context for fetching all earnings
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "GetAllUsersEarnings", "Failed to fetch all users' earnings")
+    );
   }
 });
 
-// Admin: Process bulk payouts
+// Admin: Processes bulk payouts
 export const processBulkPayouts = asyncHandler(async (req, res, next) => {
   let session;
   try {
-    console.log("Processing bulk payouts", {
-      adminId: req.user?._id,
-      users: req.body.users,
-    });
-    if (!req.user?._id || req.user.role !== "admin") {
-      throw new AppError("Unauthorized: Admin access required", 403);
-    }
+    // Validates admin access
+    if (!req.user?._id || req.user.role !== "admin")
+      throw new AppError("Unauthorized: Admin access required", 403, "ProcessBulkPayouts", "Admin privileges required");
 
     const { users, sendEmail } = req.body;
-    if (!users || !Array.isArray(users) || users.length === 0) {
-      throw new AppError("Invalid or empty users array", 400);
-    }
+    // Validates users array
+    if (!users || !Array.isArray(users) || users.length === 0)
+      throw new AppError("Invalid or empty users array", 400, "ProcessBulkPayouts", "Invalid users data");
 
     session = await mongoose.startSession();
     session.startTransaction();
 
     const payouts = [];
     const emailFailures = [];
-
     const shouldSendEmail = sendEmail === "true" || isAutoEmailDate();
 
     for (const userData of users) {
-      const { userId, orderId, amount, name, email, contact, bankAccount } =
-        userData;
-      if (!mongoose.Types.ObjectId.isValid(userId)) {
-        throw new AppError(`Invalid userId: ${userId}`, 400);
-      }
-      if (!orderId) {
-        throw new AppError(`Missing orderId for user ${userId}`, 400);
-      }
-      if (!amount || amount <= 0 || amount < 1 || amount > 10000) {
-        throw new AppError(`Invalid amount for user ${userId}: ${amount}`, 400);
-      }
+      const { userId, orderId, amount, name, email, contact, bankAccount } = userData;
 
+      // Validates user ID and order ID
+      if (!mongoose.Types.ObjectId.isValid(userId))
+        throw new AppError(`Invalid userId: ${userId}`, 400, "ProcessBulkPayouts", "Invalid user ID");
+      if (!orderId)
+        throw new AppError(`Missing orderId for user ${userId}`, 400, "ProcessBulkPayouts", "Missing order ID");
+
+      // Validates amount
+      if (!amount || amount <= 0 || amount < 1 || amount > 10000)
+        throw new AppError(`Invalid amount for user ${userId}: ${amount}`, 400, "ProcessBulkPayouts", "Invalid amount");
+
+      // Validates bank details
       const payment = await PaymentModel.findOne({
         userId,
         "payoutDetails.payoutMethod": { $exists: true },
       }).session(session);
+      if (!payment || !payment.payoutDetails || !payment.fundAccountId)
+        throw new AppError(`Bank details not found for user ${userId}`, 400, "ProcessBulkPayouts", "Missing bank details");
 
-      if (!payment || !payment.payoutDetails || !payment.fundAccountId) {
-        throw new AppError(`Bank details not found for user ${userId}`, 400);
-      }
+      // Validates user email
+      const user = await UserModel.findById(userId).select("name email").session(session);
+      if (!user?.email)
+        throw new AppError(`Email not found for user ${userId}`, 400, "ProcessBulkPayouts", "Missing user email");
 
-      const user = await UserModel.findById(userId)
-        .select("name email")
-        .session(session);
-      if (!user?.email) {
-        throw new AppError(`Email not found for user ${userId}`, 400);
-      }
-
+      // Creates payout record
       const payout = new PaymentModel({
         userId,
         orderId,
@@ -262,6 +243,7 @@ export const processBulkPayouts = asyncHandler(async (req, res, next) => {
       await payout.save({ session });
       payouts.push(payout);
 
+      // Prepares Razorpay payout
       const razorpayPayout = {
         account_number: process.env.RAZORPAYX_ACCOUNT_NO || "mock_account",
         fund_account_id: payment.fundAccountId,
@@ -278,13 +260,12 @@ export const processBulkPayouts = asyncHandler(async (req, res, next) => {
         process.env.NODE_ENV === "development" ||
         process.env.RAZORPAYX_ACCOUNT_NO === "your_virtual_account_number" ||
         !process.env.RAZORPAYX_ACCOUNT_NO;
+
+      // Processes payout via Razorpay or mocks in development
       if (!isRazorpayXMocked) {
-        if (
-          !process.env.RAZORPAYX_ACCOUNT_NO ||
-          process.env.RAZORPAYX_ACCOUNT_NO === "your_virtual_account_number"
-        ) {
-          throw new AppError("Invalid RAZORPAYX_ACCOUNT_NO configuration", 500);
-        }
+        if (!process.env.RAZORPAYX_ACCOUNT_NO || process.env.RAZORPAYX_ACCOUNT_NO === "your_virtual_account_number")
+          throw new AppError("Invalid RAZORPAYX_ACCOUNT_NO configuration", 500, "ProcessBulkPayouts", "Invalid payment configuration");
+
         payoutResponse = await axiosInstance.post("/payouts", razorpayPayout, {
           headers: { "X-Api-Type": "razorpayX" },
         });
@@ -297,12 +278,12 @@ export const processBulkPayouts = asyncHandler(async (req, res, next) => {
           { session }
         );
       } else {
-        console.warn("Mocking RazorpayX payout");
         payoutResponse = {
           data: { id: `mock_payout_${Date.now()}`, status: "queued" },
         };
       }
 
+      // Sends payout confirmation email if required
       if (shouldSendEmail) {
         const mailOption = createMailOption({
           to: user.email,
@@ -313,7 +294,7 @@ export const processBulkPayouts = asyncHandler(async (req, res, next) => {
           hasButton: false,
         });
         try {
-          await sendEmailWithRetries(mailOption, userId, "payout");
+          await sendEmailWithRetries(mailOption, userId);
           await recordActivity({
             userId: req.user?._id.toString(),
             action: "EMAIL_SENT",
@@ -333,13 +314,9 @@ export const processBulkPayouts = asyncHandler(async (req, res, next) => {
             message: `Failed to send payout email to ${user.email}: ${error.message}`,
           });
         }
-      } else {
-        console.log("Payout email not sent", {
-          reason: `sendEmail not true and not auto-email date (day ${new Date().getDate()})`,
-          sendEmail,
-        });
       }
 
+      // Logs payout creation activity
       await recordActivity({
         userId: req.user?._id.toString(),
         action: "CREATED_PAYOUT",
@@ -350,10 +327,6 @@ export const processBulkPayouts = asyncHandler(async (req, res, next) => {
 
     await session.commitTransaction();
     session.endSession();
-    console.log("Bulk payouts processed", {
-      count: payouts.length,
-      emailFailures,
-    });
 
     res.status(200).json({
       message: "Payouts created",
@@ -365,157 +338,135 @@ export const processBulkPayouts = asyncHandler(async (req, res, next) => {
       await session.abortTransaction();
       session.endSession();
     }
-    console.error("Error processing bulk payouts", {
-      error: error.message,
-      stack: error.stack,
-    });
-    next(new AppError(error.message, error.statusCode || 500));
+    // AppError with context for processing bulk payouts
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "ProcessBulkPayouts", "Failed to process bulk payouts")
+    );
   }
 });
 
-// Record new subscription payment
-export const recordSubscriptionPayment = asyncHandler(
-  async (req, res, next) => {
-    try {
-      const { userId, amount, orderId, paymentId, signature, sendEmail } =
-        req.body;
-      console.log("Recording subscription payment", {
-        userId,
-        orderId,
-        amount,
-        sendEmail,
-      });
-
-      if (!mongoose.Types.ObjectId.isValid(userId)) {
-        throw new AppError("Invalid userId", 400);
-      }
-      if (!amount || amount <= 0) {
-        throw new AppError("Invalid amount", 400);
-      }
-      if (!orderId || !paymentId || !signature) {
-        throw new AppError(
-          "Missing required fields: orderId, paymentId, or signature",
-          400
-        );
-      }
-      if (userId !== req.user?._id.toString()) {
-        throw new AppError("Unauthorized: User ID mismatch", 403);
-      }
-
-      const user = await UserModel.findById(userId).select("name email");
-      if (!user?.email) {
-        throw new AppError("User email not found", 400);
-      }
-
-      const payment = new PaymentModel({
-        userId,
-        orderId,
-        paymentId,
-        signature,
-        amount: amount * 100,
-        status: "paid",
-        notes: { type: "subscription" },
-        emailAttempts: 0,
-        emailStatus: "not_sent",
-      });
-
-      await payment.save();
-
-      if (sendEmail === "true" || isAutoEmailDate()) {
-        const mailOption = createMailOption({
-          to: user.email,
-          subject: "Subscription Payment Confirmation",
-          name: user.name || "User",
-          email: user.email,
-          message: `Your subscription payment of ₹${amount} has been successfully recorded.\nOrder ID: ${orderId}\nPayment ID: ${paymentId}\nThank you for your payment!`,
-          hasButton: false,
-        });
-        console.log("Preparing to send subscription payment email", {
-          mailOption,
-          autoEmail: isAutoEmailDate(),
-        });
-
-        const emailResult = await sendEmailWithRetries(mailOption);
-        await PaymentModel.findByIdAndUpdate(payment._id, {
-          emailAttempts: emailResult.attempts,
-          emailStatus: emailResult.success ? "sent" : "failed",
-          emailLastError: emailResult.success ? null : emailResult.lastError,
-        });
-
-        if (!emailResult.success) {
-          return res.status(200).json({
-            message:
-              "Subscription payment recorded, but email failed to send after 3 attempts",
-            payment,
-            emailError: {
-              userId,
-              email: user.email,
-              paymentId,
-              error: emailResult.lastError,
-              attempts: emailResult.attempts,
-            },
-          });
-        }
-      } else {
-        console.log("Subscription payment email not sent", {
-          reason: `sendEmail not true and not auto-email date (day ${new Date().getDate()})`,
-          sendEmail,
-        });
-      }
-
-      await recordActivity({
-        userId: req.user?._id.toString(),
-        action: "RECORDED_PAYMENT",
-        message: `Recorded subscription payment of ₹${amount} for user ${userId}`,
-        payment: { orderId, paymentId, amount },
-      });
-
-      res
-        .status(201)
-        .json({ message: "Subscription payment recorded", payment });
-    } catch (error) {
-      console.error("Error recording subscription payment", {
-        error: error.message,
-        stack: error.stack,
-      });
-      next(new AppError(error.message, error.statusCode || 500));
-    }
-  }
-);
-
-// Record new ads payment
-export const recordAdsPayment = asyncHandler(async (req, res, next) => {
+// Records a new subscription payment
+export const recordSubscriptionPayment = asyncHandler(async (req, res, next) => {
   try {
-    const { userId, amount, orderId, paymentId, signature, sendEmail } =
-      req.body;
-    console.log("Recording ads payment", {
+    const { userId, amount, orderId, paymentId, signature, sendEmail } = req.body;
+
+    // Validates user ID
+    if (!mongoose.Types.ObjectId.isValid(userId))
+      throw new AppError("Invalid userId", 400, "RecordSubscriptionPayment", "Invalid user ID");
+
+    // Validates amount
+    if (!amount || amount <= 0)
+      throw new AppError("Invalid amount", 400, "RecordSubscriptionPayment", "Invalid amount");
+
+    // Validates required fields
+    if (!orderId || !paymentId || !signature)
+      throw new AppError("Missing required fields: orderId, paymentId, or signature", 400, "RecordSubscriptionPayment", "Missing required fields");
+
+    // Validates user authorization
+    if (userId !== req.user?._id.toString())
+      throw new AppError("Unauthorized: User ID mismatch", 403, "RecordSubscriptionPayment", "User not authorized");
+
+    // Validates user email
+    const user = await UserModel.findById(userId).select("name email");
+    if (!user?.email)
+      throw new AppError("User email not found", 400, "RecordSubscriptionPayment", "Missing user email");
+
+    // Creates payment record
+    const payment = new PaymentModel({
       userId,
       orderId,
-      amount,
-      sendEmail,
+      paymentId,
+      signature,
+      amount: amount * 100,
+      status: "paid",
+      notes: { type: "subscription" },
+      emailAttempts: 0,
+      emailStatus: "not_sent",
     });
 
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      throw new AppError("Invalid userId", 400);
-    }
-    if (!amount || amount <= 0) {
-      throw new AppError("Invalid amount", 400);
-    }
-    if (!orderId || !paymentId || !signature) {
-      throw new AppError(
-        "Missing required fields: orderId, paymentId, or signature",
-        400
-      );
-    }
-    if (userId !== req.user?._id.toString()) {
-      throw new AppError("Unauthorized: User ID mismatch", 403);
+    await payment.save();
+
+    // Sends confirmation email if required
+    if (sendEmail === "true" || isAutoEmailDate()) {
+      const mailOption = createMailOption({
+        to: user.email,
+        subject: "Subscription Payment Confirmation",
+        name: user.name || "User",
+        email: user.email,
+        message: `Your subscription payment of ₹${amount} has been successfully recorded.\nOrder ID: ${orderId}\nPayment ID: ${paymentId}\nThank you for your payment!`,
+        hasButton: false,
+      });
+
+      const emailResult = await sendEmailWithRetries(mailOption, userId);
+      await PaymentModel.findByIdAndUpdate(payment._id, {
+        emailAttempts: emailResult.attempts,
+        emailStatus: emailResult.success ? "sent" : "failed",
+        emailLastError: emailResult.success ? null : emailResult.lastError,
+      });
+
+      if (!emailResult.success) {
+        return res.status(200).json({
+          message: "Subscription payment recorded, but email failed to send after 3 attempts",
+          payment,
+          emailError: {
+            userId,
+            email: user.email,
+            paymentId,
+            error: emailResult.lastError,
+            attempts: emailResult.attempts,
+          },
+        });
+      }
     }
 
+    // Logs payment activity
+    await recordActivity({
+      userId: req.user?._id.toString(),
+      action: "RECORDED_PAYMENT",
+      message: `Recorded subscription payment of ₹${amount} for user ${userId}`,
+      payment: { orderId, paymentId, amount },
+    });
+
+    res.status(201).json({ message: "Subscription payment recorded", payment });
+  } catch (error) {
+    // AppError with context for recording subscription payment
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "RecordSubscriptionPayment", "Failed to record subscription payment")
+    );
+  }
+});
+
+// Records a new ads payment
+export const recordAdsPayment = asyncHandler(async (req, res, next) => {
+  try {
+    const { userId, amount, orderId, paymentId, signature, sendEmail } = req.body;
+
+    // Validates user ID
+    if (!mongoose.Types.ObjectId.isValid(userId))
+      throw new AppError("Invalid userId", 400, "RecordAdsPayment", "Invalid user ID");
+
+    // Validates amount
+    if (!amount || amount <= 0)
+      throw new AppError("Invalid amount", 400, "RecordAdsPayment", "Invalid amount");
+
+    // Validates required fields
+    if (!orderId || !paymentId || !signature)
+      throw new AppError("Missing required fields: orderId, paymentId, or signature", 400, "RecordAdsPayment", "Missing required fields");
+
+    // Validates user authorization
+    if (userId !== req.user?._id.toString())
+      throw new AppError("Unauthorized: User ID mismatch", 403, "RecordAdsPayment", "User not authorized");
+
+    // Validates user email
     const user = await UserModel.findById(userId).select("name email");
-    if (!user?.email) {
-      throw new AppError("User email not found", 400);
-    }
+    if (!user?.email)
+      throw new AppError("User email not found", 400, "RecordAdsPayment", "Missing user email");
 
+    // Creates payment record
     const payment = new PaymentModel({
       userId,
       orderId,
@@ -530,6 +481,7 @@ export const recordAdsPayment = asyncHandler(async (req, res, next) => {
 
     await payment.save();
 
+    // Sends confirmation email if required
     if (sendEmail === "true" || isAutoEmailDate()) {
       const mailOption = createMailOption({
         to: user.email,
@@ -539,12 +491,8 @@ export const recordAdsPayment = asyncHandler(async (req, res, next) => {
         message: `Your ads payment of ₹${amount} has been successfully recorded.\nOrder ID: ${orderId}\nPayment ID: ${paymentId}\nThank you for your payment!`,
         hasButton: false,
       });
-      console.log("Preparing to send ads payment email", {
-        mailOption,
-        autoEmail: isAutoEmailDate(),
-      });
 
-      const emailResult = await sendEmailWithRetries(mailOption);
+      const emailResult = await sendEmailWithRetries(mailOption, userId);
       await PaymentModel.findByIdAndUpdate(payment._id, {
         emailAttempts: emailResult.attempts,
         emailStatus: emailResult.success ? "sent" : "failed",
@@ -553,8 +501,7 @@ export const recordAdsPayment = asyncHandler(async (req, res, next) => {
 
       if (!emailResult.success) {
         return res.status(200).json({
-          message:
-            "Ads payment recorded, but email failed to send after 3 attempts",
+          message: "Ads payment recorded, but email failed to send after 3 attempts",
           payment,
           emailError: {
             userId,
@@ -565,13 +512,9 @@ export const recordAdsPayment = asyncHandler(async (req, res, next) => {
           },
         });
       }
-    } else {
-      console.log("Ads payment email not sent", {
-        reason: `sendEmail not true and not auto-email date (day ${new Date().getDate()})`,
-        sendEmail,
-      });
     }
 
+    // Logs payment activity
     await recordActivity({
       userId: req.user?._id.toString(),
       action: "RECORDED_PAYMENT",
@@ -581,10 +524,11 @@ export const recordAdsPayment = asyncHandler(async (req, res, next) => {
 
     res.status(201).json({ message: "Ads payment recorded", payment });
   } catch (error) {
-    console.error("Error recording ads payment", {
-      error: error.message,
-      stack: error.stack,
-    });
-    next(new AppError(error.message, error.statusCode || 500));
+    // AppError with context for recording ads payment
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "RecordAdsPayment", "Failed to record ads payment")
+    );
   }
 });

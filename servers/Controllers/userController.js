@@ -8,12 +8,14 @@ import ActivityModel from "../Models/ActivityModel.js";
 import { io } from "../sockets/socket.js";
 import UserLocation from "../Models/UserLocation.js";
 
+// Saves user location with validation and emits updates
 export const saveUserLocation = async (req, res, next) => {
   try {
     const { coordinates, city, country } = req.body;
     const latitude = coordinates?.lat;
     const longitude = coordinates?.lon;
 
+    // Validates coordinates
     if (
       !latitude ||
       !longitude ||
@@ -22,16 +24,29 @@ export const saveUserLocation = async (req, res, next) => {
       isNaN(latitude) ||
       isNaN(longitude)
     ) {
-      throw new AppError("Invalid or missing coordinates", 400, "SaveUserLocation");
+      throw new AppError(
+        "Invalid or missing coordinates",
+        400,
+        "SaveUserLocation",
+        "Coordinates must be valid non-zero numbers"
+      );
+    }
+
+    // Validates user
+    const user = await UserModel.findById(req.user._id).select("followers");
+    if (!user) {
+      throw new AppError(
+        "User not found",
+        404,
+        "SaveUserLocation",
+        "Authenticated user does not exist"
+      );
     }
 
     const ip = req.geoLocation?.ip || req.ip || "";
-    const user = await UserModel.findById(req.user._id).select("followers");
-    if (!user) throw new AppError("User not found", 404, "SaveUserLocation");
-
     const geoData = UserLocation.resolveGeoLocation(longitude, latitude);
-    console.log("[saveUserLocation] GeoJSON resolution for coordinates [", longitude, ",", latitude, "]:", geoData);
 
+    // Prepares location data
     const locationData = {
       userId: req.user._id,
       coordinates: { type: "Point", coordinates: [longitude, latitude] },
@@ -43,15 +58,24 @@ export const saveUserLocation = async (req, res, next) => {
       timestamp: new Date(),
     };
 
+    // Replaces existing location for the user
     await UserLocation.deleteMany({ userId: req.user._id });
     const location = await UserLocation.create(locationData);
 
+    // Logs activity
     await recordActivity({
       userId: req.user._id,
       action: "SAVED_USER_LOCATION",
-      message: `Saved location at ${locationData.city}, ${locationData.country} (State: ${locationData.state}, Pincode: ${locationData.pincode}) from ${req.geoLocation ? `${req.geoLocation.city}, ${req.geoLocation.country}` : "unknown location"}`,
+      message: `Saved location at ${locationData.city}, ${
+        locationData.country
+      } (State: ${locationData.state}, Pincode: ${locationData.pincode}) from ${
+        req.geoLocation
+          ? `${req.geoLocation.city}, ${req.geoLocation.country}`
+          : "unknown location"
+      }`,
     });
 
+    // Emits location update to admin and followers
     const socketLocationData = {
       userId: req.user._id.toString(),
       coordinates: { lat: latitude, lon: longitude },
@@ -64,7 +88,10 @@ export const saveUserLocation = async (req, res, next) => {
 
     io.to("adminRoom").emit("userLocationUpdate", socketLocationData);
     user.followers.forEach((followerId) => {
-      io.to(followerId.toString()).emit("userLocationUpdate", socketLocationData);
+      io.to(followerId.toString()).emit(
+        "userLocationUpdate",
+        socketLocationData
+      );
     });
 
     res.status(201).json({
@@ -73,17 +100,28 @@ export const saveUserLocation = async (req, res, next) => {
       location: socketLocationData,
     });
   } catch (error) {
-    console.error("[saveUserLocation] Error:", error.message);
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "SaveUserLocation"));
+    // AppError with context for saving user location
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to save user location",
+            500,
+            "SaveUserLocation",
+            "Error in saveUserLocation"
+          )
+    );
   }
 };
 
+// Retrieves paginated user locations with user details
 export const getAllUserLocations = async (req, res, next) => {
   try {
     const { page = 1, limit = 12 } = req.query;
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
+    const pageNum = Math.max(parseInt(page), 1);
+    const limitNum = Math.max(parseInt(limit), 1);
 
+    // Aggregates latest locations per user
     const locations = await UserLocation.aggregate([
       {
         $lookup: {
@@ -135,26 +173,21 @@ export const getAllUserLocations = async (req, res, next) => {
       },
     ]);
 
+    // Counts total unique user locations
     const total = await UserLocation.aggregate([
-      {
-        $group: {
-          _id: "$userId",
-        },
-      },
-      {
-        $count: "total",
-      },
+      { $group: { _id: "$userId" } },
+      { $count: "total" },
     ]);
 
     const totalCount = total.length > 0 ? total[0].total : 0;
 
+    // Formats location data, handling invalid coordinates
     const validLocations = locations.map((loc) => {
       if (
         !loc.coordinates ||
         !Array.isArray(loc.coordinates.coordinates) ||
         loc.coordinates.coordinates.length < 2
       ) {
-        console.warn("[getAllUserLocations] No valid coordinates for userId:", loc.userId);
         return {
           userId: loc.userId.toString(),
           coordinates: null,
@@ -189,20 +222,45 @@ export const getAllUserLocations = async (req, res, next) => {
       totalPages: Math.ceil(totalCount / limitNum),
     });
   } catch (error) {
-    console.error("[getAllUserLocations] Error:", error.message);
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "GetAllUserLocations"));
+    // AppError with context for fetching user locations
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch user locations",
+            500,
+            "GetAllUserLocations",
+            "Error in getAllUserLocations"
+          )
+    );
   }
 };
 
+// Retrieves authenticated user's profile
 export const getProfile = async (req, res, next) => {
   try {
+    // Validates authentication
     if (!req.user?._id) {
-      throw new AppError("Unauthorized - No user found", 401, "GetProfile");
+      throw new AppError(
+        "Unauthorized - No user found",
+        401,
+        "GetProfile",
+        "User not authenticated"
+      );
     }
 
+    // Fetches user profile
     const profile = await UserModel.findById(req.user._id).select("-password");
-    if (!profile) throw new AppError("User not found", 404, "GetProfile");
+    if (!profile) {
+      throw new AppError(
+        "User not found",
+        404,
+        "GetProfile",
+        "Authenticated user does not exist"
+      );
+    }
 
+    // Logs activity
     await recordActivity({
       userId: req.user._id,
       action: "LOGGED_IN",
@@ -211,10 +269,21 @@ export const getProfile = async (req, res, next) => {
 
     res.status(200).json({ success: true, data: profile });
   } catch (error) {
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "GetProfile"));
+    // AppError with context for fetching profile
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch profile",
+            500,
+            "GetProfile",
+            "Error in getProfile"
+          )
+    );
   }
 };
 
+// Retrieves paginated list of all users
 export const getAllUser = async (req, res, next) => {
   try {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -224,6 +293,7 @@ export const getAllUser = async (req, res, next) => {
     const projection =
       "name email gender avatar banner bio profession location createdAt role blocked bookmarks following followers blockedUsers subscribedCategories subscribedAuthors subscribers hasSubscriptionPlan subscriptionPlan subscriptionDate";
 
+    // Fetches users and total count
     const [users, totalUsers] = await Promise.all([
       UserModel.find().select(projection).skip(skip).limit(limit).lean(),
       UserModel.countDocuments(),
@@ -237,19 +307,45 @@ export const getAllUser = async (req, res, next) => {
       currentPage: page,
     });
   } catch (error) {
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "getAllUsers"));
+    // AppError with context for fetching all users
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch users",
+            500,
+            "GetAllUser",
+            "Error in getAllUser"
+          )
+    );
   }
 };
 
+// Updates user profile with avatar and banner compression
 export const updateProfile = async (req, res, next) => {
   try {
+    // Validates authentication
     if (!req.user?._id) {
-      throw new AppError("Unauthorized - No user found", 401, "updateProfile");
+      throw new AppError(
+        "Unauthorized - No user found",
+        401,
+        "UpdateProfile",
+        "User not authenticated"
+      );
     }
 
+    // Fetches user
     const user = await UserModel.findById(req.user._id);
-    if (!user) throw new AppError("User not found", 404, "updateProfile");
+    if (!user) {
+      throw new AppError(
+        "User not found",
+        404,
+        "UpdateProfile",
+        "Authenticated user does not exist"
+      );
+    }
 
+    // Updates allowed fields
     const updatableFields = [
       "name",
       "bio",
@@ -268,18 +364,26 @@ export const updateProfile = async (req, res, next) => {
       }
     });
 
+    // Handles avatar and banner uploads with compression
     if (req.files) {
       if (req.files.avatar?.[0]) {
         try {
           const uploadedAvatar = await uploadToCloudinary({
             buffer: req.files.avatar[0].buffer,
             folder: "blog/users/avatar",
-            transformation: [{ width: 800, height: 800, crop: "limit", quality: 70 }],
+            transformation: [
+              { width: 800, height: 800, crop: "limit" },
+              { quality: "auto:good", fetch_format: "auto" }, // Compresses image while maintaining good quality
+            ],
           });
           user.avatar = uploadedAvatar.secure_url;
         } catch (err) {
-          console.error("Avatar upload error:", err);
-          throw new AppError("Failed to upload avatar", 500, "updateProfile");
+          throw new AppError(
+            "Failed to upload avatar",
+            500,
+            "UpdateProfile",
+            "Error uploading avatar to Cloudinary"
+          );
         }
       }
 
@@ -288,25 +392,34 @@ export const updateProfile = async (req, res, next) => {
           const uploadedBanner = await uploadToCloudinary({
             buffer: req.files.banner[0].buffer,
             folder: "blog/users/banner",
-            transformation: [{ width: 1200, height: 400, crop: "limit", quality: 70 }],
+            transformation: [
+              { width: 1200, height: 400, crop: "limit" },
+              { quality: "auto:good", fetch_format: "auto" }, // Compresses image while maintaining good quality
+            ],
           });
           user.banner = uploadedBanner.secure_url;
         } catch (err) {
-          console.error("Banner upload error:", err);
-          throw new AppError("Failed to upload banner", 500, "updateProfile");
+          throw new AppError(
+            "Failed to upload banner",
+            500,
+            "UpdateProfile",
+            "Error uploading banner to Cloudinary"
+          );
         }
       }
     }
 
     await user.save();
 
+    // Logs activity
     await recordActivity({
       userId: req.user._id,
       action: "UPDATED_PROFILE",
       message: "Updated their profile",
     });
 
-    io.to("adminRoom").emit("userProfileUpdate", {
+    // Emits profile update to admin and followers
+    const profileUpdateData = {
       _id: user._id,
       name: user.name,
       email: user.email,
@@ -318,22 +431,11 @@ export const updateProfile = async (req, res, next) => {
       profession: user.profession,
       role: user.role,
       blocked: user.blocked,
-    });
+    };
 
+    io.to("adminRoom").emit("userProfileUpdate", profileUpdateData);
     user.followers.forEach((followerId) => {
-      io.to(followerId.toString()).emit("userProfileUpdate", {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        banner: user.banner,
-        bio: user.bio,
-        gender: user.gender,
-        location: user.location,
-        profession: user.profession,
-        role: user.role,
-        blocked: user.blocked,
-      });
+      io.to(followerId.toString()).emit("userProfileUpdate", profileUpdateData);
     });
 
     res.status(200).json({
@@ -362,50 +464,103 @@ export const updateProfile = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error("Update profile error:", error);
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "updateProfile"));
+    // AppError with context for updating profile
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to update profile",
+            500,
+            "UpdateProfile",
+            "Error in updateProfile"
+          )
+    );
   }
 };
 
+// Deletes authenticated user's account
 export const deleteUser = async (req, res, next) => {
   try {
     const userId = req.user?._id;
-    if (!userId) throw new AppError("Unauthorized", 401, "deleteUser");
+    if (!userId) {
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "DeleteUser",
+        "User not authenticated"
+      );
+    }
 
+    // Deletes user
     const deleted = await UserModel.findByIdAndDelete(userId);
-    if (!deleted) throw new AppError("User not found", 404, "deleteUser");
+    if (!deleted) {
+      throw new AppError(
+        "User not found",
+        404,
+        "DeleteUser",
+        "Authenticated user does not exist"
+      );
+    }
 
+    // Logs activity
     await recordActivity({
       userId,
       action: "DELETED_ACCOUNT",
       message: "Deleted their account",
     });
 
+    // Emits deletion event to admin
     io.to("adminRoom").emit("userDeleted", { userId });
 
-    res.status(200).json({ success: true, message: "User deleted successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "User deleted successfully" });
   } catch (error) {
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "deleteUser"));
+    // AppError with context for deleting user
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to delete user",
+            500,
+            "DeleteUser",
+            "Error in deleteUser"
+          )
+    );
   }
 };
 
+// Retrieves a single user by ID
 export const getSingleUserById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
+    // Validates user ID
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw new AppError("Invalid user ID", 400, "getSingleUserById");
+      throw new AppError(
+        "Invalid user ID",
+        400,
+        "GetSingleUserById",
+        "Invalid MongoDB ObjectId"
+      );
     }
 
+    // Fetches user
     const user = await UserModel.findById(id)
       .select("-password -googleId")
       .populate("subscribedAuthors", "name email avatar")
       .lean();
 
     if (!user) {
-      throw new AppError("User not found", 404, "getSingleUserById");
+      throw new AppError(
+        "User not found",
+        404,
+        "GetSingleUserById",
+        "User does not exist"
+      );
     }
 
+    // Logs activity for authenticated users
     if (req.user && req.user._id) {
       await recordActivity({
         userId: req.user._id,
@@ -416,31 +571,54 @@ export const getSingleUserById = async (req, res, next) => {
 
     res.status(200).json({ success: true, data: user });
   } catch (error) {
-    console.error("[getSingleUserById] Error:", error.message);
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "getSingleUserById"));
+    // AppError with context for fetching single user
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch user",
+            500,
+            "GetSingleUserById",
+            "Error in getSingleUserById"
+          )
+    );
   }
 };
 
+// Retrieves user activity history
 export const getUserActivity = async (req, res, next) => {
   try {
     const userId = req.params.id;
 
+    // Validates user ID
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      throw new AppError("Invalid user ID", 400, "getUserActivity");
+      throw new AppError(
+        "Invalid user ID",
+        400,
+        "GetUserActivity",
+        "Invalid MongoDB ObjectId"
+      );
     }
 
+    // Fetches user
     const user = await UserModel.findById(userId).select("name").lean();
-
     if (!user) {
-      throw new AppError("User not found", 404, "getUserActivity");
+      throw new AppError(
+        "User not found",
+        404,
+        "GetUserActivity",
+        "User does not exist"
+      );
     }
 
+    // Fetches activity history
     const activityList = await ActivityModel.find({ user: userId })
       .sort({ createdAt: -1 })
       .populate("targetPost", "title slug")
       .populate("targetComment", "text")
       .lean();
 
+    // Logs activity for authenticated users
     if (req.user && req.user._id) {
       const targetUserName = user.name || userId;
       await recordActivity({
@@ -455,14 +633,26 @@ export const getUserActivity = async (req, res, next) => {
       activity: activityList,
     });
   } catch (error) {
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "getUserActivity"));
+    // AppError with context for fetching user activity
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch user activity",
+            500,
+            "GetUserActivity",
+            "Error in getUserActivity"
+          )
+    );
   }
 };
 
+// Clears activity history for the authenticated user
 export const clearUserActivity = async (req, res, next) => {
   try {
     const userId = req.user._id;
 
+    // Deletes user activity
     await ActivityModel.deleteMany({ user: userId });
 
     res.status(200).json({
@@ -470,15 +660,27 @@ export const clearUserActivity = async (req, res, next) => {
       message: "Activity history cleared",
     });
   } catch (error) {
-    next(new AppError(error.message, 500, "clearUserActivity"));
+    // AppError with context for clearing user activity
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to clear user activity",
+            500,
+            "ClearUserActivity",
+            "Error in clearUserActivity"
+          )
+    );
   }
 };
 
+// Clears old activity records older than one day
 export const clearOldActivity = async (req, res, next) => {
   try {
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
+    // Deletes old activity records
     const result = await ActivityModel.deleteMany({
       createdAt: { $lt: oneDayAgo },
     });
@@ -492,13 +694,71 @@ export const clearOldActivity = async (req, res, next) => {
       });
     }
   } catch (error) {
-    console.error("Error clearing old activity:", error.message);
+    // AppError with context for clearing old activity
     if (next) {
-      next(new AppError(error.message, 500, "clearOldActivity"));
+      next(
+        error instanceof AppError
+          ? error
+          : new AppError(
+              error.message || "Failed to clear old activity",
+              500,
+              "ClearOldActivity",
+              "Error in clearOldActivity"
+            )
+      );
     }
   }
 };
 
+// Saves user cookie consent
+export const saveUserCookieConsent = async (req, res, next) => {
+  try {
+    const { consent } = req.body;
+    const userId = req.user?._id;
+
+    // Validates consent value
+    if (typeof consent !== "boolean") {
+      throw new AppError(
+        "Invalid consent value",
+        400,
+        "SaveUserCookieConsent",
+        "Consent must be a boolean"
+      );
+    }
+
+    // Updates user consent in database if authenticated
+    if (userId) {
+      await UserModel.findByIdAndUpdate(userId, { cookieConsent: consent });
+    }
+
+    // Sets consent cookie
+    res.cookie("user_cookie_consent", String(consent), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Consent ${consent ? "accepted" : "declined"}`,
+    });
+  } catch (error) {
+    // AppError with context for saving cookie consent
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to save cookie consent",
+            500,
+            "SaveUserCookieConsent",
+            "Error in saveUserCookieConsent"
+          )
+    );
+  }
+};
+
+// Schedules daily cleanup of old activity records
 cron.schedule("0 0 * * *", clearOldActivity, {
   scheduled: true,
   timezone: "Asia/Kolkata",

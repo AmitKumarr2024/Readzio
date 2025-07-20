@@ -1,4 +1,3 @@
-// controllers/categoryController.js
 import CategoryModel from "../Models/category.js";
 import PostModel from "../Models/Post.js";
 import UserModel from "../Models/User.js";
@@ -23,7 +22,7 @@ const predefinedCategories = [
   },
 ];
 
-// Seed predefined categories
+// Seeds predefined categories if they don't exist
 export const seedCategories = async (req, res, next) => {
   try {
     for (const cat of predefinedCategories) {
@@ -36,217 +35,262 @@ export const seedCategories = async (req, res, next) => {
       .status(200)
       .json({ success: true, message: "Predefined categories seeded" });
   } catch (error) {
-    next(new AppError(error.message, 500, "seedCategories Controller"));
+    // AppError with context for seeding issues
+    next(
+      new AppError(
+        error.message,
+        500,
+        "SeedCategories",
+        "Failed to seed categories"
+      )
+    );
   }
 };
 
-// Get all categories (for admin or category management)
+// Retrieves all categories, sorted by name
 export const getAllCategories = async (req, res, next) => {
   try {
     const categories = await CategoryModel.find().sort("name");
     res.status(200).json({ success: true, categories });
   } catch (error) {
-    next(new AppError(error.message, 500, "getAllCategories Controller"));
+    // AppError with context for fetching categories
+    next(
+      new AppError(
+        error.message,
+        500,
+        "GetAllCategories",
+        "Failed to fetch categories"
+      )
+    );
   }
 };
 
-// Get categories assigned to the logged-in user
+// Gets categories assigned to the logged-in user
 export const getUserSelectedCategories = async (req, res, next) => {
   try {
     const userId = req.user._id; // From auth middleware
+    // Validates user existence
     const user = await UserModel.findById(userId).populate({
       path: "categories",
       strictPopulate: false,
     });
-    if (!user) {
+    if (!user)
       throw new AppError(
         "User not found",
         404,
-        "getUserSelectedCategories Controller"
+        "GetUserSelectedCategories",
+        "User does not exist"
       );
-    }
+
     res.status(200).json({ success: true, categories: user.categories });
   } catch (error) {
+    // AppError with context for fetching user categories
     next(
       error instanceof AppError
         ? error
         : new AppError(
             error.message,
             500,
-            "getUserSelectedCategories Controller"
+            "GetUserSelectedCategories",
+            "Failed to fetch user categories"
           )
     );
   }
 };
 
-// Create new category
+// Creates a new category
 export const createCategory = async (req, res, next) => {
   try {
     const { name, slug, description } = req.body;
-
-    if (!name || !slug) {
+    // Validates required fields
+    if (!name || !slug)
       throw new AppError(
         "Name and slug are required",
         400,
-        "createCategory Controller"
+        "CreateCategory",
+        "Missing required fields"
       );
-    }
 
-    const existing = await CategoryModel.findOne({ $or: [{ name }, { slug }] }); // Fixed syntax error
-    if (existing) {
+    // Checks for existing category by name or slug
+    const existing = await CategoryModel.findOne({ $or: [{ name }, { slug }] });
+    if (existing)
       throw new AppError(
         "Category with this name or slug already exists",
         400,
-        "createCategory Controller"
+        "CreateCategory",
+        "Category already exists"
       );
-    }
 
     const newCategory = new CategoryModel({
       name,
       slug,
       description,
-      createdBy: req.user._id, // Track user who created the category
+      createdBy: req.user._id,
     });
     await newCategory.save();
 
     res.status(201).json({ success: true, category: newCategory });
   } catch (error) {
+    // AppError with context for creating category
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "createCategory Controller")
+        : new AppError(
+            error.message,
+            500,
+            "CreateCategory",
+            "Failed to create category"
+          )
     );
   }
 };
 
-// Update category by ID
+// Updates an existing category by ID
 export const updateCategory = async (req, res, next) => {
   try {
     const { categoryId } = req.params;
     const updates = req.body;
 
-    // console.log("Update Payload:", updates); 
-
+    // Updates category with validation
     const updatedCategory = await CategoryModel.findByIdAndUpdate(
       categoryId,
       updates,
       { new: true, runValidators: true }
     );
 
-    if (!updatedCategory) {
+    // Checks if category exists
+    if (!updatedCategory)
       throw new AppError(
         "Category not found",
         404,
-        "updateCategory Controller"
+        "UpdateCategory",
+        "Category does not exist"
       );
-    }
 
     res.status(200).json({ success: true, category: updatedCategory });
   } catch (error) {
-    console.error("Update error:", error);
+    // AppError with context for updating category
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "updateCategory Controller")
+        : new AppError(
+            error.message,
+            500,
+            "UpdateCategory",
+            "Failed to update category"
+          )
     );
   }
 };
 
-// Delete category by ID
+// Deletes a category by ID
 export const deleteCategory = async (req, res, next) => {
   try {
     const { categoryId } = req.params;
 
-    // Check if category is assigned to any users
+    // Checks if category is assigned to any users
     const usersWithCategory = await UserModel.find({ categories: categoryId });
-    if (usersWithCategory.length > 0) {
+    if (usersWithCategory.length > 0)
       throw new AppError(
         "Cannot delete category as it is assigned to one or more users",
         400,
-        "deleteCategory Controller"
+        "DeleteCategory",
+        "Category is in use"
       );
-    }
 
+    // Deletes category
     const deleted = await CategoryModel.findByIdAndDelete(categoryId);
-
-    if (!deleted) {
+    if (!deleted)
       throw new AppError(
         "Category not found",
         404,
-        "deleteCategory Controller"
+        "DeleteCategory",
+        "Category does not exist"
       );
-    }
 
     res
       .status(200)
       .json({ success: true, message: "Category deleted successfully" });
   } catch (error) {
+    // AppError with context for deleting category
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "deleteCategory Controller")
+        : new AppError(
+            error.message,
+            500,
+            "DeleteCategory",
+            "Failed to delete category"
+          )
     );
   }
 };
 
-// controllers/categoryController.js (relevant part)
-// controllers/categoryController.js (assignCategoriesToUser)
+// Assigns categories to a user, including creating new ones
 export const assignCategoriesToUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { categoryIds, newCategories } = req.body;
+
+    // Validates user existence
     const user = await UserModel.findById(userId);
-    if (!user) {
+    if (!user)
       throw new AppError(
         "User not found",
         404,
-        "assignCategoriesToUser Controller"
+        "AssignCategoriesToUser",
+        "User does not exist"
       );
-    }
-    if (
-      !categoryIds ||
-      !Array.isArray(categoryIds) ||
-      categoryIds.length === 0
-    ) {
+
+    // Validates category IDs
+    if (!categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0)
       throw new AppError(
         "At least one category ID is required",
         400,
-        "assignCategoriesToUser Controller"
+        "AssignCategoriesToUser",
+        "Missing or invalid category IDs"
       );
-    }
+
+    // Validates existing category IDs
     const validCategories = await CategoryModel.find({
       _id: { $in: categoryIds },
     });
-    if (validCategories.length !== categoryIds.length) {
+    if (validCategories.length !== categoryIds.length)
       throw new AppError(
         "One or more category IDs are invalid",
         400,
-        "assignCategoriesToUser Controller"
+        "AssignCategoriesToUser",
+        "Invalid category IDs"
       );
-    }
+
+    // Processes new categories if provided
     if (
       newCategories &&
       Array.isArray(newCategories) &&
       newCategories.length > 0
     ) {
       for (const { name, slug, description } of newCategories) {
-        if (!name || !slug) {
+        // Validates required fields for new categories
+        if (!name || !slug)
           throw new AppError(
             "Name and slug are required for new categories",
             400,
-            "assignCategoriesToUser Controller"
+            "AssignCategoriesToUser",
+            "Missing required fields for new category"
           );
-        }
+
+        // Checks for existing category by name or slug
         const existing = await CategoryModel.findOne({
           $or: [{ name }, { slug }],
         });
-        if (existing) {
+        if (existing)
           throw new AppError(
             "New category with this name or slug already exists",
             400,
-            "assignCategoriesToUser Controller"
+            "AssignCategoriesToUser",
+            "Category already exists"
           );
-        }
+
         const newCategory = new CategoryModel({
           name,
           slug,
@@ -257,36 +301,56 @@ export const assignCategoriesToUser = async (req, res, next) => {
         categoryIds.push(newCategory._id);
       }
     }
+
+    // Assigns unique category IDs to user
     user.categories = [...new Set(categoryIds)];
     await user.save();
+
     const updatedUser = await UserModel.findById(userId).populate("categories");
     res.status(200).json({ success: true, categories: updatedUser.categories });
   } catch (error) {
+    // AppError with context for assigning categories
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "assignCategoriesToUser Controller")
+        : new AppError(
+            error.message,
+            500,
+            "AssignCategoriesToUser",
+            "Failed to assign categories"
+          )
     );
   }
 };
 
-
+// Checks availability of a slug for posts or categories
 export const checkSlugAvailability = async (req, res, next) => {
   try {
     const { slug, type } = req.query;
 
-    if (!slug || !type) {
-      throw new AppError("Slug and type are required", 400, "checkSlugAvailability");
-    }
+    // Validates required query parameters
+    if (!slug || !type)
+      throw new AppError(
+        "Slug and type are required",
+        400,
+        "CheckSlugAvailability",
+        "Missing required fields"
+      );
 
     let existing;
 
+    // Checks slug based on type
     if (type === "post") {
       existing = await PostModel.findOne({ slug });
     } else if (type === "category") {
       existing = await CategoryModel.findOne({ slug });
     } else {
-      throw new AppError("Invalid type. Must be 'post' or 'category'", 400, "checkSlugAvailability");
+      throw new AppError(
+        "Invalid type. Must be 'post' or 'category'",
+        400,
+        "CheckSlugAvailability",
+        "Invalid type parameter"
+      );
     }
 
     res.status(200).json({
@@ -295,10 +359,16 @@ export const checkSlugAvailability = async (req, res, next) => {
       message: !existing ? "Slug is available" : "Slug is already taken",
     });
   } catch (error) {
+    // AppError with context for slug availability check
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "checkSlugAvailability")
+        : new AppError(
+            error.message,
+            500,
+            "CheckSlugAvailability",
+            "Failed to check slug availability"
+          )
     );
   }
 };

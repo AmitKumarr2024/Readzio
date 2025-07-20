@@ -1,36 +1,44 @@
-// Models/PaymentModel.js
 import mongoose from "mongoose";
 
+// Defines schema for payment transactions
 const paymentSchema = new mongoose.Schema(
   {
+    // Optional user associated with the payment
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    // Unique order ID
     orderId: {
       type: String,
       required: true,
       unique: true,
     },
+    // Optional payment ID from payment gateway
     paymentId: {
       type: String,
     },
+    // Optional payment signature
     signature: {
       type: String,
     },
+    // Type of payment (impression or click)
     type: {
       type: String,
       enum: ["impression", "click"],
       default: "impression",
     },
+    // Payment amount
     amount: {
       type: Number,
       required: true,
     },
+    // Currency code
     currency: {
       type: String,
       default: "INR",
     },
+    // Payment status
     status: {
       type: String,
       enum: [
@@ -47,29 +55,37 @@ const paymentSchema = new mongoose.Schema(
       ],
       default: "created",
     },
+    // Optional receipt identifier
     receipt: {
       type: String,
     },
+    // Flexible notes field
     notes: {
       type: mongoose.Schema.Types.Mixed,
     },
+    // Optional payout ID
     payoutId: {
       type: String,
     },
+    // Optional contact ID
     contactId: {
       type: String,
       trim: true,
     },
+    // Optional fund account ID
     fundAccountId: {
       type: String,
       trim: true,
     },
+    // Payout method and details
     payoutDetails: {
+      // Payment method (bank, card, upi)
       payoutMethod: {
         type: String,
         enum: ["bank", "card", "upi"],
-        required: false, // Make optional
+        required: false,
       },
+      // Bank payment details
       bank: {
         bankName: { type: String, trim: true },
         branch: { type: String, trim: true },
@@ -89,6 +105,7 @@ const paymentSchema = new mongoose.Schema(
           address: { type: String, trim: true },
         },
       },
+      // Card payment details
       card: {
         cardHolderName: { type: String, trim: true },
         cardNumberLast4: {
@@ -113,6 +130,7 @@ const paymentSchema = new mongoose.Schema(
         contact: { type: String, trim: true },
         email: { type: String, trim: true },
       },
+      // UPI payment details
       upi: {
         upiId: {
           type: String,
@@ -124,20 +142,23 @@ const paymentSchema = new mongoose.Schema(
         email: { type: String, trim: true },
       },
     },
+    // Timestamp of payment creation
     createdAt: {
       type: Date,
       default: Date.now,
     },
   },
   {
-    timestamps: true,
+    timestamps: true, // Adds createdAt and updatedAt
   }
 );
 
-paymentSchema.index({ userId: 1, status: 1 });
-paymentSchema.index({ paymentId: 1 });
-paymentSchema.index({ payoutId: 1 });
-paymentSchema.index({ "payoutDetails.payoutMethod": 1 });
+// Indexes for efficient querying
+paymentSchema.index({ userId: 1, status: 1 }); // For user payment status queries
+paymentSchema.index({ paymentId: 1 }); // For payment lookup
+paymentSchema.index({ payoutId: 1 }); // For payout lookup
+paymentSchema.index({ "payoutDetails.payoutMethod": 1 }); // For payout method queries
 
+// Creates and exports the Payment model
 const PaymentModel = mongoose.model("Payment", paymentSchema);
 export default PaymentModel;

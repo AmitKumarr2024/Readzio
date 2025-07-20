@@ -1,13 +1,22 @@
 import mongoose from "mongoose";
 
+// Defines schema for tracking email sending attempts
 const EmailLogSchema = new mongoose.Schema(
   {
+    // Optional user associated with the email
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: false,
     },
-    email: { type: String, required: true, lowercase: true, trim: true },
+    // Recipient email address
+    email: { 
+      type: String, 
+      required: true, 
+      lowercase: true, 
+      trim: true 
+    },
+    // Type of email sent
     type: {
       type: String,
       required: true,
@@ -17,32 +26,54 @@ const EmailLogSchema = new mongoose.Schema(
         "subscription",
         "contact_reply",
         "report",
-        "daily_digest", // ✅ New type added
+        "daily_digest",
       ],
     },
+    // Current status of the email
     emailStatus: {
       type: String,
       enum: ["not_sent", "sent", "failed", "pending"],
       default: "not_sent",
     },
-    emailAttempts: { type: Number, default: 0 },
+    // Number of send attempts
+    emailAttempts: { 
+      type: Number, 
+      default: 0 
+    },
+    // Last error message if send failed
     emailLastError: String,
-    stopEmailAttempts: { type: Boolean, default: false },
-
-    // ✅ New fields for digest-specific tracking
-    postSlugs: [{ type: String }], // Which posts were sent in the email
-    sentAt: { type: Date, default: null }, // When it was sent
-
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now },
+    // Flag to stop further send attempts
+    stopEmailAttempts: { 
+      type: Boolean, 
+      default: false 
+    },
+    // Slugs of posts included in daily digest
+    postSlugs: [{ 
+      type: String 
+    }],
+    // Timestamp of successful send
+    sentAt: { 
+      type: Date, 
+      default: null 
+    },
+    // Creation and update timestamps
+    createdAt: { 
+      type: Date, 
+      default: Date.now 
+    },
+    updatedAt: { 
+      type: Date, 
+      default: Date.now 
+    },
   },
-  { timestamps: true }
+  { timestamps: true } // Automatically updates createdAt and updatedAt
 );
 
-// Indexes for efficient queries
-EmailLogSchema.index({ email: 1, type: 1 });
-EmailLogSchema.index({ type: 1 });
-EmailLogSchema.index({ emailStatus: 1, stopEmailAttempts: 1 });
-EmailLogSchema.index({ sentAt: -1 });
+// Indexes for efficient querying
+EmailLogSchema.index({ email: 1, type: 1 }); // For email-type specific queries
+EmailLogSchema.index({ type: 1 }); // For type-based queries
+EmailLogSchema.index({ emailStatus: 1, stopEmailAttempts: 1 }); // For status-based queries
+EmailLogSchema.index({ sentAt: -1 }); // For sorting by send time
 
+// Creates and exports the EmailLog model
 export default mongoose.model("EmailLog", EmailLogSchema);

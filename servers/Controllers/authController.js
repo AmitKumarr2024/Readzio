@@ -15,6 +15,8 @@ import UserModel from "../Models/User.js";
 
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 const log = process.env.NODE_ENV === "production" ? () => {} : console.log;
+
+// Checks if today matches the configured auto-email date
 const isAutoEmailDate = () => {
   const today = new Date();
   const autoEmailDate = parseInt(AUTO_EMAIL_DATE || "1", 10);
@@ -22,6 +24,8 @@ const isAutoEmailDate = () => {
 };
 
 const emailQueue = [];
+
+// Processes email queue with retry logic
 const processEmailQueue = async () => {
   while (emailQueue.length) {
     const { mailOption, userId } = emailQueue.shift();
@@ -34,6 +38,7 @@ const processEmailQueue = async () => {
   }
 };
 
+// Sends email with retry logic, uses AppError for failure
 const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
   let attempts = 0;
   let lastError = null;
@@ -68,32 +73,44 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
     action: "EMAIL_FAILED_ALL_ATTEMPTS",
     message: `All ${attempts} email attempts failed for ${mailOption.to}: ${lastError.message}`,
   });
+  // Uses AppError to provide context and user message for email failures
   throw new AppError(
     `Failed to send email after ${attempts} attempts: ${lastError.message}`,
     500,
-    "SendEmailWithRetries"
+    "SendEmailWithRetries",
+    "Email delivery failed"
   );
 };
 
-// Send OTP for email verification
+// Sends OTP for email verification
 export const sendVerifyOtp = async (req, res, next) => {
   try {
     const { userId } = req.body;
+    // Validates userId presence
     if (!userId)
       throw new AppError(
         "User ID is required",
         400,
-        "SendVerifyOtp Controller"
+        "SendVerifyOtp",
+        "User ID missing"
       );
 
     const user = await UserModel.findById(userId);
+    // Checks if user exists
     if (!user)
-      throw new AppError("User not found", 404, "SendVerifyOtp Controller");
+      throw new AppError(
+        "User not found",
+        404,
+        "SendVerifyOtp",
+        "User does not exist"
+      );
+    // Checks if account is already verified
     if (user.isAccountVerified)
       throw new AppError(
         "Account is already verified",
         400,
-        "SendVerifyOtp Controller"
+        "SendVerifyOtp",
+        "Account already verified"
       );
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));
@@ -109,7 +126,7 @@ export const sendVerifyOtp = async (req, res, next) => {
       message: "Please use the following OTP to verify your email address.",
       otp,
       supportEmail: SENDER_EMAIL,
-      isResetOtp: false, // Added for unified template
+      isResetOtp: false,
     });
 
     const emailResult = await sendEmailWithRetries(mailOption, user._id);
@@ -121,32 +138,48 @@ export const sendVerifyOtp = async (req, res, next) => {
       .status(201)
       .json({ success: true, message: "Verification OTP sent to your email" });
   } catch (error) {
+    // AppError with context for OTP sending issues
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "SendVerifyOtp Controller")
+        : new AppError(
+            error.message,
+            500,
+            "SendVerifyOtp",
+            "Failed to send verification OTP"
+          )
     );
   }
 };
 
-// Verify email with OTP
+// Verifies email with OTP
 export const verifyEmail = async (req, res, next) => {
   try {
     const { userId, otp } = req.body;
+    // Validates required fields
     if (!userId || !otp)
       throw new AppError(
         "User ID and OTP are required",
         400,
-        "VerifyEmail Controller"
+        "VerifyEmail",
+        "Missing required fields"
       );
 
     const user = await UserModel.findById(userId);
+    // Checks if user exists
     if (!user)
-      throw new AppError("User not found", 404, "VerifyEmail Controller");
+      throw new AppError(
+        "User not found",
+        404,
+        "VerifyEmail",
+        "User does not exist"
+      );
+    // Validates OTP
     if (user.verifyOtp !== otp)
-      throw new AppError("Invalid OTP", 401, "VerifyEmail Controller");
+      throw new AppError("Invalid OTP", 401, "VerifyEmail", "OTP is incorrect");
+    // Checks OTP expiration
     if (user.verifyOtpExpireAt < Date.now())
-      throw new AppError("OTP expired", 401, "VerifyEmail Controller");
+      throw new AppError("OTP expired", 401, "VerifyEmail", "OTP has expired");
 
     user.isAccountVerified = true;
     user.verifyOtp = "";
@@ -165,27 +198,42 @@ export const verifyEmail = async (req, res, next) => {
       .status(201)
       .json({ success: true, message: "Email verified successfully" });
   } catch (error) {
+    // AppError with context for email verification issues
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "VerifyEmail Controller")
+        : new AppError(
+            error.message,
+            500,
+            "VerifyEmail",
+            "Failed to verify email"
+          )
     );
   }
 };
 
+// Resets account verification status
 export const resetAccountVerification = async (req, res, next) => {
   try {
     const { userId } = req.body;
+    // Validates userId presence
     if (!userId)
       throw new AppError(
         "User ID is required",
         400,
-        "ResetAccountVerification"
+        "ResetAccountVerification",
+        "User ID missing"
       );
 
     const user = await UserModel.findById(userId);
+    // Checks if user exists
     if (!user)
-      throw new AppError("User not found", 404, "ResetAccountVerification");
+      throw new AppError(
+        "User not found",
+        404,
+        "ResetAccountVerification",
+        "User does not exist"
+      );
 
     user.isAccountVerified = false;
     user.verifyOtp = "";
@@ -196,27 +244,45 @@ export const resetAccountVerification = async (req, res, next) => {
       .status(200)
       .json({ success: true, message: "Account verification reset" });
   } catch (error) {
+    // AppError with context for verification reset
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "ResetAccountVerification")
+        : new AppError(
+            error.message,
+            500,
+            "ResetAccountVerification",
+            "Failed to reset account verification"
+          )
     );
   }
 };
 
-// Send OTP for password reset
+// Sends OTP for password reset
 export const sendResetOtp = async (req, res, next) => {
   try {
     const { email } = req.body;
+    // Validates email presence
     if (!email)
-      throw new AppError("Email is required", 400, "SendResetOtp Controller");
+      throw new AppError(
+        "Email is required",
+        400,
+        "SendResetOtp",
+        "Email missing"
+      );
 
     const user = await UserModel.findOne({ email });
+    // Checks if user exists
     if (!user)
-      throw new AppError("User not found", 404, "SendResetOtp Controller");
+      throw new AppError(
+        "User not found",
+        404,
+        "SendResetOtp",
+        "User does not exist"
+      );
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));
-    console.log("Generated OTP:", otp); // Debug OTP
+    log("Generated OTP:", otp);
     user.resetOtp = otp;
     user.resetOtpExpireAt = Date.now() + 15 * 60 * 1000; // 15 minutes
     await user.save();
@@ -232,85 +298,135 @@ export const sendResetOtp = async (req, res, next) => {
       isResetOtp: true,
     });
 
-    console.log("Mail Option:", mailOption); // Debug mailOption
+    log("Mail Option:", mailOption);
     const emailResult = await sendEmailWithRetries(mailOption, user._id);
     user.emailAttempts = emailResult.attempts;
     user.emailStatus = "sent";
     await user.save();
 
-    res.status(201).json({
-      success: true,
-      message: "Password reset OTP sent to your email",
-    });
+    res
+      .status(201)
+      .json({
+        success: true,
+        message: "Password reset OTP sent to your email",
+      });
   } catch (error) {
+    // AppError with context for password reset OTP issues
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "SendResetOtp Controller")
+        : new AppError(
+            error.message,
+            500,
+            "SendResetOtp",
+            "Failed to send password reset OTP"
+          )
     );
   }
 };
 
-// authController.js (add to existing file)
+// Verifies password reset OTP
 export const verifyResetOtp = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
-    if (!email || !otp) {
+    // Validates required fields
+    if (!email || !otp)
       throw new AppError(
         "Email and OTP are required",
         400,
-        "VerifyResetOtp Controller"
+        "VerifyResetOtp",
+        "Missing required fields"
       );
-    }
+
     const user = await UserModel.findOne({ email });
-    if (!user) {
-      throw new AppError("User not found", 404, "VerifyResetOtp Controller");
-    }
-    if (user.resetOtp !== otp) {
-      throw new AppError("Invalid OTP", 401, "VerifyResetOtp Controller");
-    }
-    if (user.resetOtpExpireAt < Date.now()) {
-      throw new AppError("OTP expired", 401, "VerifyResetOtp Controller");
-    }
+    // Checks if user exists
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "VerifyResetOtp",
+        "User does not exist"
+      );
+    // Validates OTP
+    if (user.resetOtp !== otp)
+      throw new AppError(
+        "Invalid OTP",
+        401,
+        "VerifyResetOtp",
+        "OTP is incorrect"
+      );
+    // Checks OTP expiration
+    if (user.resetOtpExpireAt < Date.now())
+      throw new AppError(
+        "OTP expired",
+        401,
+        "VerifyResetOtp",
+        "OTP has expired"
+      );
+
     res
       .status(200)
       .json({ success: true, message: "OTP verified successfully" });
   } catch (error) {
+    // AppError with context for OTP verification
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "VerifyResetOtp Controller")
+        : new AppError(
+            error.message,
+            500,
+            "VerifyResetOtp",
+            "Failed to verify OTP"
+          )
     );
   }
 };
 
-// Reset password with OTP
-
+// Resets password using OTP
 export const resetPassword = async (req, res, next) => {
   try {
     const { email, otp, newPassword } = req.body;
-    if (!email || !otp || !newPassword) {
+    // Validates required fields
+    if (!email || !otp || !newPassword)
       throw new AppError(
         "Email, OTP, and new password are required",
         400,
-        "ResetPassword Controller"
+        "ResetPassword",
+        "Missing required fields"
       );
-    }
+
     const user = await UserModel.findOne({ email });
-    if (!user) {
-      throw new AppError("User not found", 404, "ResetPassword Controller");
-    }
-    if (user.resetOtp !== otp) {
-      throw new AppError("Invalid OTP", 401, "ResetPassword Controller");
-    }
-    if (user.resetOtpExpireAt < Date.now()) {
-      throw new AppError("OTP expired", 401, "ResetPassword Controller");
-    }
+    // Checks if user exists
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "ResetPassword",
+        "User does not exist"
+      );
+    // Validates OTP
+    if (user.resetOtp !== otp)
+      throw new AppError(
+        "Invalid OTP",
+        401,
+        "ResetPassword",
+        "OTP is incorrect"
+      );
+    // Checks OTP expiration
+    if (user.resetOtpExpireAt < Date.now())
+      throw new AppError(
+        "OTP expired",
+        401,
+        "ResetPassword",
+        "OTP has expired"
+      );
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
     user.resetOtp = "";
     user.resetOtpExpireAt = 0;
     await user.save();
+
     await recordActivity({
       userId: user._id,
       action: "PASSWORD_RESET",
@@ -318,41 +434,59 @@ export const resetPassword = async (req, res, next) => {
         user.location || "unknown location"
       }`,
     });
+
     res
       .status(201)
       .json({ success: true, message: "Password reset successfully" });
   } catch (error) {
+    // AppError with context for password reset
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "ResetPassword Controller")
+        : new AppError(
+            error.message,
+            500,
+            "ResetPassword",
+            "Failed to reset password"
+          )
     );
   }
 };
 
-// Signup controller
+// Handles user signup
 export const Signup = async (req, res, next) => {
   const { fullName, email, password, sendEmail } = req.body;
   const geoLocation = req.geoLocation;
 
   try {
-    if (!fullName || !email || !password) {
-      throw new AppError("All fields are required", 400, "Signup Controller");
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw new AppError("Invalid email format", 400, "Signup Controller");
-    }
+    // Validates required fields
+    if (!fullName || !email || !password)
+      throw new AppError(
+        "All fields are required",
+        400,
+        "Signup",
+        "Missing required fields"
+      );
+    // Validates email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      throw new AppError(
+        "Invalid email format",
+        400,
+        "Signup",
+        "Invalid email format"
+      );
 
     const existingUser = await UserModel.findOne({ email });
-    if (existingUser) {
+    // Checks for existing user or Google account conflict
+    if (existingUser)
       throw new AppError(
         existingUser.authProvider === "google"
           ? "Email registered with Google. Use Google login."
           : "User with this email already exists",
         400,
-        "Signup Controller"
+        "Signup",
+        "Email already exists"
       );
-    }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -400,7 +534,7 @@ export const Signup = async (req, res, next) => {
         }. We're excited to have you on board.`,
         hasButton: true,
         buttonText: "Get Started",
-        buttonUrl: "https://localhost:5173/get-started", // Replace with your actual URL
+        buttonUrl: "https://localhost:5173/get-started",
       });
       try {
         const emailResult = await sendEmailWithRetries(mailOption, newUser._id);
@@ -443,37 +577,49 @@ export const Signup = async (req, res, next) => {
       token,
     });
   } catch (error) {
+    // AppError with context for signup issues
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "Signup Controller")
+        : new AppError(error.message, 500, "Signup", "Failed to register user")
     );
   }
 };
 
-// Login controller
+// Handles user login
 export const Login = async (req, res, next) => {
   const { email, password } = req.body;
   const geoLocation = req.geoLocation;
 
   try {
-    if (!email || !password) {
+    // Validates required fields
+    if (!email || !password)
       throw new AppError(
         "Email and password are required",
         400,
-        "Login Controller"
+        "Login",
+        "Missing required fields"
       );
-    }
 
-    const user = await UserModel.findOne({ email });
-    if (!user) {
-      throw new AppError("User not found", 400, "Login Controller");
-    }
+    const user = await UserModel.findOne({ email }).select("+password");
+    // Checks if user exists
+    if (!user)
+      throw new AppError(
+        "User not found",
+        400,
+        "Login",
+        "Invalid email or password"
+      );
 
     const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      throw new AppError("Invalid credentials", 400, "Login Controller");
-    }
+    // Validates password
+    if (!isMatch)
+      throw new AppError(
+        "Invalid credentials",
+        400,
+        "Login",
+        "Incorrect password"
+      );
 
     if (geoLocation) {
       user.location = `${geoLocation.city}, ${geoLocation.country}`;
@@ -507,15 +653,16 @@ export const Login = async (req, res, next) => {
       token,
     });
   } catch (error) {
+    // AppError with context for login issues
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "Login Controller")
+        : new AppError(error.message, 500, "Login", "Failed to log in")
     );
   }
 };
 
-// Logout controller
+// Handles user logout
 export const Logout = async (req, res, next) => {
   const geoLocation = req.geoLocation;
 
@@ -539,31 +686,38 @@ export const Logout = async (req, res, next) => {
     });
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
+    // AppError with context for logout issues
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "Logout Controller")
+        : new AppError(error.message, 500, "Logout", "Failed to log out")
     );
   }
 };
 
-// CheckAuth controller
+// Checks user authentication status
 export const checkAuth = async (req, res, next) => {
   const geoLocation = req.geoLocation;
 
   try {
-    if (!req.user?._id) {
+    // Validates user presence
+    if (!req.user?._id)
       throw new AppError(
         "Unauthorized - No user found",
         401,
-        "CheckAuth Controller"
+        "CheckAuth",
+        "User not authenticated"
       );
-    }
 
     const token = req.cookies.jwt;
-    if (!token) {
-      throw new AppError("No token found", 401, "CheckAuth Controller");
-    }
+    // Checks for token
+    if (!token)
+      throw new AppError(
+        "No token found",
+        401,
+        "CheckAuth",
+        "Authentication token missing"
+      );
 
     await recordActivity({
       userId: req.user._id,
@@ -585,27 +739,34 @@ export const checkAuth = async (req, res, next) => {
       isAccountVerified: req.user.isAccountVerified,
     });
   } catch (error) {
+    // AppError with context for auth check issues
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "CheckAuth Controller")
+        : new AppError(
+            error.message,
+            500,
+            "CheckAuth",
+            "Failed to check authentication"
+          )
     );
   }
 };
 
-// Google Login controller
+// Handles Google login
 export const googleLogin = async (req, res, next) => {
   const { token, sendEmail } = req.body;
   const geoLocation = req.geoLocation;
 
   try {
-    if (!token) {
+    // Validates Google token
+    if (!token)
       throw new AppError(
         "Google token is required",
         400,
-        "Google Login Controller"
+        "GoogleLogin",
+        "Google token missing"
       );
-    }
 
     const ticket = await client.verifyIdToken({
       idToken: token,
@@ -613,25 +774,27 @@ export const googleLogin = async (req, res, next) => {
     });
 
     const { sub: googleId, email, name, picture } = ticket.getPayload();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    // Validates email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw new AppError(
         "Invalid email from Google",
         400,
-        "Google Login Controller"
+        "GoogleLogin",
+        "Invalid Google email"
       );
-    }
 
     let user = await UserModel.findOne({ $or: [{ googleId }, { email }] });
     let isNewUser = false;
 
+    // Checks for existing user or local account conflict
     if (user) {
-      if (user.authProvider === "local") {
+      if (user.authProvider === "local")
         throw new AppError(
           "Email registered with password-based account. Use password login.",
           400,
-          "Google Login Controller"
+          "GoogleLogin",
+          "Email conflict with local account"
         );
-      }
     } else {
       user = new UserModel({
         name: name || "Unnamed Author",
@@ -678,7 +841,7 @@ export const googleLogin = async (req, res, next) => {
         }. We're excited to have you on board.`,
         hasButton: true,
         buttonText: "Get Started",
-        buttonUrl: "https://localhost:5173/get-started", // Replace with your actual URL
+        buttonUrl: "https://localhost:5173/get-started",
       });
 
       try {
@@ -728,33 +891,45 @@ export const googleLogin = async (req, res, next) => {
       token: jwtToken,
     });
   } catch (error) {
+    // AppError with context for Google login issues
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "Google Login Controller")
+        : new AppError(
+            error.message,
+            500,
+            "GoogleLogin",
+            "Failed to process Google login"
+          )
     );
   }
 };
 
-// Check Email Status controller
+// Checks email status for a user
 export const checkEmailStatus = async (req, res, next) => {
   const { email } = req.query;
 
   try {
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    // Validates email format
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw new AppError(
         "Valid email is required",
         400,
-        "CheckEmailStatus Controller"
+        "CheckEmailStatus",
+        "Invalid email format"
       );
-    }
 
     const user = await UserModel.findOne({ email }).select(
       "emailStatus emailAttempts emailLastError stopEmailAttempts name location"
     );
-    if (!user) {
-      throw new AppError("User not found", 404, "CheckEmailStatus Controller");
-    }
+    // Checks if user exists
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "CheckEmailStatus",
+        "User does not exist"
+      );
 
     await recordActivity({
       userId: user._id,
@@ -772,20 +947,32 @@ export const checkEmailStatus = async (req, res, next) => {
       location: user.location,
     });
   } catch (error) {
+    // AppError with context for email status check
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "CheckEmailStatus Controller")
+        : new AppError(
+            error.message,
+            500,
+            "CheckEmailStatus",
+            "Failed to retrieve email status"
+          )
     );
   }
 };
 
-// Get All Email Statuses controller
+// Fetches email statuses for all users (admin only)
 export const getAllEmailStatuses = async (req, res, next) => {
   try {
-    if (req.user.role !== "admin") {
-      throw new AppError("Admin access required", 403, "GetAllEmailStatuses");
-    }
+    // Validates admin access
+    if (req.user.role !== "admin")
+      throw new AppError(
+        "Admin access required",
+        403,
+        "GetAllEmailStatuses",
+        "Admin privileges required"
+      );
+
     const { page = 1, limit = 10 } = req.query;
     const users = await UserModel.find()
       .select(
@@ -794,12 +981,19 @@ export const getAllEmailStatuses = async (req, res, next) => {
       .skip((page - 1) * limit)
       .limit(Number(limit));
     const total = await UserModel.countDocuments();
+
     res.status(200).json({ users, total, page, limit });
   } catch (error) {
+    // AppError with context for fetching all email statuses
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "GetAllEmailStatuses")
+        : new AppError(
+            error.message,
+            500,
+            "GetAllEmailStatuses",
+            "Failed to fetch email statuses"
+          )
     );
   }
 };

@@ -2,6 +2,7 @@ import EmailLog from "../Models/EmailLog.js";
 import { AppError } from "../utils/AppError.js";
 import validator from "validator";
 
+// Valid email types for validation
 const VALID_EMAIL_TYPES = [
   "signup",
   "payout",
@@ -10,19 +11,25 @@ const VALID_EMAIL_TYPES = [
   "report",
 ];
 
+// Checks email status for a specific email and type
 export const checkEmailStatus = async (req, res, next) => {
-  const { email, type } = req.query;
   try {
+    const { email, type } = req.query;
+
+    // Validates email format
     if (!email || !validator.isEmail(email))
-      throw new AppError("Valid email required", 400);
+      throw new AppError("Valid email required", 400, "CheckEmailStatus", "Invalid email format");
+
+    // Validates email type
     if (!type || !VALID_EMAIL_TYPES.includes(type))
       throw new AppError(
         `Invalid email type. Must be one of: ${VALID_EMAIL_TYPES.join(", ")}`,
-        400
+        400,
+        "CheckEmailStatus",
+        "Invalid email type"
       );
-    console.log(
-      `[checkEmailStatus] Querying EmailLog for email: ${email}, type: ${type}`
-    );
+
+    // Queries email log
     const log = await EmailLog.findOne({
       email: { $regex: `^${email}$`, $options: "i" },
       type,
@@ -30,10 +37,8 @@ export const checkEmailStatus = async (req, res, next) => {
       "emailStatus emailAttempts emailLastError stopEmailAttempts createdAt"
     );
 
+    // Returns default status if no log found
     if (!log) {
-      console.log(
-        `[checkEmailStatus] No log found for email: ${email}, type: ${type}`
-      );
       return res.status(200).json({
         email,
         type,
@@ -43,61 +48,85 @@ export const checkEmailStatus = async (req, res, next) => {
         stopEmailAttempts: false,
       });
     }
+
     res.status(200).json({ email, type, ...log.toObject() });
   } catch (error) {
-    console.error(`[checkEmailStatus] Error: ${error.message}`);
+    // AppError with context for checking email status
     next(
-      new AppError(error.message, error.statusCode || 500, "CheckEmailStatus")
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "CheckEmailStatus", "Failed to check email status")
     );
   }
 };
 
+// Retrieves all email statuses, optionally filtered by type
 export const getAllEmailStatuses = async (req, res, next) => {
   try {
+    // Validates admin access
     if (req.user.role !== "admin")
-      throw new AppError("Admin access required", 403);
+      throw new AppError("Admin access required", 403, "GetAllEmailStatuses", "Admin privileges required");
+
     const { page = 1, limit = 10, type } = req.query;
+
+    // Validates email type if provided
     if (type && !VALID_EMAIL_TYPES.includes(type))
       throw new AppError(
         `Invalid email type. Must be one of: ${VALID_EMAIL_TYPES.join(", ")}`,
-        400
+        400,
+        "GetAllEmailStatuses",
+        "Invalid email type"
       );
+
     const query = type ? { type } : {};
-    console.log(
-      `[getAllEmailStatuses] Query: ${JSON.stringify(
-        query
-      )}, page: ${page}, limit: ${limit}`
-    );
+
+    // Fetches email logs with pagination
     const logs = await EmailLog.find(query)
       .select(
         "email type emailStatus emailAttempts emailLastError stopEmailAttempts createdAt"
       )
-
       .skip((page - 1) * limit)
       .limit(Number(limit));
+
     const total = await EmailLog.countDocuments(query);
+
     res.status(200).json({ logs, total, page, limit });
   } catch (error) {
-    console.error(`[getAllEmailStatuses] Error: ${error.message}`);
-    next(new AppError(error.message, 500, "GetAllEmailStatuses"));
+    // AppError with context for fetching all email statuses
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "GetAllEmailStatuses", "Failed to fetch email statuses")
+    );
   }
 };
 
+// Retries sending failed emails
 export const retryFailedEmails = async (req, res, next) => {
   try {
+    // Validates admin access
     if (req.user.role !== "admin")
-      throw new AppError("Admin access required", 403);
+      throw new AppError("Admin access required", 403, "RetryFailedEmails", "Admin privileges required");
+
     const { type } = req.body;
+
+    // Validates email type if provided
     if (type && !VALID_EMAIL_TYPES.includes(type))
       throw new AppError(
         `Invalid email type. Must be one of: ${VALID_EMAIL_TYPES.join(", ")}`,
-        400
+        400,
+        "RetryFailedEmails",
+        "Invalid email type"
       );
+
     const query = { emailStatus: "failed", stopEmailAttempts: true };
     if (type) query.type = type;
-    console.log(`[retryFailedEmails] Query: ${JSON.stringify(query)}`);
+
+    // Fetches failed email logs
     const failedLogs = await EmailLog.find(query);
     const results = [];
+
+    // Retries sending each failed email
     for (const log of failedLogs) {
       try {
         const mailOption = createMailOption({
@@ -106,11 +135,13 @@ export const retryFailedEmails = async (req, res, next) => {
           message: `Retrying email for ${log.type}.`,
           hasButton: false,
         });
+
         const emailResult = await sendEmailWithRetries(
           mailOption,
           log.userId,
           log.type
         );
+
         results.push({
           email: log.email,
           type: log.type,
@@ -126,9 +157,14 @@ export const retryFailedEmails = async (req, res, next) => {
         });
       }
     }
+
     res.status(200).json({ results });
   } catch (error) {
-    console.error(`[retryFailedEmails] Error: ${error.message}`);
-    next(new AppError(error.message, 500, "RetryFailedEmails"));
+    // AppError with context for retrying failed emails
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "RetryFailedEmails", "Failed to retry failed emails")
+    );
   }
 };

@@ -1,28 +1,81 @@
 import mongoose from "mongoose";
 
-const userSubscriptionSchema = new mongoose.Schema({
-  userId: {
+// Defines schema for user-created subscription plans
+const planSchema = new mongoose.Schema({
+  // Plan name
+  name: {
+    type: String,
+    required: true,
+  },
+  // Plan price
+  price: {
+    type: Number,
+    required: true,
+  },
+  // Plan duration in days
+  durationDays: {
+    type: Number,
+    required: true,
+  },
+  // Plan type
+  type: {
+    type: String,
+    enum: ["basic", "silver", "gold", "platinum", "custom"],
+    required: true,
+  },
+  // Plan billing tier
+  tier: {
+    type: String,
+    enum: ["monthly", "quarterly", "yearly"],
+    default: "monthly",
+  },
+  // Plan status
+  status: {
+    type: String,
+    enum: ["active", "pending", "not_confirmed", "suspended", "deleted"],
+    default: "not_confirmed",
+  },
+  // Plan author
+  author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
   },
-  planId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "SubscriptionPlan",
-    required: true,
-  },
-  paymentId: { type: String, required: true },
-  expiryDate: { type: Date, required: true },
-  status: {
+  // Posts included in the plan
+  postIds: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+    },
+  ],
+  // Plan description
+  description: {
     type: String,
-    enum: ["active", "cancelled", "refunded"],
-    default: "active",
+    default: "",
   },
-  createdAt: { type: Date, default: Date.now },
+  // Timestamp of deletion
+  deletedAt: {
+    type: Date,
+    default: null,
+  },
+  // Timestamp of creation
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  // Timestamp of last update
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
-const UserSubscriptionModel = mongoose.model(
-  "UserSubscription",
-  userSubscriptionSchema
-);
-export default UserSubscriptionModel;
+// Updates updatedAt before saving
+planSchema.pre("save", function (next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+// Creates and exports the UserSubscriptionPlan model
+const UserSubscriptionPlan = mongoose.model("UserSubscriptionPlan", planSchema);
+export default UserSubscriptionPlan;

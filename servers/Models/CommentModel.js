@@ -1,72 +1,77 @@
 import mongoose from "mongoose";
 
+// Defines schema for post comments
 const commentSchema = new mongoose.Schema(
   {
-    // 🔗 Post the comment belongs to
+    // References the post the comment belongs to
     post: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
       required: true,
-      index: true, // 🔍 for faster lookups
+      index: true, // Optimizes post comment queries
     },
-
-    // 👤 Author of the comment
+    // References the comment author
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true, // 🔍 helpful for user comment history
+      index: true, // Optimizes user comment history queries
     },
-
-    // 📝 Main comment content
+    // Comment content
     content: {
       type: String,
       required: true,
       trim: true,
       minlength: 1,
     },
-
-    // 🧵 Parent comment for replies (null if top-level)
+    // References parent comment for replies (null for top-level)
     parent: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Comment",
       default: null,
-      index: true, // 🔍 optimize threaded replies
+      index: true, // Optimizes threaded reply queries
     },
-
-    // 💬 Number of direct replies (for pagination/perf)
+    // Tracks number of direct replies
     repliesCount: {
       type: Number,
       default: 0,
     },
-
-    // 😍 Reactions: like, heart, laugh, etc.
+    // Stores reactions (e.g., like, heart) with user IDs
     reactions: {
       type: Map,
       of: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
       default: () => ({}),
     },
-
-    // 🛡️ Soft delete/moderation flags
-    deleted: { type: Boolean, default: false },
-    edited: { type: Boolean, default: false },
-
-    // 🛑 Optional: for moderation tools
-    isFlagged: { type: Boolean, default: false },
+    // Soft delete flag
+    deleted: { 
+      type: Boolean, 
+      default: false 
+    },
+    // Indicates if comment was edited
+    edited: { 
+      type: Boolean, 
+      default: false 
+    },
+    // Moderation flag for reported comments
+    isFlagged: { 
+      type: Boolean, 
+      default: false 
+    },
   },
-  { timestamps: true }
+  { timestamps: true } // Adds createdAt and updatedAt
 );
 
-// 🧵 Virtual replies (not stored directly, but populated)
+// Defines virtual field for comment replies
 commentSchema.virtual("replies", {
   ref: "Comment",
   localField: "_id",
   foreignField: "parent",
 });
 
-// 🌐 Enable virtuals in JSON responses
+// Enables virtuals in JSON and object output
 commentSchema.set("toObject", { virtuals: true });
 commentSchema.set("toJSON", { virtuals: true });
 
+// Creates and exports the Comment model
 const CommentModel = mongoose.models.Comment || mongoose.model("Comment", commentSchema);
 export default CommentModel;

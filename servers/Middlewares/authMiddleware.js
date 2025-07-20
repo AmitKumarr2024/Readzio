@@ -3,80 +3,77 @@ import { JWT_SECRET } from "../config/dotenv.js";
 import UserModel from "../Models/User.js";
 import { AppError } from "../utils/AppError.js";
 
+// Authenticates requests by verifying JWT and attaching user data
 export const protectedRoute = async (req, res, next) => {
   try {
+    // Bypasses auth for public routes
     if (
       req.path.startsWith("/public") ||
       req.path.match(/^\/comments\/[^/]+\/count$/)
     ) {
-      console.log(
-        "[ProtectedRoute] Bypassing auth for public route:",
-        req.path
-      );
       return next();
     }
 
+    // Retrieves token from header or cookie
     let token;
     const authHeader = req.headers.authorization;
-
     if (authHeader && authHeader.startsWith("Bearer ")) {
       token = authHeader.split(" ")[1];
     } else {
       token = req.cookies?.jwt;
     }
 
-    console.log("[ProtectedRoute] Cookie check:", {
-      jwt: token ? "present" : "missing",
-    });
-
+    // Validates token presence
     if (!token) {
-      return next(
-        new AppError(
-          "Unauthorized - No token provided",
-          401,
-          "ProtectedRoute Middleware"
-        )
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "ProtectedRoute",
+        "No JWT token provided in header or cookie"
       );
     }
 
+    // Verifies token
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log("[ProtectedRoute] Token decoded:", {
-      userId: decoded.userId,
-      role: decoded.role,
-    });
-
     if (!decoded || !decoded.userId) {
-      return next(
-        new AppError(
-          "Unauthorized - Invalid token: missing userId",
-          401,
-          "ProtectedRoute Middleware"
-        )
+      throw new AppError(
+        "Unauthorized",
+        401,
+        "ProtectedRoute",
+        "Invalid or expired JWT token"
       );
     }
 
+    // Fetches user from database
     const user = await UserModel.findById(decoded.userId)
       .select("-password")
       .maxTimeMS(15000);
     if (!user) {
-      return next(
-        new AppError("User not found", 404, "ProtectedRoute Middleware")
+      throw new AppError(
+        "Not found",
+        404,
+        "ProtectedRoute",
+        "User associated with token does not exist"
       );
     }
 
-    req.user = user;
+    // Attaches user data to request
+    req.user = {
+      ...user.toObject(),
+      isAdmin: user.role === "admin",
+    };
+
     next();
   } catch (error) {
-    console.error("[ProtectedRoute] Error:", error.message, {
-      token: token?.slice(0, 10) + "...",
-    });
-    return next(
+    // AppError with context for protected route
+    next(
       error instanceof AppError
         ? error
         : new AppError(
-            error.message || "Internal Server Error",
+            error.message || "Failed to authenticate request",
             500,
-            "ProtectedRoute Middleware"
+            "ProtectedRoute",
+            "Error in protectedRoute middleware"
           )
     );
   }
