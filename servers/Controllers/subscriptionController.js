@@ -7,7 +7,7 @@ import PaymentModel from "../Models/PaymentModel.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import crypto from "crypto";
 import { RAZORPAY_KEY_SECRET } from "../config/dotenv.js";
-import axiosInstance from "../utils/axiosInstance.js";
+import axiosInstance from "../Utils/axiosInstance.js";
 import mongoose from "mongoose";
 import transporter from "../config/nodeMailer.js";
 import { createNotification } from "../../servers/Utils/createNotification.js";

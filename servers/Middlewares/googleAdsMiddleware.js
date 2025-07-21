@@ -1,4 +1,4 @@
-import axiosInstance from "../utils/axiosInstance.js";
+import axiosInstance from "../Utils/axiosInstance.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 
 // Validates Google Ads data for earnings

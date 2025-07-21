@@ -6,7 +6,7 @@ import PaymentModel from "../Models/PaymentModel.js";
 import { SENDER_EMAIL } from "../config/dotenv.js";
 import transporter from "../config/nodeMailer.js";
 import createMailOption from "../helpers/emailHelper.js";
-import axiosInstance from "../utils/axiosInstance.js";
+import axiosInstance from "../Utils/axiosInstance.js";
 import UserModel from "../../servers/Models/User.js";
 
 // Checks if today matches the auto-email date
