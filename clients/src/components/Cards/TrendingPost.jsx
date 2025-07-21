@@ -18,7 +18,9 @@ const TrendingPosts = () => {
 
   return (
     <div className="w-full bg-white dark:bg-gray-800 rounded-lg p-4">
-      
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 border-b border-gray-300 dark:border-gray-600 pb-2">
+        Trending Posts
+      </h2>
 
       {loading && (
         <div className="flex justify-center py-4">

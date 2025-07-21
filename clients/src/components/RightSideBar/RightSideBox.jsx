@@ -3,6 +3,7 @@ import { X, TrendingUp, UserCircle, Megaphone } from "lucide-react";
 import TrendingPosts from "../Cards/TrendingPost";
 import UserCardWrapper from "../Cards/usercard/UserCardWrapper";
 import Footer from "../Footer";
+import GoogleAd from "../../Ads/GoogleAd";
 
 const RightSideBox = ({ user, posts, toggleSidebar }) => {
   const featuredAuthorId = posts && posts.length > 0 ? posts[0].author?._id : null;
@@ -41,14 +42,12 @@ const RightSideBox = ({ user, posts, toggleSidebar }) => {
         <TrendingPosts />
       </section>
 
-      <section className="bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900 dark:to-yellow-800 rounded-xl p-4 text-center shadow-sm border border-yellow-300 dark:border-yellow-600">
-        <div className="flex justify-center items-center gap-2 text-yellow-800 dark:text-yellow-200 font-semibold text-sm mb-2">
+      <section className="bg-background-light dark:bg-background-dark rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-800">
+        <div className="flex justify-center items-center gap-2 text-gray-800 dark:text-gray-200 font-semibold text-sm mb-2">
           <Megaphone className="w-4 h-4" />
-          Sponsored
+          Advertisement
         </div>
-        <div className="h-24 bg-yellow-300/30 dark:bg-yellow-700/30 rounded-md flex items-center justify-center">
-          <span className="text-xs text-yellow-900 dark:text-yellow-100 font-medium">Promote Your Brand</span>
-        </div>
+        <GoogleAd adSlot="YOUR_AD_SLOT_ID" adFormat="auto" className="w-full" />
       </section>
 
       <div className="mt-auto pt-6 border-t border-gray-200 dark:border-gray-800">
