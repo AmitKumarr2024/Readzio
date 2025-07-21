@@ -5,7 +5,7 @@ import { fetchSuggestedPosts } from "../../store/suggestedPostsSlice";
 import GoogleAd from "../../Ads/GoogleAd"; 
 import toast from "react-hot-toast";
 import TimeAgo from "../../Utils/TimeAgo";
-import Skeleton from "../Ui/Skeleton";
+import Skeleton from "../ui/Skeleton";
 
 const SuggestedPosts = () => {
   const dispatch = useDispatch();

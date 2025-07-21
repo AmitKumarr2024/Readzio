@@ -1,4 +1,4 @@
-import Skeleton from "../Ui/Skeleton";
+import Skeleton from "../ui/Skeleton";
 import UserAvatar from "./UserAvatar";
 
 export default function UserInfoCard({ user, loading }) {
