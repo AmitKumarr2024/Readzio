@@ -11,8 +11,7 @@ export function useSocketConnectionStatus() {
   useEffect(() => {
     const handleOffline = () => toast.error("Offline. Check your connection.");
     const handleOnline = () => {
-      toast.success("Back to online. Refreshing...");
-      setTimeout(() => window.location.reload(), 2000);
+      toast.success("Back to online.");
     };
 
     window.addEventListener("offline", handleOffline);
