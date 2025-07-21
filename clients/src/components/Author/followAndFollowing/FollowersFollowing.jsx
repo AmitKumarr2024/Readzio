@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, memo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchFollowers, fetchFollowing } from "../../../store/followSlice";
 import ToggleFollowButton from "../Subscribe/ToggleFollowButton";
-import Skeleton from "../../UI/Skeleton";
+import Skeleton from "../../ui/Skeleton";
 import { motion } from "framer-motion";
 
 const UserCardSkeleton = () => (

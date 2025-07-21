@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AspectRatio } from "@radix-ui/react-aspect-ratio";
-import Skeleton from "../Ui/Skeleton";
+import Skeleton from "../ui/Skeleton";
 
 export default function UserCoverImage({ src, alt, loading }) {
   const [loaded, setLoaded] = useState(false);

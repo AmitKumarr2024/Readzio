@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import UserAvatar from "./UserAvatar";
 import UserCoverImage from "./UserCoverImage";
-import Skeleton from "../Ui/Skeleton";
+import Skeleton from "../ui/Skeleton";
 import {
   FiMail,
   FiMapPin,
