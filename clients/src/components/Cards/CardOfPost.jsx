@@ -5,7 +5,7 @@ import { MessageCircle, Eye, Heart, Bookmark, Share2 } from "lucide-react";
 import TimeAgo from "../../Utils/TimeAgo";
 import { fetchSubscriptionPlansByAuthor } from "../../store/subscriptionSlice";
 import { formatReadingTime } from "../../Utils/formatReadingTime";
-import Skeleton from "@/components/ui/Skeleton"; 
+import Skeleton from "@/components/Ui/Skeleton"; 
 
 const CardOfPost = ({
   _id: id,

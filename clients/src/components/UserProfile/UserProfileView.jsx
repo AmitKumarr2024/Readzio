@@ -11,7 +11,7 @@ import {
   FiUsers,
   FiUserCheck,
 } from "react-icons/fi";
-import Skeleton from "@/components/ui/Skeleton"; 
+import Skeleton from "@/components/Ui/Skeleton"; 
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },

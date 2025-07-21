@@ -1,6 +1,6 @@
 import { useDispatch } from "react-redux";
 import { deleteUser } from "../slices/userSlice";
-import Skeleton from "@/components/ui/Skeleton"; 
+import Skeleton from "@/components/Ui/Skeleton"; 
 
 export default function UserDeleteButton({ userId, loading }) {
   const dispatch = useDispatch();

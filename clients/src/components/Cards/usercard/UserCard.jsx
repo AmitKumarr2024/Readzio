@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import ToggleFollowButton from "../../Author/Subscribe/ToggleFollowButton";
 import ToggleSubscribeButton from "../../Author/Subscribe/ToggleSubscribeButton";
-import Skeleton from "@/components/ui/Skeleton"; 
+import Skeleton from "@/components/Ui/Skeleton"; 
 
 const UserCard = ({
   posts = [],
