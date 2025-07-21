@@ -1,5 +1,4 @@
 import { CLIENT_URL, SENDER_EMAIL } from "../config/dotenv.js";
-import transporter from "";
 import ReportedPost from "../../servers/Models/ReportedPost.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import mongoose from "mongoose";
