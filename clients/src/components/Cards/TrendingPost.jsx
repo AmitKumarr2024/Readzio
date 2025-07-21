@@ -17,34 +17,45 @@ const TrendingPosts = () => {
   const visiblePosts = showAll ? latestPosts : latestPosts.slice(0, 6);
 
   return (
-    <div className="w-full">
-      <h2 className="text-base sm:text-lg font-semibold  text-text-main-light dark:text-text-main-dark mb-2 sm:mb-3 border-b pb-1 flex items-center gap-2">
-        🔥 Trending Posts
-      </h2>
+    <div className="w-full bg-white dark:bg-gray-800 rounded-lg p-4">
+      
 
-      {loading && <p className="text-text-main-light dark:text-text-main-dark text-sm sm:text-base">Loading posts...</p>}
+      {loading && (
+        <div className="flex justify-center py-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-gray-500"></div>
+        </div>
+      )}
 
-      {error && <p className="text-red-500 text-sm sm:text-base">Error: {error}</p>}
+      {error && (
+        <p className="text-red-500 text-sm bg-red-100 dark:bg-red-900/30 rounded p-2">
+          Error: {error}
+        </p>
+      )}
 
       {!loading && !error && (
         <>
           {visiblePosts.length === 0 ? (
-            <p className="text-text-main-light dark:text-text-main-dark text-sm sm:text-base">No posts found.</p>
+            <p className="text-gray-600 dark:text-gray-300 text-sm p-2">
+              No posts found.
+            </p>
           ) : (
-            <ul className="space-y-2 sm:space-y-3">
+            <ul className="space-y-3">
               {visiblePosts.map(({ _id, title, slug, thumbnail }) => (
-                <li key={_id} className="flex gap-2 sm:gap-3">
-                  <Link to={`/post/${slug}`}>
+                <li
+                  key={_id}
+                  className="flex gap-2 p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Link to={`/post/${slug}`} className="flex-shrink-0">
                     <img
-                      src={thumbnail || "https://placehold.co/150x100?text=Ad+Failed"}
+                      src={thumbnail || "https://placehold.co/100x60?text=Image+Failed"}
                       alt={title}
-                      className="w-16 sm:w-20 h-9 sm:h-12 object-cover rounded"
+                      className="w-16 h-10 object-cover rounded"
                     />
                   </Link>
                   <div className="flex-1">
                     <Link
                       to={`/post/${slug}`}
-                      className="text-sm sm:text-base text-text-main-light dark:text-text-main-dark hover:text-blue-600 line-clamp-2"
+                      className="text-sm text-gray-900 dark:text-white hover:text-blue-500 dark:hover:text-blue-400 line-clamp-2"
                     >
                       {title}
                     </Link>
@@ -57,7 +68,7 @@ const TrendingPosts = () => {
           {latestPosts.length > 6 && (
             <button
               onClick={() => setShowAll(!showAll)}
-              className="mt-2 sm:mt-3 text-text-main-light dark:text-text-main-dark text-xs sm:text-sm hover:text-blue-800"
+              className="mt-3 px-3 py-1 text-sm text-gray-900 dark:text-white bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded transition-colors"
             >
               {showAll ? "View Less" : "View All"}
             </button>

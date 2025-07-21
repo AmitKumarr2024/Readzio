@@ -22,7 +22,7 @@ const RightSideBox = ({ user, posts, toggleSidebar }) => {
       )}
 
       <section className="bg-background-light dark:bg-background-dark rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-800">
-        <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-text-main-light dark:text-text-main-dark">
+        <div className="flex items-center gap-2 mb-3 text-lg font-semibold text-text-main-light dark:text-text-main-dark">
           <UserCircle className="w-4 h-4" />
           Author Info
         </div>
@@ -34,7 +34,7 @@ const RightSideBox = ({ user, posts, toggleSidebar }) => {
       </section>
 
       <section className="bg-background-light dark:bg-background-dark rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-800">
-        <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-text-main-light dark:text-text-main-dark">
+        <div className="flex items-center gap-2 mb-3 text-lg font-semibold text-text-main-light dark:text-text-main-dark">
           <TrendingUp className="w-4 h-4 text-indigo-500" />
           Trending Posts
         </div>
