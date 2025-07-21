@@ -24,8 +24,6 @@ const GoogleAd = ({ adSlot, adFormat = 'auto', className = '', postId }) => {
             timeSpent: 30,
           });
 
-          // console.log('[GoogleAd] Emitted adImpression', { postId, adSlot });
-
           try {
             if (typeof window !== 'undefined') {
               (window.adsbygoogle = window.adsbygoogle || []).push({});
@@ -48,10 +46,10 @@ const GoogleAd = ({ adSlot, adFormat = 'auto', className = '', postId }) => {
       ref={adRef}
       className={`adsbygoogle block ${className}`}
       style={{ display: 'block' }}
-      data-ad-client="ca-pub-XXXXXXXXXXXXXX"
-      data-ad-slot={adSlot}
-      data-ad-format={adFormat}
-      data-full-width-responsive="true"
+      // data-ad-client="ca-pub-8408980890451581"
+      // data-ad-slot={adSlot}
+      // data-ad-format={adFormat}
+      // data-full-width-responsive="true"
     />
   );
 };
