@@ -12,24 +12,24 @@ import initializeSocket from "./sockets/socket.js";
 import { startTempCleanup } from "./Utils/cleanupTemp.js";
 
 // Routes
-import AuthRoutes from "./Routes/authRoutes.js";
-import UserRoutes from "./routes/userRoutes.js";
-import PostRoutes from "./Routes/postRoutes.js";
-import CategoryRoutes from "./routes/categoryRoutes.js";
-import BlockRoutes from "./routes/blockRoutes.js";
-import FollowRoutes from "./Routes/userFollowRoutes.js";
-import NotificationRoutes from "./routes/notificationRoutes.js";
-import RazorpayRoutes from "./routes/paymentRoutes.js";
-import SubscriptionRoutes from "./routes/subscriptionRoutes.js";
-import EarningRoutes from "./routes/earningRoutes.js";
-import AchievementRoutes from "./routes/achievementRoutes.js";
-import CommentsRoutes from "./routes/commentRoutes.js";
-import AdminRoutes from "./routes/adminRoutes.js";
-import GeojsonRoutes from "./Routes/geojsonRoutes.js";
-import PostEmailRoutes from "./Routes/postEmailRoutes.js";
-import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
-import guestRoutes from "./Routes/guestRoutes.js";
-import errorHandler from "./middlewares/errorHandler.js";
+import AuthRoutes from "../servers/Routes/authRoutes.js";
+import UserRoutes from "../servers/Routes/userRoutes.js";
+import PostRoutes from "../servers/Routes/postRoutes.js";
+import CategoryRoutes from "../servers/routes/categoryRoutes.js";
+import BlockRoutes from "../servers/routes/blockRoutes.js";
+import FollowRoutes from "../servers/Routes/userFollowRoutes.js";
+import NotificationRoutes from "../servers/routes/notificationRoutes.js";
+import RazorpayRoutes from "../servers/routes/paymentRoutes.js";
+import SubscriptionRoutes from "../servers/routes/subscriptionRoutes.js";
+import EarningRoutes from "../servers/routes/earningRoutes.js";
+import AchievementRoutes from "../servers/routes/achievementRoutes.js";
+import CommentsRoutes from "../servers/routes/commentRoutes.js";
+import AdminRoutes from "../servers/routes/adminRoutes.js";
+import GeojsonRoutes from "../servers/Routes/geojsonRoutes.js";
+import PostEmailRoutes from "../servers/Routes/postEmailRoutes.js";
+import BannerNotificationRoutes from "../servers/Routes/bannerNotificationRoutes.js";
+import guestRoutes from "../servers/Routes/guestRoutes.js";
+import errorHandler from "../servers/middlewares/errorHandler.js";
 
 console.log("[Server:Startup] Initializing Express server");
 
