@@ -1,10 +1,10 @@
 import asyncHandler from "express-async-handler";
-import UserModel from "../Models/User.js";
-import PostModel from "../Models/Post.js";
+import UserModel from "../../servers/Models/User.js";
+import PostModel from "../../servers/Models/Post.js";
 import SubscriptionConfig from "../Models/SubscriptionConfigModel.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import PaymentModel from "../Models/PaymentModel.js";
-import { recordActivity } from "../helpers/activityHelper.js";
+import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import crypto from "crypto";
 import { RAZORPAY_KEY_SECRET } from "../config/dotenv.js";
 import axiosInstance from "../utils/axiosInstance.js";

@@ -1,8 +1,8 @@
-import PostModel from "../Models/Post.js";
-import UserModel from "../Models/User.js";
+import PostModel from "../../servers/Models/Post.js";
+import UserModel from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import { createNotification } from "../utils/createNotification.js";
-import { recordActivity } from "../helpers/activityHelper.js";
+import { recordActivity } from "../../servers/helpers/activityHelper.js";
 
 // Toggle Like
 export const toggleLike = async (req, res, next) => {

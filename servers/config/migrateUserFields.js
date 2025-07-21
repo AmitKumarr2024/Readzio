@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { MONGO_URI } from "./dotenv.js";
-import UserModel from "../Models/User.js";
+import UserModel from "../../servers/Models/User.js";
 
 export async function migrateUserFields() {
   try {

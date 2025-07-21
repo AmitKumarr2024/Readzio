@@ -6,12 +6,12 @@ import {
   GOOGLE_CLIENT_ID,
   SENDER_EMAIL,
 } from "../config/dotenv.js";
-import { recordActivity } from "../helpers/activityHelper.js";
+import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import transporter from "../config/nodeMailer.js";
 import createMailOption from "../helpers/emailHelper.js";
 import { generateToken } from "../Utils/generateToken.js";
 import UserLocation from "../Models/UserLocation.js";
-import UserModel from "../Models/User.js";
+import UserModel from "../../servers/Models/User.js";
 
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 const log = process.env.NODE_ENV === "production" ? () => {} : console.log;

@@ -1,9 +1,9 @@
-import { recordActivity } from "../helpers/activityHelper.js";
+import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import { createNotification } from "../utils/createNotification.js";
 import { get as getCache, set as setCache, del as delCache } from "../Utils/cache.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import UserLocation from "../Models/UserLocation.js";
-import UserModel from "../Models/User.js";
+import UserModel from "../../servers/Models/User.js";
 import mongoose from "mongoose";
 
 // Allows a user to follow another user

@@ -1,11 +1,11 @@
 import EmailLog from "../Models/EmailLog.js";
-import UserModel from "../Models/User.js";
-import PostModel from "../Models/Post.js";
+import UserModel from "../../servers/Models/User.js";
+import PostModel from "../../servers/Models/Post.js";
 import Notification from "../Models/Notification.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import transporter from "../config/nodeMailer.js";
 import createMailOption from "../helpers/emailHelper.js";
-import { recordActivity } from "../helpers/activityHelper.js";
+import { recordActivity } from "../../servers/helpers/activityHelper.js";
 
 // Sends daily post email to verified users with published posts
 export const sendDailyPostEmail = async (req, res, next) => {

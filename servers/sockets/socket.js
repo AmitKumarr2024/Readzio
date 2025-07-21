@@ -1,7 +1,7 @@
 import { Server } from "socket.io";
 import { CLIENT_URL } from "../config/dotenv.js";
 import { verifyToken } from "../../servers/Utils/verifyToken.js";
-import PostModel from "../Models/Post.js";
+import PostModel from "../../servers/Models/Post.js";
 
 const connectedUsers = new Set();
 

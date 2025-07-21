@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { recordActivity } from "../helpers/activityHelper.js";
+import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import UserLocation from "../Models/UserLocation.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 

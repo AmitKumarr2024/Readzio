@@ -2,7 +2,7 @@ import cron from "node-cron";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { AppError } from "../../servers/Utils/AppError.js";
-import PostModel from "../Models/Post.js";
+import PostModel from "../../servers/Models/Post.js";
 
 // Loads environment variables
 dotenv.config();

@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 import cron from "node-cron";
-import UserModel from "../Models/User.js";
+import UserModel from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";
-import { uploadToCloudinary } from "../Utils/uploadToCloudinary.js";
-import { recordActivity } from "../helpers/activityHelper.js";
+import { uploadToCloudinary } from "../../servers/Utils/uploadToCloudinary.js";
+import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import ActivityModel from "../Models/ActivityModel.js";
 import { io } from "../sockets/socket.js";
 import UserLocation from "../Models/UserLocation.js";

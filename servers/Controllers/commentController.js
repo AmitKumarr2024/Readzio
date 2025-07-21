@@ -1,5 +1,5 @@
 import CommentModel from "../Models/CommentModel.js";
-import PostModel from "../Models/Post.js";
+import PostModel from "../../servers/Models/Post.js";
 import mongoose from "mongoose";
 import { AppError } from "../../servers/Utils/AppError.js";
 import Notification from "../Models/Notification.js";

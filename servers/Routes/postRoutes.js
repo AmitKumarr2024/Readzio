@@ -1,7 +1,7 @@
 import express from "express";
 import { protectedRoute } from "../Middlewares/authMiddleware.js";
 import { validateObjectId } from "../Middlewares/validateObjectId.js";
-import PostModel from "../Models/Post.js";
+import PostModel from "../../servers/Models/Post.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import {
   createPost,

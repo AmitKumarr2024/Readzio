@@ -1,6 +1,6 @@
 import Notification from "../Models/Notification.js";
-import PostModel from "../Models/Post.js";
-import User from "../Models/User.js";
+import PostModel from "../../servers/Models/Post.js";
+import User from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import mongoose from "mongoose";
 

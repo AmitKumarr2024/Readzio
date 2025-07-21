@@ -1,13 +1,13 @@
 import mongoose from "mongoose";
 import asyncHandler from "express-async-handler";
 import { AppError } from "../../servers/Utils/AppError.js";
-import { recordActivity } from "../helpers/activityHelper.js";
+import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import PaymentModel from "../Models/PaymentModel.js";
 import { SENDER_EMAIL } from "../config/dotenv.js";
 import transporter from "../config/nodeMailer.js";
 import createMailOption from "../helpers/emailHelper.js";
 import axiosInstance from "../utils/axiosInstance.js";
-import UserModel from "../Models/User.js";
+import UserModel from "../../servers/Models/User.js";
 
 // Checks if today matches the auto-email date
 const isAutoEmailDate = () => {

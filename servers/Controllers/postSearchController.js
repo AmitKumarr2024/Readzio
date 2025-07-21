@@ -1,8 +1,8 @@
-import { recordActivity } from "../helpers/activityHelper.js";
-import PostModel from "../Models/Post.js";
+import { recordActivity } from "../../servers/helpers/activityHelper.js";
+import PostModel from "../../servers/Models/Post.js";
 import ActivityModel from "../Models/ActivityModel.js";
 import { AppError } from "../../servers/Utils/AppError.js";
-import UserModel from "../Models/User.js";
+import UserModel from "../../servers/Models/User.js";
 
 /**
  * @desc Search posts by title or tags

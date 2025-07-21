@@ -1,5 +1,5 @@
-import { recordActivity } from "../helpers/activityHelper.js";
-import UserModel from "../Models/User.js";
+import { recordActivity } from "../../servers/helpers/activityHelper.js";
+import UserModel from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import mongoose from "mongoose";
 

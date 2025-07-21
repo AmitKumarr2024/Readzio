@@ -7,7 +7,7 @@ import {
   RAZORPAY_KEY_SECRET,
   RAZORPAY_WEBHOOK_SECRET,
 } from "../config/dotenv.js";
-import { recordActivity } from "../helpers/activityHelper.js";
+import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import axiosInstance from "../utils/axiosInstance.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import PaymentModel from "../Models/PaymentModel.js";

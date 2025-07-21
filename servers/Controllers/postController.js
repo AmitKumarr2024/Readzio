@@ -1,16 +1,16 @@
-import PostModel from "../Models/Post.js";
+import PostModel from "../../servers/Models/Post.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import { v4 as uuidv4 } from "uuid";
-import { uploadToCloudinary } from "../Utils/uploadToCloudinary.js";
+import { uploadToCloudinary } from "../../servers/Utils/uploadToCloudinary.js";
 import sharp from "sharp";
 import slugify from "slugify";
 import axios from "axios";
-import { recordActivity } from "../helpers/activityHelper.js";
+import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import mongoose from "mongoose";
 import { checkIfSubscribed } from "../Utils/checkIfSubscribed.js";
-import PostInteraction from "../models/PostInteraction.js";
-import UserModel from "../Models/User.js";
-import { io } from "../sockets/socket.js";
+import PostInteraction from "../../servers/Models/PostInteraction.js";
+import UserModel from "../../servers/Models/User.js";
+import { io } from "../../servers/sockets/socket.js";
 
 export const voteOnPoll = async (req, res, next) => {
   try {

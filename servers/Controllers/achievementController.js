@@ -1,7 +1,7 @@
 import asyncHandler from "express-async-handler";
 import UserSubscriptionModel from "../Models/UserSubscriptionModel.js";
-import UserModel from "../Models/User.js";
-import PostModel from "../Models/Post.js";
+import UserModel from "../../servers/Models/User.js";
+import PostModel from "../../servers/Models/Post.js";
 
 // Record activity helper
 const recordActivity = async ({ userId, action, message, metadata }) => {
