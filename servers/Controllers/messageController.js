@@ -1,12 +1,12 @@
 import { CLIENT_URL, SENDER_EMAIL } from "../config/dotenv.js";
-import transporter from "../config/nodeMailer.js";
-import ReportedPost from "../Models/ReportedPost.js";
+import transporter from "";
+import ReportedPost from "../../servers/Models/ReportedPost.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import mongoose from "mongoose";
 import validator from "validator";
-import ContactMessage from "../models/ContactMessage.js";
-import createMailOption from "../helpers/emailHelper.js";
-import { sendEmailWithRetries } from "../helpers/sendEmailWithRetries.js";
+import ContactMessage from "../../servers/Models/ContactMessage.js";
+import createMailOption from "../../servers/helpers/emailHelper.js";
+import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
 
 // Creates a new contact message
 export const createContactMessage = async (req, res, next) => {

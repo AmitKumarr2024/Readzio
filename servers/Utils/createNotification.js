@@ -1,4 +1,4 @@
-import NotificationModel from '../Models/Notification.js';
+import NotificationModel from '../../servers/Models/Notification.js';
 
 export const createNotification = async ({ user, sender, type, post }) => {
   console.log('[createNotification] Starting', { user, sender, type, post });

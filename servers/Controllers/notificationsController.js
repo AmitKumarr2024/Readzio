@@ -1,4 +1,4 @@
-import Notification from "../Models/Notification.js";
+import Notification from "../../servers/Models/Notification.js";
 import PostModel from "../../servers/Models/Post.js";
 import User from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";

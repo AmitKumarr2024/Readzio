@@ -8,7 +8,7 @@ import {
 } from "../config/dotenv.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import transporter from "../config/nodeMailer.js";
-import createMailOption from "../helpers/emailHelper.js";
+import createMailOption from "../../servers/helpers/emailHelper.js";
 import { generateToken } from "../Utils/generateToken.js";
 import UserLocation from "../Models/UserLocation.js";
 import UserModel from "../../servers/Models/User.js";

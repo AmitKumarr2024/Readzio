@@ -2,7 +2,7 @@ import CommentModel from "../Models/CommentModel.js";
 import PostModel from "../../servers/Models/Post.js";
 import mongoose from "mongoose";
 import { AppError } from "../../servers/Utils/AppError.js";
-import Notification from "../Models/Notification.js";
+import Notification from "../../servers/Models/Notification.js";
 
 // Adds a new comment or reply to a post
 export const addComment = async (req, res, next) => {

@@ -11,8 +11,8 @@ import axiosInstance from "../Utils/axiosInstance.js";
 import mongoose from "mongoose";
 import transporter from "../config/nodeMailer.js";
 import { createNotification } from "../../servers/Utils/createNotification.js";
-import createMailOption from "../helpers/emailHelper.js";
-import { sendEmailWithRetries } from "../helpers/sendEmailWithRetries.js";
+import createMailOption from "../../servers/helpers/emailHelper.js";
+import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
 import UserSubscriptionPlan from "../Models/UserSubscriptionModel.js";
 import UserSubscription from "../../servers/Models/UserSubscription.js";
 

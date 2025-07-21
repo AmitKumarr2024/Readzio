@@ -1,7 +1,7 @@
 // cron/notificationCleaner.js
 
 import cron from 'node-cron';
-import Notification from '../Models/Notification.js';
+import Notification from '../../servers/Models/Notification.js';
 
 // Run on 2nd day of every month at 00:00 IST
 cron.schedule(
