@@ -2,65 +2,85 @@ import React from "react";
 
 const TermsAndConditionPage = () => {
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-6 md:px-20 lg:px-40">
-      <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg">
-        <h1 className="text-4xl font-bold mb-6 text-gray-900">Terms and Conditions</h1>
+    <div className="min-h-screen bg-background-light dark:bg-background-dark py-12 px-6 md:px-20 lg:px-40">
+      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-8 rounded-2xl shadow-xl">
 
-        <p className="mb-4 text-gray-700">
-          Welcome to MyBlogApp! By using our website and services, you agree to these terms. Please read them carefully.
+        <h1 className="text-4xl font-bold mb-6">Terms & Conditions</h1>
+
+        <p className="mb-4">
+          Welcome to <strong>Inksha</strong>. By using our website, services, and platform, you agree to the following
+          terms and conditions. Please read them carefully.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-6 mb-3 text-gray-900">1. Using Our Service</h2>
-        <p className="mb-4 text-gray-700">
-          You agree to use MyBlogApp only in ways that are legal and fair. Don’t do anything that stops others from using it.
+        <h2 className="text-2xl font-semibold mt-6 mb-3">1. Using Our Service</h2>
+        <p className="mb-4">
+          You agree to use Inksha in ways that are respectful, legal, and constructive. Activities that hinder others’ experiences
+          or violate laws are strictly prohibited.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-6 mb-3 text-gray-900">2. Your Content</h2>
-        <p className="mb-4 text-gray-700">
-          You are responsible for what you post. We don’t guarantee that all content is accurate and can remove anything that breaks our rules or the law.
+        <h2 className="text-2xl font-semibold mt-6 mb-3">2. Your Content</h2>
+        <p className="mb-4">
+          You are responsible for the content you post. While you retain ownership of your content, by posting it,
+          you grant us a license to display and promote it within Inksha. We may remove content that violates
+          our community guidelines or legal obligations.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-6 mb-3 text-gray-900">3. Content Restrictions</h2>
-        <p className="mb-4 text-gray-700">
-          To ensure MyBlogApp remains safe and respectful for all users, the following content is not allowed:
+        <h2 className="text-2xl font-semibold mt-6 mb-3">3. Content Restrictions</h2>
+        <p className="mb-4">
+          To maintain a safe and inclusive environment, Inksha prohibits:
         </p>
-        <ul className="list-disc list-inside text-gray-700 mb-4 space-y-2">
-          <li>Pornographic or sexually explicit content including images, videos, or written descriptions.</li>
-          <li>Gradual or disguised nudity or sexually suggestive content, even if starting with clothed images.</li>
-          <li>Sexualized use of public figure images or adult industry actors, unless used respectfully and non-sexually (e.g., journalism).</li>
-          <li>Promotion or linking to adult content or pornographic websites.</li>
-          <li>Hate speech, threats, harassment, or content promoting violence or discrimination.</li>
-          <li>Illegal content, including incitement to violence, drug promotion, or fraud.</li>
+        <ul className="list-disc list-inside mb-4 space-y-2">
+          <li>Pornographic, sexually explicit, or suggestive content.</li>
+          <li>Gradual or disguised nudity, even if partially clothed.</li>
+          <li>Sexualized depictions of public figures or celebrities.</li>
+          <li>Links to adult or pornographic websites.</li>
+          <li>Hate speech, harassment, threats, or discriminatory content.</li>
+          <li>Illegal content such as drug promotion, incitement to violence, or fraud.</li>
         </ul>
-        <p className="mb-4 text-gray-700">
-          Mature topics (e.g. war, politics, mental health) are allowed for educational or informational purposes with appropriate warnings or blur filters if needed.
+        <p className="mb-4">
+          Mature topics (e.g., politics, mental health, trauma) are allowed for informational or artistic purposes,
+          but must include clear context or warnings when necessary.
         </p>
-        <p className="mb-4 text-gray-700">
-          We reserve the right to review and remove any content that violates these rules. Repeated violations may result in a permanent ban.
-        </p>
-
-        <h2 className="text-2xl font-semibold mt-6 mb-3 text-gray-900">4. Our Liability</h2>
-        <p className="mb-4 text-gray-700">
-          We try to keep MyBlogApp running smoothly, but we aren’t responsible for any problems, like lost data or downtime.
+        <p className="mb-4">
+          Repeated violations of these guidelines may result in content removal or permanent suspension of your account.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-6 mb-3 text-gray-900">5. Privacy</h2>
-        <p className="mb-4 text-gray-700">
-          Check our Privacy Policy to learn how we handle your personal information.
+        <h2 className="text-2xl font-semibold mt-6 mb-3">4. Our Liability</h2>
+        <p className="mb-4">
+          While we aim to keep Inksha accessible and secure, we are not responsible for service interruptions,
+          data loss, or damages caused by third-party services or technical failures.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-6 mb-3 text-gray-900">6. Governing Law</h2>
-        <p className="mb-4 text-gray-700">
-          These terms follow the laws of [Your Country]. If there’s a dispute, it will be handled in courts there.
+        <h2 className="text-2xl font-semibold mt-6 mb-3">5. Privacy</h2>
+        <p className="mb-4">
+          Please review our{' '}
+          <a href="/privacy" className="text-blue-600 underline">
+            Privacy Policy
+          </a>{' '}
+          to understand how we collect and use your data.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-6 mb-3 text-gray-900">7. Changes to These Terms</h2>
-        <p className="mb-4 text-gray-700">
-          We may update these terms sometimes. If you keep using MyBlogApp, it means you accept the new terms.
+        <h2 className="text-2xl font-semibold mt-6 mb-3">6. Governing Law</h2>
+        <p className="mb-4">
+          These terms are governed by the laws of India. Any disputes shall be resolved in the jurisdiction of Indian courts.
         </p>
 
-        <p className="mt-10 text-center text-gray-600 text-sm">
-          &copy; {new Date().getFullYear()} MyBlogApp. All rights reserved.
+        <h2 className="text-2xl font-semibold mt-6 mb-3">7. Updates to These Terms</h2>
+        <p className="mb-4">
+          We may update these Terms & Conditions periodically. Continued use of Inksha after changes means
+          you accept the revised terms.
+        </p>
+
+        <h2 className="text-2xl font-semibold mt-6 mb-3">8. Contact Us</h2>
+        <p className="mb-4">
+          For questions or feedback about these terms, please contact us at{' '}
+          <a href="mailto:inksha.official@gmail.com" className="text-blue-600 underline">
+            inksha.official@gmail.com
+          </a>.
+        </p>
+
+        <p className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
+          © {new Date().getFullYear()} Inksha. All rights reserved.
         </p>
       </div>
     </div>

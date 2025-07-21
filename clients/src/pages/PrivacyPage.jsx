@@ -1,69 +1,74 @@
 import React from 'react';
-import { Link } from 'react-router-dom'; // ✅ Step 1: Import Link
+import { Link } from 'react-router-dom';
 
 const PrivacyPage = () => {
   return (
-    <div className="min-h-screen bg-gray-100 pt-28 px-4">
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-6 sm:p-10">
-        <h1 className="text-3xl font-semibold text-gray-800 mb-4">Privacy Policy</h1>
-        <p className="text-sm text-gray-600 mb-6">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 pt-28 px-4">
+      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-2xl shadow-xl p-6 sm:p-10">
+
+        <h1 className="text-3xl font-semibold mb-4">Privacy Policy</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
           Effective Date: May 24, 2025
         </p>
 
-        <div className="space-y-6 text-gray-700 text-base leading-relaxed">
-          <p>
-            This blog is created and maintained by an independent developer (Amit) for informational and
-            educational purposes. I respect your privacy and am committed to protecting your personal information.
-          </p>
+        {/* ✅ Inksha Definition + Content Type Explanation */}
+        <p className="mb-6 text-base text-gray-700 dark:text-gray-300">
+          <strong>Inksha</strong> is a creative digital platform where individuals can share, discover, and explore
+          ideas through <strong>blogs, articles, thought pieces, and storytelling</strong>. We encourage meaningful
+          expression — from personal experiences and how-to guides to opinion pieces and tutorials.
+          Whether you're a writer, reader, or learner, Inksha offers a respectful and open space to grow and connect.
+        </p>
 
-          <h2 className="text-xl font-semibold">1. Information I Collect</h2>
+        <div className="space-y-6 text-base leading-relaxed">
+          <h2 className="text-xl font-semibold">1. Information We Collect</h2>
           <p>
-            I do not collect any personal data unless you voluntarily submit it via the contact form.
-            In that case, your name, email, and message are only used for communication purposes and are not stored
-            or shared with third parties.
+            We do not collect personal data unless you voluntarily provide it through our contact form.
+            Any submitted information—such as your name, email, or message—is used solely for communication
+            and never shared with third parties.
           </p>
 
           <h2 className="text-xl font-semibold">2. Cookies</h2>
           <p>
-            This site may use basic cookies or analytics tools to understand visitor trends and improve user experience.
-            No personally identifiable information is stored or tracked intentionally.
+            This site may use minimal cookies or analytics tools to understand usage trends and enhance user
+            experience. We do not intentionally store or track personally identifiable information.
           </p>
 
           <h2 className="text-xl font-semibold">3. Embedded Content & Links</h2>
           <p>
-            Posts on this blog may include embedded content (e.g., videos, images, articles). Such content behaves the
-            same as if you visited the source website and may use their own cookies or tracking.
+            Some content on Inksha may include embedded media (e.g., videos, articles) from other websites.
+            Such content may behave as if you visited those external sites and may include their own tracking or cookies.
           </p>
 
           <h2 className="text-xl font-semibold">4. Your Rights</h2>
           <p>
-            If you’ve submitted your information via the contact form and wish to delete it, you may request that by
-            emailing me directly.
+            If you've submitted your information and wish for it to be deleted, please email us with your request,
+            and we will act accordingly.
           </p>
 
           <h2 className="text-xl font-semibold">5. Updates</h2>
           <p>
-            This privacy policy may be updated occasionally to reflect changes in functionality or third-party tools.
-            Please check back for updates.
+            This Privacy Policy may be updated occasionally to reflect changes in services, tools, or legal requirements.
+            Please revisit this page periodically for any changes.
           </p>
 
           <h2 className="text-xl font-semibold">6. Contact</h2>
           <p>
-            If you have any questions about this policy, feel free to reach out at{' '}
-            <span className="text-blue-600">amit@example.com</span>.
+            For privacy-related questions, reach out to us at{' '}
+            <a href="mailto:inksha.official@gmail.com" className="text-blue-600 underline">
+              inksha.official@gmail.com
+            </a>.
           </p>
 
-          {/* ✅ Step 2: Add Terms & Conditions link */}
           <p>
             For more information, please also read our{' '}
             <Link to="/Term&Condition" className="text-blue-600 underline">
-              Terms and Conditions
+              Terms & Conditions
             </Link>.
           </p>
         </div>
 
-        <div className="mt-10 text-sm text-gray-400 text-center">
-          © {new Date().getFullYear()} Amit's Blog. All rights reserved.
+        <div className="mt-10 text-sm text-gray-500 text-center dark:text-gray-400">
+          © {new Date().getFullYear()} Inksha. All rights reserved.
         </div>
       </div>
     </div>

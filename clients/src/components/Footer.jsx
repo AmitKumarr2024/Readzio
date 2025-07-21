@@ -1,26 +1,27 @@
 import React from 'react';
-import {Link} from "react-router-dom"
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   return (
-    <footer className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark py-6 rounded-xl w-full">
-      <div className="  px-6 flex flex-row md:flex-col gap-6 justify-between items-center">
+    <footer className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark py-6 w-full rounded-xl">
+      <div className="px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
         
-
-        {/* Right Side */}
-        <div className="flex w-full justify-center items-center space-x-4 mt-4 md:mt-0">
-          <Link to={'/about'} className="hover:underline">
+        {/* Navigation Links */}
+        <div className="flex flex-wrap justify-center gap-4">
+          <Link to="/about" className="hover:underline">
             About
           </Link>
-          <Link to={'/contact'} className="hover:underline">
+          <Link to="/contact" className="hover:underline">
             Contact
           </Link>
-          <Link to={'/privacy'} className="hover:underline">
+          <Link to="/privacy" className="hover:underline">
             Privacy
           </Link>
         </div>
-        <div className="text-sm">
-          © {new Date().getFullYear()} MyyBlog. All rights reserved.
+
+        {/* Copyright */}
+        <div className="text-center md:text-right">
+          © {new Date().getFullYear()} <span className="font-semibold">Inksha</span>. All rights reserved.
         </div>
       </div>
     </footer>
