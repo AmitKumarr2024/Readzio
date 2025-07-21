@@ -99,7 +99,7 @@ const CategoryWisePage = () => {
                     </select>
                   </div>
 
-                  <div>
+                  {/* <div>
                     <label className="block text-sm sm:text-base font-medium mb-2 text-gray-700 dark:text-gray-300">
                       Filter by Tags
                     </label>
@@ -118,7 +118,7 @@ const CategoryWisePage = () => {
                         </button>
                       ))}
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>

@@ -1,8 +1,10 @@
 import React from "react";
+import SpaceBackground from "../Utils/SpaceBackground";
 
 const TermsAndConditionPage = () => {
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark py-12 px-6 md:px-20 lg:px-40">
+     <SpaceBackground>
+    <div className="min-h-screen bg-background-light dark:bg-background-dark/0 py-12 px-6 md:px-20 lg:px-40">
       <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-8 rounded-2xl shadow-xl">
 
         <h1 className="text-4xl font-bold mb-6">Terms & Conditions</h1>
@@ -84,6 +86,7 @@ const TermsAndConditionPage = () => {
         </p>
       </div>
     </div>
+    </SpaceBackground>
   );
 };
 

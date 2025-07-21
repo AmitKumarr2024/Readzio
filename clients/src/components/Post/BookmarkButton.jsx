@@ -7,8 +7,10 @@ import {
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
+// Validate ObjectId format
 const isValidObjectId = (id) => /^[a-f\d]{24}$/i.test(id);
 
+// Component for rendering a bookmark button for a post
 const BookmarkButton = ({ postId }) => {
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((state) => state.auth);
@@ -22,14 +24,16 @@ const BookmarkButton = ({ postId }) => {
     bookmarksCount: 0,
   };
 
+  // Fetch bookmark and like status on mount
   useEffect(() => {
     if (isValidObjectId(postId)) {
       dispatch(fetchBookmarkAndLikeStatus(postId));
     } else {
-      console.warn("[BookmarkButton] Invalid postId:", postId);
+      error.warn("[BookmarkButton] Invalid postId:", postId);
     }
   }, [dispatch, postId]);
 
+  // Handle bookmark toggle action
   const handleToggleBookmark = () => {
     if (!isAuthenticated) {
       toast.info("Please log in to bookmark this post.");
@@ -40,6 +44,7 @@ const BookmarkButton = ({ postId }) => {
     dispatch(togglePostBookmark(postId));
   };
 
+  // Return null for invalid postId
   if (!isValidObjectId(postId)) return null;
 
   return (
@@ -57,6 +62,7 @@ const BookmarkButton = ({ postId }) => {
         {bookmarkInfo.bookmarked ? "🔖 Bookmarked" : "🔖 Bookmark"} •{" "}
         {bookmarkInfo.bookmarksCount}
       </button>
+      {/* Display error message if present */}
       {error && (
         <span className="absolute top-8 text-xs text-red-500">{error}</span>
       )}

@@ -28,11 +28,11 @@ const RequestOtp = ({ setEmail, setStep }) => {
 
   return (
     <div className="w-full max-w-md">
-      <h2 className="text-2xl font-bold text-center mb-6 text-gray-900 flex items-center justify-center">
-        <FaEnvelope className="mr-2 text-indigo-600 text-2xl" />
+      <h2 className="text-2xl font-bold text-center mb-6 text-text-main-light dark:text-text-main-dark flex items-center justify-center">
+        <FaEnvelope className="mr-2 text-indigo-600  text-2xl" />
         Reset Your Password
       </h2>
-      <p className="text-center text-gray-600 mb-6">
+      <p className="text-center text-text-main-light dark:text-text-main-dark mb-6">
         Enter your email to receive a one-time password (OTP).
       </p>
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -85,18 +85,18 @@ const RequestOtp = ({ setEmail, setStep }) => {
 
 // Displays success message
 const ResetSuccess = () => (
-  <div className="w-full max-w-md text-center">
+  <div className="w-full max-w-md text-center ">
     <FaCheckCircle className="text-green-500 text-5xl mx-auto mb-4" />
     <h2 className="text-2xl font-bold mb-4 text-gray-900">
       Password Reset Successful
     </h2>
-    <p className="text-gray-600 mb-6">
+    <p className="text-text-main-light dark:text-text-main-dark mb-6">
       Your password has been successfully reset. You can now log in with your
       new password.
     </p>
     <Link
       to="/login"
-      className="inline-block bg-indigo-600 text-white py-2 px-4 rounded-lg font-semibold text-base hover:bg-indigo-700 transition duration-300"
+      className="inline-block bg-indigo-600 text-text-main-light dark:text-text-main-dark py-2 px-4 rounded-lg font-semibold text-base hover:bg-indigo-700 transition duration-300"
     >
       Go to Login
     </Link>
@@ -107,10 +107,10 @@ const ResetSuccess = () => (
 const ResetFailure = ({ setStep, error }) => (
   <div className="w-full max-w-md text-center">
     <FaTimesCircle className="text-red-500 text-5xl mx-auto mb-4" />
-    <h2 className="text-2xl font-bold mb-4 text-gray-900">
+    <h2 className="text-2xl font-bold mb-4 text-text-main-light dark:text-text-main-dark">
       Password Reset Failed
     </h2>
-    <p className="text-gray-600 mb-6">
+    <p className="text-text-main-light dark:text-text-main-dark mb-6">
       {error || "Something went wrong. Please try again."}
     </p>
     <button
@@ -130,8 +130,8 @@ const ResetPassword = () => {
   const [error, setError] = useState("");
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-200">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8">
+    <div className=" flex items-center justify-center bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
+      <div className="max-w-md w-full bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-2xl p-8">
         {step === "request" && (
           <RequestOtp setEmail={setEmail} setStep={setStep} />
         )}
@@ -154,7 +154,7 @@ const ResetPassword = () => {
         {step === "success" && <ResetSuccess />}
         {step === "failure" && <ResetFailure setStep={setStep} error={error} />}
         {step !== "success" && step !== "failure" && (
-          <p className="mt-6 text-center text-gray-600">
+          <p className="mt-6 text-center  text-text-main-light dark:text-text-main-dark">
             Back to{" "}
             <Link
               to={"/login"}

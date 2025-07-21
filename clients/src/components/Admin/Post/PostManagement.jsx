@@ -21,6 +21,7 @@ const PostManagement = () => {
     totalPagesPosts = 1,
     totalPosts = 0,
   } = useSelector((state) => state.admin || {});
+
   const [page, setPage] = useState(currentPagePosts);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState("title");
@@ -46,7 +47,7 @@ const PostManagement = () => {
     try {
       const result = await dispatch(toggleBlockPost(postId)).unwrap();
       toast.success(result.message || "Post block status updated");
-      await dispatch(
+      dispatch(
         getAllPosts({
           page,
           limit: 10,
@@ -66,7 +67,7 @@ const PostManagement = () => {
       try {
         const result = await dispatch(deletePost(postId)).unwrap();
         toast.success(result.message || "Post deleted successfully");
-        await dispatch(
+        dispatch(
           getAllPosts({
             page,
             limit: 10,
@@ -82,20 +83,16 @@ const PostManagement = () => {
     }
   };
 
-  const handlePageChange = (newPage) => {
-    setPage(newPage);
-  };
+  const handlePageChange = (newPage) => setPage(newPage);
 
   const handleSort = (field) => {
-    setSortField(field);
-    setSortOrder(sortField === field && sortOrder === "asc" ? "desc" : "asc");
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
   };
-
-  const filteredPosts = posts.filter(
-    (post) =>
-      post.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.author?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <div className="p-6 bg-background-light dark:bg-background-dark rounded-2xl shadow-lg">
@@ -153,95 +150,86 @@ const PostManagement = () => {
       )}
 
       {loading && (
-        <p className="text-text-main-light dark:text-text-main-dark text-center py-4">
+        <p className="text-center text-text-main-light dark:text-text-main-dark py-4">
           Loading...
         </p>
       )}
-      {!loading && filteredPosts.length === 0 && (
-        <p className="text-text-main-light dark:text-text-main-dark text-center py-4">
-          No posts found.
-        </p>
-      )}
-      {!loading && filteredPosts.length > 0 && (
+
+      {!loading && posts.length > 0 && (
         <>
-          <PostSizeSummary posts={filteredPosts} />
+          <PostSizeSummary posts={posts} />
 
           <div className="overflow-x-auto">
             <table className="min-w-full bg-background-light dark:bg-background-dark rounded-lg shadow border border-gray-100 dark:border-gray-700">
-              {/* your existing table */}
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-800 text-text-main-light dark:text-text-main-dark">
+                  <th className="p-4 text-left text-sm font-semibold">#</th>
+                  <th className="p-4 text-left text-sm font-semibold">Title</th>
+                  <th className="p-4 text-left text-sm font-semibold">Author</th>
+                  <th className="p-4 text-left text-sm font-semibold">Size</th>
+                  <th className="p-4 text-left text-sm font-semibold">Status</th>
+                  <th className="p-4 text-left text-sm font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {posts.map((post, index) => {
+                  const serial = (page - 1) * 10 + index + 1;
+                  return (
+                    <tr
+                      key={post._id}
+                      className="border-t border-gray-100 dark:border-gray-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/50 transition"
+                    >
+                      <td className="p-4 text-sm">{serial}</td>
+                      <td className="p-4 text-sm text-text-main-light dark:text-text-main-dark line-clamp-1 max-w-[250px]">
+                        <span title={post.title}>{post.title}</span>
+                      </td>
+                      <td className="p-4 text-sm text-text-main-light dark:text-text-main-dark">
+                        {post.author?.name || "N/A"}
+                      </td>
+                      <td className="p-4 text-sm text-text-main-light dark:text-text-main-dark">
+                        {post.sizeInKB ? `${post.sizeInKB} KB` : "N/A"}
+                      </td>
+                      <td className="p-4 text-sm">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs ${
+                            post.blocked
+                              ? "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400"
+                              : "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400"
+                          }`}
+                        >
+                          {post.blocked ? "Blocked" : "Active"}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleToggleBlock(post._id)}
+                            className={`px-3 py-1 rounded-lg text-sm text-white ${
+                              post.blocked
+                                ? "bg-green-500 hover:bg-green-600 dark:hover:bg-green-700"
+                                : "bg-yellow-500 hover:bg-yellow-600 dark:hover:bg-yellow-700"
+                            }`}
+                          >
+                            {post.blocked ? "Unblock" : "Block"}
+                          </button>
+                          <button
+                            onClick={() => handleDelete(post._id)}
+                            className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 dark:hover:bg-red-700 transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
             </table>
           </div>
         </>
       )}
 
-      {!loading && filteredPosts.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-background-light dark:bg-background-dark rounded-lg shadow border border-gray-100 dark:border-gray-700">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-gray-800 text-text-main-light dark:text-text-main-dark">
-                <th className="p-4 text-left text-sm font-semibold">Title</th>
-                <th className="p-4 text-left text-sm font-semibold">Author</th>
-                <th className="p-4 text-left text-sm font-semibold">Size</th>
-
-                <th className="p-4 text-left text-sm font-semibold">Status</th>
-                <th className="p-4 text-left text-sm font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPosts.map((post) => (
-                <tr
-                  key={post._id}
-                  className="border-t border-gray-100 dark:border-gray-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/50 transition"
-                >
-                  <td className="p-4 text-sm text-text-main-light dark:text-text-main-dark line-clamp-1 max-w-[250px]">
-                    <span title={post.title}>{post.title}</span>
-                  </td>
-
-                  <td className="p-4 text-sm text-text-main-light dark:text-text-main-dark">
-                    {post.author?.name || "N/A"}
-                  </td>
-                  <td className="p-4 text-sm text-text-main-light dark:text-text-main-dark">
-                    {post.sizeInKB ? `${post.sizeInKB} KB` : "N/A"}
-                  </td>
-
-                  <td className="p-4 text-sm">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        post.blocked
-                          ? "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400"
-                          : "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400"
-                      }`}
-                    >
-                      {post.blocked ? "Blocked" : "Active"}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleToggleBlock(post._id)}
-                        className={`px-3 py-1 rounded-lg text-sm text-white ${
-                          post.blocked
-                            ? "bg-green-500 hover:bg-green-600 dark:hover:bg-green-700"
-                            : "bg-yellow-500 hover:bg-yellow-600 dark:hover:bg-yellow-700"
-                        }`}
-                      >
-                        {post.blocked ? "Unblock" : "Block"}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(post._id)}
-                        className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 dark:hover:bg-red-700 transition"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {totalPosts > 10 && (
+      {!loading && posts.length > 0 && totalPagesPosts > 1 && (
         <Pagination
           currentPage={page}
           totalPages={totalPagesPosts}

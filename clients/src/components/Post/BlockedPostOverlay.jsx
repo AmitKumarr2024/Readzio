@@ -3,12 +3,15 @@ import { useDispatch } from "react-redux";
 import toast from "react-hot-toast";
 import { sendAdminAppeal } from "../../store/postSlice";
 
+// Component for displaying an overlay for blocked posts with appeal option for authors
 const BlockedPostOverlay = ({ post, isAuthor, showAnyway, setShowAnyway }) => {
   const dispatch = useDispatch();
   const [authorMessage, setAuthorMessage] = useState("");
 
-  if (!post?.blocked || showAnyway) return null;
+  // Return null if post is not blocked or showAnyway is true
+  if (!post?.blocked || showAnywhere) return null;
 
+  // Handle sending proof to admin for post appeal
   const handleSendProof = () => {
     if (!authorMessage.trim()) {
       toast.error("Please enter a message before sending.");
@@ -29,12 +32,14 @@ const BlockedPostOverlay = ({ post, isAuthor, showAnyway, setShowAnyway }) => {
             : "🚫 This post is blocked"}
         </h2>
 
+        {/* Display moderation message if available */}
         {post.message && (
           <p className="text-sm text-gray-600 dark:text-gray-300 italic">
             {post.message}
           </p>
         )}
 
+        {/* Inform non-authors about post moderation status */}
         {!isAuthor && (
           <p className="text-sm text-gray-700 dark:text-gray-400">
             This post is under moderation and temporarily unavailable to
@@ -42,6 +47,7 @@ const BlockedPostOverlay = ({ post, isAuthor, showAnyway, setShowAnyway }) => {
           </p>
         )}
 
+        {/* Provide appeal interface for authors */}
         {isAuthor && (
           <>
             <textarea

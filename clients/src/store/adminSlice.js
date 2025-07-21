@@ -86,25 +86,34 @@ export const deleteUser = createAsyncThunk(
 // Fetch all posts
 export const getAllPosts = createAsyncThunk(
   "admin/getAllPosts",
-  async ({ page = 1, limit = 10 }, { rejectWithValue }) => {
+  async ({ page = 1, limit = 10, search = "", sortField = "title", sortOrder = "asc" }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.get(
-        `/admin/posts?page=${page}&limit=${limit}`,
+        `/admin/posts?page=${page}&limit=${limit}&search=${search}&sortField=${sortField}&sortOrder=${sortOrder}`,
         { withCredentials: true }
       );
+
       return {
         posts: response.data.posts,
-        totalPosts: response.data.posts.length,
+        totalPosts: response.data.totalCount, // ✅ backend should return totalCount
         currentPage: page,
-        totalPages: Math.ceil(response.data.posts.length / limit),
+        totalPages: Math.ceil(response.data.totalCount / limit), // ✅ correct pagination
       };
     } catch (error) {
+      console.error("[adminSlice:getAllPosts] Error fetching posts:", {
+        error: error.response?.data?.message || error.message,
+        status: error.response?.status,
+        page,
+        limit,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch posts"
       );
     }
   }
 );
+
 
 // Toggle block post
 export const toggleBlockPost = createAsyncThunk(
