@@ -19,7 +19,7 @@ import {
 import Sorted from "../Tabs/Sorted";
 import GoogleAd from "../../Ads/GoogleAd";
 import ErrorBoundary from "./ErrorBoundary";
-import Skeleton from "../ui/Skeleton";
+import Skeleton from "@/components/ui/Skeleton"; 
 
 const Postbox = ({
   filterType,

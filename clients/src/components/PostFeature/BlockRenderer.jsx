@@ -16,7 +16,7 @@ import VideoBlockOutput from "../actualPostDisplay/VideoBlockOutput";
 import { getSubscriptionStatusByAuthor } from "../../store/subscriptionSlice";
 import GoogleAd from "../../Ads/GoogleAd";
 import PostTags from "../Post/DisplayPost/PostTags";
-import Skeleton from "../ui/Skeleton";
+import Skeleton from "@/components/ui/Skeleton"; 
 
 const placeholderAdImage = "https://placehold.co/150x100?text=Ad+Failed";
 

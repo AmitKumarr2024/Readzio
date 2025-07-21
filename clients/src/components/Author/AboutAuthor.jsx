@@ -15,7 +15,7 @@ import {
 } from "../../store/followSlice";
 import { fetchUserAchievements } from "../../store/achievementSlice";
 import { logout } from "../../store/authSlice";
-import Skeleton from "../ui/Skeleton";
+import Skeleton from "@/components/ui/Skeleton"; 
 
 const AboutAuthor = ({ authorId }) => {
   const navigate = useNavigate();
