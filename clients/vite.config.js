@@ -22,19 +22,10 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_BASE_URL || "http://localhost:8001",
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(/^\/api/, ""),
+          rewrite: (path) => path, // or remove rewrite
           configure: (proxy) => {
-            // console.log("[ViteConfig:Proxy] Proxy configured for /api", {
-            //   target: env.VITE_API_BASE_URL || "http://localhost:8001",
-            // });
             proxy.on("error", (err) => {
-              // console.error("[ViteConfig:Proxy] /api error:", err.message);
-            });
-            proxy.on("proxyReq", (proxyReq, req) => {
-              // console.log("[ViteConfig:Proxy] /api request:", req.method, req.url);
-            });
-            proxy.on("proxyRes", (proxyRes, req) => {
-              // console.log("[ViteConfig:Proxy] /api response:", proxyRes.statusCode, req.url);
+              console.error("[ViteConfig:Proxy] /api error:", err.message);
             });
           },
         },
@@ -42,19 +33,12 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_BASE_URL || "http://localhost:8001",
           ws: true,
           changeOrigin: true,
-          rewrite: (path) => path,
           configure: (proxy) => {
-            // console.log("[ViteConfig:Proxy] Proxy configured for /socket.io", {
-            //   target: env.VITE_API_BASE_URL || "http://localhost:8001",
-            // });
             proxy.on("error", (err) => {
-              console.error("[ViteConfig:Proxy] /socket.io error:", err.message);
-            });
-            proxy.on("proxyReq", (proxyReq, req) => {
-              // console.log("[ViteConfig:Proxy] /socket.io request:", req.url);
-            });
-            proxy.on("proxyRes", (proxyRes, req) => {
-              // console.log("[ViteConfig:Proxy] /socket.io response:", proxyRes.statusCode, req.url);
+              console.error(
+                "[ViteConfig:Proxy] /socket.io error:",
+                err.message
+              );
             });
           },
         },
