@@ -1,4 +1,4 @@
-import { verifyToken } from '../utils/verifyToken.js';
+import { verifyToken } from '../../servers/Utils/verifyToken.js';
 import { AppError } from "../../servers/Utils/AppError.js";
 
 // Verifies user token and attaches user data to request
