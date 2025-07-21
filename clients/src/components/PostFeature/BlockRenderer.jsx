@@ -14,7 +14,7 @@ import QuoteBlockOutput from "../actualPostDisplay/QuoteBlockOutput";
 import TableBlocksOutput from "../actualPostDisplay/TableBlocksOutput";
 import VideoBlockOutput from "../actualPostDisplay/VideoBlockOutput";
 import { getSubscriptionStatusByAuthor } from "../../store/subscriptionSlice";
-import Skeleton from "../ui/Skeleton";
+import Skeleton from "../../ui/Skeleton";
 import GoogleAd from "../../Ads/GoogleAd";
 import PostTags from "../Post/DisplayPost/PostTags";
 

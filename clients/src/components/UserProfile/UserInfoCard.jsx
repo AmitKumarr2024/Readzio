@@ -1,5 +1,5 @@
 import UserAvatar from "./UserAvatar";
-import Skeleton from "../ui/Skeleton";
+import Skeleton from "../../ui/Skeleton";
 
 export default function UserInfoCard({ user, loading }) {
   if (loading) {

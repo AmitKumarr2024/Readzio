@@ -2,7 +2,6 @@ import React from "react";
 import { Link } from "react-router-dom";
 import BlockRenderer from "../PostFeature/BlockRenderer";
 import UserCardWrapper from "../Cards/usercard/UserCardWrapper";
-import Skeleton from "../ui/Skeleton";
 
 const PostErrorHandler = ({ message, post, currentUser, getUserById, isPostRestricted, canViewPost, authorId }) => {
   return (

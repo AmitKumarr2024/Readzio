@@ -139,17 +139,17 @@
 }
 
 /* Skeleton loading animation */
-.skeleton {
+/* .skeleton {
   overflow: hidden;
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s infinite;
-}
+} */
 
-@keyframes skeleton-loading {
+/* @keyframes skeleton-loading {
   0% {
     background-position: -200% 0;
   }
   100% {
     background-position: 200% 0;
   }
-}
+} */
