@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
-const letters = "inksha".split("");
+const letters = "MyyBlog".split("");
 
 // Variants for each letter (initial bounce)
 const letterVariants = {
@@ -43,11 +43,9 @@ class LogoErrorBoundary extends React.Component {
     console.error("[Logo] Rendering error:", { error, errorInfo });
   }
   render() {
-    return this.state.hasError ? (
-      <div className="text-red-500">Logo failed to load.</div>
-    ) : (
-      this.props.children
-    );
+    return this.state.hasError
+      ? <div className="text-red-500">Logo failed to load.</div>
+      : this.props.children;
   }
 }
 
@@ -55,10 +53,7 @@ const Logo = () => {
   return (
     <LogoErrorBoundary>
       <motion.div
-        className="text-3xl font-extrabold text-purple-600 cursor-pointer select-none flex notranslate"
-        translate="no"
-        lang="en"
-        aria-label="Inksha logo"
+        className="text-3xl font-extrabold text-purple-600 cursor-pointer select-none flex"
         variants={groupVariants}
         initial="initial"
         animate="animate"
