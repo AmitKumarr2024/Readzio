@@ -5,7 +5,6 @@ import path from "path";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
-  // console.log("[ViteConfig] Environment:", { mode, VITE_API_BASE_URL: env.VITE_API_BASE_URL });
 
   return {
     plugins: [react(), tailwindcss()],
@@ -15,6 +14,9 @@ export default defineConfig(({ mode }) => {
       },
       extensions: [".js", ".jsx", ".ts", ".tsx"],
     },
+    define: {
+      __APP_VERSION__: JSON.stringify(env.npm_package_version || "v1.0.0"),
+    },
     server: {
       port: 5173,
       proxy: {
@@ -22,7 +24,7 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_BASE_URL || "http://localhost:8001",
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path, // or remove rewrite
+          rewrite: (path) => path,
           configure: (proxy) => {
             proxy.on("error", (err) => {
               console.error("[ViteConfig:Proxy] /api error:", err.message);
@@ -35,10 +37,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           configure: (proxy) => {
             proxy.on("error", (err) => {
-              console.error(
-                "[ViteConfig:Proxy] /socket.io error:",
-                err.message
-              );
+              console.error("[ViteConfig:Proxy] /socket.io error:", err.message);
             });
           },
         },
