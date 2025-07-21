@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 
 // Validates MongoDB ObjectId in request parameters
 export const validateObjectId = (paramName) => {

@@ -1,7 +1,7 @@
 import CategoryModel from "../Models/category.js";
 import PostModel from "../Models/Post.js";
 import UserModel from "../Models/User.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 
 // Predefined categories for seeding
 const predefinedCategories = [

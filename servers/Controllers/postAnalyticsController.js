@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import PostModel from "../Models/Post.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 
 /**
  * @desc Get total views and likes of a post

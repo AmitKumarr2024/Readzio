@@ -1,7 +1,7 @@
 import Notification from "../Models/Notification.js";
 import PostModel from "../Models/Post.js";
 import User from "../Models/User.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import mongoose from "mongoose";
 
 // Sends a notification from an admin to a specific user

@@ -1,4 +1,4 @@
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 
 // Restricts access to specified roles
 export const restrictTo = (...allowedRoles) => {

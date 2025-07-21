@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import ActivityModel from "../Models/ActivityModel.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 
 // Defines all valid actions for activity logging
 export const VALID_ACTIONS = new Set([

@@ -1,5 +1,5 @@
 import PostModel from "../Models/Post.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import { v4 as uuidv4 } from "uuid";
 import { uploadToCloudinary } from "../Utils/uploadToCloudinary.js";
 import sharp from "sharp";

@@ -1,7 +1,7 @@
 import { recordActivity } from "../helpers/activityHelper.js";
 import PostModel from "../Models/Post.js";
 import ActivityModel from "../Models/ActivityModel.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import UserModel from "../Models/User.js";
 
 /**

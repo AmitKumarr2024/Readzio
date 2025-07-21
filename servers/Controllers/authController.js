@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import { OAuth2Client } from "google-auth-library";
 import {
   AUTO_EMAIL_DATE,

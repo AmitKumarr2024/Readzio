@@ -1,6 +1,6 @@
 // utils/processBlock.js
 
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import { uploadToCloudinary } from "./uploadToCloudinary.js";
 import sharp from "sharp";
 import axios from "axios";

@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/dotenv.js";
 import UserModel from "../Models/User.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 
 // Authenticates requests by verifying JWT and attaching user data
 export const protectedRoute = async (req, res, next) => {

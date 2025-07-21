@@ -2,7 +2,7 @@ import Handlebars from 'handlebars';
 import { EMAIL_TEMPLATE } from '../config/emailTemplate.js';
 import { DAILY_POST_EMAIL_TEMPLATE } from '../config/dailyPostEmailTemplate.js';
 import { SENDER_EMAIL } from '../config/dotenv.js';
-import { AppError } from '../utils/AppError.js';
+import { AppError } from '../../servers/Utils/AppError.js';
 
 // Creates email options for sending with validation and Handlebars templating
 export default function createMailOption({

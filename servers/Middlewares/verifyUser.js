@@ -1,5 +1,5 @@
 import { verifyToken } from '../utils/verifyToken.js';
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 
 // Verifies user token and attaches user data to request
 export const verifyUser = (req, res, next) => {

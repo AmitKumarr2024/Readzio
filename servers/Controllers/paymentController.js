@@ -9,7 +9,7 @@ import {
 } from "../config/dotenv.js";
 import { recordActivity } from "../helpers/activityHelper.js";
 import axiosInstance from "../utils/axiosInstance.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import PaymentModel from "../Models/PaymentModel.js";
 
 const razorpay = new Razorpay({

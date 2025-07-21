@@ -1,5 +1,5 @@
 import multer from "multer";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 
 // Configures Multer for image uploads with memory storage
 const storage = multer.memoryStorage();

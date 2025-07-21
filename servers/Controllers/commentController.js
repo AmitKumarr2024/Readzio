@@ -1,7 +1,7 @@
 import CommentModel from "../Models/CommentModel.js";
 import PostModel from "../Models/Post.js";
 import mongoose from "mongoose";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import Notification from "../Models/Notification.js";
 
 // Adds a new comment or reply to a post

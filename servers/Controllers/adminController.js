@@ -4,7 +4,7 @@ import PostModel from "../Models/Post.js";
 import PaymentModel from "../Models/PaymentModel.js";
 import TrafficModel from "../Models/TrafficModel.js";
 import SubscriptionConfig from "../Models/SubscriptionConfigModel.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import mongoose from "mongoose";
 import { emitPostDeleted, emitPostUpdated } from "../sockets/socket.js";
 import { recordActivity } from "../helpers/activityHelper.js";

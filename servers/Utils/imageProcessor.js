@@ -2,7 +2,7 @@
 
 import axios from "axios";
 import sharp from "sharp";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import { uploadToCloudinary } from "./uploadToCloudinary.js";
 
 /**

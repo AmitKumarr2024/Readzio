@@ -1,5 +1,5 @@
 import axiosInstance from "../utils/axiosInstance.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 
 // Validates Google Ads data for earnings
 export const validateGoogleAdsData = async (req, res, next) => {

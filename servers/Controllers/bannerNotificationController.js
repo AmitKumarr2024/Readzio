@@ -1,6 +1,6 @@
 import { isValidObjectId } from "mongoose";
 import BannerNotifyModel from "../Models/bannerNotificationModel.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import { recordActivity } from "../helpers/activityHelper.js";
 import { io } from "../sockets/socket.js";
 import DismissedBannerNotification from "../Models/DismissedBannerNotification.js";

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { recordActivity } from "../helpers/activityHelper.js";
 import UserLocation from "../Models/UserLocation.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 
 // Attaches geolocation data to request based on IP address
 export const geoLocationMiddleware = async (req, res, next) => {

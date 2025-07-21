@@ -1,6 +1,6 @@
 import { recordActivity } from "../helpers/activityHelper.js";
 import UserModel from "../Models/User.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import mongoose from "mongoose";
 
 // Blocks a user by adding them to the blockedUsers list

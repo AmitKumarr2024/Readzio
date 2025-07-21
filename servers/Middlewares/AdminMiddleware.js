@@ -1,4 +1,4 @@
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 
 // Restricts access to admin users only
 export const adminOnly = (req, res, next) => {

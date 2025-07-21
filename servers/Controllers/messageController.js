@@ -1,7 +1,7 @@
 import { CLIENT_URL, SENDER_EMAIL } from "../config/dotenv.js";
 import transporter from "../config/nodeMailer.js";
 import ReportedPost from "../Models/ReportedPost.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import mongoose from "mongoose";
 import validator from "validator";
 import ContactMessage from "../models/ContactMessage.js";

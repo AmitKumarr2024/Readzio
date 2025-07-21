@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/dotenv.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 
 // Lightweight JWT verification middleware without DB lookup
 export const protectedRouteSimple = (req, res, next) => {

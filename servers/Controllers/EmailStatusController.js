@@ -1,5 +1,5 @@
 import EmailLog from "../Models/EmailLog.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import validator from "validator";
 
 // Valid email types for validation

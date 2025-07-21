@@ -1,5 +1,5 @@
 import PostModel from "../Models/Post.js";
-import { AppError } from "../utils/AppError.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import GuestVisitModel from "../Models/GuestVisit.js";
 
 // 🟢 Get all published + unblocked posts with optional tag filtering

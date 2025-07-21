@@ -1,6 +1,6 @@
 import transporter from '../config/nodeMailer.js';
 import EmailLog from '../Models/EmailLog.js';
-import { AppError } from '../utils/AppError.js';
+import { AppError } from '../../servers/Utils/AppError.js';
 
 // Defines valid email types for sending emails
 const VALID_EMAIL_TYPES = ['signup', 'payout', 'subscription', 'contact_reply', 'report'];
