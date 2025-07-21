@@ -8,7 +8,6 @@ import http from "http";
 import mongoose from "mongoose";
 import { CLIENT_URL, NODE_ENV, PORT } from "./config/dotenv.js";
 import connectDb from "./config/mongodb.js";
-import errorHandler from "./middlewares/errorHandler.js";
 import initializeSocket from "./sockets/socket.js";
 import { startTempCleanup } from "./Utils/cleanupTemp.js";
 
@@ -30,6 +29,7 @@ import GeojsonRoutes from "./Routes/geojsonRoutes.js";
 import PostEmailRoutes from "./Routes/postEmailRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
+import errorHandler from "./middlewares/errorHandler.js";
 
 console.log("[Server:Startup] Initializing Express server");
 
