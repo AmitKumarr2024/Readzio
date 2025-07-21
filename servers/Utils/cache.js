@@ -1,5 +1,5 @@
 import NodeCache from "node-cache";
-import logger from "./logger.js";
+import logger from "./Logger.js";
 import { schedule } from "node-cron";
 
 // Initialize cache
