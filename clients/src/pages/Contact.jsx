@@ -55,7 +55,7 @@ const Contact = () => {
       <section className="min-h-screen pt-6 pb-20 px-4 flex items-center justify-center">
         <div className="w-full max-w-lg backdrop-blur-md border border-gray-300 rounded-xl p-8 shadow-md bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
           <h1 className="text-2xl font-bold mb-2">Contact Us</h1>
-          <p className="text-sm mb-6">
+          <p className="text-lg mb-6">
             Please fill out the form and we’ll get back to you as soon as we
             can.
           </p>
@@ -63,7 +63,7 @@ const Contact = () => {
             {/* Name input */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium mb-1">
-                Name <span className="text-xs">e.g. John Doe</span>
+                Name <span className="text-lg">e.g. John Doe</span>
               </label>
               <input
                 id="name"
@@ -79,7 +79,7 @@ const Contact = () => {
             {/* Email input */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium mb-1">
-                Email <span className="text-xs">we’ll reply here</span>
+                Email <span className="text-lg">we’ll reply here</span>
               </label>
               <input
                 id="email"
@@ -98,7 +98,7 @@ const Contact = () => {
                 htmlFor="subject"
                 className="block text-sm font-medium mb-1"
               >
-                Subject <span className="text-xs">short and clear</span>
+                Subject <span className="text-lg">short and clear</span>
               </label>
               <input
                 id="subject"
@@ -117,7 +117,7 @@ const Contact = () => {
                 className="block text-sm font-medium mb-1"
               >
                 Message{" "}
-                <span className="text-xs">describe your issue or question</span>
+                <span className="text-lg">describe your issue or question</span>
               </label>
               <textarea
                 id="message"
@@ -144,11 +144,11 @@ const Contact = () => {
               {loading ? "Sending..." : "Send Message"}
             </button>
           </form>
-          <p className="mt-8 text-center text-xs">
+          <p className="mt-8 text-center text-lg">
             Or email us at{" "}
             <a
-              href="mailto:amit@example.com"
-              className="text-blue-600 hover:underline"
+              href="inksha.official@gmail.com"
+              className="text-blue-400 hover:underline text-lg"
             >
               inksha.official@gmail.com
             </a>
