@@ -27,7 +27,7 @@ import { selectPostViews } from "../../Utils/postSelectors";
 import CommentBox from "./CommentBox";
 import DeleteModal from "./DeleteModal";
 import GoogleAd from "../../Ads/GoogleAd";
-import Skeleton from "../../ui/Skeleton";
+import Skeleton from "../ui/Skeleton";
 
 const DisplayPost = () => {
   const { slug } = useParams();

@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import UserAvatar from "./UserAvatar";
 import UserCoverImage from "./UserCoverImage";
-import Skeleton from "../../ui/Skeleton";
 import {
   FiMail,
   FiMapPin,
@@ -12,6 +11,7 @@ import {
   FiUsers,
   FiUserCheck,
 } from "react-icons/fi";
+import Skeleton from "../ui/Skeleton";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
