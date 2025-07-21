@@ -14,7 +14,7 @@ import { createNotification } from "../../servers/Utils/createNotification.js";
 import createMailOption from "../helpers/emailHelper.js";
 import { sendEmailWithRetries } from "../helpers/sendEmailWithRetries.js";
 import UserSubscriptionPlan from "../Models/UserSubscriptionModel.js";
-import UserSubscription from "../Models/UserSubscription.js";
+import UserSubscription from "../../servers/Models/UserSubscription.js";
 
 // Validates MongoDB ObjectId
 const validateObjectId = (id, type = "ID") => {
