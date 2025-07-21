@@ -1,7 +1,7 @@
 import PostModel from "../../servers/Models/Post.js";
 import UserModel from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";
-import { createNotification } from "../utils/createNotification.js";
+import { createNotification } from "../../servers/Utils/createNotification.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 
 // Toggle Like

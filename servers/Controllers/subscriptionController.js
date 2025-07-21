@@ -10,7 +10,7 @@ import { RAZORPAY_KEY_SECRET } from "../config/dotenv.js";
 import axiosInstance from "../utils/axiosInstance.js";
 import mongoose from "mongoose";
 import transporter from "../config/nodeMailer.js";
-import { createNotification } from "../utils/createNotification.js";
+import { createNotification } from "../../servers/Utils/createNotification.js";
 import createMailOption from "../helpers/emailHelper.js";
 import { sendEmailWithRetries } from "../helpers/sendEmailWithRetries.js";
 import UserSubscriptionPlan from "../Models/UserSubscriptionModel.js";

@@ -1,5 +1,5 @@
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
-import { createNotification } from "../utils/createNotification.js";
+import { createNotification } from "../../servers/Utils/createNotification.js";
 import { get as getCache, set as setCache, del as delCache } from "../Utils/cache.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import UserLocation from "../Models/UserLocation.js";
