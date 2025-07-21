@@ -257,7 +257,7 @@ export const processBulkPayouts = asyncHandler(async (req, res, next) => {
 
       let payoutResponse;
       const isRazorpayXMocked =
-        process.env.NODE_ENV === "development" ||
+        process.env.NODE_ENV === "production" ||
         process.env.RAZORPAYX_ACCOUNT_NO === "your_virtual_account_number" ||
         !process.env.RAZORPAYX_ACCOUNT_NO;
 

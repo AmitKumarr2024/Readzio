@@ -125,7 +125,7 @@ app.use(errorHandler);
 console.log("[Server:Middleware] Error handler applied");
 
 // Route inspection (only in development)
-if (NODE_ENV === "development") {
+if (NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "/clients/dist")));
   console.log("📜 Dumping all registered route paths (safe):");
 

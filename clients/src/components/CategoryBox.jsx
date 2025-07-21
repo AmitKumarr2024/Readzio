@@ -48,7 +48,7 @@ const CategoryBox = () => {
   useEffect(() => {
     if (status === "failed") {
       toast.error("Unable to load categories. Please try again later.");
-      if (process.env.NODE_ENV === "development" && error) {
+      if (process.env.NODE_ENV === "production" && error) {
         console.warn("[CategoryBox] Category loading failed:", {
           error: error.message || error,
           userId: user?._id || "unauthenticated",

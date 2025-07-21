@@ -18,7 +18,7 @@ const SuggestedPosts = () => {
   useEffect(() => {
     if (status === "idle" && !hasFetched.current) {
       hasFetched.current = true;
-      if (process.env.NODE_ENV === "development") {
+      if (process.env.NODE_ENV === "production") {
         // console.log("[SuggestedPosts] Fetching suggested posts, limit: 6");
       }
       dispatch(fetchSuggestedPosts({ limit: 6 }));
@@ -28,7 +28,7 @@ const SuggestedPosts = () => {
   // Show error toast
   useEffect(() => {
     if (status === "failed" && error) {
-      if (process.env.NODE_ENV === "development") {
+      if (process.env.NODE_ENV === "production") {
         console.error("[SuggestedPosts] Fetch error:", error);
       }
       toast.error(error || "Failed to load suggested posts");
@@ -91,7 +91,7 @@ const SuggestedPosts = () => {
                     alt={post.title || "Post"}
                     className="w-full h-48 object-cover rounded-t-md transition-transform duration-300 group-hover:scale-105"
                     onError={(e) => {
-                      if (process.env.NODE_ENV === "development") {
+                      if (process.env.NODE_ENV === "production") {
                         console.warn(`[SuggestedPosts] Thumbnail failed for post ${post._id}:`, post.thumbnail);
                       }
                       e.target.src = fallbackImage;

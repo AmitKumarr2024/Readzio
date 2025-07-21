@@ -7,7 +7,7 @@ const errorHandler = (err, req, res, next) => {
     const response = {
       success: false,
       message: err.message || "Internal Server Error",
-      ...(NODE_ENV === "development" && {
+      ...(NODE_ENV === "production" && {
         stack: err.stack,
         context: err.context || "Unknown",
       }),
@@ -19,7 +19,7 @@ const errorHandler = (err, req, res, next) => {
     res.status(500).json({
       success: false,
       message: "Internal Server Error",
-      ...(NODE_ENV === "development" && {
+      ...(NODE_ENV === "production" && {
         stack: error.stack,
         context: "ErrorHandler",
       }),
