@@ -172,7 +172,7 @@ export const replyToNotification = async (req, res, next) => {
         "User not authenticated",
         401,
         "ReplyNotification",
-        "Authentication required"
+        "You must be signed in to access this feature."
       );
 
     // Validates input
@@ -311,7 +311,7 @@ export const markAsRead = async (req, res, next) => {
         "User not authenticated",
         401,
         "MarkAsRead",
-        "Authentication required"
+        "You must be signed in to access this feature."
       );
 
     // Validates notification ID
@@ -372,7 +372,7 @@ export const markAllAsRead = async (req, res, next) => {
         "User not authenticated",
         401,
         "MarkAllAsRead",
-        "Authentication required"
+        "You must be signed in to access this feature."
       );
 
     // Updates all unread notifications
@@ -481,7 +481,7 @@ export const deleteNotification = async (req, res, next) => {
         "User not authenticated",
         401,
         "DeleteNotification",
-        "Authentication required"
+        "You must be signed in to access this feature."
       );
 
     // Validates notification ID

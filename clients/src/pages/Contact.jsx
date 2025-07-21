@@ -56,7 +56,8 @@ const Contact = () => {
         <div className="w-full max-w-lg backdrop-blur-md border border-gray-300 rounded-xl p-8 shadow-md bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
           <h1 className="text-2xl font-bold mb-2">Contact Us</h1>
           <p className="text-sm mb-6">
-            Please fill out the form and we’ll get back to you as soon as we can.
+            Please fill out the form and we’ll get back to you as soon as we
+            can.
           </p>
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             {/* Name input */}
@@ -93,7 +94,10 @@ const Contact = () => {
             </div>
             {/* Subject input */}
             <div>
-              <label htmlFor="subject" className="block text-sm font-medium mb-1">
+              <label
+                htmlFor="subject"
+                className="block text-sm font-medium mb-1"
+              >
                 Subject <span className="text-xs">short and clear</span>
               </label>
               <input
@@ -108,8 +112,12 @@ const Contact = () => {
             </div>
             {/* Message input */}
             <div>
-              <label htmlFor="message" className="block text-sm font-medium mb-1">
-                Message <span className="text-xs">describe your issue or question</span>
+              <label
+                htmlFor="message"
+                className="block text-sm font-medium mb-1"
+              >
+                Message{" "}
+                <span className="text-xs">describe your issue or question</span>
               </label>
               <textarea
                 id="message"
@@ -138,8 +146,11 @@ const Contact = () => {
           </form>
           <p className="mt-8 text-center text-xs">
             Or email us at{" "}
-            <a href="mailto:amit@example.com" className="text-blue-600 hover:underline">
-              amit@example.com
+            <a
+              href="mailto:amit@example.com"
+              className="text-blue-600 hover:underline"
+            >
+              inksha.official@gmail.com
             </a>
           </p>
         </div>

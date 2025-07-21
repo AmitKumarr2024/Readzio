@@ -86,7 +86,7 @@ const SignupPage = () => {
   };
 
   return (
-    <GoogleOAuthProvider clientId="784687781898-u7t28i5ahphgu5hbpcauppftgme77plr.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId="44790425597-foad407541te4lpt84dbhk77v28m5hl7.apps.googleusercontent.com">
       {/* Main layout with gradient background */}
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-900 to-purple-900">
         <div className="max-w-4xl w-full bg-white rounded-xl shadow-2xl flex flex-col md:flex-row overflow-hidden">

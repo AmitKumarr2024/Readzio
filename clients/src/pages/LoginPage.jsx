@@ -69,7 +69,7 @@ const LoginPage = () => {
   };
 
   return (
-    <GoogleOAuthProvider clientId="784687781898-u7t28i5ahphgu5hbpcauppftgme77plr.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId="44790425597-foad407541te4lpt84dbhk77v28m5hl7.apps.googleusercontent.com">
       <div className="min-h-screen flex items-center justify-center bg-gray-200">
         <div className="max-w-4xl w-full bg-white rounded-xl shadow-2xl flex flex-col md:flex-row overflow-hidden">
           {/* Left section with image */}

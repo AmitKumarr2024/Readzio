@@ -68,7 +68,7 @@ const HeroSection = () => {
               lang="en"
               aria-label="Inksha logo"
             >
-              Inksha
+              inksha
             </span>
           </motion.h1>
           <motion.p

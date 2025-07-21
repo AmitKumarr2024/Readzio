@@ -27,7 +27,7 @@ router.get("/get-Notification", getNotifications);
 // Fetches a single banner notification by ID
 // - Validates `:id` as MongoDB ObjectId in `getNotificationById`
 // - Queries `BannerNotifyModel` by `_id`; returns 404 if not found
-// - Public access; no authentication required
+// - Public access; no You must be signed in to access this feature.
 // - Test with invalid ObjectId and non-existent IDs
 // - Security: Ensure no sensitive fields (e.g., `createdBy`) are exposed
 router.get("/get-Notification/:id", getNotificationById);

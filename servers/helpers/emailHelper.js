@@ -17,7 +17,7 @@ export default function createMailOption({
   otp = null,
   isResetOtp = false,
   posts = [],
-  supportEmail = 'support@yourplatform.com',
+  supportEmail = 'inksha.official@gmail.com',
 }) {
   try {
     // Validates required fields
@@ -112,7 +112,7 @@ export default function createMailOption({
 
     // Returns email options
     return {
-      from: `"Mount Amit Team" <${SENDER_EMAIL}>`,
+      from: `"Inksha Official" <${SENDER_EMAIL}>`,
       to,
       subject,
       html: htmlContent,

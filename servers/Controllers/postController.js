@@ -21,7 +21,7 @@ export const voteOnPoll = async (req, res, next) => {
       throw new AppError("Invalid post ID", 400, "VoteOnPoll");
     }
     if (!userId) {
-      throw new AppError("Authentication required", 401, "VoteOnPoll");
+      throw new AppError("You must be signed in to access this feature.", 401, "VoteOnPoll");
     }
     if (!blockId || optionIndex == null) {
       throw new AppError(
@@ -106,7 +106,7 @@ export const createPost = async (req, res, next) => {
     } = req.body;
 
     if (!req.user?._id)
-      throw new AppError("User authentication required", 401, "CreatePost");
+      throw new AppError("User You must be signed in to access this feature.", 401, "CreatePost");
 
     const tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
     if (!Array.isArray(tags))
@@ -689,7 +689,7 @@ export const updatePostBySlug = async (req, res, next) => {
     }
 
     if (!userId) {
-      throw new AppError("Authentication required", 401, "UpdatePostBySlug");
+      throw new AppError("You must be signed in to access this feature.", 401, "UpdatePostBySlug");
     }
 
     const updates = { ...req.body };
@@ -880,7 +880,7 @@ export const toggleBlockPost = async (req, res, next) => {
 
     if (!req.user?._id || req.user.role !== "admin") {
       throw new AppError(
-        "Admin authentication required",
+        "Admin You must be signed in to access this feature.",
         401,
         "ToggleBlockPost Controller"
       );
@@ -1009,7 +1009,7 @@ export const submitAppeal = async (req, res, next) => {
     }
 
     if (!userId) {
-      throw new AppError("Authentication required", 401, "SubmitAppeal");
+      throw new AppError("You must be signed in to access this feature.", 401, "SubmitAppeal");
     }
 
     if (!message || !message.trim()) {
@@ -1108,7 +1108,7 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
     const userId = req.user?._id;
     if (!userId) {
       throw new AppError(
-        "Authentication required",
+        "You must be signed in to access this feature.",
         401,
         "GetDraftAndPendingPosts"
       );
@@ -1216,7 +1216,7 @@ export const getFollowingPosts = async (req, res, next) => {
     const skip = (page - 1) * limit;
 
     if (!userId) {
-      throw new AppError("Authentication required", 401, "GetFollowingPosts");
+      throw new AppError("You must be signed in to access this feature.", 401, "GetFollowingPosts");
     }
 
     // Fetch the user's following list

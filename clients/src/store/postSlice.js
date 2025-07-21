@@ -51,7 +51,7 @@ export const fetchFollowingPosts = createAsyncThunk(
     try {
       const { auth } = getState();
       if (!auth.isAuthenticated) {
-        return rejectWithValue({ message: "Authentication required" });
+        return rejectWithValue({ message: "You must be signed in to access this feature." });
       }
       const params = new URLSearchParams();
       params.append("page", page);
@@ -136,7 +136,7 @@ export const getAllPosts = createAsyncThunk(
     try {
       const { auth } = getState();
       if (!auth.isAuthenticated) {
-        return rejectWithValue({ message: "Authentication required" });
+        return rejectWithValue({ message: "You must be signed in to access this feature." });
       }
       const params = new URLSearchParams();
       params.append("page", page);

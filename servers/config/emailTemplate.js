@@ -159,7 +159,7 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
               <tr>
                 <td class="footer">
                   <img src="https://via.placeholder.com/30/6B46C1/FFFFFF?text=MA" alt="Mount Amit Icon">
-                  Best regards,<br>Mount Amit Team<br>
+                  Best regards,<br>Inksha Official<br>
                   <a href="mailto:{{supportEmail}}" style="color: #4F46E5; text-decoration: none;">Contact Support</a>
                 </td>
               </tr>

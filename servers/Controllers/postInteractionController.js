@@ -11,7 +11,7 @@ export const toggleLike = async (req, res, next) => {
     const { postId } = req.params;
 
     if (!userId) {
-      throw new AppError("Authentication required to like a post", 401);
+      throw new AppError("You must be signed in to access this feature. to like a post", 401);
     }
 
     const post = await PostModel.findById(postId).select("likes author isPublished isSubscriberOnly slug title blocked");
@@ -74,7 +74,7 @@ export const toggleBookmark = async (req, res, next) => {
     const { postId } = req.params;
 
     if (!userId) {
-      throw new AppError("Authentication required to bookmark a post", 401);
+      throw new AppError("You must be signed in to access this feature. to bookmark a post", 401);
     }
 
     const user = await UserModel.findById(userId).select("bookmarks");
@@ -174,7 +174,7 @@ export const getBookmarkedPosts = async (req, res, next) => {
   try {
     const userId = req.user?._id;
     if (!userId) {
-      throw new AppError("Authentication required", 401);
+      throw new AppError("You must be signed in to access this feature.", 401);
     }
 
     let { page = 1, limit = 10 } = req.query;
@@ -264,7 +264,7 @@ export const incrementShare = async (req, res, next) => {
     const userId = req.user?._id;
 
     if (!userId) {
-      throw new AppError("Authentication required to share a post", 401);
+      throw new AppError("You must be signed in to access this feature. to share a post", 401);
     }
 
     const post = await PostModel.findById(postId).select("isPublished blocked shareCount author slug title");
@@ -340,7 +340,7 @@ export const toggleBlockInPost = async (req, res, next) => {
     const { user } = req;
 
     if (!user || user.role !== "admin") {
-      throw new AppError("Admin authentication required", 401);
+      throw new AppError("Admin You must be signed in to access this feature.", 401);
     }
 
     const post = await PostModel.findById(postId);

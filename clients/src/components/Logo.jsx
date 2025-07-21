@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
-const letters = "Inksha".split("");
+const letters = "inksha".split("");
 
 // Variants for each letter (initial bounce)
 const letterVariants = {
