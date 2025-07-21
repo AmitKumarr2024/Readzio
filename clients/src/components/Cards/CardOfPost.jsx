@@ -4,8 +4,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { MessageCircle, Eye, Heart, Bookmark, Share2 } from "lucide-react";
 import TimeAgo from "../../Utils/TimeAgo";
 import { fetchSubscriptionPlansByAuthor } from "../../store/subscriptionSlice";
-import Skeleton from "../../ui/Skeleton";
 import { formatReadingTime } from "../../Utils/formatReadingTime";
+import Skeleton from "../Ui/Skeleton";
 
 const CardOfPost = ({
   _id: id,

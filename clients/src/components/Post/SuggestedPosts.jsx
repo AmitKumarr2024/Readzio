@@ -3,9 +3,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { fetchSuggestedPosts } from "../../store/suggestedPostsSlice";
 import GoogleAd from "../../Ads/GoogleAd"; 
-import Skeleton from "../../ui/Skeleton";
 import toast from "react-hot-toast";
 import TimeAgo from "../../Utils/TimeAgo";
+import Skeleton from "../Ui/Skeleton";
 
 const SuggestedPosts = () => {
   const dispatch = useDispatch();

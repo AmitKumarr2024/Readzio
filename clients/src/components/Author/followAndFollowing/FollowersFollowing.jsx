@@ -2,8 +2,8 @@ import React, { useEffect, useState, useCallback, memo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchFollowers, fetchFollowing } from "../../../store/followSlice";
 import ToggleFollowButton from "../Subscribe/ToggleFollowButton";
-import Skeleton from "../../ui/Skeleton";
 import { motion } from "framer-motion";
+import Skeleton from "../../Ui/Skeleton";
 
 const UserCardSkeleton = () => (
   <div className="bg-background-light dark:bg-background-dark rounded-lg p-4 shadow-sm border animate-pulse">

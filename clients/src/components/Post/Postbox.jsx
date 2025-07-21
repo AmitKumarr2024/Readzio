@@ -18,8 +18,8 @@ import {
 } from "../../store/socketSlice";
 import Sorted from "../Tabs/Sorted";
 import GoogleAd from "../../Ads/GoogleAd";
-import Skeleton from "../../ui/Skeleton";
 import ErrorBoundary from "./ErrorBoundary";
+import Skeleton from "../Ui/Skeleton";
 
 const Postbox = ({
   filterType,

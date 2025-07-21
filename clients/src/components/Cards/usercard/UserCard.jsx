@@ -1,9 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
-import Skeleton from "../../ui/Skeleton";
 import ToggleFollowButton from "../../Author/Subscribe/ToggleFollowButton";
 import ToggleSubscribeButton from "../../Author/Subscribe/ToggleSubscribeButton";
+import Skeleton from "../../Ui/Skeleton";
 
 const UserCard = ({
   posts = [],

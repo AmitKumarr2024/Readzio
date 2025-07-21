@@ -1,6 +1,6 @@
 // src/components/Post/DisplayPost/PostSkeleton.jsx
 import React from "react";
-import Skeleton from "../../ui/Skeleton";
+import Skeleton from "../../Ui/Skeleton";
 
 const PostSkeleton = ({ className }) => (
   <div
