@@ -52,7 +52,8 @@ console.log("[Server:Middleware] Compression applied");
 const allowedOrigins = [
   CLIENT_URL,
   "http://localhost:5173",
-  "http://localhost:8001"
+  "http://localhost:8001",
+  "https://inksha.onrender.com"
 ].filter(Boolean);
 console.log("[Server:CORS] Allowed origins:", allowedOrigins);
 

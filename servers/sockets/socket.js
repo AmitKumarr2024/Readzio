@@ -13,6 +13,7 @@ export const io = new Server({
         CLIENT_URL,
         "http://localhost:5173",
         "http://localhost:8001",
+        "https://inksha.onrender.com"
       ].filter(Boolean);
       if (!origin) {
         console.log(
