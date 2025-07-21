@@ -173,6 +173,14 @@ io.on("error", (err) => {
   console.error("[Server:SocketIO] Error:", err.message);
 });
 
+
+// ads.txt Snippet
+app.get('/ads.txt', (req, res) => {
+  res.type('text/plain');
+  res.send('google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0');
+});
+
+
 server.on("error", (err) => {
   console.error("[Server:HTTP] Error:", err.message);
 });
