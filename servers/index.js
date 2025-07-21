@@ -29,7 +29,7 @@ import GeojsonRoutes from "../servers/Routes/geojsonRoutes.js";
 import PostEmailRoutes from "../servers/Routes/postEmailRoutes.js";
 import BannerNotificationRoutes from "../servers/Routes/bannerNotificationRoutes.js";
 import guestRoutes from "../servers/Routes/guestRoutes.js";
-import errorHandler from "../servers/middlewares/errorHandler.js";
+import errorHandler from "../servers/Middlewares/errorHandler.js";
 
 console.log("[Server:Startup] Initializing Express server");
 
