@@ -4,6 +4,9 @@ import { AppError } from "../../servers/Utils/AppError.js";
 // ✅ Replace with your actual hosted Firebase URL
 const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
 
+console.log("INDIA_GEOJSON_URL",INDIA_GEOJSON_URL);
+
+
 let cachedIndiaBoundary = null;
 
 // Serves India boundary GeoJSON data
