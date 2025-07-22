@@ -45,10 +45,10 @@ app.post(
   "/api/razorpay/webhook",
   express.json({
     verify: (req, res, buf) => {
-      req.rawBody = buf.toString(); // ✅ Correct
+      req.rawBody = buf.toString();
     },
   }),
-  handleRazorpayWebhook // ❌ This is not imported yet!
+  handleRazorpayWebhook
 );
 
 // Attach Socket.IO instance to every request
@@ -62,7 +62,7 @@ app.use(compression());
 console.log("[Server:Middleware] Compression applied");
 
 const allowedOrigins = [
-  CLIENT_URL?.replace(/\/$/, ""), // safely remove slash
+  CLIENT_URL?.replace(/\/$/, ""),
   "http://localhost:5173",
   "http://localhost:8001",
   "https://inksha.onrender.com",
@@ -74,7 +74,6 @@ app.use(
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
         if (origin) console.log("[Server:CORS] ✅ Allowed:", origin);
-        console.log("[Server:CORS] ✅ Allowed:", origin);
         return callback(null, true);
       }
       console.error("[Server:CORS] ❌ Blocked:", origin);
@@ -140,6 +139,11 @@ app.get("/health", (req, res) => {
   res.status(200).json(status);
 });
 
+// ✅ Root path handler to fix "Cannot GET /"
+app.get("/", (req, res) => {
+  res.status(200).send("✅ Inksha API is running");
+});
+
 // Error handler
 app.use(errorHandler);
 console.log("[Server:Middleware] Error handler applied");
@@ -168,16 +172,10 @@ if (NODE_ENV !== "production") {
       }
     });
   } catch (err) {
-    console.error(
-      "❌ Error during route inspection:",
-      err?.stack || err?.message || err
-    );
+    console.error("❌ Error during route inspection:", err?.stack || err?.message || err);
   }
 
-  // SPA fallback (optional)
-  // Only mount this if file exists (safe fallback)
   const clientIndexPath = path.join(__dirname, "clients", "dist", "index.html");
-
   if (fs.existsSync(clientIndexPath)) {
     app.get(/^\/(?!api\/).*/, (req, res) => {
       res.sendFile(clientIndexPath);
