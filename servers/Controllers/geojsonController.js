@@ -1,41 +1,33 @@
 import axios from "axios";
 import { AppError } from "../../servers/Utils/AppError.js";
 
+// Hosted on Firebase (public)
 const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
 
-// ✅ Memory cache variables
-let cachedGeoJson = null;
-let lastFetchTime = 0;
-const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
-
-// ✅ Controller
+// Controller: Serve GeoJSON without memory caching
 export const getIndiaBoundaryOnly = async (req, res, next) => {
   try {
-    const now = Date.now();
+    const response = await axios({
+      method: "get",
+      url: INDIA_GEOJSON_URL,
+      responseType: "stream", // ✅ Stream large data
+    });
 
-    // If cache is fresh, use it
-    if (cachedGeoJson && now - lastFetchTime < CACHE_DURATION) {
-      return res.status(200).json(cachedGeoJson);
-    }
+    // Set content type
+    res.setHeader("Content-Type", "application/json");
 
-    // Fetch fresh GeoJSON from Firebase
-    const { data } = await axios.get(INDIA_GEOJSON_URL);
-
-    // Cache it
-    cachedGeoJson = data;
-    lastFetchTime = now;
-
-    res.status(200).json(data);
+    // Pipe stream directly to response
+    response.data.pipe(res);
   } catch (error) {
-    console.error("[IndiaBoundaryOnly] Fetch Error:", error.message);
+    console.error("[GeoJSON Fetch Error]", error.message);
     next(
       error instanceof AppError
         ? error
         : new AppError(
             error.message,
             502,
-            "IndiaBoundaryFetch",
-            "Failed to fetch or cache India GeoJSON"
+            "GetIndiaBoundaryOnly",
+            "Failed to stream India GeoJSON"
           )
     );
   }
