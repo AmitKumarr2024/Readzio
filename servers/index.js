@@ -62,7 +62,7 @@ app.use(compression());
 console.log("[Server:Middleware] Compression applied");
 
 const allowedOrigins = [
-  CLIENT_URL,
+  CLIENT_URL?.replace(/\/$/, ""), // safely remove slash
   "http://localhost:5173",
   "http://localhost:8001",
   "https://inksha.onrender.com",

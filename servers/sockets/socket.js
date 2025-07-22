@@ -10,10 +10,10 @@ export const io = new Server({
   cors: {
     origin: (origin, callback) => {
       const allowedOrigins = [
-        CLIENT_URL,
+        CLIENT_URL?.replace(/\/$/, ""), // safely remove slash
         "http://localhost:5173",
         "http://localhost:8001",
-        "https://inksha.onrender.com"
+        "https://inksha.onrender.com",
       ].filter(Boolean);
       if (!origin) {
         console.log(
