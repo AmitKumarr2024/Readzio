@@ -86,7 +86,7 @@ const ZoomHandler = ({
   const map = useMap();
 
   useEffect(() => {
-    const cappedZoom = 4;
+    const cappedZoom = 5;
     map.options.maxZoom = cappedZoom;
 
     const defaultIndiaCenter = [20.5937, 78.9629];
