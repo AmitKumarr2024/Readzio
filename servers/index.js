@@ -31,6 +31,7 @@ import PostEmailRoutes from "./Routes/postEmailRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
+import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 
 console.log("[Server:Startup] Initializing Express server");
 
@@ -210,6 +211,8 @@ const startServer = async () => {
     console.log("[Server:Startup] ✅ Database connected");
 
     startTempCleanup();
+    startDailyDigestJob();
+
 
     server.listen(PORT, () => {
       console.log(`[Server:Startup] ✅ Inksha API is running on port ${PORT}`);
