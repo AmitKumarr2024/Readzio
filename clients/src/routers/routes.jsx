@@ -56,13 +56,13 @@ const routes = createBrowserRouter([
       { path: "/users", element: <UsersPage /> }, // Added UsersPage route
       { path: "/verify", element: <VerifyEmail /> }, // Added UsersPage route
       { path: "/tag/:tag", element: <TagWisePage /> }, // Added UsersPage route
+      { path: "/Term&Condition", element: <TermsAndConditionPage /> },
     ],
   },
   { path: "/select-category", element: <CategorySelectPage /> },
   { path: "/login", element: <LoginPage /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/signup", element: <SignupPage /> },
-  { path: "/Term&Condition", element: <TermsAndConditionPage /> },
   { path: "*", element: <PageNotFound /> },
 ]);
 
