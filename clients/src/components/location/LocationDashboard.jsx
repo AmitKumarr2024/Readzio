@@ -418,7 +418,7 @@ const LocationDashboard = () => {
                 backgroundColor: "transparent",
               }}
               className="rounded-lg z-0"
-              maxZoom={10}
+              maxZoom={6}
             >
               <TileLayer
                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
