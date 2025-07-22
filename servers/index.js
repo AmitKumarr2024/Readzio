@@ -10,27 +10,27 @@ import { CLIENT_URL, NODE_ENV, PORT } from "./config/dotenv.js";
 import connectDb from "./config/mongodb.js";
 import initializeSocket from "./sockets/socket.js";
 import { startTempCleanup } from "./Utils/cleanupTemp.js";
+import { handleRazorpayWebhook } from "./Controllers/paymentController.js";
 
 // Routes
-import AuthRoutes from "../servers/Routes/authRoutes.js";
-import UserRoutes from "../servers/Routes/userRoutes.js";
-import PostRoutes from "../servers/Routes/postRoutes.js";
-import CategoryRoutes from "../servers/Routes/categoryRoutes.js";
-import BlockRoutes from "../servers/Routes/blockRoutes.js";
-import FollowRoutes from "../servers/Routes/userFollowRoutes.js";
-import NotificationRoutes from "../servers/Routes/notificationRoutes.js";
-import RazorpayRoutes from "../servers/Routes/paymentRoutes.js";
-import SubscriptionRoutes from "../servers/Routes/subscriptionRoutes.js";
-import EarningRoutes from "../servers/Routes/earningRoutes.js";
-import AchievementRoutes from "../servers/Routes/AchievementRoutes.js";
-import CommentsRoutes from "../servers/Routes/commentRoutes.js";
-import AdminRoutes from "../servers/Routes/adminRoutes.js";
-import GeojsonRoutes from "../servers/Routes/geojsonRoutes.js";
-import PostEmailRoutes from "../servers/Routes/postEmailRoutes.js";
-import BannerNotificationRoutes from "../servers/Routes/bannerNotificationRoutes.js";
-import guestRoutes from "../servers/Routes/guestRoutes.js";
-import errorHandler from "../servers/Middlewares/errorHandler.js";
-import { handleRazorpayWebhook } from "./Controllers/paymentController.js";
+import AuthRoutes from "./Routes/authRoutes.js";
+import UserRoutes from "./Routes/userRoutes.js";
+import PostRoutes from "./Routes/postRoutes.js";
+import CategoryRoutes from "./Routes/categoryRoutes.js";
+import BlockRoutes from "./Routes/blockRoutes.js";
+import FollowRoutes from "./Routes/userFollowRoutes.js";
+import NotificationRoutes from "./Routes/notificationRoutes.js";
+import RazorpayRoutes from "./Routes/paymentRoutes.js";
+import SubscriptionRoutes from "./Routes/subscriptionRoutes.js";
+import EarningRoutes from "./Routes/earningRoutes.js";
+import AchievementRoutes from "./Routes/AchievementRoutes.js";
+import CommentsRoutes from "./Routes/commentRoutes.js";
+import AdminRoutes from "./Routes/adminRoutes.js";
+import GeojsonRoutes from "./Routes/geojsonRoutes.js";
+import PostEmailRoutes from "./Routes/postEmailRoutes.js";
+import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
+import guestRoutes from "./Routes/guestRoutes.js";
+import errorHandler from "./Middlewares/errorHandler.js";
 
 console.log("[Server:Startup] Initializing Express server");
 
@@ -40,7 +40,7 @@ const io = initializeSocket(server);
 
 const __dirname = path.resolve();
 
-// Add this BEFORE any global express.json() middleware
+// 🔐 Razorpay webhook (raw body needed)
 app.post(
   "/api/razorpay/webhook",
   express.json({
@@ -51,29 +51,31 @@ app.post(
   handleRazorpayWebhook
 );
 
-// Attach Socket.IO instance to every request
+// Attach socket to every request
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
-// Middleware
+// Compression middleware
 app.use(compression());
 console.log("[Server:Middleware] Compression applied");
 
+// CORS config
 const allowedOrigins = [
   CLIENT_URL?.replace(/\/$/, ""),
   "http://localhost:5173",
   "http://localhost:8001",
   "https://inksha.onrender.com",
 ].filter(Boolean);
+
 console.log("[Server:CORS] Allowed origins:", allowedOrigins);
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
-        if (origin) console.log("[Server:CORS] ✅ Allowed:", origin);
+        console.log("[Server:CORS] ✅ Allowed:", origin);
         return callback(null, true);
       }
       console.error("[Server:CORS] ❌ Blocked:", origin);
@@ -85,75 +87,78 @@ app.use(
   })
 );
 
+// Request parsing middleware
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 console.log("[Server:Middleware] JSON, URL-encoded, cookie-parser applied");
 
-// API Routes
-try {
-  const routeMounts = [
-    ["/api/auth", AuthRoutes],
-    ["/api/user", UserRoutes],
-    ["/api/post", PostRoutes],
-    ["/api/category", CategoryRoutes],
-    ["/api/block", BlockRoutes],
-    ["/api/follow", FollowRoutes],
-    ["/api/notification", NotificationRoutes],
-    ["/api/payment", RazorpayRoutes],
-    ["/api/subscription", SubscriptionRoutes],
-    ["/api/earning", EarningRoutes],
-    ["/api/achievement", AchievementRoutes],
-    ["/api/comment", CommentsRoutes],
-    ["/api/admin", AdminRoutes],
-    ["/api/geojson", GeojsonRoutes],
-    ["/api/dailyMail", PostEmailRoutes],
-    ["/api/bannerNotification", BannerNotificationRoutes],
-    ["/api/public", guestRoutes],
-  ];
+// 🔌 Mount API Routes
+const routes = [
+  ["/api/auth", AuthRoutes],
+  ["/api/user", UserRoutes],
+  ["/api/post", PostRoutes],
+  ["/api/category", CategoryRoutes],
+  ["/api/block", BlockRoutes],
+  ["/api/follow", FollowRoutes],
+  ["/api/notification", NotificationRoutes],
+  ["/api/payment", RazorpayRoutes],
+  ["/api/subscription", SubscriptionRoutes],
+  ["/api/earning", EarningRoutes],
+  ["/api/achievement", AchievementRoutes],
+  ["/api/comment", CommentsRoutes],
+  ["/api/admin", AdminRoutes],
+  ["/api/geojson", GeojsonRoutes],
+  ["/api/dailyMail", PostEmailRoutes],
+  ["/api/bannerNotification", BannerNotificationRoutes],
+  ["/api/public", guestRoutes],
+];
 
-  for (const [mountPath, router] of routeMounts) {
-    console.log(`🔌 Mounting route: ${mountPath}`);
-    app.use(mountPath, router);
+routes.forEach(([path, router]) => {
+  console.log(`🔌 Mounting route: ${path}`);
+  app.use(path, router);
+});
+
+// ✅ Serve static frontend in production
+const clientPath = path.join(__dirname, "clients", "dist");
+const clientIndexPath = path.join(clientPath, "index.html");
+
+if (NODE_ENV === "production") {
+  if (fs.existsSync(clientIndexPath)) {
+    app.use(express.static(clientPath));
+
+    // 🎯 Serve index.html for all non-API routes
+    app.get(/^\/(?!api\/).*/, (req, res) => {
+      res.sendFile(clientIndexPath);
+    });
+  } else {
+    console.warn("⚠️ Production build missing: index.html not found");
   }
-} catch (err) {
-  console.error("❌ Route mount error:", err?.stack || err?.message || err);
 }
 
-// ads.txt Snippet
+// Static ads.txt file
 app.get("/ads.txt", (req, res) => {
-  res.type("text/plain");
-  res.send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
+  res.type("text/plain").send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
 });
 
-// Health check route
+// Health check
 app.get("/health", (req, res) => {
-  const status = {
+  res.status(200).json({
     status: "OK",
-    message: "Server running",
+    message: "Inksha API is running",
     uptime: process.uptime(),
-    database:
-      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
     timestamp: new Date().toISOString(),
-  };
-  res.status(200).json(status);
+  });
 });
 
-// ✅ Root path handler to fix "Cannot GET /"
-app.get("/", (req, res) => {
-  res.redirect(CLIENT_URL);
-});
-
-
-// Error handler
+// Custom global error handler
 app.use(errorHandler);
 console.log("[Server:Middleware] Error handler applied");
 
-// Route inspection (only in development)
+// In development, print all route paths
 if (NODE_ENV !== "production") {
-  app.use(express.static(path.join(__dirname, "/clients/dist")));
-  console.log("📜 Dumping all registered route paths (safe):");
-
+  console.log("📜 Dumping all registered route paths (dev):");
   try {
     app._router.stack.forEach((middleware) => {
       if (middleware?.route?.path) {
@@ -173,20 +178,11 @@ if (NODE_ENV !== "production") {
       }
     });
   } catch (err) {
-    console.error("❌ Error during route inspection:", err?.stack || err?.message || err);
-  }
-
-  const clientIndexPath = path.join(__dirname, "clients", "dist", "index.html");
-  if (fs.existsSync(clientIndexPath)) {
-    app.get(/^\/(?!api\/).*/, (req, res) => {
-      res.sendFile(clientIndexPath);
-    });
-  } else {
-    console.warn("⚠️ Skipping wildcard route: index.html not found");
+    console.error("❌ Route inspection error:", err.message);
   }
 }
 
-// Socket / HTTP error listeners
+// Socket and HTTP error listeners
 io.on("error", (err) => {
   console.error("[Server:SocketIO] Error:", err.message);
 });
@@ -195,14 +191,14 @@ server.on("error", (err) => {
   console.error("[Server:HTTP] Error:", err.message);
 });
 
-// Global error handlers
+// Global error listeners
 process.on("uncaughtException", (err) => {
-  console.error("[Server:UncaughtException] Error:", err.message, err.stack);
+  console.error("[UncaughtException] ❌", err.message, err.stack);
   process.exit(1);
 });
 
 process.on("unhandledRejection", (err) => {
-  console.error("[Server:UnhandledRejection] Error:", err.message);
+  console.error("[UnhandledRejection] ❌", err.message);
   process.exit(1);
 });
 
@@ -211,18 +207,15 @@ const startServer = async () => {
   try {
     console.log("[Server:Startup] Connecting to MongoDB...");
     await connectDb();
-    console.log("[Server:Startup] Database connected ✅");
+    console.log("[Server:Startup] ✅ Database connected");
 
     startTempCleanup();
 
     server.listen(PORT, () => {
-      console.log(`[Server:Startup] 🚀 Server running on port: ${PORT}`);
+      console.log(`[Server:Startup] ✅ Inksha API is running on port ${PORT}`);
     });
-  } catch (error) {
-    console.error("[Server:Startup] ❌ Failed to start server:", {
-      error: error.message,
-      stack: error.stack,
-    });
+  } catch (err) {
+    console.error("[Server:Startup] ❌ Failed to start:", err.message);
     process.exit(1);
   }
 };
