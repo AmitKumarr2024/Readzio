@@ -78,7 +78,7 @@ const formatLabel = (str) =>
 // Map zoom handler
 const ZoomHandler = ({
   selectedCountry,
-  selectedState,
+  // selectedState,
   locations,
   selectedUserLocation,
   geoJson,
@@ -429,7 +429,7 @@ const LocationDashboard = () => {
               />
               <ZoomHandler
                 selectedCountry={selectedCountry}
-                selectedState={selectedState}
+                // selectedState={selectedState}
                 locations={flatLocations}
                 selectedUserLocation={selectedUserLocation}
                 geoJson={geoJson}
