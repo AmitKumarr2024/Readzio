@@ -68,7 +68,7 @@ export const fetchIndiaGeoJson = createAsyncThunk(
     try {
       const url = "/geojson/india-border";
       const res = await axiosInstance.get(url);
-      console.log("fetchIndiaGeoJson", res);
+      console.log("fetchIndiaGeoJsonnnnnnn", res);
 
       if (!res.data?.type || res.data.type !== "FeatureCollection") {
         throw new Error("Invalid GeoJSON format");
