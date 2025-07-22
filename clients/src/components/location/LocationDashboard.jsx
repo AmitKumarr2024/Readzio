@@ -86,7 +86,7 @@ const ZoomHandler = ({
   const map = useMap();
 
   useEffect(() => {
-    const cappedZoom = 7;
+    const cappedZoom = 4;
     map.options.maxZoom = cappedZoom;
 
     const defaultIndiaCenter = [20.5937, 78.9629];
@@ -418,14 +418,14 @@ const LocationDashboard = () => {
                 backgroundColor: "transparent",
               }}
               className="rounded-lg z-0"
-              maxZoom={20}
+              maxZoom={10}
             >
               <TileLayer
                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                 attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>'
                 className="dark:filter dark:brightness-75 dark:contrast-125"
                 tileSize={256}
-                maxZoom={10}
+                maxZoom={18}
                 keepBuffer={4}
               />
               <ZoomHandler
