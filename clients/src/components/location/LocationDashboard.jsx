@@ -9,11 +9,7 @@ import {
   useMap,
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
-import {
-  fetchFollowerLocations,
-  fetchIndiaGeoJson,
-  getUser,
-} from "../../store/userSlice";
+import { fetchFollowerLocations, getUser } from "../../store/userSlice";
 import { fetchUserEngagementStats } from "../../store/analyticsSlice";
 import { selectSocketState } from "../../store/socketSlice";
 import Pagination from "../../Utils/Pagination";
@@ -26,16 +22,14 @@ import LoadingBar from "../../Utils/LoadingBar";
 
 // Cache GeoJSON
 const GEOJSON_CACHE_KEY = "india_geojson";
+const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
 
 const cacheGeoJson = (data) => {
   try {
     const compressed = LZString.compressToUTF16(JSON.stringify(data));
     if (compressed.length / 1024 > 5000) return;
     localStorage.setItem(GEOJSON_CACHE_KEY, compressed);
-    localStorage.setItem(
-      `${GEOJSON_CACHE_KEY}_timestamp`,
-      Date.now().toString()
-    );
+    localStorage.setItem(`${GEOJSON_CACHE_KEY}_timestamp`, Date.now().toString());
   } catch (e) {
     console.warn("Failed to cache GeoJSON:", e);
   }
@@ -44,9 +38,7 @@ const cacheGeoJson = (data) => {
 const getCachedGeoJson = () => {
   try {
     const compressed = localStorage.getItem(GEOJSON_CACHE_KEY);
-    const cacheTimestamp = localStorage.getItem(
-      `${GEOJSON_CACHE_KEY}_timestamp`
-    );
+    const cacheTimestamp = localStorage.getItem(`${GEOJSON_CACHE_KEY}_timestamp`);
     if (
       !compressed ||
       !cacheTimestamp ||
@@ -100,10 +92,7 @@ const ZoomHandler = ({
     };
 
     if (selectedUserLocation?.lat && selectedUserLocation?.lon) {
-      map.setView(
-        [selectedUserLocation.lat, selectedUserLocation.lon],
-        cappedZoom
-      );
+      map.setView([selectedUserLocation.lat, selectedUserLocation.lon], cappedZoom);
       return;
     }
 
@@ -116,10 +105,7 @@ const ZoomHandler = ({
       );
       if (stateLocations.length >= 2) {
         const bounds = L.latLngBounds(
-          stateLocations.map((loc) => [
-            loc.coordinates.lat,
-            loc.coordinates.lon,
-          ])
+          stateLocations.map((loc) => [loc.coordinates.lat, loc.coordinates.lon])
         );
         applyZoomWithCap(bounds);
       } else {
@@ -149,10 +135,7 @@ const ZoomHandler = ({
 
       if (countryLocations.length >= 5) {
         const bounds = L.latLngBounds(
-          countryLocations.map((loc) => [
-            loc.coordinates.lat,
-            loc.coordinates.lon,
-          ])
+          countryLocations.map((loc) => [loc.coordinates.lat, loc.coordinates.lon])
         );
         applyZoomWithCap(bounds);
       } else {
@@ -162,14 +145,7 @@ const ZoomHandler = ({
     }
 
     map.setView(defaultIndiaCenter, defaultZoom);
-  }, [
-    selectedCountry,
-    selectedState,
-    locations,
-    selectedUserLocation,
-    geoJson,
-    map,
-  ]);
+  }, [selectedCountry, selectedState, locations, selectedUserLocation, geoJson, map]);
 
   return null;
 };
@@ -190,9 +166,9 @@ const LocationDashboard = () => {
   const [selectedCountry, setSelectedCountry] = useState("India");
   const [selectedState, setSelectedState] = useState(null);
   const [selectedUserLocation, setSelectedUserLocation] = useState(null);
+  const pageSize = 10;
 
   const isLoading = userLoading || geoJson.loading || followerLocations.loading;
-  const pageSize = 10;
 
   const userIdToName = useMemo(() => {
     const map = {};
@@ -209,8 +185,37 @@ const LocationDashboard = () => {
   }, [dispatch, user, userId, userLoading]);
 
   useEffect(() => {
-    if (userId && !geoJson.loading && !geoJson.data) {
-      dispatch(fetchIndiaGeoJson());
+    const loadGeoJson = async () => {
+      try {
+        const cached = getCachedGeoJson();
+        if (cached) {
+          dispatch({
+            type: "user/setGeoJsonData",
+            payload: { data: cached, loading: false },
+          });
+          return;
+        }
+
+        dispatch({ type: "user/setGeoJsonData", payload: { data: null, loading: true } });
+        const res = await fetch(INDIA_GEOJSON_URL);
+        const data = await res.json();
+
+        dispatch({
+          type: "user/setGeoJsonData",
+          payload: { data, loading: false },
+        });
+
+        cacheGeoJson(data);
+      } catch (err) {
+        dispatch({
+          type: "user/setGeoJsonData",
+          payload: { data: null, loading: false, error: err.message || "Failed to load GeoJSON" },
+        });
+      }
+    };
+
+    if (userId && !geoJson.data && !geoJson.loading) {
+      loadGeoJson();
     }
   }, [dispatch, userId, geoJson.data, geoJson.loading]);
 
@@ -319,11 +324,8 @@ const LocationDashboard = () => {
     <div className="space-y-4">
       <LoadingBar loading={isLoading} text="Fetching data..." />
       <div className="flex flex-col lg:flex-row gap-4">
-        <div className="lg:w-1/4 bg
-
--gray-100 dark:bg-gray-800 rounded-lg p-4 shadow max-h-[60vh] overflow-y-auto relative">
+        <div className="lg:w-1/4 bg-gray-100 dark:bg-gray-800 rounded-lg p-4 shadow max-h-[60vh] overflow-y-auto relative">
           <h2 className="text-lg font-semibold mb-4">Follower Locations</h2>
-          {/* <LoadingBar loading={followerLocations.loading} text="Loading follower locations..." /> */}
           {flatLocations.error && (
             <p className="text-red-500 text-center">
               Error: {flatLocations.error}

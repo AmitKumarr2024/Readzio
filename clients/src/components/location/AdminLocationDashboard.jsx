@@ -9,16 +9,13 @@ import {
   useMap,
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
-import {
-  fetchAllUserLocations,
-  fetchIndiaGeoJson,
-} from "../../store/userSlice";
+import { fetchAllUserLocations } from "../../store/userSlice";
 import { selectSocketState } from "../../store/socketSlice";
 import Pagination from "../../Utils/Pagination";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { TableVirtuoso } from "react-virtuoso";
-import { throttle, debounce } from "lodash";
+import { throttle } from "lodash";
 import { openDB } from "idb";
 import { ErrorBoundary } from "react-error-boundary";
 import LZString from "lz-string";
@@ -28,6 +25,7 @@ import LoadingBar from "../../Utils/LoadingBar";
 const GEOJSON_CACHE_KEY = "india_geojson";
 const DB_NAME = "GeoJSONCache";
 const STORE_NAME = "geojson";
+const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
 
 const initDB = async () => {
   return openDB(DB_NAME, 1, {
@@ -37,7 +35,7 @@ const initDB = async () => {
   });
 };
 
-const cacheGeoJson = debounce(async (data) => {
+const cacheGeoJson = async (data) => {
   try {
     const compressed = LZString.compressToUTF16(JSON.stringify(data));
     if (compressed.length / 1024 > 5000) {
@@ -50,11 +48,10 @@ const cacheGeoJson = debounce(async (data) => {
     }
     const db = await initDB();
     await db.put(STORE_NAME, compressed, GEOJSON_CACHE_KEY);
-    // console.log("[GeoJSON] Cached successfully");
   } catch (e) {
     console.warn("Failed to cache GeoJSON:", e);
   }
-}, 1000);
+};
 
 const getCachedGeoJson = async () => {
   try {
@@ -62,10 +59,6 @@ const getCachedGeoJson = async () => {
     const compressed = await db.get(STORE_NAME, GEOJSON_CACHE_KEY);
     if (!compressed) return null;
     const decompressed = LZString.decompressFromUTF16(compressed);
-    // console.log(
-    //   "[GeoJSON] Decompressed size (KB):",
-    //   (decompressed.length / 1024).toFixed(2)
-    // );
     return JSON.parse(decompressed);
   } catch (e) {
     console.warn("Failed to retrieve cached GeoJSON:", e);
@@ -206,8 +199,44 @@ const AdminLocationDashboard = () => {
   const isLoading = userLocations.loading || geoJson.loading;
 
   useEffect(() => {
-    if (userId && !geoJson.loading && !geoJson.data) {
-      dispatch(fetchIndiaGeoJson());
+    const loadGeoJson = async () => {
+      try {
+        const cached = await getCachedGeoJson();
+        if (cached) {
+          dispatch({
+            type: "user/setGeoJsonData",
+            payload: { data: cached, loading: false },
+          });
+          return;
+        }
+
+        dispatch({
+          type: "user/setGeoJsonData",
+          payload: { data: null, loading: true },
+        });
+        const res = await fetch(INDIA_GEOJSON_URL);
+        const data = await res.json();
+
+        dispatch({
+          type: "user/setGeoJsonData",
+          payload: { data, loading: false },
+        });
+
+        cacheGeoJson(data);
+      } catch (err) {
+        dispatch({
+          type: "user/setGeoJsonData",
+          payload: {
+            data: null,
+            loading: false,
+            error: err.message || "Failed to load GeoJSON",
+          },
+        });
+      }
+    };
+
+    if (userId && !geoJson.data && !geoJson.loading) {
+      loadGeoJson();
     }
   }, [dispatch, userId, geoJson.data, geoJson.loading]);
 
@@ -246,19 +275,6 @@ const AdminLocationDashboard = () => {
     return () => socket.off("userLocationUpdate", throttledHandler);
   }, [socket, dispatch]);
 
-  // useEffect(() => {
-  //   console.log("[AdminLocationDashboard] GeoJSON:", {
-  //     loading: geoJson.loading,
-  //     error: geoJson.error,
-  //     features: geoJson.data?.features?.length,
-  //   });
-  //   console.log("[AdminLocationDashboard] Locations:", {
-  //     loading: userLocations.loading,
-  //     error: userLocations.error,
-  //     count: userLocations.list?.length,
-  //   });
-  // }, [geoJson, userLocations]);
-
   const indiaGeoJson = useMemo(() => {
     const boundaryFeatures =
       geoJson.data?.features?.filter((f) => {
@@ -271,28 +287,13 @@ const AdminLocationDashboard = () => {
           ["india"].includes((props.country || "").toLowerCase());
         const isValidGeometry =
           f.geometry?.type === "Polygon" || f.geometry?.type === "MultiPolygon";
-        // console.log("[indiaGeoJson] Feature check:", {
-        //   props,
-        //   isIndia,
-        //   isValidGeometry,
-        // });
         return isIndia && isValidGeometry;
       }) || [];
-    // console.log(
-    //   "[indiaGeoJson] Filtered features:",
-    //   boundaryFeatures.length,
-    //   boundaryFeatures.map((f) => f.properties)
-    // );
     return {
       type: "FeatureCollection",
       features: boundaryFeatures,
     };
   }, [geoJson.data]);
-
-  // console.log(
-  //   "[indiaGeoJson] Features types:",
-  //   indiaGeoJson.features?.map((f) => f.geometry?.type)
-  // );
 
   const limitedGeoJson = useMemo(() => {
     const features =
@@ -350,12 +351,6 @@ const AdminLocationDashboard = () => {
           (loc) => loc.state && formatLabel(loc.state) === selectedState
         )
       : data;
-    // console.log("[AdminLocationDashboard] Table Data:", filteredData.length);
-    // console.log(
-    //   "[AdminLocationDashboard] Map Markers:",
-    //   filteredData.filter((loc) => loc.coordinates?.lat && loc.coordinates?.lon)
-    //     .length
-    // );
     return filteredData.map((loc) => ({
       userId: loc.userId,
       name: loc?.name || "Unknown",
@@ -419,7 +414,10 @@ const AdminLocationDashboard = () => {
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="lg:w-1/4 bg-gray-100 dark:bg-gray-800 rounded-lg p-4 shadow max-h-[60vh] overflow-y-auto relative">
           <h2 className="text-lg font-semibold mb-4">Locations</h2>
-          <LoadingBar loading={userLocations.loading} text="Loading user locations..." />
+          <LoadingBar
+            loading={userLocations.loading}
+            text="Loading user locations..."
+          />
           {locations.error ? (
             <p className="text-red-500">{locations.error}</p>
           ) : !Object.keys(groupedLocations).length ? (
@@ -521,10 +519,6 @@ const AdminLocationDashboard = () => {
                     style={geoJsonStyle}
                     zIndexOffset={1000}
                     onEachFeature={(feature, layer) => {
-                      // console.log(
-                      //   "[GeoJSON Render] Feature:",
-                      //   feature.properties
-                      // );
                       layer.bindPopup("<strong>India</strong>");
                     }}
                   />
