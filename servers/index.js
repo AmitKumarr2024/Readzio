@@ -141,8 +141,9 @@ app.get("/health", (req, res) => {
 
 // ✅ Root path handler to fix "Cannot GET /"
 app.get("/", (req, res) => {
-  res.status(200).send("✅ Inksha API is running");
+  res.redirect(CLIENT_URL);
 });
+
 
 // Error handler
 app.use(errorHandler);
