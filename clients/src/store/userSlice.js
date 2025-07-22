@@ -504,8 +504,8 @@ const userSlice = createSlice({
       state.activityError = null;
       state.userLocations.error = null;
       state.followerLocations.error = null;
-      state.geoJson.error = null;
     },
+
     clearUser: (state) => {
       console.log("[UserSlice] clearUser: Resetting user state");
       return { ...initialState };

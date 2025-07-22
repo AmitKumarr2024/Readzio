@@ -23,6 +23,7 @@ const debouncedLocationHandler = debounce((dispatch, location) => {
   dispatch(addUserLocation(location));
 }, 1000);
 
+
 export const fetchActiveNotifications = createAsyncThunk(
   "socket/fetchActiveNotifications",
   async (_, { rejectWithValue, getState }) => {
