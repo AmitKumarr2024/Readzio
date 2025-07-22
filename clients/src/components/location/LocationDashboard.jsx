@@ -418,14 +418,14 @@ const LocationDashboard = () => {
                 backgroundColor: "transparent",
               }}
               className="rounded-lg z-0"
-              maxZoom={2}
+              maxZoom={20}
             >
               <TileLayer
                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                 attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>'
                 className="dark:filter dark:brightness-75 dark:contrast-125"
                 tileSize={256}
-                maxZoom={18}
+                maxZoom={10}
                 keepBuffer={4}
               />
               <ZoomHandler
