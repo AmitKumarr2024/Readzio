@@ -23,7 +23,6 @@ const debouncedLocationHandler = debounce((dispatch, location) => {
   dispatch(addUserLocation(location));
 }, 1000);
 
-
 export const fetchActiveNotifications = createAsyncThunk(
   "socket/fetchActiveNotifications",
   async (_, { rejectWithValue, getState }) => {
@@ -65,13 +64,17 @@ export const fetchInitialPostCounts = createAsyncThunk(
   async (_, { rejectWithValue, getState }) => {
     try {
       const { user } = getState().auth;
+
+      // 🔍 Add this log
+      console.log("[fetchInitialPostCounts] Authenticated user:", user);
+
       if (!user?._id) throw new Error("User not authenticated");
 
       const [allPostsCount, myPostsCount, followingPostsCount] =
         await Promise.all([
           axiosInstance.get("/post/count/all"),
-          axiosInstance.get("/post/count/my"),
-          axiosInstance.get("/post/count/following"),
+          axiosInstance.get("/post/count/my", { withCredentials: true }),
+          axiosInstance.get("/post/count/following", { withCredentials: true }),
         ]);
 
       return {
