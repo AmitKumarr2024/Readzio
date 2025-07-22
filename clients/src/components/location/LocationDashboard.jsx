@@ -107,26 +107,26 @@ const ZoomHandler = ({
       return;
     }
 
-    if (selectedState) {
-      const stateLocations = locations.list.filter(
-        (loc) =>
-          formatLabel(loc.state) === selectedState &&
-          loc.coordinates?.lat &&
-          loc.coordinates?.lon
-      );
-      if (stateLocations.length >= 2) {
-        const bounds = L.latLngBounds(
-          stateLocations.map((loc) => [
-            loc.coordinates.lat,
-            loc.coordinates.lon,
-          ])
-        );
-        applyZoomWithCap(bounds);
-      } else {
-        map.setView(defaultIndiaCenter, defaultZoom);
-      }
-      return;
-    }
+    // if (selectedState) {
+    //   const stateLocations = locations.list.filter(
+    //     (loc) =>
+    //       formatLabel(loc.state) === selectedState &&
+    //       loc.coordinates?.lat &&
+    //       loc.coordinates?.lon
+    //   );
+    //   if (stateLocations.length >= 2) {
+    //     const bounds = L.latLngBounds(
+    //       stateLocations.map((loc) => [
+    //         loc.coordinates.lat,
+    //         loc.coordinates.lon,
+    //       ])
+    //     );
+    //     applyZoomWithCap(bounds);
+    //   } else {
+    //     map.setView(defaultIndiaCenter, defaultZoom);
+    //   }
+    //   return;
+    // }
 
     if (selectedCountry) {
       const countryLocations = locations.list.filter(
@@ -164,7 +164,7 @@ const ZoomHandler = ({
     map.setView(defaultIndiaCenter, defaultZoom);
   }, [
     selectedCountry,
-    selectedState,
+    // selectedState,
     locations,
     selectedUserLocation,
     geoJson,
@@ -188,7 +188,7 @@ const LocationDashboard = () => {
   const { socket, userStatus } = useSelector(selectSocketState);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCountry, setSelectedCountry] = useState("India");
-  const [selectedState, setSelectedState] = useState(null);
+  // const [selectedState, setSelectedState] = useState(null);
   const [selectedUserLocation, setSelectedUserLocation] = useState(null);
 
   const isLoading = userLoading || geoJson.loading || followerLocations.loading;
@@ -234,7 +234,6 @@ const LocationDashboard = () => {
           payload: {
             ...location,
             name: location.name || userIdToName[location.userId] || "Unknown",
-            state: formatLabel(location.state) || "Haryana",
             country: formatLabel(location.country) || "India",
           },
         });
@@ -262,7 +261,6 @@ const LocationDashboard = () => {
     const list = filteredLocations.map((loc) => ({
       ...loc,
       name: loc.name || userIdToName[loc.userId] || "Unknown",
-      state: formatLabel(loc.state) || "Haryana",
       country: formatLabel(loc.country) || "India",
       key: `${loc.userId}-${loc.timestamp || loc.name}`,
     }));
@@ -319,9 +317,11 @@ const LocationDashboard = () => {
     <div className="space-y-4">
       <LoadingBar loading={isLoading} text="Fetching data..." />
       <div className="flex flex-col lg:flex-row gap-4">
-        <div className="lg:w-1/4 bg
+        <div
+          className="lg:w-1/4 bg
 
--gray-100 dark:bg-gray-800 rounded-lg p-4 shadow max-h-[60vh] overflow-y-auto relative">
+-gray-100 dark:bg-gray-800 rounded-lg p-4 shadow max-h-[60vh] overflow-y-auto relative"
+        >
           <h2 className="text-lg font-semibold mb-4">Follower Locations</h2>
           {/* <LoadingBar loading={followerLocations.loading} text="Loading follower locations..." /> */}
           {flatLocations.error && (
@@ -365,41 +365,40 @@ const LocationDashboard = () => {
                     </button>
                     {selectedCountry === country && (
                       <div className="pl-4 mt-2 space-y-1">
-                        {[
-                          ...new Set(
-                            flatLocations.list
-                              .filter((loc) => loc.country === country)
-                              .map((loc) => loc.state)
-                          ),
-                        ]
-                          .filter((state) => state !== "Unknown")
-                          .map((state) => (
-                            <button
-                              key={state}
-                              onClick={() => {
-                                setSelectedState(
-                                  state === selectedState ? null : state
-                                );
-                                setSelectedUserLocation(null);
-                                setCurrentPage(1);
-                              }}
-                              className={`w-full text-left p-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm ${
-                                selectedState === state
-                                  ? "bg-gray-300 dark:bg-gray-600"
-                                  : ""
-                              }`}
-                            >
-                              {state} (
-                              {
-                                flatLocations.list.filter(
-                                  (loc) =>
-                                    loc.state === state &&
-                                    loc.country === country
-                                ).length
-                              }
-                              )
-                            </button>
-                          ))}
+                        {
+                          [
+                            ...new Set(
+                              flatLocations.list
+                                .filter((loc) => loc.country === country)
+                                .map((loc) => loc.state)
+                            ),
+                          ].filter((state) => state !== "Unknown")
+                          // .map((state) => (
+                          //   <button
+                          //     key={state}
+                          //     onClick={() => {
+                          //       setSelectedState(
+                          //         state === selectedState ? null : state
+                          //       );
+                          //       setSelectedUserLocation(null);
+                          //       setCurrentPage(1);
+                          //     }}
+                          //     className={`w-full text-left p-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm ${
+                          //       selectedState === state
+                          //         ? "bg-gray-300 dark:bg-gray-600"
+                          //         : ""
+                          //     }`}
+                          //   >
+                          //     {state} (
+                          //     {
+                          //       flatLocations.list.filter(
+                          //         (loc) => loc.country === country
+                          //       ).length
+                          //     }
+                          //     )
+                          //   </button>
+                          // ))
+                        }
                       </div>
                     )}
                   </div>
@@ -471,9 +470,7 @@ const LocationDashboard = () => {
                           <p>
                             <strong>Name:</strong> {loc?.name}
                           </p>
-                          <p>
-                            <strong>State:</strong> {loc?.state}
-                          </p>
+                          
                           <p>
                             <strong>Country:</strong> {loc?.country}
                           </p>
@@ -528,9 +525,7 @@ const LocationDashboard = () => {
                           <th className="p-2 border-b border-gray-300 dark:border-gray-600">
                             Name
                           </th>
-                          <th className="p-2 border-b border-gray-300 dark:border-gray-600">
-                            State
-                          </th>
+                          
                           <th className="p-2 border-b border-gray-300 dark:border-gray-600">
                             Country
                           </th>
@@ -548,9 +543,7 @@ const LocationDashboard = () => {
                         <td className="p-2 border-b border-gray-300 dark:border-gray-600">
                           {loc?.name}
                         </td>
-                        <td className="p-2 border-b border-gray-300 dark:border-gray-600">
-                          {loc?.state}
-                        </td>
+                      
                         <td className="p-2 border-b border-gray-300 dark:border-gray-600">
                           {loc?.country}
                         </td>
