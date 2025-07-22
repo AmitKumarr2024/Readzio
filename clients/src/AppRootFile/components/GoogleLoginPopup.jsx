@@ -1,15 +1,24 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { FcGoogle } from "react-icons/fc";
 
 export default function GoogleLoginPopup() {
   return (
-    <div className="fixed top-26 right-4 z-50 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-300 dark:border-gray-600">
-      <p className="mb-2 text-sm">Sign in to personalize your experience</p>
+    <div className="fixed top-24 right-4 z-50 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 shadow-xl rounded-xl p-4 flex items-center gap-3 hover:shadow-2xl transition-all duration-200">
+      <FcGoogle className="text-2xl" />
+      <div className="flex flex-col text-sm">
+        <span className="font-medium text-gray-800 dark:text-white">
+          Sign in with Google
+        </span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          For a personalized experience
+        </span>
+      </div>
       <Link
-        to={"/login"}
-        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+        to="/login"
+        className="ml-3 text-sm font-semibold text-blue-600 hover:underline"
       >
-        Continue with Google
+        Sign in
       </Link>
     </div>
   );

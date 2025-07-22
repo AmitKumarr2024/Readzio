@@ -7,12 +7,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Path to India-specific GeoJSON file
-const INDIA_GEOJSON_PATH = path.join(
-  process.cwd(),
-  "servers/data/india-accurate.json"
-);
+const INDIA_GEOJSON_PATH = path.join(__dirname, "../data/india-accurate.json");
 
-console.log("[GeoJSON] Attempting to read:", INDIA_GEOJSON_PATH);
+console.log("INDIA_GEOJSON_PATH", INDIA_GEOJSON_PATH);
 
 let cachedIndiaBoundary = null;
 
@@ -43,7 +40,6 @@ export const getIndiaBoundaryOnly = async (req, res, next) => {
     res.status(200).json(cachedIndiaBoundary);
   } catch (error) {
     // AppError with context for fetching GeoJSON
-    console.error("[GeoJSON] Error:", error.message);
     next(
       error instanceof AppError
         ? error
