@@ -1,8 +1,8 @@
 {
-  "name": "own-blogs",
+  "name": "inksha-backend",
   "version": "1.0.0",
-  "description": "my Own blog app",
-  "homepage": "https://github.com/AmitKumarr2024/My-Own-Blog-Project#readme",
+  "description": "Inksha: A full-featured blogging and publishing platform",
+  "homepage": "https://inksha.onrender.com",
   "bugs": {
     "url": "https://github.com/AmitKumarr2024/My-Own-Blog-Project/issues"
   },
