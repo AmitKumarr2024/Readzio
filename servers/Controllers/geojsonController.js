@@ -9,9 +9,9 @@ const __dirname = path.dirname(__filename);
 // Path to India-specific GeoJSON file
 const INDIA_GEOJSON_PATH = path.join(__dirname, "../data/india-accurate.json");
 
-const geoJsonData = await fs.readFile(INDIA_GEOJSON_PATH, "utf-8");
 
-console.log("geoJsonData", geoJsonData);
+
+console.log("INDIA_GEOJSON_PATH", INDIA_GEOJSON_PATH);
 
 let cachedIndiaBoundary = null;
 
