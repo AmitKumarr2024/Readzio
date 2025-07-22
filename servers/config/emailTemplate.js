@@ -171,3 +171,35 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
   </table>
 </body>
 </html>`;
+
+export const INVOICE_EMAIL_TEMPLATE = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body { font-family: Arial; padding: 20px; }
+      h2 { color: #333; }
+      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+      td, th { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    </style>
+  </head>
+  <body>
+    <h2>Invoice Receipt</h2>
+    <p>Hi {{name}},</p>
+    <p>Thanks for your payment. Here's your invoice:</p>
+
+    <table>
+      <tr><th>Invoice ID</th><td>{{invoice.invoiceId}}</td></tr>
+      <tr><th>Order ID</th><td>{{invoice.orderId}}</td></tr>
+      <tr><th>Payment ID</th><td>{{invoice.paymentId}}</td></tr>
+      <tr><th>Amount</th><td>₹ {{invoice.amount}}</td></tr>
+      <tr><th>Currency</th><td>{{invoice.currency}}</td></tr>
+      <tr><th>Date</th><td>{{invoice.date}}</td></tr>
+    </table>
+
+    <p>If you have any questions, feel free to contact us.</p>
+    <p>— The Inksha Team</p>
+  </body>
+</html>
+`;

@@ -30,6 +30,7 @@ import PostEmailRoutes from "../servers/Routes/postEmailRoutes.js";
 import BannerNotificationRoutes from "../servers/Routes/bannerNotificationRoutes.js";
 import guestRoutes from "../servers/Routes/guestRoutes.js";
 import errorHandler from "../servers/Middlewares/errorHandler.js";
+import { handleRazorpayWebhook } from "./Controllers/paymentController.js";
 
 console.log("[Server:Startup] Initializing Express server");
 
@@ -38,6 +39,17 @@ const server = http.createServer(app);
 const io = initializeSocket(server);
 
 const __dirname = path.resolve();
+
+// Add this BEFORE any global express.json() middleware
+app.post(
+  "/api/razorpay/webhook",
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf.toString(); // ✅ Correct
+    },
+  }),
+  handleRazorpayWebhook // ❌ This is not imported yet!
+);
 
 // Attach Socket.IO instance to every request
 app.use((req, res, next) => {
@@ -53,7 +65,7 @@ const allowedOrigins = [
   CLIENT_URL,
   "http://localhost:5173",
   "http://localhost:8001",
-  "https://inksha.onrender.com"
+  "https://inksha.onrender.com",
 ].filter(Boolean);
 console.log("[Server:CORS] Allowed origins:", allowedOrigins);
 
@@ -109,11 +121,10 @@ try {
 }
 
 // ads.txt Snippet
-app.get('/ads.txt', (req, res) => {
-  res.type('text/plain');
-  res.send('google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0');
+app.get("/ads.txt", (req, res) => {
+  res.type("text/plain");
+  res.send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
 });
-
 
 // Health check route
 app.get("/health", (req, res) => {
@@ -179,9 +190,6 @@ if (NODE_ENV === "production") {
 io.on("error", (err) => {
   console.error("[Server:SocketIO] Error:", err.message);
 });
-
-
-
 
 server.on("error", (err) => {
   console.error("[Server:HTTP] Error:", err.message);

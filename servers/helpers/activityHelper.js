@@ -114,12 +114,16 @@ export const recordActivity = async ({
 }) => {
   try {
     // Validates user ID
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
+    // Allow dynamic webhook actions like RAZORPAY_WEBHOOK_payment.captured
+    const isWebhookAction =
+      typeof action === "string" && action.startsWith("RAZORPAY_WEBHOOK_");
+
+    if (!VALID_ACTIONS.has(action) && !isWebhookAction) {
       throw new AppError(
-        "Invalid userId",
+        `Invalid action: ${action}`,
         400,
         "RecordActivity",
-        "User ID must be a valid MongoDB ObjectId"
+        `Action must be in VALID_ACTIONS or start with 'RAZORPAY_WEBHOOK_'`
       );
     }
 

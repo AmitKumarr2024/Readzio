@@ -11,6 +11,8 @@ import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import axiosInstance from "../Utils/axiosInstance.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import PaymentModel from "../Models/PaymentModel.js";
+import createMailOption from "../helpers/emailHelper.js";
+import { sendEmailWithRetries } from "../helpers/sendEmailWithRetries.js";
 
 const razorpay = new Razorpay({
   key_id: RAZORPAY_KEY_ID,
@@ -1011,24 +1013,24 @@ export const getAllPayments = asyncHandler(async (req, res, next) => {
 });
 
 // Handles Razorpay webhook events
-export const handleRazorpayWebhook = asyncHandler(async (req, res, next) => {
-  const webhookSecret = RAZORPAY_WEBHOOK_SECRET;
-  const signature = req.headers["x-razorpay-signature"];
-  const body = req.rawBody || JSON.stringify(req.body);
+// Handles Razorpay webhook events (including invoice email sending)
 
-  // Verifies webhook signature
+export const handleRazorpayWebhook = asyncHandler(async (req, res, next) => {
+  const signature = req.headers["x-razorpay-signature"];
+  const body = req.rawBody || JSON.stringify(req.body); // ensure rawBody middleware is used
+
+  // ✅ Verify Razorpay webhook signature
   const expectedSignature = crypto
-    .createHmac("sha256", webhookSecret)
+    .createHmac("sha256", RAZORPAY_WEBHOOK_SECRET)
     .update(body)
     .digest("hex");
 
-  if (expectedSignature !== signature)
-    throw new AppError(
-      "Invalid webhook signature",
-      400,
-      "HandleRazorpayWebhook",
-      "Signature verification failed"
-    );
+  if (signature !== expectedSignature) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid webhook signature",
+    });
+  }
 
   const data = typeof body === "string" ? JSON.parse(body) : body;
   const event = data.event;
@@ -1036,64 +1038,104 @@ export const handleRazorpayWebhook = asyncHandler(async (req, res, next) => {
 
   try {
     switch (event) {
-      case "payment.captured":
-        await PaymentModel.findOneAndUpdate(
-          { paymentId: payload.payment.entity.id },
-          { status: "paid" }
+      case "payment.captured": {
+        const paymentEntity = payload.payment.entity;
+
+        // ✅ Update payment status in DB
+        const updatedPayment = await PaymentModel.findOneAndUpdate(
+          { paymentId: paymentEntity.id },
+          { status: "paid" },
+          { new: true }
         );
+
+        // 🧠 Fetch user from DB
+        const user = await UserModel.findById(updatedPayment.userId);
+
+        if (user && updatedPayment) {
+          const invoiceId =
+            "INV-" + updatedPayment._id.toString().slice(-6).toUpperCase();
+
+          // 📧 Generate email options using existing utility
+          const emailOptions = createMailOption({
+            to: user.email,
+            subject: "Your Inksha Invoice Receipt",
+            name: user.name,
+            message: `Thank you for your payment. Here are your invoice details:\n\nInvoice ID: ${invoiceId}\nOrder ID: ${
+              updatedPayment.orderId
+            }\nAmount: ₹${(updatedPayment.amount / 100).toFixed(2)}`,
+          });
+
+          // 📤 Send invoice email with retries
+          await sendEmailWithRetries(emailOptions, user._id, "subscription");
+        }
         break;
-      case "payment.failed":
+      }
+
+      case "payment.failed": {
         await PaymentModel.findOneAndUpdate(
           { orderId: payload.payment.entity.order_id },
           { status: "failed" }
         );
         break;
-      case "payout.processed":
+      }
+
+      case "payout.processed": {
         await PaymentModel.findOneAndUpdate(
           { payoutId: payload.payout.entity.id },
           { status: "processed" }
         );
         break;
-      case "payout.queued":
+      }
+
+      case "payout.queued": {
         await PaymentModel.findOneAndUpdate(
           { payoutId: payload.payout.entity.id },
           { status: "queued" }
         );
         break;
-      case "payout.rejected":
+      }
+
+      case "payout.rejected": {
         await PaymentModel.findOneAndUpdate(
           { payoutId: payload.payout.entity.id },
           { status: "rejected" }
         );
         break;
-      case "refund.processed":
+      }
+
+      case "refund.processed": {
         await PaymentModel.findOneAndUpdate(
           { paymentId: payload.refund.entity.payment_id },
           { status: "refunded" }
         );
         break;
+      }
+
+      // Add more event types as needed
+
       default:
         break;
     }
 
-    // Logs webhook event
+    // 📝 Optional: Log webhook event activity
     await recordActivity({
-      userId: null,
-      action: `RAZORPAY_WEBHOOK_${event.toUpperCase()}`,
-      message: `Received webhook for event: ${event}`,
+      userId: user?._id || null,
+      action: `RAZORPAY_WEBHOOK_${event}`,
+      message: `Webhook event received: ${event}`,
     });
 
-    res.status(200).json({ success: true, message: "Webhook handled" });
+    res
+      .status(200)
+      .json({ success: true, message: "Webhook handled successfully" });
   } catch (error) {
-    // AppError with context for webhook handling
     next(
       error instanceof AppError
         ? error
         : new AppError(
-            error.message || "Webhook handler failed",
+            error.message || "Webhook processing failed",
             500,
             "HandleRazorpayWebhook",
-            "Failed to process webhook"
+            "Unhandled Razorpay webhook error"
           )
     );
   }
