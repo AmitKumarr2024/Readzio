@@ -108,6 +108,13 @@ try {
   console.error("❌ Route mount error:", err?.stack || err?.message || err);
 }
 
+// ads.txt Snippet
+app.get('/ads.txt', (req, res) => {
+  res.type('text/plain');
+  res.send('google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0');
+});
+
+
 // Health check route
 app.get("/health", (req, res) => {
   const status = {
@@ -174,11 +181,6 @@ io.on("error", (err) => {
 });
 
 
-// ads.txt Snippet
-app.get('/ads.txt', (req, res) => {
-  res.type('text/plain');
-  res.send('google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0');
-});
 
 
 server.on("error", (err) => {
