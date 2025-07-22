@@ -1,47 +1,37 @@
-import path from "path";
-import fs from "fs/promises";
-import { fileURLToPath } from "url";
+import axios from "axios";
 import { AppError } from "../../servers/Utils/AppError.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Path to India-specific GeoJSON file
-const INDIA_GEOJSON_PATH = path.join(__dirname, "../data/india-accurate.json");
-
-
-
-console.log("INDIA_GEOJSON_PATH", INDIA_GEOJSON_PATH);
+// ✅ Replace with your actual hosted Firebase URL
+const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
 
 let cachedIndiaBoundary = null;
 
 // Serves India boundary GeoJSON data
 export const getIndiaBoundaryOnly = async (req, res, next) => {
   try {
-    // Returns cached data if available
+    // Return cached if already fetched
     if (cachedIndiaBoundary) {
       return res.status(200).json(cachedIndiaBoundary);
     }
 
-    // Verifies file existence
-    await fs.access(INDIA_GEOJSON_PATH);
-    const geoJsonData = await fs.readFile(INDIA_GEOJSON_PATH, "utf-8");
-    const parsedData = JSON.parse(geoJsonData);
+    // Fetch from Firebase Hosting
+    const response = await axios.get(INDIA_GEOJSON_URL);
+    const data = response.data;
 
-    // Validates GeoJSON features
-    if (!parsedData?.features?.length)
+    // Validate GeoJSON format
+    if (!data?.features?.length) {
       throw new AppError(
         "No features in India GeoJSON",
         400,
         "GetIndiaBoundaryOnly",
         "Invalid GeoJSON data"
       );
+    }
 
-    cachedIndiaBoundary = parsedData;
-
+    // Cache the response
+    cachedIndiaBoundary = data;
     res.status(200).json(cachedIndiaBoundary);
   } catch (error) {
-    // AppError with context for fetching GeoJSON
     next(
       error instanceof AppError
         ? error

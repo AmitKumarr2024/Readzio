@@ -1,0 +1,10 @@
+{
+  "hosting": {
+    "public": "geojson",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
