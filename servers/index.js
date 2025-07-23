@@ -124,21 +124,22 @@ routes.forEach(([path, router]) => {
 const clientPath = path.join(__dirname, "clients", "dist");
 const clientIndexPath = path.join(clientPath, "index.html");
 
-app.use(express.static(path.join(__dirname, 'public')));
-
-
-
+// ✅ Serve static public files (logo.png, robots.txt, etc.)
+app.use(express.static(path.join(__dirname, "public")));
 
 // Static ads.txt file
 app.get("/ads.txt", (req, res) => {
-  res.type("text/plain").send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
+  res
+    .type("text/plain")
+    .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
 });
 
+// ✅ Serve frontend in production
 if (NODE_ENV === "production") {
   if (fs.existsSync(clientIndexPath)) {
     app.use(express.static(clientPath));
 
-    // 🎯 Serve index.html for all non-API routes
+    // ⚠️ This must come LAST
     app.get(/^\/(?!api\/).*/, (req, res) => {
       res.sendFile(clientIndexPath);
     });
@@ -147,15 +148,14 @@ if (NODE_ENV === "production") {
   }
 }
 
-
-
 // Health check
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
     message: "Inksha API is running",
     uptime: process.uptime(),
-    database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    database:
+      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
     timestamp: new Date().toISOString(),
   });
 });
@@ -219,7 +219,6 @@ const startServer = async () => {
 
     startTempCleanup();
     startDailyDigestJob();
-
 
     server.listen(PORT, () => {
       console.log(`[Server:Startup] ✅ Inksha API is running on port ${PORT}`);
