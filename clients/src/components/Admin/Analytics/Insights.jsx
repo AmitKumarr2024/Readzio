@@ -180,7 +180,7 @@ const Insights = () => {
   };
 
   const totalTimeSpent = analytics?.traffic?.totalTimeSpent ?? 0;
-  const totalHours = (totalTimeSpent / 3600).toFixed(2); // seconds to hours
+  const totalHours = (totalTimeSpent / 3600).toFixed(1); // seconds to hours
 
   return (
     <motion.div
@@ -367,7 +367,7 @@ const Insights = () => {
             </span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
             {currentUser?.role === "admin" && post && (
               <motion.div
                 variants={itemVariants}
