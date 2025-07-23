@@ -150,12 +150,12 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
                       {{#each posts}}
                       <tr class="post-item">
                         <td>
-                          <a href="https://inksha.onrender.com/posts/{{this.slug}}" class="post-title">{{this.title}}</a>
+                          <a href="https://inksha.onrender.com/post/{{this.slug}}" class="post-title">{{this.title}}</a>
                           <p class="post-author">by {{this.author.name}}</p>
                           {{#if this.thumbnail}}
                           <img src="{{this.thumbnail}}" alt="{{this.title}} thumbnail" class="post-thumbnail">
                           {{/if}}
-                          <a href="https://inksha.onrender.com/posts/{{this.slug}}" class="post-link">Read more</a>
+                          <a href="https://inksha.onrender.com/post/{{this.slug}}" class="post-link">Read more</a>
                         </td>
                       </tr>
                       {{else}}

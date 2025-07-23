@@ -18,7 +18,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     }).lean();
 
     console.log("[Cron:sendDailyPostEmail] Fetched users:", users.length);
-    
+
     if (users.length === 0) {
       return res.status(200).json({
         message: "No verified users to send emails to",
@@ -64,7 +64,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
         message: "No new posts today. Check out our platform for more content!",
         hasButton: true,
         buttonText: "Visit Platform",
-        buttonUrl: "https://inksha.onrender.com/posts",
+        buttonUrl: "https://inksha.onrender.com/post",
         posts: [],
       });
 
@@ -88,7 +88,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
         email: user.email,
         hasButton: true,
         buttonText: "Read Posts",
-        buttonUrl: "https://inksha.onrender.com/posts",
+        buttonUrl: "https://inksha.onrender.com/post",
         posts,
       });
 
