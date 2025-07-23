@@ -53,13 +53,10 @@ const Navbar = () => {
   const userName = useMemo(() => authUser?.name || "User", [authUser?.name]);
   const userId = useMemo(() => authUser?._id, [authUser?._id]);
 
-  // Find current user's location
   const userLocation = useMemo(
     () => userLocations.list.find((loc) => loc.userId === authUser?._id),
     [userLocations.list, authUser?._id]
   );
-
-
 
   const shouldHideCategory = useMemo(
     () =>
@@ -90,7 +87,6 @@ const Navbar = () => {
       dispatch(getUser()).catch((err) =>
         console.error("Get user failed:", err)
       );
-      // Track IP location once on initial load (guest or user)
       dispatch(trackUserIPLocation()).catch((err) =>
         console.warn("IP location tracking failed:", err)
       );
@@ -175,7 +171,7 @@ const Navbar = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-4">
             <div className="relative flex flex-col items-center">
-              <div className="absolute  -top-4 -right-3 text-lg text-end text-gray-600 dark:text-gray-300">
+              <div className="absolute -top-4 -right-3 text-lg text-end text-gray-600 dark:text-gray-300">
                 {userLocation?.country?.slice(0, 3).toUpperCase()}
               </div>
               <Logo />
@@ -245,6 +241,26 @@ const Navbar = () => {
 
             <ThemeToggleButton />
 
+            {isAuthenticated && authUser?._id && (
+              <Link
+                to="/user"
+                className="block md:hidden w-9 h-9 rounded-full overflow-hidden border border-gray-300 dark:border-gray-700"
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={userName}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium text-text-main-light dark:text-text-main-dark">
+                    {userName[0]}
+                  </div>
+                )}
+              </Link>
+            )}
+
             {isAuthenticated && authUser?._id ? (
               <>
                 <Link
@@ -268,11 +284,11 @@ const Navbar = () => {
                       <img
                         src={avatarUrl}
                         alt={userName}
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-9 h-9 rounded-full object-cover"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-text-main-light dark:text-text-main-dark font-medium text-lg">
+                      <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium text-text-main-light dark:text-text-main-dark">
                         {userName[0]}
                       </div>
                     )}
