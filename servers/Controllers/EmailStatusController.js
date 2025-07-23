@@ -9,6 +9,7 @@ const VALID_EMAIL_TYPES = [
   "subscription",
   "contact_reply",
   "report",
+  "daily_digest",
 ];
 
 // Checks email status for a specific email and type
@@ -18,7 +19,12 @@ export const checkEmailStatus = async (req, res, next) => {
 
     // Validates email format
     if (!email || !validator.isEmail(email))
-      throw new AppError("Valid email required", 400, "CheckEmailStatus", "Invalid email format");
+      throw new AppError(
+        "Valid email required",
+        400,
+        "CheckEmailStatus",
+        "Invalid email format"
+      );
 
     // Validates email type
     if (!type || !VALID_EMAIL_TYPES.includes(type))
@@ -55,7 +61,12 @@ export const checkEmailStatus = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "CheckEmailStatus", "Failed to check email status")
+        : new AppError(
+            error.message,
+            500,
+            "CheckEmailStatus",
+            "Failed to check email status"
+          )
     );
   }
 };
@@ -65,7 +76,12 @@ export const getAllEmailStatuses = async (req, res, next) => {
   try {
     // Validates admin access
     if (req.user.role !== "admin")
-      throw new AppError("Admin access required", 403, "GetAllEmailStatuses", "Admin privileges required");
+      throw new AppError(
+        "Admin access required",
+        403,
+        "GetAllEmailStatuses",
+        "Admin privileges required"
+      );
 
     const { page = 1, limit = 10, type } = req.query;
 
@@ -96,7 +112,12 @@ export const getAllEmailStatuses = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "GetAllEmailStatuses", "Failed to fetch email statuses")
+        : new AppError(
+            error.message,
+            500,
+            "GetAllEmailStatuses",
+            "Failed to fetch email statuses"
+          )
     );
   }
 };
@@ -106,7 +127,12 @@ export const retryFailedEmails = async (req, res, next) => {
   try {
     // Validates admin access
     if (req.user.role !== "admin")
-      throw new AppError("Admin access required", 403, "RetryFailedEmails", "Admin privileges required");
+      throw new AppError(
+        "Admin access required",
+        403,
+        "RetryFailedEmails",
+        "Admin privileges required"
+      );
 
     const { type } = req.body;
 
@@ -164,7 +190,12 @@ export const retryFailedEmails = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "RetryFailedEmails", "Failed to retry failed emails")
+        : new AppError(
+            error.message,
+            500,
+            "RetryFailedEmails",
+            "Failed to retry failed emails"
+          )
     );
   }
 };
