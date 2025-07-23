@@ -175,8 +175,8 @@ const Navbar = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-4">
             <div className="relative flex flex-col items-center">
-              <div className="absolute  top-0 -right-3 text-lg text-end text-gray-600 dark:text-gray-300">
-                {userLocation?.country }
+              <div className="absolute  -top-3 -right-3 text-lg text-end text-gray-600 dark:text-gray-300">
+                {userLocation?.country?.slice(0, 3).toUpperCase()}
               </div>
               <Logo />
               {userLocation?.countryCode && (
