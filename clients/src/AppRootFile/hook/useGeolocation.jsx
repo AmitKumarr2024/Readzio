@@ -22,25 +22,26 @@ export const useGeolocation = () => {
               longitude: pos.coords.longitude,
               timestamp: Date.now(),
             };
-            // Save location to Redux and emit to socket
             dispatch(saveUserLocation(location));
             socket?.emit("userLocationUpdate", location);
             locationSent.current = true;
           },
           (err) => {
-            // Log geolocation errors
             console.error("[useGeolocation] Geolocation error:", err.message);
             setError(err.message);
           },
           { enableHighAccuracy: true, timeout: 10000 }
         );
       } else {
-        // Log browser incompatibility
-        console.error("[useGeolocation] Geolocation not supported");
         setError("Geolocation is not supported by this browser.");
       }
+
+      // ✅ Always track IP location regardless of geolocation success
+      dispatch(trackUserIPLocation()).catch((err) =>
+        console.error("Failed to track IP location:", err)
+      );
     }
-  }, [isAuthenticated, user?._id]); // Run on auth or user ID change
+  }, [isAuthenticated, user?._id]);
 
   return error;
 };

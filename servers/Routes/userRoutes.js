@@ -12,8 +12,11 @@ import {
   updateProfile,
   saveUserLocation,
   saveUserCookieConsent,
+  getIPLocation,
+  trackIPLocation,
 } from "../Controllers/userController.js";
 import upload from "../Middlewares/uploadImage.js";
+import { geoLocationMiddleware } from "../Middlewares/geoLocationMiddleware.js";
 
 const routes = new express.Router();
 
@@ -45,5 +48,16 @@ routes.delete("/activity/clear", protectedRoute, clearUserActivity);
 routes.delete("/activity/clear-old", protectedRoute, clearOldActivity);
 // POST /consent - Saves user cookie consent
 routes.post("/consent", saveUserCookieConsent);
+
+// GET /ip-location - Returns IP-based location (public)
+routes.get("/ip-location", geoLocationMiddleware, getIPLocation);
+
+// POST /track-ip-location - Saves IP-based location (authenticated only)
+routes.post(
+  "/track-ip-location",
+  geoLocationMiddleware,
+  protectedRoute,
+  trackIPLocation
+);
 
 export default routes;

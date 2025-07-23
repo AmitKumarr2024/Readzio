@@ -407,6 +407,44 @@ export const saveUserConsent = createAsyncThunk(
   }
 );
 
+// Fetches IP-based location (GET /user/ip-location)
+export const getUserIPLocation = createAsyncThunk(
+  "user/getUserIPLocation",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await axiosInstance.get("/user/ip-location", {
+        withCredentials: true,
+      });
+      return res.data.location;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to get IP location"
+      );
+    }
+  }
+);
+
+// Tracks IP-based location (POST /user/track-ip-location)
+export const trackUserIPLocation = createAsyncThunk(
+  "user/trackUserIPLocation",
+  async (_, { rejectWithValue }) => {
+    try {
+      await axiosInstance.post(
+        "/user/track-ip-location",
+        {},
+        {
+          withCredentials: true,
+        }
+      );
+      return true;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to track IP location"
+      );
+    }
+  }
+);
+
 export const clearSearchedUsers = () => ({
   type: "user/clearSearchedUsers",
 });
@@ -449,6 +487,12 @@ const initialState = {
     data: null,
     loading: false,
     error: null,
+  },
+  ipLocation: {
+    data: null,
+    loading: false,
+    error: null,
+    tracked: false,
   },
   cookieConsent: localStorage.getItem("userCookieConsent") || null,
 };
@@ -528,6 +572,14 @@ const userSlice = createSlice({
       console.log("[UserSlice] resetUpdateStatus: Resetting update status");
       state.updateSuccess = false;
       state.updateError = null;
+    },
+    clearIPLocation: (state) => {
+      state.ipLocation = {
+        data: null,
+        loading: false,
+        error: null,
+        tracked: false,
+      };
     },
   },
   extraReducers: (builder) => {
@@ -815,6 +867,30 @@ const userSlice = createSlice({
       })
       .addCase(saveUserConsent.rejected, (state, action) => {
         console.error("[UserSlice] saveUserConsent: Error", action.payload);
+      })
+      // getUserIPLocation
+      .addCase(getUserIPLocation.pending, (state) => {
+        state.ipLocation.loading = true;
+        state.ipLocation.error = null;
+      })
+      .addCase(getUserIPLocation.fulfilled, (state, action) => {
+        state.ipLocation.loading = false;
+        state.ipLocation.data = action.payload;
+      })
+      .addCase(getUserIPLocation.rejected, (state, action) => {
+        state.ipLocation.loading = false;
+        state.ipLocation.error = action.payload;
+      })
+
+      // trackUserIPLocation
+      .addCase(trackUserIPLocation.pending, (state) => {
+        state.ipLocation.tracked = false;
+      })
+      .addCase(trackUserIPLocation.fulfilled, (state) => {
+        state.ipLocation.tracked = true;
+      })
+      .addCase(trackUserIPLocation.rejected, (state) => {
+        state.ipLocation.tracked = false;
       });
   },
 });
@@ -827,6 +903,7 @@ export const {
   clearUser,
   clearSelectedUser,
   resetUpdateStatus,
+  clearIPLocation,
 } = userSlice.actions;
 
 export default userSlice.reducer;

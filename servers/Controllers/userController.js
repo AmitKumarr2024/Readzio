@@ -8,6 +8,65 @@ import ActivityModel from "../Models/ActivityModel.js";
 import { io } from "../sockets/socket.js";
 import UserLocation from "../Models/UserLocation.js";
 
+// GET /api/user/ip-location
+export const getIPLocation = async (req, res, next) => {
+  try {
+    if (!req.geoLocation) {
+      throw new AppError(
+        "Geolocation not available",
+        400,
+        "GetIPLocation",
+        "No geoLocation data attached"
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      location: req.geoLocation,
+    });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to get IP location",
+            500,
+            "GetIPLocation",
+            "Error in getIPLocation"
+          )
+    );
+  }
+};
+
+// POST /api/user/track-ip-location
+export const trackIPLocation = async (req, res, next) => {
+  try {
+    if (!req.geoLocation || !req.geoLocation.userId) {
+      throw new AppError(
+        "No authenticated user for tracking IP location",
+        400,
+        "TrackIPLocation",
+        "Missing geoLocation userId"
+      );
+    }
+
+    await UserLocation.create(req.geoLocation);
+
+    res.status(204).end(); // No content needed
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to track IP location",
+            500,
+            "TrackIPLocation",
+            "Error in trackIPLocation"
+          )
+    );
+  }
+};
+
 // Saves user location with validation and emits updates
 export const saveUserLocation = async (req, res, next) => {
   try {

@@ -13,6 +13,7 @@ import { checkAuth, logout } from "../store/authSlice";
 import { clearUser, getUser } from "../store/userSlice";
 import ThemeToggleButton from "../layout/ThemeToggleButton";
 import { disconnectSocket, initializeSocket } from "../store/socketSlice";
+import { useGeolocation } from "../AppRootFile/hook/useGeolocation";
 
 const countVariants = {
   initial: { opacity: 0, y: 10 },
@@ -57,6 +58,8 @@ const Navbar = () => {
     () => userLocations.list.find((loc) => loc.userId === authUser?._id),
     [userLocations.list, authUser?._id]
   );
+
+  const geoError = useGeolocation();
 
   const shouldHideCategory = useMemo(
     () =>
@@ -167,12 +170,17 @@ const Navbar = () => {
       <nav className="sticky top-0 z-50 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-4">
-            <div className="relative">
+            <div className="relative flex flex-col items-center">
+              <div className="mb-1 text-xs text-center text-gray-600 dark:text-gray-300">
+                {userLocation?.country || "Unknown"}
+              </div>
               <Logo />
-              {isAuthenticated && userLocation?.country && (
-                <span className="text-md font-semibold absolute -top-4 -right-3 text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-                  {userLocation?.country.slice(0, 3).toUpperCase()}
-                </span>
+              {userLocation?.countryCode && (
+                <img
+                  src={`https://flagcdn.com/24x18/${userLocation.countryCode.toLowerCase()}.png`}
+                  alt={userLocation.country}
+                  className="absolute -top-4 -right-3 w-5 h-4 object-cover rounded-sm border border-gray-300 dark:border-gray-700 shadow-sm"
+                />
               )}
             </div>
 
