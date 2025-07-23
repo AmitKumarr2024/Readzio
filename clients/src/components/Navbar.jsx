@@ -175,8 +175,8 @@ const Navbar = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-4">
             <div className="relative flex flex-col items-center">
-              <div className="mb-1 text-xs text-center text-gray-600 dark:text-gray-300">
-                {userLocation?.country || "Unknown"}
+              <div className="mb-1 text-lg text-end text-gray-600 dark:text-gray-300">
+                {userLocation?.country }
               </div>
               <Logo />
               {userLocation?.countryCode && (
@@ -191,7 +191,7 @@ const Navbar = () => {
             <div className="flex items-center gap-2">
               <Link
                 to="/users"
-                className="text-sm font-medium flex items-center gap-2"
+                className="text-lg font-medium flex items-center gap-2"
                 aria-label="Online users"
               >
                 <span className={`w-3 h-3 rounded-full ${statusClass}`} />
