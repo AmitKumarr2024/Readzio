@@ -18,7 +18,10 @@ export default function LocationErrorPopup({ locationError, onDismiss }) {
               {locationError}
             </div>
             <button
-              onClick={onDismiss}
+              onClick={() => {
+                onDismiss(); // call state reset (optional if handled elsewhere)
+                window.location.reload(); // full page refresh
+              }}
               aria-label="Dismiss"
               className="text-red-700 hover:text-red-900 dark:text-red-300 dark:hover:text-red-100"
             >
