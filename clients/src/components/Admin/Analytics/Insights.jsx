@@ -19,7 +19,6 @@ import { IoCloseCircleOutline } from "react-icons/io5";
 import { FiMaximize2 } from "react-icons/fi";
 import CountUp from "react-countup";
 import ErrorBoundary from "../../Post/ErrorBoundary";
-import { formatTimeSpent } from "../../../Utils/formatReadingTime";
 
 // Constants (move to a separate file if needed)
 const CPM_RATE = 2.5;
@@ -179,6 +178,9 @@ const Insights = () => {
     hidden: { opacity: 0, x: -20 },
     visible: { opacity: 1, x: 0, transition: { duration: 0.3 } },
   };
+
+  const totalTimeSpent = analytics?.traffic?.totalTimeSpent ?? 0;
+  const totalHours = (totalTimeSpent / 3600).toFixed(2); // seconds to hours
 
   return (
     <motion.div
@@ -430,9 +432,10 @@ const Insights = () => {
                 <p className="text-sm sm:text-base">
                   <span className="font-medium">Total Time Spent:</span>{" "}
                   <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    {formatTimeSpent(analytics.traffic?.totalTimeSpent || 0)}
+                    {totalHours} hours
                   </span>
                 </p>
+
                 <p className="text-sm sm:text-base">
                   <span className="font-medium">Unique Users:</span>{" "}
                   <span className="text-blue-600 dark:text-blue-400 font-bold">

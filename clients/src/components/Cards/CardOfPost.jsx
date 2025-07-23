@@ -4,8 +4,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { MessageCircle, Eye, Heart, Bookmark, Share2 } from "lucide-react";
 import TimeAgo from "../../Utils/TimeAgo";
 import { fetchSubscriptionPlansByAuthor } from "../../store/subscriptionSlice";
+import { formatReadingTime } from "../../Utils/formatReadingTime";
 import Skeleton from "@/components/Ui/Skeleton"; 
-import { formatTimeSpent } from "../../Utils/formatReadingTime";
 
 const CardOfPost = ({
   _id: id,
@@ -68,7 +68,7 @@ const CardOfPost = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         <span className="absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full bg-black bg-opacity-80 text-white">
-          {formatTimeSpent(timeSpent)}
+          {formatReadingTime(timeSpent)}
         </span>
         {isPostPremium && (
           <span className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500 text-black">
