@@ -137,6 +137,10 @@ if (NODE_ENV === "production") {
   }
 }
 
+app.use('/public', express.static(path.join(__dirname, 'public')));
+
+
+
 // Static ads.txt file
 app.get("/ads.txt", (req, res) => {
   res.type("text/plain").send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
