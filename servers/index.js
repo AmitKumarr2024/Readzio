@@ -137,7 +137,8 @@ if (NODE_ENV === "production") {
   }
 }
 
-app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public')));
+
 
 
 
