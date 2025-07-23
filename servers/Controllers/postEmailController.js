@@ -9,20 +9,22 @@ import { recordActivity } from "../../servers/helpers/activityHelper.js";
 
 // Sends daily post email to verified users with published posts
 export const sendDailyPostEmail = async (req, res, next) => {
+  console.log("[Cron:sendDailyPostEmail] Function entered");
   try {
     // Fetches verified users who haven't opted out of emails
     const users = await UserModel.find({
       isAccountVerified: true,
       stopEmailAttempts: false,
     }).lean();
+
+    console.log("[Cron:sendDailyPostEmail] Fetched users:", users.length);
+    
     if (users.length === 0) {
-      return res
-        .status(200)
-        .json({
-          message: "No verified users to send emails to",
-          results: [],
-          postCount: 0,
-        });
+      return res.status(200).json({
+        message: "No verified users to send emails to",
+        results: [],
+        postCount: 0,
+      });
     }
 
     // Fetches posts created today
@@ -67,13 +69,11 @@ export const sendDailyPostEmail = async (req, res, next) => {
       });
 
       await transporter.sendMail(fallbackMailOption);
-      return res
-        .status(200)
-        .json({
-          message: "No posts available, sent fallback email",
-          results: [],
-          postCount: 0,
-        });
+      return res.status(200).json({
+        message: "No posts available, sent fallback email",
+        results: [],
+        postCount: 0,
+      });
     }
 
     const postSlugs = posts.map((post) => post.slug);
@@ -147,13 +147,11 @@ export const sendDailyPostEmail = async (req, res, next) => {
       await sendEmailWithRetries(adminMailOption, admin._id);
     }
 
-    res
-      .status(200)
-      .json({
-        message: "Daily post emails processed",
-        results,
-        postCount: posts.length,
-      });
+    res.status(200).json({
+      message: "Daily post emails processed",
+      results,
+      postCount: posts.length,
+    });
   } catch (error) {
     // AppError with context for sending daily emails
     next(
