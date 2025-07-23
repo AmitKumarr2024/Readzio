@@ -1,8 +1,8 @@
 import Handlebars from "handlebars";
-import { EMAIL_TEMPLATE } from "../config/emailTemplate.js";
-import { DAILY_POST_EMAIL_TEMPLATE } from "../config/dailyPostEmailTemplate.js";
-import { INVOICE_EMAIL_TEMPLATE } from "../config/invoiceEmailTemplate.js"; // Optional, only if you use invoices
-import { SENDER_EMAIL } from "../config/dotenv.js";
+import { EMAIL_TEMPLATE } from "../../servers/config/emailTemplate.js";
+import { DAILY_POST_EMAIL_TEMPLATE } from "../../servers/config/dailyPostEmailTemplate.js";
+import { INVOICE_EMAIL_TEMPLATE } from "../../servers/config/emailTemplate.js";
+import { SENDER_EMAIL } from "../../servers/config/dotenv.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 
 /**
