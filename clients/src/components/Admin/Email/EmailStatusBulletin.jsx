@@ -29,10 +29,9 @@ export default function EmailStatusBulletin() {
   const [email, setEmail] = useState("");
   const [type, setType] = useState("");
   const [page, setPage] = useState(1);
+  const [sortByDateOrder, setSortByDateOrder] = useState("desc");
   const limit = 10;
 
-  // console.log("emailStatuses",emailStatuses);
-  
   useEffect(() => {
     if (!isAuthenticated) {
       dispatch(checkAuth());
@@ -46,7 +45,7 @@ export default function EmailStatusBulletin() {
   }, [dispatch, role, page, type]);
 
   const sanitize = (str) =>
-    str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    str.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
 
   const handleFetchStatus = async (e) => {
     e.preventDefault();
@@ -68,6 +67,12 @@ export default function EmailStatusBulletin() {
   const successfulEmails = emailStatuses.filter(
     (status) => status.emailStatus === "sent"
   ).length;
+
+  const sortedEmailStatuses = [...emailStatuses].sort((a, b) => {
+    const dateA = new Date(a.createdAt);
+    const dateB = new Date(b.createdAt);
+    return sortByDateOrder === "asc" ? dateA - dateB : dateB - dateA;
+  });
 
   if (authLoading)
     return (
@@ -123,6 +128,7 @@ export default function EmailStatusBulletin() {
           <option value="subscription">Subscription</option>
           <option value="contact_reply">Contact Reply</option>
           <option value="report">Report</option>
+          <option value="daily_digest">Daily Digest</option>
         </select>
         <button
           onClick={handleFetchStatus}
@@ -138,6 +144,12 @@ export default function EmailStatusBulletin() {
         >
           <FaSync className="inline-block mr-2" />
           Retry Failed
+        </button>
+        <button
+          onClick={() => setSortByDateOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-300"
+        >
+          Sort by Date: {sortByDateOrder === "asc" ? "Oldest First" : "Newest First"}
         </button>
       </div>
 
@@ -186,7 +198,7 @@ export default function EmailStatusBulletin() {
         </p>
         {emailLoading ? (
           <div className="text-center">Loading...</div>
-        ) : emailStatuses.length === 0 ? (
+        ) : sortedEmailStatuses.length === 0 ? (
           <div className="text-center">No email statuses found</div>
         ) : (
           <div className="overflow-x-auto">
@@ -203,7 +215,7 @@ export default function EmailStatusBulletin() {
                 </tr>
               </thead>
               <tbody>
-                {emailStatuses.map((status, index) => (
+                {sortedEmailStatuses.map((status, index) => (
                   <tr
                     key={index}
                     className={`border border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 ${

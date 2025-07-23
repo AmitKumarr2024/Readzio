@@ -7,7 +7,7 @@ export default function DailyPostDetails() {
   const dispatch = useDispatch();
   const { emailReports, totalEmailReports, currentPageEmailReports, totalPagesEmailReports, emailLoading, emailError } = useSelector((state) => state.admin);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortByDateOrder, setSortByDateOrder] = useState('desc');
   const [page, setPage] = useState(1);
   const [date, setDate] = useState('');
   const limit = 10;
@@ -21,10 +21,6 @@ export default function DailyPostDetails() {
     setPage(1);
   };
 
-  const handleSort = () => {
-    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-  };
-
   const handleDateChange = (e) => {
     setDate(e.target.value);
     setPage(1);
@@ -33,9 +29,9 @@ export default function DailyPostDetails() {
   const filteredReports = emailReports
     .filter((report) => report.email.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => {
-      const emailA = a.email.toLowerCase();
-      const emailB = b.email.toLowerCase();
-      return sortOrder === 'asc' ? emailA.localeCompare(emailB) : emailB.localeCompare(emailA);
+      const dateA = new Date(a.sentAt);
+      const dateB = new Date(b.sentAt);
+      return sortByDateOrder === 'asc' ? dateA - dateB : dateB - dateA;
     });
 
   return (
@@ -64,11 +60,11 @@ export default function DailyPostDetails() {
           className="w-full sm:w-48 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
         />
         <button
-          onClick={handleSort}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300"
+          onClick={() => setSortByDateOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-300"
         >
           <FaSort />
-          Sort {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}
+          Sort by Date: {sortByDateOrder === "asc" ? "Oldest First" : "Newest First"}
         </button>
       </div>
 
