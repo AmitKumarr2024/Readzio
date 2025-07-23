@@ -88,12 +88,15 @@ export default function createMailOption({
     }
 
     // Selects appropriate template based on posts
+    // Select and compile the appropriate template
     const templateSource =
       posts.length > 0
         ? DAILY_POST_EMAIL_TEMPLATE
         : invoice
-        ? INVOICE_EMAIL_TEMPLATE // ✅ NEW: separate invoice template
+        ? INVOICE_EMAIL_TEMPLATE
         : EMAIL_TEMPLATE;
+
+    const template = Handlebars.compile(templateSource); // ✅ FIXED: Compile it here
 
     // Renders HTML content using Handlebars
     const htmlContent = template({
