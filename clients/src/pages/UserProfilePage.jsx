@@ -138,7 +138,7 @@ const UserProfilePage = () => {
     <div className="relative p-4 sm:p-6 w-full sm:max-w-full mx-auto bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
       {/* Toggle edit/view button */}
       <button
-        className="sticky top-10 z-10 text-lg right-12 p-5 font-(family-name:--font-Urbanist) btn btn-sm bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg shadow-md transition transform hover:scale-105"
+        className="sticky top-10 z-10 mb-4 text-lg right-12 p-5 font-(family-name:--font-Urbanist) btn btn-sm bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg shadow-md transition transform hover:scale-105"
         onClick={() => {
           // console.log("[UserProfilePage] Edit/View button clicked, toggling isEditing:", !isEditing);
           setIsEditing((prev) => !prev);
