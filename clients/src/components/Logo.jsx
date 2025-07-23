@@ -13,7 +13,7 @@ const letterVariants = {
       times: [0, 0.5, 1],
       duration: 1,
       ease: "easeInOut",
-      repeat: 0, // only bounce once per letter
+      repeat: 0,
     },
   },
 };
@@ -24,7 +24,7 @@ const groupVariants = {
   animate: {
     y: [0, -5, 0],
     transition: {
-      delay: letters.length * 0.1 + 0.5, // wait for all letters to finish
+      delay: letters.length * 0.1 + 0.5,
       duration: 1.5,
       ease: "easeInOut",
       repeat: Infinity,
@@ -52,27 +52,35 @@ class LogoErrorBoundary extends React.Component {
 const Logo = () => {
   return (
     <LogoErrorBoundary>
-      <motion.div
-        className="text-3xl font-extrabold text-purple-600 cursor-pointer select-none flex"
-        variants={groupVariants}
-        initial="initial"
-        animate="animate"
-      >
-        {letters.map((letter, index) => (
-          <motion.span
-            key={index}
-            variants={letterVariants}
-            initial="initial"
-            animate="animate"
-            transition={{ delay: index * 0.1 }}
-            className="inline-block text-yellow-400"
-          >
-            <Link to="/" aria-label={`Logo letter ${letter}`}>
+      <Link to="/" className="flex items-center gap-2 select-none group">
+        {/* Static Image Logo */}
+        <img
+          src="/logo.png"
+          alt="Inksha Logo"
+          className="w-8 h-8 object-contain"
+        />
+
+        {/* Animated Text Logo */}
+        <motion.div
+          className="text-2xl font-extrabold text-purple-600 flex"
+          variants={groupVariants}
+          initial="initial"
+          animate="animate"
+        >
+          {letters.map((letter, index) => (
+            <motion.span
+              key={index}
+              variants={letterVariants}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: index * 0.1 }}
+              className="inline-block text-yellow-400"
+            >
               {letter}
-            </Link>
-          </motion.span>
-        ))}
-      </motion.div>
+            </motion.span>
+          ))}
+        </motion.div>
+      </Link>
     </LogoErrorBoundary>
   );
 };
