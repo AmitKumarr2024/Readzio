@@ -117,7 +117,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
 <body>
   <div class="email-wrapper">
     <div class="header">
-      <img src="https://inksha.onrender.com/assets/logo.png" alt="Inksha Logo" />
+      <img src="https://inksha.onrender.com/test-logo" alt="Inksha Logo" />
       <h1>{{subject}}</h1>
     </div>
     <div class="content">

@@ -125,7 +125,9 @@ const clientPath = path.join(__dirname, "clients", "dist");
 const clientIndexPath = path.join(clientPath, "index.html");
 
 // ✅ Serve static public files (logo.png, robots.txt, etc.)
-app.use(express.static(path.join(__dirname, "public")));
+app.get("/test-logo", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "assets", "logo.png"));
+});
 
 // Static ads.txt file
 app.get("/ads.txt", (req, res) => {
