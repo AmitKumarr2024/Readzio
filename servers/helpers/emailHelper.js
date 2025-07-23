@@ -1,10 +1,13 @@
 import Handlebars from "handlebars";
 import { EMAIL_TEMPLATE } from "../config/emailTemplate.js";
 import { DAILY_POST_EMAIL_TEMPLATE } from "../config/dailyPostEmailTemplate.js";
+import { INVOICE_EMAIL_TEMPLATE } from "../config/invoiceEmailTemplate.js"; // Optional, only if you use invoices
 import { SENDER_EMAIL } from "../config/dotenv.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 
-// Creates email options for sending with validation and Handlebars templating
+/**
+ * Generates and returns email options for sending.
+ */
 export default function createMailOption({
   to,
   subject,
@@ -21,18 +24,19 @@ export default function createMailOption({
   invoice = null,
 }) {
   try {
-    // Validates required fields
-    if (!to || !subject || (!message && posts.length === 0)) {
+    // === Validation ===
+    if (!to || (!message && posts.length === 0 && !otp && !invoice)) {
       throw new AppError(
         "Missing required fields",
         400,
         "CreateMailOption",
-        "to, subject, and either message or posts are required"
+        "to, and either message, posts, otp, or invoice are required"
       );
     }
 
-    // Validates email formats
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(to)) {
       throw new AppError(
         "Invalid recipient email",
         400,
@@ -40,7 +44,8 @@ export default function createMailOption({
         "Recipient email must be a valid email address"
       );
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(SENDER_EMAIL)) {
+
+    if (!emailRegex.test(SENDER_EMAIL)) {
       throw new AppError(
         "Invalid sender email",
         400,
@@ -48,7 +53,8 @@ export default function createMailOption({
         "Sender email must be a valid email address"
       );
     }
-    if (supportEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail)) {
+
+    if (supportEmail && !emailRegex.test(supportEmail)) {
       throw new AppError(
         "Invalid support email",
         400,
@@ -57,7 +63,6 @@ export default function createMailOption({
       );
     }
 
-    // Validates button fields when hasButton is true
     if (hasButton && (!buttonText || !buttonUrl)) {
       throw new AppError(
         "Missing button fields",
@@ -67,7 +72,6 @@ export default function createMailOption({
       );
     }
 
-    // Validates button URL format
     if (buttonUrl && !/^https?:\/\/[^\s$.?#].[^\s]*$/.test(buttonUrl)) {
       throw new AppError(
         "Invalid button URL",
@@ -77,7 +81,6 @@ export default function createMailOption({
       );
     }
 
-    // Validates OTP format
     if (otp && !/^\d{6}$/.test(otp)) {
       throw new AppError(
         "Invalid OTP format",
@@ -87,8 +90,29 @@ export default function createMailOption({
       );
     }
 
-    // Selects appropriate template based on posts
-    // Select and compile the appropriate template
+    // === Dynamic Subject Generation with Brand ===
+    const brand = "Inksha";
+    const today = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    if (!subject) {
+      if (posts.length > 0) {
+        subject = `[${brand}] Your Daily Digest – ${today}`;
+      } else if (otp && isResetOtp) {
+        subject = `[${brand}] Password Reset OTP`;
+      } else if (otp) {
+        subject = `[${brand}] Verification OTP`;
+      } else if (invoice) {
+        subject = `[${brand}] Invoice #${invoice.id || "N/A"}`;
+      } else {
+        subject = `[${brand}] Notification`;
+      }
+    }
+
+    // === Template Selection ===
     const templateSource =
       posts.length > 0
         ? DAILY_POST_EMAIL_TEMPLATE
@@ -96,9 +120,9 @@ export default function createMailOption({
         ? INVOICE_EMAIL_TEMPLATE
         : EMAIL_TEMPLATE;
 
-    const template = Handlebars.compile(templateSource); // ✅ FIXED: Compile it here
+    const template = Handlebars.compile(templateSource);
 
-    // Renders HTML content using Handlebars
+    // === HTML Content Rendering ===
     const htmlContent = template({
       subject,
       name,
@@ -119,7 +143,7 @@ export default function createMailOption({
       })),
     });
 
-    // Returns email options
+    // === Return Final Email Options ===
     return {
       from: `"Inksha Official" <${SENDER_EMAIL}>`,
       to,
@@ -127,7 +151,6 @@ export default function createMailOption({
       html: htmlContent,
     };
   } catch (error) {
-    // AppError with context for creating mail options
     throw error instanceof AppError
       ? error
       : new AppError(
