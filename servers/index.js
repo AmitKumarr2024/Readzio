@@ -124,6 +124,16 @@ routes.forEach(([path, router]) => {
 const clientPath = path.join(__dirname, "clients", "dist");
 const clientIndexPath = path.join(clientPath, "index.html");
 
+app.use(express.static(path.join(__dirname, 'public')));
+
+
+
+
+// Static ads.txt file
+app.get("/ads.txt", (req, res) => {
+  res.type("text/plain").send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
+});
+
 if (NODE_ENV === "production") {
   if (fs.existsSync(clientIndexPath)) {
     app.use(express.static(clientPath));
@@ -137,15 +147,7 @@ if (NODE_ENV === "production") {
   }
 }
 
-app.use(express.static(path.join(__dirname, 'public')));
 
-
-
-
-// Static ads.txt file
-app.get("/ads.txt", (req, res) => {
-  res.type("text/plain").send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
-});
 
 // Health check
 app.get("/health", (req, res) => {
