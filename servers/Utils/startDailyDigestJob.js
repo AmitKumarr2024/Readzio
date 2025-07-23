@@ -5,7 +5,7 @@ import { sendDailyPostEmail } from "../../servers/Controllers/postEmailControlle
 export function startDailyDigestJob() {
   // ✅ Production cron - Runs every day at 8:00 AM IST
   cron.schedule(
-    "0 10 * * *",
+    "0 8 * * *",
     async () => {
       try {
         const now = new Date().toLocaleString("en-IN", {
