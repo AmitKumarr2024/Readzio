@@ -10,7 +10,7 @@ import SearchModal from "./SearchBar/SearchModal";
 import SearchInput from "./SearchBar/SearchInput";
 import NotificationDropdown from "./Notification/NotificationDropdown";
 import { checkAuth, logout } from "../store/authSlice";
-import { clearUser, getUser } from "../store/userSlice";
+import { clearUser, getUser, trackUserIPLocation } from "../store/userSlice";
 import ThemeToggleButton from "../layout/ThemeToggleButton";
 import { disconnectSocket, initializeSocket } from "../store/socketSlice";
 import { useGeolocation } from "../AppRootFile/hook/useGeolocation";
@@ -59,7 +59,7 @@ const Navbar = () => {
     [userLocations.list, authUser?._id]
   );
 
-  const geoError = useGeolocation();
+
 
   const shouldHideCategory = useMemo(
     () =>
@@ -89,6 +89,10 @@ const Navbar = () => {
       );
       dispatch(getUser()).catch((err) =>
         console.error("Get user failed:", err)
+      );
+      // Track IP location once on initial load (guest or user)
+      dispatch(trackUserIPLocation()).catch((err) =>
+        console.warn("IP location tracking failed:", err)
       );
     }
   }, [authInitialized, authLoading, dispatch]);
