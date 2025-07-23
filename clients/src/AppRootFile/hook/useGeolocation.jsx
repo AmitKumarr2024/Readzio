@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { saveUserLocation } from "../../store/userSlice";
+import { saveUserLocation, trackUserIPLocation } from "../../store/userSlice";
 
 // Fetches and saves user geolocation for authenticated users
 export const useGeolocation = () => {
