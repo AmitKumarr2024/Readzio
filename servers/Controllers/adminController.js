@@ -10,7 +10,7 @@ import { emitPostDeleted, emitPostUpdated } from "../../servers/sockets/socket.j
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import SubscriptionPlan from "../../servers/Models/SubscriptionPlan.js";
 import UserSubscription from "../../servers/Models/UserSubscription.js";
-import UserSubscriptionPlan from "../../servers/Models/UserSubscription.js";
+import UserSubscriptionPlan from "../../servers/Models/UserSubscriptionModel.js";
 
 // Validates ObjectId and throws AppError with context for invalid IDs
 const validateObjectId = (id, type = "ID") => {
