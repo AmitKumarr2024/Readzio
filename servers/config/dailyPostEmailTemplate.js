@@ -74,17 +74,30 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       color: #757575;
       margin-bottom: 6px;
     }
-    .post-meta {
-font-size: 20px;
-color: #9e9e9e;
-margin-bottom: 6px;
-display: flex;
-justify-content: space-between;
+.post-meta {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  font-size: 14px;
+  color: #9e9e9e;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
 }
 
-.post-meta span {
-margin-right: 0;
+.meta-item {
+  display: flex;
+  align-items: center;
 }
+
+.meta-item .icon {
+  margin-right: 5px;
+  font-size: 16px;
+}
+
+.meta-item span {
+  margin-right: 0; /* optional: prevents extra spacing */
+}
+
     .read-more {
       font-size: 14px;
       color: #34a853;
@@ -138,11 +151,21 @@ margin-right: 0;
   by {{this.author.name}}
 </div>
 
-          <div class="post-meta">
-  <span>📖 {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}</span>
-  <span>❤️ {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}</span>
-  <span>💬 {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</span>
+         <div class="post-meta">
+  <div class="meta-item">
+    <span class="icon">📖</span>
+    <span>{{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}</span>
+  </div>
+  <div class="meta-item">
+    <span class="icon">❤️</span>
+    <span>{{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}</span>
+  </div>
+  <div class="meta-item">
+    <span class="icon">💬</span>
+    <span>{{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</span>
+  </div>
 </div>
+
 
           <a href="https://inksha.onrender.com/post/{{this.slug}}" class="read-more">Read More</a>
         </div>

@@ -37,7 +37,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
       .populate("author", "name avatar")
       .lean({ virtuals: true });
 
-    console.log(
+    console.log("dailypostsss",
       posts.map((p) => ({
         title: p.title,
         readTime: p.readTime,
