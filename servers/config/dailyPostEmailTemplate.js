@@ -74,10 +74,15 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       margin-bottom: 8px;
     }
     .post-meta {
-      font-size: 13px;
-      color: #777;
-      margin-bottom: 12px;
-    }
+  display: flex;
+  justify-content: flex-start; /* or use center / space-between if needed */
+  align-items: center;
+  gap: 16px; /* spacing between items */
+  font-size: 14px;
+  color: #666;
+  margin-top: 8px;
+}
+
     .read-more {
       font-size: 14px;
       color: #22D172;
@@ -122,7 +127,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
 <body>
   <div class="email-wrapper">
     <div class="header">
-      <img src="https://inksha.onrender.com/public/logo.png" alt="Inksha Logo" />
+      <img src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Logo" />
       <h1>{{subject}}</h1>
     </div>
     <div class="content">
@@ -137,16 +142,19 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
         <div class="post-content">
           <a class="post-title" href="https://inksha.onrender.com/post/{{this.slug}}">{{this.title}}</a>
           <div class="post-author">by {{this.author.name}}</div>
-          <div class="post-meta">
-            📖 {{this.readTime}} &nbsp;|&nbsp; ❤️ {{this.likesCount}} &nbsp;|&nbsp; 💬 {{this.commentsCount}}
-          </div>
+         <div class="post-meta">
+  <span>📖 {{this.readTime}}</span>
+  <span>❤️ {{this.likesCount}}</span>
+  <span>💬 {{this.commentsCount}}</span>
+</div>
+
           <a class="read-more" href="https://inksha.onrender.com/post/{{this.slug}}">Read more →</a>
         </div>
       </div>
       {{/each}}
 
       {{#unless posts.length}}
-        <p>No new posts today. But there’s always something worth reading on <a href="https://inksha.onrender.com/" style="color: #4F46E5;">Inksha</a>.</p>
+        <p>No new posts today. But there’s always something worth reading on <a href="https://inksha.onrender.com" style="color: #4F46E5;">Inksha</a>.</p>
       {{/unless}}
 
       {{#if hasButton}}

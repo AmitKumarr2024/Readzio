@@ -105,7 +105,7 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
             <tbody>
               <tr>
                 <td class="header">
-                  <img src="https://inksha.onrender.com/public/logo.png
+                  <img src="https://inksha.onrender.com/public/logo1.png
 " alt="Mount Amit Logo">
                   <h1 style="margin: 10px 0; font-size: 24px; color: #FFFFFF;">{{subject}}</h1>
                 </td>
@@ -159,7 +159,7 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
               </tr>
               <tr>
                 <td class="footer">
-                  <img src="https://inksha.onrender.com/public/logo.png
+                  <img src="https://inksha.onrender.com/public/logo1.png
 " alt="Mount Amit Icon">
                   Best regards,<br>Inksha Official<br>
                   <a href="mailto:{{supportEmail}}" style="color: #4F46E5; text-decoration: none;">Contact Support</a>
