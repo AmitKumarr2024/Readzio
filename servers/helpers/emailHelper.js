@@ -118,7 +118,9 @@ export default function createMailOption({
         ? DAILY_POST_EMAIL_TEMPLATE
         : invoice
         ? INVOICE_EMAIL_TEMPLATE
-        : EMAIL_TEMPLATE;
+        : otp
+        ? EMAIL_TEMPLATE
+        : WELCOME_EMAIL_TEMPLATE;
 
     const template = Handlebars.compile(templateSource);
 

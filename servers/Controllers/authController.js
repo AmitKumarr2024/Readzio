@@ -304,12 +304,10 @@ export const sendResetOtp = async (req, res, next) => {
     user.emailStatus = "sent";
     await user.save();
 
-    res
-      .status(201)
-      .json({
-        success: true,
-        message: "Password reset OTP sent to your email",
-      });
+    res.status(201).json({
+      success: true,
+      message: "Password reset OTP sent to your email",
+    });
   } catch (error) {
     // AppError with context for password reset OTP issues
     next(
@@ -535,6 +533,7 @@ export const Signup = async (req, res, next) => {
         hasButton: true,
         buttonText: "Get Started",
         buttonUrl: "https://inksha.onrender.com",
+        isWelcome: true,
       });
       try {
         const emailResult = await sendEmailWithRetries(mailOption, newUser._id);
@@ -842,6 +841,7 @@ export const googleLogin = async (req, res, next) => {
         hasButton: true,
         buttonText: "Get Started",
         buttonUrl: "https://inksha.onrender.com",
+        isWelcome: true,
       });
 
       try {

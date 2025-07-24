@@ -168,10 +168,14 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
 </head>
 <body>
   <div class="email-wrapper">
-    <div class="header">
-      <img src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Logo" />
-      <h1>{{subject}}</h1>
+    <div class="header" style="text-align: center;">
+      <img src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
+        <div style="font-size: 20px; font-weight: bold; color: #111827; margin-top: 6px; font-family: sans-serif;">
+          inksha
+        </div>
     </div>
+
+    <h1 style="text-align: center; margin-top: 12px;">{{subject}}</h1>
 
     <div class="content">
       <p>Hi {{name}},</p>

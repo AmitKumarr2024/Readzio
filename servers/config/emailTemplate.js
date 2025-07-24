@@ -195,3 +195,55 @@ export const INVOICE_EMAIL_TEMPLATE = `<!DOCTYPE html>
     </div>
   </body>
 </html>`;
+
+export const WELCOME_EMAIL_TEMPLATE = `<!DOCTYPE html>
+<html lang="en" style="margin: 0; padding: 0; background-color: #f0f4f8; font-family: 'Helvetica Neue', Arial, sans-serif;">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{subject}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      @media only screen and (max-width: 600px) {
+        .container { width: 100% !important; }
+        .content { padding: 16px !important; }
+        .header-img { width: 60px !important; height: 60px !important; }
+      }
+    </style>
+  </head>
+  <body style="margin: 0; padding: 0; background: linear-gradient(135deg, #e0e7ff 0%, #f0f4f8 100%);">
+    <table width="100%" cellpadding="0" cellspacing="0" style="padding: 40px 20px;">
+      <tr>
+        <td align="center">
+          <table class="container" cellpadding="0" cellspacing="0" width="640" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+            <tr>
+              <td style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 32px; text-align: center;">
+                <img class="header-img" src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Logo" width="80" height="80" style="border-radius: 50%; border: 3px solid white; margin-bottom: 16px;" />
+                <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">Welcome to Inksha, {{name}}!</h1>
+                <p style="color: #e0e7ff; font-size: 16px; margin: 12px 0 0; line-height: 1.5;">{{message}}</p>
+              </td>
+            </tr>
+            <tr>
+              <td class="content" style="padding: 32px; text-align: center;">
+                <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">We're thrilled to have you on board! Explore our platform, connect with our community, and unleash your creativity.</p>
+                
+                {{#if hasButton}}
+                <a href="{{buttonUrl}}" style="display: inline-block; margin: 20px 0; background: linear-gradient(90deg, #2563eb, #4f46e5); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.15); transition: transform 0.2s;">
+                  {{buttonText}}
+                </a>
+                {{/if}}
+
+                
+              </td>
+            </tr>
+            <tr>
+              <td style="background-color: #f3f4f6; text-align: center; padding: 16px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb;">
+                Need help? Contact us at <a href="mailto:{{supportEmail}}" style="color: #4f46e5; text-decoration: none;">{{supportEmail}}</a>.<br />
+                
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
