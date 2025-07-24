@@ -200,7 +200,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
               </table>
 
 
-              <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 16px 0;">
+              <table cellpadding="0" cellspacing="0" role="presentation" width="100%" height="40%" style="margin: 16px 0;">
                 <tr>
                   <td width="16.6%" align="center" style="font-size: 18px; font-weight: bold; color: #374151;">
                     📖
