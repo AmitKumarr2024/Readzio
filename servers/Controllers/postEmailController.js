@@ -31,13 +31,15 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
     let posts = await PostModel.find({
       createdAt: { $gte: todayStart },
-      status: "published",
+      isPublished: true,
     })
+
       .select("title slug thumbnail author readTime likesCount commentsCount")
       .populate("author", "name avatar")
       .lean({ virtuals: true });
 
-    console.log("dailypostsss",
+    console.log(
+      "dailypostsss",
       posts.map((p) => ({
         title: p.title,
         readTime: p.readTime,
@@ -50,8 +52,9 @@ export const sendDailyPostEmail = async (req, res, next) => {
       const additionalPostsNeeded = 10 - posts.length;
       const popularPosts = await PostModel.find({
         createdAt: { $lt: todayStart },
-        status: "published",
+        isPublished: true,
       })
+
         .sort({ views: -1 })
         .select("title slug thumbnail author readTime likesCount commentsCount")
         .populate("author", "name avatar")

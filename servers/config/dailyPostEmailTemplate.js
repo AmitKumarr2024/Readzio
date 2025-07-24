@@ -74,15 +74,14 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       color: #757575;
       margin-bottom: 6px;
     }
-.post-meta {
-  display: flex;
-  gap: 20px;
+.meta-item {
+  display: inline-flex;
   align-items: center;
+  gap: 4px;
   font-size: 14px;
   color: #9e9e9e;
-  margin-bottom: 6px;
-  flex-wrap: wrap;
 }
+
 
 .meta-item {
   display: flex;
@@ -165,6 +164,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
     <span>{{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</span>
   </div>
 </div>
+
 
 
           <a href="https://inksha.onrender.com/post/{{this.slug}}" class="read-more">Read More</a>
