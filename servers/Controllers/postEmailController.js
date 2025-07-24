@@ -15,7 +15,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     const users = await UserModel.find({
       isAccountVerified: true,
       stopEmailAttempts: false,
-    }).lean();
+    }).lean({ virtuals: true })
 
     console.log("[Cron:sendDailyPostEmail] Fetched users:", users.length);
 
@@ -34,10 +34,10 @@ export const sendDailyPostEmail = async (req, res, next) => {
       createdAt: { $gte: todayStart },
       status: "published",
     })
-      .select("title slug thumbnail author")
+      .select("title slug thumbnail author readTime likesCount commentsCount")
       .populate("author", "name")
       .limit(10)
-      .lean();
+      .lean({ virtuals: true })
 
     // Fills up to 10 posts with popular posts if needed
     if (posts.length < 10) {
@@ -47,18 +47,18 @@ export const sendDailyPostEmail = async (req, res, next) => {
         status: "published",
       })
         .sort({ views: -1 })
-        .select("title slug thumbnail author")
+        .select("title slug thumbnail author readTime likesCount commentsCount")
         .populate("author", "name")
         .limit(additionalPostsNeeded)
-        .lean();
-      posts = [...posts, ...popularPosts];
+        .lean({ virtuals: true })
     }
 
     // Sends fallback email if no posts are found
     if (posts.length === 0) {
       const fallbackMailOption = createMailOption({
         to: users.map((user) => user.email),
-        subject: "Your Inksha Daily Brief Fresh Posts Just for You (No New Posts)",
+        subject:
+          "Your Inksha Daily Brief Fresh Posts Just for You (No New Posts)",
         name: "User",
         email: "",
         message: "No new posts today. Check out our platform for more content!",
@@ -200,13 +200,11 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       .sort({ sentAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit))
-      .lean();
+      .lean({ virtuals: true })
 
     const total = await EmailLog.countDocuments(query);
 
-    console.log(
-      `[Report] Email logs fetched: ${logs.length} / ${total} total`
-    );
+    console.log(`[Report] Email logs fetched: ${logs.length} / ${total} total`);
 
     res.status(200).json({
       logs,
@@ -229,7 +227,6 @@ export const getDailyPostEmailReport = async (req, res, next) => {
     );
   }
 };
-
 
 // Deletes all notifications
 export const deleteAllNotifications = async (req, res, next) => {
