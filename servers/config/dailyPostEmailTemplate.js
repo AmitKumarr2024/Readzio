@@ -139,7 +139,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       {{/each}}
 
       {{#unless posts.length}}
-        <p>No new posts today. Check out <a href="https://inksha.onrender.com" style="color: #4F46E5;">Inksha</a> for more!</p>
+        <p>No new posts today. Check out <a href="https://inksha.onrender.com/" style="color: #4F46E5;">Inksha</a> for more!</p>
       {{/unless}}
 
       {{#if hasButton}}
