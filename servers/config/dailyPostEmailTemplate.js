@@ -200,11 +200,20 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
               </table>
 
 
-          <div class="post-meta">
-            <div class="meta-item">📖 {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}</div>
-            <div class="meta-item">❤️ {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}</div>
-            <div class="meta-item">💬 {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</div>
-          </div>
+              <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 14px 0 18px;">
+                <tr>
+                  <td style="font-size: 18px; font-weight: bold; color: #374151; padding-right: 20px;">
+                    📖 <span style="margin-left: 6px;">{{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}</span>
+                  </td>
+                  <td style="font-size: 18px; font-weight: bold; color: #374151; padding-right: 20px;">
+                    ❤️ <span style="margin-left: 6px;">{{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}</span>
+                  </td>
+                  <td style="font-size: 18px; font-weight: bold; color: #374151;">
+                    💬 <span style="margin-left: 6px;">{{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</span>
+                  </td>
+                </tr>
+              </table>
+
 
           <a href="https://inksha.onrender.com/post/{{this.slug}}" class="read-more">Read More</a>
         </div>
