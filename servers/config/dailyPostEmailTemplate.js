@@ -25,38 +25,36 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
     .header {
       padding: 30px;
       text-align: center;
-      border-bottom: 1px solid #e0e0e0;
       background: #ffffff;
+      border-bottom: 1px solid #e0e0e0;
     }
     .header img {
       height: 50px;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
     .header h1 {
       font-size: 22px;
-      font-weight: 700;
       margin: 0;
       color: #1a73e8;
     }
     .content {
-      padding: 30px;
+      padding: 25px;
     }
     .content p {
       font-size: 16px;
-      margin: 0 0 20px;
+      margin-bottom: 16px;
       color: #555555;
     }
     .post {
-      width: 100%;
-      margin-bottom: 20px;
       border: 1px solid #e0e0e0;
       border-radius: 8px;
+      margin-bottom: 20px;
       overflow: hidden;
     }
     .post img {
       width: 100%;
       height: auto;
-      border-radius: 8px 8px 0 0;
+      display: block;
       object-fit: cover;
     }
     .post-content {
@@ -64,69 +62,70 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
     }
     .post-title {
       font-size: 18px;
-      font-weight: 700;
+      font-weight: bold;
       color: #1a73e8;
-      margin: 0 0 8px;
       text-decoration: none;
-    }
-    .post-author {
-      font-size: 14px;
-      color: #757575;
+      display: block;
       margin-bottom: 6px;
     }
-.post-meta {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  font-size: 14px;
-  color: #9e9e9e;
-  margin-bottom: 6px;
-  flex-wrap: wrap;
-}
-
-.post-meta {
-  display: flex;
-  gap: 16px; /* spacing between each icon+value block */
-  font-size: 14px;
-  color: #757575;
-  margin-top: 10px;
-}
-
-.meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.icon {
-  font-size: 16px;
-}
-
-
+    .post-author {
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      color: #757575;
+      margin-bottom: 8px;
+    }
+    .author-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .post-meta {
+      display: flex;
+      font-size: 14px;
+      color: #757575;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
     .read-more {
       font-size: 14px;
       color: #34a853;
+      font-weight: bold;
       text-decoration: none;
-      font-weight: 700;
     }
     .footer {
-      background-color: #f7f7f7;
-      padding: 25px;
       text-align: center;
       font-size: 12px;
+      padding: 25px;
       color: #757575;
       border-top: 1px solid #e0e0e0;
+      background: #f7f7f7;
     }
     .footer a {
       color: #1a73e8;
       text-decoration: none;
     }
+    .button-wrapper {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .button-wrapper a.button {
+      background-color: #1a73e8;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+    }
     @media (max-width: 600px) {
       .email-wrapper {
         margin: 10px;
-      }
-      .post img {
-        width: 100%;
       }
       .content {
         padding: 20px;
@@ -140,37 +139,32 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       <img src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Logo" />
       <h1>{{subject}}</h1>
     </div>
+
     <div class="content">
       <p>Dear {{name}},</p>
-      <p>Please find below your curated selection of top reads for today from Inksha:</p>
+      <p>Here are your top recommended reads for today:</p>
 
       {{#each posts}}
       <div class="post">
         {{#if this.thumbnail}}
           <img src="{{this.thumbnail}}" alt="{{this.title}}" />
         {{/if}}
+
         <div class="post-content">
           <a href="https://inksha.onrender.com/post/{{this.slug}}" class="post-title">{{this.title}}</a>
+
           <div class="post-author">
-  <img src="{{this.author.avatar}}" alt="{{this.author.name}}" style="width:24px;height:24px;border-radius:50%;margin-right:8px;" />
-  by {{this.author.name}}
-</div>
+            {{#if this.author.avatar}}
+              <img src="{{this.author.avatar}}" alt="{{this.author.name}}" class="author-avatar" />
+            {{/if}}
+            by {{this.author.name}}
+          </div>
 
-         <div class="post-meta">
-  <div class="meta-item">
-    <span class="icon">📖</span>
-    <span>{{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}</span>
-  </div>
-  <div class="meta-item">
-    <span class="icon">❤️</span>
-    <span>{{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}</span>
-  </div>
-  <div class="meta-item">
-    <span class="icon">💬</span>
-    <span>{{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</span>
-  </div>
-</div>
-
+          <div class="post-meta">
+            <div class="meta-item">📖 <span>{{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}</span></div>
+            <div class="meta-item">❤️ <span>{{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}</span></div>
+            <div class="meta-item">💬 <span>{{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</span></div>
+          </div>
 
           <a href="https://inksha.onrender.com/post/{{this.slug}}" class="read-more">Read More</a>
         </div>
@@ -178,7 +172,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       {{/each}}
 
       {{#unless posts.length}}
-        <p>No new posts available today. Explore more at <a href="https://inksha.onrender.com">Inksha</a>.</p>
+      <p>No new posts available today. Explore more at <a href="https://inksha.onrender.com">Inksha</a>.</p>
       {{/unless}}
 
       {{#if hasButton}}
@@ -187,9 +181,10 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       </div>
       {{/if}}
     </div>
+
     <div class="footer">
-      This email is sent to you as part of your Inksha subscription.<br/>
-      For assistance, please contact <a href="mailto:{{supportEmail}}">support</a>.
+      This email was sent to you as part of your Inksha subscription.<br />
+      Need help? Contact <a href="mailto:{{supportEmail}}">support</a>.
     </div>
   </div>
 </body>
