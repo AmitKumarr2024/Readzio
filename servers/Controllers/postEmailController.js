@@ -58,7 +58,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     if (posts.length === 0) {
       const fallbackMailOption = createMailOption({
         to: users.map((user) => user.email),
-        subject: "Your Daily Post Digest (No New Posts)",
+        subject: "Your Inksha Daily Brief Fresh Posts Just for You (No New Posts)",
         name: "User",
         email: "",
         message: "No new posts today. Check out our platform for more content!",
@@ -69,6 +69,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
       });
 
       await transporter.sendMail(fallbackMailOption);
+
       return res.status(200).json({
         message: "No posts available, sent fallback email",
         results: [],
@@ -83,7 +84,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     for (const user of users) {
       const mailOption = createMailOption({
         to: user.email,
-        subject: `Your Daily Post Digest (${posts.length} Posts)`,
+        subject: `Your Inksha Daily Brief Fresh Posts Just for You (${posts.length} Posts)`,
         name: user.name || "User",
         email: user.email,
         hasButton: true,

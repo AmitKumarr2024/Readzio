@@ -5,7 +5,7 @@ import { MessageCircle, Eye, Heart, Bookmark, Share2 } from "lucide-react";
 import TimeAgo from "../../Utils/TimeAgo";
 import { fetchSubscriptionPlansByAuthor } from "../../store/subscriptionSlice";
 import { formatReadingTime } from "../../Utils/formatReadingTime";
-import Skeleton from "@/components/Ui/Skeleton"; 
+import Skeleton from "@/components/Ui/Skeleton";
 
 const CardOfPost = ({
   _id: id,
@@ -26,6 +26,7 @@ const CardOfPost = ({
   loading = false,
   postType = "free",
   tags = [],
+  readTime,
 }) => {
   const dispatch = useDispatch();
   const { plans = [], isSubscribed = {} } = useSelector(
@@ -68,8 +69,9 @@ const CardOfPost = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         <span className="absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full bg-black bg-opacity-80 text-white">
-          {formatReadingTime(timeSpent)}
+          {readTime}
         </span>
+
         {isPostPremium && (
           <span className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500 text-black">
             Premium

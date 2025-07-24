@@ -2,9 +2,9 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <title>{{subject}}</title>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
     body {
       background: #f5f5f5;
@@ -71,6 +71,11 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
     .post-author {
       font-size: 14px;
       color: #666;
+      margin-bottom: 8px;
+    }
+    .post-meta {
+      font-size: 13px;
+      color: #777;
       margin-bottom: 12px;
     }
     .read-more {
@@ -117,8 +122,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
 <body>
   <div class="email-wrapper">
     <div class="header">
-      <img src="https://inksha.onrender.com/public/assets/logo.png
-" alt="Inksha Logo" />
+      <img src="https://inksha.onrender.com/public/logo.png" alt="Inksha Logo" />
       <h1>{{subject}}</h1>
     </div>
     <div class="content">
@@ -133,13 +137,16 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
         <div class="post-content">
           <a class="post-title" href="https://inksha.onrender.com/post/{{this.slug}}">{{this.title}}</a>
           <div class="post-author">by {{this.author.name}}</div>
+          <div class="post-meta">
+            📖 {{this.readTime}} &nbsp;|&nbsp; ❤️ {{this.likesCount}} &nbsp;|&nbsp; 💬 {{this.commentsCount}}
+          </div>
           <a class="read-more" href="https://inksha.onrender.com/post/{{this.slug}}">Read more →</a>
         </div>
       </div>
       {{/each}}
 
       {{#unless posts.length}}
-        <p>No new posts today. Check out <a href="https://inksha.onrender.com/" style="color: #4F46E5;">Inksha</a> for more!</p>
+        <p>No new posts today. But there’s always something worth reading on <a href="https://inksha.onrender.com/" style="color: #4F46E5;">Inksha</a>.</p>
       {{/unless}}
 
       {{#if hasButton}}
@@ -149,7 +156,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       {{/if}}
     </div>
     <div class="footer">
-      You're receiving this email because you're subscribed to Inksha.<br>
+      You're receiving this email because you're subscribed to Inksha.<br />
       Need help? <a href="mailto:{{supportEmail}}">Contact support</a>
     </div>
   </div>

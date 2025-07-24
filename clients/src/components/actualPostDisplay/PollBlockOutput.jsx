@@ -19,7 +19,9 @@ const PollBlockOutput = ({
   const userId = user?._id;
 
   const postFromStore = useMemo(() => {
-    return currentPost?.slug === slug ? currentPost : posts.find((p) => p.slug === slug);
+    return currentPost?.slug === slug
+      ? currentPost
+      : posts.find((p) => p.slug === slug);
   }, [currentPost, posts, slug]);
 
   const pollFromStore = useMemo(() => {
@@ -27,7 +29,9 @@ const PollBlockOutput = ({
       console.warn("[PollBlockOutput] No post found in store for slug:", slug);
       return { question, options, votedUserIds: [] };
     }
-    const pollBlock = postFromStore.blocks?.find((b) => b.id === blockId && b.type === "poll") || {
+    const pollBlock = postFromStore.blocks?.find(
+      (b) => b.id === blockId && b.type === "poll"
+    ) || {
       question,
       options,
       votedUserIds: [],
@@ -41,7 +45,10 @@ const PollBlockOutput = ({
       .map((opt, idx) => {
         const optionValue = typeof opt === "string" ? opt : opt?.option;
         return {
-          option: optionValue && typeof optionValue === "string" ? optionValue : `Option ${idx + 1}`,
+          option:
+            optionValue && typeof optionValue === "string"
+              ? optionValue
+              : `Option ${idx + 1}`,
           votes: typeof opt === "string" ? 0 : opt?.votes || 0,
         };
       })
@@ -51,12 +58,14 @@ const PollBlockOutput = ({
   const userHasVoted = useMemo(() => {
     const votedUserIds = pollFromStore.votedUserIds || [];
     return userId && Array.isArray(votedUserIds)
-      ? votedUserIds.some((vote) => vote.userId.toString() === userId)
+      ? votedUserIds.some((vote) => vote?.userId?.toString?.() === userId)
       : false;
   }, [pollFromStore.votedUserIds, userId]);
 
   const [votes, setVotes] = useState(() =>
-    Object.fromEntries(normalizedOptions.map((opt) => [opt.option, opt.votes || 0]))
+    Object.fromEntries(
+      normalizedOptions.map((opt) => [opt.option, opt.votes || 0])
+    )
   );
   const prevVotesRef = useRef(votes);
   const [selected, setSelected] = useState(null);
@@ -85,12 +94,16 @@ const PollBlockOutput = ({
       return;
     }
     if (!postFromStore?._id || !blockId) {
-      console.error("[PollBlockOutput] No valid post ID or block ID for voting");
+      console.error(
+        "[PollBlockOutput] No valid post ID or block ID for voting"
+      );
       alert("Cannot vote: Post or poll not loaded.");
       return;
     }
     if (isVoting || interactionLoading) {
-      console.warn("[PollBlockOutput] Voting in progress or interaction loading");
+      console.warn(
+        "[PollBlockOutput] Voting in progress or interaction loading"
+      );
       alert("Please wait while the vote is processing.");
       return;
     }
@@ -158,13 +171,21 @@ const PollBlockOutput = ({
             <div key={`${opt.option}-${idx}`} className="mb-4">
               <button
                 onClick={() => handleVote(opt.option, idx)}
-                disabled={userHasVoted || !isAuthenticated || isVoting || interactionLoading}
+                disabled={
+                  userHasVoted ||
+                  !isAuthenticated ||
+                  isVoting ||
+                  interactionLoading
+                }
                 className={`w-full text-left py-2 px-4 rounded-md border-2 ${
                   selected === opt.option
                     ? "border-blue-500 bg-blue-500 text-white"
                     : "border-gray-300 bg-white text-gray-900"
                 } ${
-                  userHasVoted || !isAuthenticated || isVoting || interactionLoading
+                  userHasVoted ||
+                  !isAuthenticated ||
+                  isVoting ||
+                  interactionLoading
                     ? "cursor-not-allowed"
                     : "cursor-pointer"
                 } font-medium text-base transition-all duration-300 hover:border-blue-500 hover:bg-blue-50 disabled:opacity-50`}
@@ -209,7 +230,11 @@ const PollBlockOutput = ({
             strokeWidth={2}
             viewBox="0 0 24 24"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
           </svg>
           Your vote is recorded!
         </div>

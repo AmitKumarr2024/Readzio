@@ -19,7 +19,7 @@ import {
 import Sorted from "../Tabs/Sorted";
 import GoogleAd from "../../Ads/GoogleAd";
 import ErrorBoundary from "./ErrorBoundary";
-import Skeleton from "@/components/Ui/Skeleton"; 
+import Skeleton from "@/components/Ui/Skeleton";
 
 const Postbox = ({
   filterType,
@@ -263,6 +263,7 @@ const Postbox = ({
       isSubscriberOnly: post.isSubscriberOnly ?? false,
       postType: post.postType ?? "free",
       tags: post.tags || [],
+      readTime: post?.readTime ,
     }));
   }, [sortedPosts, categoryMap]);
 
@@ -385,6 +386,7 @@ const Postbox = ({
                         loading={propLoading && !selectedPosts.length}
                         categoryMap={categoryMap}
                         postType={post.postType}
+                        readTime={post.readTime}
                       />
                     </div>
                     {adPositions.includes(i + 1) && (
