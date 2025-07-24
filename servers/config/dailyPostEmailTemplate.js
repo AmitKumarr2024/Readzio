@@ -186,12 +186,19 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
         <div class="post-content">
           <a href="https://inksha.onrender.com/post/{{this.slug}}" class="post-title">{{this.title}}</a>
 
-          <div class="post-author">
-            {{#if this.author.avatar}}
-              <img src="{{this.author.avatar}}" alt="{{this.author.name}}" class="author-avatar" />
-            {{/if}}
-            by {{this.author.name}}
-          </div>
+              <table cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 12px;">
+                 <tr>
+                {{#if this.author.avatar}}
+                <td style="vertical-align: middle; padding-right: 8px;">
+                  <img src="{{this.author.avatar}}" alt="{{this.author.name}}" width="28" height="28" style="border-radius: 50%; display: block;" />
+                </td>
+                {{/if}}
+                <td style="vertical-align: middle; font-size: 14px; color: #6b7280;">
+                  by {{this.author.name}}
+                </td>
+              </tr>
+              </table>
+
 
           <div class="post-meta">
             <div class="meta-item">📖 {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}</div>
