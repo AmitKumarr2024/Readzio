@@ -125,7 +125,15 @@ const clientPath = path.join(__dirname, "clients", "dist");
 const clientIndexPath = path.join(clientPath, "index.html");
 
 // ✅ Serve static public files (logo.png, robots.txt, etc.)
-app.use("/public", express.static(path.join(__dirname, "public")));
+// Log all requests to /public
+app.use(
+  "/public",
+  (req, res, next) => {
+    console.log(`[Public] Request for: ${req.url}`);
+    next();
+  },
+  express.static(path.join(__dirname, "public"))
+);
 
 // Static ads.txt file
 app.get("/ads.txt", (req, res) => {
