@@ -11,11 +11,10 @@ import { recordActivity } from "../../servers/helpers/activityHelper.js";
 export const sendDailyPostEmail = async (req, res, next) => {
   console.log("[Cron:sendDailyPostEmail] Function entered");
   try {
-    // Fetches verified users who haven't opted out of emails
     const users = await UserModel.find({
       isAccountVerified: true,
       stopEmailAttempts: false,
-    }).lean({ virtuals: true })
+    }).lean({ virtuals: true });
 
     console.log("[Cron:sendDailyPostEmail] Fetched users:", users.length);
 
@@ -27,19 +26,17 @@ export const sendDailyPostEmail = async (req, res, next) => {
       });
     }
 
-    // Fetches posts created today
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
+
     let posts = await PostModel.find({
       createdAt: { $gte: todayStart },
       status: "published",
     })
       .select("title slug thumbnail author readTime likesCount commentsCount")
       .populate("author", "name")
-      .limit(10)
-      .lean({ virtuals: true })
+      .lean({ virtuals: true });
 
-    // Fills up to 10 posts with popular posts if needed
     if (posts.length < 10) {
       const additionalPostsNeeded = 10 - posts.length;
       const popularPosts = await PostModel.find({
@@ -50,15 +47,16 @@ export const sendDailyPostEmail = async (req, res, next) => {
         .select("title slug thumbnail author readTime likesCount commentsCount")
         .populate("author", "name")
         .limit(additionalPostsNeeded)
-        .lean({ virtuals: true })
+        .lean({ virtuals: true });
+
+      // ✅ Fix: Merge posts correctly
+      posts = [...posts, ...popularPosts];
     }
 
-    // Sends fallback email if no posts are found
     if (posts.length === 0) {
       const fallbackMailOption = createMailOption({
         to: users.map((user) => user.email),
-        subject:
-          "Your Inksha Daily Brief Fresh Posts Just for You (No New Posts)",
+        subject: "Your Inksha Daily Brief (No New Posts)",
         name: "User",
         email: "",
         message: "No new posts today. Check out our platform for more content!",
@@ -80,11 +78,10 @@ export const sendDailyPostEmail = async (req, res, next) => {
     const postSlugs = posts.map((post) => post.slug);
     const results = [];
 
-    // Sends emails to each user
     for (const user of users) {
       const mailOption = createMailOption({
         to: user.email,
-        subject: `Your Inksha Daily Brief Fresh Posts Just for You (${posts.length} Posts)`,
+        subject: `Your Inksha Daily Brief – Fresh Posts for You (${posts.length} Posts)`,
         name: user.name || "User",
         email: user.email,
         hasButton: true,
@@ -130,7 +127,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
       }
     }
 
-    // Notifies admin of email send results
     const admin = await UserModel.findOne({ role: "admin" }).lean();
     if (admin) {
       const adminMailOption = createMailOption({
@@ -154,7 +150,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
       postCount: posts.length,
     });
   } catch (error) {
-    // AppError with context for sending daily emails
     next(
       error instanceof AppError
         ? error
@@ -200,7 +195,7 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       .sort({ sentAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit))
-      .lean({ virtuals: true })
+      .lean({ virtuals: true });
 
     const total = await EmailLog.countDocuments(query);
 
