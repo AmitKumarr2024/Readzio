@@ -86,17 +86,17 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       margin-bottom: 12px;
     }
     .author-avatar {
-      width: 6px;
-      height: 6px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       margin-right: 10px;
       object-fit: cover;
     }
     .post-meta {
       display: flex;
+      justify-content: space-between;
       font-size: 14px;
       color: #757575;
-      gap: 20px;
       margin-bottom: 15px;
     }
     .meta-item {
@@ -156,6 +156,10 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       }
       .post-title {
         font-size: 18px;
+      }
+      .post-meta {
+        flex-direction: column;
+        gap: 10px;
       }
     }
   </style>
