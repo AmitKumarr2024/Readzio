@@ -4,38 +4,37 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
   <meta charset="UTF-8" />
   <title>{{subject}}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
     body {
-      font-family: 'Lato', sans-serif;
-      background-color: #f7f7f7;
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
       margin: 0;
       padding: 0;
-      color: #333333;
+      color: #1f2937;
     }
     .email-wrapper {
       max-width: 700px;
-      margin: 20px auto;
+      margin: 30px auto;
       background: #ffffff;
-      border: 1px solid #e0e0e0;
-      border-radius: 12px;
+      border-radius: 16px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
       overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      border: 1px solid #e5e7eb;
     }
     .header {
-      padding: 35px;
+      background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+      padding: 40px 30px;
       text-align: center;
-      background: linear-gradient(135deg, #f0f4f8, #ffffff);
-      border-bottom: 1px solid #e0e0e0;
     }
     .header img {
-      height: 60px;
+      height: 50px;
       margin-bottom: 15px;
     }
     .header h1 {
       font-size: 24px;
+      color: #0f172a;
       margin: 0;
-      color: #1a73e8;
       font-weight: 700;
     }
     .content {
@@ -44,59 +43,59 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
     .content p {
       font-size: 16px;
       margin-bottom: 20px;
-      color: #555555;
       line-height: 1.6;
+      color: #374151;
     }
     .post {
-      border: 1px solid #e0e0e0;
-      border-radius: 10px;
-      margin-bottom: 25px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
       overflow: hidden;
-      transition: box-shadow 0.3s ease;
+      margin-bottom: 30px;
+      transition: box-shadow 0.2s ease-in-out;
     }
     .post:hover {
-      box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
     }
     .post img {
       width: 100%;
-      height: auto;
-      display: block;
+      max-height: 240px;
       object-fit: cover;
+      display: block;
     }
     .post-content {
-      padding: 20px;
+      padding: 20px 24px;
     }
     .post-title {
       font-size: 20px;
+      color: #1d4ed8;
       font-weight: 700;
-      color: #1a73e8;
       text-decoration: none;
-      display: block;
       margin-bottom: 10px;
-      transition: color 0.3s ease;
+      display: block;
     }
     .post-title:hover {
-      color: #1557a0;
+      color: #1e40af;
     }
     .post-author {
       display: flex;
       align-items: center;
       font-size: 14px;
-      color: #757575;
+      color: #6b7280;
       margin-bottom: 12px;
     }
     .author-avatar {
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       margin-right: 10px;
       object-fit: cover;
+      border: 1px solid #d1d5db;
     }
     .post-meta {
       display: flex;
-      justify-content: space-between;
-      font-size: 14px;
-      color: #757575;
+      gap: 16px;
+      font-size: 13px;
+      color: #9ca3af;
       margin-bottom: 15px;
     }
     .meta-item {
@@ -105,47 +104,50 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       gap: 6px;
     }
     .read-more {
-      font-size: 15px;
-      color: #34a853;
-      font-weight: 700;
+      display: inline-block;
+      font-size: 14px;
+      color: #10b981;
+      font-weight: 600;
       text-decoration: none;
+      border: 1px solid #10b981;
       padding: 8px 16px;
-      border: 1px solid #34a853;
-      border-radius: 5px;
-      transition: background 0.3s ease, color 0.3s ease;
+      border-radius: 8px;
+      transition: all 0.3s ease;
     }
     .read-more:hover {
-      background: #34a853;
-      color: #ffffff;
-    }
-    .footer {
-      text-align: center;
-      font-size: 12px;
-      padding: 25px;
-      color: #757575;
-      border-top: 1px solid #e0e0e0;
-      background: #f9f9f9;
-    }
-    .footer a {
-      color: #1a73e8;
-      text-decoration: none;
-      font-weight: 700;
+      background: #10b981;
+      color: #fff;
     }
     .button-wrapper {
-      margin-top: 25px;
       text-align: center;
+      margin-top: 35px;
     }
     .button-wrapper a.button {
-      background-color: #1a73e8;
-      color: #ffffff;
-      padding: 12px 24px;
-      border-radius: 6px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 600;
       text-decoration: none;
-      font-weight: 700;
+      border-radius: 8px;
+      display: inline-block;
       transition: background 0.3s ease;
     }
     .button-wrapper a.button:hover {
-      background-color: #1557a0;
+      background: #1d4ed8;
+    }
+    .footer {
+      font-size: 13px;
+      color: #6b7280;
+      text-align: center;
+      padding: 25px 20px;
+      border-top: 1px solid #e5e7eb;
+      background: #f9fafb;
+    }
+    .footer a {
+      color: #2563eb;
+      font-weight: 600;
+      text-decoration: none;
     }
     @media (max-width: 600px) {
       .email-wrapper {
@@ -154,12 +156,11 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       .content {
         padding: 20px;
       }
+      .post-content {
+        padding: 16px;
+      }
       .post-title {
         font-size: 18px;
-      }
-      .post-meta {
-        flex-direction: column;
-        gap: 10px;
       }
     }
   </style>
@@ -172,8 +173,8 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
     </div>
 
     <div class="content">
-      <p>Dear {{name}},</p>
-      <p>Here are your top recommended reads for today:</p>
+      <p>Hi {{name}},</p>
+      <p>Here’s your fresh batch of handpicked posts to kickstart your day:</p>
 
       {{#each posts}}
       <div class="post">
@@ -192,9 +193,9 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
           </div>
 
           <div class="post-meta">
-            <div class="meta-item">📖 <span>{{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}</span></div>
-            <div class="meta-item">❤️ <span>{{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}</span></div>
-            <div class="meta-item">💬 <span>{{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</span></div>
+            <div class="meta-item">📖 {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}</div>
+            <div class="meta-item">❤️ {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}</div>
+            <div class="meta-item">💬 {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</div>
           </div>
 
           <a href="https://inksha.onrender.com/post/{{this.slug}}" class="read-more">Read More</a>
@@ -203,7 +204,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       {{/each}}
 
       {{#unless posts.length}}
-      <p>No new posts available today. Explore more at <a href="https://inksha.onrender.com">Inksha</a>.</p>
+      <p>No new posts today — check out more at <a href="https://inksha.onrender.com">Inksha</a>.</p>
       {{/unless}}
 
       {{#if hasButton}}
@@ -214,7 +215,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
     </div>
 
     <div class="footer">
-      This email was sent to you as part of your Inksha subscription.<br />
+      You received this email as part of your Inksha subscription.<br />
       Need help? Contact <a href="mailto:{{supportEmail}}">support</a>.
     </div>
   </div>
