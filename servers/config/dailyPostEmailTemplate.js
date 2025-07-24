@@ -200,19 +200,29 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
               </table>
 
 
-              <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 14px 0 18px;">
+              <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 16px 0;">
                 <tr>
-                  <td style="font-size: 18px; font-weight: bold; color: #374151; padding-right: 20px;">
-                    📖 <span style="margin-left: 6px;">{{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}</span>
+                  <td width="16.6%" align="center" style="font-size: 18px; font-weight: bold; color: #374151;">
+                    📖
                   </td>
-                  <td style="font-size: 18px; font-weight: bold; color: #374151; padding-right: 20px;">
-                    ❤️ <span style="margin-left: 6px;">{{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}</span>
+                  <td width="16.6%" align="left" style="font-size: 18px; font-weight: bold; color: #374151;">
+                    {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}
                   </td>
-                  <td style="font-size: 18px; font-weight: bold; color: #374151;">
-                    💬 <span style="margin-left: 6px;">{{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</span>
+                  <td width="16.6%" align="center" style="font-size: 18px; font-weight: bold; color: #374151;">
+                    ❤️
+                  </td>
+                  <td width="16.6%" align="left" style="font-size: 18px; font-weight: bold; color: #374151;">
+                    {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}
+                  </td>
+                  <td width="16.6%" align="center" style="font-size: 18px; font-weight: bold; color: #374151;">
+                    💬
+                  </td>
+                  <td width="16.6%" align="left" style="font-size: 18px; font-weight: bold; color: #374151;">
+                    {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}
                   </td>
                 </tr>
               </table>
+
 
 
           <a href="https://inksha.onrender.com/post/{{this.slug}}" class="read-more">Read More</a>
