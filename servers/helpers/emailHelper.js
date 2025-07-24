@@ -1,5 +1,5 @@
 import Handlebars from "handlebars";
-import { EMAIL_TEMPLATE } from "../../servers/config/emailTemplate.js";
+import { EMAIL_TEMPLATE, WELCOME_EMAIL_TEMPLATE } from "../../servers/config/emailTemplate.js";
 import { DAILY_POST_EMAIL_TEMPLATE } from "../../servers/config/dailyPostEmailTemplate.js";
 import { INVOICE_EMAIL_TEMPLATE } from "../../servers/config/emailTemplate.js";
 import { SENDER_EMAIL } from "../../servers/config/dotenv.js";
