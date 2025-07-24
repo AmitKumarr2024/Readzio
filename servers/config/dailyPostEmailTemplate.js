@@ -75,13 +75,16 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       margin-bottom: 6px;
     }
     .post-meta {
-      font-size: 20px;
-      color: #9e9e9e;
-      margin-bottom: 6px;
-    }
-    .post-meta span {
-      margin-right: 15px;
-    }
+font-size: 20px;
+color: #9e9e9e;
+margin-bottom: 6px;
+display: flex;
+justify-content: space-between;
+}
+
+.post-meta span {
+margin-right: 0;
+}
     .read-more {
       font-size: 14px;
       color: #34a853;
