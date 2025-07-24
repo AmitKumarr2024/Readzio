@@ -133,12 +133,17 @@ margin-right: 0;
         {{/if}}
         <div class="post-content">
           <a href="https://inksha.onrender.com/post/{{this.slug}}" class="post-title">{{this.title}}</a>
-          <div class="post-author">by {{this.author.name}}</div>
+          <div class="post-author">
+  <img src="{{this.author.avatar}}" alt="{{this.author.name}}" style="width:24px;height:24px;border-radius:50%;margin-right:8px;" />
+  by {{this.author.name}}
+</div>
+
           <div class="post-meta">
-            <span>📖 {{this.readTime}}</span>
-            <span>❤️ {{this.likesCount}}</span>
-            <span>💬 {{this.commentsCount}}</span>
-          </div>
+  <span>📖 {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}</span>
+  <span>❤️ {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}</span>
+  <span>💬 {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</span>
+</div>
+
           <a href="https://inksha.onrender.com/post/{{this.slug}}" class="read-more">Read More</a>
         </div>
       </div>

@@ -34,8 +34,17 @@ export const sendDailyPostEmail = async (req, res, next) => {
       status: "published",
     })
       .select("title slug thumbnail author readTime likesCount commentsCount")
-      .populate("author", "name")
+      .populate("author", "name avatar")
       .lean({ virtuals: true });
+
+    console.log(
+      posts.map((p) => ({
+        title: p.title,
+        readTime: p.readTime,
+        likes: p.likesCount,
+        comments: p.commentsCount,
+      }))
+    );
 
     if (posts.length < 10) {
       const additionalPostsNeeded = 10 - posts.length;
@@ -45,7 +54,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
       })
         .sort({ views: -1 })
         .select("title slug thumbnail author readTime likesCount commentsCount")
-        .populate("author", "name")
+        .populate("author", "name avatar")
         .limit(additionalPostsNeeded)
         .lean({ virtuals: true });
 
