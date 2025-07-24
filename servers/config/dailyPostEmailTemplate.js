@@ -86,8 +86,8 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       margin-bottom: 12px;
     }
     .author-avatar {
-      width: 30px;
-      height: 30px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       margin-right: 10px;
       object-fit: cover;
