@@ -171,7 +171,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
           <tr>
             <td align="center">
-              <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center;  justify-content: center;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center;  justify-content: center; padding-top: 10px;">
                 <tr>
                   <td style="padding-right: 10px;">
                     <img src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
