@@ -15,41 +15,47 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
     }
     .email-wrapper {
       max-width: 700px;
-      margin: 0 auto;
+      margin: 20px auto;
       background: #ffffff;
       border: 1px solid #e0e0e0;
-      border-radius: 10px;
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
     .header {
-      padding: 30px;
+      padding: 35px;
       text-align: center;
-      background: #ffffff;
+      background: linear-gradient(135deg, #f0f4f8, #ffffff);
       border-bottom: 1px solid #e0e0e0;
     }
     .header img {
-      height: 50px;
-      margin-bottom: 10px;
+      height: 60px;
+      margin-bottom: 15px;
     }
     .header h1 {
-      font-size: 22px;
+      font-size: 24px;
       margin: 0;
       color: #1a73e8;
+      font-weight: 700;
     }
     .content {
-      padding: 25px;
+      padding: 30px;
     }
     .content p {
       font-size: 16px;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
       color: #555555;
+      line-height: 1.6;
     }
     .post {
       border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      margin-bottom: 20px;
+      border-radius: 10px;
+      margin-bottom: 25px;
       overflow: hidden;
+      transition: box-shadow 0.3s ease;
+    }
+    .post:hover {
+      box-shadow: 0 6px 15px rgba(0,0,0,0.1);
     }
     .post img {
       width: 100%;
@@ -58,46 +64,59 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       object-fit: cover;
     }
     .post-content {
-      padding: 15px;
+      padding: 20px;
     }
     .post-title {
-      font-size: 18px;
-      font-weight: bold;
+      font-size: 20px;
+      font-weight: 700;
       color: #1a73e8;
       text-decoration: none;
       display: block;
-      margin-bottom: 6px;
+      margin-bottom: 10px;
+      transition: color 0.3s ease;
+    }
+    .post-title:hover {
+      color: #1557a0;
     }
     .post-author {
       display: flex;
       align-items: center;
       font-size: 14px;
       color: #757575;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
     .author-avatar {
-      width: 24px;
-      height: 24px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
-      margin-right: 8px;
+      margin-right: 10px;
+      object-fit: cover;
     }
     .post-meta {
       display: flex;
       font-size: 14px;
       color: #757575;
-      gap: 16px;
-      margin-bottom: 12px;
+      gap: 20px;
+      margin-bottom: 15px;
     }
     .meta-item {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
     }
     .read-more {
-      font-size: 14px;
+      font-size: 15px;
       color: #34a853;
-      font-weight: bold;
+      font-weight: 700;
       text-decoration: none;
+      padding: 8px 16px;
+      border: 1px solid #34a853;
+      border-radius: 5px;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+    .read-more:hover {
+      background: #34a853;
+      color: #ffffff;
     }
     .footer {
       text-align: center;
@@ -105,23 +124,28 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       padding: 25px;
       color: #757575;
       border-top: 1px solid #e0e0e0;
-      background: #f7f7f7;
+      background: #f9f9f9;
     }
     .footer a {
       color: #1a73e8;
       text-decoration: none;
+      font-weight: 700;
     }
     .button-wrapper {
-      margin-top: 20px;
+      margin-top: 25px;
       text-align: center;
     }
     .button-wrapper a.button {
       background-color: #1a73e8;
-      color: white;
+      color: #ffffff;
       padding: 12px 24px;
       border-radius: 6px;
       text-decoration: none;
-      font-weight: bold;
+      font-weight: 700;
+      transition: background 0.3s ease;
+    }
+    .button-wrapper a.button:hover {
+      background-color: #1557a0;
     }
     @media (max-width: 600px) {
       .email-wrapper {
@@ -129,6 +153,9 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       }
       .content {
         padding: 20px;
+      }
+      .post-title {
+        font-size: 18px;
       }
     }
   </style>
