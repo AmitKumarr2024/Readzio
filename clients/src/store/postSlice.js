@@ -148,6 +148,8 @@ export const getAllPosts = createAsyncThunk(
         if (validIds.length) params.append("authorIds", validIds.join(","));
       }
       const response = await axiosInstance.get(`/post/all-post?${params.toString()}`);
+      console.log("get-all-posts",response.data);
+      
       return {
         posts: response.data.posts,
         total: response.data.total,
@@ -244,6 +246,8 @@ export const getSinglePost = createAsyncThunk(
       }
       const endpoint = isGuest ? `/post/public/${slug}` : `/post/${slug}`;
       const response = await axiosInstance.get(endpoint);
+      console.log("get Single Post",response.data);
+      
       if (!response.data.post) {
         console.error("[postSlice] Post not found for slug:", slug);
         return rejectWithValue({ message: "Post not found" });

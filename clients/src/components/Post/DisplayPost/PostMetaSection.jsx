@@ -62,13 +62,10 @@ const PostMetaSection = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-            <TotalView slug={post.slug} authorId={post.author?._id} />
-          </div>
+         
 
           <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-            <span>📖</span>
-            <span>Read: {formatTime(post.timeSpent || 0)}</span>
+              <span>{post?.readTime}</span>
           </div>
 
           <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">

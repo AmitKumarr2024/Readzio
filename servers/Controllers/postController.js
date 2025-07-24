@@ -11,6 +11,7 @@ import { checkIfSubscribed } from "../Utils/checkIfSubscribed.js";
 import PostInteraction from "../../servers/Models/PostInteraction.js";
 import UserModel from "../../servers/Models/User.js";
 import { io } from "../../servers/sockets/socket.js";
+import { calculateReadTime } from "../helpers/postHelper.js";
 
 export const voteOnPoll = async (req, res, next) => {
   try {
@@ -21,7 +22,11 @@ export const voteOnPoll = async (req, res, next) => {
       throw new AppError("Invalid post ID", 400, "VoteOnPoll");
     }
     if (!userId) {
-      throw new AppError("You must be signed in to access this feature.", 401, "VoteOnPoll");
+      throw new AppError(
+        "You must be signed in to access this feature.",
+        401,
+        "VoteOnPoll"
+      );
     }
     if (!blockId || optionIndex == null) {
       throw new AppError(
@@ -106,7 +111,11 @@ export const createPost = async (req, res, next) => {
     } = req.body;
 
     if (!req.user?._id)
-      throw new AppError("User You must be signed in to access this feature.", 401, "CreatePost");
+      throw new AppError(
+        "User You must be signed in to access this feature.",
+        401,
+        "CreatePost"
+      );
 
     const tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
     if (!Array.isArray(tags))
@@ -270,6 +279,14 @@ export const createPost = async (req, res, next) => {
       })
     );
 
+    const { readTime, readingTime } = calculateReadTime(processedBlocks);
+    console.log(
+      "[CreatePost] Read time generated:",
+      readTime,
+      "| Minutes:",
+      readingTime
+    );
+
     let processedThumbnail = rawThumbnail;
     if (rawThumbnail) {
       processedThumbnail = await processImage(
@@ -318,6 +335,8 @@ export const createPost = async (req, res, next) => {
       isPinned,
       isPublished: true,
       language,
+      readTime, // ✅ "2 min read"
+      readingTime, // ✅ 2 (numeric, in minutes)
     };
 
     const session = await mongoose.startSession();
@@ -460,6 +479,17 @@ export const getAllPosts = async (req, res, next) => {
       });
     }
 
+    console.log(
+      "[getAllPosts] Sending posts:",
+      posts.map((p) => ({
+        _id: p._id,
+        slug: p.slug,
+        readTime: p.readTime,
+        readingTime: p.readingTime,
+        title: p.title,
+      }))
+    );
+
     res.status(200).json({ success: true, total, page, posts });
   } catch (error) {
     console.error("[getAllPosts] Error:", error);
@@ -508,7 +538,7 @@ export const getSinglePost = async (req, res, next) => {
         title slug category excerpt thumbnail author createdAt
         isPublished isPinned isPremium isSubscriberOnly blocked message readTime
         likesCount commentsCount viewsCount bookmarksCount likes
-        tags language isFeatured allowComments timeSpent updatedAt
+        tags language isFeatured allowComments timeSpent  updatedAt
         shareCount sharedBy blocks
       `
       )
@@ -689,7 +719,11 @@ export const updatePostBySlug = async (req, res, next) => {
     }
 
     if (!userId) {
-      throw new AppError("You must be signed in to access this feature.", 401, "UpdatePostBySlug");
+      throw new AppError(
+        "You must be signed in to access this feature.",
+        401,
+        "UpdatePostBySlug"
+      );
     }
 
     const updates = { ...req.body };
@@ -745,6 +779,16 @@ export const updatePostBySlug = async (req, res, next) => {
         })
       );
     }
+
+    const { readTime, readingTime } = calculateReadTime(updates.blocks);
+    console.log(
+      "[UpdatePostBySlug] Read time generated:",
+      readTime,
+      "| Minutes:",
+      readingTime
+    );
+    updates.readTime = readTime;
+    updates.readingTime = readingTime;
 
     // Case-insensitive slug query
     const query =
@@ -1009,7 +1053,11 @@ export const submitAppeal = async (req, res, next) => {
     }
 
     if (!userId) {
-      throw new AppError("You must be signed in to access this feature.", 401, "SubmitAppeal");
+      throw new AppError(
+        "You must be signed in to access this feature.",
+        401,
+        "SubmitAppeal"
+      );
     }
 
     if (!message || !message.trim()) {
@@ -1197,6 +1245,20 @@ export const getPublicPost = async (req, res, next) => {
         "GetPublicPost"
       );
     }
+    console.log("[getSinglePost] Sending post:", {
+      _id: post._id,
+      slug: post.slug,
+      readTime: post.readTime,
+      readingTime: post.readingTime,
+      title: post.title,
+    });
+    console.log("[getPublicPost] Sending post:", {
+      _id: post._id,
+      slug: post.slug,
+      readTime: post.readTime,
+      readingTime: post.readingTime,
+      title: post.title,
+    });
 
     res.status(200).json({ success: true, post });
   } catch (error) {
@@ -1216,7 +1278,11 @@ export const getFollowingPosts = async (req, res, next) => {
     const skip = (page - 1) * limit;
 
     if (!userId) {
-      throw new AppError("You must be signed in to access this feature.", 401, "GetFollowingPosts");
+      throw new AppError(
+        "You must be signed in to access this feature.",
+        401,
+        "GetFollowingPosts"
+      );
     }
 
     // Fetch the user's following list
@@ -1253,7 +1319,7 @@ export const getFollowingPosts = async (req, res, next) => {
           title slug category excerpt thumbnail author createdAt
           isPublished isPinned isPremium isSubscriberOnly blocked message readTime
           likesCount commentsCount viewsCount bookmarksCount likes
-          tags language isFeatured allowComments timeSpent updatedAt
+          tags language isFeatured allowComments timeSpent  updatedAt
           shareCount sharedBy blocks
         `
         )
@@ -1271,6 +1337,16 @@ export const getFollowingPosts = async (req, res, next) => {
       action: "VIEWED_FOLLOWING_POSTS",
       message: `Viewed posts from followed users`,
     });
+    console.log(
+      "[getFollowingPosts] Sending posts:",
+      posts.map((p) => ({
+        _id: p._id,
+        slug: p.slug,
+        readTime: p.readTime,
+        readingTime: p.readingTime,
+        title: p.title,
+      }))
+    );
 
     res.status(200).json({
       success: true,
