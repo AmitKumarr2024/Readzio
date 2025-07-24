@@ -84,22 +84,23 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       margin-bottom: 12px;
     }
     .author-avatar {
-      width: 28px;
-      height: 28px;
+      width: 2px;
+      height: 2px;
       border-radius: 50%;
       margin-right: 10px;
-      object-fit: cover;
+      object-fit: contain;
       border: 1px solid #d1d5db;
     }
     .post-meta {
       display: flex;
-      gap: 16px;
+      gap: 6px;
       font-size: 13px;
       color: #9ca3af;
       margin-bottom: 15px;
     }
     .meta-item {
       display: flex;
+      justify-content:center;
       align-items: center;
       gap: 6px;
     }
