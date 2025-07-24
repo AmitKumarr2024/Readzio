@@ -201,20 +201,20 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
 
 
             <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 16px 0;">
-              <tr style="height: 42px;"> <!-- Fix row height explicitly -->
-                <td width="16.6%" align="center" style="font-size: 22px; line-height: 1.4; font-weight: bold; color: #374151;">
+              <tr style="height: 70px;"> <!-- Fix row height explicitly -->
+                <td width="16.6%" align="center" style="font-size: 15px; line-height: 1.4; font-weight: bold; color: #374151;">
                   📖
                 </td>
                 <td width="16.6%" align="left" style="font-size: 18px; font-weight: bold; color: #374151;">
                   {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}
                 </td>
-                <td width="16.6%" align="center" style="font-size: 22px; line-height: 1.4; font-weight: bold; color: #374151;">
+                <td width="16.6%" align="center" style="font-size: 15px; line-height: 1.4; font-weight: bold; color: #374151;">
                   ❤️
                 </td>
                 <td width="16.6%" align="left" style="font-size: 18px; font-weight: bold; color: #374151;">
                   {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}
                 </td>
-                <td width="16.6%" align="center" style="font-size: 22px; line-height: 1.4; font-weight: bold; color: #374151;">
+                <td width="16.6%" align="center" style="font-size: 15px; line-height: 1.4; font-weight: bold; color: #374151;">
                   💬
                 </td>
                 <td width="16.6%" align="left" style="font-size: 18px; font-weight: bold; color: #374151;">
