@@ -138,7 +138,14 @@ export default function createMailOption({
         title: post.title || "Untitled",
         slug: post.slug || "",
         thumbnail: post.thumbnail || "",
-        author: { name: post.author?.name || "Unknown Author" },
+        author: {
+          name: post.author?.name || "Unknown Author",
+          avatar: post.author?.avatar || "", // Add avatar if needed
+        },
+        readTime: post.readTime || "0 min",
+        likesCount: typeof post.likesCount === "number" ? post.likesCount : 0,
+        commentsCount:
+          typeof post.commentsCount === "number" ? post.commentsCount : 0,
         index: index + 1,
       })),
     });

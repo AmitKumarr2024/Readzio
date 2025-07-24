@@ -74,28 +74,34 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       color: #757575;
       margin-bottom: 6px;
     }
+.post-meta {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  font-size: 14px;
+  color: #9e9e9e;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.post-meta {
+  display: flex;
+  gap: 16px; /* spacing between each icon+value block */
+  font-size: 14px;
+  color: #757575;
+  margin-top: 10px;
+}
+
 .meta-item {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
-  color: #9e9e9e;
 }
 
-
-.meta-item {
-  display: flex;
-  align-items: center;
-}
-
-.meta-item .icon {
-  margin-right: 5px;
+.icon {
   font-size: 16px;
 }
 
-.meta-item span {
-  margin-right: 0; /* optional: prevents extra spacing */
-}
 
     .read-more {
       font-size: 14px;
@@ -164,7 +170,6 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
     <span>{{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</span>
   </div>
 </div>
-
 
 
           <a href="https://inksha.onrender.com/post/{{this.slug}}" class="read-more">Read More</a>
