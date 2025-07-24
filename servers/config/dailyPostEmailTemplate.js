@@ -200,28 +200,29 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
               </table>
 
 
-            <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 12px 0;">
-              <tr>
-                <td width="16.6%" align="center" valign="middle" style="font-size: 8px; line-height: 1.2; font-weight: normal; color: #374151;">
-                  📖
-                </td>
-                <td width="16.6%" align="left" valign="middle" style="font-size: 10px; font-weight: bold; color: #374151;">
-                  {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}
-                </td>
-                <td width="16.6%" height="30%" align="center" valign="middle" style="font-size: 8px; line-height: 1.2; font-weight: normal; color: #374151;">
-                  ❤️
-                </td>
-                <td width="16.6%" align="left" valign="middle" style="font-size: 20px; font-weight: bold; color: #374151;">
-                  {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}
-                </td>
-                <td width="16.6%" height="30%" align="center" valign="middle" style="font-size: 8px; line-height: 1.2; font-weight: normal; color: #374151;">
-                  💬
-                </td>
-                <td width="16.6%" align="left" valign="middle" style="font-size: 20px; font-weight: bold; color: #374151;">
-                  {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}
-                </td>
-              </tr>
-            </table>
+          <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 16px 0;">
+            <tr>
+              <td width="16.6%" align="center" valign="middle" style="font-size: 16px; line-height: 24px; font-weight: normal; color: #374151;">
+                📖
+              </td>
+              <td width="16.6%" align="left" valign="middle" style="font-size: 16px; font-weight: bold; line-height: 24px; color: #374151;">
+                {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}
+              </td>
+              <td width="16.6%" align="center" valign="middle" style="font-size: 16px; line-height: 24px; font-weight: normal; color: #374151;">
+                ❤️
+              </td>
+              <td width="16.6%" align="left" valign="middle" style="font-size: 16px; font-weight: bold; line-height: 24px; color: #374151;">
+                {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}
+              </td>
+              <td width="16.6%" align="center" valign="middle" style="font-size: 16px; line-height: 24px; font-weight: normal; color: #374151;">
+                💬
+              </td>
+              <td width="16.6%" align="left" valign="middle" style="font-size: 16px; font-weight: bold; line-height: 24px; color: #374151;">
+                {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}
+              </td>
+            </tr>
+          </table>
+
 
 
 
