@@ -128,7 +128,8 @@ const clientIndexPath = path.join(clientPath, "index.html");
 // Log all requests to /public
 // Now correctly targets servers/public
 const publicPath = path.join(__dirname, "public");
-console.log("Public folder served at:", publicPath);
+
+console.log("Public folder served at:", publicPath); // ✅ Should log: /opt/render/project/src/servers/public
 
 app.use(
   "/public",
@@ -139,9 +140,12 @@ app.use(
   express.static(publicPath)
 );
 
+// For testing
 app.get("/test-logo", (req, res) => {
   res.sendFile(path.join(publicPath, "logo1.png"));
 });
+
+
 
 // Static ads.txt file
 app.get("/ads.txt", (req, res) => {
