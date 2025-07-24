@@ -1231,7 +1231,7 @@ export const getPublicPost = async (req, res, next) => {
       .select(
         `
         title slug category excerpt thumbnail author createdAt
-        isPublished readTime tags language viewsCount shareCount
+        isPublished readTime readingTime tags language viewsCount shareCount
       `
       )
       .populate("author", "name avatar")
@@ -1252,14 +1252,7 @@ export const getPublicPost = async (req, res, next) => {
       readingTime: post.readingTime,
       title: post.title,
     });
-    console.log("[getPublicPost] Sending post:", {
-      _id: post._id,
-      slug: post.slug,
-      readTime: post.readTime,
-      readingTime: post.readingTime,
-      title: post.title,
-    });
-
+   
     res.status(200).json({ success: true, post });
   } catch (error) {
     next(
@@ -1319,7 +1312,7 @@ export const getFollowingPosts = async (req, res, next) => {
           title slug category excerpt thumbnail author createdAt
           isPublished isPinned isPremium isSubscriberOnly blocked message readTime
           likesCount commentsCount viewsCount bookmarksCount likes
-          tags language isFeatured allowComments timeSpent  updatedAt
+          tags language isFeatured allowComments timeSpent readingTime updatedAt
           shareCount sharedBy blocks
         `
         )
