@@ -202,22 +202,22 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
 
          <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 16px 0; height: 60px;">
             <tr>
-               <td style="font-size: 65px; font-weight: bold; color: #374151; padding-right: 20px;">
+               <td style="font-size: 55px; font-weight: bold; color: #374151; padding-right: 20px;">
                 📖
               </td>
-              <td width="16.6%" align="left" valign="middle" style="font-size: 20px; font-weight: bold; line-height: 24px; color: #374151;">
+              <td width="16.6%" align="left" valign="middle" style="font-size: 18px; font-weight: bold; line-height: 24px; color: #374151;">
                 {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}
               </td>
-               <td style="font-size: 65px; font-weight: bold; color: #374151; padding-right: 20px;">
+               <td style="font-size: 55px; font-weight: bold; color: #374151; padding-right: 20px;">
                 ❤️
               </td>
-              <td width="16.6%" align="left" valign="middle" style="font-size: 20px; font-weight: bold; line-height: 24px; color: #374151;">
+              <td width="16.6%" align="left" valign="middle" style="font-size: 18px; font-weight: bold; line-height: 24px; color: #374151;">
                 {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}
               </td>
-               <td style="font-size: 65px; font-weight: bold; color: #374151; padding-right: 20px;">
+               <td style="font-size: 55px; font-weight: bold; color: #374151; padding-right: 20px;">
                 💬
               </td>
-              <td width="16.6%" align="left" valign="middle" style="font-size: 20px; font-weight: bold; line-height: 24px; color: #374151;">
+              <td width="16.6%" align="left" valign="middle" style="font-size: 18px; font-weight: bold; line-height: 24px; color: #374151;">
                 {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}
               </td>
             </tr>
