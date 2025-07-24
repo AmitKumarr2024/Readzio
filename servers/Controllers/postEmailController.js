@@ -169,31 +169,44 @@ export const sendDailyPostEmail = async (req, res, next) => {
 };
 
 // Retrieves daily post email report with pagination and optional date filter
+// Retrieves daily post email report with pagination and optional date filter
 export const getDailyPostEmailReport = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, date } = req.query;
+
     const query = { type: "daily_digest" };
 
-    // Applies date filter if provided
+    // If a date is provided, apply IST-safe date filtering
     if (date) {
-      const startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(date);
-      endDate.setHours(23, 59, 59, 999);
+      const istDate = new Date(date);
+      const startDate = new Date(istDate);
+      startDate.setUTCHours(18, 30, 0, 0); // 00:00 IST
+      const endDate = new Date(istDate);
+      endDate.setUTCHours(18 + 23, 30 + 59, 59, 999); // 23:59 IST
+
       query.sentAt = { $gte: startDate, $lte: endDate };
+
+      console.log(
+        `[Report] Applying date filter: ${startDate.toISOString()} → ${endDate.toISOString()}`
+      );
     }
 
-    // Fetches email logs with pagination
+    // Fetch paginated logs
     const logs = await EmailLog.find(query)
       .select(
         "userId email type emailStatus emailAttempts emailLastError postSlugs sentAt"
       )
       .populate("userId", "name")
+      .sort({ sentAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit))
       .lean();
 
     const total = await EmailLog.countDocuments(query);
+
+    console.log(
+      `[Report] Email logs fetched: ${logs.length} / ${total} total`
+    );
 
     res.status(200).json({
       logs,
@@ -202,7 +215,8 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    // AppError with context for fetching email report
+    console.error("[Error] Failed to fetch email report:", error);
+
     next(
       error instanceof AppError
         ? error
@@ -215,6 +229,7 @@ export const getDailyPostEmailReport = async (req, res, next) => {
     );
   }
 };
+
 
 // Deletes all notifications
 export const deleteAllNotifications = async (req, res, next) => {

@@ -5,89 +5,77 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet" type="text/css">
   <style type="text/css">
     body {
       margin: 0;
       padding: 0;
-      font-family: 'Poppins', sans-serif;
-      background: #F4F7FA;
-      color: #333333;
+      font-family: 'Lato', sans-serif;
+      background: #ffffff;
+      color: #000000;
     }
     table, td {
       border-collapse: collapse;
     }
     .container {
       width: 100%;
-      max-width: 600px;
+      max-width: 650px;
       margin: 40px auto;
-      background: #FFFFFF;
-      border-radius: 12px;
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+      background: #ffffff;
+      border: 1px solid #000000;
+      border-radius: 0;
     }
     .header {
-      background: linear-gradient(135deg, #6B46C1 0%, #4F46E5 100%);
-      padding: 20px;
+      padding: 25px;
       text-align: center;
-      border-top-left-radius: 12px;
-      border-top-right-radius: 12px;
+      border-bottom: 1px solid #000000;
     }
     .header img {
-      max-width: 150px;
+      max-width: 160px;
       height: auto;
     }
     .main-content {
-      padding: 30px;
+      padding: 35px;
     }
     .otp-box {
-      background: #F9FAFB;
-      border: 2px dashed #6B46C1;
-      border-radius: 8px;
-      padding: 15px;
+      border: 2px dashed #000000;
+      border-radius: 0;
+      padding: 20px;
       text-align: center;
-      font-size: 26px;
-      font-weight: 600;
-      letter-spacing: 3px;
-      color: #4F46E5;
-      margin: 20px 0;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      margin: 25px 0;
     }
     .button {
       display: inline-block;
-      background: #22D172;
-      color: #FFFFFF;
+      background: #000000;
+      color: #ffffff;
       text-decoration: none;
-      padding: 12px 24px;
-      font-size: 14px;
-      font-weight: 600;
-      border-radius: 8px;
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: 0;
       text-align: center;
-      transition: background 0.3s ease;
-    }
-    .button:hover {
-      background: #1EBB5E;
     }
     .footer {
-      padding: 20px;
+      padding: 25px;
       text-align: center;
-      font-size: 12px;
-      color: #6B7280;
-      border-top: 1px solid #E5E7EB;
-      background: #F9FAFB;
-      border-bottom-left-radius: 12px;
-      border-bottom-right-radius: 12px;
+      font-size: 13px;
+      color: #000000;
+      border-top: 1px solid #000000;
     }
     .footer img {
-      max-width: 30px;
+      max-width: 35px;
       vertical-align: middle;
-      margin-right: 5px;
+      margin-right: 6px;
     }
     @media only screen and (max-width: 480px) {
       .container {
         width: 90% !important;
       }
       .otp-box {
-        font-size: 20px;
+        font-size: 22px;
       }
       .button {
         width: 100%;
@@ -97,7 +85,7 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <table width="100%" cellspacing="0" cellpadding="0" border="0" align="center" bgcolor="#F4F7FA">
+  <table width="100%" cellspacing="0" cellpadding="0" border="0" align="center" bgcolor="#ffffff">
     <tbody>
       <tr>
         <td valign="top" align="center">
@@ -105,9 +93,8 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
             <tbody>
               <tr>
                 <td class="header">
-                  <img src="https://inksha.onrender.com/public/logo1.png
-" alt="Mount Amit Logo">
-                  <h1 style="margin: 10px 0; font-size: 24px; color: #FFFFFF;">{{subject}}</h1>
+                  <img src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Logo">
+                  <h1 style="margin: 12px 0; font-size: 26px;">{{subject}}</h1>
                 </td>
               </tr>
               <tr>
@@ -115,18 +102,18 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
                   <table width="100%" cellspacing="0" cellpadding="0" border="0">
                     <tbody>
                       <tr>
-                        <td style="padding: 0 0 16px; font-size: 16px; line-height: 150%;">
+                        <td style="padding: 0 0 18px; font-size: 16px; line-height: 150%;">
                           Dear {{name}},
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding: 0 0 16px; font-size: 14px; line-height: 150%;">
+                        <td style="padding: 0 0 18px; font-size: 15px; line-height: 150%;">
                           {{message}}
                         </td>
                       </tr>
                       {{#if otp}}
                       <tr>
-                        <td style="padding: 0 0 16px; font-size: 14px; line-height: 150%;">
+                        <td style="padding: 0 0 18px; font-size: 15px; line-height: 150%;">
                           Your One-Time Password (OTP) is:
                         </td>
                       </tr>
@@ -136,13 +123,13 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding: 0 0 16px; font-size: 14px; line-height: 150%;">
-                          This OTP is valid for {{#if isResetOtp}}15 minutes{{else}}1 hour{{/if}}. Please do not share it with anyone.
+                        <td style="padding: 0 0 18px; font-size: 15px; line-height: 150%;">
+                          This OTP is valid for {{#if isResetOtp}}15 minutes{{else}}1 hour{{/if}}. Please keep it confidential.
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding: 0 0 16px; font-size: 14px; line-height: 150%;">
-                          If you did not request this OTP, please contact support.
+                        <td style="padding: 0 0 24px; font-size: 15px; line-height: 150%;">
+                          If this request was not initiated by you, please contact our support team immediately.
                         </td>
                       </tr>
                       {{/if}}
@@ -159,10 +146,9 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
               </tr>
               <tr>
                 <td class="footer">
-                  <img src="https://inksha.onrender.com/public/logo1.png
-" alt="Mount Amit Icon">
-                  Best regards,<br>Inksha Official<br>
-                  <a href="mailto:{{supportEmail}}" style="color: #4F46E5; text-decoration: none;">Contact Support</a>
+                  <img src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Icon">
+                  Best regards,<br>Inksha Team<br>
+                  <a href="mailto:{{supportEmail}}" style="color: #000000; text-decoration: none;">Contact Support</a>
                 </td>
               </tr>
             </tbody>
@@ -174,34 +160,38 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
 </body>
 </html>`;
 
-export const INVOICE_EMAIL_TEMPLATE = `
-<!DOCTYPE html>
+export const INVOICE_EMAIL_TEMPLATE = `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8" />
     <style>
-      body { font-family: Arial; padding: 20px; }
-      h2 { color: #333; }
-      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-      td, th { border: 1px solid #ccc; padding: 8px; text-align: left; }
+      body { font-family: 'Lato', sans-serif; padding: 30px; background: #f7f7f7; margin: 0; }
+      h2 { color: #1a73e8; font-size: 24px; font-weight: 700; margin-bottom: 20px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 25px; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; }
+      th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: left; font-size: 15px; }
+      th { background: #f9fafb; color: #555555; }
+      p { font-size: 15px; color: #757575; line-height: 150%; }
     </style>
   </head>
   <body>
-    <h2>Invoice Receipt</h2>
-    <p>Hi {{name}},</p>
-    <p>Thanks for your payment. Here's your invoice:</p>
+    <div style="max-width: 700px; margin: 0 auto; background: #ffffff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+      <div style="padding: 30px;">
+        <h2>Invoice Receipt</h2>
+        <p>Dear {{name}},</p>
+        <p>Thank you for your payment. Please find your invoice details below:</p>
 
-    <table>
-      <tr><th>Invoice ID</th><td>{{invoice.invoiceId}}</td></tr>
-      <tr><th>Order ID</th><td>{{invoice.orderId}}</td></tr>
-      <tr><th>Payment ID</th><td>{{invoice.paymentId}}</td></tr>
-      <tr><th>Amount</th><td>₹ {{invoice.amount}}</td></tr>
-      <tr><th>Currency</th><td>{{invoice.currency}}</td></tr>
-      <tr><th>Date</th><td>{{invoice.date}}</td></tr>
-    </table>
+        <table>
+          <tr><th>Invoice ID</th><td>{{invoice.invoiceId}}</td></tr>
+          <tr><th>Order ID</th><td>{{invoice.orderId}}</td></tr>
+          <tr><th>Payment ID</th><td>{{invoice.paymentId}}</td></tr>
+          <tr><th>Amount</th><td>₹ {{invoice.amount}}</td></tr>
+          <tr><th>Currency</th><td>{{invoice.currency}}</td></tr>
+          <tr><th>Date</th><td>{{invoice.date}}</td></tr>
+        </table>
 
-    <p>If you have any questions, feel free to contact us.</p>
-    <p>— The Inksha Team</p>
+        <p>For any inquiries, please contact our support team.</p>
+        <p>— Inksha Team</p>
+      </div>
+    </div>
   </body>
-</html>
-`;
+</html>`;

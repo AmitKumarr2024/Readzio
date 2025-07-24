@@ -3,121 +3,112 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <title>{{subject}}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet" />
   <style>
     body {
-      font-family: 'Inter', sans-serif;
-      background-color: #f9fafb;
+      font-family: 'Lato', sans-serif;
+      background-color: #f7f7f7;
       margin: 0;
       padding: 0;
-      color: #111827;
+      color: #333333;
     }
     .email-wrapper {
-      max-width: 680px;
+      max-width: 700px;
       margin: 0 auto;
       background: #ffffff;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .header {
+      padding: 30px;
+      text-align: center;
+      border-bottom: 1px solid #e0e0e0;
+      background: #ffffff;
+    }
+    .header img {
+      height: 50px;
+      margin-bottom: 15px;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 0;
+      color: #1a73e8;
+    }
+    .content {
+      padding: 30px;
+    }
+    .content p {
+      font-size: 16px;
+      margin: 0 0 20px;
+      color: #555555;
+    }
+    .post {
+      width: 100%;
+      margin-bottom: 20px;
+      border: 1px solid #e0e0e0;
       border-radius: 8px;
       overflow: hidden;
     }
-    .header {
-      padding: 24px;
-      text-align: left;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    .header img {
-      height: 40px;
-      margin-bottom: 12px;
-    }
-    .header h1 {
-      font-size: 20px;
-      font-weight: 700;
-      margin: 0;
-      color: #6b21a8;
-    }
-    .content {
-      padding: 24px;
-    }
-    .content p {
-      font-size: 15px;
-      margin: 0 0 16px;
-    }
-    .post {
-      display: flex;
-      gap: 16px;
-      border-bottom: 1px solid #e5e7eb;
-      padding: 16px 0;
-    }
     .post img {
-      width: 96px;
-      height: 96px;
-      border-radius: 6px;
+      width: 100%;
+      height: auto;
+      border-radius: 8px 8px 0 0;
       object-fit: cover;
     }
     .post-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
+      padding: 15px;
     }
     .post-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #2563eb;
-      margin: 0 0 6px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a73e8;
+      margin: 0 0 8px;
       text-decoration: none;
     }
     .post-author {
       font-size: 14px;
-      color: #6b7280;
-      margin-bottom: 4px;
+      color: #757575;
+      margin-bottom: 6px;
     }
     .post-meta {
-      font-size: 13px;
-      color: #9ca3af;
-      margin-bottom: 4px;
+      font-size: 20px;
+      color: #9e9e9e;
+      margin-bottom: 6px;
     }
     .post-meta span {
-      margin-right: 12px;
+      margin-right: 15px;
     }
     .read-more {
-      font-size: 13px;
-      color: #10b981;
-      text-decoration: none;
-      font-weight: 500;
-    }
-    .button-wrapper {
-      margin: 32px 0 0;
-      text-align: center;
-    }
-    .button {
-      background-color: #2563eb;
-      color: #ffffff;
-      padding: 12px 24px;
-      border-radius: 6px;
       font-size: 14px;
+      color: #34a853;
       text-decoration: none;
-      font-weight: 600;
+      font-weight: 700;
     }
     .footer {
-      background-color: #f3f4f6;
-      padding: 20px;
+      background-color: #f7f7f7;
+      padding: 25px;
       text-align: center;
       font-size: 12px;
-      color: #6b7280;
+      color: #757575;
+      border-top: 1px solid #e0e0e0;
     }
     .footer a {
-      color: #4f46e5;
+      color: #1a73e8;
       text-decoration: none;
     }
     @media (max-width: 600px) {
-      .post {
-        flex-direction: column;
-        align-items: flex-start;
+      .email-wrapper {
+        margin: 10px;
       }
       .post img {
         width: 100%;
-        height: auto;
+      }
+      .content {
+        padding: 20px;
       }
     }
   </style>
@@ -129,8 +120,8 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       <h1>{{subject}}</h1>
     </div>
     <div class="content">
-      <p>Hi {{name}},</p>
-      <p>Here are your top reads today from Inksha:</p>
+      <p>Dear {{name}},</p>
+      <p>Please find below your curated selection of top reads for today from Inksha:</p>
 
       {{#each posts}}
       <div class="post">
@@ -145,13 +136,13 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
             <span>❤️ {{this.likesCount}}</span>
             <span>💬 {{this.commentsCount}}</span>
           </div>
-          <a href="https://inksha.onrender.com/post/{{this.slug}}" class="read-more">Read more →</a>
+          <a href="https://inksha.onrender.com/post/{{this.slug}}" class="read-more">Read More</a>
         </div>
       </div>
       {{/each}}
 
       {{#unless posts.length}}
-        <p>No new posts today. Discover more on <a href="https://inksha.onrender.com">Inksha</a>.</p>
+        <p>No new posts available today. Explore more at <a href="https://inksha.onrender.com">Inksha</a>.</p>
       {{/unless}}
 
       {{#if hasButton}}
@@ -161,8 +152,8 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       {{/if}}
     </div>
     <div class="footer">
-      You're receiving this email because you're subscribed to Inksha.<br/>
-      Need help? <a href="mailto:{{supportEmail}}">Contact support</a>
+      This email is sent to you as part of your Inksha subscription.<br/>
+      For assistance, please contact <a href="mailto:{{supportEmail}}">support</a>.
     </div>
   </div>
 </body>
