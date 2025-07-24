@@ -534,7 +534,7 @@ export const Signup = async (req, res, next) => {
         }. We're excited to have you on board.`,
         hasButton: true,
         buttonText: "Get Started",
-        buttonUrl: "https://localhost:5173/get-started",
+        buttonUrl: "https://inksha.onrender.com",
       });
       try {
         const emailResult = await sendEmailWithRetries(mailOption, newUser._id);
@@ -841,7 +841,7 @@ export const googleLogin = async (req, res, next) => {
         }. We're excited to have you on board.`,
         hasButton: true,
         buttonText: "Get Started",
-        buttonUrl: "https://localhost:5173/get-started",
+        buttonUrl: "https://inksha.onrender.com",
       });
 
       try {

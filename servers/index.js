@@ -135,6 +135,15 @@ app.use(
   express.static(path.join(__dirname, "public"))
 );
 
+console.log("Public folder served at:", path.join(__dirname, "public"));
+
+
+app.get("/test-logo", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "logo1.png"));
+});
+
+
+
 // Static ads.txt file
 app.get("/ads.txt", (req, res) => {
   res
