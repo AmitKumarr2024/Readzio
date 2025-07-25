@@ -29,7 +29,6 @@ import DeleteModal from "./DeleteModal";
 import Skeleton from "@/components/Ui/Skeleton";
 import adsConfig from "../../Utils/adsConfig";
 import MultiplexAd from "../../Ads/MultiplexAd";
-import DisplayAd from "../../Ads/DisplayAd";
 
 const DisplayPost = () => {
   const { slug } = useParams();
@@ -358,16 +357,18 @@ const DisplayPost = () => {
                 <MultiplexAd postId={activePost?._id} testMode={true} />
               </div>
               <div className="hidden lg:block lg:col-span-1 space-y-6">
-                <div className="sticky top-0 h-full flex flex-col space-y-6">
-                  <AuthorSidebar
-                    authorId={activePost?.author?._id || null}
-                    isLoading={
-                      activeLoading || subscriptionLoading || !fetchAttempted
-                    }
-                    className="h-full rounded-md bg-white dark:bg-gray-800 shadow-md p-6"
-                  />
-                  <div className="rounded-md bg-white dark:bg-gray-800 shadow-md p-4">
-                    <DisplayAd postId={activePost?._id} testMode={false} />
+                <div className="sticky top-6 space-y-6">
+                  <div className="author-wrapper transition-all duration-300">
+                    <AuthorSidebar
+                      authorId={activePost?.author?._id || null}
+                      isLoading={
+                        activeLoading || subscriptionLoading || !fetchAttempted
+                      }
+                      className="h-full rounded-md bg-white dark:bg-gray-800 shadow-md p-6"
+                    />
+                    <div className="ad-wrapper sticky top-36">
+                      <DisplayAd postId={activePost?._id} testMode={false} />
+                    </div>
                   </div>
                 </div>
               </div>
