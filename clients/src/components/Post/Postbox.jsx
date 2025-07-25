@@ -42,6 +42,14 @@ const Postbox = ({
   const observer = useRef(null);
   const lastPostElementRef = useRef(null);
 
+  // Determine cards per row based on screen size and sidebar state
+  const cardsPerRow = useMemo(() => {
+    if (isSidebarOpen) {
+      return window.innerWidth >= 1280 ? 4 : window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 3 : window.innerWidth >= 640 ? 2 : 1;
+    }
+    return window.innerWidth >= 1280 ? 5 : window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 3 : window.innerWidth >= 640 ? 2 : 1;
+  }, [isSidebarOpen]);
+
   useEffect(() => {
     dispatch(fetchCategories());
     if (currentUser._id) dispatch(fetchFollowers());
@@ -269,11 +277,12 @@ const Postbox = ({
   }, [selectedPosts.length]);
 
   const multiplexAdPositions = useMemo(() => {
+    // Insert MultiplexAd after every 3 full rows (3 * cardsPerRow)
     return Array.from(
-      { length: Math.floor(selectedPosts.length / 10) },
-      (_, i) => (i + 1) * 10
+      { length: Math.floor(selectedPosts.length / (3 * cardsPerRow)) },
+      (_, i) => (i + 1) * 3 * cardsPerRow
     );
-  }, [selectedPosts.length]);
+  }, [selectedPosts.length, cardsPerRow]);
 
   const loadMorePosts = useCallback(() => {
     if (!postLoading && hasMore) {
