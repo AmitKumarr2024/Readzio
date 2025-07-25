@@ -378,22 +378,30 @@ const Postbox = ({
             >
               {selectedPosts.length ? (
                 selectedPosts.map((post, i) => (
-                  <div
-                    key={post._id || `post-${i}`}
-                    ref={
-                      i === selectedPosts.length - 1 ? lastPostElementRef : null
-                    }
-                    className="w-full min-h-[250px]"
-                  >
-                    <CardOfPost
-                      {...post}
-                      commentsCount={commentCounts[post._id] ?? 0}
-                      loading={propLoading && !selectedPosts.length}
-                      categoryMap={categoryMap}
-                      postType={post.postType}
-                      readTime={post.readTime}
-                    />
-                  </div>
+                  <React.Fragment key={post._id || `post-${i}`}>
+                    <div
+                      ref={
+                        i === selectedPosts.length - 1
+                          ? lastPostElementRef
+                          : null
+                      }
+                      className="w-full min-h-[250px]"
+                    >
+                      <CardOfPost
+                        {...post}
+                        commentsCount={commentCounts[post._id] ?? 0}
+                        loading={propLoading && !selectedPosts.length}
+                        categoryMap={categoryMap}
+                        postType={post.postType}
+                        readTime={post.readTime}
+                      />
+                    </div>
+                    {adPositions.includes(i + 1) && (
+                      <div className="w-full min-h-[250px] p-3 rounded-lg bg-white dark:bg-gray-800">
+                        <InFeedAd postId={post._id} testMode={true} />
+                      </div>
+                    )}
+                  </React.Fragment>
                 ))
               ) : (
                 <p className="col-span-full text-center text-gray-500">
@@ -409,20 +417,11 @@ const Postbox = ({
             </div>
             {selectedPosts.length > 0 &&
               multiplexAdPositions.map((pos, idx) => (
-                <div key={`multiplex-ad-${idx}`} className="w-full my-4">
-                  <MultiplexAd
-                    postId={selectedPosts[pos - 1]?._id}
-                    testMode={true}
-                  />
-                </div>
-              ))}
-            {selectedPosts.length > 0 &&
-              adPositions.map((pos, idx) => (
                 <div
-                  key={`infeed-ad-${idx}`}
-                  className="w-full min-h-[250px] my-4 p-3 rounded-lg bg-white dark:bg-gray-800"
+                  key={`multiplex-ad-${idx}`}
+                  className="w-full h-12 my-4 bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded"
                 >
-                  <InFeedAd
+                  <MultiplexAd
                     postId={selectedPosts[pos - 1]?._id}
                     testMode={true}
                   />
