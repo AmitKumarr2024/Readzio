@@ -29,6 +29,7 @@ import DeleteModal from "./DeleteModal";
 import Skeleton from "@/components/Ui/Skeleton";
 import adsConfig from "../../Utils/adsConfig";
 import MultiplexAd from "../../Ads/MultiplexAd";
+import DisplayAd from "../../Ads/DisplayAd";
 
 const DisplayPost = () => {
   const { slug } = useParams();

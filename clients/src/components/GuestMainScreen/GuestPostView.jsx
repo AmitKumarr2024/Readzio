@@ -2,8 +2,9 @@ import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts } from "../../store/guestSlice";
 import GuestCardOfPost from "../Cards/GuestCardOfPost";
-import InFeedAd from "../../Ads/InFeedAd";
 import MultiplexAd from "../../Ads/MultiplexAd";
+import InFeedAd from "../../Ads/InFeedAd";
+
 
 const GuestPostView = () => {
   const dispatch = useDispatch();
@@ -58,9 +59,15 @@ const GuestPostView = () => {
     // ⏺ Insert In-Feed Ad after every 6 posts
     if ((index + 1) % 6 === 0) {
       postsWithAds.push(
-        <div key={`infeed-${index}`} className="col-span-full w-full">
-          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm overflow-hidden p-3">
+        <div
+          key={`infeed-${index}`}
+          className="col-span-full flex justify-center w-full"
+        >
+          <div className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden p-3 border border-gray-200 dark:border-gray-700">
             <InFeedAd postId={post._id} testMode={true} />
+            <p className="mt-2 text-xs text-center text-gray-400 dark:text-gray-500">
+              Sponsored
+            </p>
           </div>
         </div>
       );
@@ -69,8 +76,11 @@ const GuestPostView = () => {
     // ⏺ Insert Multiplex Ad after every 10 posts
     if ((index + 1) % 10 === 0) {
       postsWithAds.push(
-        <div key={`multiplex-${index}`} className="col-span-full w-full">
-          <div className="bg-white dark:bg-gray-800 rounded-md shadow-md p-2 sm:p-3 md:p-4">
+        <div
+          key={`multiplex-${index}`}
+          className="col-span-full flex justify-center w-full"
+        >
+          <div className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 md:p-8 border border-gray-200 dark:border-gray-700">
             <MultiplexAd postId={post._id} testMode={true} />
           </div>
         </div>
