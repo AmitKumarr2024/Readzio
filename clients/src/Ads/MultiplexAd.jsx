@@ -1,13 +1,13 @@
 import GoogleAd from "./GoogleAd";
 
-const MultiplexAd = ({ postId, testMode = false }) => (
+const MultiplexAd = ({ postId}) => (
   <div className=" w-full p-3 overflow-hidden">
     <div className="flex justify-center items-center w-full">
       <GoogleAd
         adSlot="9884544478"
         adFormat="multiplex"
         postId={postId}
-        testMode={testMode}
+        
         style={{
           display: "block",
           width: "100%",

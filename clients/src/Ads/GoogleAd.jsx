@@ -4,8 +4,8 @@ import useAdBlockDetector from "./useAdBlockDetector";
 import { selectSocketState } from "../store/socketSlice";
 
 /**
- * Google AdSense component
- * Supports auto format, responsive, test mode, and impression tracking
+ * Google AdSense component (live version)
+ * Supports auto format, responsive, and impression tracking
  */
 const GoogleAd = ({
   adSlot,
@@ -16,27 +16,24 @@ const GoogleAd = ({
   style = { display: "block", width: "100%" },
   postId = null,
   responsive = true,
-  testMode = false,
 }) => {
   const isAdBlocked = useAdBlockDetector();
   const { socketInstance } = useSelector(selectSocketState);
   const adRef = useRef(null);
   const impressionSent = useRef(false);
 
-  // Push ads immediately (fallback for initial render)
+  // Push ads immediately on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch (e) {
-      if (testMode || process.env.NODE_ENV !== "production") {
-        console.warn("[GoogleAd] Initial ad push error:", e);
-      }
+      console.warn("[GoogleAd] Initial ad push error:", e);
     }
   }, []);
 
-  // Track visibility + emit ad impression
+  // Track ad visibility and emit impression
   useEffect(() => {
     if (
       typeof window === "undefined" ||
@@ -63,9 +60,7 @@ const GoogleAd = ({
           try {
             (window.adsbygoogle = window.adsbygoogle || []).push({});
           } catch (e) {
-            if (testMode || process.env.NODE_ENV !== "production") {
-              console.warn("[GoogleAd] AdSense observer error:", e);
-            }
+            console.warn("[GoogleAd] AdSense observer error:", e);
           }
         }
       },
@@ -74,7 +69,7 @@ const GoogleAd = ({
 
     if (adRef.current) observer.observe(adRef.current);
     return () => observer.disconnect();
-  }, [adSlot, postId, isAdBlocked, socketInstance, testMode]);
+  }, [adSlot, postId, isAdBlocked, socketInstance]);
 
   return (
     <ins
@@ -86,7 +81,6 @@ const GoogleAd = ({
       data-ad-format={adFormat}
       {...(layoutKey && { "data-ad-layout-key": layoutKey })}
       data-full-width-responsive={responsive ? "true" : "false"}
-      {...(testMode && { "data-adtest": "on" })}
     />
   );
 };
