@@ -28,6 +28,7 @@ import CommentBox from "./CommentBox";
 import DeleteModal from "./DeleteModal";
 import Skeleton from "@/components/Ui/Skeleton";
 import adsConfig from "../../Utils/adsConfig";
+import MultiplexAd from "../../Ads/MultiplexAd";
 
 const DisplayPost = () => {
   const { slug } = useParams();
@@ -353,7 +354,7 @@ const DisplayPost = () => {
             <div className="lg:grid lg:grid-cols-3 lg:gap-8">
               <div className="lg:col-span-2 space-y-6">
                 {renderPostContent()}
-                <MultiplexAd postId={activePost?._id} testMode={false} />
+                <MultiplexAd postId={activePost?._id} testMode={true} />
               </div>
               <div className="hidden lg:block lg:col-span-1 space-y-6">
                 <div className="sticky top-0 h-full flex flex-col space-y-6">

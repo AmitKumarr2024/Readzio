@@ -1,6 +1,6 @@
 import GoogleAd from "./GoogleAd";
 
-const InFeedAd = ({ postId, testMode = false }) => {
+const InFeedAd = ({ postId, testMode = true }) => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm h-64 w-full overflow-hidden flex flex-col justify-center items-center p-4">
       <GoogleAd
