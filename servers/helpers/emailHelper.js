@@ -154,7 +154,7 @@ export default function createMailOption({
 
     // === Return Final Email Options ===
     return {
-      from: `"Inksha Official" <${SENDER_EMAIL}>`,
+      from: `"Inksha Team" <${SENDER_EMAIL}>`,
       to,
       subject,
       html: htmlContent,

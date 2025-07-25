@@ -278,8 +278,8 @@ const Postbox = ({
     );
   }, [selectedPosts.length]);
 
-  const postsPerRow = isSidebarOpen ? 4 : 5; // match with your Tailwind grid setup
-  const fullRowAdInterval = 2; // after every 2 rows
+  const postsPerRow = isSidebarOpen ? 4 : 5;
+  const fullRowAdInterval = 2;
 
   const multiplexAdPositions = useMemo(() => {
     return Array.from(
@@ -296,7 +296,6 @@ const Postbox = ({
     if (!postLoading && hasMore) {
       const nextPage = currentPage + 1;
       setCurrentPage(nextPage);
-
       if (filterType === "Following") {
         dispatch(fetchFollowingPosts({ page: nextPage, limit: postsPerPage }));
       } else if (filterType === "Followers") {
@@ -327,16 +326,13 @@ const Postbox = ({
 
   useEffect(() => {
     if (!lastPostElementRef.current || !hasMore) return;
-
     observer.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !postLoading) loadMorePosts();
       },
       { threshold: 0.1 }
     );
-
     observer.current.observe(lastPostElementRef.current);
-
     return () => {
       if (observer.current && lastPostElementRef.current) {
         observer.current.unobserve(lastPostElementRef.current);
@@ -349,18 +345,12 @@ const Postbox = ({
       className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${
         isSidebarOpen
           ? "lg:grid-cols-3 xl:grid-cols-4"
-          : "lg:grid-cols-3 xl:grid-cols-5"
+          : "lg:grid-cols-4 xl:grid-cols-5"
       } gap-4 py-6 w-full`}
     >
       {Array.from({ length: postsPerPage }).map((_, i) => (
         <Skeleton
           key={i}
-          className="h-64 w-full rounded-lg bg-gray-200 dark:bg-gray-700"
-        />
-      ))}
-      {adPositions.map((pos, i) => (
-        <Skeleton
-          key={`ad-${i}`}
           className="h-64 w-full rounded-lg bg-gray-200 dark:bg-gray-700"
         />
       ))}
@@ -383,42 +373,27 @@ const Postbox = ({
               className={`grid gap-4 py-6 w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${
                 isSidebarOpen
                   ? "lg:grid-cols-3 xl:grid-cols-4"
-                  : "lg:grid-cols-3 xl:grid-cols-5"
+                  : "lg:grid-cols-4 xl:grid-cols-5"
               }`}
             >
               {selectedPosts.length ? (
                 selectedPosts.map((post, i) => (
-                  <React.Fragment key={post._id || `post-${i}`}>
-                    <div
-                      ref={
-                        i === selectedPosts.length - 1
-                          ? lastPostElementRef
-                          : null
-                      }
-                      className="w-full"
-                    >
-                      <CardOfPost
-                        {...post}
-                        commentsCount={commentCounts[post._id] ?? 0}
-                        loading={propLoading && !selectedPosts.length}
-                        categoryMap={categoryMap}
-                        postType={post.postType}
-                        readTime={post.readTime}
-                      />
-                    </div>
-                    {adPositions.includes(i + 1) && (
-                      <div className="w-full">
-                        <div className="p-3 rounded-lg bg-white dark:bg-gray-800">
-                          <InFeedAd postId={post._id} testMode={true} />
-                        </div>
-                      </div>
-                    )}
-                    {multiplexAdPositions.includes(i + 1) && (
-                      <div className="col-span-full w-full">
-                        <MultiplexAd postId={post._id} testMode={true} />
-                      </div>
-                    )}
-                  </React.Fragment>
+                  <div
+                    key={post._id || `post-${i}`}
+                    ref={
+                      i === selectedPosts.length - 1 ? lastPostElementRef : null
+                    }
+                    className="w-full min-h-[250px]"
+                  >
+                    <CardOfPost
+                      {...post}
+                      commentsCount={commentCounts[post._id] ?? 0}
+                      loading={propLoading && !selectedPosts.length}
+                      categoryMap={categoryMap}
+                      postType={post.postType}
+                      readTime={post.readTime}
+                    />
+                  </div>
                 ))
               ) : (
                 <p className="col-span-full text-center text-gray-500">
@@ -432,6 +407,27 @@ const Postbox = ({
                 </p>
               )}
             </div>
+            {selectedPosts.length > 0 &&
+              multiplexAdPositions.map((pos, idx) => (
+                <div key={`multiplex-ad-${idx}`} className="w-full my-4">
+                  <MultiplexAd
+                    postId={selectedPosts[pos - 1]?._id}
+                    testMode={true}
+                  />
+                </div>
+              ))}
+            {selectedPosts.length > 0 &&
+              adPositions.map((pos, idx) => (
+                <div
+                  key={`infeed-ad-${idx}`}
+                  className="w-full min-h-[250px] my-4 p-3 rounded-lg bg-white dark:bg-gray-800"
+                >
+                  <InFeedAd
+                    postId={selectedPosts[pos - 1]?._id}
+                    testMode={true}
+                  />
+                </div>
+              ))}
             {postLoading && selectedPosts.length > 0 && (
               <div className="flex justify-center py-4">
                 <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
