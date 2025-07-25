@@ -47,7 +47,7 @@ const RightSideBox = ({ user, posts, toggleSidebar }) => {
           <Megaphone className="w-4 h-4" />
           Advertisement
         </div>
-        <GoogleAd adSlot="YOUR_AD_SLOT_ID" adFormat="auto" className="w-full" />
+        <GoogleAd adSlot="YOUR_AD_SLOT_ID" adFormat="auto" className="w-full" testMode={true}/>
       </section>
 
       <div className="mt-auto pt-6 border-t border-gray-200 dark:border-gray-800">

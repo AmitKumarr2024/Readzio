@@ -1,8 +1,8 @@
 // components/GoogleAd.jsx
-import React, { useEffect, useRef } from 'react';
-import { useSelector } from 'react-redux';
-import useAdBlockDetector from './useAdBlockDetector';
-import { selectSocketState } from '../store/socketSlice';
+import React, { useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
+import useAdBlockDetector from "./useAdBlockDetector";
+import { selectSocketState } from "../store/socketSlice";
 
 /**
  * Universal Google AdSense Component
@@ -10,36 +10,35 @@ import { selectSocketState } from '../store/socketSlice';
  */
 const GoogleAd = ({
   adSlot,
-  adClient = 'ca-pub-8408980890451581',
-  adFormat = 'auto',
+  adClient = "ca-pub-8408980890451581",
+  adFormat = "auto",
   layoutKey = null,
-  className = '',
-  style = { display: 'block', width: '100%', height: 'auto' },
+  className = "",
+  style = { display: "block", width: "100%", height: "auto" },
   postId = null,
   responsive = true,
+  testMode = false, // ⬅️ Add this prop to toggle test/real ad
 }) => {
   const isAdBlocked = useAdBlockDetector();
   const { socketInstance } = useSelector(selectSocketState);
   const adRef = useRef(null);
   const impressionSent = useRef(false);
 
-  // 🔁 Always push ads on mount (fallback)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       try {
         (window.adsbygoogle = window.adsbygoogle || []).push({});
       } catch (e) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('[GoogleAd] AdSense fallback error:', e);
+        if (testMode) {
+          console.warn("[GoogleAd] Test mode fallback error:", e);
         }
       }
     }
-  }, []);
+  }, [testMode]);
 
-  // 👁️ Track visibility and send impression
   useEffect(() => {
     if (
-      typeof window === 'undefined' ||
+      typeof window === "undefined" ||
       isAdBlocked ||
       impressionSent.current ||
       !socketInstance?.connected
@@ -52,7 +51,7 @@ const GoogleAd = ({
           impressionSent.current = true;
 
           if (postId) {
-            socketInstance.emit('adImpression', {
+            socketInstance.emit("adImpression", {
               postId,
               adIndex: adSlot,
               adSlot,
@@ -63,18 +62,18 @@ const GoogleAd = ({
           try {
             (window.adsbygoogle = window.adsbygoogle || []).push({});
           } catch (e) {
-            if (process.env.NODE_ENV !== 'production') {
-              console.warn('[GoogleAd] AdSense observer error:', e);
+            if (testMode) {
+              console.warn("[GoogleAd] AdSense observer error:", e);
             }
           }
         }
       },
-      { threshold: 0.1 } // more lenient
+      { threshold: 0.1 }
     );
 
     if (adRef.current) observer.observe(adRef.current);
     return () => observer.disconnect();
-  }, [adSlot, postId, isAdBlocked, socketInstance]);
+  }, [adSlot, postId, isAdBlocked, socketInstance, testMode]);
 
   return (
     <ins
@@ -84,8 +83,9 @@ const GoogleAd = ({
       data-ad-client={adClient}
       data-ad-slot={adSlot}
       data-ad-format={adFormat}
-      {...(layoutKey && { 'data-ad-layout-key': layoutKey })}
-      {...(responsive && { 'data-full-width-responsive': 'true' })}
+      {...(layoutKey && { "data-ad-layout-key": layoutKey })}
+      {...(responsive && { "data-full-width-responsive": "true" })}
+      {...(testMode && { "data-adtest": "on" })}
     />
   );
 };

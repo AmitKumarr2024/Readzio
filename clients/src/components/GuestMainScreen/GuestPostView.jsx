@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts } from "../../store/guestSlice";
 import GuestCardOfPost from "../Cards/GuestCardOfPost";
 import GoogleAd from "../../Ads/GoogleAd";
+import adsConfig from "../../Utils/adsConfig";
 
 const GuestPostView = () => {
   const dispatch = useDispatch();
@@ -10,22 +11,8 @@ const GuestPostView = () => {
   const isSidebarOpen = useSelector((state) => state.postMeta?.isSidebarOpen || false);
 
   useEffect(() => {
-    // console.log("[GuestPostView] Fetching public posts");
     dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
   }, [dispatch]);
-
-  // useEffect(() => {
-  //   if (posts.length > 0) {
-  //     console.log("[GuestPostView] Posts loaded:", {
-  //       count: posts.length,
-  //       blocks: posts.map(post => ({
-  //         id: post._id,
-  //         slug: post.slug,
-  //         blocks: Array.isArray(post.blocks) ? post.blocks.length : "not an array",
-  //       })),
-  //     });
-  //   }
-  // }, [posts]);
 
   if (loading) {
     return <div className="text-center py-8 text-gray-500">Loading posts...</div>;
@@ -46,7 +33,6 @@ const GuestPostView = () => {
   }
 
   if (!Array.isArray(posts) || posts.length === 0) {
-    console.warn("[GuestPostView] No valid posts:", { posts });
     return (
       <div className="text-center text-gray-400 py-8">
         No posts available for guests.
@@ -58,19 +44,22 @@ const GuestPostView = () => {
   const adFrequency = 5;
 
   posts.forEach((post, index) => {
-    if (!post || !post._id || !post.slug) {
-      console.warn("[GuestPostView] Invalid post at index:", index, post);
-      return;
-    }
+    if (!post || !post._id || !post.slug) return;
+
     postsWithAds.push(<GuestCardOfPost key={post._id} {...post} />);
+
     if ((index + 1) % adFrequency === 0) {
       postsWithAds.push(
-        <GoogleAd
-          key={`ad-${index}`}
-          adSlot="1234567890"
-          postId={post._id}
-          className="my-4"
-        />
+        <div key={`ad-${index}`} className="w-full col-span-full">
+          <GoogleAd
+            adSlot={adsConfig.card.slot}
+            adFormat={adsConfig.card.format}
+            postId={post._id}
+            style={{ display: "block", width: "100%", height: "auto" }}
+            className="my-4"
+            testMode={true}
+          />
+        </div>
       );
     }
   });

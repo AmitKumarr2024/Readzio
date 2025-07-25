@@ -398,6 +398,7 @@ const Postbox = ({
                               height: "auto",
                             }}
                             className="block"
+                            testMode={true}
                           />
                         </div>
                       </div>
@@ -416,6 +417,7 @@ const Postbox = ({
                               height: "100px",
                             }}
                             className="block"
+                            testMode={true}
                           />
                         </div>
                       </div>

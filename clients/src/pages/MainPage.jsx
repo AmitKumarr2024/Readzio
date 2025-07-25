@@ -7,7 +7,7 @@ import { Menu, X } from "lucide-react";
 import { toggleSidebar, setIsMobile } from "../store/Post/postMetaSlice";
 import { fetchPublicPosts } from "../store/guestSlice";
 import { getAllPosts } from "../store/postSlice";
-import GuestPostView from "../components/mainScreen/GuestPostView";
+import GuestPostView from "../components/GuestMainScreen/GuestPostView";
 
 // Displays main page with posts and sidebar
 const MainPage = () => {

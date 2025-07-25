@@ -203,6 +203,7 @@ const BlockRenderer = ({
             adFormat={adsConfig.inArticle.format}
             postId={postId}
             className="my-6 rounded-2xl shadow-lg"
+            testMode={true}
           />
         );
       default:

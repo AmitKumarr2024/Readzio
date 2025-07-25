@@ -291,6 +291,7 @@ const DisplayPost = () => {
                   adFormat={adsConfig.multiplex.format}
                   postId={activePost?._id}
                   className="my-12"
+                  testMode={true}
                 />
               </div>
               <div className="hidden lg:block lg:col-span-1 space-y-6">
@@ -305,6 +306,7 @@ const DisplayPost = () => {
                       adSlot={adsConfig.displaySidebar.slot}
                       adFormat={adsConfig.displaySidebar.format}
                       postId={activePost?._id}
+                      testMode={true}
                     />
                   </div>
                 </div>

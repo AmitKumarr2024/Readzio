@@ -133,6 +133,7 @@ const SuggestedPosts = () => {
                   adFormat={adsConfig.inFeed.format}
                   postId={post._id}
                   className="my-6 col-span-full bg-white dark:bg-gray-800 rounded-md shadow-md"
+                  testMode={true}
                 />
               )}
             </React.Fragment>

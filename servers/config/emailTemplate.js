@@ -93,7 +93,22 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
             <tbody>
               <tr>
                 <td class="header">
-                  <img src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Logo">
+                 <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center;  justify-content: center; padding-top: 10px;">
+                <tr>
+                  <td style="padding-right: 10px;">
+                    <img src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
+                  </td>
+                  <td>
+                    <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">Inksha</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
                   <h1 style="margin: 12px 0; font-size: 26px;">{{subject}}</h1>
                 </td>
               </tr>
@@ -146,7 +161,22 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
               </tr>
               <tr>
                 <td class="footer">
-                  <img src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Icon">
+                 <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center;  justify-content: center; padding-top: 10px;">
+                <tr>
+                  <td style="padding-right: 10px;">
+                    <img src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
+                  </td>
+                  <td>
+                    <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">Inksha</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
                   Best regards,<br>Inksha Team<br>
                   <a href="mailto:{{supportEmail}}" style="color: #000000; text-decoration: none;">Contact Support</a>
                 </td>
@@ -217,7 +247,22 @@ export const WELCOME_EMAIL_TEMPLATE = `<!DOCTYPE html>
           <table class="container" cellpadding="0" cellspacing="0" width="640" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
             <tr>
               <td style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 32px; text-align: center;">
-                <img class="header-img" src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Logo" width="80" height="80" style="border-radius: 50%; border: 3px solid white; margin-bottom: 16px;" />
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center;  justify-content: center; padding-top: 10px;">
+                <tr>
+                  <td style="padding-right: 10px;">
+                    <img src="https://inksha.onrender.com/public/logo1.png" alt="Inksha Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
+                  </td>
+                  <td>
+                    <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">Inksha</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
                 <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">Welcome to Inksha, {{name}}!</h1>
                 <p style="color: #e0e7ff; font-size: 16px; margin: 12px 0 0; line-height: 1.5;">{{message}}</p>
               </td>
