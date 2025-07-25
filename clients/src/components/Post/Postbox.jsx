@@ -382,7 +382,7 @@ const Postbox = ({
                       </div>
                     )}
                     {(i + 1) === 10 && (
-                      <div className="w-full">
+                      <div className="col-span-full w-full">
                         <MultiplexAd postId={post._id} />
                       </div>
                     )}

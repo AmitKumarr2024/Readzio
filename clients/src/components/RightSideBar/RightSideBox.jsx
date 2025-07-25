@@ -3,10 +3,11 @@ import { X, TrendingUp, UserCircle, Megaphone } from "lucide-react";
 import TrendingPosts from "../Cards/TrendingPost";
 import UserCardWrapper from "../Cards/usercard/UserCardWrapper";
 import Footer from "../Footer";
-import GoogleAd from "../../Ads/GoogleAd";
+import InFeedAd from "../../Ads/InFeedAd";
 
 const RightSideBox = ({ user, posts, toggleSidebar }) => {
-  const featuredAuthorId = posts && posts.length > 0 ? posts[0].author?._id : null;
+  const featuredAuthorId =
+    posts && posts.length > 0 ? posts[0].author?._id : null;
 
   return (
     <aside className="flex flex-col gap-6 p-2 h-full min-w-[400px] overflow-y-auto bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark border-l border-gray-200 dark:border-gray-800">
@@ -30,9 +31,13 @@ const RightSideBox = ({ user, posts, toggleSidebar }) => {
         {user?._id || featuredAuthorId ? (
           <UserCardWrapper userId={user?._id || featuredAuthorId} />
         ) : (
-          <p className="text-center text-gray-400 text-sm">No author data available</p>
+          <p className="text-center text-gray-400 text-sm">
+            No author data available
+          </p>
         )}
       </section>
+
+      <InFeedAd postId={featuredAuthorId || "default"} />
 
       <section className="bg-background-light dark:bg-background-dark rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-2 mb-3 text-lg font-semibold text-text-main-light dark:text-text-main-dark">
@@ -42,13 +47,7 @@ const RightSideBox = ({ user, posts, toggleSidebar }) => {
         <TrendingPosts />
       </section>
 
-      <section className="bg-background-light dark:bg-background-dark rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-800">
-        <div className="flex justify-center items-center gap-2 text-gray-800 dark:text-gray-200 font-semibold text-sm mb-2">
-          <Megaphone className="w-4 h-4" />
-          Advertisement
-        </div>
-        <GoogleAd adSlot="YOUR_AD_SLOT_ID" adFormat="auto" className="w-full" testMode={false}/>
-      </section>
+      <InFeedAd postId={featuredAuthorId || "default"} />
 
       <div className="mt-auto pt-6 border-t border-gray-200 dark:border-gray-800">
         <Footer />
