@@ -1,7 +1,7 @@
 import GoogleAd from "./GoogleAd";
 
 const MultiplexAd = ({ postId, testMode = false }) => (
-  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm w-full p-3 overflow-hidden">
+  <div className=" w-full p-3 overflow-hidden">
     <div className="flex justify-center items-center w-full">
       <GoogleAd
         adSlot="9884544478"
