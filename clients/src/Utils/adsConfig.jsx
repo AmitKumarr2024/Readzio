@@ -21,6 +21,10 @@ const adsConfig = {
     slot: "8785416922",
     format: "horizontal",
   },
+  card: {
+    slot: "5269677892",
+    format: "in-article", // or "auto" depending on your setup
+  },
 };
 
 export default adsConfig;
