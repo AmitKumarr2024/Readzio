@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
-import { overrideUserMilestones, resetUserMilestones } from "../../../store/adminSlice";
+import {
+  overrideUserMilestones,
+  resetUserMilestones,
+} from "../../../store/adminSlice";
 import { toast } from "react-hot-toast";
 
 const UserMilestoneManager = ({ users }) => {
@@ -34,62 +37,79 @@ const UserMilestoneManager = ({ users }) => {
   };
 
   const handleUpdate = async () => {
-    if (selectedUser) {
-      const res = await dispatch(
-        overrideUserMilestones({
-          userId: selectedUser._id,
-          overrideData: formData,
-        })
-      );
+    if (!selectedUser) return;
 
-      if (res?.payload?.success) {
-        toast.success("User milestone updated");
-        const updated = res.payload;
-        const updatedUser = {
-          ...selectedUser,
-          milestoneOverride: updated.milestoneOverride,
-          isEligibleForSubscription: updated.isEligibleForSubscription,
-        };
-        setSelectedUser(updatedUser);
-        setFormData({
-          followerCount: updated.milestoneOverride.followerCount ?? "",
-          postCount: updated.milestoneOverride.postCount ?? "",
-          engagementRate: updated.milestoneOverride.engagementRate ?? "",
-          accountAgeDays: updated.milestoneOverride.accountAgeDays ?? "",
-          isEligibleForSubscription: updated.isEligibleForSubscription ?? false,
-        });
-      } else {
-        toast.error("Failed to update milestones");
-      }
+    const res = await dispatch(
+      overrideUserMilestones({
+        userId: selectedUser._id,
+        overrideData: formData,
+      })
+    );
+
+    if (res?.payload?.success) {
+      toast.success("User milestone updated");
+
+      const updated = res.payload;
+
+      const updatedUser = {
+        ...selectedUser,
+        milestoneOverride: updated.milestoneOverride,
+        isEligibleForSubscription: updated.isEligibleForSubscription,
+      };
+
+      setSelectedUser(updatedUser);
+      setFormData({
+        followerCount: updated.milestoneOverride.followerCount ?? "",
+        postCount: updated.milestoneOverride.postCount ?? "",
+        engagementRate: updated.milestoneOverride.engagementRate ?? "",
+        accountAgeDays: updated.milestoneOverride.accountAgeDays ?? "",
+        isEligibleForSubscription:
+          updated.isEligibleForSubscription ?? false,
+      });
+    } else {
+      toast.error("Failed to update milestones");
     }
   };
 
   const handleReset = async () => {
-    if (selectedUser) {
-      const res = await dispatch(resetUserMilestones(selectedUser._id));
-      if (res?.payload?.success) {
-        toast.success("Milestones reset to default");
-        const updatedUser = {
-          ...selectedUser,
-          milestoneOverride: {
-            followerCount: null,
-            postCount: null,
-            engagementRate: null,
-            accountAgeDays: null,
-          },
-        };
-        setSelectedUser(updatedUser);
-        setFormData({
-          followerCount: "",
-          postCount: "",
-          engagementRate: "",
-          accountAgeDays: "",
-          isEligibleForSubscription: selectedUser.isEligibleForSubscription ?? false,
-        });
-      } else {
-        toast.error("Failed to reset milestones");
-      }
+    if (!selectedUser) return;
+
+    const res = await dispatch(resetUserMilestones(selectedUser._id));
+    if (res?.payload?.success) {
+      toast.success("Milestones reset to default");
+
+      const updatedUser = {
+        ...selectedUser,
+        milestoneOverride: {
+          followerCount: null,
+          postCount: null,
+          engagementRate: null,
+          accountAgeDays: null,
+        },
+      };
+
+      setSelectedUser(updatedUser);
+      setFormData({
+        followerCount: "",
+        postCount: "",
+        engagementRate: "",
+        accountAgeDays: "",
+        isEligibleForSubscription:
+          selectedUser.isEligibleForSubscription ?? false,
+      });
+    } else {
+      toast.error("Failed to reset milestones");
     }
+  };
+
+  const isUserForcedEligible = (user) => {
+    const o = user.milestoneOverride;
+    return (
+      o?.followerCount !== null ||
+      o?.postCount !== null ||
+      o?.engagementRate !== null ||
+      o?.accountAgeDays !== null
+    );
   };
 
   return (
@@ -176,7 +196,9 @@ const UserMilestoneManager = ({ users }) => {
             <th className="px-4 py-2 text-left text-sm font-medium">Name</th>
             <th className="px-4 py-2 text-left text-sm font-medium">Email</th>
             <th className="px-4 py-2 text-left text-sm font-medium">Eligible?</th>
-            <th className="px-4 py-2 text-left text-sm font-medium">Force Eligible</th>
+            <th className="px-4 py-2 text-left text-sm font-medium">
+              Force Eligible
+            </th>
           </tr>
         </thead>
         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -193,12 +215,7 @@ const UserMilestoneManager = ({ users }) => {
                 {user.isEligibleForSubscription ? "Yes" : "No"}
               </td>
               <td className="px-4 py-2">
-                {user.milestoneOverride?.followerCount !== null ||
-                user.milestoneOverride?.postCount !== null ||
-                user.milestoneOverride?.engagementRate !== null ||
-                user.milestoneOverride?.accountAgeDays !== null
-                  ? "Yes"
-                  : "No"}
+                {isUserForcedEligible(user) ? "Yes" : "No"}
               </td>
             </tr>
           ))}

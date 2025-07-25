@@ -1868,6 +1868,18 @@ const adminSlice = createSlice({
         state.loading = false;
         state.success = true;
         state.overrideInfo = action.payload;
+
+        // ✅ Update user in users array
+        const idx = state.users.findIndex(
+          (u) => u._id === action.payload.userId
+        );
+        if (idx !== -1) {
+          state.users[idx] = {
+            ...state.users[idx],
+            milestoneOverride: action.payload.milestoneOverride,
+            isEligibleForSubscription: action.payload.isEligibleForSubscription,
+          };
+        }
       })
       .addCase(overrideUserMilestones.rejected, (state, action) => {
         state.loading = false;
@@ -1882,6 +1894,20 @@ const adminSlice = createSlice({
         state.loading = false;
         state.success = true;
         state.overrideInfo = action.payload;
+
+        // ✅ Reset milestone override in user
+        const idx = state.users.findIndex((u) => u._id === action.meta.arg);
+        if (idx !== -1) {
+          state.users[idx] = {
+            ...state.users[idx],
+            milestoneOverride: {
+              followerCount: null,
+              postCount: null,
+              engagementRate: null,
+              accountAgeDays: null,
+            },
+          };
+        }
       })
       .addCase(resetUserMilestones.rejected, (state, action) => {
         state.loading = false;
