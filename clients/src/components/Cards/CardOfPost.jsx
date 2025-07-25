@@ -43,26 +43,30 @@ const CardOfPost = ({
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm h-64 w-full overflow-hidden">
-        <Skeleton className="w-full h-32 rounded-t-lg bg-gray-200 dark:bg-gray-700" />
-        <div className="p-4 space-y-2">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm w-full h-full overflow-hidden">
+        <Skeleton className="w-full aspect-video rounded-t-lg bg-gray-200 dark:bg-gray-700" />
+        <div className="p-4 space-y-3">
           <Skeleton className="h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
-          <table className="w-full">
+          <table className="w-full text-sm">
             <tbody>
               <tr>
-                <td><Skeleton className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" /></td>
-                <td><Skeleton className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" /></td>
+                <td className="pr-2">
+                  <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
+                </td>
+                <td>
+                  <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
+                </td>
               </tr>
             </tbody>
           </table>
-          <table className="w-full">
+          <table className="w-full text-sm">
             <tbody>
-              <tr>
-                <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
-                <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
-                <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
-                <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
-                <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
+              <tr className="flex flex-wrap gap-2">
+                {[...Array(5)].map((_, i) => (
+                  <td key={i}>
+                    <Skeleton className="h-4 w-10 rounded bg-gray-200 dark:bg-gray-700" />
+                  </td>
+                ))}
               </tr>
             </tbody>
           </table>
@@ -75,7 +79,7 @@ const CardOfPost = ({
   return (
     <Link
       to={`/post/${slug}`}
-      className="group bg-white dark:bg-gray-800 font-(family-name:--font-Urbanist) rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col h-full"
+      className="group bg-white dark:bg-gray-800 font-Urbanist rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col h-full max-w-full"
     >
       <div className="relative w-full aspect-video">
         <img
@@ -94,44 +98,50 @@ const CardOfPost = ({
           </span>
         )}
       </div>
-      <div className="p-4 flex flex-col gap-2 flex-grow">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-blue-500 line-clamp-2">
+      <div className="p-4 flex flex-col gap-3 flex-grow">
+        <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white group-hover:text-blue-500 line-clamp-2">
           {title || "Untitled"}
         </h3>
-        <table className="text-sm text-gray-500 dark:text-gray-400 w-full">
+        <table className="w-full text-xs sm:text-sm text-gray-500 dark:text-gray-400">
           <tbody>
-            <tr>
-              <td className="pr-4 truncate">{categoryMap[category._id] || "Uncategorized"}</td>
+            <tr className="flex flex-col sm:flex-row sm:gap-4">
+              <td className="truncate">
+                {categoryMap[category._id] || "Uncategorized"}
+              </td>
               <td className="truncate">{author.name || "Anonymous"}</td>
             </tr>
           </tbody>
         </table>
-        <table className="text-sm text-gray-500 dark:text-gray-400 w-full">
+        <table className="w-full text-xs sm:text-sm text-gray-500 dark:text-gray-400">
           <tbody>
-            <tr>
-              <td className="pr-2">
+            <tr className="flex flex-wrap gap-2 sm:gap-4">
+              <td>
                 <span className="flex items-center gap-1">
-                  <MessageCircle className="w-5 h-5" /> {commentsCount}
-                </span>
-              </td>
-              <td className="pr-2">
-                <span className="flex items-center gap-1">
-                  <Eye className="w-5 h-5" /> {viewsCount}
-                </span>
-              </td>
-              <td className="pr-2">
-                <span className="flex items-center gap-1">
-                  <Heart className="w-5 h-5 text-red-500" /> {likesCount}
-                </span>
-              </td>
-              <td className="pr-2">
-                <span className="flex items-center gap-1">
-                  <Bookmark className="w-5 h-5 text-blue-500" /> {bookmarksCount}
+                  <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />{" "}
+                  {commentsCount}
                 </span>
               </td>
               <td>
                 <span className="flex items-center gap-1">
-                  <Share2 className="w-5 h-5 text-green-500" /> {shareCount}
+                  <Eye className="w-4 h-4 sm:w-5 sm:h-5" /> {viewsCount}
+                </span>
+              </td>
+              <td>
+                <span className="flex items-center gap-1">
+                  <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />{" "}
+                  {likesCount}
+                </span>
+              </td>
+              <td>
+                <span className="flex items-center gap-1">
+                  <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />{" "}
+                  {bookmarksCount}
+                </span>
+              </td>
+              <td>
+                <span className="flex items-center gap-1">
+                  <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />{" "}
+                  {shareCount}
                 </span>
               </td>
             </tr>
@@ -145,17 +155,18 @@ const CardOfPost = ({
             Subscribed
           </span>
         )}
-        <div className="flex flex-wrap mt-3 gap-2">
-          {tags?.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {tags.map((tag) => (
-                <div key={tag} className="text-indigo-500 hover:underline text-sm font-medium">
-                  #{tag}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {tags?.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {tags.map((tag) => (
+              <div
+                key={tag}
+                className="text-indigo-500 hover:underline text-xs sm:text-sm font-medium"
+              >
+                #{tag}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Link>
   );
