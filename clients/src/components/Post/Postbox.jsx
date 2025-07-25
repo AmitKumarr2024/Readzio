@@ -373,7 +373,7 @@ const Postbox = ({
               className={`grid gap-4 py-6 w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${
                 isSidebarOpen
                   ? "lg:grid-cols-3 xl:grid-cols-4"
-                  : "lg:grid-cols-4 xl:grid-cols-5"
+                  : "lg:grid-cols-4 xl:grid-cols-4"
               }`}
             >
               {selectedPosts.length ? (

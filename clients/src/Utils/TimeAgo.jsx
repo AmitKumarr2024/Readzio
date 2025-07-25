@@ -1,6 +1,6 @@
 import React from "react";
 
-// Displays time since date
+// Displays time since date and actual timestamp
 const TimeAgo = ({ date }) => {
   const now = new Date();
   const then = new Date(date);
@@ -33,9 +33,18 @@ const TimeAgo = ({ date }) => {
     timeAgo = "Invalid date";
   }
 
+  // Format actual full date and time
+  const fullDateTime = then.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   return (
-    <span title={then.toLocaleString()}>
-      🕒 {timeAgo}
+    <span className="text-sm text-gray-500" title={fullDateTime}>
+      🕒 {timeAgo} <span className="hidden sm:inline">({fullDateTime})</span>
     </span>
   );
 };
