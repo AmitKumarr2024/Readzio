@@ -169,11 +169,11 @@ const SuggestedPosts = () => {
 
                 </div>
               )}
-              <HorizontalBannerAd />
             </React.Fragment>
           ))}
         </div>
       )}
+      <HorizontalBannerAd />
     </div>
   );
 };
