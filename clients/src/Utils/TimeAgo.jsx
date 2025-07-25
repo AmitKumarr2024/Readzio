@@ -44,7 +44,7 @@ const TimeAgo = ({ date }) => {
 
   return (
     <span className="text-sm text-gray-500" title={fullDateTime}>
-      🕒 {timeAgo} <span className="hidden sm:inline">({fullDateTime})</span>
+      🕒 <span className="hidden sm:inline">{fullDateTime}</span>
     </span>
   );
 };

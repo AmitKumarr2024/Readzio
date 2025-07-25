@@ -373,7 +373,7 @@ const Postbox = ({
               className={`grid gap-4 py-6 w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${
                 isSidebarOpen
                   ? "lg:grid-cols-3 xl:grid-cols-4"
-                  : "lg:grid-cols-4 xl:grid-cols-4"
+                  : "lg:grid-cols-4 xl:grid-cols-5"
               }`}
             >
               {selectedPosts.length ? (
@@ -419,7 +419,7 @@ const Postbox = ({
               multiplexAdPositions.map((pos, idx) => (
                 <div
                   key={`multiplex-ad-${idx}`}
-                  className="w-full border-b border-gray-300 dark:border-gray-600 my-2 flex items-center mx-auto"
+                  className="w-full border-b border-gray-300 dark:border-gray-600 my-2 flex items-center"
                 >
                   <MultiplexAd
                     postId={selectedPosts[pos - 1]?._id}
