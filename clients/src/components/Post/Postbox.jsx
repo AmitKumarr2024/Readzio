@@ -193,7 +193,7 @@ const Postbox = ({
       validPosts = validPosts.filter(
         (post) =>
           followersIds.includes(String(post.author?._id)) &&
-          String(post.author?._id) !== String(currentUser?._id)
+          String(post.author?._id) !== String(currentUser._id)
       );
     }
 
@@ -380,8 +380,8 @@ const Postbox = ({
                       <div className="w-full">
                         <div className="bg-white dark:bg-gray-800 rounded-md shadow-md overflow-hidden">
                           <GoogleAd
-                            adSlot={adsConfig.inFeed.slot}
-                            adFormat={adsConfig.inFeed.format}
+                            adSlot={adsConfig.cardVertical.slot}
+                            adFormat="vertical"
                             postId={post._id}
                             style={{ display: "block", width: "100%", height: "auto" }}
                             className="block"
@@ -389,14 +389,14 @@ const Postbox = ({
                         </div>
                       </div>
                     )}
-                    {(i + 1) === 10 && (
+                    {(i + 1) % 10 === 0 && (
                       <div className="col-span-full w-full">
                         <div className="bg-white dark:bg-gray-800 rounded-md shadow-md p-2">
                           <GoogleAd
-                            adSlot={adsConfig.multiplex.slot}
-                            adFormat={adsConfig.multiplex.format}
+                            adSlot={adsConfig.horizontalFullWidth.slot}
+                            adFormat="horizontal"
                             postId={post._id}
-                            style={{ display: "block", width: "100%", height: "300px" }}
+                            style={{ display: "block", width: "100%", height: "100px" }}
                             className="block"
                           />
                         </div>
