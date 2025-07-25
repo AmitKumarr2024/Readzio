@@ -2,7 +2,7 @@ import GoogleAd from "./GoogleAd";
 
 const InFeedAd = ({ postId, testMode = true }) => {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm h-64 w-full overflow-hidden flex flex-col justify-center items-center p-4">
+    <div className=" h-72 w-full overflow-hidden flex flex-col justify-center items-center p-4">
       <GoogleAd
         adSlot="8028537328"
         adFormat="autorelaxed"

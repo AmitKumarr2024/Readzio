@@ -11,8 +11,10 @@ const MultiplexAd = ({ postId, testMode = false }) => (
         style={{
           display: "block",
           width: "100%",
+          maxWidth: "100%",
           minHeight: "250px",
           height: "auto",
+
         }}
       />
     </div>

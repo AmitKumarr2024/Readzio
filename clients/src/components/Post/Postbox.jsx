@@ -388,16 +388,14 @@ const Postbox = ({
                     </div>
                     {adPositions.includes(i + 1) && (
                       <div className="w-full">
-                        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm overflow-hidden p-3">
+                        <div className=" overflow-hidden p-3">
                           <InFeedAd postId={post._id} testMode={true} />
                         </div>
                       </div>
                     )}
                     {(i + 1) % 10 === 0 && (
                       <div className="col-span-full w-full">
-                        <div className="bg-white dark:bg-gray-800 rounded-md shadow-md p-2 sm:p-3 md:p-4">
-                          <MultiplexAd testMode={true} />
-                        </div>
+                        <MultiplexAd testMode={true} />
                       </div>
                     )}
                   </React.Fragment>
