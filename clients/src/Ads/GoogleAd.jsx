@@ -3,13 +3,17 @@ import { useSelector } from "react-redux";
 import useAdBlockDetector from "./useAdBlockDetector";
 import { selectSocketState } from "../store/socketSlice";
 
+/**
+ * Google AdSense component
+ * Supports auto format, responsive, test mode, and impression tracking
+ */
 const GoogleAd = ({
   adSlot,
   adClient = "ca-pub-8408980890451581",
   adFormat = "auto",
   layoutKey = null,
   className = "",
-  style = { display: "block", width: "100%" }, // Removed height constraints
+  style = { display: "block", width: "100%" },
   postId = null,
   responsive = true,
   testMode = false,
@@ -19,18 +23,20 @@ const GoogleAd = ({
   const adRef = useRef(null);
   const impressionSent = useRef(false);
 
+  // Push ads immediately (fallback for initial render)
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch (e) {
-        if (testMode) {
-          console.warn("[GoogleAd] Test mode fallback error:", e);
-        }
+    if (typeof window === "undefined") return;
+
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {
+      if (testMode || process.env.NODE_ENV !== "production") {
+        console.warn("[GoogleAd] Initial ad push error:", e);
       }
     }
-  }, [testMode]);
+  }, []);
 
+  // Track visibility + emit ad impression
   useEffect(() => {
     if (
       typeof window === "undefined" ||
@@ -57,7 +63,7 @@ const GoogleAd = ({
           try {
             (window.adsbygoogle = window.adsbygoogle || []).push({});
           } catch (e) {
-            if (testMode) {
+            if (testMode || process.env.NODE_ENV !== "production") {
               console.warn("[GoogleAd] AdSense observer error:", e);
             }
           }
@@ -78,8 +84,8 @@ const GoogleAd = ({
       data-ad-client={adClient}
       data-ad-slot={adSlot}
       data-ad-format={adFormat}
-      data-full-width-responsive={responsive ? "true" : "false"}
       {...(layoutKey && { "data-ad-layout-key": layoutKey })}
+      data-full-width-responsive={responsive ? "true" : "false"}
       {...(testMode && { "data-adtest": "on" })}
     />
   );

@@ -17,10 +17,11 @@ import {
   fetchInitialPostCounts,
 } from "../../store/socketSlice";
 import Sorted from "../Tabs/Sorted";
-import GoogleAd from "../../Ads/GoogleAd";
 import adsConfig from "../../Utils/adsConfig";
 import ErrorBoundary from "./ErrorBoundary";
 import Skeleton from "@/components/Ui/Skeleton";
+import InFeedAd from "../../Ads/InFeedAd";
+import MultiplexAd from "../../Ads/MultiplexAd";
 
 const Postbox = ({
   filterType,
@@ -388,37 +389,14 @@ const Postbox = ({
                     {adPositions.includes(i + 1) && (
                       <div className="w-full">
                         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm overflow-hidden p-3">
-                          <GoogleAd
-                            adSlot={adsConfig.card.slot}
-                            adFormat={adsConfig.card.format}
-                            postId={post._id}
-                            className="block"
-                            style={{
-                              display: "block",
-                              width: "100%",
-                              height: "auto",
-                            }}
-                            testMode={true}
-                          />
+                          <InFeedAd postId={post._id} testMode={true} />
                         </div>
                       </div>
                     )}
                     {(i + 1) % 10 === 0 && (
                       <div className="col-span-full w-full">
                         <div className="bg-white dark:bg-gray-800 rounded-md shadow-md p-2 sm:p-3 md:p-4">
-                          <GoogleAd
-                            adSlot={adsConfig.banner.slot}
-                            adFormat="auto"
-                            postId={post._id}
-                            style={{
-                              display: "block",
-                              width: "100%",
-                              height: "auto",
-                              maxWidth: "100%", // ✅ Enforce width limit
-                            }}
-                            className="block w-full h-auto"
-                            testMode={true}
-                          />
+                          <MultiplexAd testMode={true} />
                         </div>
                       </div>
                     )}
