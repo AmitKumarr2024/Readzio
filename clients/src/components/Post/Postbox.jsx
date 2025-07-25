@@ -17,7 +17,6 @@ import {
   fetchInitialPostCounts,
 } from "../../store/socketSlice";
 import Sorted from "../Tabs/Sorted";
-import adsConfig from "../../Utils/adsConfig";
 import ErrorBoundary from "./ErrorBoundary";
 import Skeleton from "@/components/Ui/Skeleton";
 import InFeedAd from "../../Ads/InFeedAd";
@@ -271,13 +270,19 @@ const Postbox = ({
     postsToFetch.forEach((post) => dispatch(fetchCommentCount(post._id)));
   }, [dispatch, customPosts, posts, commentCounts]);
 
-  const adPositions = useMemo(() => {
-    const postsPerAd = window.innerWidth < 640 ? 4 : 6; // Adjust for mobile
+  const postsPerRow = isSidebarOpen ? 4 : 5; // match with your Tailwind grid setup
+  const fullRowAdInterval = 2; // after every 2 rows
+
+  const multiplexAdPositions = useMemo(() => {
     return Array.from(
-      { length: Math.floor(selectedPosts.length / postsPerAd) },
-      (_, i) => (i + 1) * postsPerAd
+      {
+        length: Math.floor(
+          selectedPosts.length / (postsPerRow * fullRowAdInterval)
+        ),
+      },
+      (_, i) => (i + 1) * postsPerRow * fullRowAdInterval
     );
-  }, [selectedPosts.length]);
+  }, [selectedPosts.length, postsPerRow, fullRowAdInterval]);
 
   const loadMorePosts = useCallback(() => {
     if (!postLoading && hasMore) {
@@ -400,9 +405,9 @@ const Postbox = ({
                         </div>
                       </div>
                     )}
-                    {(i + 1) % 10 === 0 && (
+                    {multiplexAdPositions.includes(i + 1) && (
                       <div className="col-span-full w-full">
-                        <MultiplexAd testMode={true} />
+                        <MultiplexAd postId={post._id} testMode={true} />
                       </div>
                     )}
                   </React.Fragment>
