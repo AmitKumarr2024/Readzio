@@ -272,9 +272,10 @@ const Postbox = ({
   }, [dispatch, customPosts, posts, commentCounts]);
 
   const adPositions = useMemo(() => {
+    const postsPerAd = window.innerWidth < 640 ? 4 : 6; // Adjust for mobile
     return Array.from(
-      { length: Math.floor(selectedPosts.length / 6) },
-      (_, i) => (i + 1) * 6
+      { length: Math.floor(selectedPosts.length / postsPerAd) },
+      (_, i) => (i + 1) * postsPerAd
     );
   }, [selectedPosts.length]);
 
@@ -344,6 +345,12 @@ const Postbox = ({
           className="h-64 w-full rounded-lg bg-gray-200 dark:bg-gray-700"
         />
       ))}
+      {adPositions.map((pos, i) => (
+        <Skeleton
+          key={`ad-${i}`}
+          className="h-64 w-full rounded-lg bg-gray-200 dark:bg-gray-700"
+        />
+      ))}
     </div>
   );
 
@@ -388,7 +395,7 @@ const Postbox = ({
                     </div>
                     {adPositions.includes(i + 1) && (
                       <div className="w-full">
-                        <div className=" overflow-hidden p-3">
+                        <div className="p-3 rounded-lg bg-white dark:bg-gray-800">
                           <InFeedAd postId={post._id} testMode={true} />
                         </div>
                       </div>
