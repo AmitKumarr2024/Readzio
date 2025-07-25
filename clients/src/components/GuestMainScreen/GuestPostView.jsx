@@ -62,7 +62,9 @@ const GuestPostView = () => {
         >
           <div className="w-full bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 border border-gray-200 dark:border-gray-700 transition-all duration-300">
             <InFeedAd postId={post._id} testMode={true} />
-            <p className="mt-2 text-xs text-center text-gray-400 dark:text-gray-500">Sponsored</p>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
+              Sponsored
+            </p>
           </div>
         </div>
       );
@@ -91,7 +93,11 @@ const GuestPostView = () => {
         grid-cols-1 
         sm:grid-cols-2 
         md:grid-cols-3 
-        ${isSidebarOpen ? "lg:grid-cols-3 xl:grid-cols-4" : "lg:grid-cols-3 xl:grid-cols-5"}
+        ${
+          isSidebarOpen
+            ? "lg:grid-cols-3 xl:grid-cols-4"
+            : "lg:grid-cols-3 xl:grid-cols-5"
+        }
       `}
     >
       {postsWithAds}

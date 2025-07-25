@@ -10,9 +10,9 @@ const InFeedAd = ({ postId, testMode = true }) => {
         testMode={testMode}
         style={{ display: "block", width: "100%", height: "100%" }}
       />
-      <p className="mt-2 text-xs text-gray-400 dark:text-gray-500 text-center">
-        Sponsored content
-      </p>
+      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
+      Sponsored
+    </p>
     </div>
   );
 };
