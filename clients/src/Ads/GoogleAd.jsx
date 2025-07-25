@@ -23,16 +23,34 @@ const GoogleAd = ({
   const adRef = useRef(null);
   const impressionSent = useRef(false);
 
+  // 🔁 Always push ads on mount (fallback)
   useEffect(() => {
-    if (typeof window === 'undefined') return; // SSR/Next.js safety
-    if (isAdBlocked || impressionSent.current || !socketInstance?.connected) return;
+    if (typeof window !== 'undefined') {
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch (e) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[GoogleAd] AdSense fallback error:', e);
+        }
+      }
+    }
+  }, []);
+
+  // 👁️ Track visibility and send impression
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      isAdBlocked ||
+      impressionSent.current ||
+      !socketInstance?.connected
+    )
+      return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !impressionSent.current) {
           impressionSent.current = true;
 
-          // Emit ad impression to server
           if (postId) {
             socketInstance.emit('adImpression', {
               postId,
@@ -46,12 +64,12 @@ const GoogleAd = ({
             (window.adsbygoogle = window.adsbygoogle || []).push({});
           } catch (e) {
             if (process.env.NODE_ENV !== 'production') {
-              console.warn('[GoogleAd] AdSense error:', e);
+              console.warn('[GoogleAd] AdSense observer error:', e);
             }
           }
         }
       },
-      { threshold: 0.5 }
+      { threshold: 0.1 } // more lenient
     );
 
     if (adRef.current) observer.observe(adRef.current);
