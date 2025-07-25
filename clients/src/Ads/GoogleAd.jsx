@@ -1,23 +1,18 @@
-// components/GoogleAd.jsx
 import React, { useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import useAdBlockDetector from "./useAdBlockDetector";
 import { selectSocketState } from "../store/socketSlice";
 
-/**
- * Universal Google AdSense Component
- * Supports: display, in-article, in-feed, multiplex
- */
 const GoogleAd = ({
   adSlot,
   adClient = "ca-pub-8408980890451581",
   adFormat = "auto",
   layoutKey = null,
   className = "",
-  style = { display: "block", width: "100%", height: "auto" },
+  style = { display: "block", width: "100%" }, // Removed height constraints
   postId = null,
   responsive = true,
-  testMode = false, // ⬅️ Add this prop to toggle test/real ad
+  testMode = false,
 }) => {
   const isAdBlocked = useAdBlockDetector();
   const { socketInstance } = useSelector(selectSocketState);
@@ -83,7 +78,7 @@ const GoogleAd = ({
       data-ad-client={adClient}
       data-ad-slot={adSlot}
       data-ad-format={adFormat}
-      data-full-width-responsive="true"
+      data-full-width-responsive={responsive ? "true" : "false"}
       {...(layoutKey && { "data-ad-layout-key": layoutKey })}
       {...(testMode && { "data-adtest": "on" })}
     />

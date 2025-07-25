@@ -383,12 +383,7 @@ const Postbox = ({
                             adSlot={adsConfig.card.slot}
                             adFormat={adsConfig.card.format}
                             postId={post._id}
-                            style={{
-                              display: "block",
-                              width: "100%",
-                              minHeight: "250px",
-                              maxHeight: "400px",
-                            }}
+                            style={{ display: "block", width: "100%" }}
                             className="block"
                             testMode={true}
                           />
@@ -402,12 +397,7 @@ const Postbox = ({
                             adSlot={adsConfig.banner.slot}
                             adFormat="horizontal"
                             postId={post._id}
-                            style={{
-                              display: "block",
-                              width: "100%",
-                              minHeight: "90px",
-                              maxHeight: "120px",
-                            }}
+                            style={{ display: "block", width: "100%" }} // Removed height constraints
                             className="block"
                             testMode={true}
                           />
