@@ -125,14 +125,14 @@ router.patch(
 );
 // ✅ Admin-only override
 router.patch(
-  "/admin/user-milestone/:userId",
+  "/subscriptions/user-milestone/:userId",
   protectedRoute,
   overrideUserMilestones
 );
 
 // ✅ Admin-only reset
 router.patch(
-  "/admin/user-milestone-reset/:userId",
+  "/subscriptions/user-milestone-reset/:userId",
   protectedRoute,
   resetUserMilestones
 );

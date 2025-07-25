@@ -961,7 +961,7 @@ export const overrideUserMilestones = createAsyncThunk(
   async ({ userId, overrideData }, thunkAPI) => {
     try {
       const response = await axiosInstance.patch(
-        `/subscription/admin/user-milestone/${userId}`,
+        `/admin/subscriptions/user-milestone/${userId}`,
         overrideData
       );
       return response.data;
@@ -979,7 +979,7 @@ export const resetUserMilestones = createAsyncThunk(
   async (userId, thunkAPI) => {
     try {
       const response = await axiosInstance.patch(
-        `/subscription/admin/user-milestone-reset/${userId}`
+        `/admin/subscriptions/user-milestone-reset/${userId}`
       );
       return response.data;
     } catch (error) {
