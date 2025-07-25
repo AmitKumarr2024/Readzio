@@ -277,12 +277,12 @@ const Postbox = ({
   }, [selectedPosts.length]);
 
   const multiplexAdPositions = useMemo(() => {
-    // Insert MultiplexAd after every complete row (cardsPerRow) when a full row is filled
+    // Insert MultiplexAd after every 10 complete cards
     return Array.from(
-      { length: Math.floor(selectedPosts.length / cardsPerRow) },
-      (_, i) => (i + 1) * cardsPerRow
-    ).filter(pos => pos <= selectedPosts.length); // Ensure position doesn't exceed total posts
-  }, [selectedPosts.length, cardsPerRow]);
+      { length: Math.floor(selectedPosts.length / 10) },
+      (_, i) => (i + 1) * 10
+    ).filter(pos => pos <= selectedPosts.length); // Ensure position aligns with full rows
+  }, [selectedPosts.length]);
 
   const loadMorePosts = useCallback(() => {
     if (!postLoading && hasMore) {
