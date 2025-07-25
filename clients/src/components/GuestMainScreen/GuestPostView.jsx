@@ -5,7 +5,6 @@ import GuestCardOfPost from "../Cards/GuestCardOfPost";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import InFeedAd from "../../Ads/InFeedAd";
 
-
 const GuestPostView = () => {
   const dispatch = useDispatch();
   const {
@@ -49,56 +48,50 @@ const GuestPostView = () => {
     );
   }
 
-  const postsWithAds = [];
+  const postsWithAds = posts.flatMap((post, index) => {
+    if (!post?._id || !post.slug) return [];
 
-  posts.forEach((post, index) => {
-    if (!post || !post._id || !post.slug) return;
+    const items = [<GuestCardOfPost key={post._id} {...post} />];
 
-    postsWithAds.push(<GuestCardOfPost key={post._id} {...post} />);
-
-    // ⏺ Insert In-Feed Ad after every 6 posts
-    if ((index + 1) % 6 === 0) {
-      postsWithAds.push(
+    // Insert In-Feed Ad after every 8 posts
+    if ((index + 1) % 8 === 0) {
+      items.push(
         <div
           key={`infeed-${index}`}
-          className="col-span-full flex justify-center w-full"
+          className="col-span-1 flex justify-center w-full p-3"
         >
-          <div className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden p-3 border border-gray-200 dark:border-gray-700">
+          <div className="w-full bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 border border-gray-200 dark:border-gray-700 transition-all duration-300">
             <InFeedAd postId={post._id} testMode={true} />
-            <p className="mt-2 text-xs text-center text-gray-400 dark:text-gray-500">
-              Sponsored
-            </p>
+            <p className="mt-2 text-xs text-center text-gray-400 dark:text-gray-500">Sponsored</p>
           </div>
         </div>
       );
     }
 
-    // ⏺ Insert Multiplex Ad after every 10 posts
-    if ((index + 1) % 10 === 0) {
-      postsWithAds.push(
+    // Insert Multiplex Ad after every 12 posts
+    if ((index + 1) % 12 === 0) {
+      items.push(
         <div
           key={`multiplex-${index}`}
-          className="col-span-full flex justify-center w-full"
+          className="col-span-full flex justify-center w-full p-3"
         >
-          <div className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 md:p-8 border border-gray-200 dark:border-gray-700">
+          <div className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-200 dark:border-gray-700 transition-all duration-300">
             <MultiplexAd postId={post._id} testMode={true} />
           </div>
         </div>
       );
     }
+
+    return items;
   });
 
   return (
     <div
-      className={`grid gap-4 py-6 w-full px-4
+      className={`grid gap-4 py-6 px-4 w-full
         grid-cols-1 
         sm:grid-cols-2 
         md:grid-cols-3 
-        ${
-          isSidebarOpen
-            ? "lg:grid-cols-3 xl:grid-cols-4"
-            : "lg:grid-cols-3 xl:grid-cols-5"
-        }
+        ${isSidebarOpen ? "lg:grid-cols-3 xl:grid-cols-4" : "lg:grid-cols-3 xl:grid-cols-5"}
       `}
     >
       {postsWithAds}
