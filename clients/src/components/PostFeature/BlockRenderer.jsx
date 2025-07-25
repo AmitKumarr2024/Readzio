@@ -18,6 +18,7 @@ import GoogleAd from "../../Ads/GoogleAd";
 import PostTags from "../Post/DisplayPost/PostTags";
 import Skeleton from "@/components/Ui/Skeleton";
 import adsConfig from "../../Utils/adsConfig";
+import InArticleAd from "../../Ads/InArticleAd";
 
 const placeholderAdImage = "https://placehold.co/150x100?text=Ad+Failed";
 
@@ -197,14 +198,14 @@ const BlockRenderer = ({
         );
       case "ad":
         return (
-          <GoogleAd
-            key={`ad-${i}`}
-            adSlot={adsConfig.inArticle.slot}
-            adFormat={adsConfig.inArticle.format}
-            postId={postId}
-            className="my-6 rounded-2xl shadow-lg"
-            testMode={true}
-          />
+          <div key={`ad-${i}`} className="my-8">
+            <div className="text-sm text-gray-400 uppercase tracking-wide px-2 pb-1">
+              Sponsored
+            </div>
+            <div className="flex justify-center items-center bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+              <InArticleAd postId={postId} testMode={true} />
+            </div>
+          </div>
         );
       default:
         return (
@@ -223,19 +224,33 @@ const BlockRenderer = ({
         <table className="w-full">
           <tbody>
             <tr>
-              <td><Skeleton className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" /></td>
-              <td><Skeleton className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" /></td>
+              <td>
+                <Skeleton className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" />
+              </td>
+              <td>
+                <Skeleton className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" />
+              </td>
             </tr>
           </tbody>
         </table>
         <table className="w-full">
           <tbody>
             <tr>
-              <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
-              <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
-              <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
-              <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
-              <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
+              <td>
+                <Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+              </td>
+              <td>
+                <Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+              </td>
+              <td>
+                <Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+              </td>
+              <td>
+                <Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+              </td>
+              <td>
+                <Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+              </td>
             </tr>
           </tbody>
         </table>

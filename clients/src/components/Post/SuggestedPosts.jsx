@@ -2,18 +2,20 @@ import React, { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { fetchSuggestedPosts } from "../../store/suggestedPostsSlice";
-import GoogleAd from "../../Ads/GoogleAd";
 import toast from "react-hot-toast";
 import TimeAgo from "../../Utils/TimeAgo";
 import Skeleton from "@/components/Ui/Skeleton";
 import adsConfig from "../../Utils/adsConfig";
+import InFeedAd from "../../Ads/InFeedAd";
 
 const SuggestedPosts = () => {
   const dispatch = useDispatch();
   const hasFetched = useRef(false);
-  const { posts = [], status, error } = useSelector(
-    (state) => state.suggestedPosts || {}
-  );
+  const {
+    posts = [],
+    status,
+    error,
+  } = useSelector((state) => state.suggestedPosts || {});
 
   useEffect(() => {
     if (status === "idle" && !hasFetched.current) {
@@ -51,29 +53,55 @@ const SuggestedPosts = () => {
               key={i}
               className="bg-white dark:bg-gray-800 rounded-md shadow-md overflow-hidden"
             >
-              <Skeleton width="w-full" height="h-48" className="rounded-t-md bg-gray-200 dark:bg-gray-700" />
+              <Skeleton
+                width="w-full"
+                height="h-48"
+                className="rounded-t-md bg-gray-200 dark:bg-gray-700"
+              />
               <div className="p-4 space-y-2">
-                <Skeleton width="w-3/4" height="h-6" className="bg-gray-200 dark:bg-gray-700" />
+                <Skeleton
+                  width="w-3/4"
+                  height="h-6"
+                  className="bg-gray-200 dark:bg-gray-700"
+                />
                 <table className="w-full">
                   <tbody>
                     <tr>
-                      <td><Skeleton className="h-4 w-24 bg-gray-200 dark:bg-gray-700" /></td>
-                      <td><Skeleton className="h-4 w-24 bg-gray-200 dark:bg-gray-700" /></td>
+                      <td>
+                        <Skeleton className="h-4 w-24 bg-gray-200 dark:bg-gray-700" />
+                      </td>
+                      <td>
+                        <Skeleton className="h-4 w-24 bg-gray-200 dark:bg-gray-700" />
+                      </td>
                     </tr>
                   </tbody>
                 </table>
                 <table className="w-full">
                   <tbody>
                     <tr>
-                      <td><Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" /></td>
-                      <td><Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" /></td>
-                      <td><Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" /></td>
-                      <td><Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" /></td>
-                      <td><Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" /></td>
+                      <td>
+                        <Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" />
+                      </td>
+                      <td>
+                        <Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" />
+                      </td>
+                      <td>
+                        <Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" />
+                      </td>
+                      <td>
+                        <Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" />
+                      </td>
+                      <td>
+                        <Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" />
+                      </td>
                     </tr>
                   </tbody>
                 </table>
-                <Skeleton width="w-16" height="h-4" className="bg-gray-200 dark:bg-gray-700" />
+                <Skeleton
+                  width="w-16"
+                  height="h-4"
+                  className="bg-gray-200 dark:bg-gray-700"
+                />
               </div>
             </div>
           ))}
@@ -107,7 +135,10 @@ const SuggestedPosts = () => {
                     className="w-full h-48 object-cover rounded-t-md transition-transform duration-300 group-hover:scale-105"
                     onError={(e) => {
                       if (process.env.NODE_ENV === "production") {
-                        console.warn(`[SuggestedPosts] Thumbnail failed for post ${post._id}:`, post.thumbnail);
+                        console.warn(
+                          `[SuggestedPosts] Thumbnail failed for post ${post._id}:`,
+                          post.thumbnail
+                        );
                       }
                       e.target.src = fallbackImage;
                     }}
@@ -127,12 +158,9 @@ const SuggestedPosts = () => {
               </Link>
 
               {adPositions.includes(index + 1) && (
-                <GoogleAd
+                <InFeedAd
                   key={`ad-${index}`}
-                  adSlot={adsConfig.inFeed.slot}
-                  adFormat={adsConfig.inFeed.format}
                   postId={post._id}
-                  className="my-6 col-span-full bg-white dark:bg-gray-800 rounded-md shadow-md"
                   testMode={true}
                 />
               )}

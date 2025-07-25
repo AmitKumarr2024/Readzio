@@ -26,7 +26,6 @@ import toast from "react-hot-toast";
 import { selectPostViews } from "../../Utils/postSelectors";
 import CommentBox from "./CommentBox";
 import DeleteModal from "./DeleteModal";
-import GoogleAd from "../../Ads/GoogleAd";
 import Skeleton from "@/components/Ui/Skeleton";
 import adsConfig from "../../Utils/adsConfig";
 
@@ -41,11 +40,17 @@ const DisplayPost = () => {
     error,
     isTracking,
   } = useSelector((state) => state.post);
-  const { singlePost: guestPost, loading: guestLoading, error: guestError } = useSelector(
-    (state) => state.guest || {}
+  const {
+    singlePost: guestPost,
+    loading: guestLoading,
+    error: guestError,
+  } = useSelector((state) => state.guest || {});
+  const { isAuthenticated, user: currentUser } = useSelector(
+    (state) => state.auth
   );
-  const { isAuthenticated, user: currentUser } = useSelector((state) => state.auth);
-  const { isSubscribed, subscriptionLoading, plans } = useSelector((state) => state.subscription);
+  const { isSubscribed, subscriptionLoading, plans } = useSelector(
+    (state) => state.subscription
+  );
   const { categories } = useSelector((state) => state.categories);
   const viewsData = useSelector((state) => selectPostViews(state, slug));
   const { views } = viewsData;
@@ -85,10 +90,13 @@ const DisplayPost = () => {
   }, [activePost, restrictedPostIds]);
 
   const canViewPost = useMemo(() => {
-    return isAuthor || !isPostRestricted || isSubscribed[activePost?.author?._id];
+    return (
+      isAuthor || !isPostRestricted || isSubscribed[activePost?.author?._id]
+    );
   }, [isAuthor, isPostRestricted, isSubscribed, activePost]);
 
-  const isUserSubscribed = activePost?.author?._id && isSubscribed[activePost?.author?._id];
+  const isUserSubscribed =
+    activePost?.author?._id && isSubscribed[activePost?.author?._id];
 
   useEffect(() => {
     if (!slug) return;
@@ -117,15 +125,21 @@ const DisplayPost = () => {
   }, [dispatch, slug, isAuthenticated]);
 
   useEffect(() => {
-    if (!isAuthenticated || !activePost?._id || !activePost?.author?._id || hasFetchedStatus.current) return;
+    if (
+      !isAuthenticated ||
+      !activePost?._id ||
+      !activePost?.author?._id ||
+      hasFetchedStatus.current
+    )
+      return;
     hasFetchedStatus.current = true;
 
     dispatch(fetchBookmarkAndLikeStatus(activePost._id)).catch(() =>
       toast.error("Failed to fetch interaction status")
     );
 
-    dispatch(fetchSubscriptionPlansByAuthor(activePost.author._id)).catch((err) =>
-      console.error("Subscription fetch error:", err)
+    dispatch(fetchSubscriptionPlansByAuthor(activePost.author._id)).catch(
+      (err) => console.error("Subscription fetch error:", err)
     );
   }, [dispatch, activePost?._id, activePost?.author?._id, isAuthenticated]);
 
@@ -142,7 +156,10 @@ const DisplayPost = () => {
           dispatch(submitReadingTime({ postId: activePost._id, timeSpent }))
             .unwrap()
             .catch((error) =>
-              console.error("[DisplayPost] Failed to record reading time:", error)
+              console.error(
+                "[DisplayPost] Failed to record reading time:",
+                error
+              )
             );
         }
         dispatch(stopReading());
@@ -175,16 +192,36 @@ const DisplayPost = () => {
       toast.error(activeError || "An error occurred");
     }
 
-    if (postReady && !activeLoading && activePost && isPostRestricted && !canViewPost && isAuthenticated) {
+    if (
+      postReady &&
+      !activeLoading &&
+      activePost &&
+      isPostRestricted &&
+      !canViewPost &&
+      isAuthenticated
+    ) {
       toast("This is a paid post. Subscribe to view.", { icon: "🔒" });
     }
-  }, [fetchAttempted, postReady, activeError, activePost, activeLoading, isPostRestricted, canViewPost, isAuthenticated, slug, navigate]);
+  }, [
+    fetchAttempted,
+    postReady,
+    activeError,
+    activePost,
+    activeLoading,
+    isPostRestricted,
+    canViewPost,
+    isAuthenticated,
+    slug,
+    navigate,
+  ]);
 
   const formatTime = (seconds) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${hrs ? `${hrs} hr ` : ""}${mins ? `${mins} min ` : ""}${secs || (!hrs && !mins) ? `${secs} sec` : ""}`.trim();
+    return `${hrs ? `${hrs} hr ` : ""}${mins ? `${mins} min ` : ""}${
+      secs || (!hrs && !mins) ? `${secs} sec` : ""
+    }`.trim();
   };
 
   const renderSkeleton = () => (
@@ -197,19 +234,33 @@ const DisplayPost = () => {
         <table className="w-full">
           <tbody>
             <tr>
-              <td><Skeleton className="h-4 w-24" /></td>
-              <td><Skeleton className="h-4 w-24" /></td>
+              <td>
+                <Skeleton className="h-4 w-24" />
+              </td>
+              <td>
+                <Skeleton className="h-4 w-24" />
+              </td>
             </tr>
           </tbody>
         </table>
         <table className="w-full">
           <tbody>
             <tr>
-              <td><Skeleton className="h-4 w-12" /></td>
-              <td><Skeleton className="h-4 w-12" /></td>
-              <td><Skeleton className="h-4 w-12" /></td>
-              <td><Skeleton className="h-4 w-12" /></td>
-              <td><Skeleton className="h-4 w-12" /></td>
+              <td>
+                <Skeleton className="h-4 w-12" />
+              </td>
+              <td>
+                <Skeleton className="h-4 w-12" />
+              </td>
+              <td>
+                <Skeleton className="h-4 w-12" />
+              </td>
+              <td>
+                <Skeleton className="h-4 w-12" />
+              </td>
+              <td>
+                <Skeleton className="h-4 w-12" />
+              </td>
             </tr>
           </tbody>
         </table>
@@ -219,13 +270,20 @@ const DisplayPost = () => {
   );
 
   const renderPostContent = () => {
-    if (!fetchAttempted || activeLoading || subscriptionLoading) return renderSkeleton();
+    if (!fetchAttempted || activeLoading || subscriptionLoading)
+      return renderSkeleton();
 
-    if (!postReady || !activePost || !activePost._id || !Array.isArray(activePost.blocks)) {
+    if (
+      !postReady ||
+      !activePost ||
+      !activePost._id ||
+      !Array.isArray(activePost.blocks)
+    ) {
       return <PostNotFound message={activeError || "Post not found"} />;
     }
 
-    const firstImage = activePost.blocks?.find((b) => b.type === "image")?.src || "";
+    const firstImage =
+      activePost.blocks?.find((b) => b.type === "image")?.src || "";
     const plainText =
       activePost.blocks
         ?.filter((b) => b.type === "text")
@@ -239,11 +297,17 @@ const DisplayPost = () => {
         <Helmet>
           <title>{activePost.title || "Loading..."} | My Blog</title>
           <meta name="description" content={plainText} />
-          <meta property="og:title" content={activePost.title || "Loading..."} />
+          <meta
+            property="og:title"
+            content={activePost.title || "Loading..."}
+          />
           <meta property="og:description" content={plainText} />
           <meta property="og:image" content={firstImage} />
           <meta property="og:type" content="article" />
-          <meta property="og:url" content={`https://your-domain.com/post/${activePost.slug}`} />
+          <meta
+            property="og:url"
+            content={`https://your-domain.com/post/${activePost.slug}`}
+          />
           <meta name="twitter:card" content="summary_large_image" />
         </Helmet>
 
@@ -272,7 +336,10 @@ const DisplayPost = () => {
           />
           <SubscriptionBanner showSeeMore={showSeeMore} post={activePost} />
           <EngagementButtons post={activePost} />
-          <CommentBox postId={activePost._id} postAuthorId={activePost.author._id} />
+          <CommentBox
+            postId={activePost._id}
+            postAuthorId={activePost.author._id}
+          />
         </article>
       </>
     );
@@ -286,28 +353,19 @@ const DisplayPost = () => {
             <div className="lg:grid lg:grid-cols-3 lg:gap-8">
               <div className="lg:col-span-2 space-y-6">
                 {renderPostContent()}
-                <GoogleAd
-                  adSlot={adsConfig.multiplex.slot}
-                  adFormat={adsConfig.multiplex.format}
-                  postId={activePost?._id}
-                  className="my-12"
-                  testMode={true}
-                />
+                <MultiplexAd postId={activePost?._id} testMode={false} />
               </div>
               <div className="hidden lg:block lg:col-span-1 space-y-6">
                 <div className="sticky top-0 h-full flex flex-col space-y-6">
                   <AuthorSidebar
                     authorId={activePost?.author?._id || null}
-                    isLoading={activeLoading || subscriptionLoading || !fetchAttempted}
+                    isLoading={
+                      activeLoading || subscriptionLoading || !fetchAttempted
+                    }
                     className="h-full rounded-md bg-white dark:bg-gray-800 shadow-md p-6"
                   />
                   <div className="rounded-md bg-white dark:bg-gray-800 shadow-md p-4">
-                    <GoogleAd
-                      adSlot={adsConfig.displaySidebar.slot}
-                      adFormat={adsConfig.displaySidebar.format}
-                      postId={activePost?._id}
-                      testMode={true}
-                    />
+                    <DisplayAd postId={activePost?._id} testMode={false} />
                   </div>
                 </div>
               </div>
