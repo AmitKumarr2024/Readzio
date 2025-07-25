@@ -1,14 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useDispatch } from "react-redux";
 import {
   overrideUserMilestones,
   resetUserMilestones,
 } from "../../../store/adminSlice";
 import { toast } from "react-hot-toast";
+import Pagination from "../../../Utils/Pagination";
 
 const UserMilestoneManager = ({ users }) => {
   const dispatch = useDispatch();
   const [selectedUser, setSelectedUser] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
   const [formData, setFormData] = useState({
     followerCount: "",
     postCount: "",
@@ -50,7 +55,6 @@ const UserMilestoneManager = ({ users }) => {
       toast.success("User milestone updated");
 
       const updated = res.payload;
-
       const updatedUser = {
         ...selectedUser,
         milestoneOverride: updated.milestoneOverride,
@@ -63,8 +67,7 @@ const UserMilestoneManager = ({ users }) => {
         postCount: updated.milestoneOverride.postCount ?? "",
         engagementRate: updated.milestoneOverride.engagementRate ?? "",
         accountAgeDays: updated.milestoneOverride.accountAgeDays ?? "",
-        isEligibleForSubscription:
-          updated.isEligibleForSubscription ?? false,
+        isEligibleForSubscription: updated.isEligibleForSubscription ?? false,
       });
     } else {
       toast.error("Failed to update milestones");
@@ -112,54 +115,75 @@ const UserMilestoneManager = ({ users }) => {
     );
   };
 
+  const filteredUsers = useMemo(() => {
+    const search = searchTerm.toLowerCase();
+    return users.filter(
+      (user) =>
+        user.name?.toLowerCase().includes(search) ||
+        user.email?.toLowerCase().includes(search)
+    );
+  }, [users, searchTerm]);
+
+  const totalPages = Math.ceil(filteredUsers.length / pageSize);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   return (
     <div className="bg-background-light dark:bg-background-dark shadow rounded-lg p-6 space-y-6 text-text-main-light dark:text-text-main-dark">
       <h2 className="text-xl font-bold">User Milestone Overrides</h2>
+
+      <input
+        type="text"
+        placeholder="Search by name or email"
+        value={searchTerm}
+        onChange={(e) => {
+          setSearchTerm(e.target.value);
+          setCurrentPage(1);
+        }}
+        className="border px-3 py-2 rounded w-full dark:bg-gray-700 dark:text-white"
+      />
 
       {selectedUser && (
         <div className="border p-4 rounded bg-gray-50 dark:bg-gray-700">
           <h3 className="text-lg font-semibold text-indigo-600">
             Editing: {selectedUser.name} ({selectedUser.email})
           </h3>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             {[
-              {
-                name: "followerCount",
-                label: "Follower Count",
-                actual: selectedUser.followers?.length || 0,
-              },
-              {
-                name: "postCount",
-                label: "Post Count",
-                actual: selectedUser.totalPosts || 0,
-              },
-              {
-                name: "engagementRate",
-                label: "Engagement Rate",
-                actual: selectedUser.engagementRate || 0,
-              },
-              {
-                name: "accountAgeDays",
-                label: "Account Age (days)",
-                actual: selectedUser.accountAgeDays || 0,
-              },
-            ].map(({ name, label, actual }) => (
-              <div key={name} className="space-y-1">
-                <label className="block text-sm font-medium">
-                  {label}{" "}
-                  <span className="text-xs text-gray-500">(Actual: {actual})</span>
-                </label>
-                <input
-                  type="number"
-                  name={name}
-                  value={formData[name]}
-                  onChange={handleChange}
-                  placeholder={`Override ${label}`}
-                  className="border px-3 py-2 rounded w-full dark:bg-gray-600 dark:text-white"
-                />
-              </div>
-            ))}
+              "followerCount",
+              "postCount",
+              "engagementRate",
+              "accountAgeDays",
+            ].map((name) => {
+              const label = name
+                .replace(/([A-Z])/g, " $1")
+                .replace(/^./, (str) => str.toUpperCase());
+              const actual =
+                name === "followerCount"
+                  ? selectedUser.followers?.length || 0
+                  : selectedUser[name] || 0;
+
+              return (
+                <div key={name} className="space-y-1">
+                  <label className="block text-sm font-medium">
+                    {label}{" "}
+                    <span className="text-xs text-gray-500">
+                      (Actual: {actual})
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    name={name}
+                    value={formData[name]}
+                    onChange={handleChange}
+                    placeholder={`Override ${label}`}
+                    className="border px-3 py-2 rounded w-full dark:bg-gray-600 dark:text-white"
+                  />
+                </div>
+              );
+            })}
 
             <label className="flex items-center gap-2 col-span-2">
               <input
@@ -195,20 +219,24 @@ const UserMilestoneManager = ({ users }) => {
             <th className="px-4 py-2 text-left text-sm font-medium">#</th>
             <th className="px-4 py-2 text-left text-sm font-medium">Name</th>
             <th className="px-4 py-2 text-left text-sm font-medium">Email</th>
-            <th className="px-4 py-2 text-left text-sm font-medium">Eligible?</th>
+            <th className="px-4 py-2 text-left text-sm font-medium">
+              Eligible?
+            </th>
             <th className="px-4 py-2 text-left text-sm font-medium">
               Force Eligible
             </th>
           </tr>
         </thead>
         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-          {users.map((user, index) => (
+          {paginatedUsers.map((user, index) => (
             <tr
               key={user._id}
               onClick={() => handleSelectUser(user)}
               className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
             >
-              <td className="px-4 py-2">{index + 1}</td>
+              <td className="px-4 py-2">
+                {(currentPage - 1) * pageSize + index + 1}
+              </td>
               <td className="px-4 py-2">{user.name}</td>
               <td className="px-4 py-2">{user.email}</td>
               <td className="px-4 py-2">
@@ -221,6 +249,12 @@ const UserMilestoneManager = ({ users }) => {
           ))}
         </tbody>
       </table>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 };
