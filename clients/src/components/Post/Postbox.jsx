@@ -270,6 +270,14 @@ const Postbox = ({
     postsToFetch.forEach((post) => dispatch(fetchCommentCount(post._id)));
   }, [dispatch, customPosts, posts, commentCounts]);
 
+  const adPositions = useMemo(() => {
+    const postsPerAd = window.innerWidth < 640 ? 4 : 6;
+    return Array.from(
+      { length: Math.floor(selectedPosts.length / postsPerAd) },
+      (_, i) => (i + 1) * postsPerAd
+    );
+  }, [selectedPosts.length]);
+
   const postsPerRow = isSidebarOpen ? 4 : 5; // match with your Tailwind grid setup
   const fullRowAdInterval = 2; // after every 2 rows
 
