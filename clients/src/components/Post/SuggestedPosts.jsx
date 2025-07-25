@@ -8,11 +8,16 @@ import Skeleton from "@/components/Ui/Skeleton";
 import adsConfig from "../../Utils/adsConfig";
 import InFeedAd from "../../Ads/InFeedAd";
 import MultiplexAd from "../../Ads/MultiplexAd";
+import HorizontalBannerAd from "../../Ads/HorizontalBannerAd";
 
 const SuggestedPosts = () => {
   const dispatch = useDispatch();
   const hasFetched = useRef(false);
-  const { posts = [], status, error } = useSelector((state) => state.suggestedPosts || {});
+  const {
+    posts = [],
+    status,
+    error,
+  } = useSelector((state) => state.suggestedPosts || {});
 
   useEffect(() => {
     if (status === "idle" && !hasFetched.current) {
@@ -161,10 +166,8 @@ const SuggestedPosts = () => {
                 </div>
               )}
               {multiplexAdPositions.includes(index + 1) && (
-                <div
-                  className="w-full border-b border-gray-300 dark:border-gray-600 my-2 flex items-center"
-                >
-                  <MultiplexAd postId={post._id} testMode={false} />
+                <div className="w-full border-b border-gray-300 dark:border-gray-600 my-2 flex items-center">
+                  <HorizontalBannerAd />
                 </div>
               )}
             </React.Fragment>
