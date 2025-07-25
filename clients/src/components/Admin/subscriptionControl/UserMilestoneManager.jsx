@@ -176,6 +176,7 @@ const UserMilestoneManager = ({ users }) => {
             <th className="px-4 py-2 text-left text-sm font-medium">Name</th>
             <th className="px-4 py-2 text-left text-sm font-medium">Email</th>
             <th className="px-4 py-2 text-left text-sm font-medium">Eligible?</th>
+            <th className="px-4 py-2 text-left text-sm font-medium">Force Eligible</th>
           </tr>
         </thead>
         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -190,6 +191,14 @@ const UserMilestoneManager = ({ users }) => {
               <td className="px-4 py-2">{user.email}</td>
               <td className="px-4 py-2">
                 {user.isEligibleForSubscription ? "Yes" : "No"}
+              </td>
+              <td className="px-4 py-2">
+                {user.milestoneOverride?.followerCount !== null ||
+                user.milestoneOverride?.postCount !== null ||
+                user.milestoneOverride?.engagementRate !== null ||
+                user.milestoneOverride?.accountAgeDays !== null
+                  ? "Yes"
+                  : "No"}
               </td>
             </tr>
           ))}
