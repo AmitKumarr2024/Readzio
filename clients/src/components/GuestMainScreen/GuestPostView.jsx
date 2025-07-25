@@ -75,11 +75,9 @@ const GuestPostView = () => {
       items.push(
         <div
           key={`multiplex-${index}`}
-          className="col-span-full flex justify-center w-full p-3"
+          className="col-span-full w-full border-b border-gray-300 dark:border-gray-600 my-2 flex items-center"
         >
-          <div className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-200 dark:border-gray-700 transition-all duration-300">
-            <MultiplexAd postId={post._id} testMode={false} />
-          </div>
+          <MultiplexAd postId={post._id} testMode={false} />
         </div>
       );
     }

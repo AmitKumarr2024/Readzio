@@ -7,15 +7,12 @@ import TimeAgo from "../../Utils/TimeAgo";
 import Skeleton from "@/components/Ui/Skeleton";
 import adsConfig from "../../Utils/adsConfig";
 import InFeedAd from "../../Ads/InFeedAd";
+import MultiplexAd from "../../Ads/MultiplexAd";
 
 const SuggestedPosts = () => {
   const dispatch = useDispatch();
   const hasFetched = useRef(false);
-  const {
-    posts = [],
-    status,
-    error,
-  } = useSelector((state) => state.suggestedPosts || {});
+  const { posts = [], status, error } = useSelector((state) => state.suggestedPosts || {});
 
   useEffect(() => {
     if (status === "idle" && !hasFetched.current) {
@@ -38,6 +35,7 @@ const SuggestedPosts = () => {
 
   const displayedPosts = posts.slice(0, 6);
   const adPositions = displayedPosts.length >= 4 ? [4] : [];
+  const multiplexAdPositions = displayedPosts.length >= 6 ? [6] : [];
   const fallbackImage = "https://placehold.co/600x400?text=No+Image";
 
   return (
@@ -158,11 +156,16 @@ const SuggestedPosts = () => {
               </Link>
 
               {adPositions.includes(index + 1) && (
-                <InFeedAd
-                  key={`ad-${index}`}
-                  postId={post._id}
-                  testMode={false}
-                />
+                <div className="w-full min-h-[250px] p-3 rounded-lg bg-white dark:bg-gray-800">
+                  <InFeedAd postId={post._id} testMode={false} />
+                </div>
+              )}
+              {multiplexAdPositions.includes(index + 1) && (
+                <div
+                  className="w-full border-b border-gray-300 dark:border-gray-600 my-2 flex items-center"
+                >
+                  <MultiplexAd postId={post._id} testMode={false} />
+                </div>
               )}
             </React.Fragment>
           ))}
