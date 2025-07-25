@@ -2,20 +2,28 @@ import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts } from "../../store/guestSlice";
 import GuestCardOfPost from "../Cards/GuestCardOfPost";
-import GoogleAd from "../../Ads/GoogleAd";
-import adsConfig from "../../Utils/adsConfig";
+import InFeedAd from "../../Ads/InFeedAd";
+import MultiplexAd from "../../Ads/MultiplexAd";
 
 const GuestPostView = () => {
   const dispatch = useDispatch();
-  const { posts = [], loading, error } = useSelector((state) => state.guest || {});
-  const isSidebarOpen = useSelector((state) => state.postMeta?.isSidebarOpen || false);
+  const {
+    posts = [],
+    loading,
+    error,
+  } = useSelector((state) => state.guest || {});
+  const isSidebarOpen = useSelector(
+    (state) => state.postMeta?.isSidebarOpen || false
+  );
 
   useEffect(() => {
     dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
   }, [dispatch]);
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-500">Loading posts...</div>;
+    return (
+      <div className="text-center py-8 text-gray-500">Loading posts...</div>
+    );
   }
 
   if (error) {
@@ -41,24 +49,30 @@ const GuestPostView = () => {
   }
 
   const postsWithAds = [];
-  const adFrequency = 5;
 
   posts.forEach((post, index) => {
     if (!post || !post._id || !post.slug) return;
 
     postsWithAds.push(<GuestCardOfPost key={post._id} {...post} />);
 
-    if ((index + 1) % adFrequency === 0) {
+    // ⏺ Insert In-Feed Ad after every 6 posts
+    if ((index + 1) % 6 === 0) {
       postsWithAds.push(
-        <div key={`ad-${index}`} className="w-full col-span-full">
-          <GoogleAd
-            adSlot={adsConfig.card.slot}
-            adFormat={adsConfig.card.format}
-            postId={post._id}
-            style={{ display: "block", width: "100%", height: "auto" }}
-            className="my-4"
-            testMode={true}
-          />
+        <div key={`infeed-${index}`} className="col-span-full w-full">
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm overflow-hidden p-3">
+            <InFeedAd postId={post._id} testMode={true} />
+          </div>
+        </div>
+      );
+    }
+
+    // ⏺ Insert Multiplex Ad after every 10 posts
+    if ((index + 1) % 10 === 0) {
+      postsWithAds.push(
+        <div key={`multiplex-${index}`} className="col-span-full w-full">
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-md p-2 sm:p-3 md:p-4">
+            <MultiplexAd postId={post._id} testMode={true} />
+          </div>
         </div>
       );
     }
@@ -66,7 +80,7 @@ const GuestPostView = () => {
 
   return (
     <div
-      className={`grid gap-4 py-6 w-full px-8
+      className={`grid gap-4 py-6 w-full px-4
         grid-cols-1 
         sm:grid-cols-2 
         md:grid-cols-3 
@@ -74,7 +88,8 @@ const GuestPostView = () => {
           isSidebarOpen
             ? "lg:grid-cols-3 xl:grid-cols-4"
             : "lg:grid-cols-3 xl:grid-cols-5"
-        }`}
+        }
+      `}
     >
       {postsWithAds}
     </div>
