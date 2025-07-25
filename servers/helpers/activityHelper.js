@@ -100,6 +100,8 @@ export const VALID_ACTIONS = new Set([
   "ERR_BLOCKED_BY_CLIENT",
   "PASSWORD_VERIFIED_FOR_DELETION",
   "PASSWORD_UPDATED",
+  "RESET_USER_MILESTONES",
+  "OVERRIDDEN_USER_MILESTONES"
 ]);
 
 // Records user activity with validation

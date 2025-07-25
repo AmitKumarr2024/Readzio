@@ -111,7 +111,9 @@ const activitySchema = new mongoose.Schema(
         "JWT_SECRET",
         "ERR_BLOCKED_BY_CLIENT",
         "PASSWORD_VERIFIED_FOR_DELETION",
-        "PASSWORD_UPDATED"
+        "PASSWORD_UPDATED",
+        "RESET_USER_MILESTONES",
+        "OVERRIDDEN_USER_MILESTONES",
       ],
       required: true,
     },

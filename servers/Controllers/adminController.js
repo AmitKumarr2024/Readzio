@@ -6,7 +6,10 @@ import TrafficModel from "../../servers/Models/trafficModel.js";
 import SubscriptionConfig from "../../servers/Models/SubscriptionConfigModel.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import mongoose from "mongoose";
-import { emitPostDeleted, emitPostUpdated } from "../../servers/sockets/socket.js";
+import {
+  emitPostDeleted,
+  emitPostUpdated,
+} from "../../servers/sockets/socket.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import SubscriptionPlan from "../../servers/Models/SubscriptionPlan.js";
 import UserSubscription from "../../servers/Models/UserSubscription.js";
@@ -16,7 +19,12 @@ import UserSubscriptionPlan from "../../servers/Models/UserSubscriptionModel.js"
 const validateObjectId = (id, type = "ID") => {
   console.log(`[validateObjectId] 🔍 Validating ${type}:`, id);
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-    throw new AppError(`Invalid ${type}`, 400, "ValidateObjectId", `Invalid ${type} provided`);
+    throw new AppError(
+      `Invalid ${type}`,
+      400,
+      "ValidateObjectId",
+      `Invalid ${type} provided`
+    );
   }
 };
 
@@ -27,7 +35,11 @@ export const getAllUsers = async (req, res, next) => {
     const limit = Math.min(parseInt(req.query.limit) || 100, 1000);
     const skip = (page - 1) * limit;
 
-    console.log("[AdminController:getAllUsers] 🔍 Params:", { page, limit, skip });
+    console.log("[AdminController:getAllUsers] 🔍 Params:", {
+      page,
+      limit,
+      skip,
+    });
 
     const projection =
       "name email gender avatar banner bio profession location createdAt role blocked bookmarks following followers blockedUsers subscribedCategories subscribedAuthors subscribers hasSubscriptionPlan subscriptionPlan subscriptionDate isEligibleForSubscription";
@@ -36,7 +48,12 @@ export const getAllUsers = async (req, res, next) => {
       UserModel.find({}).select(projection).skip(skip).limit(limit).lean(),
       UserModel.countDocuments(),
     ]);
-    console.log("[AdminController:getAllUsers] 📊 Users fetched:", users.length, "Total:", totalUsers);
+    console.log(
+      "[AdminController:getAllUsers] 📊 Users fetched:",
+      users.length,
+      "Total:",
+      totalUsers
+    );
 
     const totalPages = Math.ceil(totalUsers / limit);
     console.log("[AdminController:getAllUsers] 📄 Total pages:", totalPages);
@@ -49,9 +66,15 @@ export const getAllUsers = async (req, res, next) => {
       currentPage: page,
     });
   } catch (error) {
-    console.error("[AdminController:getAllUsers] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:getAllUsers] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // Uses AppError to provide context and user-friendly message
-    next(new AppError(error.message, 500, "GetAllUsers", "Failed to fetch users"));
+    next(
+      new AppError(error.message, 500, "GetAllUsers", "Failed to fetch users")
+    );
   }
 };
 
@@ -64,20 +87,40 @@ export const toggleBlockUser = async (req, res, next) => {
     const user = await UserModel.findById(userId);
     console.log("[AdminController:toggleBlockUser] 👤 User found:", !!user);
 
-    if (!user) throw new AppError("User not found", 404, "ToggleBlockUser", "User does not exist");
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "ToggleBlockUser",
+        "User does not exist"
+      );
 
     user.blocked = !user.blocked;
     await user.save();
-    console.log("[AdminController:toggleBlockUser] 🔄 Blocked status:", user.blocked);
+    console.log(
+      "[AdminController:toggleBlockUser] 🔄 Blocked status:",
+      user.blocked
+    );
 
     res.status(200).json({
       success: true,
       message: `User ${user.blocked ? "blocked" : "unblocked"} successfully`,
     });
   } catch (error) {
-    console.error("[AdminController:toggleBlockUser] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:toggleBlockUser] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError includes context for debugging and user message
-    next(new AppError(error.message, 500, "ToggleBlockUser", "Failed to toggle user block status"));
+    next(
+      new AppError(
+        error.message,
+        500,
+        "ToggleBlockUser",
+        "Failed to toggle user block status"
+      )
+    );
   }
 };
 
@@ -90,13 +133,27 @@ export const toggleUserRole = async (req, res, next) => {
     const user = await UserModel.findById(userId);
     console.log("[AdminController:toggleUserRole] 👤 User found:", !!user);
 
-    if (!user) throw new AppError("User not found", 404, "ToggleUserRole", "User does not exist");
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "ToggleUserRole",
+        "User does not exist"
+      );
 
     if (user.role === "admin") {
       const adminCount = await UserModel.countDocuments({ role: "admin" });
-      console.log("[AdminController:toggleUserRole] 👑 Admin count:", adminCount);
+      console.log(
+        "[AdminController:toggleUserRole] 👑 Admin count:",
+        adminCount
+      );
       if (adminCount <= 1) {
-        throw new AppError("Cannot remove the last admin", 400, "ToggleUserRole", "At least one admin is required");
+        throw new AppError(
+          "Cannot remove the last admin",
+          400,
+          "ToggleUserRole",
+          "At least one admin is required"
+        );
       }
     }
 
@@ -110,9 +167,20 @@ export const toggleUserRole = async (req, res, next) => {
       message: `User role changed to ${user.role}`,
     });
   } catch (error) {
-    console.error("[AdminController:toggleUserRole] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:toggleUserRole] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError provides specific context for role toggle issues
-    next(new AppError(error.message, 500, "ToggleUserRole", "Failed to toggle user role"));
+    next(
+      new AppError(
+        error.message,
+        500,
+        "ToggleUserRole",
+        "Failed to toggle user role"
+      )
+    );
   }
 };
 
@@ -125,13 +193,27 @@ export const deleteUser = async (req, res, next) => {
     const deletedUser = await UserModel.findByIdAndDelete(userId);
     console.log("[AdminController:deleteUser] 🗑️ User deleted:", !!deletedUser);
 
-    if (!deletedUser) throw new AppError("User not found", 404, "DeleteUser", "User does not exist");
+    if (!deletedUser)
+      throw new AppError(
+        "User not found",
+        404,
+        "DeleteUser",
+        "User does not exist"
+      );
 
-    res.status(200).json({ success: true, message: "User deleted successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "User deleted successfully" });
   } catch (error) {
-    console.error("[AdminController:deleteUser] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:deleteUser] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError includes context for user deletion
-    next(new AppError(error.message, 500, "DeleteUser", "Failed to delete user"));
+    next(
+      new AppError(error.message, 500, "DeleteUser", "Failed to delete user")
+    );
   }
 };
 
@@ -139,13 +221,22 @@ export const deleteUser = async (req, res, next) => {
 export const getAllPosts = async (req, res, next) => {
   try {
     const posts = await PostModel.find().populate("author", "name email");
-    console.log("[AdminController:getAllPosts] 📝 Posts fetched:", posts.length);
+    console.log(
+      "[AdminController:getAllPosts] 📝 Posts fetched:",
+      posts.length
+    );
 
     const postsWithSize = posts.map((post) => {
-      const blocksText = post.blocks?.map((b) => b.text || b.value || b.code || b.caption || "").join(" ") || "";
+      const blocksText =
+        post.blocks
+          ?.map((b) => b.text || b.value || b.code || b.caption || "")
+          .join(" ") || "";
       const sizeInCharacters = blocksText.length;
       const sizeInKB = Buffer.byteLength(blocksText, "utf-8") / 1024;
-      console.log(`[AdminController:getAllPosts] 📏 Post ${post._id} size:`, { sizeInCharacters, sizeInKB });
+      console.log(`[AdminController:getAllPosts] 📏 Post ${post._id} size:`, {
+        sizeInCharacters,
+        sizeInKB,
+      });
 
       return {
         ...post.toObject(),
@@ -156,9 +247,15 @@ export const getAllPosts = async (req, res, next) => {
 
     res.status(200).json({ success: true, posts: postsWithSize });
   } catch (error) {
-    console.error("[AdminController:getAllPosts] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:getAllPosts] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with context for post fetching issues
-    next(new AppError(error.message, 500, "GetAllPosts", "Failed to fetch posts"));
+    next(
+      new AppError(error.message, 500, "GetAllPosts", "Failed to fetch posts")
+    );
   }
 };
 
@@ -171,12 +268,21 @@ export const toggleBlockPost = async (req, res, next) => {
     const post = await PostModel.findById(postId);
     console.log("[AdminController:toggleBlockPost] 📝 Post found:", !!post);
 
-    if (!post) throw new AppError("Post not found", 404, "ToggleBlockPost", "Post does not exist");
+    if (!post)
+      throw new AppError(
+        "Post not found",
+        404,
+        "ToggleBlockPost",
+        "Post does not exist"
+      );
 
     post.blocked = !post.blocked;
     if (!Array.isArray(post.likes)) post.likes = [];
     await post.save();
-    console.log("[AdminController:toggleBlockPost] 🔄 Blocked status:", post.blocked);
+    console.log(
+      "[AdminController:toggleBlockPost] 🔄 Blocked status:",
+      post.blocked
+    );
 
     emitPostUpdated(post);
     res.status(200).json({
@@ -184,9 +290,20 @@ export const toggleBlockPost = async (req, res, next) => {
       message: `Post ${post.blocked ? "blocked" : "unblocked"} successfully`,
     });
   } catch (error) {
-    console.error("[AdminController:toggleBlockPost] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:toggleBlockPost] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError provides context for post block toggling
-    next(new AppError(error.message, 500, "ToggleBlockPost", "Failed to toggle post block status"));
+    next(
+      new AppError(
+        error.message,
+        500,
+        "ToggleBlockPost",
+        "Failed to toggle post block status"
+      )
+    );
   }
 };
 
@@ -199,14 +316,28 @@ export const deletePost = async (req, res, next) => {
     const deletedPost = await PostModel.findByIdAndDelete(postId);
     console.log("[AdminController:deletePost] 🗑️ Post deleted:", !!deletedPost);
 
-    if (!deletedPost) throw new AppError("Post not found", 404, "DeletePost", "Post does not exist");
+    if (!deletedPost)
+      throw new AppError(
+        "Post not found",
+        404,
+        "DeletePost",
+        "Post does not exist"
+      );
 
     emitPostDeleted(postId);
-    res.status(200).json({ success: true, message: "Post deleted successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Post deleted successfully" });
   } catch (error) {
-    console.error("[AdminController:deletePost] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:deletePost] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with context for post deletion
-    next(new AppError(error.message, 500, "DeletePost", "Failed to delete post"));
+    next(
+      new AppError(error.message, 500, "DeletePost", "Failed to delete post")
+    );
   }
 };
 
@@ -215,16 +346,31 @@ export const recordReadingTime = async (req, res, next) => {
   try {
     const { postId, timeSpent } = req.body;
     const userId = req.user?._id || null;
-    console.log("[TrackController:recordReadingTime] 🔍 Input:", { postId, timeSpent, userId });
+    console.log("[TrackController:recordReadingTime] 🔍 Input:", {
+      postId,
+      timeSpent,
+      userId,
+    });
 
     if (!postId || typeof timeSpent !== "number" || isNaN(timeSpent)) {
-      throw new AppError("postId and valid timeSpent are required", 400, "RecordReadingTime", "Invalid input for reading time");
+      throw new AppError(
+        "postId and valid timeSpent are required",
+        400,
+        "RecordReadingTime",
+        "Invalid input for reading time"
+      );
     }
 
     const post = await PostModel.findById(postId);
     console.log("[TrackController:recordReadingTime] 📝 Post found:", !!post);
 
-    if (!post) throw new AppError("Post not found", 404, "RecordReadingTime", "Post does not exist");
+    if (!post)
+      throw new AppError(
+        "Post not found",
+        404,
+        "RecordReadingTime",
+        "Post does not exist"
+      );
 
     await TrafficModel.create({
       postId,
@@ -242,9 +388,20 @@ export const recordReadingTime = async (req, res, next) => {
 
     res.status(200).json({ success: true, message: "Reading time recorded" });
   } catch (error) {
-    console.error("[TrackController:recordReadingTime] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[TrackController:recordReadingTime] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with fallback user message
-    next(new AppError(error.message || "Unknown error", 500, "RecordReadingTime", "Failed to record reading time"));
+    next(
+      new AppError(
+        error.message || "Unknown error",
+        500,
+        "RecordReadingTime",
+        "Failed to record reading time"
+      )
+    );
   }
 };
 
@@ -252,13 +409,28 @@ export const recordReadingTime = async (req, res, next) => {
 export const getReadingDetailsByPost = async (req, res, next) => {
   try {
     const { postId } = req.params;
-    console.log("[TrackController:getReadingDetailsByPost] 🔍 Post ID:", postId);
+    console.log(
+      "[TrackController:getReadingDetailsByPost] 🔍 Post ID:",
+      postId
+    );
 
-    const trafficLogs = await TrafficModel.find({ postId }).populate("userId", "name email");
-    console.log("[TrackController:getReadingDetailsByPost] 📊 Traffic logs:", trafficLogs.length);
+    const trafficLogs = await TrafficModel.find({ postId }).populate(
+      "userId",
+      "name email"
+    );
+    console.log(
+      "[TrackController:getReadingDetailsByPost] 📊 Traffic logs:",
+      trafficLogs.length
+    );
 
-    const totalTime = trafficLogs.reduce((sum, log) => sum + (log.timeSpent || 0), 0);
-    console.log("[TrackController:getReadingDetailsByPost] ⏱️ Total time:", totalTime);
+    const totalTime = trafficLogs.reduce(
+      (sum, log) => sum + (log.timeSpent || 0),
+      0
+    );
+    console.log(
+      "[TrackController:getReadingDetailsByPost] ⏱️ Total time:",
+      totalTime
+    );
 
     res.status(200).json({
       success: true,
@@ -270,9 +442,20 @@ export const getReadingDetailsByPost = async (req, res, next) => {
       })),
     });
   } catch (error) {
-    console.error("[TrackController:getReadingDetailsByPost] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[TrackController:getReadingDetailsByPost] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with default user message for reading details
-    next(new AppError(error.message || "Failed to get reading details", 500, "GetReadingDetailsByPost", "Failed to fetch reading details"));
+    next(
+      new AppError(
+        error.message || "Failed to get reading details",
+        500,
+        "GetReadingDetailsByPost",
+        "Failed to fetch reading details"
+      )
+    );
   }
 };
 
@@ -282,9 +465,18 @@ export const getSiteAnalytics = async (req, res, next) => {
     const { startDate, endDate } = req.query;
     const start = startDate ? new Date(startDate) : new Date(0);
     const end = endDate ? new Date(endDate) : new Date();
-    console.log("[AnalyticsController:getSiteAnalytics] 📅 Date range:", { start, end });
+    console.log("[AnalyticsController:getSiteAnalytics] 📅 Date range:", {
+      start,
+      end,
+    });
 
-    if (start > end) throw new AppError("Invalid date range", 400, "GetSiteAnalytics", "Start date cannot be after end date");
+    if (start > end)
+      throw new AppError(
+        "Invalid date range",
+        400,
+        "GetSiteAnalytics",
+        "Start date cannot be after end date"
+      );
 
     const trafficStats = await TrafficModel.aggregate([
       { $match: { timestamp: { $gte: start, $lte: end } } },
@@ -307,7 +499,10 @@ export const getSiteAnalytics = async (req, res, next) => {
         },
       },
     ]);
-    console.log("[AnalyticsController:getSiteAnalytics] 📊 Traffic stats:", trafficStats[0] || {});
+    console.log(
+      "[AnalyticsController:getSiteAnalytics] 📊 Traffic stats:",
+      trafficStats[0] || {}
+    );
 
     const topPosts = await TrafficModel.aggregate([
       { $match: { timestamp: { $gte: start, $lte: end } } },
@@ -339,7 +534,10 @@ export const getSiteAnalytics = async (req, res, next) => {
       { $sort: { totalTimeSpent: -1 } },
       { $limit: 5 },
     ]);
-    console.log("[AnalyticsController:getSiteAnalytics] 📈 Top posts:", topPosts.length);
+    console.log(
+      "[AnalyticsController:getSiteAnalytics] 📈 Top posts:",
+      topPosts.length
+    );
 
     const userStats = await UserModel.aggregate([
       {
@@ -361,7 +559,10 @@ export const getSiteAnalytics = async (req, res, next) => {
       { $sort: { totalTimeSpent: -1 } },
       { $limit: 5 },
     ]);
-    console.log("[AnalyticsController:getSiteAnalytics] 👥 Top users:", userStats.length);
+    console.log(
+      "[AnalyticsController:getSiteAnalytics] 👥 Top users:",
+      userStats.length
+    );
 
     res.status(200).json({
       success: true,
@@ -377,9 +578,20 @@ export const getSiteAnalytics = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error("[AnalyticsController:getSiteAnalytics] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AnalyticsController:getSiteAnalytics] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with context for analytics fetching
-    next(new AppError(error.message || "Failed to fetch site analytics", 500, "GetSiteAnalytics", "Failed to fetch site analytics"));
+    next(
+      new AppError(
+        error.message || "Failed to fetch site analytics",
+        500,
+        "GetSiteAnalytics",
+        "Failed to fetch site analytics"
+      )
+    );
   }
 };
 
@@ -390,15 +602,28 @@ export const downloadAllDataCsv = async (req, res, next) => {
 
     // Check admin access
     if (!req.user?.isAdmin) {
-      throw new AppError("Admin access required", 403, "DownloadAllDataCsv", "Admin privileges required");
+      throw new AppError(
+        "Admin access required",
+        403,
+        "DownloadAllDataCsv",
+        "Admin privileges required"
+      );
     }
 
     // Fetch data
     const users = await UserModel.find({}).lean();
-    console.log("[AdminController:downloadAllDataCsv] 👤 Users fetched:", users.length);
+    console.log(
+      "[AdminController:downloadAllDataCsv] 👤 Users fetched:",
+      users.length
+    );
 
-    const posts = await PostModel.find({}).populate("author", "name email").lean();
-    console.log("[AdminController:downloadAllDataCsv] 📝 Posts fetched:", posts.length);
+    const posts = await PostModel.find({})
+      .populate("author", "name email")
+      .lean();
+    console.log(
+      "[AdminController:downloadAllDataCsv] 📝 Posts fetched:",
+      posts.length
+    );
 
     const traffic = await TrafficModel.find({})
       .populate({
@@ -407,7 +632,10 @@ export const downloadAllDataCsv = async (req, res, next) => {
         options: { strictPopulate: false },
       })
       .lean();
-    console.log("[AdminController:downloadAllDataCsv] 📈 Traffic fetched:", traffic.length);
+    console.log(
+      "[AdminController:downloadAllDataCsv] 📈 Traffic fetched:",
+      traffic.length
+    );
 
     // Fetch plans from UserSubscriptionPlan
     const plansRaw = await UserSubscriptionPlan.find({
@@ -415,7 +643,10 @@ export const downloadAllDataCsv = async (req, res, next) => {
     })
       .populate("author", "name email")
       .lean();
-    console.log("[AdminController:downloadAllDataCsv] 📋 Plans fetched:", plansRaw.length);
+    console.log(
+      "[AdminController:downloadAllDataCsv] 📋 Plans fetched:",
+      plansRaw.length
+    );
 
     // Fetch subscriptions from UserSubscription
     const subscriptions = await UserSubscription.find({})
@@ -430,10 +661,16 @@ export const downloadAllDataCsv = async (req, res, next) => {
         options: { strictPopulate: false },
       })
       .lean();
-    console.log("[AdminController:downloadAllDataCsv] 💳 Subscriptions fetched:", subscriptions.length);
+    console.log(
+      "[AdminController:downloadAllDataCsv] 💳 Subscriptions fetched:",
+      subscriptions.length
+    );
 
     const payments = await PaymentModel.find().lean();
-    console.log("[AdminController:downloadAllDataCsv] 💸 Payments fetched:", payments.length);
+    console.log(
+      "[AdminController:downloadAllDataCsv] 💸 Payments fetched:",
+      payments.length
+    );
 
     const wb = XLSX.utils.book_new();
 
@@ -450,8 +687,15 @@ export const downloadAllDataCsv = async (req, res, next) => {
       Location: user.location || "",
       IsEligibleForSubscription: user.isEligibleForSubscription ? "Yes" : "No",
     }));
-    console.log("[AdminController:downloadAllDataCsv] 📊 Users sheet created:", userData.length);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(userData), "Users");
+    console.log(
+      "[AdminController:downloadAllDataCsv] 📊 Users sheet created:",
+      userData.length
+    );
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(userData),
+      "Users"
+    );
 
     // Posts Sheet
     const postData = posts.map((post) => ({
@@ -461,11 +705,25 @@ export const downloadAllDataCsv = async (req, res, next) => {
       Blocked: post.blocked ? "Yes" : "No",
       CreatedAt: post.createdAt ? new Date(post.createdAt).toISOString() : "",
       ContentSizeKB: Array.isArray(post.blocks)
-        ? (Buffer.byteLength(post.blocks.map((b) => b.text || b.value || b.code || b.caption || "").join(" "), "utf-8") / 1024).toFixed(2)
+        ? (
+            Buffer.byteLength(
+              post.blocks
+                .map((b) => b.text || b.value || b.code || b.caption || "")
+                .join(" "),
+              "utf-8"
+            ) / 1024
+          ).toFixed(2)
         : "0.00",
     }));
-    console.log("[AdminController:downloadAllDataCsv] 📝 Posts sheet created:", postData.length);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(postData), "Posts");
+    console.log(
+      "[AdminController:downloadAllDataCsv] 📝 Posts sheet created:",
+      postData.length
+    );
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(postData),
+      "Posts"
+    );
 
     // Traffic Sheet
     const trafficData = traffic.map((record) => ({
@@ -473,13 +731,22 @@ export const downloadAllDataCsv = async (req, res, next) => {
       UserName: record.userId?.name || "Unknown",
       UserEmail: record.userId?.email || "N/A",
       TimeSpentMs: record.timeSpent || 0,
-      Timestamp: record.timestamp ? new Date(record.timestamp).toISOString() : "",
+      Timestamp: record.timestamp
+        ? new Date(record.timestamp).toISOString()
+        : "",
       Route: record.route || "",
       IP: record.ip || "",
       UserAgent: record.userAgent || "",
     }));
-    console.log("[AdminController:downloadAllDataCsv] 📈 Traffic sheet created:", trafficData.length);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(trafficData), "Traffic");
+    console.log(
+      "[AdminController:downloadAllDataCsv] 📈 Traffic sheet created:",
+      trafficData.length
+    );
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(trafficData),
+      "Traffic"
+    );
 
     // Plans Sheet with subscriber count & total revenue
     const planStats = await Promise.all(
@@ -492,8 +759,15 @@ export const downloadAllDataCsv = async (req, res, next) => {
           planId: plan._id,
           status: "active",
         }).lean();
-        const totalRevenue = activeSubs.reduce((sum, sub) => sum + (sub.amountPaid || plan.price || 0), 0);
-        console.log("[AdminController:downloadAllDataCsv] 📋 Plan stats:", plan._id, { subscriberCount, totalRevenue });
+        const totalRevenue = activeSubs.reduce(
+          (sum, sub) => sum + (sub.amountPaid || plan.price || 0),
+          0
+        );
+        console.log(
+          "[AdminController:downloadAllDataCsv] 📋 Plan stats:",
+          plan._id,
+          { subscriberCount, totalRevenue }
+        );
 
         return {
           PlanID: plan._id.toString(),
@@ -505,14 +779,23 @@ export const downloadAllDataCsv = async (req, res, next) => {
           Type: plan.type || "",
           Tier: plan.tier || "",
           Status: plan.status || "",
-          CreatedAt: plan.createdAt ? new Date(plan.createdAt).toISOString() : "",
+          CreatedAt: plan.createdAt
+            ? new Date(plan.createdAt).toISOString()
+            : "",
           Subscribers: subscriberCount,
           TotalRevenue: (totalRevenue / 100).toFixed(2),
         };
       })
     );
-    console.log("[AdminController:downloadAllDataCsv] 📋 Plans sheet created:", planStats.length);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(planStats), "Plans");
+    console.log(
+      "[AdminController:downloadAllDataCsv] 📋 Plans sheet created:",
+      planStats.length
+    );
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(planStats),
+      "Plans"
+    );
 
     // Subscriptions Sheet
     const subscriptionData = subscriptions.map((sub) => ({
@@ -528,8 +811,15 @@ export const downloadAllDataCsv = async (req, res, next) => {
       CreatedAt: sub.createdAt ? new Date(sub.createdAt).toISOString() : "",
       AmountPaid: sub.amountPaid ? (sub.amountPaid / 100).toFixed(2) : "0.00",
     }));
-    console.log("[AdminController:downloadAllDataCsv] 💳 Subscriptions sheet created:", subscriptionData.length);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(subscriptionData), "Subscriptions");
+    console.log(
+      "[AdminController:downloadAllDataCsv] 💳 Subscriptions sheet created:",
+      subscriptionData.length
+    );
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(subscriptionData),
+      "Subscriptions"
+    );
 
     // Payments Sheet
     const paymentData = payments.map((payment) => ({
@@ -539,24 +829,48 @@ export const downloadAllDataCsv = async (req, res, next) => {
       Amount: payment.amount ? (payment.amount / 100).toFixed(2) : "0.00",
       Currency: payment.currency || "",
       Status: payment.status || "",
-      CreatedAt: payment.createdAt ? new Date(payment.createdAt).toISOString() : "",
+      CreatedAt: payment.createdAt
+        ? new Date(payment.createdAt).toISOString()
+        : "",
     }));
-    console.log("[AdminController:downloadAllDataCsv] 💸 Payments sheet created:", paymentData.length);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(paymentData), "Payments");
+    console.log(
+      "[AdminController:downloadAllDataCsv] 💸 Payments sheet created:",
+      paymentData.length
+    );
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(paymentData),
+      "Payments"
+    );
 
     // Send as Excel buffer
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
     console.log("[AdminController:downloadAllDataCsv] 📤 Excel buffer created");
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", 'attachment; filename="all_data_export.xlsx"');
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="all_data_export.xlsx"'
+    );
     res.status(200).send(excelBuffer);
   } catch (error) {
-    console.error("[AdminController:downloadAllDataCsv] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:downloadAllDataCsv] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with context for Excel export issues
     next(
       error instanceof AppError
         ? error
-        : new AppError("Failed to generate Excel file", 500, "DownloadAllDataCsv", "Failed to export data to Excel")
+        : new AppError(
+            "Failed to generate Excel file",
+            500,
+            "DownloadAllDataCsv",
+            "Failed to export data to Excel"
+          )
     );
   }
 };
@@ -567,10 +881,18 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    console.log("[AdminController:getAllSubscriptionPlans] 📦 Pagination params:", { page, limit, skip });
+    console.log(
+      "[AdminController:getAllSubscriptionPlans] 📦 Pagination params:",
+      { page, limit, skip }
+    );
 
     if (!req.user?.isAdmin) {
-      throw new AppError("Admin access required", 403, "GetAllSubscriptionPlans", "Admin privileges required");
+      throw new AppError(
+        "Admin access required",
+        403,
+        "GetAllSubscriptionPlans",
+        "Admin privileges required"
+      );
     }
 
     // Fetch total count for pagination
@@ -587,18 +909,32 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
       .populate("author", "name")
       .lean();
 
-    console.log("[AdminController:getAllSubscriptionPlans] 📋 Plans fetched:", plans.length);
+    console.log(
+      "[AdminController:getAllSubscriptionPlans] 📋 Plans fetched:",
+      plans.length
+    );
 
     const enrichedPlans = await Promise.all(
       plans.map(async (plan) => {
         // Fetch subscriptions from UserSubscription
-        const subscriptions = await UserSubscription.find({ planId: plan._id }).lean();
-        const activeSubscribers = subscriptions.filter((sub) => sub.status === "active").length;
+        const subscriptions = await UserSubscription.find({
+          planId: plan._id,
+        }).lean();
+        const activeSubscribers = subscriptions.filter(
+          (sub) => sub.status === "active"
+        ).length;
         const totalRevenue = subscriptions.reduce(
-          (sum, sub) => (sub.status === "active" ? sum + (sub.amountPaid || plan.price || 0) : sum),
+          (sum, sub) =>
+            sub.status === "active"
+              ? sum + (sub.amountPaid || plan.price || 0)
+              : sum,
           0
         );
-        console.log("[AdminController:getAllSubscriptionPlans] 📊 Plan stats:", plan._id, { activeSubscribers, totalRevenue });
+        console.log(
+          "[AdminController:getAllSubscriptionPlans] 📊 Plan stats:",
+          plan._id,
+          { activeSubscribers, totalRevenue }
+        );
 
         return {
           ...plan,
@@ -618,12 +954,21 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
       totalPlans,
     });
   } catch (error) {
-    console.error("[AdminController:getAllSubscriptionPlans] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:getAllSubscriptionPlans] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with context for subscription plan fetching
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message || "Internal Server Error", 500, "GetAllSubscriptionPlans", "Failed to fetch subscription plans")
+        : new AppError(
+            error.message || "Internal Server Error",
+            500,
+            "GetAllSubscriptionPlans",
+            "Failed to fetch subscription plans"
+          )
     );
   }
 };
@@ -631,40 +976,76 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
 // Toggles user eligibility for subscription creation
 export const toggleUserEligibility = async (req, res, next) => {
   try {
-    if (!req.user?.isAdmin) throw new AppError("Admin access required", 403, "ToggleUserEligibility", "Admin privileges required");
+    if (!req.user?.isAdmin)
+      throw new AppError(
+        "Admin access required",
+        403,
+        "ToggleUserEligibility",
+        "Admin privileges required"
+      );
 
     const { userId, enable } = req.body;
-    console.log("[AdminController:toggleUserEligibility] 🔍 Input:", { userId, enable });
+    console.log("[AdminController:toggleUserEligibility] 🔍 Input:", {
+      userId,
+      enable,
+    });
 
     validateObjectId(userId, "User ID");
     const user = await UserModel.findById(userId);
-    console.log("[AdminController:toggleUserEligibility] 👤 User found:", !!user);
+    console.log(
+      "[AdminController:toggleUserEligibility] 👤 User found:",
+      !!user
+    );
 
-    if (!user) throw new AppError("User not found", 404, "ToggleUserEligibility", "User does not exist");
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "ToggleUserEligibility",
+        "User does not exist"
+      );
 
     user.isEligibleForSubscription = enable;
     await user.save();
-    console.log("[AdminController:toggleUserEligibility] 🔄 Eligibility updated:", user.isEligibleForSubscription);
+    console.log(
+      "[AdminController:toggleUserEligibility] 🔄 Eligibility updated:",
+      user.isEligibleForSubscription
+    );
 
     await recordActivity({
       userId: req.user._id.toString(),
       action: "TOGGLED_SUBSCRIPTION_ELIGIBILITY",
-      message: `Admin ${enable ? "enabled" : "disabled"} subscription eligibility for user ${userId}`,
+      message: `Admin ${
+        enable ? "enabled" : "disabled"
+      } subscription eligibility for user ${userId}`,
       targetUserId: userId,
     });
 
     res.status(200).json({
       success: true,
-      message: `Subscription eligibility ${enable ? "enabled" : "disabled"} for user ${userId}`,
+      message: `Subscription eligibility ${
+        enable ? "enabled" : "disabled"
+      } for user ${userId}`,
       user: {
         id: user._id,
         isEligibleForSubscription: user.isEligibleForSubscription,
       },
     });
   } catch (error) {
-    console.error("[AdminController:toggleUserEligibility] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:toggleUserEligibility] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with context for eligibility toggle
-    next(new AppError(error.message, 500, "ToggleUserEligibility", "Failed to toggle user eligibility"));
+    next(
+      new AppError(
+        error.message,
+        500,
+        "ToggleUserEligibility",
+        "Failed to toggle user eligibility"
+      )
+    );
   }
 };
 
@@ -672,23 +1053,46 @@ export const toggleUserEligibility = async (req, res, next) => {
 export const updateGlobalEligibilityCriteria = async (req, res, next) => {
   try {
     if (!req.user?.isAdmin) {
-      throw new AppError("Admin access required", 403, "UpdateGlobalEligibilityCriteria", "Admin privileges required");
+      throw new AppError(
+        "Admin access required",
+        403,
+        "UpdateGlobalEligibilityCriteria",
+        "Admin privileges required"
+      );
     }
 
-    const { minFollowers = 10000, minPosts = 30, minEngagementRate = 0.05, minAccountAgeDays = 30 } = req.body;
-    console.log("[AdminController:updateGlobalEligibilityCriteria] 🔍 Criteria:", {
-      minFollowers,
-      minPosts,
-      minEngagementRate,
-      minAccountAgeDays,
-    });
+    const {
+      minFollowers = 10000,
+      minPosts = 30,
+      minEngagementRate = 0.05,
+      minAccountAgeDays = 30,
+    } = req.body;
+    console.log(
+      "[AdminController:updateGlobalEligibilityCriteria] 🔍 Criteria:",
+      {
+        minFollowers,
+        minPosts,
+        minEngagementRate,
+        minAccountAgeDays,
+      }
+    );
 
     // Validate all fields
     if (minFollowers < 0 || minPosts < 0 || minAccountAgeDays < 0) {
-      throw new AppError("Criteria values must be non-negative", 400, "UpdateGlobalEligibilityCriteria", "Invalid criteria values");
+      throw new AppError(
+        "Criteria values must be non-negative",
+        400,
+        "UpdateGlobalEligibilityCriteria",
+        "Invalid criteria values"
+      );
     }
     if (minEngagementRate < 0 || minEngagementRate > 1) {
-      throw new AppError("Engagement rate must be between 0 and 100%", 400, "UpdateGlobalEligibilityCriteria", "Invalid engagement rate");
+      throw new AppError(
+        "Engagement rate must be between 0 and 100%",
+        400,
+        "UpdateGlobalEligibilityCriteria",
+        "Invalid engagement rate"
+      );
     }
 
     const config = await SubscriptionConfig.findOneAndUpdate(
@@ -696,12 +1100,17 @@ export const updateGlobalEligibilityCriteria = async (req, res, next) => {
       { minFollowers, minPosts, minEngagementRate, minAccountAgeDays },
       { upsert: true, new: true }
     );
-    console.log("[AdminController:updateGlobalEligibilityCriteria] 📋 Config updated:", config);
+    console.log(
+      "[AdminController:updateGlobalEligibilityCriteria] 📋 Config updated:",
+      config
+    );
 
     await recordActivity({
       userId: req.user._id.toString(),
       action: "UPDATED_SUBSCRIPTION_CRITERIA",
-      message: `Updated global subscription criteria: ${minFollowers} followers, ${minPosts} posts, ${(minEngagementRate * 100).toFixed(2)}% engagement rate, ${minAccountAgeDays} days account age`,
+      message: `Updated global subscription criteria: ${minFollowers} followers, ${minPosts} posts, ${(
+        minEngagementRate * 100
+      ).toFixed(2)}% engagement rate, ${minAccountAgeDays} days account age`,
     });
 
     res.status(200).json({
@@ -709,16 +1118,33 @@ export const updateGlobalEligibilityCriteria = async (req, res, next) => {
       criteria: config,
     });
   } catch (error) {
-    console.error("[AdminController:updateGlobalEligibilityCriteria] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:updateGlobalEligibilityCriteria] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with context for criteria update
-    next(new AppError(error.message, 500, "UpdateGlobalEligibilityCriteria", "Failed to update global eligibility criteria"));
+    next(
+      new AppError(
+        error.message,
+        500,
+        "UpdateGlobalEligibilityCriteria",
+        "Failed to update global eligibility criteria"
+      )
+    );
   }
 };
 
 // Sets user-specific eligibility overrides
 export const setUserEligibilityOverride = async (req, res, next) => {
   try {
-    if (!req.user?.isAdmin) throw new AppError("Admin access required", 403, "SetUserEligibilityOverride", "Admin privileges required");
+    if (!req.user?.isAdmin)
+      throw new AppError(
+        "Admin access required",
+        403,
+        "SetUserEligibilityOverride",
+        "Admin privileges required"
+      );
 
     const { userId } = req.params;
     const { isEligibleForSubscription, bypassSubscriptionCriteria } = req.body;
@@ -733,17 +1159,30 @@ export const setUserEligibilityOverride = async (req, res, next) => {
     const user = await UserModel.findByIdAndUpdate(
       userId,
       {
-        ...(isEligibleForSubscription !== undefined && { isEligibleForSubscription }),
-        ...(bypassSubscriptionCriteria !== undefined && { bypassSubscriptionCriteria }),
+        ...(isEligibleForSubscription !== undefined && {
+          isEligibleForSubscription,
+        }),
+        ...(bypassSubscriptionCriteria !== undefined && {
+          bypassSubscriptionCriteria,
+        }),
       },
       { new: true }
     );
-    console.log("[AdminController:setUserEligibilityOverride] 👤 User updated:", {
-      isEligibleForSubscription: user.isEligibleForSubscription,
-      bypassSubscriptionCriteria: user.bypassSubscriptionCriteria,
-    });
+    console.log(
+      "[AdminController:setUserEligibilityOverride] 👤 User updated:",
+      {
+        isEligibleForSubscription: user.isEligibleForSubscription,
+        bypassSubscriptionCriteria: user.bypassSubscriptionCriteria,
+      }
+    );
 
-    if (!user) throw new AppError("User not found", 404, "SetUserEligibilityOverride", "User does not exist");
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "SetUserEligibilityOverride",
+        "User does not exist"
+      );
 
     await recordActivity({
       userId: req.user._id.toString(),
@@ -759,9 +1198,20 @@ export const setUserEligibilityOverride = async (req, res, next) => {
       bypassSubscriptionCriteria: user.bypassSubscriptionCriteria,
     });
   } catch (error) {
-    console.error("[AdminController:setUserEligibilityOverride] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:setUserEligibilityOverride] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with context for eligibility override
-    next(new AppError(error.message, 500, "SetUserEligibilityOverride", "Failed to set user eligibility override"));
+    next(
+      new AppError(
+        error.message,
+        500,
+        "SetUserEligibilityOverride",
+        "Failed to set user eligibility override"
+      )
+    );
   }
 };
 
@@ -773,21 +1223,49 @@ export const checkUserEligibility = async (req, res, next) => {
 
     validateObjectId(userId, "User ID");
     const user = await UserModel.findById(userId).lean();
-    console.log("[AdminController:checkUserEligibility] 👤 User found:", !!user);
+    console.log(
+      "[AdminController:checkUserEligibility] 👤 User found:",
+      !!user
+    );
 
-    if (!user) throw new AppError("User not found", 404, "CheckUserEligibility", "User does not exist");
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "CheckUserEligibility",
+        "User does not exist"
+      );
 
     const followerCount = user.followers?.length || 0;
-    const postCount = await PostModel.countDocuments({ author: userId, isPublished: true });
-    console.log("[AdminController:checkUserEligibility] 📊 Stats:", { followerCount, postCount });
+    const postCount = await PostModel.countDocuments({
+      author: userId,
+      isPublished: true,
+    });
+    console.log("[AdminController:checkUserEligibility] 📊 Stats:", {
+      followerCount,
+      postCount,
+    });
 
-    const posts = await PostModel.find({ author: userId, isPublished: true }).lean();
-    const totalEngagement = posts.reduce((sum, post) => sum + (post.likes?.length || 0) + (post.comments?.length || 0), 0);
+    const posts = await PostModel.find({
+      author: userId,
+      isPublished: true,
+    }).lean();
+    const totalEngagement = posts.reduce(
+      (sum, post) =>
+        sum + (post.likes?.length || 0) + (post.comments?.length || 0),
+      0
+    );
 
-    const accountAgeDays = (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-    console.log("[AdminController:checkUserEligibility] ⏳ Account age (days):", accountAgeDays);
+    const accountAgeDays =
+      (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    console.log(
+      "[AdminController:checkUserEligibility] ⏳ Account age (days):",
+      accountAgeDays
+    );
 
-    let config = await SubscriptionConfig.findOne({ key: "subscriptionEligibility" });
+    let config = await SubscriptionConfig.findOne({
+      key: "subscriptionEligibility",
+    });
     if (!config) {
       config = await SubscriptionConfig.create({
         key: "subscriptionEligibility",
@@ -798,8 +1276,13 @@ export const checkUserEligibility = async (req, res, next) => {
       });
     }
 
-    const isEligible = user.isEligibleForSubscription || (followerCount >= config.minFollowers && postCount >= config.minPosts);
-    console.log("[AdminController:checkUserEligibility] ✅ Eligibility:", isEligible);
+    const isEligible =
+      user.isEligibleForSubscription ||
+      (followerCount >= config.minFollowers && postCount >= config.minPosts);
+    console.log(
+      "[AdminController:checkUserEligibility] ✅ Eligibility:",
+      isEligible
+    );
 
     const response = {
       success: true,
@@ -815,36 +1298,76 @@ export const checkUserEligibility = async (req, res, next) => {
       },
       manuallySet: !!user.isEligibleForSubscription,
     };
-    console.log("[AdminController:checkUserEligibility] 📤 Response:", response);
+    console.log(
+      "[AdminController:checkUserEligibility] 📤 Response:",
+      response
+    );
     res.status(200).json(response);
   } catch (error) {
-    console.error("[AdminController:checkUserEligibility] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:checkUserEligibility] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with context for eligibility check
-    next(new AppError(error.message, 500, "CheckUserEligibility", "Failed to check user eligibility"));
+    next(
+      new AppError(
+        error.message,
+        500,
+        "CheckUserEligibility",
+        "Failed to check user eligibility"
+      )
+    );
   }
 };
 
 // Toggles subscription plan status
 export const toggleSubscriptionPlanStatus = async (req, res, next) => {
   try {
-    if (!req.user?.isAdmin) throw new AppError("Admin access required", 403, "ToggleSubscriptionPlanStatus", "Admin privileges required");
+    if (!req.user?.isAdmin)
+      throw new AppError(
+        "Admin access required",
+        403,
+        "ToggleSubscriptionPlanStatus",
+        "Admin privileges required"
+      );
 
     const { planId, status } = req.body;
-    console.log("[AdminController:toggleSubscriptionPlanStatus] 🔍 Input:", { planId, status });
+    console.log("[AdminController:toggleSubscriptionPlanStatus] 🔍 Input:", {
+      planId,
+      status,
+    });
 
     validateObjectId(planId, "Plan ID");
     if (!["active", "suspended"].includes(status)) {
-      throw new AppError("Invalid status. Must be 'active' or 'suspended'", 400, "ToggleSubscriptionPlanStatus", "Invalid plan status");
+      throw new AppError(
+        "Invalid status. Must be 'active' or 'suspended'",
+        400,
+        "ToggleSubscriptionPlanStatus",
+        "Invalid plan status"
+      );
     }
 
     const plan = await SubscriptionPlan.findById(planId);
-    console.log("[AdminController:toggleSubscriptionPlanStatus] 📋 Plan found:", !!plan);
+    console.log(
+      "[AdminController:toggleSubscriptionPlanStatus] 📋 Plan found:",
+      !!plan
+    );
 
-    if (!plan) throw new AppError("Plan not found", 404, "ToggleSubscriptionPlanStatus", "Plan does not exist");
+    if (!plan)
+      throw new AppError(
+        "Plan not found",
+        404,
+        "ToggleSubscriptionPlanStatus",
+        "Plan does not exist"
+      );
 
     plan.status = status;
     await plan.save();
-    console.log("[AdminController:toggleSubscriptionPlanStatus] 🔄 Plan status:", plan.status);
+    console.log(
+      "[AdminController:toggleSubscriptionPlanStatus] 🔄 Plan status:",
+      plan.status
+    );
 
     await recordActivity({
       userId: req.user._id.toString(),
@@ -858,135 +1381,214 @@ export const toggleSubscriptionPlanStatus = async (req, res, next) => {
       plan: { id: plan._id, name: plan.name, status },
     });
   } catch (error) {
-    console.error("[AdminController:toggleSubscriptionPlanStatus] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:toggleSubscriptionPlanStatus] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with context for plan status toggle
-    next(new AppError(error.message, 500, "ToggleSubscriptionPlanStatus", "Failed to toggle subscription plan status"));
+    next(
+      new AppError(
+        error.message,
+        500,
+        "ToggleSubscriptionPlanStatus",
+        "Failed to toggle subscription plan status"
+      )
+    );
   }
 };
 
 // Grants or revokes subscription creation access
 export const grantSubscriptionAccess = async (req, res, next) => {
   try {
-    if (!req.user?.isAdmin) throw new AppError("Admin access required", 403, "GrantSubscriptionAccess", "Admin privileges required");
+    if (!req.user?.isAdmin)
+      throw new AppError(
+        "Admin access required",
+        403,
+        "GrantSubscriptionAccess",
+        "Admin privileges required"
+      );
 
     const { userId, grant } = req.body;
-    console.log("[AdminController:grantSubscriptionAccess] 🔍 Input:", { userId, grant });
+    console.log("[AdminController:grantSubscriptionAccess] 🔍 Input:", {
+      userId,
+      grant,
+    });
 
     validateObjectId(userId, "User ID");
     const user = await UserModel.findById(userId);
-    console.log("[AdminController:grantSubscriptionAccess] 👤 User found:", !!user);
+    console.log(
+      "[AdminController:grantSubscriptionAccess] 👤 User found:",
+      !!user
+    );
 
-    if (!user) throw new AppError("User not found", 404, "GrantSubscriptionAccess", "User does not exist");
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "GrantSubscriptionAccess",
+        "User does not exist"
+      );
 
     user.isEligibleForSubscription = grant;
     await user.save();
-    console.log("[AdminController:grantSubscriptionAccess] 🔄 Eligibility updated:", user.isEligibleForSubscription);
+    console.log(
+      "[AdminController:grantSubscriptionAccess] 🔄 Eligibility updated:",
+      user.isEligibleForSubscription
+    );
 
     await recordActivity({
       userId: req.user._id.toString(),
       action: "GRANTED_SUBSCRIPTION_ACCESS",
-      message: `Admin ${grant ? "granted" : "revoked"} subscription creation access for user ${userId}`,
+      message: `Admin ${
+        grant ? "granted" : "revoked"
+      } subscription creation access for user ${userId}`,
       targetUserId: userId,
     });
 
     res.status(200).json({
       success: true,
-      message: `Subscription creation access ${grant ? "granted" : "revoked"} for user ${userId}`,
+      message: `Subscription creation access ${
+        grant ? "granted" : "revoked"
+      } for user ${userId}`,
       user: {
         id: user._id,
         isEligibleForSubscription: user.isEligibleForSubscription,
       },
     });
   } catch (error) {
-    console.error("[AdminController:grantSubscriptionAccess] ❌ Error:", error.message, error.stack);
+    console.error(
+      "[AdminController:grantSubscriptionAccess] ❌ Error:",
+      error.message,
+      error.stack
+    );
     // AppError with context for subscription access grant
-    next(new AppError(error.message, 500, "GrantSubscriptionAccess", "Failed to grant/revoke subscription access"));
+    next(
+      new AppError(
+        error.message,
+        500,
+        "GrantSubscriptionAccess",
+        "Failed to grant/revoke subscription access"
+      )
+    );
   }
 };
 
-// PATCH /admin/user-milestone/:userId
-export const overrideUserMilestones = asyncHandler(async (req, res, next) => {
-  const { userId } = req.params;
-  const {
-    followerCount,
-    postCount,
-    engagementRate,
-    accountAgeDays,
-    isEligibleForSubscription
-  } = req.body;
+export const overrideUserMilestones = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const {
+      followerCount,
+      postCount,
+      engagementRate,
+      accountAgeDays,
+      isEligibleForSubscription,
+    } = req.body;
 
-  // Admin check
-  if (!req.user?.isAdmin) {
-    throw new AppError("Admin access required", 403, "OverrideUserMilestones");
+    if (!req.user?.isAdmin)
+      throw new AppError(
+        "Admin access required",
+        403,
+        "OverrideUserMilestones"
+      );
+
+    validateObjectId(userId, "User ID");
+
+    const user = await UserModel.findById(userId);
+    if (!user)
+      throw new AppError("User not found", 404, "OverrideUserMilestones");
+
+    user.milestoneOverride = {
+      followerCount:
+        followerCount ?? user.milestoneOverride?.followerCount ?? null,
+      postCount: postCount ?? user.milestoneOverride?.postCount ?? null,
+      engagementRate:
+        engagementRate ?? user.milestoneOverride?.engagementRate ?? null,
+      accountAgeDays:
+        accountAgeDays ?? user.milestoneOverride?.accountAgeDays ?? null,
+    };
+
+    if (isEligibleForSubscription !== undefined)
+      user.isEligibleForSubscription = isEligibleForSubscription;
+
+    await user.save();
+
+    await recordActivity({
+      userId: req.user._id.toString(),
+      action: "OVERRIDDEN_USER_MILESTONES",
+      message: `Admin overrode milestone for user ${userId}`,
+      targetUserId: userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "User milestone overridden successfully",
+      userId,
+      milestoneOverride: user.milestoneOverride,
+      isEligibleForSubscription: user.isEligibleForSubscription,
+    });
+  } catch (error) {
+    console.error(
+      "[AdminController:overrideUserMilestones] ❌ Error:",
+      error.message,
+      error.stack
+    );
+    next(
+      new AppError(
+        error.message,
+        500,
+        "OverrideUserMilestones",
+        "Failed to override user milestones"
+      )
+    );
   }
+};
 
-  // Validate userId
-  validateObjectId(userId, "User ID");
+export const resetUserMilestones = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
 
-  const user = await UserModel.findById(userId);
-  if (!user) throw new AppError("User not found", 404, "OverrideUserMilestones");
+    if (!req.user?.isAdmin)
+      throw new AppError("Admin access required", 403, "ResetUserMilestones");
 
-  // Update milestoneOverride only if values are provided
-  user.milestoneOverride = {
-    followerCount: followerCount ?? user.milestoneOverride?.followerCount ?? null,
-    postCount: postCount ?? user.milestoneOverride?.postCount ?? null,
-    engagementRate: engagementRate ?? user.milestoneOverride?.engagementRate ?? null,
-    accountAgeDays: accountAgeDays ?? user.milestoneOverride?.accountAgeDays ?? null,
-  };
+    validateObjectId(userId, "User ID");
 
-  // Optional eligibility flag (force-eligible)
-  if (isEligibleForSubscription !== undefined)
-    user.isEligibleForSubscription = isEligibleForSubscription;
+    const user = await UserModel.findById(userId);
+    if (!user) throw new AppError("User not found", 404, "ResetUserMilestones");
 
-  await user.save();
+    user.milestoneOverride = {
+      followerCount: null,
+      postCount: null,
+      engagementRate: null,
+      accountAgeDays: null,
+    };
 
-  // Log admin activity
-  await recordActivity({
-    userId: req.user._id.toString(),
-    action: "OVERRIDDEN_USER_MILESTONES",
-    message: `Admin overrode milestone for user ${userId}`,
-    targetUserId: userId,
-  });
+    await user.save();
 
-  res.status(200).json({
-    success: true,
-    message: "User milestone overridden successfully",
-    userId,
-    milestoneOverride: user.milestoneOverride,
-    isEligibleForSubscription: user.isEligibleForSubscription,
-  });
-});
+    await recordActivity({
+      userId: req.user._id.toString(),
+      action: "RESET_USER_MILESTONES",
+      message: `Admin reset milestone override for user ${userId}`,
+      targetUserId: userId,
+    });
 
-
-export const resetUserMilestones = asyncHandler(async (req, res, next) => {
-  const { userId } = req.params;
-
-  if (!req.user?.isAdmin) {
-    throw new AppError("Admin access required", 403, "ResetUserMilestones");
+    res.status(200).json({
+      success: true,
+      message: "Milestone override reset to default",
+    });
+  } catch (error) {
+    console.error(
+      "[AdminController:resetUserMilestones] ❌ Error:",
+      error.message,
+      error.stack
+    );
+    next(
+      new AppError(
+        error.message,
+        500,
+        "ResetUserMilestones",
+        "Failed to reset user milestones"
+      )
+    );
   }
-
-  validateObjectId(userId, "User ID");
-
-  const user = await UserModel.findById(userId);
-  if (!user) throw new AppError("User not found", 404);
-
-  user.milestoneOverride = {
-    followerCount: null,
-    postCount: null,
-    engagementRate: null,
-    accountAgeDays: null,
-  };
-  await user.save();
-
-  await recordActivity({
-    userId: req.user._id.toString(),
-    action: "RESET_USER_MILESTONES",
-    message: `Admin reset milestone override for user ${userId}`,
-    targetUserId: userId,
-  });
-
-  res.status(200).json({
-    success: true,
-    message: "Milestone override reset to default",
-  });
-});
+};
