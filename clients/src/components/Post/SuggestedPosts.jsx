@@ -161,7 +161,7 @@ const SuggestedPosts = () => {
                 <InFeedAd
                   key={`ad-${index}`}
                   postId={post._id}
-                  testMode={true}
+                  testMode={false}
                 />
               )}
             </React.Fragment>

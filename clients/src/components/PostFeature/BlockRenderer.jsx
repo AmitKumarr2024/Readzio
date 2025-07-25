@@ -200,7 +200,7 @@ const BlockRenderer = ({
         return (
           <div key={`ad-${i}`} className="my-8">
             <div className="flex justify-center items-center bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-              <InArticleAd postId={postId} testMode={true} />
+              <InArticleAd postId={postId} testMode={false} />
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
                 Sponsored
               </p>

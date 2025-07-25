@@ -61,7 +61,7 @@ const GuestPostView = () => {
           className="col-span-1 flex justify-center w-full p-3"
         >
           <div className="w-full bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 border border-gray-200 dark:border-gray-700 transition-all duration-300">
-            <InFeedAd postId={post._id} testMode={true} />
+            <InFeedAd postId={post._id} testMode={false} />
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
               Sponsored
             </p>
@@ -78,7 +78,7 @@ const GuestPostView = () => {
           className="col-span-full flex justify-center w-full p-3"
         >
           <div className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-200 dark:border-gray-700 transition-all duration-300">
-            <MultiplexAd postId={post._id} testMode={true} />
+            <MultiplexAd postId={post._id} testMode={false} />
           </div>
         </div>
       );

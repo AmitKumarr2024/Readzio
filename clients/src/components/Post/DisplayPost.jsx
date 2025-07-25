@@ -355,7 +355,7 @@ const DisplayPost = () => {
             <div className="lg:grid lg:grid-cols-3 lg:gap-8">
               <div className="lg:col-span-2 space-y-6">
                 {renderPostContent()}
-                <MultiplexAd postId={activePost?._id} testMode={true} />
+                <MultiplexAd postId={activePost?._id} testMode={false} />
               </div>
               <div className="hidden lg:block lg:col-span-1 space-y-6">
                 <div className="sticky top-6 space-y-6">

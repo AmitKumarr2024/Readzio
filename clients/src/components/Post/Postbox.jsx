@@ -398,7 +398,7 @@ const Postbox = ({
                     </div>
                     {adPositions.includes(i + 1) && (
                       <div className="w-full min-h-[250px] p-3 rounded-lg bg-white dark:bg-gray-800">
-                        <InFeedAd postId={post._id} testMode={true} />
+                        <InFeedAd postId={post._id} testMode={false} />
                       </div>
                     )}
                   </React.Fragment>
@@ -423,7 +423,7 @@ const Postbox = ({
                 >
                   <MultiplexAd
                     postId={selectedPosts[pos - 1]?._id}
-                    testMode={true}
+                    testMode={false}
                   />
                 </div>
               ))}
