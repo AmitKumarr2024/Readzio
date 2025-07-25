@@ -419,7 +419,7 @@ const Postbox = ({
               multiplexAdPositions.map((pos, idx) => (
                 <div
                   key={`multiplex-ad-${idx}`}
-                  className="w-full h-12 my-4 bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded"
+                  className="w-full border-b border-gray-300 dark:border-gray-600 my-2 flex items-center"
                 >
                   <MultiplexAd
                     postId={selectedPosts[pos - 1]?._id}
