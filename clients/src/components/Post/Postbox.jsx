@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { debounce } from "lodash";
 import CardOfPost from "../Cards/CardOfPost";
@@ -12,15 +6,11 @@ import { getAllPosts, fetchFollowingPosts } from "../../store/postSlice";
 import { fetchCommentCount } from "../../store/commentSlice";
 import { fetchCategories } from "../../store/categorySlice";
 import { fetchFollowers } from "../../store/followSlice";
-import {
-  selectSocketState,
-  fetchInitialPostCounts,
-} from "../../store/socketSlice";
+import { selectSocketState, fetchInitialPostCounts } from "../../store/socketSlice";
 import Sorted from "../Tabs/Sorted";
+import GoogleAd from "../../Ads/GoogleAd";
 import ErrorBoundary from "./ErrorBoundary";
 import Skeleton from "@/components/Ui/Skeleton";
-import InFeedAd from "../../Ads/InFeedAd";
-import MultiplexAd from "../../Ads/MultiplexAd";
 
 const Postbox = ({
   filterType,
@@ -202,7 +192,7 @@ const Postbox = ({
       validPosts = validPosts.filter(
         (post) =>
           followersIds.includes(String(post.author?._id)) &&
-          String(post.author?._id) !== String(currentUser._id)
+          String(post.author?._id) !== String(currentUser?._id)
       );
     }
 
@@ -271,31 +261,17 @@ const Postbox = ({
   }, [dispatch, customPosts, posts, commentCounts]);
 
   const adPositions = useMemo(() => {
-    const postsPerAd = 4; // Simplified to insert ad every 4 posts
     return Array.from(
-      { length: Math.floor(selectedPosts.length / postsPerAd) },
-      (_, i) => (i + 1) * postsPerAd
+      { length: Math.floor(selectedPosts.length / 6) },
+      (_, i) => (i + 1) * 6
     );
   }, [selectedPosts.length]);
-
-  const postsPerRow = isSidebarOpen ? 3 : 4;
-  const fullRowAdInterval = 2;
-
-  const multiplexAdPositions = useMemo(() => {
-    return Array.from(
-      {
-        length: Math.floor(
-          selectedPosts.length / (postsPerRow * fullRowAdInterval)
-        ),
-      },
-      (_, i) => (i + 1) * postsPerRow * fullRowAdInterval
-    );
-  }, [selectedPosts.length, postsPerRow]);
 
   const loadMorePosts = useCallback(() => {
     if (!postLoading && hasMore) {
       const nextPage = currentPage + 1;
       setCurrentPage(nextPage);
+
       if (filterType === "Following") {
         dispatch(fetchFollowingPosts({ page: nextPage, limit: postsPerPage }));
       } else if (filterType === "Followers") {
@@ -326,13 +302,16 @@ const Postbox = ({
 
   useEffect(() => {
     if (!lastPostElementRef.current || !hasMore) return;
+
     observer.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !postLoading) loadMorePosts();
       },
       { threshold: 0.1 }
     );
+
     observer.current.observe(lastPostElementRef.current);
+
     return () => {
       if (observer.current && lastPostElementRef.current) {
         observer.current.unobserve(lastPostElementRef.current);
@@ -342,8 +321,10 @@ const Postbox = ({
 
   const renderSkeletonGrid = () => (
     <div
-      className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-${
-        isSidebarOpen ? 3 : 4
+      className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${
+        isSidebarOpen
+          ? "lg:grid-cols-3 xl:grid-cols-4"
+          : "lg:grid-cols-3 xl:grid-cols-5"
       } gap-4 py-6 w-full`}
     >
       {Array.from({ length: postsPerPage }).map((_, i) => (
@@ -357,131 +338,83 @@ const Postbox = ({
 
   return (
     <ErrorBoundary>
-      <div className="w-full flex relative">
-        {/* Sidebar */}
-        <div
-          className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 z-50 ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <div className="p-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Menu
-            </h2>
-            {/* Placeholder for menu items */}
-            <ul className="mt-4 space-y-2">
-              <li>
-                <a
-                  href="#"
-                  className="text-gray-700 dark:text-gray-300 hover:text-blue-500"
-                >
-                  Home
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-gray-700 dark:text-gray-300 hover:text-blue-500"
-                >
-                  Profile
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-gray-700 dark:text-gray-300 hover:text-blue-500"
-                >
-                  Settings
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div
-          className={`w-full px-4 py-6 transition-all duration-300 ${
-            isSidebarOpen ? "ml-64" : "ml-0"
-          }`}
-        >
-          <Sorted posts={filteredPosts} onSortChange={() => {}} />
-          {propLoading && !selectedPosts.length ? (
-            renderSkeletonGrid()
-          ) : postError ? (
-            <p className="text-center text-red-500">
-              {postError?.message || "Error loading posts"}
-            </p>
-          ) : (
-            <>
-              <div
-                className={`grid gap-4 py-6 w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-${
-                  isSidebarOpen ? 3 : 4
-                }`}
-              >
-                {selectedPosts.length ? (
-                  selectedPosts.map((post, i) => (
-                    <React.Fragment key={post._id || `post-${i}`}>
-                      <div
-                        ref={
-                          i === selectedPosts.length - 1
-                            ? lastPostElementRef
-                            : null
-                        }
-                        className="w-full min-h-[250px]"
-                      >
-                        <CardOfPost
-                          {...post}
-                          commentsCount={commentCounts[post._id] ?? 0}
-                          loading={propLoading && !selectedPosts.length}
-                          categoryMap={categoryMap}
-                          postType={post.postType}
-                          readTime={post.readTime}
+      <div className="w-full px-4 py-6">
+        <Sorted posts={filteredPosts} onSortChange={() => {}} />
+        {propLoading && !selectedPosts.length ? (
+          renderSkeletonGrid()
+        ) : postError ? (
+          <p className="text-center text-red-500">
+            {postError?.message || "Error loading posts"}
+          </p>
+        ) : (
+          <>
+            <div
+              className={`grid gap-4 py-6 w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${
+                isSidebarOpen
+                  ? "lg:grid-cols-3 xl:grid-cols-4"
+                  : "lg:grid-cols-3 xl:grid-cols-5"
+              }`}
+            >
+              {selectedPosts.length ? (
+                selectedPosts.map((post, i) => (
+                  <React.Fragment key={post._id || `post-${i}`}>
+                    <div
+                      ref={
+                        i === selectedPosts.length - 1
+                          ? lastPostElementRef
+                          : null
+                      }
+                      className="w-full"
+                    >
+                      <CardOfPost
+                        {...post}
+                        commentsCount={commentCounts[post._id] ?? 0}
+                        loading={propLoading && !selectedPosts.length}
+                        categoryMap={categoryMap}
+                        postType={post.postType}
+                        readTime={post.readTime}
+                      />
+                    </div>
+                    {adPositions.includes(i + 1) && (
+                      <div className="w-full">
+                        <GoogleAd
+                          adSlot="1234567890"
+                          postId={post._id}
+                          className="my-4"
                         />
                       </div>
-                      {adPositions.includes(i + 1) && selectedPosts[i]?._id && (
-                        <div className="w-full min-h-[250px] p-3 rounded-lg bg-white dark:bg-gray-800">
-                          <InFeedAd
-                            postId={selectedPosts[i]._id}
-                            testMode={false}
-                          />
-                        </div>
-                      )}
-                    </React.Fragment>
-                  ))
-                ) : (
-                  <p className="col-span-full text-center text-gray-500">
-                    {filterType === "Following"
-                      ? "Follow users to see their posts here."
-                      : filterType === "Followers"
-                      ? "No posts from your followers yet."
-                      : filterType === "My Posts"
-                      ? "You haven't posted yet."
-                      : "No posts found"}
-                  </p>
-                )}
-              </div>
-              {selectedPosts.length > 0 &&
-                multiplexAdPositions.map((pos, idx) => (
-                  <div
-                    key={`multiplex-ad-${idx}`}
-                    className={`w-full border-b border-gray-300 dark:border-gray-600 my-2 flex items-center col-span-${
-                      isSidebarOpen ? 3 : 4
-                    }`}
-                  >
-                    <MultiplexAd
-                      postId={selectedPosts[pos - 1]?._id || "fallback-ad"}
-                      testMode={false}
-                    />
-                  </div>
-                ))}
-              {postLoading && selectedPosts.length > 0 && (
-                <div className="flex justify-center py-4">
-                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                </div>
+                    )}
+                    {(i + 1) === 10 && (
+                      <div className="w-full">
+                        <GoogleAd
+                          adSlot="8502345898"
+                          adFormat="autorelaxed"
+                          postId={post._id}
+                          className="my-6"
+                        />
+                      </div>
+                    )}
+                  </React.Fragment>
+                ))
+              ) : (
+                <p className="col-span-full text-center text-gray-500">
+                  {filterType === "Following"
+                    ? "Follow users to see their posts here."
+                    : filterType === "Followers"
+                    ? "No posts from your followers yet."
+                    : filterType === "My Posts"
+                    ? "You haven't posted yet."
+                    : "No posts found"}
+                </p>
               )}
-            </>
-          )}
-        </div>
+            </div>
+            {postLoading && selectedPosts.length > 0 && (
+              <div className="flex justify-center py-4">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </ErrorBoundary>
   );
