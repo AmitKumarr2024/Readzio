@@ -86,7 +86,16 @@ export const deleteUser = createAsyncThunk(
 // Fetch all posts
 export const getAllPosts = createAsyncThunk(
   "admin/getAllPosts",
-  async ({ page = 1, limit = 10, search = "", sortField = "title", sortOrder = "asc" }, { rejectWithValue }) => {
+  async (
+    {
+      page = 1,
+      limit = 10,
+      search = "",
+      sortField = "title",
+      sortOrder = "asc",
+    },
+    { rejectWithValue }
+  ) => {
     try {
       const response = await axiosInstance.get(
         `/admin/posts?page=${page}&limit=${limit}&search=${search}&sortField=${sortField}&sortOrder=${sortOrder}`,
@@ -113,7 +122,6 @@ export const getAllPosts = createAsyncThunk(
     }
   }
 );
-
 
 // Toggle block post
 export const toggleBlockPost = createAsyncThunk(
@@ -947,6 +955,41 @@ export const setUserEligibilityOverride = createAsyncThunk(
   }
 );
 
+// Async thunk: Override user milestone
+export const overrideUserMilestones = createAsyncThunk(
+  "adminOverride/overrideUserMilestones",
+  async ({ userId, overrideData }, thunkAPI) => {
+    try {
+      const response = await axiosInstance.patch(
+        `/subscription/admin/user-milestone/${userId}`,
+        overrideData
+      );
+      return response.data;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Failed to override user milestones"
+      );
+    }
+  }
+);
+
+// Async thunk: Reset user milestone
+export const resetUserMilestones = createAsyncThunk(
+  "adminOverride/resetUserMilestones",
+  async (userId, thunkAPI) => {
+    try {
+      const response = await axiosInstance.patch(
+        `/subscription/admin/user-milestone-reset/${userId}`
+      );
+      return response.data;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Failed to reset user milestones"
+      );
+    }
+  }
+);
+
 const adminSlice = createSlice({
   name: "admin",
   initialState: {
@@ -981,6 +1024,7 @@ const adminSlice = createSlice({
     totalPagesReports: 1,
     subscriptionCriteria: null,
     userEligibility: null,
+    overrideInfo: null,
     analytics: {
       traffic: {
         totalVisits: 0,
@@ -1100,6 +1144,12 @@ const adminSlice = createSlice({
       //   "[adminSlice:logSubscriptionCriteria] 📋 Current subscriptionCriteria state:",
       //   state.subscriptionCriteria
       // );
+    },
+    clearOverrideStatus: (state) => {
+      state.loading = false;
+      state.error = null;
+      state.success = false;
+      state.overrideInfo = null;
     },
   },
   extraReducers: (builder) => {
@@ -1808,6 +1858,34 @@ const adminSlice = createSlice({
         // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
+      })
+      .addCase(overrideUserMilestones.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.success = false;
+      })
+      .addCase(overrideUserMilestones.fulfilled, (state, action) => {
+        state.loading = false;
+        state.success = true;
+        state.overrideInfo = action.payload;
+      })
+      .addCase(overrideUserMilestones.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(resetUserMilestones.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.success = false;
+      })
+      .addCase(resetUserMilestones.fulfilled, (state, action) => {
+        state.loading = false;
+        state.success = true;
+        state.overrideInfo = action.payload;
+      })
+      .addCase(resetUserMilestones.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
@@ -1824,6 +1902,7 @@ export const {
   updatePostBlockStatus,
   updateSubscriptionPlanStatus,
   logSubscriptionCriteria,
+  clearOverrideStatus,
 } = adminSlice.actions;
 
 export default adminSlice.reducer;

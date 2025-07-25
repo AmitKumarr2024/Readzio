@@ -5,21 +5,21 @@ import bcrypt from "bcryptjs";
 const userSchema = new mongoose.Schema(
   {
     // User's name
-    name: { 
-      type: String, 
-      required: [true, "Name is required"], 
-      trim: true 
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+      trim: true,
     },
     // User role (user or admin)
-    role: { 
-      type: String, 
-      enum: ["user", "admin"], 
-      default: "user" 
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
     },
     // Indicates if user is admin
-    isAdmin: { 
-      type: Boolean, 
-      default: false 
+    isAdmin: {
+      type: Boolean,
+      default: false,
     },
     // Unique email address
     email: {
@@ -43,20 +43,20 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
     },
     // Google account ID
-    googleId: { 
-      type: String, 
-      unique: true, 
-      sparse: true 
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
     },
     // Profile avatar URL
-    avatar: { 
-      type: String, 
-      default: "" 
+    avatar: {
+      type: String,
+      default: "",
     },
     // Profile banner URL
-    banner: { 
-      type: String, 
-      default: "" 
+    banner: {
+      type: String,
+      default: "",
     },
     // User's gender
     gender: {
@@ -65,66 +65,74 @@ const userSchema = new mongoose.Schema(
       default: "Other",
     },
     // User's location
-    location: { 
-      type: String, 
-      default: "" 
+    location: {
+      type: String,
+      default: "",
     },
     // User's profession
-    profession: { 
-      type: String, 
-      default: "" 
+    profession: {
+      type: String,
+      default: "",
     },
     // User's bio
-    bio: { 
-      type: String, 
-      maxlength: 500, 
-      default: "" 
+    bio: {
+      type: String,
+      maxlength: 500,
+      default: "",
     },
     // Date of account creation
-    joiningDate: { 
-      type: Date, 
-      default: Date.now 
+    joiningDate: {
+      type: Date,
+      default: Date.now,
     },
     // Indicates if user is blocked
-    blocked: { 
-      type: Boolean, 
-      default: false 
+    blocked: {
+      type: Boolean,
+      default: false,
     },
     // Bookmarked posts
-    bookmarks: [{ 
-      type: mongoose.SchemaTypes.ObjectId, 
-      ref: "Post" 
-    }],
+    bookmarks: [
+      {
+        type: mongoose.SchemaTypes.ObjectId,
+        ref: "Post",
+      },
+    ],
     // Total number of posts
-    totalPosts: { 
-      type: Number, 
-      default: 0 
+    totalPosts: {
+      type: Number,
+      default: 0,
     },
     // Total views across posts
-    totalViews: { 
-      type: Number, 
-      default: 0 
+    totalViews: {
+      type: Number,
+      default: 0,
     },
     // Total time spent on posts
-    totalTimeSpent: { 
-      type: Number, 
-      default: 0 
+    totalTimeSpent: {
+      type: Number,
+      default: 0,
     },
     // Users followed by this user
-    following: [{ 
-      type: mongoose.SchemaTypes.ObjectId, 
-      ref: "User" 
-    }],
+    following: [
+      {
+        type: mongoose.SchemaTypes.ObjectId,
+        ref: "User",
+      },
+    ],
     // Users following this user
-    followers: [{ 
-      type: mongoose.SchemaTypes.ObjectId, 
-      ref: "User" 
-    }],
+    followers: [
+      {
+        type: mongoose.SchemaTypes.ObjectId,
+        ref: "User",
+      },
+    ],
     // Users blocked by this user
-    blockedUsers: [{ 
-      type: mongoose.SchemaTypes.ObjectId, 
-      ref: "User" 
-    }],
+    blockedUsers: [
+      {
+        type: mongoose.SchemaTypes.ObjectId,
+        ref: "User",
+      },
+    ],
     // Recently visited categories
     recentCategories: [
       {
@@ -138,19 +146,23 @@ const userSchema = new mongoose.Schema(
       default: null, // null = not asked, true = accepted, false = declined
     },
     // Authors subscribed to by the user
-    subscribedAuthors: [{ 
-      type: mongoose.SchemaTypes.ObjectId, 
-      ref: "User" 
-    }],
+    subscribedAuthors: [
+      {
+        type: mongoose.SchemaTypes.ObjectId,
+        ref: "User",
+      },
+    ],
     // Users subscribed to this user
-    subscribers: [{ 
-      type: mongoose.SchemaTypes.ObjectId, 
-      ref: "User" 
-    }],
+    subscribers: [
+      {
+        type: mongoose.SchemaTypes.ObjectId,
+        ref: "User",
+      },
+    ],
     // Indicates if user has a subscription plan
-    hasSubscriptionPlan: { 
-      type: Boolean, 
-      default: false 
+    hasSubscriptionPlan: {
+      type: Boolean,
+      default: false,
     },
     // User's subscription plan
     subscriptionPlan: {
@@ -159,23 +171,37 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
     // Date of subscription
-    subscriptionDate: { 
-      type: Date 
+    subscriptionDate: {
+      type: Date,
     },
     // Eligibility for subscription
-    isEligibleForSubscription: { 
-      type: Boolean, 
-      default: null 
+    isEligibleForSubscription: {
+      type: Boolean,
+      default: null,
     },
+
+    // Admin-only simulated milestone values
+    milestoneOverride: {
+      type: Object,
+      default: {
+        followerCount: null,
+        postCount: null,
+        engagementRate: null,
+        accountAgeDays: null,
+      },
+    },
+
     // Subscribed categories
-    categories: [{ 
-      type: mongoose.SchemaTypes.ObjectId, 
-      ref: "Category" 
-    }],
+    categories: [
+      {
+        type: mongoose.SchemaTypes.ObjectId,
+        ref: "Category",
+      },
+    ],
     // Email send attempts
-    emailAttempts: { 
-      type: Number, 
-      default: 0 
+    emailAttempts: {
+      type: Number,
+      default: 0,
     },
     // Email send status
     emailStatus: {
@@ -184,38 +210,38 @@ const userSchema = new mongoose.Schema(
       default: "not_sent",
     },
     // Last email error
-    emailLastError: { 
-      type: String 
+    emailLastError: {
+      type: String,
     },
     // Flag to stop email attempts
-    stopEmailAttempts: { 
-      type: Boolean, 
-      default: false 
+    stopEmailAttempts: {
+      type: Boolean,
+      default: false,
     },
     // Indicates if account is verified
-    isAccountVerified: { 
-      type: Boolean, 
-      default: false 
+    isAccountVerified: {
+      type: Boolean,
+      default: false,
     },
     // OTP for account verification
-    verifyOtp: { 
-      type: String, 
-      default: "" 
+    verifyOtp: {
+      type: String,
+      default: "",
     },
     // OTP expiration for verification
-    verifyOtpExpireAt: { 
-      type: Number, 
-      default: 0 
+    verifyOtpExpireAt: {
+      type: Number,
+      default: 0,
     },
     // OTP for password reset
-    resetOtp: { 
-      type: String, 
-      default: "" 
+    resetOtp: {
+      type: String,
+      default: "",
     },
     // OTP expiration for password reset
-    resetOtpExpireAt: { 
-      type: Number, 
-      default: 0 
+    resetOtpExpireAt: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true } // Adds createdAt and updatedAt

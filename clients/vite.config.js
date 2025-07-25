@@ -51,7 +51,16 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      chunkSizeWarningLimit: 1500,
+      chunkSizeWarningLimit: 2000, // Increase limit (optional)
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            react: ["react", "react-dom"],
+            icons: ["react-icons"],
+            admin: ["@/components/admin/subscriptionControl/AdminSubscriptionControls.jsx"], // ✅ now it's a file
+          },
+        },
+      },
     },
   };
 });

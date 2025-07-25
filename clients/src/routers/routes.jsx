@@ -1,69 +1,94 @@
 import { createBrowserRouter } from "react-router-dom";
+import React, { Suspense, lazy } from "react";
 import App from "../App";
-import LoginPage from "../pages/LoginPage";
-import SignupPage from "../pages/SignupPage";
-import MainPage from "../pages/MainPage";
-import CategoryWisePage from "../pages/CategoryWisePage";
-import DisplayPost from "../components/Post/DisplayPost";
-import CreatePost from "../pages/CreatePost";
-import EditPost from "../components/Post/EditPost";
-import PageNotFound from "../pages/PageNotFound";
-import SearchPage from "../pages/SearchPage";
-import AboutPage from "../pages/AboutPage";
-import Contact from "../pages/Contact";
-import PrivacyPage from "../pages/PrivacyPage";
-import TermsAndConditionPage from "../pages/TermsAndConditionPage";
-import UserProfilePage from "../pages/UserProfilePage";
-import UserSettingsPage from "../pages/UserSettingPage";
-import FeatureComingSoon from "../pages/FeatureComingSoon";
-import DeleteModal from "../components/Post/DeleteModal";
-import AuthorProfilePage from "../pages/AuthorProfilePage";
-import UserPlanPage from "../components/PorductToBuy/UserPlanPage";
-import CategorySelectPage from "../pages/CategorySelectPage";
-import BookmarkComponent from "../components/Post/BookmarkComponent";
-import Dashboard from "../pages/Admin/Dashboard";
-import AcknowledgeConfirmation from "../pages/Admin/AcknowledgeConfirmation";
-import NotificationPage from "../components/Notification/NotificationPage";
-import UsersPage from "../pages/UsersPage";
-import ResetPassword from "../pages/ResetPasswordPage";
-import VerifyEmail from "../components/resetPassword/VerifyEmail";
-import TagWisePage from "../pages/TagWisePage";
+import SplashLoader from "../AppRootFile/components/SplashLoader";
+
+// Lazy imports
+const LoginPage = lazy(() => import("../pages/LoginPage"));
+const SignupPage = lazy(() => import("../pages/SignupPage"));
+const MainPage = lazy(() => import("../pages/MainPage"));
+const CategoryWisePage = lazy(() => import("../pages/CategoryWisePage"));
+const DisplayPost = lazy(() => import("../components/Post/DisplayPost"));
+const CreatePost = lazy(() => import("../pages/CreatePost"));
+const EditPost = lazy(() => import("../components/Post/EditPost"));
+const PageNotFound = lazy(() => import("../pages/PageNotFound"));
+const SearchPage = lazy(() => import("../pages/SearchPage"));
+const AboutPage = lazy(() => import("../pages/AboutPage"));
+const Contact = lazy(() => import("../pages/Contact"));
+const PrivacyPage = lazy(() => import("../pages/PrivacyPage"));
+const TermsAndConditionPage = lazy(() =>
+  import("../pages/TermsAndConditionPage")
+);
+const UserProfilePage = lazy(() => import("../pages/UserProfilePage"));
+const UserSettingsPage = lazy(() => import("../pages/UserSettingPage"));
+const FeatureComingSoon = lazy(() => import("../pages/FeatureComingSoon"));
+const DeleteModal = lazy(() => import("../components/Post/DeleteModal"));
+const AuthorProfilePage = lazy(() => import("../pages/AuthorProfilePage"));
+const UserPlanPage = lazy(() =>
+  import("../components/PorductToBuy/UserPlanPage")
+);
+const CategorySelectPage = lazy(() => import("../pages/CategorySelectPage"));
+const BookmarkComponent = lazy(() =>
+  import("../components/Post/BookmarkComponent")
+);
+const Dashboard = lazy(() => import("../pages/Admin/Dashboard"));
+const AcknowledgeConfirmation = lazy(() =>
+  import("../pages/Admin/AcknowledgeConfirmation")
+);
+const NotificationPage = lazy(() =>
+  import("../components/Notification/NotificationPage")
+);
+const UsersPage = lazy(() => import("../pages/UsersPage"));
+const ResetPassword = lazy(() => import("../pages/ResetPasswordPage"));
+const VerifyEmail = lazy(() =>
+  import("../components/resetPassword/VerifyEmail")
+);
+const TagWisePage = lazy(() => import("../pages/TagWisePage"));
+
+// Wrapper with Suspense
+const withSuspense = (Component) => (
+  <Suspense fallback={<SplashLoader />}>
+    <Component />
+  </Suspense>
+);
 
 const routes = createBrowserRouter([
   {
     path: "/",
     element: <App />,
     children: [
-      { index: true, element: <MainPage /> },
-      { path: "/createPost", element: <CreatePost /> },
-      { path: "/edit-post/:slug", element: <EditPost /> },
-      { path: "/delete-post/:id", element: <DeleteModal /> },
-      { path: "/category/:category", element: <CategoryWisePage /> },
-      { path: "/post/:slug", element: <DisplayPost /> },
-      { path: "/search", element: <SearchPage /> },
-      { path: "/admin", element: <Dashboard /> },
-      { path: "/about", element: <AboutPage /> },
-      { path: "/contact", element: <Contact /> },
-      { path: "/privacy", element: <PrivacyPage /> },
-      { path: "/user", element: <UserProfilePage /> },
-      { path: "/user-setting", element: <UserSettingsPage /> },
-      { path: "/author-profile/:id", element: <AuthorProfilePage /> },
-      { path: "/plans/:id", element: <UserPlanPage /> },
-      { path: "/plans/:authorId", element: <UserPlanPage /> },
-      { path: "/bookmark", element: <BookmarkComponent /> },
-      { path: "/acknowledge/:reportId", element: <AcknowledgeConfirmation /> },
-      { path: "/message-box", element: <NotificationPage /> },
-      { path: "/users", element: <UsersPage /> }, // Added UsersPage route
-      { path: "/verify", element: <VerifyEmail /> }, // Added UsersPage route
-      { path: "/tag/:tag", element: <TagWisePage /> }, // Added UsersPage route
-      { path: "/Term&Condition", element: <TermsAndConditionPage /> },
+      { index: true, element: withSuspense(MainPage) },
+      { path: "createPost", element: withSuspense(CreatePost) },
+      { path: "edit-post/:slug", element: withSuspense(EditPost) },
+      { path: "delete-post/:id", element: withSuspense(DeleteModal) },
+      { path: "category/:category", element: withSuspense(CategoryWisePage) },
+      { path: "post/:slug", element: withSuspense(DisplayPost) },
+      { path: "search", element: withSuspense(SearchPage) },
+      { path: "admin", element: withSuspense(Dashboard) },
+      { path: "about", element: withSuspense(AboutPage) },
+      { path: "contact", element: withSuspense(Contact) },
+      { path: "privacy", element: withSuspense(PrivacyPage) },
+      { path: "user", element: withSuspense(UserProfilePage) },
+      { path: "user-setting", element: withSuspense(UserSettingsPage) },
+      { path: "author-profile/:id", element: withSuspense(AuthorProfilePage) },
+      { path: "plans/:id", element: withSuspense(UserPlanPage) },
+      { path: "bookmark", element: withSuspense(BookmarkComponent) },
+      {
+        path: "acknowledge/:reportId",
+        element: withSuspense(AcknowledgeConfirmation),
+      },
+      { path: "message-box", element: withSuspense(NotificationPage) },
+      { path: "users", element: withSuspense(UsersPage) },
+      { path: "verify", element: withSuspense(VerifyEmail) },
+      { path: "tag/:tag", element: withSuspense(TagWisePage) },
+      { path: "Term&Condition", element: withSuspense(TermsAndConditionPage) },
     ],
   },
-  { path: "/select-category", element: <CategorySelectPage /> },
-  { path: "/login", element: <LoginPage /> },
-  { path: "/reset-password", element: <ResetPassword /> },
-  { path: "/signup", element: <SignupPage /> },
-  { path: "*", element: <PageNotFound /> },
+  { path: "/select-category", element: withSuspense(CategorySelectPage) },
+  { path: "/login", element: withSuspense(LoginPage) },
+  { path: "/reset-password", element: withSuspense(ResetPassword) },
+  { path: "/signup", element: withSuspense(SignupPage) },
+  { path: "*", element: withSuspense(PageNotFound) },
 ]);
 
 export default routes;

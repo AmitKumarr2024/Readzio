@@ -20,6 +20,8 @@ import {
   toggleSubscriptionPlanStatus,
   grantSubscriptionAccess,
   setUserEligibilityOverride,
+  overrideUserMilestones,
+  resetUserMilestones,
 } from "../Controllers/adminController.js";
 import {
   createContactMessage,
@@ -117,6 +119,22 @@ router.patch("/subscriptions/plan/status", toggleSubscriptionPlanStatus);
 // POST /subscriptions/grant - Grants subscription access to a user
 router.post("/subscriptions/grant", grantSubscriptionAccess);
 // PATCH /subscriptions/user-override/:userId - Overrides user eligibility
-router.patch("/subscriptions/user-override/:userId", setUserEligibilityOverride);
+router.patch(
+  "/subscriptions/user-override/:userId",
+  setUserEligibilityOverride
+);
+// ✅ Admin-only override
+router.patch(
+  "/admin/user-milestone/:userId",
+  protectedRoute,
+  overrideUserMilestones
+);
+
+// ✅ Admin-only reset
+router.patch(
+  "/admin/user-milestone-reset/:userId",
+  protectedRoute,
+  resetUserMilestones
+);
 
 export default router;

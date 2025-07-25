@@ -903,3 +903,90 @@ export const grantSubscriptionAccess = async (req, res, next) => {
     next(new AppError(error.message, 500, "GrantSubscriptionAccess", "Failed to grant/revoke subscription access"));
   }
 };
+
+// PATCH /admin/user-milestone/:userId
+export const overrideUserMilestones = asyncHandler(async (req, res, next) => {
+  const { userId } = req.params;
+  const {
+    followerCount,
+    postCount,
+    engagementRate,
+    accountAgeDays,
+    isEligibleForSubscription
+  } = req.body;
+
+  // Admin check
+  if (!req.user?.isAdmin) {
+    throw new AppError("Admin access required", 403, "OverrideUserMilestones");
+  }
+
+  // Validate userId
+  validateObjectId(userId, "User ID");
+
+  const user = await UserModel.findById(userId);
+  if (!user) throw new AppError("User not found", 404, "OverrideUserMilestones");
+
+  // Update milestoneOverride only if values are provided
+  user.milestoneOverride = {
+    followerCount: followerCount ?? user.milestoneOverride?.followerCount ?? null,
+    postCount: postCount ?? user.milestoneOverride?.postCount ?? null,
+    engagementRate: engagementRate ?? user.milestoneOverride?.engagementRate ?? null,
+    accountAgeDays: accountAgeDays ?? user.milestoneOverride?.accountAgeDays ?? null,
+  };
+
+  // Optional eligibility flag (force-eligible)
+  if (isEligibleForSubscription !== undefined)
+    user.isEligibleForSubscription = isEligibleForSubscription;
+
+  await user.save();
+
+  // Log admin activity
+  await recordActivity({
+    userId: req.user._id.toString(),
+    action: "OVERRIDDEN_USER_MILESTONES",
+    message: `Admin overrode milestone for user ${userId}`,
+    targetUserId: userId,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "User milestone overridden successfully",
+    userId,
+    milestoneOverride: user.milestoneOverride,
+    isEligibleForSubscription: user.isEligibleForSubscription,
+  });
+});
+
+
+export const resetUserMilestones = asyncHandler(async (req, res, next) => {
+  const { userId } = req.params;
+
+  if (!req.user?.isAdmin) {
+    throw new AppError("Admin access required", 403, "ResetUserMilestones");
+  }
+
+  validateObjectId(userId, "User ID");
+
+  const user = await UserModel.findById(userId);
+  if (!user) throw new AppError("User not found", 404);
+
+  user.milestoneOverride = {
+    followerCount: null,
+    postCount: null,
+    engagementRate: null,
+    accountAgeDays: null,
+  };
+  await user.save();
+
+  await recordActivity({
+    userId: req.user._id.toString(),
+    action: "RESET_USER_MILESTONES",
+    message: `Admin reset milestone override for user ${userId}`,
+    targetUserId: userId,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Milestone override reset to default",
+  });
+});
