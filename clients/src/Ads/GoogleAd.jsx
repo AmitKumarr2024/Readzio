@@ -83,8 +83,8 @@ const GoogleAd = ({
       data-ad-client={adClient}
       data-ad-slot={adSlot}
       data-ad-format={adFormat}
+      data-full-width-responsive="true"
       {...(layoutKey && { "data-ad-layout-key": layoutKey })}
-      {...(responsive && { "data-full-width-responsive": "true" })}
       {...(testMode && { "data-adtest": "on" })}
     />
   );

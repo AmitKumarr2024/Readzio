@@ -390,14 +390,10 @@ const Postbox = ({
                         <div className="bg-white dark:bg-gray-800 rounded-md shadow-md overflow-hidden">
                           <GoogleAd
                             adSlot={adsConfig.card.slot}
-                            adFormat={adsConfig.card.format}
+                            adFormat="auto" // or "fluid"
                             postId={post._id}
-                            style={{
-                              display: "block",
-                              width: "100%",
-                              height: "auto",
-                            }}
-                            className="block"
+                            style={{ display: "block" }}
+                            className="block w-full h-auto"
                             testMode={true}
                           />
                         </div>
@@ -409,14 +405,10 @@ const Postbox = ({
                         <div className="bg-white dark:bg-gray-800 rounded-md shadow-md p-2">
                           <GoogleAd
                             adSlot={adsConfig.banner.slot}
-                            adFormat="horizontal"
+                            adFormat="auto"
                             postId={post._id}
-                            style={{
-                              display: "block",
-                              width: "100%",
-                              height: "100px",
-                            }}
-                            className="block"
+                            style={{ display: "block" }}
+                            className="block w-full h-auto"
                             testMode={true}
                           />
                         </div>
