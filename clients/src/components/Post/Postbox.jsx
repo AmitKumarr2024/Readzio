@@ -9,6 +9,7 @@ import { fetchFollowers } from "../../store/followSlice";
 import { selectSocketState, fetchInitialPostCounts } from "../../store/socketSlice";
 import Sorted from "../Tabs/Sorted";
 import GoogleAd from "../../Ads/GoogleAd";
+import adsConfig from "../../Utils/adsConfig";
 import ErrorBoundary from "./ErrorBoundary";
 import Skeleton from "@/components/Ui/Skeleton";
 
@@ -377,21 +378,28 @@ const Postbox = ({
                     </div>
                     {adPositions.includes(i + 1) && (
                       <div className="w-full">
-                        <GoogleAd
-                          adSlot="1234567890"
-                          postId={post._id}
-                          className="my-4"
-                        />
+                        <div className="bg-white dark:bg-gray-800 rounded-md shadow-md overflow-hidden">
+                          <GoogleAd
+                            adSlot={adsConfig.inFeed.slot}
+                            adFormat={adsConfig.inFeed.format}
+                            postId={post._id}
+                            style={{ display: "block", width: "100%", height: "auto" }}
+                            className="block"
+                          />
+                        </div>
                       </div>
                     )}
                     {(i + 1) === 10 && (
-                      <div className="w-full">
-                        <GoogleAd
-                          adSlot="8502345898"
-                          adFormat="autorelaxed"
-                          postId={post._id}
-                          className="my-6"
-                        />
+                      <div className="col-span-full w-full">
+                        <div className="bg-white dark:bg-gray-800 rounded-md shadow-md p-2">
+                          <GoogleAd
+                            adSlot={adsConfig.multiplex.slot}
+                            adFormat={adsConfig.multiplex.format}
+                            postId={post._id}
+                            style={{ display: "block", width: "100%", height: "300px" }}
+                            className="block"
+                          />
+                        </div>
                       </div>
                     )}
                   </React.Fragment>
