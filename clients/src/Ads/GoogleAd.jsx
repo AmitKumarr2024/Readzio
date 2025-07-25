@@ -45,11 +45,11 @@ const GoogleAd = ({ adSlot, adFormat = 'auto', className = '', postId }) => {
     <ins
       ref={adRef}
       className={`adsbygoogle block ${className}`}
-      style={{ display: 'block' }}
-      // data-ad-client="ca-pub-8408980890451581"
-      // data-ad-slot={adSlot}
-      // data-ad-format={adFormat}
-      // data-full-width-responsive="true"
+      style={{ display: 'block', width: '100%', height: 'auto' }}
+      data-ad-client="ca-pub-8408980890451581"
+      data-ad-slot={adSlot}
+      data-ad-format={adFormat}
+      data-full-width-responsive="true"
     />
   );
 };
