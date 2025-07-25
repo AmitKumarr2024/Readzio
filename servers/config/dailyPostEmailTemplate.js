@@ -214,24 +214,24 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
               </table>
 
 
-         <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 16px 0; height: 60px;">
+         <table cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; margin: 24px 0; height: 64px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
             <tr>
-               <td style="font-size: 6px; font-weight: bold; color: #374151; padding-right: 20px;">
-                📖
+              <td style="font-size: 16px; font-weight: 600; color: #1f2937; padding-right: 16px;">
+                <span style="font-size: 28px;" aria-hidden="true">📖</span>
               </td>
-              <td width="16.6%" align="left" valign="middle" style="font-size: 15px; font-weight: bold; line-height: 24px; color: #6b7280;">
-                {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}
+              <td style="width: 16.6%; text-align: left; vertical-align: middle; font-size: 14px; font-weight: 600; line-height: 24px; color: #4b5563;">
+                {{#if this.readTime}}{{this.readTime}} min{{else}}0 min{{/if}}
               </td>
-               <td style="font-size: 6px; font-weight: bold; color: #6b7280; padding-right: 20px;">
-                ❤️
+              <td style="font-size: 16px; font-weight: 600; color: #1f2937; padding-right: 16px;">
+                <span style="font-size: 28px;" aria-hidden="true">❤️</span>
               </td>
-              <td width="16.6%" align="left" valign="middle" style="font-size: 15px; font-weight: bold; line-height: 24px; color: #6b7280;">
+              <td style="width: 16.6%; text-align: left; vertical-align: middle; font-size: 14px; font-weight: 600; line-height: 24px; color: #4b5563;">
                 {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}
               </td>
-               <td style="font-size: 6px; font-weight: bold; color: #6b7280; padding-right: 20px;">
-                💬
+              <td style="font-size: 16px; font-weight: 600; color: #1f2937; padding-right: 16px;">
+                <span style="font-size: 28px;" aria-hidden="true">💬</span>
               </td>
-              <td width="16.6%" align="left" valign="middle" style="font-size: 15px; font-weight: bold; line-height: 24px; color: #6b7280;">
+              <td style="width: 16.6%; text-align: left; vertical-align: middle; font-size: 14px; font-weight: 600; line-height: 24px; color: #4b5563;">
                 {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}
               </td>
             </tr>

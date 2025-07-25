@@ -8,7 +8,7 @@ import {
   stopReading,
   submitReadingTime,
 } from "../../store/postSlice";
-import { fetchPublicPostBySlug } from "../../store/guestSlice"; // Added for guest access
+import { fetchPublicPostBySlug } from "../../store/guestSlice";
 import { fetchBookmarkAndLikeStatus } from "../../store/PostInteractions";
 import { fetchCategories } from "../../store/categorySlice";
 import { fetchSubscriptionPlansByAuthor } from "../../store/subscriptionSlice";
@@ -27,8 +27,8 @@ import { selectPostViews } from "../../Utils/postSelectors";
 import CommentBox from "./CommentBox";
 import DeleteModal from "./DeleteModal";
 import GoogleAd from "../../Ads/GoogleAd";
-import Skeleton from "@/components/Ui/Skeleton"; 
-
+import Skeleton from "@/components/Ui/Skeleton";
+import adsConfig from "../../Utils/adsConfig";
 
 const DisplayPost = () => {
   const { slug } = useParams();
@@ -116,16 +116,6 @@ const DisplayPost = () => {
     fetchData();
   }, [dispatch, slug, isAuthenticated]);
 
-  // useEffect(() => {
-  //   if (activePost && Array.isArray(activePost.blocks)) {
-  //     console.log("[DisplayPost] Post data:", {
-  //       slug,
-  //       postId: activePost._id,
-  //       blocks: activePost.blocks.length,
-  //     });
-  //   }
-  // }, [activePost, slug]);
-
   useEffect(() => {
     if (!isAuthenticated || !activePost?._id || !activePost?.author?._id || hasFetchedStatus.current) return;
     hasFetchedStatus.current = true;
@@ -202,11 +192,29 @@ const DisplayPost = () => {
       <Skeleton height="h-8" width="w-3/4" />
       <Skeleton height="h-4" width="w-1/2" />
       <div className="space-y-2">
-        {[...Array(6)].map((_, i) => (
-          <Skeleton key={i} height="h-4" width="w-full" />
-        ))}
+        <Skeleton height="h-32" width="w-full" className="rounded-lg" />
+        <Skeleton height="h-6" width="w-3/4" />
+        <table className="w-full">
+          <tbody>
+            <tr>
+              <td><Skeleton className="h-4 w-24" /></td>
+              <td><Skeleton className="h-4 w-24" /></td>
+            </tr>
+          </tbody>
+        </table>
+        <table className="w-full">
+          <tbody>
+            <tr>
+              <td><Skeleton className="h-4 w-12" /></td>
+              <td><Skeleton className="h-4 w-12" /></td>
+              <td><Skeleton className="h-4 w-12" /></td>
+              <td><Skeleton className="h-4 w-12" /></td>
+              <td><Skeleton className="h-4 w-12" /></td>
+            </tr>
+          </tbody>
+        </table>
+        <Skeleton height="h-4" width="w-16" />
       </div>
-      <Skeleton height="h-10" width="w-full" />
     </div>
   );
 
@@ -276,7 +284,15 @@ const DisplayPost = () => {
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
           <div className="max-w-7xl mx-auto px-8 sm:px-6 lg:px-8 py-8">
             <div className="lg:grid lg:grid-cols-3 lg:gap-8">
-              <div className="lg:col-span-2 space-y-6">{renderPostContent()}</div>
+              <div className="lg:col-span-2 space-y-6">
+                {renderPostContent()}
+                <GoogleAd
+                  adSlot={adsConfig.multiplex.slot}
+                  adFormat={adsConfig.multiplex.format}
+                  postId={activePost?._id}
+                  className="my-12"
+                />
+              </div>
               <div className="hidden lg:block lg:col-span-1 space-y-6">
                 <div className="sticky top-0 h-full flex flex-col space-y-6">
                   <AuthorSidebar
@@ -285,7 +301,11 @@ const DisplayPost = () => {
                     className="h-full rounded-md bg-white dark:bg-gray-800 shadow-md p-6"
                   />
                   <div className="rounded-md bg-white dark:bg-gray-800 shadow-md p-4">
-                    <GoogleAd adSlot="1234567890" adFormat="vertical" postId={activePost?._id} />
+                    <GoogleAd
+                      adSlot={adsConfig.displaySidebar.slot}
+                      adFormat={adsConfig.displaySidebar.format}
+                      postId={activePost?._id}
+                    />
                   </div>
                 </div>
               </div>

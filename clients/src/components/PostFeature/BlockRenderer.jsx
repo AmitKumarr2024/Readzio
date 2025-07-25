@@ -16,7 +16,8 @@ import VideoBlockOutput from "../actualPostDisplay/VideoBlockOutput";
 import { getSubscriptionStatusByAuthor } from "../../store/subscriptionSlice";
 import GoogleAd from "../../Ads/GoogleAd";
 import PostTags from "../Post/DisplayPost/PostTags";
-import Skeleton from "@/components/Ui/Skeleton"; 
+import Skeleton from "@/components/Ui/Skeleton";
+import adsConfig from "../../Utils/adsConfig";
 
 const placeholderAdImage = "https://placehold.co/150x100?text=Ad+Failed";
 
@@ -187,7 +188,7 @@ const BlockRenderer = ({
           <PollBlockOutput
             key={i}
             slug={slug}
-            blockId={block.id} // Added blockId prop
+            blockId={block.id}
             question={block.question}
             options={block.options}
             caption={block.caption}
@@ -198,7 +199,8 @@ const BlockRenderer = ({
         return (
           <GoogleAd
             key={`ad-${i}`}
-            adSlot="1234567890"
+            adSlot={adsConfig.inArticle.slot}
+            adFormat={adsConfig.inArticle.format}
             postId={postId}
             className="my-6 rounded-2xl shadow-lg"
           />
@@ -214,10 +216,29 @@ const BlockRenderer = ({
 
   if (subscriptionLoading) {
     return (
-      <div>
-        <Skeleton className="w-full h-20 mb-4 rounded-lg" />
-        <Skeleton className="w-full h-20 mb-4 rounded-lg" />
-        <Skeleton className="w-full h-20 mb-4 rounded-lg" />
+      <div className="space-y-6">
+        <Skeleton className="w-full h-32 rounded-lg bg-gray-200 dark:bg-gray-700" />
+        <Skeleton className="h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
+        <table className="w-full">
+          <tbody>
+            <tr>
+              <td><Skeleton className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" /></td>
+              <td><Skeleton className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" /></td>
+            </tr>
+          </tbody>
+        </table>
+        <table className="w-full">
+          <tbody>
+            <tr>
+              <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
+              <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
+              <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
+              <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
+              <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
+            </tr>
+          </tbody>
+        </table>
+        <Skeleton className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
       </div>
     );
   }
@@ -279,7 +300,6 @@ const BlockRenderer = ({
           </button>
         </div>
       )}
-      {/* ✅ Tags rendered after full content */}
       {showFullContent && tags?.length > 0 && <PostTags tags={tags} />}
     </div>
   );

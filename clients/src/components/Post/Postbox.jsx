@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { debounce } from "lodash";
 import CardOfPost from "../Cards/CardOfPost";
@@ -12,10 +6,7 @@ import { getAllPosts, fetchFollowingPosts } from "../../store/postSlice";
 import { fetchCommentCount } from "../../store/commentSlice";
 import { fetchCategories } from "../../store/categorySlice";
 import { fetchFollowers } from "../../store/followSlice";
-import {
-  selectSocketState,
-  fetchInitialPostCounts,
-} from "../../store/socketSlice";
+import { selectSocketState, fetchInitialPostCounts } from "../../store/socketSlice";
 import Sorted from "../Tabs/Sorted";
 import GoogleAd from "../../Ads/GoogleAd";
 import ErrorBoundary from "./ErrorBoundary";
@@ -180,19 +171,14 @@ const Postbox = ({
     );
 
     if (category) {
-      // console.log("🔍 Filtering posts by slug:", category.toLowerCase());
-
       validPosts = validPosts.filter((post) => {
-        // console.log("➡️ post.category value:", post.category);
         let postCategorySlug = "";
-
         if (typeof post.category === "object" && post.category?.slug) {
           postCategorySlug = post.category.slug.toLowerCase();
         } else if (typeof post.category === "string") {
           const matched = categories.find((cat) => cat._id === post.category);
           if (matched) postCategorySlug = matched.slug?.toLowerCase();
         }
-
         return postCategorySlug === category.toLowerCase();
       });
     }
@@ -263,7 +249,7 @@ const Postbox = ({
       isSubscriberOnly: post.isSubscriberOnly ?? false,
       postType: post.postType ?? "free",
       tags: post.tags || [],
-      readTime: post?.readTime ,
+      readTime: post?.readTime,
     }));
   }, [sortedPosts, categoryMap]);
 
@@ -395,6 +381,16 @@ const Postbox = ({
                           adSlot="1234567890"
                           postId={post._id}
                           className="my-4"
+                        />
+                      </div>
+                    )}
+                    {(i + 1) === 10 && (
+                      <div className="w-full">
+                        <GoogleAd
+                          adSlot="8502345898"
+                          adFormat="autorelaxed"
+                          postId={post._id}
+                          className="my-6"
                         />
                       </div>
                     )}

@@ -1,15 +1,30 @@
+// components/GoogleAd.jsx
 import React, { useEffect, useRef } from 'react';
-import useAdBlockDetector from './useAdBlockDetector';
 import { useSelector } from 'react-redux';
+import useAdBlockDetector from './useAdBlockDetector';
 import { selectSocketState } from '../store/socketSlice';
 
-const GoogleAd = ({ adSlot, adFormat = 'auto', className = '', postId }) => {
+/**
+ * Universal Google AdSense Component
+ * Supports: display, in-article, in-feed, multiplex
+ */
+const GoogleAd = ({
+  adSlot,
+  adClient = 'ca-pub-8408980890451581',
+  adFormat = 'auto',
+  layoutKey = null,
+  className = '',
+  style = { display: 'block', width: '100%', height: 'auto' },
+  postId = null,
+  responsive = true,
+}) => {
   const isAdBlocked = useAdBlockDetector();
-  const { socketInstance } = useSelector(selectSocketState) || {};
+  const { socketInstance } = useSelector(selectSocketState);
   const adRef = useRef(null);
   const impressionSent = useRef(false);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return; // SSR/Next.js safety
     if (isAdBlocked || impressionSent.current || !socketInstance?.connected) return;
 
     const observer = new IntersectionObserver(
@@ -17,19 +32,22 @@ const GoogleAd = ({ adSlot, adFormat = 'auto', className = '', postId }) => {
         if (entry.isIntersecting && !impressionSent.current) {
           impressionSent.current = true;
 
-          socketInstance.emit('adImpression', {
-            postId,
-            adIndex: adSlot,
-            adSlot,
-            timeSpent: 30,
-          });
+          // Emit ad impression to server
+          if (postId) {
+            socketInstance.emit('adImpression', {
+              postId,
+              adIndex: adSlot,
+              adSlot,
+              timeSpent: 30,
+            });
+          }
 
           try {
-            if (typeof window !== 'undefined') {
-              (window.adsbygoogle = window.adsbygoogle || []).push({});
-            }
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
           } catch (e) {
-            console.warn('[GoogleAd] AdSense error:', e);
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn('[GoogleAd] AdSense error:', e);
+            }
           }
         }
       },
@@ -37,19 +55,19 @@ const GoogleAd = ({ adSlot, adFormat = 'auto', className = '', postId }) => {
     );
 
     if (adRef.current) observer.observe(adRef.current);
-
     return () => observer.disconnect();
   }, [adSlot, postId, isAdBlocked, socketInstance]);
 
   return (
     <ins
       ref={adRef}
-      className={`adsbygoogle block ${className}`}
-      style={{ display: 'block', width: '100%', height: 'auto' }}
-      data-ad-client="ca-pub-8408980890451581"
+      className={`adsbygoogle ${className}`}
+      style={style}
+      data-ad-client={adClient}
       data-ad-slot={adSlot}
       data-ad-format={adFormat}
-      data-full-width-responsive="true"
+      {...(layoutKey && { 'data-ad-layout-key': layoutKey })}
+      {...(responsive && { 'data-full-width-responsive': 'true' })}
     />
   );
 };

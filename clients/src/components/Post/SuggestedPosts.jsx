@@ -2,10 +2,11 @@ import React, { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { fetchSuggestedPosts } from "../../store/suggestedPostsSlice";
-import GoogleAd from "../../Ads/GoogleAd"; 
+import GoogleAd from "../../Ads/GoogleAd";
 import toast from "react-hot-toast";
 import TimeAgo from "../../Utils/TimeAgo";
-import Skeleton from "@/components/Ui/Skeleton"; 
+import Skeleton from "@/components/Ui/Skeleton";
+import adsConfig from "../../Utils/adsConfig";
 
 const SuggestedPosts = () => {
   const dispatch = useDispatch();
@@ -14,7 +15,6 @@ const SuggestedPosts = () => {
     (state) => state.suggestedPosts || {}
   );
 
-  // Fetch 6 posts
   useEffect(() => {
     if (status === "idle" && !hasFetched.current) {
       hasFetched.current = true;
@@ -25,7 +25,6 @@ const SuggestedPosts = () => {
     }
   }, [dispatch, status]);
 
-  // Show error toast
   useEffect(() => {
     if (status === "failed" && error) {
       if (process.env.NODE_ENV === "production") {
@@ -35,15 +34,12 @@ const SuggestedPosts = () => {
     }
   }, [status, error]);
 
-  // Limit to 6 posts
   const displayedPosts = posts.slice(0, 6);
-  const adPositions = displayedPosts.length >= 3 ? [3] : [];
-
-  // Fallback image
+  const adPositions = displayedPosts.length >= 4 ? [4] : [];
   const fallbackImage = "https://placehold.co/600x400?text=No+Image";
 
   return (
-    <div className=" py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900">
+    <div className="py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900">
       <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-8 text-center">
         Explore More Stories
       </h2>
@@ -55,10 +51,29 @@ const SuggestedPosts = () => {
               key={i}
               className="bg-white dark:bg-gray-800 rounded-md shadow-md overflow-hidden"
             >
-              <Skeleton width="w-full" height="h-48" className="rounded-t-md" />
-              <div className="p-4">
-                <Skeleton width="w-3/4" height="h-6" className="mb-2" />
-                <Skeleton width="w-1/2" height="h-4" />
+              <Skeleton width="w-full" height="h-48" className="rounded-t-md bg-gray-200 dark:bg-gray-700" />
+              <div className="p-4 space-y-2">
+                <Skeleton width="w-3/4" height="h-6" className="bg-gray-200 dark:bg-gray-700" />
+                <table className="w-full">
+                  <tbody>
+                    <tr>
+                      <td><Skeleton className="h-4 w-24 bg-gray-200 dark:bg-gray-700" /></td>
+                      <td><Skeleton className="h-4 w-24 bg-gray-200 dark:bg-gray-700" /></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <table className="w-full">
+                  <tbody>
+                    <tr>
+                      <td><Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" /></td>
+                      <td><Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" /></td>
+                      <td><Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" /></td>
+                      <td><Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" /></td>
+                      <td><Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" /></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <Skeleton width="w-16" height="h-4" className="bg-gray-200 dark:bg-gray-700" />
               </div>
             </div>
           ))}
@@ -78,7 +93,7 @@ const SuggestedPosts = () => {
       )}
 
       {status === "succeeded" && displayedPosts.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-w-8xl ">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-w-8xl">
           {displayedPosts.map((post, index) => (
             <React.Fragment key={post._id}>
               <Link
@@ -114,9 +129,10 @@ const SuggestedPosts = () => {
               {adPositions.includes(index + 1) && (
                 <GoogleAd
                   key={`ad-${index}`}
-                  adSlot="1234567890"
+                  adSlot={adsConfig.inFeed.slot}
+                  adFormat={adsConfig.inFeed.format}
                   postId={post._id}
-                  className="bg-white dark:bg-gray-800 rounded-md shadow-md my-4"
+                  className="my-6 col-span-full bg-white dark:bg-gray-800 rounded-md shadow-md"
                 />
               )}
             </React.Fragment>

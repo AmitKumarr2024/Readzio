@@ -4,7 +4,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { MessageCircle, Eye, Heart, Bookmark, Share2 } from "lucide-react";
 import TimeAgo from "../../Utils/TimeAgo";
 import { fetchSubscriptionPlansByAuthor } from "../../store/subscriptionSlice";
-import { formatReadingTime } from "../../Utils/formatReadingTime";
 import Skeleton from "@/components/Ui/Skeleton";
 
 const CardOfPost = ({
@@ -48,8 +47,26 @@ const CardOfPost = ({
         <Skeleton className="w-full h-32 rounded-t-lg bg-gray-200 dark:bg-gray-700" />
         <div className="p-4 space-y-2">
           <Skeleton className="h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
-          <Skeleton className="h-4 w-full rounded bg-gray-200 dark:bg-gray-700" />
-          <Skeleton className="h-4 w-1/2 rounded bg-gray-200 dark:bg-gray-700" />
+          <table className="w-full">
+            <tbody>
+              <tr>
+                <td><Skeleton className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" /></td>
+                <td><Skeleton className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" /></td>
+              </tr>
+            </tbody>
+          </table>
+          <table className="w-full">
+            <tbody>
+              <tr>
+                <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
+                <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
+                <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
+                <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
+                <td><Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" /></td>
+              </tr>
+            </tbody>
+          </table>
+          <Skeleton className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
         </div>
       </div>
     );
@@ -71,7 +88,6 @@ const CardOfPost = ({
         <span className="absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full bg-black bg-opacity-80 text-white">
           {readTime}
         </span>
-
         {isPostPremium && (
           <span className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500 text-black">
             Premium
@@ -82,29 +98,45 @@ const CardOfPost = ({
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-blue-500 line-clamp-2">
           {title || "Untitled"}
         </h3>
-        <div className="flex flex-wrap justify-between text-sm text-gray-500 dark:text-gray-400 gap-x-4 gap-y-1">
-          <span className="truncate">
-            {categoryMap[category._id] || "Uncategorized"}
-          </span>
-          <span className="truncate">{author.name || "Anonymous"}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
-          <span className="flex items-center gap-1">
-            <MessageCircle className="w-5 h-5" /> {commentsCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Eye className="w-5 h-5" /> {viewsCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Heart className="w-5 h-5 text-red-500" /> {likesCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Bookmark className="w-5 h-5 text-blue-500" /> {bookmarksCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Share2 className="w-5 h-5 text-green-500" /> {shareCount}
-          </span>
-        </div>
+        <table className="text-sm text-gray-500 dark:text-gray-400 w-full">
+          <tbody>
+            <tr>
+              <td className="pr-4 truncate">{categoryMap[category._id] || "Uncategorized"}</td>
+              <td className="truncate">{author.name || "Anonymous"}</td>
+            </tr>
+          </tbody>
+        </table>
+        <table className="text-sm text-gray-500 dark:text-gray-400 w-full">
+          <tbody>
+            <tr>
+              <td className="pr-2">
+                <span className="flex items-center gap-1">
+                  <MessageCircle className="w-5 h-5" /> {commentsCount}
+                </span>
+              </td>
+              <td className="pr-2">
+                <span className="flex items-center gap-1">
+                  <Eye className="w-5 h-5" /> {viewsCount}
+                </span>
+              </td>
+              <td className="pr-2">
+                <span className="flex items-center gap-1">
+                  <Heart className="w-5 h-5 text-red-500" /> {likesCount}
+                </span>
+              </td>
+              <td className="pr-2">
+                <span className="flex items-center gap-1">
+                  <Bookmark className="w-5 h-5 text-blue-500" /> {bookmarksCount}
+                </span>
+              </td>
+              <td>
+                <span className="flex items-center gap-1">
+                  <Share2 className="w-5 h-5 text-green-500" /> {shareCount}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <div className="text-xs text-gray-400 dark:text-gray-500">
           <TimeAgo date={createdAt || new Date()} />
         </div>
@@ -117,7 +149,7 @@ const CardOfPost = ({
           {tags?.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {tags.map((tag) => (
-                <div className="text-indigo-500 hover:underline text-sm font-medium">
+                <div key={tag} className="text-indigo-500 hover:underline text-sm font-medium">
                   #{tag}
                 </div>
               ))}
