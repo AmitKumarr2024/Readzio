@@ -268,6 +268,13 @@ const Postbox = ({
     );
   }, [selectedPosts.length]);
 
+  const multiplexAdPositions = useMemo(() => {
+    return Array.from(
+      { length: Math.floor(selectedPosts.length / 10) },
+      (_, i) => (i + 1) * 10
+    );
+  }, [selectedPosts.length]);
+
   const loadMorePosts = useCallback(() => {
     if (!postLoading && hasMore) {
       const nextPage = currentPage + 1;
@@ -381,8 +388,8 @@ const Postbox = ({
                         <InFeedAd postId={post._id} />
                       </div>
                     )}
-                    {(i + 1) === 10 && (
-                      <div className="col-span-full w-full">
+                    {multiplexAdPositions.includes(i + 1) && (
+                      <div className="col-span-full w-full border-t border-b border-gray-300 dark:border-gray-600 my-4">
                         <MultiplexAd postId={post._id} />
                       </div>
                     )}

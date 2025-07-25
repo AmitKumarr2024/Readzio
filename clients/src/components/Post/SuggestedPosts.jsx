@@ -35,8 +35,8 @@ const SuggestedPosts = () => {
   }, [status, error]);
 
   const displayedPosts = posts.slice(0, 6);
-  const adPositions = displayedPosts.length >= 4 ? [4] : [];
-  const multiplexAdPositions = displayedPosts.length >= 6 ? [6] : [];
+  const adPositions = displayedPosts.length >= 4 ? [2, 4] : []; // Ads after 2nd and 4th posts
+  const multiplexAdPositions = displayedPosts.length >= 6 ? [6] : []; // Multiplex ad after last post
   const fallbackImage = "https://placehold.co/600x400?text=No+Image";
 
   return (
@@ -120,60 +120,72 @@ const SuggestedPosts = () => {
       )}
 
       {status === "succeeded" && displayedPosts.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-w-8xl">
-          {displayedPosts.map((post, index) => (
-            <React.Fragment key={post._id}>
-              <Link
-                to={`/post/${post.slug}`}
-                className="group bg-white dark:bg-gray-800 rounded-xs shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
-              >
-                <div className="relative">
-                  <img
-                    src={post.thumbnail || fallbackImage}
-                    alt={post.title || "Post"}
-                    className="w-full h-48 object-cover rounded-t-md transition-transform duration-300 group-hover:scale-105"
-                    onError={(e) => {
-                      if (process.env.NODE_ENV === "production") {
-                        console.warn(
-                          `[SuggestedPosts] Thumbnail failed for post ${post._id}:`,
-                          post.thumbnail
-                        );
-                      }
-                      e.target.src = fallbackImage;
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </div>
-                <div className="p-4">
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 mb-2">
-                    {post.title || "Untitled"}
-                  </h4>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                    <span>{post.author?.name || "Unknown"}</span>
-                    <span className="text-gray-400">•</span>
-                    <TimeAgo date={post.createdAt} />
-                  </p>
-                </div>
-              </Link>
-
-              {adPositions.includes(index + 1) && (
-                <div className="w-full min-h-[250px] p-3 rounded-lg bg-white dark:bg-gray-800">
-                  <InFeedAd postId={post._id} testMode={false} />
-                </div>
-              )}
-              {multiplexAdPositions.includes(index + 1) && (
-                <div
-                  className="w-full border-b border-gray-300 dark:border-gray-600 my-2 flex items-center"
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-w-8xl mx-auto">
+            {displayedPosts.map((post, index) => (
+              <React.Fragment key={post._id || `post-${index}`}>
+                <Link
+                  to={`/post/${post.slug}`}
+                  className="group bg-white dark:bg-gray-800 rounded-xs shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
                 >
-                  <MultiplexAd postId={post._id} testMode={false} />
+                  <div className="relative">
+                    <img
+                      src={post.thumbnail || fallbackImage}
+                      alt={post.title || "Post"}
+                      className="w-full h-48 object-cover rounded-t-md transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        if (process.env.NODE_ENV === "production") {
+                          console.warn(
+                            `[SuggestedPosts] Thumbnail failed for post ${post._id}:`,
+                            post.thumbnail
+                          );
+                        }
+                        e.target.src = fallbackImage;
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </div>
+                  <div className="p-4">
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 mb-2">
+                      {post.title || "Untitled"}
+                    </h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                      <span>{post.author?.name || "Unknown"}</span>
+                      <span className="text-gray-400">•</span>
+                      <TimeAgo date={post.createdAt} />
+                    </p>
+                  </div>
+                </Link>
 
-                </div>
-              )}
-            </React.Fragment>
-          ))}
-        </div>
+                {adPositions.includes(index + 1) && (
+                  <div className="w-full min-h-[250px] p-3 rounded-lg bg-white dark:bg-gray-800">
+                    <InFeedAd
+                      postId={post._id}
+                      testMode={process.env.NODE_ENV !== "production"}
+                      adSlot={adsConfig.inFeedAdSlot}
+                    />
+                  </div>
+                )}
+                {multiplexAdPositions.includes(index + 1) && (
+                  <div className="col-span-full w-full border-t border-b border-gray-300 dark:border-gray-600 my-4">
+                    <MultiplexAd
+                      postId={post._id}
+                      testMode={process.env.NODE_ENV !== "production"}
+                      adSlot={adsConfig.multiplexAdSlot}
+                    />
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+          <div className="col-span-full w-full mt-6">
+            <HorizontalBannerAd
+              testMode={process.env.NODE_ENV !== "production"}
+              adSlot={adsConfig.horizontalBannerAdSlot}
+            />
+          </div>
+        </>
       )}
-      <HorizontalBannerAd />
     </div>
   );
 };
