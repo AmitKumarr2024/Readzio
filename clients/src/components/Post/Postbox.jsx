@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { debounce } from "lodash";
 import CardOfPost from "../Cards/CardOfPost";
@@ -6,7 +12,10 @@ import { getAllPosts, fetchFollowingPosts } from "../../store/postSlice";
 import { fetchCommentCount } from "../../store/commentSlice";
 import { fetchCategories } from "../../store/categorySlice";
 import { fetchFollowers } from "../../store/followSlice";
-import { selectSocketState, fetchInitialPostCounts } from "../../store/socketSlice";
+import {
+  selectSocketState,
+  fetchInitialPostCounts,
+} from "../../store/socketSlice";
 import Sorted from "../Tabs/Sorted";
 import GoogleAd from "../../Ads/GoogleAd";
 import adsConfig from "../../Utils/adsConfig";
@@ -378,13 +387,17 @@ const Postbox = ({
                     </div>
                     {adPositions.includes(i + 1) && (
                       <div className="w-full">
-                        <div className="bg-white dark:bg-gray-800 rounded-md shadow-md overflow-hidden p-2 sm:p-3 md:p-4">
+                        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm overflow-hidden p-3">
                           <GoogleAd
                             adSlot={adsConfig.card.slot}
                             adFormat={adsConfig.card.format}
                             postId={post._id}
-                            style={{ display: "block", width: "100%" }}
                             className="block"
+                            style={{
+                              display: "block",
+                              width: "100%",
+                              height: "auto",
+                            }}
                             testMode={true}
                           />
                         </div>
@@ -395,10 +408,15 @@ const Postbox = ({
                         <div className="bg-white dark:bg-gray-800 rounded-md shadow-md p-2 sm:p-3 md:p-4">
                           <GoogleAd
                             adSlot={adsConfig.banner.slot}
-                            adFormat="horizontal"
+                            adFormat="auto"
                             postId={post._id}
-                            style={{ display: "block", width: "100%" }} // Removed height constraints
-                            className="block"
+                            style={{
+                              display: "block",
+                              width: "100%",
+                              height: "auto",
+                              maxWidth: "100%", // ✅ Enforce width limit
+                            }}
+                            className="block w-full h-auto"
                             testMode={true}
                           />
                         </div>
