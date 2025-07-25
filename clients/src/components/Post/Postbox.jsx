@@ -8,9 +8,10 @@ import { fetchCategories } from "../../store/categorySlice";
 import { fetchFollowers } from "../../store/followSlice";
 import { selectSocketState, fetchInitialPostCounts } from "../../store/socketSlice";
 import Sorted from "../Tabs/Sorted";
-import GoogleAd from "../../Ads/GoogleAd";
 import ErrorBoundary from "./ErrorBoundary";
 import Skeleton from "@/components/Ui/Skeleton";
+import MultiplexAd from "../../Ads/MultiplexAd";
+import InFeedAd from "../../Ads/InFeedAd";
 
 const Postbox = ({
   filterType,
@@ -192,7 +193,7 @@ const Postbox = ({
       validPosts = validPosts.filter(
         (post) =>
           followersIds.includes(String(post.author?._id)) &&
-          String(post.author?._id) !== String(currentUser?._id)
+          String(post.author?._id) !== String(currentUser._id)
       );
     }
 
@@ -377,21 +378,12 @@ const Postbox = ({
                     </div>
                     {adPositions.includes(i + 1) && (
                       <div className="w-full">
-                        <GoogleAd
-                          adSlot="1234567890"
-                          postId={post._id}
-                          className="my-4"
-                        />
+                        <InFeedAd postId={post._id} />
                       </div>
                     )}
                     {(i + 1) === 10 && (
                       <div className="w-full">
-                        <GoogleAd
-                          adSlot="8502345898"
-                          adFormat="autorelaxed"
-                          postId={post._id}
-                          className="my-6"
-                        />
+                        <MultiplexAd postId={post._id} />
                       </div>
                     )}
                   </React.Fragment>
