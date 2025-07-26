@@ -161,8 +161,7 @@ const SuggestedPosts = () => {
                   <div className="w-full min-h-[250px] p-3 rounded-lg bg-white dark:bg-gray-800">
                     <InFeedAd
                       postId={post._id}
-                      testMode={process.env.NODE_ENV !== "production"}
-                      adSlot={adsConfig.inFeedAdSlot}
+                     
                     />
                   </div>
                 )}
@@ -170,8 +169,7 @@ const SuggestedPosts = () => {
                   <div className="col-span-full w-full border-t border-b border-gray-300 dark:border-gray-600 my-4">
                     <MultiplexAd
                       postId={post._id}
-                      testMode={process.env.NODE_ENV !== "production"}
-                      adSlot={adsConfig.multiplexAdSlot}
+                    
                     />
                   </div>
                 )}

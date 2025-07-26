@@ -21,7 +21,6 @@ import ErrorBoundary from "./ErrorBoundary";
 import Skeleton from "@/components/Ui/Skeleton";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import InFeedAd from "../../Ads/InFeedAd";
-import CardAd from "../../Ads/CardAd";
 
 const Postbox = ({
   filterType,
@@ -422,7 +421,7 @@ const Postbox = ({
                   if (item.type === "card-ad") {
                     return (
                       <div key={item.id} className="w-full">
-                        <CardAd postId={item.postId} />
+                        <InFeedAd postId={item.postId} />
                       </div>
                     );
                   }
