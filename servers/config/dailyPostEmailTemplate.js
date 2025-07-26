@@ -214,24 +214,24 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
               </table>
 
 
-         <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 16px 0; height: 60px;">
+         <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 8px 0; height: 60px;">
             <tr>
-               <td style="font-size: 14px; font-weight: bold; color: #6b7280; padding-right: 4px;">
+               <td style="font-size: 14px; font-weight: bold; color: #6b7280; padding-right: 3px;">
                 Read
               </td>
-              <td width="16.6%" align="left" valign="middle" style="font-size: 14px; font-weight: bold; line-height: 24px; color: #6b7280;">
+              <td width="16.6%" align="left" valign="middle" style="font-size: 10px; font-weight: bold; line-height: 24px; color: #6b7280;">
                 {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}
               </td>
-               <td style="font-size: 14px; font-weight: bold; color: #6b7280; padding-right: 4px;">
+               <td style="font-size: 14px; font-weight: bold; color: #6b7280; padding-right: 3px;">
                 Likes
               </td>
-              <td width="16.6%" align="left" valign="middle" style="font-size: 14px; font-weight: bold; line-height: 24px; color: #6b7280;">
+              <td width="16.6%" align="left" valign="middle" style="font-size: 10px; font-weight: bold; line-height: 24px; color: #6b7280;">
                 {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}
               </td>
-               <td style="font-size: 14px; font-weight: bold; color: #6b7280; padding-right: 4px;">
+               <td style="font-size: 14px; font-weight: bold; color: #6b7280; padding-right: 3px;">
                 Comments
               </td>
-              <td width="16.6%" align="left" valign="middle" style="font-size: 14px; font-weight: bold; line-height: 24px; color: #6b7280;">
+              <td width="16.6%" align="left" valign="middle" style="font-size: 10px; font-weight: bold; line-height: 24px; color: #6b7280;">
                 {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}
               </td>
             </tr>
