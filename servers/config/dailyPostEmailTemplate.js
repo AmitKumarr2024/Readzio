@@ -204,10 +204,10 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
                  <tr>
                 {{#if this.author.avatar}}
                 <td style="vertical-align: middle; padding-right: 8px;">
-                  <img src="{{this.author.avatar}}" alt="{{this.author.name}}" width="30" height="30" style="border-radius: 50%; display: block;" />
+                  <img src="{{this.author.avatar}}" alt="{{this.author.name}}" width="20" height="30" style="border-radius: 50%; display: block;" />
                 </td>
                 {{/if}}
-                <td style="vertical-align: middle; font-size: 18px; color: #6b7280;">
+                <td style="vertical-align: middle; font-size: 10px; color: #6b7280;">
                   by {{this.author.name}}
                 </td>
               </tr>
@@ -216,22 +216,22 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
 
          <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 16px 0; height: 60px;">
             <tr>
-               <td style="font-size: 16px; font-weight: bold; color: #6b7280; padding-right: 20px;">
+               <td style="font-size: 10px; font-weight: bold; color: #6b7280; padding-right: 20px;">
                 Read
               </td>
-              <td width="16.6%" align="left" valign="middle" style="font-size: 15px; font-weight: bold; line-height: 24px; color: #6b7280;">
+              <td width="16.6%" align="left" valign="middle" style="font-size: 8px; font-weight: bold; line-height: 24px; color: #6b7280;">
                 {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}
               </td>
-               <td style="font-size: 16px; font-weight: bold; color: #6b7280; padding-right: 20px;">
+               <td style="font-size: 10px; font-weight: bold; color: #6b7280; padding-right: 20px;">
                 Likes
               </td>
-              <td width="16.6%" align="left" valign="middle" style="font-size: 15px; font-weight: bold; line-height: 24px; color: #6b7280;">
+              <td width="16.6%" align="left" valign="middle" style="font-size: 8px; font-weight: bold; line-height: 24px; color: #6b7280;">
                 {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}
               </td>
-               <td style="font-size: 16px; font-weight: bold; color: #6b7280; padding-right: 20px;">
+               <td style="font-size: 10px; font-weight: bold; color: #6b7280; padding-right: 20px;">
                 Comments
               </td>
-              <td width="16.6%" align="left" valign="middle" style="font-size: 15px; font-weight: bold; line-height: 24px; color: #6b7280;">
+              <td width="16.6%" align="left" valign="middle" style="font-size: 8px; font-weight: bold; line-height: 24px; color: #6b7280;">
                 {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}
               </td>
             </tr>
