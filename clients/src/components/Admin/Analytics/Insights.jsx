@@ -19,6 +19,7 @@ import { IoCloseCircleOutline } from "react-icons/io5";
 import { FiMaximize2 } from "react-icons/fi";
 import CountUp from "react-countup";
 import ErrorBoundary from "../../Post/ErrorBoundary";
+import { trackGuestVisit } from "../../../store/guestSlice";
 
 // Constants (move to a separate file if needed)
 const CPM_RATE = 2.5;
@@ -160,6 +161,10 @@ const Insights = () => {
     );
     dispatch(getAllUsers({ page: 1, limit: 10 }));
   }, [dispatch, dateRange]);
+
+  useEffect(() => {
+    dispatch(trackGuestVisit()); // ✅ fire once per session
+  }, [dispatch]);
 
   const handleDateChange = (e) => {
     setDateRange({ ...dateRange, [e.target.name]: e.target.value });

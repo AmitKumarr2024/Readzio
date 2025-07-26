@@ -113,6 +113,24 @@ export const searchPublicPosts = createAsyncThunk(
   }
 );
 
+// Track unique guest visit (for admin dashboard + analytics)
+export const trackGuestVisit = createAsyncThunk(
+  "guest/trackGuestVisit",
+  async (_, { rejectWithValue }) => {
+    try {
+      console.log("[guestSlice:trackGuestVisit] Tracking guest visit");
+      const res = await axiosInstance.post("/public/guest/visit");
+      console.log("[guestSlice:trackGuestVisit] Tracked:", res.data.message);
+      return res.data.message;
+    } catch (err) {
+      const errMsg =
+        err.response?.data?.message || "Failed to track guest visit";
+      console.error("[guestSlice:trackGuestVisit] Error:", errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
 const guestSlice = createSlice({
   name: "guest",
   initialState,
@@ -209,6 +227,15 @@ const guestSlice = createSlice({
         );
         state.loading = false;
         state.error = action.payload;
+      })
+      .addCase(trackGuestVisit.pending, (state) => {
+        console.log("[guestSlice:trackGuestVisit] Pending");
+      })
+      .addCase(trackGuestVisit.fulfilled, (state) => {
+        console.log("[guestSlice:trackGuestVisit] Fulfilled");
+      })
+      .addCase(trackGuestVisit.rejected, (state, action) => {
+        console.error("[guestSlice:trackGuestVisit] Rejected:", action.payload);
       });
   },
 });

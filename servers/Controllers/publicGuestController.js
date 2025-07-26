@@ -1,6 +1,7 @@
-import PostModel from "../../servers/Models/Post.js";
-import { AppError } from "../../servers/Utils/AppError.js";
+import PostModel from "../Models/Post.js";
+import { AppError } from "../Utils/AppError.js";
 import GuestVisitModel from "../Models/GuestVisit.js";
+import GuestModel from "../Models/GuestModel.js";
 
 // 🟢 Get all published + unblocked posts with optional tag filtering
 export const getPublicPosts = async (req, res, next) => {
@@ -36,14 +37,12 @@ export const getPublicPosts = async (req, res, next) => {
       "total:",
       total
     );
-    res
-      .status(200)
-      .json({
-        success: true,
-        posts: processedPosts,
-        total,
-        page: parseInt(page),
-      });
+    res.status(200).json({
+      success: true,
+      posts: processedPosts,
+      total,
+      page: parseInt(page),
+    });
   } catch (error) {
     console.error("[GetPublicPosts] Error:", error);
     next(
@@ -156,6 +155,64 @@ export const trackGuestView = async (req, res, next) => {
             500,
             "TrackGuestView"
           )
+    );
+  }
+};
+
+export const trackGuestVisit = async (req, res, next) => {
+  try {
+    const guestId = req.guestId;
+    if (!guestId)
+      throw new AppError("No guest ID found", 400, "TrackGuestVisit");
+
+    const { io } = req;
+
+    const updatedGuest = await GuestModel.findOneAndUpdate(
+      { guestId },
+      {
+        $setOnInsert: {
+          firstVisit: new Date(),
+        },
+        $set: {
+          lastVisit: new Date(),
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        },
+        $inc: {
+          visitCount: 1,
+        },
+      },
+      {
+        upsert: true,
+        new: true,
+      }
+    );
+
+    console.log("[TrackGuestVisit] ✅ Guest visit tracked:", {
+      guestId: updatedGuest.guestId,
+      visits: updatedGuest.visitCount,
+      lastVisit: updatedGuest.lastVisit,
+    });
+
+    // 🔴 Real-time broadcast to adminRoom
+    if (io) {
+      io.to("adminRoom").emit("guestVisitUpdate", {
+        guestId: updatedGuest.guestId,
+        visitCount: updatedGuest.visitCount,
+        lastVisit: updatedGuest.lastVisit,
+        ip: updatedGuest.ip,
+        userAgent: updatedGuest.userAgent,
+        location: req.headers["cf-ipcountry"] || null, // Optional Cloudflare country header
+      });
+    }
+
+    res.status(200).json({ success: true, message: "Guest visit tracked" });
+  } catch (error) {
+    console.error("[TrackGuestVisit] ❌ Error:", error);
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError("Failed to track guest visit", 500, "TrackGuestVisit")
     );
   }
 };

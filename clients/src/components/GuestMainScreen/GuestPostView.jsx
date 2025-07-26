@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchPublicPosts } from "../../store/guestSlice";
+import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
 import GuestCardOfPost from "../Cards/GuestCardOfPost";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import InFeedAd from "../../Ads/InFeedAd";
@@ -17,6 +17,7 @@ const GuestPostView = () => {
   );
 
   useEffect(() => {
+    dispatch(trackGuestVisit());
     dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
   }, [dispatch]);
 
