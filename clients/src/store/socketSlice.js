@@ -274,12 +274,9 @@ export const initializeSocket = createAsyncThunk(
           });
         });
 
-      socket.off("guestVisitUpdate").on("guestVisitUpdate", (data) => {
-        const isAdmin = getState().auth.user?.role === "admin";
-        if (isAdmin) {
-          console.log("[Socket] 👀 Guest visit update:", data);
-          dispatch(addGuestVisit(data));
-        }
+      socket.off("guestVisitUpdate").on("guestVisitUpdate", (guest) => {
+        console.log("[socketSlice] 🔵 Received guestVisitUpdate:", guest);
+        dispatch(addGuestVisit(guest)); // ⬅️ Add this reducer
       });
     });
   }
@@ -354,10 +351,22 @@ const socketSlice = createSlice({
         ...action.payload,
       };
     },
-    addGuestVisit(state, action) {
-      state.guestVisits.unshift(action.payload);
-      if (state.guestVisits.length > 100) {
-        state.guestVisits.pop(); // keep latest 100 guests only
+    addGuestVisit: (state, action) => {
+      const newGuest = action.payload;
+
+      // If guest already exists, replace; otherwise prepend
+      const existingIndex = state.guestVisits.findIndex(
+        (g) => g.guestId === newGuest.guestId
+      );
+
+      if (existingIndex !== -1) {
+        state.guestVisits[existingIndex] = newGuest;
+      } else {
+        state.guestVisits.unshift(newGuest);
+        // Optional: limit list to avoid memory bloating
+        if (state.guestVisits.length > 100) {
+          state.guestVisits = state.guestVisits.slice(0, 100);
+        }
       }
     },
   },

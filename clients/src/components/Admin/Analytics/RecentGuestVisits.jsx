@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 
 const RecentGuestVisits = () => {
   const { guestVisits = [] } = useSelector(selectSocketState);
+  console.log("[RecentGuestVisits] guestVisits from Redux:", guestVisits);
 
   if (!guestVisits.length) {
     return (
