@@ -1,17 +1,53 @@
 import React, { useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
+import { selectSocketState } from "../store/socketSlice";
+import useAdBlockDetector from "./useAdBlockDetector";
 
-const HorizontalBannerAd = () => {
+const HorizontalBannerAd = ({ postId }) => {
   const adRef = useRef(null);
+  const impressionSent = useRef(false);
+  const isAdBlocked = useAdBlockDetector();
+  const { socketInstance } = useSelector(selectSocketState);
 
+  // Track ad visibility and send impression
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch (e) {
-        console.warn("[HorizontalBannerAd] Ad push error:", e);
-      }
+    if (
+      typeof window === "undefined" ||
+      isAdBlocked ||
+      impressionSent.current ||
+      !socketInstance?.connected
+    ) {
+      return;
     }
-  }, []);
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !impressionSent.current) {
+          impressionSent.current = true;
+
+          // Emit impression to backend or via socket
+          if (postId) {
+            socketInstance.emit("adImpression", {
+              postId,
+              adIndex: "horizontal",
+              adSlot: "2355207118",
+              timeSpent: 30,
+            });
+          }
+
+          try {
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+          } catch (e) {
+            console.warn("[HorizontalBannerAd] Ad push error:", e);
+          }
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (adRef.current) observer.observe(adRef.current);
+    return () => observer.disconnect();
+  }, [postId, isAdBlocked, socketInstance]);
 
   return (
     <div className="flex justify-center w-full">

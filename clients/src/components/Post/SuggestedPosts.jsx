@@ -168,14 +168,11 @@ const SuggestedPosts = () => {
                 )}
                 {multiplexAdPositions.includes(index + 1) && (
                   <div className="col-span-full w-full border-t border-b border-gray-300 dark:border-gray-600 my-4">
-                    <MultiplexAd postId={post._id} />
+                    <HorizontalBannerAd postId={post._id} />
                   </div>
                 )}
               </React.Fragment>
             ))}
-          </div>
-          <div className="col-span-full w-full mt-6">
-            <HorizontalBannerAd />
           </div>
         </>
       )}
