@@ -96,25 +96,32 @@ io.on("connection", (socket) => {
     });
   }
 
-  socket.on("join", (userId) => {
+  socket.on("join", (roomId) => {
     console.log("[Socket:Join] Received join:", {
-      userId,
+      roomId,
       socketUserId: socket.userId,
     });
-    if (userId && (!socket.userId || socket.userId === userId)) {
-      socket.userId = userId;
-      socket.join(userId);
-      connectedUsers.add(userId);
-      io.emit("userStatus", { userId, isOnline: true });
+
+    if (roomId === "adminRoom") {
+      console.log("[Socket:Join] ✅ Admin joined adminRoom");
+      socket.join("adminRoom");
+      return;
+    }
+
+    if (roomId && (!socket.userId || socket.userId === roomId)) {
+      socket.userId = roomId;
+      socket.join(roomId);
+      connectedUsers.add(roomId);
+      io.emit("userStatus", { userId: roomId, isOnline: true });
       io.emit("onlineUsersCount", connectedUsers.size);
       console.log("[Socket:Join] User joined:", {
-        userId,
+        userId: roomId,
         socketId: socket.id,
         onlineCount: connectedUsers.size,
       });
     } else {
-      console.warn("[Socket:Join] Invalid or mismatched userId:", {
-        userId,
+      console.warn("[Socket:Join] Invalid or mismatched roomId:", {
+        roomId,
         socketUserId: socket.userId,
       });
     }

@@ -276,7 +276,7 @@ export const initializeSocket = createAsyncThunk(
 
       socket.off("guestVisitUpdate").on("guestVisitUpdate", (guest) => {
         console.log("[socketSlice] 🔵 Received guestVisitUpdate:", guest);
-        dispatch(addGuestVisit(guest)); // ⬅️ Add this reducer
+        dispatch(addGuestVisit(guest));
       });
     });
   }
