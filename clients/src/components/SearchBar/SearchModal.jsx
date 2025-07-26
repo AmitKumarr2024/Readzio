@@ -48,7 +48,7 @@ const SearchModal = ({ isOpen, onClose }) => {
     >
       {isOpen && (
         <motion.div
-          className="fixed inset-0 bg-black/70 dark:bg-black/80 z-50 flex items-start pt-16 sm:pt-20 px-4 backdrop-blur-md"
+          className="fixed inset-0 bg-black/40 dark:bg-black/50 z-50 flex items-start pt-16 sm:pt-20 px-4 backdrop-blur-md"
           initial="hidden"
           animate="visible"
           exit="hidden"
