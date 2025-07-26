@@ -3,8 +3,8 @@ import {
   getPublicPosts,
   getPublicPostBySlug,
   trackGuestView,
-} from "../Controllers/publicController.js";
-import { trackGuestVisit } from "../Controllers/publicGuestController.js";
+  trackGuestVisit,
+} from "../../servers/Controllers/publicGuestController";
 
 const router = express.Router();
 
