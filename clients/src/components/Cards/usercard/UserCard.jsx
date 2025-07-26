@@ -63,14 +63,14 @@ const UserCard = ({
             <tbody>
               <tr>
                 {/* Avatar or Initial */}
-                <td className="w-16 align-top pr-6">
+                <td className="w-20 align-top pr-2">
                   <div className="relative w-20 h-20">
                     {user?.avatar ? (
                       <>
                         <img
                           src={user.avatar}
                           alt={authorName}
-                          className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md group-hover/link:scale-110 transition-transform duration-300"
+                          className="w-14 h-14 rounded-full object-cover border-4 border-white shadow-md group-hover/link:scale-110 transition-transform duration-300"
                         />
                         <div className="absolute inset-0 rounded-full bg-indigo-500 opacity-0 group-hover/link:opacity-30 transition-opacity duration-300"></div>
                       </>
