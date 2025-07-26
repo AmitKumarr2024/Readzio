@@ -44,12 +44,18 @@ const Navbar = () => {
     authLoading,
     sessionExpired,
   } = useSelector((state) => state.auth ?? {});
+
+  if (!authInitialized || authLoading) return null;
+
   const { onlineUsersCount, status } = useSelector(
     (state) => state.socket ?? {}
   );
   const { user, userLocations } = useSelector((state) => state.user ?? {});
 
-  const avatarUrl = useMemo(() => user?.avatar, [user?.avatar]);
+  const avatarUrl = useMemo(() => {
+    return authUser?.avatar || user?.avatar || null;
+  }, [authUser?.avatar, user?.avatar]);
+
   const userName = useMemo(() => authUser?.name || "User", [authUser?.name]);
   const userId = useMemo(() => authUser?._id, [authUser?._id]);
 
@@ -250,8 +256,12 @@ const Navbar = () => {
                   <img
                     src={avatarUrl}
                     alt={userName}
-                    className="w-full h-full object-cover"
+                    className="w-9 h-9 rounded-full object-cover"
                     loading="lazy"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "/fallback-avatar.png"; // optional fallback avatar
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium text-text-main-light dark:text-text-main-dark">
