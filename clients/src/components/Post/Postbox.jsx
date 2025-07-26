@@ -21,6 +21,7 @@ import ErrorBoundary from "./ErrorBoundary";
 import Skeleton from "@/components/Ui/Skeleton";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import InFeedAd from "../../Ads/InFeedAd";
+import SafeInFeedAd from "../../Ads/SafeInFeedAd";
 
 const Postbox = ({
   filterType,
