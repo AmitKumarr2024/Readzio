@@ -70,7 +70,7 @@ const UserCard = ({
                         <img
                           src={user.avatar}
                           alt={authorName}
-                          className="w-full h-full rounded-full object-cover border-4 border-white shadow-md group-hover/link:scale-110 transition-transform duration-300"
+                          className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md group-hover/link:scale-110 transition-transform duration-300"
                         />
                         <div className="absolute inset-0 rounded-full bg-indigo-500 opacity-0 group-hover/link:opacity-30 transition-opacity duration-300"></div>
                       </>
