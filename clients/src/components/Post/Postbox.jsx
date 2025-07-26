@@ -421,7 +421,7 @@ const Postbox = ({
                   if (item.type === "card-ad") {
                     return (
                       <div key={item.id} className="w-full">
-                        <InFeedAd postId={item.postId} />
+                        <SafeInFeedAd postId={item.postId} />
                       </div>
                     );
                   }

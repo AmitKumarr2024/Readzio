@@ -63,7 +63,7 @@ const UserCard = ({
             <tbody>
               <tr>
                 {/* Avatar or Initial */}
-                <td className="w-32 align-top pr-4">
+                <td className="w-32 align-top pr-1">
                   <div className="relative w-20 h-20">
                     {user?.avatar ? (
                       <>
