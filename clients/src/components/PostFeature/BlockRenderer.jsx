@@ -60,24 +60,56 @@ const BlockRenderer = ({
   }, [dispatch, isAuthenticated, user?._id, authorId]);
 
   const getAdBlocks = (blocks) => {
-    if (!Array.isArray(blocks) || blocks.length < 4) return blocks;
+    if (!Array.isArray(blocks) || blocks.length < 6) return blocks;
+
     const adBlocks = [...blocks];
-    const positions = [];
-    const maxAds = Math.min(3, Math.floor(blocks.length / 6));
-    let currentPos = 3;
-    while (positions.length < maxAds && currentPos < blocks.length) {
-      positions.push(currentPos);
-      currentPos += 6;
+    const validTypes = [
+      "text",
+      "image",
+      "video",
+      "code",
+      "list",
+      "quote",
+      "poll",
+      "link",
+      "table",
+    ];
+
+    const totalBlocks = blocks.length;
+    const validIndices = [];
+
+    // Collect only indices of valid ad positions
+    for (let i = 0; i < totalBlocks; i++) {
+      const type = blocks[i]?.type;
+      if (validTypes.includes(type)) {
+        validIndices.push(i);
+      }
     }
-    positions.sort((a, b) => b - a);
-    positions.forEach((pos, index) => {
-      adBlocks.splice(pos, 0, {
+
+    if (validIndices.length < 6) return blocks;
+
+    const adInsertions = [];
+    const minGap = 6;
+    const maxAds = Math.min(5, Math.floor(validIndices.length / minGap));
+    let current = 2 + Math.floor(Math.random() * 2); // Start after 2–3 valid blocks
+    let adsInserted = 0;
+
+    while (adsInserted < maxAds && current < validIndices.length - 2) {
+      const adAfterIndex = validIndices[current];
+      adInsertions.push(adAfterIndex);
+      current += minGap + Math.floor(Math.random() * 3); // gap: 6–8
+      adsInserted++;
+    }
+
+    // Insert ads in reverse to avoid index shifting
+    adInsertions.reverse().forEach((insertAt, index) => {
+      adBlocks.splice(insertAt + 1, 0, {
         type: "ad",
         adIndex: index,
-        adContent: "Sponsored Content",
-        adImage: placeholderAdImage,
+        adContent: "Sponsored",
       });
     });
+
     return adBlocks;
   };
 
@@ -197,16 +229,7 @@ const BlockRenderer = ({
           />
         );
       case "ad":
-        return (
-          <div key={`ad-${i}`} className="my-8">
-            <div className="flex justify-center items-center bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-              <InArticleAd postId={postId} testMode={false} />
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
-                Sponsored
-              </p>
-            </div>
-          </div>
-        );
+        return <InArticleAd key={`ad-${i}`} postId={postId} />;
       default:
         return (
           <div key={i} className="text-red-500 italic">

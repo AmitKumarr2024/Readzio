@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { debounce } from "lodash";
 import CardOfPost from "../Cards/CardOfPost";
@@ -6,12 +12,16 @@ import { getAllPosts, fetchFollowingPosts } from "../../store/postSlice";
 import { fetchCommentCount } from "../../store/commentSlice";
 import { fetchCategories } from "../../store/categorySlice";
 import { fetchFollowers } from "../../store/followSlice";
-import { selectSocketState, fetchInitialPostCounts } from "../../store/socketSlice";
+import {
+  selectSocketState,
+  fetchInitialPostCounts,
+} from "../../store/socketSlice";
 import Sorted from "../Tabs/Sorted";
 import ErrorBoundary from "./ErrorBoundary";
 import Skeleton from "@/components/Ui/Skeleton";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import InFeedAd from "../../Ads/InFeedAd";
+import CardAd from "../../Ads/CardAd";
 
 const Postbox = ({
   filterType,
@@ -45,9 +55,25 @@ const Postbox = ({
   // Determine cards per row based on screen size and sidebar state
   const cardsPerRow = useMemo(() => {
     if (isSidebarOpen) {
-      return window.innerWidth >= 1280 ? 4 : window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 3 : window.innerWidth >= 640 ? 2 : 1;
+      return window.innerWidth >= 1280
+        ? 4
+        : window.innerWidth >= 1024
+        ? 3
+        : window.innerWidth >= 768
+        ? 3
+        : window.innerWidth >= 640
+        ? 2
+        : 1;
     }
-    return window.innerWidth >= 1280 ? 5 : window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 3 : window.innerWidth >= 640 ? 2 : 1;
+    return window.innerWidth >= 1280
+      ? 5
+      : window.innerWidth >= 1024
+      ? 3
+      : window.innerWidth >= 768
+      ? 3
+      : window.innerWidth >= 640
+      ? 2
+      : 1;
   }, [isSidebarOpen]);
 
   useEffect(() => {
@@ -281,7 +307,7 @@ const Postbox = ({
     return Array.from(
       { length: Math.floor(selectedPosts.length / 10) },
       (_, i) => (i + 1) * 10
-    ).filter(pos => pos <= selectedPosts.length); // Ensure position aligns with full rows
+    ).filter((pos) => pos <= selectedPosts.length); // Ensure position aligns with full rows
   }, [selectedPosts.length]);
 
   const loadMorePosts = useCallback(() => {
@@ -394,7 +420,7 @@ const Postbox = ({
                     </div>
                     {adPositions.includes(i + 1) && (
                       <div className="w-full">
-                        <InFeedAd postId={post._id} />
+                        <CardAd postId={post._id} />
                       </div>
                     )}
                     {multiplexAdPositions.includes(i + 1) && (

@@ -1,18 +1,69 @@
-import GoogleAd from "./GoogleAd";
+import React, { useEffect, useRef } from "react";
+import useAdBlockDetector from "./useAdBlockDetector";
+import { useSelector } from "react-redux";
+import { selectSocketState } from "../store/socketSlice";
 
-const InFeedAd = ({ postId}) => {
+const InFeedAd = ({ postId }) => {
+  const adRef = useRef(null);
+  const impressionSent = useRef(false);
+  const isAdBlocked = useAdBlockDetector();
+  const { socketInstance } = useSelector(selectSocketState);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (err) {
+      console.warn("[InFeedAd] Initial ad push failed", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!adRef.current || isAdBlocked || impressionSent.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !impressionSent.current) {
+          impressionSent.current = true;
+
+          if (postId && socketInstance?.connected) {
+            socketInstance.emit("adImpression", {
+              postId,
+              adSlot: "8028537328",
+              adIndex: "in-feed",
+              timeSpent: 30,
+            });
+          }
+
+          try {
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+          } catch (err) {
+            console.warn("[InFeedAd] Ad push failed on view", err);
+          }
+        }
+      },
+      { threshold: 0.25 }
+    );
+
+    observer.observe(adRef.current);
+    return () => observer.disconnect();
+  }, [isAdBlocked, socketInstance, postId]);
+
   return (
-    <div className=" h-72 w-full overflow-hidden flex flex-col justify-center items-center p-4">
-      <GoogleAd
-        adSlot="8028537328"
-        adFormat="autorelaxed"
-        postId={postId}
-        
-        style={{ display: "block", width: "100%", height: "100%" }}
+    <div className="w-full bg-white dark:bg-gray-800 rounded-md shadow border p-3">
+      <ins
+        ref={adRef}
+        className="adsbygoogle"
+        style={{ display: "block" }}
+        data-ad-client="ca-pub-8408980890451581"
+        data-ad-slot="8028537328"
+        data-ad-format="fluid"
+        data-full-width-responsive="true"
       />
-      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
-      Sponsored
-    </p>
+      <p className="mt-2 text-xs text-center italic text-gray-500 dark:text-gray-400">
+        Sponsored
+      </p>
     </div>
   );
 };
