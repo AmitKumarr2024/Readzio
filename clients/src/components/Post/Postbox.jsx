@@ -295,20 +295,39 @@ const Postbox = ({
     postsToFetch.forEach((post) => dispatch(fetchCommentCount(post._id)));
   }, [dispatch, customPosts, posts, commentCounts]);
 
-  const adPositions = useMemo(() => {
-    return Array.from(
-      { length: Math.floor(selectedPosts.length / 6) },
-      (_, i) => (i + 1) * 6
-    );
-  }, [selectedPosts.length]);
+  const insertAdsIntoPosts = (posts) => {
+    const result = [...posts];
+    const items = [];
 
-  const multiplexAdPositions = useMemo(() => {
-    // Insert MultiplexAd after every 10 complete cards
-    return Array.from(
-      { length: Math.floor(selectedPosts.length / 10) },
-      (_, i) => (i + 1) * 10
-    ).filter((pos) => pos <= selectedPosts.length); // Ensure position aligns with full rows
-  }, [selectedPosts.length]);
+    for (let i = 0; i < result.length; i++) {
+      items.push(result[i]);
+
+      // CardAd after every 6 posts
+      if ((i + 1) % 6 === 0) {
+        items.push({
+          type: "card-ad",
+          id: `card-ad-${i}`,
+          postId: result[i]._id,
+        });
+      }
+
+      // MultiplexAd after every 10 posts
+      if ((i + 1) % 10 === 0) {
+        items.push({
+          type: "multiplex-ad",
+          id: `multiplex-ad-${i}`,
+          postId: result[i]._id,
+        });
+      }
+    }
+
+    return items;
+  };
+
+  const itemsWithAds = useMemo(
+    () => insertAdsIntoPosts(selectedPosts),
+    [selectedPosts]
+  );
 
   const loadMorePosts = useCallback(() => {
     if (!postLoading && hasMore) {
@@ -398,38 +417,46 @@ const Postbox = ({
                   : "lg:grid-cols-3 xl:grid-cols-5"
               }`}
             >
-              {selectedPosts.length ? (
-                selectedPosts.map((post, i) => (
-                  <React.Fragment key={post._id || `post-${i}`}>
+              {itemsWithAds.length ? (
+                itemsWithAds.map((item, i) => {
+                  if (item.type === "card-ad") {
+                    return (
+                      <div key={item.id} className="w-full">
+                        <CardAd postId={item.postId} />
+                      </div>
+                    );
+                  }
+                  if (item.type === "multiplex-ad") {
+                    return (
+                      <div
+                        key={item.id}
+                        className="col-span-full w-full border-t border-b border-gray-300 dark:border-gray-600 my-4"
+                      >
+                        <MultiplexAd postId={item.postId} />
+                      </div>
+                    );
+                  }
+                  return (
                     <div
+                      key={item._id || `post-${i}`}
                       ref={
-                        i === selectedPosts.length - 1
+                        i === itemsWithAds.length - 1
                           ? lastPostElementRef
                           : null
                       }
                       className="w-full"
                     >
                       <CardOfPost
-                        {...post}
-                        commentsCount={commentCounts[post._id] ?? 0}
+                        {...item}
+                        commentsCount={commentCounts[item._id] ?? 0}
                         loading={propLoading && !selectedPosts.length}
                         categoryMap={categoryMap}
-                        postType={post.postType}
-                        readTime={post.readTime}
+                        postType={item.postType}
+                        readTime={item.readTime}
                       />
                     </div>
-                    {adPositions.includes(i + 1) && (
-                      <div className="w-full">
-                        <CardAd postId={post._id} />
-                      </div>
-                    )}
-                    {multiplexAdPositions.includes(i + 1) && (
-                      <div className="col-span-full w-full border-t border-b border-gray-300 dark:border-gray-600 my-4">
-                        <MultiplexAd postId={post._id} />
-                      </div>
-                    )}
-                  </React.Fragment>
-                ))
+                  );
+                })
               ) : (
                 <p className="col-span-full text-center text-gray-500">
                   {filterType === "Following"

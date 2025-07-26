@@ -21,7 +21,7 @@ const HorizontalBannerAd = () => {
       <ins
         ref={adRef}
         className="adsbygoogle"
-        style={{ display: "block" }}
+        style={{ display: "block", width: "100%" }}
         data-ad-client="ca-pub-8408980890451581"
         data-ad-slot="2355207118"
         data-ad-format="auto"
