@@ -46,58 +46,76 @@ const VerifyEmail = lazy(() =>
 );
 const TagWisePage = lazy(() => import("../pages/TagWisePage"));
 
-// Wrapper with Suspense
-const withSuspense = (Component) => (
-  <Suspense fallback={<SplashLoader />}>
-    <Component />
-  </Suspense>
-);
+// ✅ FIXED: withSuspense returns a component
+const withSuspense = (Component) => {
+  return function SuspendedComponent(props) {
+    return (
+      <Suspense fallback={<SplashLoader />}>
+        <Component {...props} />
+      </Suspense>
+    );
+  };
+};
 
 const routes = createBrowserRouter([
   {
     path: "/",
     element: <App />,
     children: [
-      { index: true, element: withSuspense(MainPage) },
-      { path: "createPost", element: withSuspense(CreatePost) },
-      { path: "edit-post/:slug", element: withSuspense(EditPost) },
-      { path: "delete-post/:id", element: withSuspense(DeleteModal) },
-      { path: "category/:category", element: withSuspense(CategoryWisePage) },
-      { path: "post/:slug", element: withSuspense(DisplayPost) },
-      { path: "search", element: withSuspense(SearchPage) },
-      { path: "admin", element: withSuspense(Dashboard) },
-      { path: "about", element: withSuspense(AboutPage) },
-      { path: "contact", element: withSuspense(Contact) },
-      { path: "privacy", element: withSuspense(PrivacyPage) },
-      { path: "user", element: withSuspense(UserProfilePage) },
-      { path: "user-setting", element: withSuspense(UserSettingsPage) },
-      { path: "author-profile/:id", element: withSuspense(AuthorProfilePage) },
-      { path: "plans/:id", element: withSuspense(UserPlanPage) },
-      { path: "bookmark", element: withSuspense(BookmarkComponent) },
-      {
-        path: "acknowledge/:reportId",
-        element: withSuspense(AcknowledgeConfirmation),
-      },
-      { path: "message-box", element: withSuspense(NotificationPage) },
-      { path: "users", element: withSuspense(UsersPage) },
-      { path: "verify", element: withSuspense(VerifyEmail) },
-      { path: "tag/:tag", element: withSuspense(TagWisePage) },
-      { path: "Term&Condition", element: withSuspense(TermsAndConditionPage) },
+      { index: true, element: React.createElement(withSuspense(MainPage)) },
+      { path: "createPost", element: React.createElement(withSuspense(CreatePost)) },
+      { path: "edit-post/:slug", element: React.createElement(withSuspense(EditPost)) },
+      { path: "delete-post/:id", element: React.createElement(withSuspense(DeleteModal)) },
+      { path: "category/:category", element: React.createElement(withSuspense(CategoryWisePage)) },
+      { path: "post/:slug", element: React.createElement(withSuspense(DisplayPost)) },
+      { path: "search", element: React.createElement(withSuspense(SearchPage)) },
+      { path: "admin", element: React.createElement(withSuspense(Dashboard)) },
+      { path: "about", element: React.createElement(withSuspense(AboutPage)) },
+      { path: "contact", element: React.createElement(withSuspense(Contact)) },
+      { path: "privacy", element: React.createElement(withSuspense(PrivacyPage)) },
+      { path: "user", element: React.createElement(withSuspense(UserProfilePage)) },
+      { path: "user-setting", element: React.createElement(withSuspense(UserSettingsPage)) },
+      { path: "author-profile/:id", element: React.createElement(withSuspense(AuthorProfilePage)) },
+      { path: "plans/:id", element: React.createElement(withSuspense(UserPlanPage)) },
+      { path: "bookmark", element: React.createElement(withSuspense(BookmarkComponent)) },
+      { path: "acknowledge/:reportId", element: React.createElement(withSuspense(AcknowledgeConfirmation)) },
+      { path: "message-box", element: React.createElement(withSuspense(NotificationPage)) },
+      { path: "users", element: React.createElement(withSuspense(UsersPage)) },
+      { path: "verify", element: React.createElement(withSuspense(VerifyEmail)) },
+      { path: "tag/:tag", element: React.createElement(withSuspense(TagWisePage)) },
+      { path: "Term&Condition", element: React.createElement(withSuspense(TermsAndConditionPage)) },
     ],
   },
-  { path: "/select-category", element: withSuspense(CategorySelectPage) },
-  {
-    path: "/login",
-    element: <PublicOnlyRoute>{withSuspense(LoginPage)}</PublicOnlyRoute>,
-  },
+
+  // ✅ Signup/Login wrapped with PublicOnlyRoute
   {
     path: "/signup",
-    element: <PublicOnlyRoute>{withSuspense(SignupPage)}</PublicOnlyRoute>,
+    element: (
+      <PublicOnlyRoute>
+        {React.createElement(withSuspense(SignupPage))}
+      </PublicOnlyRoute>
+    ),
   },
-
-  { path: "/reset-password", element: withSuspense(ResetPassword) },
-
-  { path: "*", element: withSuspense(PageNotFound) },
+  {
+    path: "/login",
+    element: (
+      <PublicOnlyRoute>
+        {React.createElement(withSuspense(LoginPage))}
+      </PublicOnlyRoute>
+    ),
+  },
+  {
+    path: "/select-category",
+    element: React.createElement(withSuspense(CategorySelectPage)),
+  },
+  {
+    path: "/reset-password",
+    element: React.createElement(withSuspense(ResetPassword)),
+  },
+  {
+    path: "*",
+    element: React.createElement(withSuspense(PageNotFound)),
+  },
 ]);
 
 export default routes;
