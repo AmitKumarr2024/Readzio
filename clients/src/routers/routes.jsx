@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import React, { Suspense, lazy } from "react";
 import App from "../App";
 import SplashLoader from "../AppRootFile/components/SplashLoader";
+import PublicOnlyRoute from "../connection/PublicOnlyRoute";
 
 // Lazy imports
 const LoginPage = lazy(() => import("../pages/LoginPage"));
@@ -85,9 +86,17 @@ const routes = createBrowserRouter([
     ],
   },
   { path: "/select-category", element: withSuspense(CategorySelectPage) },
-  { path: "/login", element: withSuspense(LoginPage) },
+  {
+    path: "/login",
+    element: <PublicOnlyRoute>{withSuspense(LoginPage)}</PublicOnlyRoute>,
+  },
+  {
+    path: "/signup",
+    element: <PublicOnlyRoute>{withSuspense(SignupPage)}</PublicOnlyRoute>,
+  },
+
   { path: "/reset-password", element: withSuspense(ResetPassword) },
-  { path: "/signup", element: withSuspense(SignupPage) },
+
   { path: "*", element: withSuspense(PageNotFound) },
 ]);
 
