@@ -14,19 +14,21 @@ const HorizontalBannerAd = () => {
   }, []);
 
   return (
-    <div className="w-full bg-white dark:bg-gray-800 rounded-md shadow-sm p-3 overflow-hidden">
-      <p className="text-xs text-gray-400 dark:text-gray-500 mb-1 text-center uppercase tracking-wide font-medium">
-        Sponsored
-      </p>
-      <ins
-        ref={adRef}
-        className="adsbygoogle"
-        style={{ display: "block", width: "100%" }}
-        data-ad-client="ca-pub-8408980890451581"
-        data-ad-slot="2355207118"
-        data-ad-format="auto"
-        data-full-width-responsive="true"
-      />
+    <div className="flex justify-center w-full">
+      <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-md shadow-sm p-3 overflow-hidden">
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-1 text-center uppercase tracking-wide font-medium">
+          Sponsored
+        </p>
+        <ins
+          ref={adRef}
+          className="adsbygoogle"
+          style={{ display: "block", width: "100%" }}
+          data-ad-client="ca-pub-8408980890451581"
+          data-ad-slot="2355207118"
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        />
+      </div>
     </div>
   );
 };

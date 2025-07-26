@@ -13,7 +13,11 @@ import HorizontalBannerAd from "../../Ads/HorizontalBannerAd";
 const SuggestedPosts = () => {
   const dispatch = useDispatch();
   const hasFetched = useRef(false);
-  const { posts = [], status, error } = useSelector((state) => state.suggestedPosts || {});
+  const {
+    posts = [],
+    status,
+    error,
+  } = useSelector((state) => state.suggestedPosts || {});
 
   useEffect(() => {
     if (status === "idle" && !hasFetched.current) {
@@ -159,28 +163,19 @@ const SuggestedPosts = () => {
 
                 {adPositions.includes(index + 1) && (
                   <div className="w-full min-h-[250px] p-3 rounded-lg bg-white dark:bg-gray-800">
-                    <InFeedAd
-                      postId={post._id}
-                     
-                    />
+                    <InFeedAd postId={post._id} />
                   </div>
                 )}
                 {multiplexAdPositions.includes(index + 1) && (
                   <div className="col-span-full w-full border-t border-b border-gray-300 dark:border-gray-600 my-4">
-                    <MultiplexAd
-                      postId={post._id}
-                    
-                    />
+                    <MultiplexAd postId={post._id} />
                   </div>
                 )}
               </React.Fragment>
             ))}
           </div>
           <div className="col-span-full w-full mt-6">
-            <HorizontalBannerAd
-              testMode={process.env.NODE_ENV !== "production"}
-              adSlot={adsConfig.horizontalBannerAdSlot}
-            />
+            <HorizontalBannerAd />
           </div>
         </>
       )}
