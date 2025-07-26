@@ -44,14 +44,12 @@ const Navbar = () => {
     authLoading,
     sessionExpired,
   } = useSelector((state) => state.auth ?? {});
-
   const { onlineUsersCount, status } = useSelector(
     (state) => state.socket ?? {}
   );
   const { user, userLocations } = useSelector((state) => state.user ?? {});
 
-  const avatarUrl = authUser?.avatar ?? null;
-
+  const avatarUrl = useMemo(() => user?.avatar, [user?.avatar]);
   const userName = useMemo(() => authUser?.name || "User", [authUser?.name]);
   const userId = useMemo(() => authUser?._id, [authUser?._id]);
 
@@ -251,17 +249,13 @@ const Navbar = () => {
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
-                    alt={authUser?.name}
-                    className="w-9 h-9 rounded-full object-cover"
+                    alt={userName}
+                    className="w-full h-full object-cover"
                     loading="lazy"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = "/fallback-avatar.png"; // Add this image in your /public
-                    }}
                   />
                 ) : (
-                  <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium text-text-main-light dark:text-text-main-dark">
-                    {authUser?.name?.[0] ?? "U"}
+                  <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium text-text-main-light dark:text-text-main-dark">
+                    {userName[0]}
                   </div>
                 )}
               </Link>
