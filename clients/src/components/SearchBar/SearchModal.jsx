@@ -10,7 +10,12 @@ const backdrop = {
 
 const modal = {
   hidden: { opacity: 0, y: -50, scale: 0.95 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: "easeOut" } },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.4, ease: "easeOut" },
+  },
 };
 
 const SearchModal = ({ isOpen, onClose }) => {
@@ -56,7 +61,10 @@ const SearchModal = ({ isOpen, onClose }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={onClose}
+              onClick={() => {
+                console.log("Close button clicked");
+                onClose();
+              }}
               className="absolute -top-4 -right-4 bg-red-600 text-white rounded-full p-2 hover:bg-red-700 dark:hover:bg-red-500 transition duration-300 shadow-md"
               aria-label="Close search modal"
               type="button"
