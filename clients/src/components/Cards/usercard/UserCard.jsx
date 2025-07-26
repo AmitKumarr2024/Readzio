@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import ToggleFollowButton from "../../Author/Subscribe/ToggleFollowButton";
 import ToggleSubscribeButton from "../../Author/Subscribe/ToggleSubscribeButton";
-import Skeleton from "@/components/Ui/Skeleton"; 
+import Skeleton from "@/components/Ui/Skeleton";
 
 const UserCard = ({
   posts = [],
@@ -57,23 +57,46 @@ const UserCard = ({
       ) : (
         <Link
           to={`/author-profile/${user._id}`}
-          className="flex items-center space-x-4 relative z-10 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark p-4 rounded-lg shadow-sm hover:bg-indigo-50 hover:dark:text-text-main-light  hover:scale-102 transition-all duration-300 group/link"
+          className="block bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark p-4 rounded-lg shadow-sm hover:bg-indigo-50 hover:dark:text-text-main-light hover:scale-102 transition-all duration-300 group/link"
         >
-          <div className="relative ">
-            <img
-              src={user.avatar || "https://placehold.co/150x100?text=Avatar"}
-              alt={authorName}
-              className="w-32 rounded-full object-cover border-4 border-white shadow-md group-hover/link:scale-110 transition-transform duration-300"
-            />
-            <div className="absolute inset-0 rounded-full bg-indigo-500  opacity-0 group-hover/link:opacity-30 transition-opacity duration-300"></div>
-          </div>
-          <div className="flex-1 ">
-            <h3 className="font-bold text-3xl ">{authorName}</h3>
-            <p className="text-lg">
-              @{user.username || user.email || "unknown"}
-            </p>
-            {user.email && <p className="text-sm mt-1">Email: {user.email}</p>}
-          </div>
+          <table className="w-full table-fixed">
+            <tbody>
+              <tr>
+                {/* Avatar or Initial */}
+                <td className="w-32 align-top pr-4">
+                  <div className="relative w-32 h-32">
+                    {user?.avatar ? (
+                      <>
+                        <img
+                          src={user.avatar}
+                          alt={authorName}
+                          className="w-full h-full rounded-full object-cover border-4 border-white shadow-md group-hover/link:scale-110 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 rounded-full bg-indigo-500 opacity-0 group-hover/link:opacity-30 transition-opacity duration-300"></div>
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center rounded-full bg-indigo-500 text-white text-4xl font-semibold uppercase shadow-md">
+                        {(authorName || user.username || user.email || "U")[0]}
+                      </div>
+                    )}
+                  </div>
+                </td>
+
+                {/* User Info */}
+                <td className="align-top">
+                  <h3 className="font-bold text-2xl mb-1">{authorName}</h3>
+                  <p className="text-lg text-gray-600 dark:text-gray-300 mb-1">
+                    @{user.username || user.email || "unknown"}
+                  </p>
+                  {user.email && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Email: {user.email}
+                    </p>
+                  )}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </Link>
       )}
       {isLoading ? (
