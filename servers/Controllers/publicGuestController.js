@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import PostModel from "../Models/Post.js";
 import { AppError } from "../Utils/AppError.js";
 import GuestVisitModel from "../Models/GuestVisit.js";
@@ -158,15 +159,25 @@ export const trackGuestView = async (req, res, next) => {
     );
   }
 };
-
 export const trackGuestVisit = async (req, res, next) => {
   try {
-    const guestId = req.guestId;
-    if (!guestId)
-      throw new AppError("No guest ID found", 400, "TrackGuestVisit");
+    // 1. Try to read guestId from cookie
+    let guestId = req.cookies.guestId;
+
+    // 2. If not found, generate a new one and set it as a cookie
+    if (!guestId) {
+      guestId = uuidv4();
+      res.cookie("guestId", guestId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production", // false in dev
+        sameSite: "Lax", // or "None" if cross-site
+        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      });
+    }
 
     const { io } = req;
 
+    // 3. Upsert guest record (create if new, update if existing)
     const updatedGuest = await GuestModel.findOneAndUpdate(
       { guestId },
       {
@@ -188,13 +199,7 @@ export const trackGuestVisit = async (req, res, next) => {
       }
     );
 
-    console.log("[TrackGuestVisit] ✅ Guest visit tracked:", {
-      guestId: updatedGuest.guestId,
-      visits: updatedGuest.visitCount,
-      lastVisit: updatedGuest.lastVisit,
-    });
-
-    // 🔴 Real-time broadcast to adminRoom
+    // 4. Optional: emit to admin dashboard via socket
     if (io) {
       io.to("adminRoom").emit("guestVisitUpdate", {
         guestId: updatedGuest.guestId,
@@ -202,11 +207,21 @@ export const trackGuestVisit = async (req, res, next) => {
         lastVisit: updatedGuest.lastVisit,
         ip: updatedGuest.ip,
         userAgent: updatedGuest.userAgent,
-        location: req.headers["cf-ipcountry"] || null, // Optional Cloudflare country header
+        location: req.headers["cf-ipcountry"] || null,
       });
     }
 
-    res.status(200).json({ success: true, message: "Guest visit tracked" });
+    // 5. Final response
+    console.log("[TrackGuestVisit] ✅ Guest visit tracked:", {
+      guestId: updatedGuest.guestId,
+      visits: updatedGuest.visitCount,
+      lastVisit: updatedGuest.lastVisit,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Guest visit tracked",
+    });
   } catch (error) {
     console.error("[TrackGuestVisit] ❌ Error:", error);
     next(

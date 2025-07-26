@@ -14,6 +14,7 @@ import { clearUser, getUser, trackUserIPLocation } from "../store/userSlice";
 import ThemeToggleButton from "../layout/ThemeToggleButton";
 import { disconnectSocket, initializeSocket } from "../store/socketSlice";
 import { useGeolocation } from "../AppRootFile/hook/useGeolocation";
+import { trackGuestVisit } from "../store/guestSlice";
 
 const countVariants = {
   initial: { opacity: 0, y: 10 },
@@ -103,6 +104,22 @@ const Navbar = () => {
       };
     }
   }, [isAuthenticated, authUser?._id, dispatch]);
+
+  useEffect(() => {
+    if (
+      !isAuthenticated &&
+      authInitialized &&
+      !sessionStorage.getItem("guestTracked")
+    ) {
+      dispatch(trackGuestVisit())
+        .unwrap()
+        .then(() => {
+          console.log("✅ Guest visit tracked");
+          sessionStorage.setItem("guestTracked", "1");
+        })
+        .catch((err) => console.warn("❌ Guest visit failed:", err));
+    }
+  }, [isAuthenticated, authInitialized, dispatch]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
