@@ -97,6 +97,7 @@ const initialState = {
   userStatus: {},
   newNotification: null,
   userLocations: [],
+  guestVisits: [],
   notificationDismissReason: null,
   postCounts: { allPostsCount: 0, followingPostsCount: 0, myPostsCount: 0 },
 };
@@ -272,6 +273,14 @@ export const initializeSocket = createAsyncThunk(
             payload: { postId, blocked },
           });
         });
+
+      socket.off("guestVisitUpdate").on("guestVisitUpdate", (data) => {
+        const isAdmin = getState().auth.user?.role === "admin";
+        if (isAdmin) {
+          console.log("[Socket] 👀 Guest visit update:", data);
+          dispatch(addGuestVisit(data));
+        }
+      });
     });
   }
 );
@@ -345,6 +354,12 @@ const socketSlice = createSlice({
         ...action.payload,
       };
     },
+    addGuestVisit(state, action) {
+      state.guestVisits.unshift(action.payload);
+      if (state.guestVisits.length > 100) {
+        state.guestVisits.pop(); // keep latest 100 guests only
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -414,6 +429,7 @@ export const selectSocketState = createSelector(
     userLocations: socket.userLocations,
     notificationDismissReason: socket.notificationDismissReason,
     postCounts: socket.postCounts,
+    guestVisits: socket.guestVisits,
   })
 );
 

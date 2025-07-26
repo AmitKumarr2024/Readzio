@@ -20,6 +20,7 @@ import { FiMaximize2 } from "react-icons/fi";
 import CountUp from "react-countup";
 import ErrorBoundary from "../../Post/ErrorBoundary";
 import { trackGuestVisit } from "../../../store/guestSlice";
+import RecentGuestVisits from "./RecentGuestVisits";
 
 // Constants (move to a separate file if needed)
 const CPM_RATE = 2.5;
@@ -45,10 +46,9 @@ const StatModal = ({ type, count, onClose }) => {
   const titles = {
     online: "Online Users",
     offline: "Offline Users",
-    total: "Total Registered Users",
-    guest: "Guest Users",
+    total: "Registered Users",
+    guest: "Guest Visitors",
   };
-
   const bgClasses = {
     online:
       "bg-gradient-to-br from-green-200 dark:from-green-900/50 to-emerald-300 dark:to-emerald-800/50",
@@ -57,7 +57,7 @@ const StatModal = ({ type, count, onClose }) => {
     total:
       "bg-gradient-to-br from-blue-200 dark:from-blue-900/50 to-indigo-300 dark:to-indigo-800/50",
     guest:
-      "bg-gradient-to-br from-red-200 dark:from-red-900/50 to-pink-300 dark:to-pink-800/50",
+      "bg-gradient-to-br from-pink-200 dark:from-pink-900/50 to-rose-300 dark:to-rose-800/50",
   };
 
   return (
@@ -225,8 +225,8 @@ const Insights = () => {
             type: "guest",
             count: guestUsersCount,
             icon: Users,
-            color: "red",
-            label: "Guest Users",
+            color: "pink",
+            label: "Guest Visitors",
           },
         ].map(({ type, count, icon: Icon, color, label }) => (
           <motion.div
@@ -418,6 +418,17 @@ const Insights = () => {
                 </div>
               </motion.div>
             )}
+
+            <motion.div
+              variants={itemVariants}
+              className="p-4 sm:p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
+            >
+              <h3 className="text-lg sm:text-xl font-semibold mb-4 flex items-center gap-2 text-text-main-light dark:text-text-main-dark">
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" />{" "}
+                Guest Visit Logs
+              </h3>
+              <RecentGuestVisits />
+            </motion.div>
 
             <motion.div
               variants={itemVariants}
