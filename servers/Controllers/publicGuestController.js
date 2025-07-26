@@ -3,6 +3,7 @@ import PostModel from "../Models/Post.js";
 import { AppError } from "../Utils/AppError.js";
 import GuestVisitModel from "../Models/GuestVisit.js";
 import GuestModel from "../Models/GuestModel.js";
+import AnalyticsModel from "../Models/AnalyticsModel.js";
 
 // 🟢 Get all published + unblocked posts with optional tag filtering
 export const getPublicPosts = async (req, res, next) => {
@@ -159,25 +160,26 @@ export const trackGuestView = async (req, res, next) => {
     );
   }
 };
+
+// 🔹 Track guest visit — with unique guest count tracking
 export const trackGuestVisit = async (req, res, next) => {
   try {
-    // 1. Try to read guestId from cookie
     let guestId = req.cookies.guestId;
 
-    // 2. If not found, generate a new one and set it as a cookie
     if (!guestId) {
       guestId = uuidv4();
       res.cookie("guestId", guestId, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production", // false in dev
-        sameSite: "Lax", // or "None" if cross-site
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Lax",
         maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
       });
     }
 
     const { io } = req;
 
-    // 3. Upsert guest record (create if new, update if existing)
+    let isNewGuest = false;
+
     const updatedGuest = await GuestModel.findOneAndUpdate(
       { guestId },
       {
@@ -196,10 +198,23 @@ export const trackGuestVisit = async (req, res, next) => {
       {
         upsert: true,
         new: true,
+        setDefaultsOnInsert: true,
       }
     );
 
-    // 4. Optional: emit to admin dashboard via socket
+    // Check if the guest was new
+    const guestExistsBefore = await GuestModel.exists({ guestId });
+    if (!guestExistsBefore) {
+      isNewGuest = true;
+
+      // 🔧 Increment unique guest user count in analytics model
+      await AnalyticsModel.findOneAndUpdate(
+        {},
+        { $inc: { "traffic.guestUsersCount": 1 } },
+        { upsert: true }
+      );
+    }
+
     if (io) {
       io.to("adminRoom").emit("guestVisitUpdate", {
         guestId: updatedGuest.guestId,
@@ -211,11 +226,11 @@ export const trackGuestVisit = async (req, res, next) => {
       });
     }
 
-    // 5. Final response
     console.log("[TrackGuestVisit] ✅ Guest visit tracked:", {
       guestId: updatedGuest.guestId,
       visits: updatedGuest.visitCount,
       lastVisit: updatedGuest.lastVisit,
+      isNewGuest,
     });
 
     res.status(200).json({
