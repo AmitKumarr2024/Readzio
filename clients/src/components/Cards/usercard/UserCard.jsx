@@ -66,14 +66,14 @@ const UserCard = ({
                 <td className="w-20 align-top pr-2">
                   <div className="relative w-20 h-20">
                     {user?.avatar ? (
-                      <>
+                      <div className="relative w-16 h-16">
                         <img
                           src={user.avatar}
                           alt={authorName}
-                          className="w-14 h-14 rounded-full object-cover border-4 border-white shadow-md group-hover/link:scale-110 transition-transform duration-300"
+                          className="w-full h-full rounded-full object-cover border-4 border-white shadow-md group-hover/link:scale-110 transition-transform duration-300"
                         />
                         <div className="absolute inset-0 rounded-full bg-indigo-500 opacity-0 group-hover/link:opacity-30 transition-opacity duration-300"></div>
-                      </>
+                      </div>
                     ) : (
                       <div className="w-20 h-20 flex items-center justify-center rounded-full bg-indigo-500 text-white text-4xl font-semibold uppercase shadow-md">
                         {(authorName || user.username || user.email || "U")[0]}
