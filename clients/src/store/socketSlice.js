@@ -424,6 +424,7 @@ export const {
   addUserLocation,
   setNotificationDismissReason,
   setPostCounts,
+  addGuestVisit,
 } = socketSlice.actions;
 
 export const selectSocketState = createSelector(
