@@ -1,98 +1,106 @@
+// src/routes/routes.jsx
 import { createBrowserRouter } from "react-router-dom";
-import React, { Suspense, lazy } from "react";
+import React, { lazy } from "react";
 import App from "../App";
-import SplashLoader from "../AppRootFile/components/SplashLoader";
 import PublicOnlyRoute from "../connection/PublicOnlyRoute";
+import withSuspense from "../Utils/withSuspense";
 
-// Lazy imports
-const LoginPage = lazy(() => import("../pages/LoginPage"));
-const SignupPage = lazy(() => import("../pages/SignupPage"));
-const MainPage = lazy(() => import("../pages/MainPage"));
-const CategoryWisePage = lazy(() => import("../pages/CategoryWisePage"));
-const DisplayPost = lazy(() => import("../components/Post/DisplayPost"));
-const CreatePost = lazy(() => import("../pages/CreatePost"));
-const EditPost = lazy(() => import("../components/Post/EditPost"));
-const PageNotFound = lazy(() => import("../pages/PageNotFound"));
-const SearchPage = lazy(() => import("../pages/SearchPage"));
-const AboutPage = lazy(() => import("../pages/AboutPage"));
-const Contact = lazy(() => import("../pages/Contact"));
-const PrivacyPage = lazy(() => import("../pages/PrivacyPage"));
-const TermsAndConditionPage = lazy(() =>
-  import("../pages/TermsAndConditionPage")
+// Lazy imports wrapped with withSuspense
+const LoginPage = withSuspense(lazy(() => import("../pages/LoginPage")));
+const SignupPage = withSuspense(lazy(() => import("../pages/SignupPage")));
+const MainPage = withSuspense(lazy(() => import("../pages/MainPage")));
+const CategoryWisePage = withSuspense(
+  lazy(() => import("../pages/CategoryWisePage"))
 );
-const UserProfilePage = lazy(() => import("../pages/UserProfilePage"));
-const UserSettingsPage = lazy(() => import("../pages/UserSettingPage"));
-const FeatureComingSoon = lazy(() => import("../pages/FeatureComingSoon"));
-const DeleteModal = lazy(() => import("../components/Post/DeleteModal"));
-const AuthorProfilePage = lazy(() => import("../pages/AuthorProfilePage"));
-const UserPlanPage = lazy(() =>
-  import("../components/PorductToBuy/UserPlanPage")
+const DisplayPost = withSuspense(
+  lazy(() => import("../components/Post/DisplayPost"))
 );
-const CategorySelectPage = lazy(() => import("../pages/CategorySelectPage"));
-const BookmarkComponent = lazy(() =>
-  import("../components/Post/BookmarkComponent")
+const CreatePost = withSuspense(lazy(() => import("../pages/CreatePost")));
+const EditPost = withSuspense(
+  lazy(() => import("../components/Post/EditPost"))
 );
-const Dashboard = lazy(() => import("../pages/Admin/Dashboard"));
-const AcknowledgeConfirmation = lazy(() =>
-  import("../pages/Admin/AcknowledgeConfirmation")
+const PageNotFound = withSuspense(lazy(() => import("../pages/PageNotFound")));
+const SearchPage = withSuspense(lazy(() => import("../pages/SearchPage")));
+const AboutPage = withSuspense(lazy(() => import("../pages/AboutPage")));
+const Contact = withSuspense(lazy(() => import("../pages/Contact")));
+const PrivacyPage = withSuspense(lazy(() => import("../pages/PrivacyPage")));
+const TermsAndConditionPage = withSuspense(
+  lazy(() => import("../pages/TermsAndConditionPage"))
 );
-const NotificationPage = lazy(() =>
-  import("../components/Notification/NotificationPage")
+const UserProfilePage = withSuspense(
+  lazy(() => import("../pages/UserProfilePage"))
 );
-const UsersPage = lazy(() => import("../pages/UsersPage"));
-const ResetPassword = lazy(() => import("../pages/ResetPasswordPage"));
-const VerifyEmail = lazy(() =>
-  import("../components/resetPassword/VerifyEmail")
+const UserSettingsPage = withSuspense(
+  lazy(() => import("../pages/UserSettingPage"))
 );
-const TagWisePage = lazy(() => import("../pages/TagWisePage"));
-
-// ✅ FIXED: withSuspense returns a component
-const withSuspense = (Component) => {
-  return function SuspendedComponent(props) {
-    return (
-      <Suspense fallback={<SplashLoader />}>
-        <Component {...props} />
-      </Suspense>
-    );
-  };
-};
+const FeatureComingSoon = withSuspense(
+  lazy(() => import("../pages/FeatureComingSoon"))
+);
+const DeleteModal = withSuspense(
+  lazy(() => import("../components/Post/DeleteModal"))
+);
+const AuthorProfilePage = withSuspense(
+  lazy(() => import("../pages/AuthorProfilePage"))
+);
+const UserPlanPage = withSuspense(
+  lazy(() => import("../components/PorductToBuy/UserPlanPage"))
+);
+const CategorySelectPage = withSuspense(
+  lazy(() => import("../pages/CategorySelectPage"))
+);
+const BookmarkComponent = withSuspense(
+  lazy(() => import("../components/Post/BookmarkComponent"))
+);
+const Dashboard = withSuspense(lazy(() => import("../pages/Admin/Dashboard")));
+const AcknowledgeConfirmation = withSuspense(
+  lazy(() => import("../pages/Admin/AcknowledgeConfirmation"))
+);
+const NotificationPage = withSuspense(
+  lazy(() => import("../components/Notification/NotificationPage"))
+);
+const UsersPage = withSuspense(lazy(() => import("../pages/UsersPage")));
+const ResetPassword = withSuspense(
+  lazy(() => import("../pages/ResetPasswordPage"))
+);
+const VerifyEmail = withSuspense(
+  lazy(() => import("../components/resetPassword/VerifyEmail"))
+);
+const TagWisePage = withSuspense(lazy(() => import("../pages/TagWisePage")));
 
 const routes = createBrowserRouter([
   {
     path: "/",
     element: <App />,
     children: [
-      { index: true, element: React.createElement(withSuspense(MainPage)) },
-      { path: "createPost", element: React.createElement(withSuspense(CreatePost)) },
-      { path: "edit-post/:slug", element: React.createElement(withSuspense(EditPost)) },
-      { path: "delete-post/:id", element: React.createElement(withSuspense(DeleteModal)) },
-      { path: "category/:category", element: React.createElement(withSuspense(CategoryWisePage)) },
-      { path: "post/:slug", element: React.createElement(withSuspense(DisplayPost)) },
-      { path: "search", element: React.createElement(withSuspense(SearchPage)) },
-      { path: "admin", element: React.createElement(withSuspense(Dashboard)) },
-      { path: "about", element: React.createElement(withSuspense(AboutPage)) },
-      { path: "contact", element: React.createElement(withSuspense(Contact)) },
-      { path: "privacy", element: React.createElement(withSuspense(PrivacyPage)) },
-      { path: "user", element: React.createElement(withSuspense(UserProfilePage)) },
-      { path: "user-setting", element: React.createElement(withSuspense(UserSettingsPage)) },
-      { path: "author-profile/:id", element: React.createElement(withSuspense(AuthorProfilePage)) },
-      { path: "plans/:id", element: React.createElement(withSuspense(UserPlanPage)) },
-      { path: "bookmark", element: React.createElement(withSuspense(BookmarkComponent)) },
-      { path: "acknowledge/:reportId", element: React.createElement(withSuspense(AcknowledgeConfirmation)) },
-      { path: "message-box", element: React.createElement(withSuspense(NotificationPage)) },
-      { path: "users", element: React.createElement(withSuspense(UsersPage)) },
-      { path: "verify", element: React.createElement(withSuspense(VerifyEmail)) },
-      { path: "tag/:tag", element: React.createElement(withSuspense(TagWisePage)) },
-      { path: "Term&Condition", element: React.createElement(withSuspense(TermsAndConditionPage)) },
+      { index: true, element: <MainPage /> },
+      { path: "createPost", element: <CreatePost /> },
+      { path: "edit-post/:slug", element: <EditPost /> },
+      { path: "delete-post/:id", element: <DeleteModal /> },
+      { path: "category/:category", element: <CategoryWisePage /> },
+      { path: "post/:slug", element: <DisplayPost /> },
+      { path: "search", element: <SearchPage /> },
+      { path: "admin", element: <Dashboard /> },
+      { path: "about", element: <AboutPage /> },
+      { path: "contact", element: <Contact /> },
+      { path: "privacy", element: <PrivacyPage /> },
+      { path: "user", element: <UserProfilePage /> },
+      { path: "user-setting", element: <UserSettingsPage /> },
+      { path: "author-profile/:id", element: <AuthorProfilePage /> },
+      { path: "plans/:id", element: <UserPlanPage /> },
+      { path: "bookmark", element: <BookmarkComponent /> },
+      { path: "acknowledge/:reportId", element: <AcknowledgeConfirmation /> },
+      { path: "message-box", element: <NotificationPage /> },
+      { path: "users", element: <UsersPage /> },
+      { path: "verify", element: <VerifyEmail /> },
+      { path: "tag/:tag", element: <TagWisePage /> },
+      { path: "Term&Condition", element: <TermsAndConditionPage /> },
     ],
   },
-
-  // ✅ Signup/Login wrapped with PublicOnlyRoute
   {
     path: "/signup",
     element: (
       <PublicOnlyRoute>
-        {React.createElement(withSuspense(SignupPage))}
+        <SignupPage />
       </PublicOnlyRoute>
     ),
   },
@@ -100,21 +108,21 @@ const routes = createBrowserRouter([
     path: "/login",
     element: (
       <PublicOnlyRoute>
-        {React.createElement(withSuspense(LoginPage))}
+        <LoginPage />
       </PublicOnlyRoute>
     ),
   },
   {
     path: "/select-category",
-    element: React.createElement(withSuspense(CategorySelectPage)),
+    element: <CategorySelectPage />,
   },
   {
     path: "/reset-password",
-    element: React.createElement(withSuspense(ResetPassword)),
+    element: <ResetPassword />,
   },
   {
     path: "*",
-    element: React.createElement(withSuspense(PageNotFound)),
+    element: <PageNotFound />,
   },
 ]);
 
