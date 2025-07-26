@@ -162,7 +162,7 @@ const SuggestedPosts = () => {
                 </Link>
 
                 {adPositions.includes(index + 1) && (
-                  <div className="w-full min-h-[250px] p-3 rounded-lg bg-white dark:bg-gray-800">
+                  <div className="w-full min-h-[250px] p-3 rounded-xs shadow-md bg-white dark:bg-gray-800">
                     <InFeedAd postId={post._id} />
                   </div>
                 )}
