@@ -19,7 +19,7 @@ import { IoCloseCircleOutline } from "react-icons/io5";
 import { FiMaximize2 } from "react-icons/fi";
 import CountUp from "react-countup";
 import ErrorBoundary from "../../Post/ErrorBoundary";
-import { trackGuestVisit } from "../../../store/guestSlice";
+import { trackGuestVisit, incrementGuestCount } from "../../../store/guestSlice";
 import { selectSocketState, addGuestVisit } from "../../../store/socketSlice";
 import { formatDistanceToNow } from "date-fns";
 
@@ -34,12 +34,11 @@ const RecentGuestVisits = () => {
   const { guestVisits = [] } = useSelector(selectSocketState);
   const dispatch = useDispatch();
 
-  console.log("[RecentGuestVisits] guestVisits from Redux:", guestVisits);
-
   const simulateGuest = () => {
+    const guestId = `guest-${Date.now()}`;
     dispatch(
       addGuestVisit({
-        guestId: `guest-${Date.now()}`,
+        guestId,
         ip: "127.0.0.1",
         location: "IN",
         visitCount: 1,
@@ -47,13 +46,19 @@ const RecentGuestVisits = () => {
         userAgent: navigator.userAgent || "ManualTest/1.0",
       })
     );
+    dispatch(incrementGuestCount());
   };
 
   return (
-    <div className="p-6 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 max-h-[600px] overflow-y-auto">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="w-full p-6 bg-background-light dark:bg-background-dark rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700"
+    >
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
-          👥 Recent Guest Visits
+        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-3">
+          <Users className="w-6 h-6 text-red-600 dark:text-red-400" /> Guest Visit Logs
         </h2>
         <button
           onClick={simulateGuest}
@@ -64,7 +69,7 @@ const RecentGuestVisits = () => {
       </div>
 
       {guestVisits.length === 0 ? (
-        <div className="text-gray-500 text-center py-6">
+        <div className="text-gray-500 text-center py-6 text-base">
           No guest visits recorded yet.
         </div>
       ) : (
@@ -108,7 +113,7 @@ const RecentGuestVisits = () => {
           </table>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
@@ -240,7 +245,19 @@ const Insights = () => {
   }, [dispatch, dateRange]);
 
   useEffect(() => {
-    dispatch(trackGuestVisit());
+    const guestId = `guest-${Date.now()}`;
+    dispatch(trackGuestVisit({ guestId }));
+    dispatch(
+      addGuestVisit({
+        guestId,
+        ip: "127.0.0.1",
+        location: "IN",
+        visitCount: 1,
+        lastVisit: new Date().toISOString(),
+        userAgent: navigator.userAgent || "Unknown",
+      })
+    );
+    dispatch(incrementGuestCount());
   }, [dispatch]);
 
   const handleDateChange = (e) => {
@@ -491,16 +508,6 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <Users className="w-6 h-6 text-red-600 dark:text-red-400" /> Guest Visit Logs
-              </h3>
-              <RecentGuestVisits />
-            </motion.div>
-
-            <motion.div
-              variants={itemVariants}
-              className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
-            >
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
                 <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Traffic Overview
               </h3>
               <div className="space-y-3 text-text-main-light dark:text-text-main-dark">
@@ -660,6 +667,16 @@ const Insights = () => {
             </motion.div>
           </div>
         )}
+      </motion.div>
+
+      <motion.div
+        variants={itemVariants}
+        className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
+      >
+        <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
+          <Users className="w-8 h-8 text-red-600 dark:text-red-400" /> Guest Visit Logs
+        </h2>
+        <RecentGuestVisits />
       </motion.div>
     </motion.div>
   );
