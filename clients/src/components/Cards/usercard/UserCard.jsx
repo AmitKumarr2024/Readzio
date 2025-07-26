@@ -64,18 +64,18 @@ const UserCard = ({
               <tr>
                 {/* Avatar or Initial */}
                 <td className="w-32 align-top pr-4">
-                  <div className="relative w-32 h-32">
+                  <div className="relative w-20 h-20">
                     {user?.avatar ? (
                       <>
                         <img
                           src={user.avatar}
                           alt={authorName}
-                          className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md group-hover/link:scale-110 transition-transform duration-300"
+                          className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md group-hover/link:scale-110 transition-transform duration-300"
                         />
                         <div className="absolute inset-0 rounded-full bg-indigo-500 opacity-0 group-hover/link:opacity-30 transition-opacity duration-300"></div>
                       </>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center rounded-full bg-indigo-500 text-white text-4xl font-semibold uppercase shadow-md">
+                      <div className="w-20 h-20 flex items-center justify-center rounded-full bg-indigo-500 text-white text-4xl font-semibold uppercase shadow-md">
                         {(authorName || user.username || user.email || "U")[0]}
                       </div>
                     )}
