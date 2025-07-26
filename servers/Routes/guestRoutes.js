@@ -4,7 +4,7 @@ import {
   getPublicPostBySlug,
   trackGuestView,
   trackGuestVisit,
-} from "../../servers/Controllers/publicGuestController";
+} from "../../servers/Controllers/publicGuestController.js";
 
 const router = express.Router();
 
