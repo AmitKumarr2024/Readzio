@@ -40,7 +40,12 @@ const SearchModal = ({ isOpen, onClose }) => {
   }, [isOpen, onClose]);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence
+      onExitComplete={() => {
+        console.log("Modal exit complete");
+        document.body.style.overflow = "";
+      }}
+    >
       {isOpen && (
         <motion.div
           className="fixed inset-0 bg-black/70 dark:bg-black/80 z-50 flex items-start pt-16 sm:pt-20 px-4 backdrop-blur-md"
@@ -48,7 +53,6 @@ const SearchModal = ({ isOpen, onClose }) => {
           animate="visible"
           exit="hidden"
           variants={backdrop}
-          onClick={onClose}
           aria-modal="true"
           role="dialog"
           aria-labelledby="search-modal-title"
