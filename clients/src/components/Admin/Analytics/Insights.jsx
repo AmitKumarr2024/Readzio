@@ -19,10 +19,9 @@ import { IoCloseCircleOutline } from "react-icons/io5";
 import { FiMaximize2 } from "react-icons/fi";
 import CountUp from "react-countup";
 import ErrorBoundary from "../../Post/ErrorBoundary";
+import { trackGuestVisit, incrementGuestCount } from "../../../store/guestSlice";
 import { selectSocketState, addGuestVisit } from "../../../store/socketSlice";
 import { formatDistanceToNow } from "date-fns";
-import io from "socket.io-client";
-import { debounce } from "lodash";
 
 const AdminLocationDashboard = lazy(() =>
   import("../../location/AdminLocationDashboard")
@@ -31,59 +30,24 @@ const AdminLocationDashboard = lazy(() =>
 const CPM_RATE = 2.5;
 const IMPRESSION_INTERVAL = 30;
 
-const isDev = process.env.NODE_ENV === "development";
-
 const RecentGuestVisits = () => {
-  const { guestVisits = [] } = useSelector(selectSocketState, shallowEqual);
+  const { guestVisits = [] } = useSelector(selectSocketState);
   const dispatch = useDispatch();
-  const [isLoading, setIsLoading] = useState(true);
 
   const simulateGuest = () => {
-    const guestData = {
-      guestId: "test-guest",
-      ip: "127.0.0.1",
-      location: "IN",
-      visitCount: 1,
-      lastVisit: new Date().toISOString(),
-      userAgent: "ManualTest/1.0",
-    };
-    console.log("[RecentGuestVisits] Simulating guest visit:", guestData);
-    dispatch(addGuestVisit(guestData));
+    const guestId = `guest-${Date.now()}`;
+    dispatch(
+      addGuestVisit({
+        guestId,
+        ip: "127.0.0.1",
+        location: "IN",
+        visitCount: 1,
+        lastVisit: new Date().toISOString(),
+        userAgent: navigator.userAgent || "ManualTest/1.0",
+      })
+    );
+    dispatch(incrementGuestCount());
   };
-
-  useEffect(() => {
-    console.log(
-      "[RecentGuestVisits] Loading stored guest visits from localStorage"
-    );
-    const storedVisits = localStorage.getItem("guestVisits");
-    if (storedVisits) {
-      const parsedVisits = JSON.parse(storedVisits);
-      console.log("[RecentGuestVisits] Parsed stored visits:", parsedVisits);
-      parsedVisits.forEach((visit) => {
-        console.log("[RecentGuestVisits] Dispatching stored visit:", visit);
-        dispatch(addGuestVisit(visit));
-      });
-    }
-    setIsLoading(false);
-  }, [dispatch]);
-
-  const saveToLocalStorage = debounce((visits) => {
-    console.log(
-      "[RecentGuestVisits] Saving guest visits to localStorage:",
-      visits
-    );
-    localStorage.setItem("guestVisits", JSON.stringify(visits));
-  }, 1000);
-
-  useEffect(() => {
-    console.log(
-      "[RecentGuestVisits] Guest visits changed, triggering save:",
-      guestVisits
-    );
-    saveToLocalStorage(guestVisits);
-  }, [guestVisits]);
-
-  console.log("[RecentGuestVisits] Rendering with guestVisits:", guestVisits);
 
   return (
     <motion.div
@@ -94,8 +58,7 @@ const RecentGuestVisits = () => {
     >
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-3">
-          <Users className="w-6 h-6 text-red-600 dark:text-red-400" /> Guest
-          Visit Logs
+          <Users className="w-6 h-6 text-red-600 dark:text-red-400" /> Guest Visit Logs
         </h2>
         <button
           onClick={simulateGuest}
@@ -105,12 +68,7 @@ const RecentGuestVisits = () => {
         </button>
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-6">
-          <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600 dark:text-blue-400" />
-          <span>Loading guest visits...</span>
-        </div>
-      ) : guestVisits.length === 0 ? (
+      {guestVisits.length === 0 ? (
         <div className="text-gray-500 text-center py-6 text-base">
           No guest visits recorded yet.
         </div>
@@ -236,7 +194,7 @@ const Insights = () => {
   const dispatch = useDispatch();
   const {
     admin: { analytics = {}, analyticsLoading, analyticsError, totalUsers = 0 },
-    socket: { onlineUsersCount = 0, guestVisits = [] },
+    socket: { onlineUsersCount = 0, guestUsersCount = 0 },
     post: { currentPost: post, sessionTime },
     auth: { user: currentUser },
   } = useSelector(
@@ -253,32 +211,21 @@ const Insights = () => {
   const [modalType, setModalType] = useState(null);
 
   const offlineUsers = Math.max(0, totalUsers - onlineUsersCount);
-  const uniqueGuestCount = useMemo(() => {
-    const count = new Set(guestVisits.map((g) => g.guestId)).size;
-    console.log(
-      "[Insights] Calculated uniqueGuestCount:",
-      count,
-      "from guestVisits:",
-      guestVisits
-    );
-    return count;
-  }, [guestVisits]);
 
   const isValidDateRange = useMemo(() => {
     if (!dateRange.startDate || !dateRange.endDate) return true;
     return new Date(dateRange.startDate) <= new Date(dateRange.endDate);
   }, [dateRange]);
 
-  const pieData = useMemo(() => {
-    const data = [
+  const pieData = useMemo(
+    () => [
       { name: "Total Visits", value: analytics.traffic?.totalVisits || 0 },
       { name: "Unique Users", value: analytics.traffic?.uniqueUsersCount || 0 },
       { name: "Unique Posts", value: analytics.traffic?.uniquePostsCount || 0 },
-      { name: "Guest Users", value: uniqueGuestCount || 0 },
-    ];
-    console.log("[Insights] Pie chart data:", data);
-    return data;
-  }, [analytics.traffic, uniqueGuestCount]);
+      { name: "Guest Users", value: guestUsersCount || 0 },
+    ],
+    [analytics.traffic, guestUsersCount]
+  );
 
   const COLORS = ["#5b21b6", "#4ade80", "#facc15", "#ff6b6b"];
 
@@ -288,42 +235,6 @@ const Insights = () => {
   };
 
   useEffect(() => {
-    const socket = io(
-      process.env.REACT_APP_SOCKET_URL || "http://localhost:3000",
-      {
-        reconnectionAttempts: 5,
-      }
-    );
-    socket.on("guestVisitUpdate", (data) => {
-      console.log("[Insights] Received guestVisitUpdate from socket:", data);
-      dispatch(addGuestVisit(data));
-    });
-
-    return () => {
-      socket.off("guestVisitUpdate");
-      socket.disconnect();
-    };
-  }, [dispatch]);
-
-  useEffect(() => {
-    const guestId = `guest-${Date.now()}`;
-    const guestData = {
-      guestId,
-      ip: "127.0.0.1",
-      location: "IN",
-      visitCount: 1,
-      lastVisit: new Date().toISOString(),
-      userAgent: navigator.userAgent || "Unknown",
-    };
-    console.log("[Insights] Dispatching initial guest visit:", guestData);
-    dispatch(addGuestVisit(guestData));
-  }, [dispatch]);
-
-  useEffect(() => {
-    console.log(
-      "[Insights] Fetching site analytics with date range:",
-      dateRange
-    );
     dispatch(
       fetchSiteAnalytics({
         startDate: dateRange.startDate,
@@ -333,10 +244,23 @@ const Insights = () => {
     dispatch(getAllUsers({ page: 1, limit: 10 }));
   }, [dispatch, dateRange]);
 
+  useEffect(() => {
+    const guestId = `guest-${Date.now()}`;
+    dispatch(trackGuestVisit({ guestId }));
+    dispatch(
+      addGuestVisit({
+        guestId,
+        ip: "127.0.0.1",
+        location: "IN",
+        visitCount: 1,
+        lastVisit: new Date().toISOString(),
+        userAgent: navigator.userAgent || "Unknown",
+      })
+    );
+    dispatch(incrementGuestCount());
+  }, [dispatch]);
+
   const handleDateChange = (e) => {
-    console.log("[Insights] Date range changed:", {
-      [e.target.name]: e.target.value,
-    });
     setDateRange({ ...dateRange, [e.target.name]: e.target.value });
   };
 
@@ -388,24 +312,14 @@ const Insights = () => {
             count: totalUsers,
             icon: Users,
             color: "blue",
-            label: "Registered Users",
+            label: "Total Users",
           },
           {
             type: "guest",
-            count: uniqueGuestCount,
+            count: guestUsersCount,
             icon: Users,
             color: "pink",
-            label:
-              guestVisits.length > 0
-                ? `Guest from ${guestVisits[0].location || "—"} • ${
-                    guestVisits[0].lastVisit
-                      ? formatDistanceToNow(
-                          new Date(guestVisits[0].lastVisit),
-                          { addSuffix: true }
-                        )
-                      : "just now"
-                  }`
-                : "Guest Visitors",
+            label: "Guest Visitors",
           },
         ].map(({ type, count, icon: Icon, color, label }) => (
           <motion.div
@@ -452,7 +366,7 @@ const Insights = () => {
                 ? offlineUsers
                 : modalType === "total"
                 ? totalUsers
-                : uniqueGuestCount
+                : guestUsersCount
             }
             onClose={() => setModalType(null)}
           />
@@ -464,8 +378,7 @@ const Insights = () => {
         className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
       >
         <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-          <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" /> All
-          User Locations
+          <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" /> All User Locations
         </h2>
         <ErrorBoundary
           fallback={
@@ -489,8 +402,7 @@ const Insights = () => {
         className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
       >
         <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-          <BarChart className="w-8 h-8 text-blue-600 dark:text-blue-400" /> Site
-          Insights
+          <BarChart className="w-8 h-8 text-blue-600 dark:text-blue-400" /> Site Insights
         </h2>
 
         <motion.div
@@ -552,8 +464,7 @@ const Insights = () => {
                 className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
               >
                 <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
-                  Post Insights
+                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Post Insights
                 </h3>
                 <div className="space-y-3 text-text-main-light dark:text-text-main-dark">
                   <p className="text-base">
@@ -597,8 +508,7 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
-                Traffic Overview
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Traffic Overview
               </h3>
               <div className="space-y-3 text-text-main-light dark:text-text-main-dark">
                 <p className="text-base">
@@ -628,7 +538,7 @@ const Insights = () => {
                 <p className="text-base">
                   <span className="font-medium">Guest Users:</span>{" "}
                   <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    {uniqueGuestCount || 0}
+                    {guestUsersCount || 0}
                   </span>
                 </p>
               </div>
@@ -639,8 +549,7 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <BarChart className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
-                Traffic Distribution
+                <BarChart className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Traffic Distribution
               </h3>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
@@ -677,8 +586,7 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
-                Top Posts
+                <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Top Posts
               </h3>
               {analytics.topPosts?.length > 0 ? (
                 <ul className="space-y-4">
@@ -721,8 +629,7 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
-                Top Active Users
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Top Active Users
               </h3>
               {Array.isArray(analytics.topUsers) &&
               analytics.topUsers.length > 0 ? (
@@ -767,8 +674,7 @@ const Insights = () => {
         className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
       >
         <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-          <Users className="w-8 h-8 text-red-600 dark:text-red-400" /> Guest
-          Visit Logs
+          <Users className="w-8 h-8 text-red-600 dark:text-red-400" /> Guest Visit Logs
         </h2>
         <RecentGuestVisits />
       </motion.div>
