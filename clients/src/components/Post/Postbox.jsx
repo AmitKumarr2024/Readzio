@@ -22,6 +22,7 @@ import Skeleton from "@/components/Ui/Skeleton";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import InFeedAd from "../../Ads/InFeedAd";
 import SafeInFeedAd from "../../Ads/SafeInFeedAd";
+import useWindowWidth from "../../Utils/useWindowWidth";
 
 const Postbox = ({
   filterType,
@@ -295,22 +296,21 @@ const Postbox = ({
     postsToFetch.forEach((post) => dispatch(fetchCommentCount(post._id)));
   }, [dispatch, customPosts, posts, commentCounts]);
 
+  const screenWidth = useWindowWidth();
+
   const insertAdsIntoPosts = (posts) => {
     const result = [...posts];
     const items = [];
 
+    // Dynamically calculate ad frequency based on current screen width
     let adFrequency = 9;
-    if (typeof window !== "undefined") {
-      const width = window.innerWidth;
-      if (width < 1024 && width >= 768) {
-        adFrequency = 8; // For tablets/smaller screens
-      }
+    if (screenWidth < 1024 && screenWidth >= 768) {
+      adFrequency = 11;
     }
 
     for (let i = 0; i < result.length; i++) {
       items.push(result[i]);
 
-      // CardAd after every 6 posts
       if ((i + 1) % 6 === 0) {
         items.push({
           type: "card-ad",
@@ -319,7 +319,6 @@ const Postbox = ({
         });
       }
 
-      // MultiplexAd after every 8 or 9 posts depending on screen
       if ((i + 1) % adFrequency === 0) {
         items.push({
           type: "multiplex-ad",
@@ -334,7 +333,7 @@ const Postbox = ({
 
   const itemsWithAds = useMemo(
     () => insertAdsIntoPosts(selectedPosts),
-    [selectedPosts]
+    [selectedPosts, screenWidth] // screenWidth triggers re-evaluation!
   );
 
   const loadMorePosts = useCallback(() => {
