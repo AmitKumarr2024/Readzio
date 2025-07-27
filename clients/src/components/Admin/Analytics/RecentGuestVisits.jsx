@@ -6,6 +6,9 @@ import Pagination from "../../../Utils/Pagination"; // Ensure correct path
 
 const RecentGuestVisits = () => {
   const { guestVisits = [] } = useSelector(selectSocketState);
+
+  console.log("RecentGuestVisits track", guestVisits);
+
   const dispatch = useDispatch();
 
   const [selectedGuest, setSelectedGuest] = useState(null);
@@ -39,8 +42,10 @@ const RecentGuestVisits = () => {
           .includes(lowerSearch)
       )
       .sort((a, b) => {
-        const valA = sortKey === "visitCount" ? a.visitCount : new Date(a.lastVisit);
-        const valB = sortKey === "visitCount" ? b.visitCount : new Date(b.lastVisit);
+        const valA =
+          sortKey === "visitCount" ? a.visitCount : new Date(a.lastVisit);
+        const valB =
+          sortKey === "visitCount" ? b.visitCount : new Date(b.lastVisit);
         return sortOrder === "asc" ? valA - valB : valB - valA;
       });
   }, [guestVisits, searchTerm, sortKey, sortOrder]);
@@ -68,14 +73,31 @@ const RecentGuestVisits = () => {
       {/* 👤 Selected Guest Box */}
       {selectedGuest && (
         <div className="mb-4 p-4 border rounded bg-blue-50 dark:bg-blue-900/20">
-          <h3 className="text-sm font-semibold mb-1">Selected Guest Details:</h3>
+          <h3 className="text-sm font-semibold mb-1">
+            Selected Guest Details:
+          </h3>
           <div className="text-xs">
-            <p><strong>ID:</strong> {selectedGuest.guestId}</p>
-            <p><strong>IP:</strong> {selectedGuest.ip}</p>
-            <p><strong>Location:</strong> {selectedGuest.location}</p>
-            <p><strong>Visits:</strong> {selectedGuest.visitCount}</p>
-            <p><strong>Last Visit:</strong> {formatDistanceToNow(new Date(selectedGuest.lastVisit), { addSuffix: true })}</p>
-            <p><strong>User Agent:</strong> {selectedGuest.userAgent}</p>
+            <p>
+              <strong>ID:</strong> {selectedGuest.guestId}
+            </p>
+            <p>
+              <strong>IP:</strong> {selectedGuest.ip}
+            </p>
+            <p>
+              <strong>Location:</strong> {selectedGuest.location}
+            </p>
+            <p>
+              <strong>Visits:</strong> {selectedGuest.visitCount}
+            </p>
+            <p>
+              <strong>Last Visit:</strong>{" "}
+              {formatDistanceToNow(new Date(selectedGuest.lastVisit), {
+                addSuffix: true,
+              })}
+            </p>
+            <p>
+              <strong>User Agent:</strong> {selectedGuest.userAgent}
+            </p>
           </div>
         </div>
       )}
@@ -93,7 +115,9 @@ const RecentGuestVisits = () => {
           }}
         />
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-700 dark:text-gray-300">Sort By:</label>
+          <label className="text-sm text-gray-700 dark:text-gray-300">
+            Sort By:
+          </label>
           <select
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value)}
