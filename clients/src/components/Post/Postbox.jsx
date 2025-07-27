@@ -299,6 +299,14 @@ const Postbox = ({
     const result = [...posts];
     const items = [];
 
+    let adFrequency = 9;
+    if (typeof window !== "undefined") {
+      const width = window.innerWidth;
+      if (width < 1024 && width >= 768) {
+        adFrequency = 8; // For tablets/smaller screens
+      }
+    }
+
     for (let i = 0; i < result.length; i++) {
       items.push(result[i]);
 
@@ -311,8 +319,8 @@ const Postbox = ({
         });
       }
 
-      // MultiplexAd after every 9 posts
-      if ((i + 1) % 9 === 0) {
+      // MultiplexAd after every 8 or 9 posts depending on screen
+      if ((i + 1) % adFrequency === 0) {
         items.push({
           type: "multiplex-ad",
           id: `multiplex-ad-${i}`,
