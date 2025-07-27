@@ -832,7 +832,7 @@ export const shouldShowFeedbackPrompt = async (req, res, next) => {
     );
 
     const shouldShow =
-      accountAgeInDays >= 7 &&
+      accountAgeInDays >= 1 &&
       (!user.feedbackPrompt ||
         (!user.feedbackPrompt.shown && !user.feedbackPrompt.responded));
 
