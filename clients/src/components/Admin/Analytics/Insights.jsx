@@ -22,6 +22,7 @@ import ErrorBoundary from "../../Post/ErrorBoundary";
 import { trackGuestVisit, incrementGuestCount } from "../../../store/guestSlice";
 import { selectSocketState, addGuestVisit } from "../../../store/socketSlice";
 import { formatDistanceToNow } from "date-fns";
+import io from "socket.io-client";
 
 const AdminLocationDashboard = lazy(() =>
   import("../../location/AdminLocationDashboard")
@@ -31,9 +32,11 @@ const CPM_RATE = 2.5;
 const IMPRESSION_INTERVAL = 30;
 
 const RecentGuestVisits = () => {
-  const { guestVisits = [] } = useSelector(selectSocketState);
+  const { guestVisits = [] } = useSelector(selectSocketState, shallowEqual);
   const dispatch = useDispatch();
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Simulate guest visit
   const simulateGuest = () => {
     const guestId = `guest-${Date.now()}`;
     dispatch(
@@ -48,6 +51,42 @@ const RecentGuestVisits = () => {
     );
     dispatch(incrementGuestCount());
   };
+
+  // Load persisted guest visits from localStorage or API
+  useEffect(() => {
+    // Check localStorage for persisted guest visits
+    const storedVisits = localStorage.getItem("guestVisits");
+    if (storedVisits) {
+      JSON.parse(storedVisits).forEach((visit) => {
+        dispatch(addGuestVisit(visit));
+      });
+    }
+
+    // Fetch guest visits from backend
+    const fetchGuestVisits = async () => {
+      try {
+        const response = await fetch("/api/admin/guests");
+        const data = await response.json();
+        data.forEach((visit) => dispatch(addGuestVisit(visit)));
+      } catch (error) {
+        console.error("Failed to fetch guest visits:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchGuestVisits();
+  }, [dispatch]);
+
+  // Persist guest visits to localStorage on update
+  useEffect(() => {
+    localStorage.setItem("guestVisits", JSON.stringify(guestVisits));
+  }, [guestVisits]);
+
+  // Debug guestVisits
+  useEffect(() => {
+    console.log("[RecentGuestVisits] guestVisits:", guestVisits);
+  }, [guestVisits]);
 
   return (
     <motion.div
@@ -68,7 +107,12 @@ const RecentGuestVisits = () => {
         </button>
       </div>
 
-      {guestVisits.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center py-6">
+          <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600 dark:text-blue-400" />
+          <span>Loading guest visits...</span>
+        </div>
+      ) : guestVisits.length === 0 ? (
         <div className="text-gray-500 text-center py-6 text-base">
           No guest visits recorded yet.
         </div>
@@ -234,6 +278,21 @@ const Insights = () => {
     return ((impressions * CPM_RATE) / 1000).toFixed(2);
   };
 
+  // Initialize Socket.IO and handle guest visit updates
+  useEffect(() => {
+    const socket = io(process.env.REACT_APP_SOCKET_URL || "http://localhost:3000");
+    socket.on("guestVisitUpdate", (data) => {
+      dispatch(addGuestVisit(data));
+      dispatch(incrementGuestCount());
+    });
+
+    return () => {
+      socket.off("guestVisitUpdate");
+      socket.disconnect();
+    };
+  }, [dispatch]);
+
+  // Fetch analytics and users
   useEffect(() => {
     dispatch(
       fetchSiteAnalytics({
@@ -244,6 +303,7 @@ const Insights = () => {
     dispatch(getAllUsers({ page: 1, limit: 10 }));
   }, [dispatch, dateRange]);
 
+  // Simulate initial guest visit
   useEffect(() => {
     const guestId = `guest-${Date.now()}`;
     dispatch(trackGuestVisit({ guestId }));
