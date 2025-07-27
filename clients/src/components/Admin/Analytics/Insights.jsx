@@ -31,41 +31,59 @@ const AdminLocationDashboard = lazy(() =>
 const CPM_RATE = 2.5;
 const IMPRESSION_INTERVAL = 30;
 
+const isDev = process.env.NODE_ENV === "development";
+
 const RecentGuestVisits = () => {
   const { guestVisits = [] } = useSelector(selectSocketState, shallowEqual);
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(true);
 
   const simulateGuest = () => {
-    dispatch(
-      addGuestVisit({
-        guestId: "test-guest",
-        ip: "127.0.0.1",
-        location: "IN",
-        visitCount: 1,
-        lastVisit: new Date().toISOString(),
-        userAgent: "ManualTest/1.0",
-      })
-    );
+    const guestData = {
+      guestId: "test-guest",
+      ip: "127.0.0.1",
+      location: "IN",
+      visitCount: 1,
+      lastVisit: new Date().toISOString(),
+      userAgent: "ManualTest/1.0",
+    };
+    console.log("[RecentGuestVisits] Simulating guest visit:", guestData);
+    dispatch(addGuestVisit(guestData));
   };
 
   useEffect(() => {
+    console.log(
+      "[RecentGuestVisits] Loading stored guest visits from localStorage"
+    );
     const storedVisits = localStorage.getItem("guestVisits");
     if (storedVisits) {
-      JSON.parse(storedVisits).forEach((visit) =>
-        dispatch(addGuestVisit(visit))
-      );
+      const parsedVisits = JSON.parse(storedVisits);
+      console.log("[RecentGuestVisits] Parsed stored visits:", parsedVisits);
+      parsedVisits.forEach((visit) => {
+        console.log("[RecentGuestVisits] Dispatching stored visit:", visit);
+        dispatch(addGuestVisit(visit));
+      });
     }
     setIsLoading(false);
   }, [dispatch]);
 
   const saveToLocalStorage = debounce((visits) => {
+    console.log(
+      "[RecentGuestVisits] Saving guest visits to localStorage:",
+      visits
+    );
     localStorage.setItem("guestVisits", JSON.stringify(visits));
   }, 1000);
 
   useEffect(() => {
+    console.log(
+      "[RecentGuestVisits] Guest visits changed, triggering save:",
+      guestVisits
+    );
     saveToLocalStorage(guestVisits);
   }, [guestVisits]);
+
+  console.log("[RecentGuestVisits] Rendering with guestVisits:", guestVisits);
 
   return (
     <motion.div
@@ -236,7 +254,14 @@ const Insights = () => {
 
   const offlineUsers = Math.max(0, totalUsers - onlineUsersCount);
   const uniqueGuestCount = useMemo(() => {
-    return new Set(guestVisits.map((g) => g.guestId)).size;
+    const count = new Set(guestVisits.map((g) => g.guestId)).size;
+    console.log(
+      "[Insights] Calculated uniqueGuestCount:",
+      count,
+      "from guestVisits:",
+      guestVisits
+    );
+    return count;
   }, [guestVisits]);
 
   const isValidDateRange = useMemo(() => {
@@ -244,15 +269,16 @@ const Insights = () => {
     return new Date(dateRange.startDate) <= new Date(dateRange.endDate);
   }, [dateRange]);
 
-  const pieData = useMemo(
-    () => [
+  const pieData = useMemo(() => {
+    const data = [
       { name: "Total Visits", value: analytics.traffic?.totalVisits || 0 },
       { name: "Unique Users", value: analytics.traffic?.uniqueUsersCount || 0 },
       { name: "Unique Posts", value: analytics.traffic?.uniquePostsCount || 0 },
       { name: "Guest Users", value: uniqueGuestCount || 0 },
-    ],
-    [analytics.traffic, uniqueGuestCount]
-  );
+    ];
+    console.log("[Insights] Pie chart data:", data);
+    return data;
+  }, [analytics.traffic, uniqueGuestCount]);
 
   const COLORS = ["#5b21b6", "#4ade80", "#facc15", "#ff6b6b"];
 
@@ -269,6 +295,7 @@ const Insights = () => {
       }
     );
     socket.on("guestVisitUpdate", (data) => {
+      console.log("[Insights] Received guestVisitUpdate from socket:", data);
       dispatch(addGuestVisit(data));
     });
 
@@ -280,19 +307,23 @@ const Insights = () => {
 
   useEffect(() => {
     const guestId = `guest-${Date.now()}`;
-    dispatch(
-      addGuestVisit({
-        guestId,
-        ip: "127.0.0.1",
-        location: "IN",
-        visitCount: 1,
-        lastVisit: new Date().toISOString(),
-        userAgent: navigator.userAgent || "Unknown",
-      })
-    );
+    const guestData = {
+      guestId,
+      ip: "127.0.0.1",
+      location: "IN",
+      visitCount: 1,
+      lastVisit: new Date().toISOString(),
+      userAgent: navigator.userAgent || "Unknown",
+    };
+    console.log("[Insights] Dispatching initial guest visit:", guestData);
+    dispatch(addGuestVisit(guestData));
   }, [dispatch]);
 
   useEffect(() => {
+    console.log(
+      "[Insights] Fetching site analytics with date range:",
+      dateRange
+    );
     dispatch(
       fetchSiteAnalytics({
         startDate: dateRange.startDate,
@@ -303,6 +334,9 @@ const Insights = () => {
   }, [dispatch, dateRange]);
 
   const handleDateChange = (e) => {
+    console.log("[Insights] Date range changed:", {
+      [e.target.name]: e.target.value,
+    });
     setDateRange({ ...dateRange, [e.target.name]: e.target.value });
   };
 

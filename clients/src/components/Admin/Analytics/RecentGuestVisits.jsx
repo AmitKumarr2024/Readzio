@@ -4,6 +4,8 @@ import { selectSocketState, addGuestVisit } from "../../../store/socketSlice";
 import { formatDistanceToNow } from "date-fns";
 import Pagination from "../../../Utils/Pagination";
 
+const isDev = process.env.NODE_ENV === "development";
+
 const RecentGuestVisits = () => {
   const { guestVisits = [] } = useSelector(selectSocketState);
   const dispatch = useDispatch();
@@ -16,22 +18,25 @@ const RecentGuestVisits = () => {
   const itemsPerPage = 10;
 
   // Simulate guest for testing
- const simulateGuest = () => {
-  dispatch(
-    addGuestVisit({
+  const simulateGuest = () => {
+    const guestData = {
       guestId: "test-guest",
       ip: "127.0.0.1",
       location: "IN",
       visitCount: 1,
       lastVisit: new Date().toISOString(),
       userAgent: "ManualTest/1.0",
-    })
-  );
-};
-
+    };
+    console.log("[RecentGuestVisits] Simulating guest visit:", guestData);
+    dispatch(addGuestVisit(guestData));
+  };
 
   // Filter and sort data
   const filteredAndSortedVisits = useMemo(() => {
+    console.log(
+      "[RecentGuestVisits] Filtering and sorting guestVisits:",
+      guestVisits
+    );
     let filtered = [...guestVisits];
 
     // Search
@@ -43,6 +48,7 @@ const RecentGuestVisits = () => {
           guest.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           guest.userAgent?.toLowerCase().includes(searchQuery.toLowerCase())
       );
+      console.log("[RecentGuestVisits] After search filter:", filtered);
     }
 
     // Sort
@@ -58,6 +64,7 @@ const RecentGuestVisits = () => {
         ? String(aValue).localeCompare(String(bValue))
         : String(bValue).localeCompare(String(aValue));
     });
+    console.log("[RecentGuestVisits] After sorting:", filtered);
 
     return filtered;
   }, [guestVisits, searchQuery, sortConfig]);
@@ -68,14 +75,24 @@ const RecentGuestVisits = () => {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+  console.log(
+    "[RecentGuestVisits] Paginated visits for rendering:",
+    paginatedVisits
+  );
 
   // Handle sort
   const handleSort = (key) => {
+    console.log("[RecentGuestVisits] Sorting by:", key);
     setSortConfig((prev) => ({
       key,
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
     }));
   };
+
+  console.log(
+    "[RecentGuestVisits] Rendering component with guestVisits:",
+    guestVisits
+  );
 
   return (
     <div className="p-6 bg-white dark:bg-gray-900 rounded-xl shadow-lg border dark:border-gray-700">
@@ -97,7 +114,13 @@ const RecentGuestVisits = () => {
           type="text"
           placeholder="Search by Guest ID, IP, Location, or User Agent..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            console.log(
+              "[RecentGuestVisits] Search query changed:",
+              e.target.value
+            );
+            setSearchQuery(e.target.value);
+          }}
           className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
         />
       </div>
@@ -180,7 +203,10 @@ const RecentGuestVisits = () => {
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            onPageChange={setCurrentPage}
+            onPageChange={(page) => {
+              console.log("[RecentGuestVisits] Changing page to:", page);
+              setCurrentPage(page);
+            }}
           />
         </>
       )}

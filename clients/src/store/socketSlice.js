@@ -266,13 +266,24 @@ export const initializeSocket = createAsyncThunk(
           });
         });
 
-      const debouncedGuestVisit = debounce((guest) => {
-        log("[socketSlice] 🔵 [Debounced] guestVisitUpdate:", guest);
+      const debouncedGuestVisit = debounce((guest, dispatch) => {
+        log("[socketSlice] 🔵 [Debounced] Processing guestVisitUpdate:", {
+          guestId: guest.guestId,
+          visitCount: guest.visitCount,
+          lastVisit: guest.lastVisit,
+          timestamp: new Date().toISOString(),
+        });
         dispatch(addGuestVisit(guest));
       }, 1000);
 
       socket.off("guestVisitUpdate").on("guestVisitUpdate", (guest) => {
-        debouncedGuestVisit(guest);
+        log("[socketSlice] 🔴 Received guestVisitUpdate:", {
+          guestId: guest.guestId,
+          visitCount: guest.visitCount,
+          lastVisit: guest.lastVisit,
+          timestamp: new Date().toISOString(),
+        });
+        debouncedGuestVisit(guest, dispatch);
       });
     });
   }
@@ -360,27 +371,66 @@ const socketSlice = createSlice({
     },
     addGuestVisit: (state, action) => {
       const newGuest = action.payload;
+      log("[addGuestVisit] Processing new guest:", {
+        guestId: newGuest.guestId,
+        visitCount: newGuest.visitCount,
+        lastVisit: newGuest.lastVisit,
+        currentGuestVisitsLength: state.guestVisits.length,
+        timestamp: new Date().toISOString(),
+      });
 
       const existingGuest = state.guestVisits.find(
         (g) => g.guestId === newGuest.guestId
       );
 
       if (existingGuest) {
+        log("[addGuestVisit] Existing guest found:", {
+          existing: {
+            guestId: existingGuest.guestId,
+            visitCount: existingGuest.visitCount,
+            lastVisit: existingGuest.lastVisit,
+          },
+          newGuest: {
+            guestId: newGuest.guestId,
+            visitCount: newGuest.visitCount,
+            lastVisit: newGuest.lastVisit,
+          },
+        });
+
         const sameVisit =
           newGuest.visitCount === existingGuest.visitCount &&
           new Date(newGuest.lastVisit).getTime() ===
             new Date(existingGuest.lastVisit).getTime();
 
-        if (sameVisit) return; // ❌ Avoid duplicate
+        if (sameVisit) {
+          log("[addGuestVisit] ❌ Duplicate guest visit detected, skipping:", {
+            guestId: newGuest.guestId,
+            visitCount: newGuest.visitCount,
+            lastVisit: newGuest.lastVisit,
+          });
+          return;
+        }
 
-        // ✅ Update only if new visit
+        log("[addGuestVisit] ✅ Updating existing guest:", {
+          guestId: newGuest.guestId,
+          visitCount: newGuest.visitCount,
+          lastVisit: newGuest.lastVisit,
+        });
         state.guestVisits = state.guestVisits.map((g) =>
           g.guestId === newGuest.guestId ? newGuest : g
         );
       } else {
-        // ✅ New guest
+        log("[addGuestVisit] ✅ Adding new guest:", {
+          guestId: newGuest.guestId,
+          visitCount: newGuest.visitCount,
+          lastVisit: newGuest.lastVisit,
+          guestVisitsLength: state.guestVisits.length + 1,
+        });
         state.guestVisits.unshift(newGuest);
         if (state.guestVisits.length > MAX_GUEST_VISITS) {
+          log(
+            `[addGuestVisit] Trimming guestVisits to ${MAX_GUEST_VISITS}, removing oldest entry`
+          );
           state.guestVisits = state.guestVisits.slice(0, MAX_GUEST_VISITS);
         }
       }
