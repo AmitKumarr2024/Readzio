@@ -25,7 +25,7 @@ export const fetchInitialGuestCount = createAsyncThunk(
   "socket/fetchInitialGuestCount",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get("/analytics/guest-count", {
+      const response = await axiosInstance.get("/public/guest-count", {
         withCredentials: true,
       });
       console.log(
