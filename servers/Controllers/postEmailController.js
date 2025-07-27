@@ -227,7 +227,6 @@ export const getDailyPostEmailReport = async (req, res, next) => {
 
     const query = { type: "daily_digest" };
 
-    // If a date is provided, apply IST-safe date filtering
     if (date) {
       const istDate = new Date(date);
       const startDate = new Date(istDate);
@@ -242,7 +241,6 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       );
     }
 
-    // Fetch paginated logs
     const logs = await EmailLog.find(query)
       .select(
         "userId email type emailStatus emailAttempts emailLastError postSlugs sentAt"
@@ -265,7 +263,6 @@ export const getDailyPostEmailReport = async (req, res, next) => {
     });
   } catch (error) {
     console.error("[Error] Failed to fetch email report:", error);
-
     next(
       error instanceof AppError
         ? error
@@ -282,7 +279,6 @@ export const getDailyPostEmailReport = async (req, res, next) => {
 // Deletes all notifications
 export const deleteAllNotifications = async (req, res, next) => {
   try {
-    // Deletes all notifications in the database
     const result = await Notification.deleteMany({});
 
     res.status(200).json({
@@ -290,7 +286,6 @@ export const deleteAllNotifications = async (req, res, next) => {
       deletedCount: result.deletedCount,
     });
   } catch (error) {
-    // AppError with context for deleting notifications
     next(
       error instanceof AppError
         ? error
@@ -304,7 +299,7 @@ export const deleteAllNotifications = async (req, res, next) => {
   }
 };
 
-// Sends email with retry logic for reliability
+// Sends email with retry logic
 const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
   let attempts = 0;
   let lastError = null;
@@ -327,9 +322,7 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
         message: `Attempt ${attempts} failed for ${mailOption.to}: ${error.message}`,
       });
       if (attempts < maxAttempts) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, 1000 * attempts ** 2)
-        );
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempts ** 2));
       }
     }
   }

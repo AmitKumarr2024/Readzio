@@ -10,11 +10,11 @@ const EmailLogSchema = new mongoose.Schema(
       required: false,
     },
     // Recipient email address
-    email: { 
-      type: String, 
-      required: true, 
-      lowercase: true, 
-      trim: true 
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
     },
     // Type of email sent
     type: {
@@ -32,38 +32,40 @@ const EmailLogSchema = new mongoose.Schema(
     // Current status of the email
     emailStatus: {
       type: String,
-      enum: ["not_sent", "sent", "failed", "pending"],
+      enum: ["not_sent", "sent", "failed", "pending", "skipped"], // Added "skipped"
       default: "not_sent",
     },
     // Number of send attempts
-    emailAttempts: { 
-      type: Number, 
-      default: 0 
+    emailAttempts: {
+      type: Number,
+      default: 0,
     },
     // Last error message if send failed
     emailLastError: String,
     // Flag to stop further send attempts
-    stopEmailAttempts: { 
-      type: Boolean, 
-      default: false 
+    stopEmailAttempts: {
+      type: Boolean,
+      default: false,
     },
     // Slugs of posts included in daily digest
-    postSlugs: [{ 
-      type: String 
-    }],
+    postSlugs: [
+      {
+        type: String,
+      },
+    ],
     // Timestamp of successful send
-    sentAt: { 
-      type: Date, 
-      default: null 
+    sentAt: {
+      type: Date,
+      default: null,
     },
     // Creation and update timestamps
-    createdAt: { 
-      type: Date, 
-      default: Date.now 
+    createdAt: {
+      type: Date,
+      default: Date.now,
     },
-    updatedAt: { 
-      type: Date, 
-      default: Date.now 
+    updatedAt: {
+      type: Date,
+      default: Date.now,
     },
   },
   { timestamps: true } // Automatically updates createdAt and updatedAt

@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 
 const isDev = import.meta.env.MODE === "development";
 const MAX_USER_LOCATIONS = 500;
+const MAX_GUEST_VISITS = 100; // Limit guest visits to prevent memory bloat
 
 const log = (...args) => {
   if (isDev) console.log(...args);
@@ -33,9 +34,7 @@ export const fetchActiveNotifications = createAsyncThunk(
 
       const response = await axiosInstance.get(
         "/bannerNotification/get-Notification",
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
 
       const notifications = response.data.notifications || [];
@@ -64,9 +63,7 @@ export const fetchInitialPostCounts = createAsyncThunk(
   async (_, { rejectWithValue, getState }) => {
     try {
       const { user } = getState().auth;
-
-      // 🔍 Add this log
-      console.log("[fetchInitialPostCounts] Authenticated user:", user);
+      log("[fetchInitialPostCounts] Authenticated user:", user);
 
       if (!user?._id) throw new Error("User not authenticated");
 
@@ -275,7 +272,7 @@ export const initializeSocket = createAsyncThunk(
         });
 
       socket.off("guestVisitUpdate").on("guestVisitUpdate", (guest) => {
-        console.log("[socketSlice] 🔵 Received guestVisitUpdate:", guest);
+        log("[socketSlice] 🔵 Received guestVisitUpdate:", guest);
         dispatch(addGuestVisit(guest));
       });
     });
@@ -334,7 +331,7 @@ const socketSlice = createSlice({
       ) {
         return;
       }
-      if (state.userLocations.length > MAX_USER_LOCATIONS) {
+      if (state.userLocations.length >= MAX_USER_LOCATIONS) {
         state.userLocations.shift();
       }
       state.userLocations = [
@@ -353,19 +350,24 @@ const socketSlice = createSlice({
     },
     addGuestVisit: (state, action) => {
       const newGuest = action.payload;
-
-      // If guest already exists, replace; otherwise prepend
-      const existingIndex = state.guestVisits.findIndex(
+      const existingGuest = state.guestVisits.find(
         (g) => g.guestId === newGuest.guestId
       );
 
-      if (existingIndex !== -1) {
-        state.guestVisits[existingIndex] = newGuest;
+      if (existingGuest) {
+        // Only update if visitCount has increased or lastVisit is newer
+        if (
+          newGuest.visitCount > existingGuest.visitCount ||
+          new Date(newGuest.lastVisit) > new Date(existingGuest.lastVisit)
+        ) {
+          state.guestVisits = state.guestVisits.map((g) =>
+            g.guestId === newGuest.guestId ? newGuest : g
+          );
+        }
       } else {
         state.guestVisits.unshift(newGuest);
-        // Optional: limit list to avoid memory bloating
-        if (state.guestVisits.length > 100) {
-          state.guestVisits = state.guestVisits.slice(0, 100);
+        if (state.guestVisits.length > MAX_GUEST_VISITS) {
+          state.guestVisits = state.guestVisits.slice(0, MAX_GUEST_VISITS);
         }
       }
     },
