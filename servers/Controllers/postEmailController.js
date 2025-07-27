@@ -7,26 +7,7 @@ import transporter from "../config/nodeMailer.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 
-// Retrieves slugs of posts sent to a user in the last `days`
-const getRecentlySentPostSlugs = async (userId, days = 14) => {
-  const sinceDate = new Date();
-  sinceDate.setDate(sinceDate.getDate() - days);
-
-  const logs = await EmailLog.find({
-    userId,
-    type: "daily_digest",
-    sentAt: { $gte: sinceDate },
-  }).select("postSlugs -_id");
-
-  const sentSlugs = new Set();
-  logs.forEach((log) => {
-    (log.postSlugs || []).forEach((slug) => sentSlugs.add(slug));
-  });
-
-  return Array.from(sentSlugs);
-};
-
-// Sends daily post email with varied, randomized posts, ensuring no empty emails
+// Sends daily post email to verified users with published posts
 export const sendDailyPostEmail = async (req, res, next) => {
   console.log("[Cron:sendDailyPostEmail] Function entered");
   try {
@@ -34,6 +15,8 @@ export const sendDailyPostEmail = async (req, res, next) => {
       isAccountVerified: true,
       stopEmailAttempts: false,
     }).lean({ virtuals: true });
+
+    console.log("[Cron:sendDailyPostEmail] Fetched users:", users.length);
 
     if (users.length === 0) {
       return res.status(200).json({
@@ -46,109 +29,82 @@ export const sendDailyPostEmail = async (req, res, next) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    // Fetch fresh posts from today
-    const freshTodayPosts = await PostModel.find({
+    let posts = await PostModel.find({
       createdAt: { $gte: todayStart },
       isPublished: true,
     })
-      .select("title slug thumbnail author readTime likesCount commentsCount category")
+
+      .select("title slug thumbnail author readTime likesCount commentsCount")
       .populate("author", "name avatar")
       .lean({ virtuals: true });
 
+    console.log(
+      "dailypostsss",
+      posts.map((p) => ({
+        title: p.title,
+        readTime: p.readTime,
+        likes: p.likesCount,
+        comments: p.commentsCount,
+      }))
+    );
+
+    if (posts.length < 10) {
+      const additionalPostsNeeded = 10 - posts.length;
+      const popularPosts = await PostModel.find({
+        createdAt: { $lt: todayStart },
+        isPublished: true,
+      })
+
+        .sort({ views: -1 })
+        .select("title slug thumbnail author readTime likesCount commentsCount")
+        .populate("author", "name avatar")
+        .limit(additionalPostsNeeded)
+        .lean({ virtuals: true });
+
+      // ✅ Fix: Merge posts correctly
+      posts = [...posts, ...popularPosts];
+    }
+
+    if (posts.length === 0) {
+      const fallbackMailOption = createMailOption({
+        to: users.map((user) => user.email),
+        subject: "Your Inksha Daily Brief (No New Posts)",
+        name: "User",
+        email: "",
+        message: "No new posts today. Check out our platform for more content!",
+        hasButton: true,
+        buttonText: "Visit Platform",
+        buttonUrl: "https://inksha.onrender.com",
+        posts: [],
+      });
+
+      await transporter.sendMail(fallbackMailOption);
+
+      return res.status(200).json({
+        message: "No posts available, sent fallback email",
+        results: [],
+        postCount: 0,
+      });
+    }
+
+    const postSlugs = posts.map((post) => post.slug);
     const results = [];
 
     for (const user of users) {
-      // Get posts sent in the last 14 days
-      const recentlySentSlugs = await getRecentlySentPostSlugs(user._id, 14);
-      const recentSet = new Set(recentlySentSlugs);
-
-      // Filter out recently sent posts
-      let userPosts = freshTodayPosts.filter((post) => !recentSet.has(post.slug));
-
-      // Shuffle posts for randomization
-      userPosts = userPosts.sort(() => Math.random() - 0.5);
-
-      // If not enough fresh posts, fetch diverse fallback posts
-      if (userPosts.length < 10) {
-        const needed = 10 - userPosts.length;
-
-        // Fetch posts from different categories for variety
-        const fallbackPosts = await PostModel.aggregate([
-          {
-            $match: {
-              createdAt: { $lt: todayStart },
-              isPublished: true,
-              slug: { $nin: [...recentSet, ...userPosts.map((p) => p.slug)] },
-            },
-          },
-          { $sample: { size: needed * 2 } }, // Oversample for category diversity
-          {
-            $group: {
-              _id: "$category",
-              posts: { $push: "$$ROOT" },
-              count: { $sum: 1 },
-            },
-          },
-          { $unwind: "$posts" },
-          { $limit: needed },
-          { $replaceRoot: { newRoot: "$posts" } },
-        ]);
-
-        userPosts = [...userPosts, ...fallbackPosts].slice(0, 10);
-      }
-
-      // If still not enough, fetch popular posts
-      if (userPosts.length < 10) {
-        const remaining = 10 - userPosts.length;
-
-        const extraPosts = await PostModel.find({
-          isPublished: true,
-          slug: { $nin: [...recentSet, ...userPosts.map((p) => p.slug)] },
-        })
-          .sort({ views: -1, likesCount: -1 })
-          .limit(remaining)
-          .select("title slug thumbnail author readTime likesCount commentsCount category")
-          .populate("author", "name avatar")
-          .lean({ virtuals: true });
-
-        userPosts = [...userPosts, ...extraPosts].slice(0, 10);
-      }
-
-      // Skip email if no posts are available
-      if (userPosts.length === 0) {
-        await EmailLog.create({
-          userId: user._id,
-          email: user.email,
-          type: "daily_digest",
-          emailStatus: "skipped",
-          emailLastError: "No eligible posts available",
-          postSlugs: [],
-          sentAt: new Date(),
-        });
-        results.push({
-          email: user.email,
-          success: false,
-          error: "No eligible posts available",
-        });
-        continue;
-      }
-
-      const postSlugs = userPosts.map((p) => p.slug);
-
       const mailOption = createMailOption({
         to: user.email,
-        subject: `Your Inksha Daily Brief – ${userPosts.length} New Reads`,
+        subject: `Your Inksha Daily Brief – Fresh Posts for You (${posts.length} Posts)`,
         name: user.name || "User",
         email: user.email,
         hasButton: true,
         buttonText: "Read Posts",
         buttonUrl: "https://inksha.onrender.com",
-        posts: userPosts,
+        posts,
       });
 
       try {
         const emailResult = await sendEmailWithRetries(mailOption, user._id);
-        await EmailLog.create({
+        const emailLog = new EmailLog({
           userId: user._id,
           email: user.email,
           type: "daily_digest",
@@ -157,13 +113,14 @@ export const sendDailyPostEmail = async (req, res, next) => {
           postSlugs,
           sentAt: new Date(),
         });
+        await emailLog.save();
         results.push({
           email: user.email,
           success: true,
           attempts: emailResult.attempts,
         });
       } catch (error) {
-        await EmailLog.create({
+        const emailLog = new EmailLog({
           userId: user._id,
           email: user.email,
           type: "daily_digest",
@@ -173,6 +130,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
           postSlugs,
           sentAt: new Date(),
         });
+        await emailLog.save();
         results.push({
           email: user.email,
           success: false,
@@ -181,7 +139,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
       }
     }
 
-    // Notify admin
     const admin = await UserModel.findOne({ role: "admin" }).lean();
     if (admin) {
       const adminMailOption = createMailOption({
@@ -193,9 +150,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
           results.filter((r) => r.success).length
         }, Failed: ${
           results.filter((r) => !r.success).length
-        }, Skipped: ${
-          results.filter((r) => r.error === "No eligible posts available").length
-        }, Total posts varied per user.`,
+        }, Posts included: ${posts.length}`,
         hasButton: false,
       });
       await sendEmailWithRetries(adminMailOption, admin._id);
@@ -204,7 +159,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     res.status(200).json({
       message: "Daily post emails processed",
       results,
-      totalUsers: users.length,
+      postCount: posts.length,
     });
   } catch (error) {
     next(
@@ -221,12 +176,14 @@ export const sendDailyPostEmail = async (req, res, next) => {
 };
 
 // Retrieves daily post email report with pagination and optional date filter
+// Retrieves daily post email report with pagination and optional date filter
 export const getDailyPostEmailReport = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, date } = req.query;
 
     const query = { type: "daily_digest" };
 
+    // If a date is provided, apply IST-safe date filtering
     if (date) {
       const istDate = new Date(date);
       const startDate = new Date(istDate);
@@ -241,6 +198,7 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       );
     }
 
+    // Fetch paginated logs
     const logs = await EmailLog.find(query)
       .select(
         "userId email type emailStatus emailAttempts emailLastError postSlugs sentAt"
@@ -263,6 +221,7 @@ export const getDailyPostEmailReport = async (req, res, next) => {
     });
   } catch (error) {
     console.error("[Error] Failed to fetch email report:", error);
+
     next(
       error instanceof AppError
         ? error
@@ -279,6 +238,7 @@ export const getDailyPostEmailReport = async (req, res, next) => {
 // Deletes all notifications
 export const deleteAllNotifications = async (req, res, next) => {
   try {
+    // Deletes all notifications in the database
     const result = await Notification.deleteMany({});
 
     res.status(200).json({
@@ -286,6 +246,7 @@ export const deleteAllNotifications = async (req, res, next) => {
       deletedCount: result.deletedCount,
     });
   } catch (error) {
+    // AppError with context for deleting notifications
     next(
       error instanceof AppError
         ? error
@@ -299,7 +260,7 @@ export const deleteAllNotifications = async (req, res, next) => {
   }
 };
 
-// Sends email with retry logic
+// Sends email with retry logic for reliability
 const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
   let attempts = 0;
   let lastError = null;
@@ -311,7 +272,7 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
       await recordActivity({
         userId,
         action: "EMAIL_SENT",
-        message: `Email sent to ${mailOption.to} on attempt ${attempts}`,
+        message: `Daily post email sent to ${mailOption.to} after ${attempts} attempt(s)`,
       });
       return { success: true, attempts };
     } catch (error) {
@@ -319,10 +280,12 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
       await recordActivity({
         userId,
         action: "EMAIL_FAILED",
-        message: `Attempt ${attempts} failed for ${mailOption.to}: ${error.message}`,
+        message: `Daily post email failed for ${mailOption.to} on attempt ${attempts}: ${error.message}`,
       });
       if (attempts < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 1000 * attempts ** 2));
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 * attempts ** 2)
+        );
       }
     }
   }
@@ -330,9 +293,8 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
   await recordActivity({
     userId,
     action: "EMAIL_FAILED_ALL_ATTEMPTS",
-    message: `All ${attempts} attempts failed for ${mailOption.to}`,
+    message: `All ${attempts} daily post email attempts failed for ${mailOption.to}: ${lastError.message}`,
   });
-
   throw new AppError(
     `Failed to send email after ${attempts} attempts: ${lastError.message}`,
     500,
