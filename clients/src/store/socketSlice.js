@@ -15,15 +15,12 @@ import toast from "react-hot-toast";
 const isDev = import.meta.env.MODE === "development";
 const MAX_USER_LOCATIONS = 25;
 
-const log = (...args) => {
-  if (isDev) console.log(...args);
-};
+const log = (...args) => console.log(...args); // Always log for debugging
 
 const debouncedLocationHandler = debounce((dispatch, location) => {
   dispatch(addUserLocation(location));
 }, 1000);
 
-// Added thunk to fetch initial guestUsersCount from backend to sync with AnalyticsModel
 export const fetchInitialGuestCount = createAsyncThunk(
   "socket/fetchInitialGuestCount",
   async (_, { rejectWithValue }) => {
@@ -31,9 +28,16 @@ export const fetchInitialGuestCount = createAsyncThunk(
       const response = await axiosInstance.get("/analytics/guest-count", {
         withCredentials: true,
       });
+      console.log(
+        "[socketSlice] ✅ Fetched initial guest count:",
+        response.data.guestUsersCount
+      );
       return response.data.guestUsersCount || 0;
     } catch (err) {
-      console.error("[socketSlice] fetchInitialGuestCount Error:", err.message);
+      console.error(
+        "[socketSlice] ❌ fetchInitialGuestCount Error:",
+        err.message
+      );
       return rejectWithValue(err.message || "Failed to fetch guest count");
     }
   }
@@ -44,14 +48,12 @@ export const fetchActiveNotifications = createAsyncThunk(
   async (_, { rejectWithValue, getState }) => {
     try {
       const { user } = getState().auth;
-      log("[socketSlice] Fetching notifications for user:", user?._id_);
+      log("[socketSlice] Fetching notifications for user:", user?._id);
       if (!user?._id) throw new Error("User not authenticated");
 
       const response = await axiosInstance.get(
         "/bannerNotification/get-Notification",
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
 
       const notifications = response.data?.notifications || [];
@@ -67,7 +69,7 @@ export const fetchActiveNotifications = createAsyncThunk(
       return activeNotification || null;
     } catch (err) {
       console.error(
-        "[socketSlice] fetchActiveNotifications Error:",
+        "[socketSlice] ❌ fetchActiveNotifications Error:",
         err.message
       );
       return rejectWithValue(err.message || "Failed to fetch notifications");
@@ -80,8 +82,7 @@ export const fetchInitialPostCounts = createAsyncThunk(
   async (_, { rejectWithValue, getState }) => {
     try {
       const { user } = getState().auth;
-
-      console.log("[fetchInitialPostCounts] Authenticated user:", user);
+      log("[fetchInitialPostCounts] Authenticated user:", user);
 
       if (!user?._id) throw new Error("User not authenticated");
 
@@ -98,7 +99,10 @@ export const fetchInitialPostCounts = createAsyncThunk(
         followingPostsCount: followingPostsCount.data.count || 0,
       };
     } catch (err) {
-      console.error("[socketSlice] fetchInitialPostCounts Error:", err.message);
+      console.error(
+        "[socketSlice] ❌ fetchInitialPostCounts Error:",
+        err.message
+      );
       return rejectWithValue(err.message || "Failed to fetch post counts");
     }
   }
@@ -112,8 +116,8 @@ const initialState = {
   userStatus: {},
   newNotification: null,
   userLocations: [],
-  guestVisits: [], // Stores guest data: guestId, visitCount, lastVisit, ip, userAgent, location
-  guestUsersCount: 0, // Tracks unique guest count
+  guestVisits: [],
+  guestUsersCount: 0,
   notificationDismissReason: null,
   postCounts: { allPostsCount: 0, followingPostsCount: 0, myPostsCount: 0 },
 };
@@ -133,7 +137,10 @@ export const initializeSocket = createAsyncThunk(
       }
     }
 
-    const socket = io(import.meta.env.VITE_API_URL || "http://localhost:8001", {
+    const socketUrl =
+      import.meta.env.VITE_API_URL || "https://inksha.onrender.com";
+    console.log("[socketSlice] Connecting to:", socketUrl);
+    const socket = io(socketUrl, {
       auth: { token: token || null },
       transports: ["websocket"],
       path: "/socket.io",
@@ -145,25 +152,27 @@ export const initializeSocket = createAsyncThunk(
       socket.removeAllListeners();
 
       socket.on("connect", () => {
+        console.log("[socketSlice] ✅ Socket connected, ID:", socket.id);
         const userId = getState().auth.user?._id?.toString();
         if (userId) {
           socket.emit("join", userId);
           socket.emit("join", "adminRoom");
           dispatch(fetchInitialPostCounts());
-          dispatch(fetchInitialGuestCount()); // Fetch initial guest count on connect
+          dispatch(fetchInitialGuestCount());
         }
         dispatch(setSocketInstance(socket));
         resolve(socket);
       });
 
       socket.on("connect_error", (err) => {
+        console.error("[socketSlice] ❌ Connect Error:", err.message);
         dispatch(setError(err.message));
-        console.error("Socket Connect Error:", err.message);
         toast.error("🚨 Can't connect to server. Please try again.");
         reject(err);
       });
 
       socket.on("disconnect", (reason) => {
+        console.log("[socketSlice] Disconnected:", reason);
         dispatch(setDisconnected());
       });
 
@@ -291,7 +300,6 @@ export const initializeSocket = createAsyncThunk(
           });
         });
 
-      // Handles guestVisitUpdate event, receiving guestId, visitCount, lastVisit, ip, userAgent, location
       socket.off("guestVisitUpdate").on("guestVisitUpdate", (guest) => {
         console.log("[socketSlice] 🔵 Received guestVisitUpdate:", guest);
         dispatch(addGuestVisit(guest));
@@ -335,10 +343,7 @@ const socketSlice = createSlice({
     },
     setUserStatus(state, action) {
       const { userId, isOnline } = action.payload;
-      state.userStatus = {
-        ...state.userStatus,
-        [userId]: { isOnline },
-      };
+      state.userStatus = { ...state.userStatus, [userId]: { isOnline } };
     },
     newNotificationReceived(state, action) {
       state.newNotification = action.payload;
@@ -364,28 +369,19 @@ const socketSlice = createSlice({
       state.notificationDismissReason = action.payload;
     },
     setPostCounts(state, action) {
-      state.postCounts = {
-        ...state.postCounts,
-        ...action.payload,
-      };
+      state.postCounts = { ...state.postCounts, ...action.payload };
     },
-    // Handles guest data, increments guestUsersCount only for new guests
     addGuestVisit: (state, action) => {
       const newGuest = action.payload;
-
-      // Check if guest already exists in guestVisits
       const existingIndex = state.guestVisits.findIndex(
         (g) => g.guestId === newGuest.guestId
       );
 
       if (existingIndex !== -1) {
-        // Update existing guest's data (visitCount, lastVisit, etc.)
         state.guestVisits[existingIndex] = newGuest;
       } else {
-        // Add new guest and increment guestUsersCount
         state.guestVisits.unshift(newGuest);
         state.guestUsersCount += 1;
-        // Limit guestVisits to 100 entries to prevent memory issues
         if (state.guestVisits.length > 100) {
           state.guestVisits = state.guestVisits.slice(0, 100);
         }
@@ -394,7 +390,6 @@ const socketSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Handle initial guest count fetch
       .addCase(fetchInitialGuestCount.fulfilled, (state, action) => {
         state.guestUsersCount = action.payload;
       })

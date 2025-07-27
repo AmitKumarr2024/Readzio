@@ -305,7 +305,7 @@ const Postbox = ({
     // Dynamically calculate ad frequency based on current screen width
     let adFrequency = 9;
     if (screenWidth < 1024 && screenWidth >= 768) {
-      adFrequency = 11;
+      adFrequency = 8;
     }
 
     for (let i = 0; i < result.length; i++) {

@@ -7,10 +7,8 @@ const initialState = {
   loading: false,
   error: null,
   viewTracked: false,
-  guestUsersCount: 0, // Added to track guest count
 };
 
-// Fetch public posts (Guest or Authenticated)
 export const fetchPublicPosts = createAsyncThunk(
   "guest/fetchPublicPosts",
   async ({ page = 1, limit = 12 }, { rejectWithValue }) => {
@@ -37,7 +35,6 @@ export const fetchPublicPosts = createAsyncThunk(
   }
 );
 
-// Fetch single public post by slug (Guest or Authenticated)
 export const fetchPublicPostBySlug = createAsyncThunk(
   "guest/fetchPublicPostBySlug",
   async (slug, { rejectWithValue }) => {
@@ -63,7 +60,6 @@ export const fetchPublicPostBySlug = createAsyncThunk(
   }
 );
 
-// Track guest view count (Guest or Authenticated)
 export const trackGuestView = createAsyncThunk(
   "guest/trackGuestView",
   async (slug, { rejectWithValue }) => {
@@ -83,7 +79,6 @@ export const trackGuestView = createAsyncThunk(
   }
 );
 
-// Search public posts (Guest or Authenticated)
 export const searchPublicPosts = createAsyncThunk(
   "guest/searchPublicPosts",
   async ({ query, page = 1, limit = 12 }, { rejectWithValue }) => {
@@ -114,13 +109,12 @@ export const searchPublicPosts = createAsyncThunk(
   }
 );
 
-// Track unique guest visit (for admin dashboard + analytics)
 export const trackGuestVisit = createAsyncThunk(
   "guest/trackGuestVisit",
-  async ({ guestId }, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      console.log("[guestSlice:trackGuestVisit] Tracking guest visit:", guestId);
-      const res = await axiosInstance.post("/public/guest/visit", { guestId });
+      console.log("[guestSlice:trackGuestVisit] Tracking guest visit");
+      const res = await axiosInstance.post("/public/guest/visit");
       console.log("[guestSlice:trackGuestVisit] Tracked:", res.data.message);
       return res.data.message;
     } catch (err) {
@@ -143,19 +137,13 @@ const guestSlice = createSlice({
       state.loading = false;
       state.error = null;
       state.viewTracked = false;
-      state.guestUsersCount = 0; // Reset guest count
     },
     clearGuestError(state) {
       console.log("[guestSlice:clearGuestError]");
       state.error = null;
     },
-    incrementGuestCount(state) {
-      console.log("[guestSlice:incrementGuestCount] Incrementing guest count");
-      state.guestUsersCount += 1;
-    },
   },
   extraReducers: (builder) => {
-    // Fetch Public Posts
     builder
       .addCase(fetchPublicPosts.pending, (state) => {
         console.log("[guestSlice:fetchPublicPosts] Pending");
@@ -177,7 +165,6 @@ const guestSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Fetch Single Post
       .addCase(fetchPublicPostBySlug.pending, (state) => {
         console.log("[guestSlice:fetchPublicPostBySlug] Pending");
         state.loading = true;
@@ -197,7 +184,6 @@ const guestSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Track View
       .addCase(trackGuestView.pending, (state) => {
         console.log("[guestSlice:trackGuestView] Pending");
         state.loading = true;
@@ -213,7 +199,6 @@ const guestSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Search Public Posts
       .addCase(searchPublicPosts.pending, (state) => {
         console.log("[guestSlice:searchPublicPosts] Pending");
         state.loading = true;
@@ -234,7 +219,6 @@ const guestSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Track Guest Visit
       .addCase(trackGuestVisit.pending, (state) => {
         console.log("[guestSlice:trackGuestVisit] Pending");
         state.loading = true;
@@ -242,7 +226,6 @@ const guestSlice = createSlice({
       .addCase(trackGuestVisit.fulfilled, (state) => {
         console.log("[guestSlice:trackGuestVisit] Fulfilled");
         state.loading = false;
-        state.guestUsersCount += 1; // Increment on successful visit
       })
       .addCase(trackGuestVisit.rejected, (state, action) => {
         console.error("[guestSlice:trackGuestVisit] Rejected:", action.payload);
@@ -252,5 +235,5 @@ const guestSlice = createSlice({
   },
 });
 
-export const { clearGuestState, clearGuestError, incrementGuestCount } = guestSlice.actions;
+export const { clearGuestState, clearGuestError } = guestSlice.actions;
 export default guestSlice.reducer;

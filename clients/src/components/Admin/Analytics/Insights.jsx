@@ -35,14 +35,15 @@ const RecentGuestVisits = () => {
     useSelector(selectSocketState);
   const dispatch = useDispatch();
 
-  // Updated to call backend's /public/guest/visit endpoint to ensure guest data is persisted
-  // and triggers guestVisitUpdate socket event, avoiding frontend-only increments
   const simulateGuest = async () => {
     try {
       await axiosInstance.post("/public/guest/visit");
-      // Backend will emit guestVisitUpdate; no need to dispatch addGuestVisit here
+      console.log("[RecentGuestVisits] ✅ Simulated guest visit");
     } catch (err) {
-      console.error("[RecentGuestVisits] Simulate Guest Error:", err.message);
+      console.error(
+        "[RecentGuestVisits] ❌ Simulate Guest Error:",
+        err.message
+      );
     }
   };
 
@@ -215,7 +216,6 @@ const Insights = () => {
     return new Date(dateRange.startDate) <= new Date(dateRange.endDate);
   }, [dateRange]);
 
-  // Uses socket.guestUsersCount for guest data in pie chart, consistent with backend
   const pieData = useMemo(
     () => [
       { name: "Total Visits", value: analytics.traffic?.totalVisits || 0 },
@@ -299,7 +299,7 @@ const Insights = () => {
           },
           {
             type: "guest",
-            count: guestUsersCount, // Uses socket.guestUsersCount for consistency
+            count: guestUsersCount,
             icon: Users,
             color: "pink",
             label: "Guest Visitors",
@@ -349,7 +349,7 @@ const Insights = () => {
                 ? offlineUsers
                 : modalType === "total"
                 ? totalUsers
-                : guestUsersCount // Uses socket.guestUsersCount for modal
+                : guestUsersCount
             }
             onClose={() => setModalType(null)}
           />
@@ -525,7 +525,7 @@ const Insights = () => {
                 <p className="text-base">
                   <span className="font-medium">Guest Users:</span>{" "}
                   <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    {guestUsersCount || 0} {/* Uses socket.guestUsersCount */}
+                    {guestUsersCount || 0}
                   </span>
                 </p>
               </div>
