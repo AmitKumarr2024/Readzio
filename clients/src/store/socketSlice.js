@@ -95,8 +95,9 @@ export const initializeSocket = createAsyncThunk(
 
     // Skip auth and post counts for guests
     if (!token && !user?._id && isGuest) {
-      log("[socketSlice] Detected guest user, skipping auth check...");
+      log("[socketSlice] Guest user, skipping join/postCounts");
     } else if (!token) {
+      // fallback: try checking auth
       try {
         await dispatch(checkAuth()).unwrap();
         token = getToken();
@@ -265,9 +266,13 @@ export const initializeSocket = createAsyncThunk(
           });
         });
 
-      socket.off("guestVisitUpdate").on("guestVisitUpdate", (guest) => {
-        log("[socketSlice] 🔵 Received guestVisitUpdate:", guest);
+      const debouncedGuestVisit = debounce((guest) => {
+        log("[socketSlice] 🔵 [Debounced] guestVisitUpdate:", guest);
         dispatch(addGuestVisit(guest));
+      }, 1000);
+
+      socket.off("guestVisitUpdate").on("guestVisitUpdate", (guest) => {
+        debouncedGuestVisit(guest);
       });
     });
   }
@@ -360,10 +365,12 @@ const socketSlice = createSlice({
       );
 
       if (existingGuest) {
-        if (
-          newGuest.visitCount > existingGuest.visitCount ||
-          new Date(newGuest.lastVisit) > new Date(existingGuest.lastVisit)
-        ) {
+        const sameVisit =
+          newGuest.visitCount === existingGuest.visitCount &&
+          new Date(newGuest.lastVisit).getTime() ===
+            new Date(existingGuest.lastVisit).getTime();
+
+        if (!sameVisit) {
           state.guestVisits = state.guestVisits.map((g) =>
             g.guestId === newGuest.guestId ? newGuest : g
           );
