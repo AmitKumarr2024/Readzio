@@ -1,4 +1,3 @@
-// ✅ UserFeedbackPrompt.jsx (Pagination fixed & improved)
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -11,7 +10,7 @@ import { motion } from "framer-motion";
 
 const UserFeedbackPrompt = () => {
   const dispatch = useDispatch();
-  const { users, loading, error, totalPages } = useSelector(
+  const { users, loading, error, totalPages = 1 } = useSelector(
     (state) => state.user
   );
 
@@ -20,7 +19,7 @@ const UserFeedbackPrompt = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const itemsPerPage = 10;
 
-  // 🔁 Fetch users
+  // 🔁 Fetch users with page and search
   useEffect(() => {
     dispatch(
       getAllUsers({
@@ -29,7 +28,7 @@ const UserFeedbackPrompt = () => {
         search: searchTerm,
       })
     );
-  }, [dispatch, currentPage, searchTerm]);
+  }, [dispatch, currentPage, searchTerm, itemsPerPage]);
 
   const handleSendFeedbackPrompt = async (userId) => {
     try {
@@ -40,15 +39,19 @@ const UserFeedbackPrompt = () => {
           message: "We'd love your feedback!",
         })
       ).unwrap();
-      toast.success("📨 Feedback request sent", {
-        position: "top-right",
-      });
+      toast.success("📨 Feedback request sent");
     } catch (err) {
-      toast.error("Failed to send feedback prompt", {
-        position: "top-right",
-      });
+      toast.error("Failed to send feedback prompt");
     } finally {
       setSending((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -57,47 +60,47 @@ const UserFeedbackPrompt = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="p-6 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark min-h-screen"
+      className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 min-h-screen"
     >
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-3xl font-bold mb-6 text-center">
+        <h2 className="text-3xl font-extrabold tracking-tight mb-6 text-center">
           Send Feedback Prompts
         </h2>
 
-        <div className="mb-6">
+        <div className="mb-6 flex justify-center">
           <input
             type="text"
             placeholder="Search users by name or email..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setCurrentPage(1);
+              setCurrentPage(1); // Reset to first page on search
             }}
-            className="w-full max-w-md mx-auto p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full max-w-md p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
           />
         </div>
 
         {loading && (
-          <p className="text-center text-gray-500 dark:text-gray-400 animate-pulse">
+          <p className="text-center text-gray-600 dark:text-gray-400 animate-pulse">
             Loading users...
           </p>
         )}
         {error && <p className="text-center text-red-500">{error}</p>}
 
         {!loading && users.length === 0 && (
-          <p className="text-center text-gray-500 dark:text-gray-400">
+          <p className="text-center text-gray-600 dark:text-gray-400">
             {searchTerm ? "No users match your search." : "No users found."}
           </p>
         )}
 
         {!loading && users.length > 0 && (
-          <div className="overflow-x-auto rounded-lg shadow-md">
+          <div className="overflow-x-auto rounded-xl shadow-lg">
             <table className="w-full bg-white dark:bg-gray-800">
               <thead>
-                <tr className="bg-blue-600 text-white text-sm uppercase tracking-wider">
-                  <th className="p-4 text-left font-medium">Name</th>
-                  <th className="p-4 text-left font-medium">Email</th>
-                  <th className="p-4 text-left font-medium">Action</th>
+                <tr className="bg-gradient-to-r from-blue-600 to-blue-500 text-white text-sm uppercase tracking-wider">
+                  <th className="p-4 text-left font-semibold">Name</th>
+                  <th className="p-4 text-left font-semibold">Email</th>
+                  <th className="p-4 text-left font-semibold">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -109,13 +112,13 @@ const UserFeedbackPrompt = () => {
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <td className="p-4">{user.name}</td>
+                    <td className="p-4 font-medium">{user.name}</td>
                     <td className="p-4">{user.email}</td>
                     <td className="p-4">
                       <motion.button
                         onClick={() => handleSendFeedbackPrompt(user._id)}
                         disabled={sending[user._id]}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
@@ -130,11 +133,11 @@ const UserFeedbackPrompt = () => {
         )}
 
         {totalPages > 1 && (
-          <div className="mt-6">
+          <div className="mt-6 flex justify-center">
             <Pagination
               currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              totalPages={Math.max(1, totalPages)} // Ensure at least 1 page
+              onPageChange={handlePageChange}
             />
           </div>
         )}
