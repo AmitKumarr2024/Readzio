@@ -51,61 +51,66 @@ const FeedbackModal = ({
             >
               <Dialog.Panel className="bg-background-light dark:bg-background-dark p-8 rounded-2xl w-full max-w-lg shadow-2xl border border-gray-200 dark:border-gray-700">
                 {!submitted ? (
-                  <>
-                    <Dialog.Title className="text-2xl font-bold mb-6 text-text-main-light dark:text-text-main-dark text-center">
-                      {promptMessage}
-                    </Dialog.Title>
+                  <div className="relative">
+                    <div className={`${!submitting && message ? "blur-sm" : ""} transition-all duration-300`}>
+                      <Dialog.Title className="text-2xl font-bold mb-6 text-text-main-light dark:text-text-main-dark text-center">
+                        {promptMessage}
+                      </Dialog.Title>
 
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium mb-2 text-text-main-light dark:text-text-main-dark">
-                        Rating
-                      </label>
-                      <div className="flex justify-center gap-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            onClick={() => setRating(star)}
-                            className={`text-2xl transition-colors ${
-                              star <= rating
-                                ? "text-yellow-400"
-                                : "text-gray-300 dark:text-gray-500"
-                            }`}
-                          >
-                            ★
-                          </button>
-                        ))}
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium mb-2 text-text-main-light dark:text-text-main-dark">
+                          Rating
+                        </label>
+                        <div className="flex justify-center gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              onClick={() => setRating(star)}
+                              className={`text-2xl transition-colors ${
+                                star <= rating
+                                  ? "text-yellow-400"
+                                  : "text-gray-300 dark:text-gray-500"
+                              } hover:scale-110`}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium mb-2 text-text-main-light dark:text-text-main-dark">
+                          Message
+                        </label>
+                        <textarea
+                          rows={4}
+                          value={message}
+                          onChange={(e) => setMessage(e.target.value)}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                          placeholder="Tell us what you loved or how we can improve..."
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={onClose}
+                          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-main-light dark:text-text-main-dark rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                        >
+                          Cancel
+                        </button>
                       </div>
                     </div>
 
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium mb-2 text-text-main-light dark:text-text-main-dark">
-                        Message
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                        placeholder="Tell us what you loved or how we can improve..."
-                      />
-                    </div>
-
-                    <div className="flex justify-end gap-3">
-                      <button
-                        onClick={onClose}
-                        className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-main-light dark:text-text-main-dark rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                      >
-                        Cancel
-                      </button>
+                    <div className="absolute bottom-0 right-0">
                       <button
                         disabled={submitting || !message}
                         onClick={handleSubmit}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
                       >
                         {submitting ? "Sending..." : "Submit"}
                       </button>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
