@@ -1,3 +1,4 @@
+// ✅ UserFeedbackPrompt.jsx (Pagination fixed & improved)
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -13,11 +14,13 @@ const UserFeedbackPrompt = () => {
   const { users, loading, error, totalPages } = useSelector(
     (state) => state.user
   );
+
   const [sending, setSending] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const itemsPerPage = 10;
 
+  // 🔁 Fetch users
   useEffect(() => {
     dispatch(
       getAllUsers({
@@ -39,12 +42,10 @@ const UserFeedbackPrompt = () => {
       ).unwrap();
       toast.success("📨 Feedback request sent", {
         position: "top-right",
-        duration: 3000,
       });
     } catch (err) {
       toast.error("Failed to send feedback prompt", {
         position: "top-right",
-        duration: 3000,
       });
     } finally {
       setSending((prev) => ({ ...prev, [userId]: false }));
@@ -70,9 +71,9 @@ const UserFeedbackPrompt = () => {
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setCurrentPage(1); // Reset to first page on search
+              setCurrentPage(1);
             }}
-            className="w-full max-w-md mx-auto p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            className="w-full max-w-md mx-auto p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -82,11 +83,13 @@ const UserFeedbackPrompt = () => {
           </p>
         )}
         {error && <p className="text-center text-red-500">{error}</p>}
+
         {!loading && users.length === 0 && (
           <p className="text-center text-gray-500 dark:text-gray-400">
             {searchTerm ? "No users match your search." : "No users found."}
           </p>
         )}
+
         {!loading && users.length > 0 && (
           <div className="overflow-x-auto rounded-lg shadow-md">
             <table className="w-full bg-white dark:bg-gray-800">
@@ -125,6 +128,7 @@ const UserFeedbackPrompt = () => {
             </table>
           </div>
         )}
+
         {totalPages > 1 && (
           <div className="mt-6">
             <Pagination
