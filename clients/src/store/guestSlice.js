@@ -115,8 +115,15 @@ export const trackGuestVisit = createAsyncThunk(
     try {
       console.log("[guestSlice:trackGuestVisit] Tracking guest visit");
       const res = await axiosInstance.post("/public/guest/visit");
+
       console.log("[guestSlice:trackGuestVisit] Tracked:", res.data.message);
-      return res.data.message;
+
+      // 🟢 Store correct guestId locally
+      if (res.data.guest?.guestId) {
+        localStorage.setItem("guestId", res.data.guest.guestId);
+      }
+
+      return res.data.guest; // <-- return full guest object
     } catch (err) {
       const errMsg =
         err.response?.data?.message || "Failed to track guest visit";
@@ -224,8 +231,12 @@ const guestSlice = createSlice({
         state.loading = true;
       })
       .addCase(trackGuestVisit.fulfilled, (state) => {
-        console.log("[guestSlice:trackGuestVisit] Fulfilled");
+        console.log(
+          "[guestSlice:trackGuestVisit] Fulfilled guest:",
+          action.payload
+        );
         state.loading = false;
+        state.lastTrackedGuest = action.payload;
       })
       .addCase(trackGuestVisit.rejected, (state, action) => {
         console.error("[guestSlice:trackGuestVisit] Rejected:", action.payload);

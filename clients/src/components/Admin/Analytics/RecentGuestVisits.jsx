@@ -11,6 +11,8 @@ const RecentGuestVisits = () => {
 
   const dispatch = useDispatch();
 
+  const { lastTrackedGuest } = useSelector((state) => state.guest || {});
+
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortKey, setSortKey] = useState("lastVisit"); // or "visitCount"
@@ -78,7 +80,10 @@ const RecentGuestVisits = () => {
           </h3>
           <div className="text-xs">
             <p>
-              <strong>ID:</strong> {selectedGuest.guestId}
+              <strong>ID:</strong>{" "}
+              {localStorage.getItem("guestId") === selectedGuest.guestId
+                ? selectedGuest.guestId
+                : `${selectedGuest.guestId?.slice(0, 8)}...`}
             </p>
             <p>
               <strong>IP:</strong> {selectedGuest.ip}
@@ -159,11 +164,17 @@ const RecentGuestVisits = () => {
               {paginatedGuests.map((guest) => (
                 <tr
                   key={guest.guestId}
-                  className="border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className={`border-b cursor-pointer ${
+                    localStorage.getItem("guestId") === guest.guestId
+                      ? "bg-yellow-100 dark:bg-yellow-900/20"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
                   onClick={() => setSelectedGuest(guest)}
                 >
                   <td className="px-4 py-2 font-mono text-xs">
-                    {guest.guestId.slice(0, 8)}...
+                    {localStorage.getItem("guestId") === guest.guestId
+                      ? guest.guestId
+                      : guest.guestId?.slice(0, 8) + "..."}
                   </td>
                   <td className="px-4 py-2">{guest.ip || "—"}</td>
                   <td className="px-4 py-2">{guest.location || "—"}</td>
