@@ -23,6 +23,7 @@ import { selectSocketState, addGuestVisit } from "../../../store/socketSlice";
 import { formatDistanceToNow } from "date-fns";
 import io from "socket.io-client";
 import { debounce } from "lodash";
+import RecentGuestVisits from "./RecentGuestVisits";
 
 const AdminLocationDashboard = lazy(() =>
   import("../../location/AdminLocationDashboard")
@@ -32,132 +33,6 @@ const CPM_RATE = 2.5;
 const IMPRESSION_INTERVAL = 30;
 
 const isDev = process.env.NODE_ENV === "development";
-
-const RecentGuestVisits = () => {
-  const { guestVisits = [] } = useSelector(selectSocketState, shallowEqual);
-  const dispatch = useDispatch();
-  const [isLoading, setIsLoading] = useState(true);
-
-  const simulateGuest = () => {
-    const guestData = {
-      guestId: "test-guest",
-      ip: "127.0.0.1",
-      location: "IN",
-      visitCount: 1,
-      lastVisit: new Date().toISOString(),
-      userAgent: "ManualTest/1.0",
-    };
-    console.log("[RecentGuestVisits] Simulating guest visit:", guestData);
-    dispatch(addGuestVisit(guestData));
-  };
-
-  useEffect(() => {
-    console.log(
-      "[RecentGuestVisits] Loading stored guest visits from localStorage"
-    );
-    const storedVisits = localStorage.getItem("guestVisits");
-    if (storedVisits) {
-      const parsedVisits = JSON.parse(storedVisits);
-      console.log("[RecentGuestVisits] Parsed stored visits:", parsedVisits);
-      parsedVisits.forEach((visit) => {
-        console.log("[RecentGuestVisits] Dispatching stored visit:", visit);
-        dispatch(addGuestVisit(visit));
-      });
-    }
-    setIsLoading(false);
-  }, [dispatch]);
-
-  const saveToLocalStorage = debounce((visits) => {
-    console.log(
-      "[RecentGuestVisits] Saving guest visits to localStorage:",
-      visits
-    );
-    localStorage.setItem("guestVisits", JSON.stringify(visits));
-  }, 1000);
-
-  useEffect(() => {
-    console.log(
-      "[RecentGuestVisits] Guest visits changed, triggering save:",
-      guestVisits
-    );
-    saveToLocalStorage(guestVisits);
-  }, [guestVisits]);
-
-  console.log("[RecentGuestVisits] Rendering with guestVisits:", guestVisits);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="w-full p-6 bg-background-light dark:bg-background-dark rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700"
-    >
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-3">
-          <Users className="w-6 h-6 text-red-600 dark:text-red-400" /> Guest
-          Visit Logs
-        </h2>
-        <button
-          onClick={simulateGuest}
-          className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          + Simulate Guest
-        </button>
-      </div>
-
-      {isLoading ? (
-        <div className="text-center py-6">
-          <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600 dark:text-blue-400" />
-          <span>Loading guest visits...</span>
-        </div>
-      ) : guestVisits.length === 0 ? (
-        <div className="text-gray-500 text-center py-6 text-base">
-          No guest visits recorded yet.
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full table-auto text-base">
-            <thead className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-              <tr>
-                <th className="px-6 py-3 text-left font-medium">Guest ID</th>
-                <th className="px-6 py-3 text-left font-medium">IP</th>
-                <th className="px-6 py-3 text-left font-medium">Location</th>
-                <th className="px-6 py-3 text-left font-medium">Visits</th>
-                <th className="px-6 py-3 text-left font-medium">Last Visit</th>
-                <th className="px-6 py-3 text-left font-medium">User Agent</th>
-              </tr>
-            </thead>
-            <tbody className="text-gray-700 dark:text-gray-200">
-              {guestVisits.map((guest) => (
-                <tr
-                  key={guest.guestId}
-                  className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  <td className="px-6 py-3 font-mono text-sm">
-                    {guest.guestId.slice(0, 8)}...
-                  </td>
-                  <td className="px-6 py-3">{guest.ip || "—"}</td>
-                  <td className="px-6 py-3">{guest.location || "—"}</td>
-                  <td className="px-6 py-3">{guest.visitCount}</td>
-                  <td className="px-6 py-3">
-                    {guest.lastVisit
-                      ? formatDistanceToNow(new Date(guest.lastVisit), {
-                          addSuffix: true,
-                        })
-                      : "—"}
-                  </td>
-                  <td className="px-6 py-3 text-sm truncate max-w-[250px]">
-                    {guest.userAgent || "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </motion.div>
-  );
-};
 
 const StatModal = ({ type, count, onClose }) => {
   const modalVariants = {
@@ -288,12 +163,9 @@ const Insights = () => {
   };
 
   useEffect(() => {
-    const socket = io(
-      process.env.VITE_API_BASE_URL ,
-      {
-        reconnectionAttempts: 5,
-      }
-    );
+    const socket = io(process.env.VITE_API_BASE_URL, {
+      reconnectionAttempts: 5,
+    });
     socket.on("guestVisitUpdate", (data) => {
       console.log("[Insights] Received guestVisitUpdate from socket:", data);
       dispatch(addGuestVisit(data));
