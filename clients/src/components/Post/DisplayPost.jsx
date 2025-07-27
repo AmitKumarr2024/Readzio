@@ -217,6 +217,9 @@ const DisplayPost = () => {
     navigate,
   ]);
 
+  const BASE_URL =
+    import.meta.env.VITE_API_URL || "https://inksha-uedq.onrender.com";
+
   const formatTime = (seconds) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -294,11 +297,32 @@ const DisplayPost = () => {
         .slice(0, 150)
         .replace(/\s+\S*$/, "") || "";
 
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      headline: activePost.title,
+      description: plainText,
+      image: firstImage,
+      author: {
+        "@type": "Person",
+        name: activePost.author?.fullName || "Inksha Author",
+      },
+      publisher: {
+        "@type": "Organization",
+        name: "Inksha",
+      },
+      url: `${BASE_URL}/post/${activePost.slug}`,
+      datePublished: activePost.createdAt,
+    };
+
     return (
       <>
         <Helmet>
           <title>{activePost.title || "Loading..."} | My Blog</title>
+          <meta name="robots" content="index, follow" />
+
           <meta name="description" content={plainText} />
+          <link rel="canonical" href={`${BASE_URL}/post/${activePost?.slug}`} />
           <meta
             property="og:title"
             content={activePost.title || "Loading..."}
@@ -308,10 +332,13 @@ const DisplayPost = () => {
           <meta property="og:type" content="article" />
           <meta
             property="og:url"
-            content={`https://your-domain.com/post/${activePost.slug}`}
+            content={`${BASE_URL}/post/${activePost?.slug}`}
           />
           <meta name="twitter:card" content="summary_large_image" />
         </Helmet>
+
+        {/* ✅ JSON-LD for Google SEO */}
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
 
         <article className="space-y-6">
           <PostHeader post={activePost} />

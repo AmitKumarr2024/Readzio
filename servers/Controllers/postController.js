@@ -321,7 +321,15 @@ export const createPost = async (req, res, next) => {
       );
     }
 
-    const slug = slugify(title, { lower: true, strict: true });
+    let slug = slugify(title, { lower: true, strict: true });
+    let finalSlug = slug;
+    let counter = 1;
+
+    while (await PostModel.exists({ slug: finalSlug })) {
+      finalSlug = `${slug}-${counter++}`;
+    }
+
+    slug = finalSlug;
     const postData = {
       title,
       slug,
@@ -1252,7 +1260,7 @@ export const getPublicPost = async (req, res, next) => {
       readingTime: post.readingTime,
       title: post.title,
     });
-   
+
     res.status(200).json({ success: true, post });
   } catch (error) {
     next(
