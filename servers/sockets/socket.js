@@ -14,7 +14,7 @@ export const io = new Server({
         CLIENT_URL?.replace(/\/$/, ""),
         "http://localhost:5173",
         "http://localhost:8001",
-        "https://inksha.onrender.com",
+        "https://inksha-uedq.onrender.com",
       ].filter(Boolean);
 
       if (!origin) {

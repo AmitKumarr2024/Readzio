@@ -67,7 +67,7 @@ const allowedOrigins = [
   CLIENT_URL?.replace(/\/$/, ""),
   "http://localhost:5173",
   "http://localhost:8001",
-  "https://inksha.onrender.com",
+  "https://inksha-uedq.onrender.com",
 ].filter(Boolean);
 
 console.log("[Server:CORS] Allowed origins:", allowedOrigins);

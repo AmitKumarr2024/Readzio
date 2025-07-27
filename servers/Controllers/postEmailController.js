@@ -74,7 +74,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
         message: "No new posts today. Check out our platform for more content!",
         hasButton: true,
         buttonText: "Visit Platform",
-        buttonUrl: "https://inksha.onrender.com",
+        buttonUrl: "https://inksha-uedq.onrender.com",
         posts: [],
       });
 
@@ -98,7 +98,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
         email: user.email,
         hasButton: true,
         buttonText: "Read Posts",
-        buttonUrl: "https://inksha.onrender.com",
+        buttonUrl: "https://inksha-uedq.onrender.com",
         posts,
       });
 
