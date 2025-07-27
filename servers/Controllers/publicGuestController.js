@@ -159,10 +159,6 @@ export const trackGuestView = async (req, res, next) => {
 };
 
 // 🔹 Track guest visit — with unique guest count tracking
-import { v4 as uuidv4 } from "uuid";
-import GuestModel from "../Models/GuestModel.js";
-import AnalyticsModel from "../Models/AnalyticsModel.js";
-import { AppError } from "../Utils/AppError.js";
 
 export const trackGuestVisit = async (req, res, next) => {
   try {
