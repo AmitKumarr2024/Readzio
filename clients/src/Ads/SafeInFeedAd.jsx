@@ -10,21 +10,24 @@ const SafeInFeedAd = ({ postId }) => {
   useEffect(() => {
     const checkAdRendered = () => {
       const el = ref.current;
-      console.log("[AdCheck] offsetHeight after 10s:", el?.offsetHeight);
+      console.log("[AdCheck] offsetHeight after 4s:", el?.offsetHeight);
 
-      if (!el || el.offsetHeight < 10) {
+      if (!el || el.offsetHeight < 4) {
         retryTimeoutRef.current = setTimeout(() => {
           const retryEl = ref.current;
-          console.log("[AdRetryCheck] offsetHeight after retry:", retryEl?.offsetHeight);
+          console.log(
+            "[AdRetryCheck] offsetHeight after retry:",
+            retryEl?.offsetHeight
+          );
 
-          if (!retryEl || retryEl.offsetHeight < 10) {
+          if (!retryEl || retryEl.offsetHeight < 4) {
             setFallback(true);
           }
         }, 1000);
       }
     };
 
-    const initialTimeout = setTimeout(checkAdRendered, 10000); // 10s wait
+    const initialTimeout = setTimeout(checkAdRendered, 4000); // 10s wait
 
     return () => {
       clearTimeout(initialTimeout);

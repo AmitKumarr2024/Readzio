@@ -817,6 +817,45 @@ export const saveUserCookieConsent = async (req, res, next) => {
   }
 };
 
+// POST /api/user/feedback/trigger/:userId (Admin only)
+// POST /api/user/feedback/manual/:userId (admin only)
+export const adminSendFeedbackPrompt = async (req, res, next) => {
+  try {
+    if (!req.user?.isAdmin) {
+      return next(
+        new AppError("Only admins can trigger feedback prompts", 403)
+      );
+    }
+
+    const { userId } = req.params;
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    // Update user's feedbackPrompt status in DB
+    user.feedbackPrompt = {
+      shown: true,
+      shownAt: new Date(),
+      responded: false,
+    };
+    await user.save();
+
+    // 🔴 Emit socket to that user's room
+    io.to(userId).emit("showFeedbackPrompt", {
+      message: "📬 We'd love your feedback. How are we doing?",
+      fromAdmin: true,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Feedback prompt sent to ${user.name}`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const shouldShowFeedbackPrompt = async (req, res, next) => {
   try {
     const user = await UserModel.findById(req.user._id).select(
@@ -832,7 +871,7 @@ export const shouldShowFeedbackPrompt = async (req, res, next) => {
     );
 
     const shouldShow =
-      accountAgeInDays >= 1 &&
+      accountAgeInDays >= 7 &&
       (!user.feedbackPrompt ||
         (!user.feedbackPrompt.shown && !user.feedbackPrompt.responded));
 

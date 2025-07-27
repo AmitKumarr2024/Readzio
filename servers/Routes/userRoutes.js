@@ -20,6 +20,7 @@ import {
   shouldShowFeedbackPrompt,
   submitFeedback,
   getAllFeedbacks,
+  adminSendFeedbackPrompt,
 } from "../../servers/Controllers/userController.js";
 
 const routes = new express.Router();
@@ -66,4 +67,10 @@ routes.get("/feedback/check", protectedRoute, shouldShowFeedbackPrompt);
 routes.post("/feedback/submit", protectedRoute, submitFeedback);
 routes.get("/feedback/all", protectedRoute, getAllFeedbacks); // 👈 Admin check should be inside controller
 
+// ⭐ Admin can trigger feedback prompt manually to a user
+routes.post(
+  "/feedback/manual/:userId",
+  protectedRoute,
+  adminSendFeedbackPrompt
+);
 export default routes;

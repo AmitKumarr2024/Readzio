@@ -498,6 +498,25 @@ export const fetchAllUserFeedback = createAsyncThunk(
   }
 );
 
+// Admin: Manually trigger feedback prompt to user
+export const sendManualFeedbackPrompt = createAsyncThunk(
+  "user/sendManualFeedbackPrompt",
+  async ({ userId, message }, { rejectWithValue }) => {
+    try {
+      const res = await axiosInstance.post(
+        `/user/feedback/manual/${userId}`,
+        { message },
+        { withCredentials: true }
+      );
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to send feedback prompt"
+      );
+    }
+  }
+);
+
 export const clearSearchedUsers = () => ({
   type: "user/clearSearchedUsers",
 });
@@ -528,6 +547,8 @@ const initialState = {
     list: [],
     loadingList: false,
     errorList: null,
+    prompting: false,
+    promptError: null,
   },
 
   userLocations: {
@@ -1004,6 +1025,18 @@ const userSlice = createSlice({
       .addCase(fetchAllUserFeedback.rejected, (state, action) => {
         state.feedback.loadingList = false;
         state.feedback.errorList = action.payload;
+      })
+      // Admin: Manually send feedback prompt
+      .addCase(sendManualFeedbackPrompt.pending, (state) => {
+        state.feedback.prompting = true;
+        state.feedback.promptError = null;
+      })
+      .addCase(sendManualFeedbackPrompt.fulfilled, (state) => {
+        state.feedback.prompting = false;
+      })
+      .addCase(sendManualFeedbackPrompt.rejected, (state, action) => {
+        state.feedback.prompting = false;
+        state.feedback.promptError = action.payload;
       });
   },
 });
