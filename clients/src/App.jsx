@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, useNavigation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ScrollToTop from "./Utils/ScrollToTop";
@@ -16,27 +16,25 @@ import { useClearUserError } from "./AppRootFile/hook/useClearUserError";
 import { useBannerExpiration } from "./AppRootFile/hook/useBannerExpiration";
 import { useSelector, useDispatch } from "react-redux";
 import { dismissBannerNotification } from "./store/adminSlice";
-import { newNotificationReceived } from "./store/socketSlice";
+import { newNotificationReceived, setFeedbackPrompt } from "./store/socketSlice";
 import { useSocketConnectionStatus } from "./AppRootFile/hook/useSocketConnectionStatus";
 import useAdBlockDetector from "./Ads/useAdBlockDetector";
 import AdBlockWarning from "./Ads/AdBlockWarning";
 import CookieConsentBanner from "./AppRootFile/components/CookieConsentBanner";
 import FeedbackModal from "./AppRootFile/components/FeedbackModal";
 
-// Root component for app layout and initialization
 export default function App() {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const [booting, setBooting] = useState(true);
-  const isAdBlocked = useAdBlockDetector(); // Detect ad blocker
+  const [showThankYou, setShowThankYou] = useState(false); // Added state
+  const isAdBlocked = useAdBlockDetector();
 
-  // Simulate boot delay
   useEffect(() => {
     const timer = setTimeout(() => setBooting(false), 1000);
     return () => clearTimeout(timer);
   }, []);
 
-  // Handle storage changes for notifications
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === "newNotification") {
@@ -58,7 +56,6 @@ export default function App() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, [dispatch]);
 
-  // Initialize hooks
   const theme = useThemeSetup();
   const locationError = useGeolocation();
   const showGooglePopup = useGoogleLoginPopup();
@@ -73,7 +70,6 @@ export default function App() {
   );
   const isTransitionLoading = navigation.state === "loading";
 
-  // Sync notifications to localStorage
   useEffect(() => {
     try {
       if (newNotification && newNotification._id && newNotification.expiresAt) {
@@ -89,7 +85,6 @@ export default function App() {
     }
   }, [newNotification]);
 
-  // Dismiss notification
   const handleDismiss = async (notificationId) => {
     try {
       await dispatch(dismissBannerNotification(notificationId)).unwrap();
@@ -106,11 +101,9 @@ export default function App() {
     setTimeout(() => setShowThankYou(false), 2000);
   };
 
-  // Show splash loader during boot
   if (booting) return <SplashLoader />;
 
   return (
-    // Main app layout with theme support
     <div
       className={`min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark`}
     >
@@ -131,6 +124,11 @@ export default function App() {
           message={feedbackPrompt?.message}
           onClose={handleCloseFeedback}
         />
+      )}
+      {showThankYou && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg">
+          Thank you for your feedback!
+        </div>
       )}
       <PageTransitionLoader isLoading={isTransitionLoading} />
       <Outlet />
