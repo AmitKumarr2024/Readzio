@@ -34,8 +34,6 @@ const IMPRESSION_INTERVAL = 30;
 
 const isDev = process.env.NODE_ENV === "development";
 
-
-
 const StatModal = ({ type, count, onClose }) => {
   const modalVariants = {
     initial: { scale: 0.9, opacity: 0 },
@@ -163,24 +161,6 @@ const Insights = () => {
     const impressions = Math.floor(totalTimeSpent / IMPRESSION_INTERVAL);
     return ((impressions * CPM_RATE) / 1000).toFixed(2);
   };
-
-  useEffect(() => {
-    const socket = io(
-      process.env.VITE_API_BASE_URL ,
-      {
-        reconnectionAttempts: 5,
-      }
-    );
-    socket.on("guestVisitUpdate", (data) => {
-      console.log("[Insights] Received guestVisitUpdate from socket:", data);
-      dispatch(addGuestVisit(data));
-    });
-
-    return () => {
-      socket.off("guestVisitUpdate");
-      socket.disconnect();
-    };
-  }, [dispatch]);
 
   useEffect(() => {
     if (currentUser && currentUser._id) {
