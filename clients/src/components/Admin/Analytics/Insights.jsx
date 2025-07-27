@@ -194,7 +194,7 @@ const Insights = () => {
   const dispatch = useDispatch();
   const {
     admin: { analytics = {}, analyticsLoading, analyticsError, totalUsers = 0 },
-    socket: { onlineUsersCount = 0, guestUsersCount = 0 },
+    socket: { onlineUsersCount = 0, guestUsersCount = 0, guestVisits = [] },
     post: { currentPost: post, sessionTime },
     auth: { user: currentUser },
   } = useSelector(
@@ -312,14 +312,42 @@ const Insights = () => {
             count: totalUsers,
             icon: Users,
             color: "blue",
-            label: "Total Users",
+            label: "Registered Users",
           },
           {
             type: "guest",
             count: guestUsersCount,
             icon: Users,
             color: "pink",
-            label: "Guest Visitors",
+            label: (
+              <span
+                title={
+                  guestVisits
+                    .slice(0, 3)
+                    .map(
+                      (g) =>
+                        `${g.ip || "?"} (${g.location || "?"}) – ${
+                          g.lastVisit
+                            ? formatDistanceToNow(new Date(g.lastVisit), {
+                                addSuffix: true,
+                              })
+                            : "N/A"
+                        }`
+                    )
+                    .join("\n")
+                }
+              >
+                {guestVisits.length > 0
+                  ? `Guest from ${guestVisits[0].location || "—"} • ${
+                      guestVisits[0].lastVisit
+                        ? formatDistanceToNow(new Date(guestVisits[0].lastVisit), {
+                            addSuffix: true,
+                          })
+                        : "just now"
+                    }`
+                  : "Guest Visitors"}
+              </span>
+            ),
           },
         ].map(({ type, count, icon: Icon, color, label }) => (
           <motion.div
