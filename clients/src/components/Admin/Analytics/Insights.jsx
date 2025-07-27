@@ -19,10 +19,10 @@ import { IoCloseCircleOutline } from "react-icons/io5";
 import { FiMaximize2 } from "react-icons/fi";
 import CountUp from "react-countup";
 import ErrorBoundary from "../../Post/ErrorBoundary";
-import { trackGuestVisit, incrementGuestCount } from "../../../store/guestSlice";
 import { selectSocketState, addGuestVisit } from "../../../store/socketSlice";
 import { formatDistanceToNow } from "date-fns";
 import io from "socket.io-client";
+import { debounce } from "lodash";
 
 const AdminLocationDashboard = lazy(() =>
   import("../../location/AdminLocationDashboard")
@@ -36,7 +36,6 @@ const RecentGuestVisits = () => {
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(true);
 
-  // Simulate guest visit
   const simulateGuest = () => {
     const guestId = `guest-${Date.now()}`;
     dispatch(
@@ -49,43 +48,22 @@ const RecentGuestVisits = () => {
         userAgent: navigator.userAgent || "ManualTest/1.0",
       })
     );
-    dispatch(incrementGuestCount());
   };
 
-  // Load persisted guest visits from localStorage or API
   useEffect(() => {
-    // Check localStorage for persisted guest visits
     const storedVisits = localStorage.getItem("guestVisits");
     if (storedVisits) {
-      JSON.parse(storedVisits).forEach((visit) => {
-        dispatch(addGuestVisit(visit));
-      });
+      JSON.parse(storedVisits).forEach((visit) => dispatch(addGuestVisit(visit)));
     }
-
-    // Fetch guest visits from backend
-    const fetchGuestVisits = async () => {
-      try {
-        const response = await fetch("/api/admin/guests");
-        const data = await response.json();
-        data.forEach((visit) => dispatch(addGuestVisit(visit)));
-      } catch (error) {
-        console.error("Failed to fetch guest visits:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchGuestVisits();
+    setIsLoading(false);
   }, [dispatch]);
 
-  // Persist guest visits to localStorage on update
-  useEffect(() => {
-    localStorage.setItem("guestVisits", JSON.stringify(guestVisits));
-  }, [guestVisits]);
+  const saveToLocalStorage = debounce((visits) => {
+    localStorage.setItem("guestVisits", JSON.stringify(visits));
+  }, 1000);
 
-  // Debug guestVisits
   useEffect(() => {
-    console.log("[RecentGuestVisits] guestVisits:", guestVisits);
+    saveToLocalStorage(guestVisits);
   }, [guestVisits]);
 
   return (
@@ -143,9 +121,7 @@ const RecentGuestVisits = () => {
                   <td className="px-6 py-3">{guest.visitCount}</td>
                   <td className="px-6 py-3">
                     {guest.lastVisit
-                      ? formatDistanceToNow(new Date(guest.lastVisit), {
-                          addSuffix: true,
-                        })
+                      ? formatDistanceToNow(new Date(guest.lastVisit), { addSuffix: true })
                       : "—"}
                   </td>
                   <td className="px-6 py-3 text-sm truncate max-w-[250px]">
@@ -238,7 +214,7 @@ const Insights = () => {
   const dispatch = useDispatch();
   const {
     admin: { analytics = {}, analyticsLoading, analyticsError, totalUsers = 0 },
-    socket: { onlineUsersCount = 0, guestUsersCount = 0, guestVisits = [] },
+    socket: { onlineUsersCount = 0, guestVisits = [] },
     post: { currentPost: post, sessionTime },
     auth: { user: currentUser },
   } = useSelector(
@@ -255,6 +231,9 @@ const Insights = () => {
   const [modalType, setModalType] = useState(null);
 
   const offlineUsers = Math.max(0, totalUsers - onlineUsersCount);
+  const uniqueGuestCount = useMemo(() => {
+    return new Set(guestVisits.map((g) => g.guestId)).size;
+  }, [guestVisits]);
 
   const isValidDateRange = useMemo(() => {
     if (!dateRange.startDate || !dateRange.endDate) return true;
@@ -266,9 +245,9 @@ const Insights = () => {
       { name: "Total Visits", value: analytics.traffic?.totalVisits || 0 },
       { name: "Unique Users", value: analytics.traffic?.uniqueUsersCount || 0 },
       { name: "Unique Posts", value: analytics.traffic?.uniquePostsCount || 0 },
-      { name: "Guest Users", value: guestUsersCount || 0 },
+      { name: "Guest Users", value: uniqueGuestCount || 0 },
     ],
-    [analytics.traffic, guestUsersCount]
+    [analytics.traffic, uniqueGuestCount]
   );
 
   const COLORS = ["#5b21b6", "#4ade80", "#facc15", "#ff6b6b"];
@@ -278,12 +257,12 @@ const Insights = () => {
     return ((impressions * CPM_RATE) / 1000).toFixed(2);
   };
 
-  // Initialize Socket.IO and handle guest visit updates
   useEffect(() => {
-    const socket = io(process.env.REACT_APP_SOCKET_URL || "http://localhost:3000");
+    const socket = io(process.env.REACT_APP_SOCKET_URL || "http://localhost:3000", {
+      reconnectionAttempts: 5,
+    });
     socket.on("guestVisitUpdate", (data) => {
       dispatch(addGuestVisit(data));
-      dispatch(incrementGuestCount());
     });
 
     return () => {
@@ -292,21 +271,8 @@ const Insights = () => {
     };
   }, [dispatch]);
 
-  // Fetch analytics and users
-  useEffect(() => {
-    dispatch(
-      fetchSiteAnalytics({
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate,
-      })
-    );
-    dispatch(getAllUsers({ page: 1, limit: 10 }));
-  }, [dispatch, dateRange]);
-
-  // Simulate initial guest visit
   useEffect(() => {
     const guestId = `guest-${Date.now()}`;
-    dispatch(trackGuestVisit({ guestId }));
     dispatch(
       addGuestVisit({
         guestId,
@@ -317,8 +283,17 @@ const Insights = () => {
         userAgent: navigator.userAgent || "Unknown",
       })
     );
-    dispatch(incrementGuestCount());
   }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(
+      fetchSiteAnalytics({
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+      })
+    );
+    dispatch(getAllUsers({ page: 1, limit: 10 }));
+  }, [dispatch, dateRange]);
 
   const handleDateChange = (e) => {
     setDateRange({ ...dateRange, [e.target.name]: e.target.value });
@@ -376,38 +351,16 @@ const Insights = () => {
           },
           {
             type: "guest",
-            count: guestUsersCount,
+            count: uniqueGuestCount,
             icon: Users,
             color: "pink",
-            label: (
-              <span
-                title={
-                  guestVisits
-                    .slice(0, 3)
-                    .map(
-                      (g) =>
-                        `${g.ip || "?"} (${g.location || "?"}) – ${
-                          g.lastVisit
-                            ? formatDistanceToNow(new Date(g.lastVisit), {
-                                addSuffix: true,
-                              })
-                            : "N/A"
-                        }`
-                    )
-                    .join("\n")
-                }
-              >
-                {guestVisits.length > 0
-                  ? `Guest from ${guestVisits[0].location || "—"} • ${
-                      guestVisits[0].lastVisit
-                        ? formatDistanceToNow(new Date(guestVisits[0].lastVisit), {
-                            addSuffix: true,
-                          })
-                        : "just now"
-                    }`
-                  : "Guest Visitors"}
-              </span>
-            ),
+            label: guestVisits.length > 0
+              ? `Guest from ${guestVisits[0].location || "—"} • ${
+                  guestVisits[0].lastVisit
+                    ? formatDistanceToNow(new Date(guestVisits[0].lastVisit), { addSuffix: true })
+                    : "just now"
+                }`
+              : "Guest Visitors",
           },
         ].map(({ type, count, icon: Icon, color, label }) => (
           <motion.div
@@ -454,7 +407,7 @@ const Insights = () => {
                 ? offlineUsers
                 : modalType === "total"
                 ? totalUsers
-                : guestUsersCount
+                : uniqueGuestCount
             }
             onClose={() => setModalType(null)}
           />
@@ -626,7 +579,7 @@ const Insights = () => {
                 <p className="text-base">
                   <span className="font-medium">Guest Users:</span>{" "}
                   <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    {guestUsersCount || 0}
+                    {uniqueGuestCount || 0}
                   </span>
                 </p>
               </div>
