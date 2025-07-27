@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const guestSchema = new mongoose.Schema(
   {
     guestId: { type: String, required: true, unique: true },
+    fingerprint: { type: String, unique: true, sparse: true }, // Added for fallback tracking
     ip: String,
     userAgent: String,
     visitCount: { type: Number, default: 1 },

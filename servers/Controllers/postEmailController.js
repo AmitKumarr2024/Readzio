@@ -7,8 +7,8 @@ import transporter from "../config/nodeMailer.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 
-// Sends daily post email to verified users with published posts
-const getRecentlySentPostSlugs = async (userId, days = 7) => {
+// Retrieves slugs of posts sent to a user in the last `days`
+const getRecentlySentPostSlugs = async (userId, days = 14) => {
   const sinceDate = new Date();
   sinceDate.setDate(sinceDate.getDate() - days);
 
@@ -26,7 +26,7 @@ const getRecentlySentPostSlugs = async (userId, days = 7) => {
   return Array.from(sentSlugs);
 };
 
-// 🚀 Main Cron Email Sender
+// Sends daily post email with varied, randomized posts, ensuring no empty emails
 export const sendDailyPostEmail = async (req, res, next) => {
   console.log("[Cron:sendDailyPostEmail] Function entered");
   try {
@@ -46,30 +46,33 @@ export const sendDailyPostEmail = async (req, res, next) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
+    // Fetch fresh posts from today
     const freshTodayPosts = await PostModel.find({
       createdAt: { $gte: todayStart },
       isPublished: true,
     })
-      .select("title slug thumbnail author readTime likesCount commentsCount")
+      .select("title slug thumbnail author readTime likesCount commentsCount category")
       .populate("author", "name avatar")
       .lean({ virtuals: true });
 
     const results = [];
 
     for (const user of users) {
-      const recentlySentSlugs = await getRecentlySentPostSlugs(user._id);
+      // Get posts sent in the last 14 days
+      const recentlySentSlugs = await getRecentlySentPostSlugs(user._id, 14);
       const recentSet = new Set(recentlySentSlugs);
 
-      const newFreshPosts = freshTodayPosts.filter(
-        (post) => !recentSet.has(post.slug)
-      );
+      // Filter out recently sent posts
+      let userPosts = freshTodayPosts.filter((post) => !recentSet.has(post.slug));
 
-      let userPosts = [...newFreshPosts];
+      // Shuffle posts for randomization
+      userPosts = userPosts.sort(() => Math.random() - 0.5);
 
-      // Add fallback random posts if needed
+      // If not enough fresh posts, fetch diverse fallback posts
       if (userPosts.length < 10) {
         const needed = 10 - userPosts.length;
 
+        // Fetch posts from different categories for variety
         const fallbackPosts = await PostModel.aggregate([
           {
             $match: {
@@ -78,29 +81,56 @@ export const sendDailyPostEmail = async (req, res, next) => {
               slug: { $nin: [...recentSet, ...userPosts.map((p) => p.slug)] },
             },
           },
-          { $sample: { size: needed } },
+          { $sample: { size: needed * 2 } }, // Oversample for category diversity
+          {
+            $group: {
+              _id: "$category",
+              posts: { $push: "$$ROOT" },
+              count: { $sum: 1 },
+            },
+          },
+          { $unwind: "$posts" },
+          { $limit: needed },
+          { $replaceRoot: { newRoot: "$posts" } },
         ]);
 
-        userPosts = [...userPosts, ...fallbackPosts];
+        userPosts = [...userPosts, ...fallbackPosts].slice(0, 10);
       }
 
-      // Still not enough? Add popular ones
+      // If still not enough, fetch popular posts
       if (userPosts.length < 10) {
         const remaining = 10 - userPosts.length;
 
         const extraPosts = await PostModel.find({
           isPublished: true,
-          slug: { $nin: userPosts.map((p) => p.slug) },
+          slug: { $nin: [...recentSet, ...userPosts.map((p) => p.slug)] },
         })
-          .sort({ views: -1 })
+          .sort({ views: -1, likesCount: -1 })
           .limit(remaining)
-          .select(
-            "title slug thumbnail author readTime likesCount commentsCount"
-          )
+          .select("title slug thumbnail author readTime likesCount commentsCount category")
           .populate("author", "name avatar")
           .lean({ virtuals: true });
 
-        userPosts = [...userPosts, ...extraPosts];
+        userPosts = [...userPosts, ...extraPosts].slice(0, 10);
+      }
+
+      // Skip email if no posts are available
+      if (userPosts.length === 0) {
+        await EmailLog.create({
+          userId: user._id,
+          email: user.email,
+          type: "daily_digest",
+          emailStatus: "skipped",
+          emailLastError: "No eligible posts available",
+          postSlugs: [],
+          sentAt: new Date(),
+        });
+        results.push({
+          email: user.email,
+          success: false,
+          error: "No eligible posts available",
+        });
+        continue;
       }
 
       const postSlugs = userPosts.map((p) => p.slug);
@@ -151,6 +181,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
       }
     }
 
+    // Notify admin
     const admin = await UserModel.findOne({ role: "admin" }).lean();
     if (admin) {
       const adminMailOption = createMailOption({
@@ -162,6 +193,8 @@ export const sendDailyPostEmail = async (req, res, next) => {
           results.filter((r) => r.success).length
         }, Failed: ${
           results.filter((r) => !r.success).length
+        }, Skipped: ${
+          results.filter((r) => r.error === "No eligible posts available").length
         }, Total posts varied per user.`,
         hasButton: false,
       });
@@ -272,7 +305,6 @@ export const deleteAllNotifications = async (req, res, next) => {
 };
 
 // Sends email with retry logic for reliability
-
 const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
   let attempts = 0;
   let lastError = null;

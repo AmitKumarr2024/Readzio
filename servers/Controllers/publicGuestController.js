@@ -71,10 +71,7 @@ export const getPublicPostBySlug = async (req, res, next) => {
       blocked: false,
     })
       .select(
-        `
-        title slug category excerpt thumbnail author createdAt
-        isPublished readTime tags language viewsCount shareCount blocks
-      `
+        "title slug category excerpt thumbnail author createdAt isPublished readTime tags language viewsCount shareCount blocks"
       )
       .populate("author", "name avatar")
       .populate("category", "name slug")
@@ -165,6 +162,7 @@ export const trackGuestView = async (req, res, next) => {
 export const trackGuestVisit = async (req, res, next) => {
   try {
     let guestId = req.cookies.guestId;
+    const fingerprint = `${req.ip}-${req.headers["user-agent"]}`; // Fallback for cookie-less tracking
 
     if (!guestId) {
       guestId = uuidv4();
@@ -178,22 +176,21 @@ export const trackGuestVisit = async (req, res, next) => {
 
     const { io } = req;
 
-    let isNewGuest = false;
+    // Check if guest exists by guestId or fingerprint
+    const guestExistsBefore = await GuestModel.exists({
+      $or: [{ guestId }, { fingerprint }],
+    });
 
     const updatedGuest = await GuestModel.findOneAndUpdate(
-      { guestId },
+      { $or: [{ guestId }, { fingerprint }] },
       {
-        $setOnInsert: {
-          firstVisit: new Date(),
-        },
+        $setOnInsert: { firstVisit: new Date(), guestId, fingerprint },
         $set: {
           lastVisit: new Date(),
           ip: req.ip,
           userAgent: req.headers["user-agent"],
         },
-        $inc: {
-          visitCount: 1,
-        },
+        $inc: { visitCount: 1 },
       },
       {
         upsert: true,
@@ -202,12 +199,8 @@ export const trackGuestVisit = async (req, res, next) => {
       }
     );
 
-    // Check if the guest was new
-    const guestExistsBefore = await GuestModel.exists({ guestId });
-    if (!guestExistsBefore) {
-      isNewGuest = true;
-
-      // 🔧 Increment unique guest user count in analytics model
+    let isNewGuest = !guestExistsBefore;
+    if (isNewGuest) {
       await AnalyticsModel.findOneAndUpdate(
         {},
         { $inc: { "traffic.guestUsersCount": 1 } },
