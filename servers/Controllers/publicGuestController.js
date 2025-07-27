@@ -159,11 +159,13 @@ export const trackGuestView = async (req, res, next) => {
 };
 
 // 🔹 Track guest visit — with unique guest count tracking
+// 🔹 Track guest visit — with unique guest count tracking
 export const trackGuestVisit = async (req, res, next) => {
   try {
     let guestId = req.cookies.guestId;
     const fingerprint = `${req.ip}-${req.headers["user-agent"]}`;
 
+    // Assign new guestId cookie if not present
     if (!guestId) {
       guestId = uuidv4();
       res.cookie("guestId", guestId, {
@@ -175,25 +177,26 @@ export const trackGuestVisit = async (req, res, next) => {
     }
 
     const now = new Date();
-    const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000); // 15 minutes ago
+    const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000); // 15 min ago
 
-    // Find guest record
-    const guest = await GuestModel.findOne({
+    // Find existing guest by guestId or fingerprint
+    const existingGuest = await GuestModel.findOne({
       $or: [{ guestId }, { fingerprint }],
     });
 
-    // Skip update if guest has visited recently
-    if (guest && guest.lastVisit > fifteenMinutesAgo) {
+    // Skip updating if lastVisit was within the past 15 minutes
+    if (existingGuest && existingGuest.lastVisit > fifteenMinutesAgo) {
       console.log(
         "[TrackGuestVisit] ⏳ Skipped update (recent visit):",
         guestId
       );
-      return res
-        .status(200)
-        .json({ success: true, message: "Visit already recorded recently" });
+      return res.status(200).json({
+        success: true,
+        message: "Visit already recorded recently",
+      });
     }
 
-    // Update guest or insert new
+    // Update or insert guest entry
     const updatedGuest = await GuestModel.findOneAndUpdate(
       { $or: [{ guestId }, { fingerprint }] },
       {
@@ -212,9 +215,9 @@ export const trackGuestVisit = async (req, res, next) => {
       }
     );
 
-    const isNewGuest = !guest;
+    const isNewGuest = !existingGuest;
 
-    // Only increment analytics on new guest
+    // Only increment analytics for new guests
     if (isNewGuest) {
       await AnalyticsModel.findOneAndUpdate(
         {},
@@ -223,7 +226,7 @@ export const trackGuestVisit = async (req, res, next) => {
       );
     }
 
-    // Notify admin
+    // Emit socket update only if DB was updated (i.e., NOT skipped)
     if (req.io) {
       req.io.to("adminRoom").emit("guestVisitUpdate", {
         guestId: updatedGuest.guestId,
