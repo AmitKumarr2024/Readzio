@@ -71,10 +71,7 @@ export const getPublicPostBySlug = async (req, res, next) => {
       blocked: false,
     })
       .select(
-        `
-        title slug category excerpt thumbnail author createdAt
-        isPublished readTime tags language viewsCount shareCount blocks
-      `
+        "title slug category excerpt thumbnail author createdAt isPublished readTime tags language viewsCount shareCount blocks"
       )
       .populate("author", "name avatar")
       .populate("category", "name slug")
@@ -162,9 +159,27 @@ export const trackGuestView = async (req, res, next) => {
 };
 
 // 🔹 Track guest visit — with unique guest count tracking
+
 export const trackGuestVisit = async (req, res, next) => {
   try {
+    console.log("\n[trackGuestVisit] 🚦 Incoming guest visit...");
+
+    // ✅ Step 1: Check if user is authenticated
+    if (req.user && req.user._id) {
+      console.log(
+        "[trackGuestVisit] 👤 Authenticated user detected — skipping guest tracking:",
+        req.user._id
+      );
+      return res.status(200).json({
+        success: false,
+        message: "Authenticated user — guest tracking skipped",
+      });
+    }
+
+    // ✅ Step 2: Prepare guestId & fingerprint
     let guestId = req.cookies.guestId;
+    const fingerprint = `${req.ip}-${req.headers["user-agent"]}`;
+    console.log("[trackGuestVisit] 🔍 Extracted fingerprint:", fingerprint);
 
     if (!guestId) {
       guestId = uuidv4();
@@ -174,26 +189,54 @@ export const trackGuestVisit = async (req, res, next) => {
         sameSite: "Lax",
         maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
       });
+      console.log("[trackGuestVisit] 🆕 New guestId cookie set:", guestId);
+    } else {
+      console.log("[trackGuestVisit] ✅ Existing guestId cookie:", guestId);
     }
 
-    const { io } = req;
+    const now = new Date();
+    const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
 
-    let isNewGuest = false;
+    // ✅ Step 3: Check existing guest
+    const existingGuest = await GuestModel.findOne({
+      $or: [{ guestId }, { fingerprint }],
+    });
 
+    if (existingGuest) {
+      console.log("[trackGuestVisit] 🔄 Guest found in DB:", {
+        guestId: existingGuest.guestId,
+        lastVisit: existingGuest.lastVisit,
+        visitCount: existingGuest.visitCount,
+      });
+
+      if (existingGuest.lastVisit > fifteenMinutesAgo) {
+        console.log(
+          "[trackGuestVisit] ⏳ Recent visit detected — skipping update."
+        );
+        return res.status(200).json({
+          success: true,
+          message: "Visit already recorded recently",
+        });
+      }
+    } else {
+      console.log("[trackGuestVisit] 🧑 First-time guest — creating record.");
+    }
+
+    // ✅ Step 4: Upsert guest record
     const updatedGuest = await GuestModel.findOneAndUpdate(
-      { guestId },
+      { $or: [{ guestId }, { fingerprint }] },
       {
         $setOnInsert: {
-          firstVisit: new Date(),
+          firstVisit: now,
+          guestId,
+          fingerprint,
         },
         $set: {
-          lastVisit: new Date(),
+          lastVisit: now,
           ip: req.ip,
           userAgent: req.headers["user-agent"],
         },
-        $inc: {
-          visitCount: 1,
-        },
+        $inc: { visitCount: 1 },
       },
       {
         upsert: true,
@@ -202,12 +245,10 @@ export const trackGuestVisit = async (req, res, next) => {
       }
     );
 
-    // Check if the guest was new
-    const guestExistsBefore = await GuestModel.exists({ guestId });
-    if (!guestExistsBefore) {
-      isNewGuest = true;
+    const isNewGuest = !existingGuest;
 
-      // 🔧 Increment unique guest user count in analytics model
+    if (isNewGuest) {
+      console.log("[trackGuestVisit] 📈 New guest — incrementing analytics...");
       await AnalyticsModel.findOneAndUpdate(
         {},
         { $inc: { "traffic.guestUsersCount": 1 } },
@@ -215,8 +256,12 @@ export const trackGuestVisit = async (req, res, next) => {
       );
     }
 
-    if (io) {
-      io.to("adminRoom").emit("guestVisitUpdate", {
+    // ✅ Step 5: Emit to admin dashboard
+    if (req.io) {
+      console.log(
+        "[trackGuestVisit] 📡 Emitting guestVisitUpdate to adminRoom"
+      );
+      req.io.to("adminRoom").emit("guestVisitUpdate", {
         guestId: updatedGuest.guestId,
         visitCount: updatedGuest.visitCount,
         lastVisit: updatedGuest.lastVisit,
@@ -226,7 +271,7 @@ export const trackGuestVisit = async (req, res, next) => {
       });
     }
 
-    console.log("[TrackGuestVisit] ✅ Guest visit tracked:", {
+    console.log("[trackGuestVisit] ✅ Guest visit tracked successfully:", {
       guestId: updatedGuest.guestId,
       visits: updatedGuest.visitCount,
       lastVisit: updatedGuest.lastVisit,
@@ -238,7 +283,7 @@ export const trackGuestVisit = async (req, res, next) => {
       message: "Guest visit tracked",
     });
   } catch (error) {
-    console.error("[TrackGuestVisit] ❌ Error:", error);
+    console.error("[trackGuestVisit] ❌ Error occurred:", error);
     next(
       error instanceof AppError
         ? error
