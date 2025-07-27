@@ -1,15 +1,20 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { selectSocketState, addGuestVisit } from "../../../store/socketSlice";
 import { formatDistanceToNow } from "date-fns";
+import Pagination from "../../../Utils/Pagination"; // Ensure correct path
 
 const RecentGuestVisits = () => {
   const { guestVisits = [] } = useSelector(selectSocketState);
   const dispatch = useDispatch();
 
-  console.log("[RecentGuestVisits] guestVisits from Redux:", guestVisits);
+  const [selectedGuest, setSelectedGuest] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortKey, setSortKey] = useState("lastVisit"); // or "visitCount"
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
-  // Debug button to manually test
   const simulateGuest = () => {
     dispatch(
       addGuestVisit({
@@ -22,6 +27,29 @@ const RecentGuestVisits = () => {
       })
     );
   };
+
+  // Search + Sort + Pagination logic
+  const filteredGuests = useMemo(() => {
+    const lowerSearch = searchTerm.toLowerCase();
+    return guestVisits
+      .filter((guest) =>
+        [guest.ip, guest.location, guest.userAgent]
+          .join(" ")
+          .toLowerCase()
+          .includes(lowerSearch)
+      )
+      .sort((a, b) => {
+        const valA = sortKey === "visitCount" ? a.visitCount : new Date(a.lastVisit);
+        const valB = sortKey === "visitCount" ? b.visitCount : new Date(b.lastVisit);
+        return sortOrder === "asc" ? valA - valB : valB - valA;
+      });
+  }, [guestVisits, searchTerm, sortKey, sortOrder]);
+
+  const totalPages = Math.ceil(filteredGuests.length / pageSize);
+  const paginatedGuests = filteredGuests.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   return (
     <div className="p-4 bg-white dark:bg-gray-900 rounded-xl shadow-md border dark:border-gray-700">
@@ -37,9 +65,58 @@ const RecentGuestVisits = () => {
         </button>
       </div>
 
-      {guestVisits.length === 0 ? (
+      {/* 👤 Selected Guest Box */}
+      {selectedGuest && (
+        <div className="mb-4 p-4 border rounded bg-blue-50 dark:bg-blue-900/20">
+          <h3 className="text-sm font-semibold mb-1">Selected Guest Details:</h3>
+          <div className="text-xs">
+            <p><strong>ID:</strong> {selectedGuest.guestId}</p>
+            <p><strong>IP:</strong> {selectedGuest.ip}</p>
+            <p><strong>Location:</strong> {selectedGuest.location}</p>
+            <p><strong>Visits:</strong> {selectedGuest.visitCount}</p>
+            <p><strong>Last Visit:</strong> {formatDistanceToNow(new Date(selectedGuest.lastVisit), { addSuffix: true })}</p>
+            <p><strong>User Agent:</strong> {selectedGuest.userAgent}</p>
+          </div>
+        </div>
+      )}
+
+      {/* 🔍 Search + Sort Options */}
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-3">
+        <input
+          type="text"
+          placeholder="Search IP, Location, Agent..."
+          className="w-full sm:w-auto flex-1 border px-3 py-1 rounded"
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1); // Reset page on search
+          }}
+        />
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-700 dark:text-gray-300">Sort By:</label>
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value)}
+            className="border rounded px-2 py-1"
+          >
+            <option value="lastVisit">Last Visit</option>
+            <option value="visitCount">Visit Count</option>
+          </select>
+          <button
+            onClick={() =>
+              setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+            }
+            className="text-xs text-blue-600 underline"
+          >
+            {sortOrder === "asc" ? "Asc ↑" : "Desc ↓"}
+          </button>
+        </div>
+      </div>
+
+      {/* 🧾 Table */}
+      {paginatedGuests.length === 0 ? (
         <div className="text-gray-400 text-center py-4">
-          No guest visits recorded yet.
+          No guest visits match your search.
         </div>
       ) : (
         <div className="overflow-x-auto max-h-[420px] overflow-y-scroll custom-scrollbar">
@@ -55,10 +132,11 @@ const RecentGuestVisits = () => {
               </tr>
             </thead>
             <tbody className="text-gray-700 dark:text-gray-200">
-              {guestVisits.map((guest) => (
+              {paginatedGuests.map((guest) => (
                 <tr
                   key={guest.guestId}
-                  className="border-b border-gray-200 dark:border-gray-700"
+                  className="border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                  onClick={() => setSelectedGuest(guest)}
                 >
                   <td className="px-4 py-2 font-mono text-xs">
                     {guest.guestId.slice(0, 8)}...
@@ -81,6 +159,15 @@ const RecentGuestVisits = () => {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* 🔄 Pagination */}
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(page) => setCurrentPage(page)}
+        />
       )}
     </div>
   );
