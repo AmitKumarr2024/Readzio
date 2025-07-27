@@ -14,7 +14,7 @@ import toast from "react-hot-toast";
 
 const isDev = import.meta.env.MODE === "development";
 const MAX_USER_LOCATIONS = 500;
-const MAX_GUEST_VISITS = 100; // Limit guest visits to prevent memory bloat
+const MAX_GUEST_VISITS = 100;
 
 const log = (...args) => {
   if (isDev) console.log(...args);
@@ -86,26 +86,17 @@ export const fetchInitialPostCounts = createAsyncThunk(
   }
 );
 
-const initialState = {
-  socketInstance: null,
-  status: "disconnected",
-  error: null,
-  onlineUsersCount: 0,
-  userStatus: {},
-  newNotification: null,
-  userLocations: [],
-  guestVisits: [],
-  notificationDismissReason: null,
-  postCounts: { allPostsCount: 0, followingPostsCount: 0, myPostsCount: 0 },
-};
-
 export const initializeSocket = createAsyncThunk(
   "socket/initialize",
   async (_, { dispatch, getState }) => {
     log("[socketSlice] Initializing socket...");
+    const { user, isGuest } = getState().auth;
     let token = getToken();
 
-    if (!token) {
+    // Skip auth and post counts for guests
+    if (!token && !user?._id && isGuest) {
+      log("[socketSlice] Detected guest user, skipping auth check...");
+    } else if (!token) {
       try {
         await dispatch(checkAuth()).unwrap();
         token = getToken();
@@ -127,11 +118,14 @@ export const initializeSocket = createAsyncThunk(
 
       socket.on("connect", () => {
         const userId = getState().auth.user?._id?.toString();
-        if (userId) {
+        const isGuest = getState().auth?.isGuest;
+
+        if (!isGuest && userId) {
           socket.emit("join", userId);
           socket.emit("join", "adminRoom");
           dispatch(fetchInitialPostCounts());
         }
+
         dispatch(setSocketInstance(socket));
         resolve(socket);
       });
@@ -293,7 +287,18 @@ export const disconnectSocket = createAsyncThunk(
 
 const socketSlice = createSlice({
   name: "socket",
-  initialState,
+  initialState: {
+    socketInstance: null,
+    status: "disconnected",
+    error: null,
+    onlineUsersCount: 0,
+    userStatus: {},
+    newNotification: null,
+    userLocations: [],
+    guestVisits: [],
+    notificationDismissReason: null,
+    postCounts: { allPostsCount: 0, followingPostsCount: 0, myPostsCount: 0 },
+  },
   reducers: {
     setSocketInstance(state, action) {
       state.socketInstance = action.payload;
@@ -355,7 +360,6 @@ const socketSlice = createSlice({
       );
 
       if (existingGuest) {
-        // Only update if visitCount has increased or lastVisit is newer
         if (
           newGuest.visitCount > existingGuest.visitCount ||
           new Date(newGuest.lastVisit) > new Date(existingGuest.lastVisit)

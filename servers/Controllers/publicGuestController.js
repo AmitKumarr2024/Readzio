@@ -162,7 +162,7 @@ export const trackGuestView = async (req, res, next) => {
 export const trackGuestVisit = async (req, res, next) => {
   try {
     let guestId = req.cookies.guestId;
-    const fingerprint = `${req.ip}-${req.headers["user-agent"]}`; // Fallback for cookie-less tracking
+    const fingerprint = `${req.ip}-${req.headers["user-agent"]}`;
 
     if (!guestId) {
       guestId = uuidv4();
@@ -174,19 +174,32 @@ export const trackGuestVisit = async (req, res, next) => {
       });
     }
 
-    const { io } = req;
+    const now = new Date();
+    const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000); // 15 minutes ago
 
-    // Check if guest exists by guestId or fingerprint
-    const guestExistsBefore = await GuestModel.exists({
+    // Find guest record
+    const guest = await GuestModel.findOne({
       $or: [{ guestId }, { fingerprint }],
     });
 
+    // Skip update if guest has visited recently
+    if (guest && guest.lastVisit > fifteenMinutesAgo) {
+      console.log(
+        "[TrackGuestVisit] ⏳ Skipped update (recent visit):",
+        guestId
+      );
+      return res
+        .status(200)
+        .json({ success: true, message: "Visit already recorded recently" });
+    }
+
+    // Update guest or insert new
     const updatedGuest = await GuestModel.findOneAndUpdate(
       { $or: [{ guestId }, { fingerprint }] },
       {
-        $setOnInsert: { firstVisit: new Date(), guestId, fingerprint },
+        $setOnInsert: { firstVisit: now, guestId, fingerprint },
         $set: {
-          lastVisit: new Date(),
+          lastVisit: now,
           ip: req.ip,
           userAgent: req.headers["user-agent"],
         },
@@ -199,7 +212,9 @@ export const trackGuestVisit = async (req, res, next) => {
       }
     );
 
-    let isNewGuest = !guestExistsBefore;
+    const isNewGuest = !guest;
+
+    // Only increment analytics on new guest
     if (isNewGuest) {
       await AnalyticsModel.findOneAndUpdate(
         {},
@@ -208,8 +223,9 @@ export const trackGuestVisit = async (req, res, next) => {
       );
     }
 
-    if (io) {
-      io.to("adminRoom").emit("guestVisitUpdate", {
+    // Notify admin
+    if (req.io) {
+      req.io.to("adminRoom").emit("guestVisitUpdate", {
         guestId: updatedGuest.guestId,
         visitCount: updatedGuest.visitCount,
         lastVisit: updatedGuest.lastVisit,
