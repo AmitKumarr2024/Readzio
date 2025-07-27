@@ -19,9 +19,9 @@ import { IoCloseCircleOutline } from "react-icons/io5";
 import { FiMaximize2 } from "react-icons/fi";
 import CountUp from "react-countup";
 import ErrorBoundary from "../../Post/ErrorBoundary";
-import { trackGuestVisit, incrementGuestCount } from "../../../store/guestSlice";
-import { selectSocketState, addGuestVisit } from "../../../store/socketSlice";
+import { selectSocketState } from "../../../store/socketSlice";
 import { formatDistanceToNow } from "date-fns";
+import axiosInstance from "../../../connection/axiosInstance";
 
 const AdminLocationDashboard = lazy(() =>
   import("../../location/AdminLocationDashboard")
@@ -31,22 +31,19 @@ const CPM_RATE = 2.5;
 const IMPRESSION_INTERVAL = 30;
 
 const RecentGuestVisits = () => {
-  const { guestVisits = [] } = useSelector(selectSocketState);
+  const { guestVisits = [], guestUsersCount = 0 } =
+    useSelector(selectSocketState);
   const dispatch = useDispatch();
 
-  const simulateGuest = () => {
-    const guestId = `guest-${Date.now()}`;
-    dispatch(
-      addGuestVisit({
-        guestId,
-        ip: "127.0.0.1",
-        location: "IN",
-        visitCount: 1,
-        lastVisit: new Date().toISOString(),
-        userAgent: navigator.userAgent || "ManualTest/1.0",
-      })
-    );
-    dispatch(incrementGuestCount());
+  // Updated to call backend's /public/guest/visit endpoint to ensure guest data is persisted
+  // and triggers guestVisitUpdate socket event, avoiding frontend-only increments
+  const simulateGuest = async () => {
+    try {
+      await axiosInstance.post("/public/guest/visit");
+      // Backend will emit guestVisitUpdate; no need to dispatch addGuestVisit here
+    } catch (err) {
+      console.error("[RecentGuestVisits] Simulate Guest Error:", err.message);
+    }
   };
 
   return (
@@ -58,7 +55,8 @@ const RecentGuestVisits = () => {
     >
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-3">
-          <Users className="w-6 h-6 text-red-600 dark:text-red-400" /> Guest Visit Logs
+          <Users className="w-6 h-6 text-red-600 dark:text-red-400" /> Guest
+          Visit Logs ({guestUsersCount})
         </h2>
         <button
           onClick={simulateGuest}
@@ -217,6 +215,7 @@ const Insights = () => {
     return new Date(dateRange.startDate) <= new Date(dateRange.endDate);
   }, [dateRange]);
 
+  // Uses socket.guestUsersCount for guest data in pie chart, consistent with backend
   const pieData = useMemo(
     () => [
       { name: "Total Visits", value: analytics.traffic?.totalVisits || 0 },
@@ -243,22 +242,6 @@ const Insights = () => {
     );
     dispatch(getAllUsers({ page: 1, limit: 10 }));
   }, [dispatch, dateRange]);
-
-  useEffect(() => {
-    const guestId = `guest-${Date.now()}`;
-    dispatch(trackGuestVisit({ guestId }));
-    dispatch(
-      addGuestVisit({
-        guestId,
-        ip: "127.0.0.1",
-        location: "IN",
-        visitCount: 1,
-        lastVisit: new Date().toISOString(),
-        userAgent: navigator.userAgent || "Unknown",
-      })
-    );
-    dispatch(incrementGuestCount());
-  }, [dispatch]);
 
   const handleDateChange = (e) => {
     setDateRange({ ...dateRange, [e.target.name]: e.target.value });
@@ -316,7 +299,7 @@ const Insights = () => {
           },
           {
             type: "guest",
-            count: guestUsersCount,
+            count: guestUsersCount, // Uses socket.guestUsersCount for consistency
             icon: Users,
             color: "pink",
             label: "Guest Visitors",
@@ -366,7 +349,7 @@ const Insights = () => {
                 ? offlineUsers
                 : modalType === "total"
                 ? totalUsers
-                : guestUsersCount
+                : guestUsersCount // Uses socket.guestUsersCount for modal
             }
             onClose={() => setModalType(null)}
           />
@@ -378,7 +361,8 @@ const Insights = () => {
         className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
       >
         <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-          <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" /> All User Locations
+          <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" /> All
+          User Locations
         </h2>
         <ErrorBoundary
           fallback={
@@ -402,7 +386,8 @@ const Insights = () => {
         className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
       >
         <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-          <BarChart className="w-8 h-8 text-blue-600 dark:text-blue-400" /> Site Insights
+          <BarChart className="w-8 h-8 text-blue-600 dark:text-blue-400" /> Site
+          Insights
         </h2>
 
         <motion.div
@@ -464,7 +449,8 @@ const Insights = () => {
                 className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
               >
                 <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Post Insights
+                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
+                  Post Insights
                 </h3>
                 <div className="space-y-3 text-text-main-light dark:text-text-main-dark">
                   <p className="text-base">
@@ -508,7 +494,8 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Traffic Overview
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
+                Traffic Overview
               </h3>
               <div className="space-y-3 text-text-main-light dark:text-text-main-dark">
                 <p className="text-base">
@@ -538,7 +525,7 @@ const Insights = () => {
                 <p className="text-base">
                   <span className="font-medium">Guest Users:</span>{" "}
                   <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    {guestUsersCount || 0}
+                    {guestUsersCount || 0} {/* Uses socket.guestUsersCount */}
                   </span>
                 </p>
               </div>
@@ -549,7 +536,8 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <BarChart className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Traffic Distribution
+                <BarChart className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
+                Traffic Distribution
               </h3>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
@@ -586,7 +574,8 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Top Posts
+                <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
+                Top Posts
               </h3>
               {analytics.topPosts?.length > 0 ? (
                 <ul className="space-y-4">
@@ -629,7 +618,8 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Top Active Users
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
+                Top Active Users
               </h3>
               {Array.isArray(analytics.topUsers) &&
               analytics.topUsers.length > 0 ? (
@@ -674,7 +664,8 @@ const Insights = () => {
         className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
       >
         <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-          <Users className="w-8 h-8 text-red-600 dark:text-red-400" /> Guest Visit Logs
+          <Users className="w-8 h-8 text-red-600 dark:text-red-400" /> Guest
+          Visit Logs
         </h2>
         <RecentGuestVisits />
       </motion.div>

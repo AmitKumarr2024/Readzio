@@ -1,4 +1,3 @@
-// components/Ads/SafeInFeedAd.jsx
 import React, { useEffect, useRef, useState } from "react";
 import InFeedAd from "./InFeedAd";
 import CardAd from "./CardAd";
@@ -6,16 +5,31 @@ import CardAd from "./CardAd";
 const SafeInFeedAd = ({ postId }) => {
   const ref = useRef(null);
   const [fallback, setFallback] = useState(false);
+  const retryTimeoutRef = useRef(null); // To track retry timeout
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
+    const checkAdRendered = () => {
       const el = ref.current;
-      if (!el || el.offsetHeight < 50) {
-        setFallback(true);
-      }
-    }, 2000); // Wait 2s to see if ad renders
+      console.log("[AdCheck] offsetHeight after 10s:", el?.offsetHeight);
 
-    return () => clearTimeout(timeout);
+      if (!el || el.offsetHeight < 10) {
+        retryTimeoutRef.current = setTimeout(() => {
+          const retryEl = ref.current;
+          console.log("[AdRetryCheck] offsetHeight after retry:", retryEl?.offsetHeight);
+
+          if (!retryEl || retryEl.offsetHeight < 10) {
+            setFallback(true);
+          }
+        }, 1000);
+      }
+    };
+
+    const initialTimeout = setTimeout(checkAdRendered, 10000); // 10s wait
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearTimeout(retryTimeoutRef.current); // Cleanup retry timeout if unmounted
+    };
   }, []);
 
   return (

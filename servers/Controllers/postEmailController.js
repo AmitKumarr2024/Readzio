@@ -8,6 +8,25 @@ import createMailOption from "../../servers/helpers/emailHelper.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 
 // Sends daily post email to verified users with published posts
+const getRecentlySentPostSlugs = async (userId, days = 7) => {
+  const sinceDate = new Date();
+  sinceDate.setDate(sinceDate.getDate() - days);
+
+  const logs = await EmailLog.find({
+    userId,
+    type: "daily_digest",
+    sentAt: { $gte: sinceDate },
+  }).select("postSlugs -_id");
+
+  const sentSlugs = new Set();
+  logs.forEach((log) => {
+    (log.postSlugs || []).forEach((slug) => sentSlugs.add(slug));
+  });
+
+  return Array.from(sentSlugs);
+};
+
+// 🚀 Main Cron Email Sender
 export const sendDailyPostEmail = async (req, res, next) => {
   console.log("[Cron:sendDailyPostEmail] Function entered");
   try {
@@ -15,8 +34,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
       isAccountVerified: true,
       stopEmailAttempts: false,
     }).lean({ virtuals: true });
-
-    console.log("[Cron:sendDailyPostEmail] Fetched users:", users.length);
 
     if (users.length === 0) {
       return res.status(200).json({
@@ -29,77 +46,84 @@ export const sendDailyPostEmail = async (req, res, next) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    let posts = await PostModel.find({
+    const freshTodayPosts = await PostModel.find({
       createdAt: { $gte: todayStart },
       isPublished: true,
     })
-
       .select("title slug thumbnail author readTime likesCount commentsCount")
       .populate("author", "name avatar")
       .lean({ virtuals: true });
 
-    console.log(
-      "dailypostsss",
-      posts.map((p) => ({
-        title: p.title,
-        readTime: p.readTime,
-        likes: p.likesCount,
-        comments: p.commentsCount,
-      }))
-    );
-
-    if (posts.length < 10) {
-      const additionalPostsNeeded = 10 - posts.length;
-      const popularPosts = await PostModel.find({
-        createdAt: { $lt: todayStart },
-        isPublished: true,
-      })
-
-        .sort({ views: -1 })
-        .select("title slug thumbnail author readTime likesCount commentsCount")
-        .populate("author", "name avatar")
-        .limit(additionalPostsNeeded)
-        .lean({ virtuals: true });
-
-      // ✅ Fix: Merge posts correctly
-      posts = [...posts, ...popularPosts];
-    }
-
-    if (posts.length === 0) {
-      const fallbackMailOption = createMailOption({
-        to: users.map((user) => user.email),
-        subject: "Your Inksha Daily Brief (No New Posts)",
-        name: "User",
-        email: "",
-        message: "No new posts today. Check out our platform for more content!",
-        hasButton: true,
-        buttonText: "Visit Platform",
-        buttonUrl: "https://inksha.onrender.com",
-        posts: [],
-      });
-
-      await transporter.sendMail(fallbackMailOption);
-
-      return res.status(200).json({
-        message: "No posts available, sent fallback email",
-        results: [],
-        postCount: 0,
-      });
-    }
-
-    const postSlugs = posts.map((post) => post.slug);
     const results = [];
 
     for (const user of users) {
+      const recentlySentSlugs = await getRecentlySentPostSlugs(user._id);
+      const recentSet = new Set(recentlySentSlugs);
+
+      // Filter out posts already sent to this user
+      const newFreshPosts = freshTodayPosts.filter(
+        (post) => !recentSet.has(post.slug)
+      );
+
+      let userPosts = [...newFreshPosts];
+
+      // Fetch fallback posts if not enough
+      if (userPosts.length < 10) {
+        const needed = 10 - userPosts.length;
+
+        const fallbackPosts = await PostModel.find({
+          createdAt: { $lt: todayStart },
+          isPublished: true,
+          slug: {
+            $nin: [...recentlySentSlugs, ...userPosts.map((p) => p.slug)],
+          },
+        })
+          .sort({ views: -1 }) // or use random if you prefer variety
+          .limit(needed)
+          .select("title slug thumbnail author readTime likesCount commentsCount")
+          .populate("author", "name avatar")
+          .lean({ virtuals: true });
+
+        userPosts = [...userPosts, ...fallbackPosts];
+      }
+
+      if (userPosts.length === 0) {
+        const fallbackMailOption = createMailOption({
+          to: user.email,
+          subject: "Your Inksha Daily Brief (No New Posts)",
+          name: user.name || "User",
+          email: user.email,
+          message:
+            "No fresh posts today. Check out our platform for more content!",
+          hasButton: true,
+          buttonText: "Visit Platform",
+          buttonUrl: "https://inksha.onrender.com",
+          posts: [],
+        });
+
+        await sendEmailWithRetries(fallbackMailOption, user._id);
+
+        results.push({
+          email: user.email,
+          success: true,
+          message: "Sent fallback email",
+          attempts: 1,
+        });
+
+        continue;
+      }
+
+      const postSlugs = userPosts.map((p) => p.slug);
+
       const mailOption = createMailOption({
         to: user.email,
-        subject: `Your Inksha Daily Brief – Fresh Posts for You (${posts.length} Posts)`,
+        subject: `Your Inksha Daily Brief – ${userPosts.length} New Reads`,
         name: user.name || "User",
         email: user.email,
         hasButton: true,
         buttonText: "Read Posts",
         buttonUrl: "https://inksha.onrender.com",
-        posts,
+        posts: userPosts,
       });
 
       try {
@@ -139,6 +163,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
       }
     }
 
+    // Notify admin
     const admin = await UserModel.findOne({ role: "admin" }).lean();
     if (admin) {
       const adminMailOption = createMailOption({
@@ -150,7 +175,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
           results.filter((r) => r.success).length
         }, Failed: ${
           results.filter((r) => !r.success).length
-        }, Posts included: ${posts.length}`,
+        }, Total posts varied per user.`,
         hasButton: false,
       });
       await sendEmailWithRetries(adminMailOption, admin._id);
@@ -159,7 +184,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     res.status(200).json({
       message: "Daily post emails processed",
       results,
-      postCount: posts.length,
+      totalUsers: users.length,
     });
   } catch (error) {
     next(
@@ -175,7 +200,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
   }
 };
 
-// Retrieves daily post email report with pagination and optional date filter
+
 // Retrieves daily post email report with pagination and optional date filter
 export const getDailyPostEmailReport = async (req, res, next) => {
   try {

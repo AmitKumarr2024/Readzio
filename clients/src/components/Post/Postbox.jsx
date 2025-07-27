@@ -311,8 +311,8 @@ const Postbox = ({
         });
       }
 
-      // MultiplexAd after every 10 posts
-      if ((i + 1) % 10 === 0) {
+      // MultiplexAd after every 9 posts
+      if ((i + 1) % 9 === 0) {
         items.push({
           type: "multiplex-ad",
           id: `multiplex-ad-${i}`,
