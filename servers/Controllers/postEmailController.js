@@ -60,57 +60,47 @@ export const sendDailyPostEmail = async (req, res, next) => {
       const recentlySentSlugs = await getRecentlySentPostSlugs(user._id);
       const recentSet = new Set(recentlySentSlugs);
 
-      // Filter out posts already sent to this user
       const newFreshPosts = freshTodayPosts.filter(
         (post) => !recentSet.has(post.slug)
       );
 
       let userPosts = [...newFreshPosts];
 
-      // Fetch fallback posts if not enough
+      // Add fallback random posts if needed
       if (userPosts.length < 10) {
         const needed = 10 - userPosts.length;
 
-        const fallbackPosts = await PostModel.find({
-          createdAt: { $lt: todayStart },
-          isPublished: true,
-          slug: {
-            $nin: [...recentlySentSlugs, ...userPosts.map((p) => p.slug)],
+        const fallbackPosts = await PostModel.aggregate([
+          {
+            $match: {
+              createdAt: { $lt: todayStart },
+              isPublished: true,
+              slug: { $nin: [...recentSet, ...userPosts.map((p) => p.slug)] },
+            },
           },
-        })
-          .sort({ views: -1 }) // or use random if you prefer variety
-          .limit(needed)
-          .select("title slug thumbnail author readTime likesCount commentsCount")
-          .populate("author", "name avatar")
-          .lean({ virtuals: true });
+          { $sample: { size: needed } },
+        ]);
 
         userPosts = [...userPosts, ...fallbackPosts];
       }
 
-      if (userPosts.length === 0) {
-        const fallbackMailOption = createMailOption({
-          to: user.email,
-          subject: "Your Inksha Daily Brief (No New Posts)",
-          name: user.name || "User",
-          email: user.email,
-          message:
-            "No fresh posts today. Check out our platform for more content!",
-          hasButton: true,
-          buttonText: "Visit Platform",
-          buttonUrl: "https://inksha.onrender.com",
-          posts: [],
-        });
+      // Still not enough? Add popular ones
+      if (userPosts.length < 10) {
+        const remaining = 10 - userPosts.length;
 
-        await sendEmailWithRetries(fallbackMailOption, user._id);
+        const extraPosts = await PostModel.find({
+          isPublished: true,
+          slug: { $nin: userPosts.map((p) => p.slug) },
+        })
+          .sort({ views: -1 })
+          .limit(remaining)
+          .select(
+            "title slug thumbnail author readTime likesCount commentsCount"
+          )
+          .populate("author", "name avatar")
+          .lean({ virtuals: true });
 
-        results.push({
-          email: user.email,
-          success: true,
-          message: "Sent fallback email",
-          attempts: 1,
-        });
-
-        continue;
+        userPosts = [...userPosts, ...extraPosts];
       }
 
       const postSlugs = userPosts.map((p) => p.slug);
@@ -128,7 +118,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
       try {
         const emailResult = await sendEmailWithRetries(mailOption, user._id);
-        const emailLog = new EmailLog({
+        await EmailLog.create({
           userId: user._id,
           email: user.email,
           type: "daily_digest",
@@ -137,14 +127,13 @@ export const sendDailyPostEmail = async (req, res, next) => {
           postSlugs,
           sentAt: new Date(),
         });
-        await emailLog.save();
         results.push({
           email: user.email,
           success: true,
           attempts: emailResult.attempts,
         });
       } catch (error) {
-        const emailLog = new EmailLog({
+        await EmailLog.create({
           userId: user._id,
           email: user.email,
           type: "daily_digest",
@@ -154,7 +143,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
           postSlugs,
           sentAt: new Date(),
         });
-        await emailLog.save();
         results.push({
           email: user.email,
           success: false,
@@ -163,7 +151,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
       }
     }
 
-    // Notify admin
     const admin = await UserModel.findOne({ role: "admin" }).lean();
     if (admin) {
       const adminMailOption = createMailOption({
@@ -199,7 +186,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
     );
   }
 };
-
 
 // Retrieves daily post email report with pagination and optional date filter
 export const getDailyPostEmailReport = async (req, res, next) => {
@@ -286,6 +272,7 @@ export const deleteAllNotifications = async (req, res, next) => {
 };
 
 // Sends email with retry logic for reliability
+
 const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
   let attempts = 0;
   let lastError = null;
@@ -297,7 +284,7 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
       await recordActivity({
         userId,
         action: "EMAIL_SENT",
-        message: `Daily post email sent to ${mailOption.to} after ${attempts} attempt(s)`,
+        message: `Email sent to ${mailOption.to} on attempt ${attempts}`,
       });
       return { success: true, attempts };
     } catch (error) {
@@ -305,7 +292,7 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
       await recordActivity({
         userId,
         action: "EMAIL_FAILED",
-        message: `Daily post email failed for ${mailOption.to} on attempt ${attempts}: ${error.message}`,
+        message: `Attempt ${attempts} failed for ${mailOption.to}: ${error.message}`,
       });
       if (attempts < maxAttempts) {
         await new Promise((resolve) =>
@@ -318,8 +305,9 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
   await recordActivity({
     userId,
     action: "EMAIL_FAILED_ALL_ATTEMPTS",
-    message: `All ${attempts} daily post email attempts failed for ${mailOption.to}: ${lastError.message}`,
+    message: `All ${attempts} attempts failed for ${mailOption.to}`,
   });
+
   throw new AppError(
     `Failed to send email after ${attempts} attempts: ${lastError.message}`,
     500,
