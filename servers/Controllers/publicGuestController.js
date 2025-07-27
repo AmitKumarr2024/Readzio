@@ -4,7 +4,6 @@ import { AppError } from "../Utils/AppError.js";
 import GuestVisitModel from "../Models/GuestVisit.js";
 import GuestModel from "../Models/GuestModel.js";
 import AnalyticsModel from "../Models/AnalyticsModel.js";
-import { emitGuestVisitUpdate } from "../sockets/socket.js";
 
 // 🟢 Get all published + unblocked posts with optional tag filtering
 export const getPublicPosts = async (req, res, next) => {
@@ -165,7 +164,7 @@ export const trackGuestView = async (req, res, next) => {
 // 🔹 Track guest visit — with unique guest count tracking
 export const trackGuestVisit = async (req, res, next) => {
   try {
-    let guestId = req.cookies.guestId || req.body.guestId;
+    let guestId = req.cookies.guestId;
 
     if (!guestId) {
       guestId = uuidv4();
@@ -177,19 +176,24 @@ export const trackGuestVisit = async (req, res, next) => {
       });
     }
 
-    const guestExistsBefore = await GuestModel.exists({ guestId });
-    let isNewGuest = !guestExistsBefore;
+    const { io } = req;
+
+    let isNewGuest = false;
 
     const updatedGuest = await GuestModel.findOneAndUpdate(
       { guestId },
       {
-        $setOnInsert: { firstVisit: new Date() },
+        $setOnInsert: {
+          firstVisit: new Date(),
+        },
         $set: {
           lastVisit: new Date(),
           ip: req.ip,
           userAgent: req.headers["user-agent"],
         },
-        $inc: { visitCount: 1 },
+        $inc: {
+          visitCount: 1,
+        },
       },
       {
         upsert: true,
@@ -198,7 +202,12 @@ export const trackGuestVisit = async (req, res, next) => {
       }
     );
 
-    if (isNewGuest) {
+    // Check if the guest was new
+    const guestExistsBefore = await GuestModel.exists({ guestId });
+    if (!guestExistsBefore) {
+      isNewGuest = true;
+
+      // 🔧 Increment unique guest user count in analytics model
       await AnalyticsModel.findOneAndUpdate(
         {},
         { $inc: { "traffic.guestUsersCount": 1 } },
@@ -206,15 +215,16 @@ export const trackGuestVisit = async (req, res, next) => {
       );
     }
 
-    // Emit guest visit update using socket.js function
-    emitGuestVisitUpdate({
-      guestId: updatedGuest.guestId,
-      visitCount: updatedGuest.visitCount,
-      lastVisit: updatedGuest.lastVisit,
-      ip: updatedGuest.ip,
-      userAgent: updatedGuest.userAgent,
-      location: req.headers["cf-ipcountry"] || null,
-    });
+    if (io) {
+      io.to("adminRoom").emit("guestVisitUpdate", {
+        guestId: updatedGuest.guestId,
+        visitCount: updatedGuest.visitCount,
+        lastVisit: updatedGuest.lastVisit,
+        ip: updatedGuest.ip,
+        userAgent: updatedGuest.userAgent,
+        location: req.headers["cf-ipcountry"] || null,
+      });
+    }
 
     console.log("[TrackGuestVisit] ✅ Guest visit tracked:", {
       guestId: updatedGuest.guestId,
@@ -234,17 +244,5 @@ export const trackGuestVisit = async (req, res, next) => {
         ? error
         : new AppError("Failed to track guest visit", 500, "TrackGuestVisit")
     );
-  }
-};
-
-export const getGuestCount = async (req, res, next) => {
-  try {
-    const analytics = await AnalyticsModel.findOne({});
-    const guestUsersCount = analytics?.traffic?.guestUsersCount || 0;
-    console.log("[Analytics] ✅ Fetched guest count:", guestUsersCount);
-    res.status(200).json({ success: true, guestUsersCount });
-  } catch (error) {
-    console.error("[Analytics] ❌ Error fetching guest count:", error);
-    next(new AppError("Failed to fetch guest count", 500, "GetGuestCount"));
   }
 };

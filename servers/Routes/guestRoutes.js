@@ -4,7 +4,6 @@ import {
   getPublicPostBySlug,
   trackGuestView,
   trackGuestVisit,
-  getGuestCount,
 } from "../../servers/Controllers/publicGuestController.js";
 
 const router = express.Router();
@@ -20,7 +19,5 @@ router.post("/post/:slug/view", trackGuestView);
 
 // ✅ POST /guest/visit - Tracks guest visit (total visit count)
 router.post("/guest/visit", trackGuestVisit);
-
-router.get("/guest-count", getGuestCount);
 
 export default router;

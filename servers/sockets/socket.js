@@ -10,8 +10,9 @@ export const io = new Server({
   cors: {
     origin: (origin, callback) => {
       const allowedOrigins = [
-        CLIENT_URL?.replace(/\/$/, ""),
+        CLIENT_URL?.replace(/\/$/, ""), // safely remove slash
         "http://localhost:5173",
+        "http://localhost:8001",
         "https://inksha.onrender.com",
       ].filter(Boolean);
       if (!origin) {
@@ -20,10 +21,12 @@ export const io = new Server({
         );
         return callback(null, true);
       }
+
       if (allowedOrigins.includes(origin)) {
         console.log("[Socket:CORS] ✅ Allowed:", origin);
         return callback(null, true);
       }
+
       console.error("[Socket:CORS] ❌ Blocked:", origin);
       return callback(new Error("CORS not allowed"));
     },
@@ -99,7 +102,7 @@ io.on("connection", (socket) => {
       socketUserId: socket.userId,
     });
 
-    if (roomId === "adminRoom" && socket.isAdmin) {
+    if (roomId === "adminRoom") {
       console.log("[Socket:Join] ✅ Admin joined adminRoom");
       socket.join("adminRoom");
       return;
@@ -189,9 +192,4 @@ export const emitPostUpdated = (post) => {
 export const emitPostDeleted = (postId) => {
   console.log("[Socket] 🗑️ emitPostDeleted:", postId);
   io.emit("postDeleted", postId);
-};
-
-export const emitGuestVisitUpdate = (guest) => {
-  console.log("[Socket] 🔵 emitGuestVisitUpdate:", guest.guestId);
-  io.to("adminRoom").emit("guestVisitUpdate", guest);
 };
