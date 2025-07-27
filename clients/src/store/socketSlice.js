@@ -360,6 +360,7 @@ const socketSlice = createSlice({
     },
     addGuestVisit: (state, action) => {
       const newGuest = action.payload;
+
       const existingGuest = state.guestVisits.find(
         (g) => g.guestId === newGuest.guestId
       );
@@ -370,12 +371,14 @@ const socketSlice = createSlice({
           new Date(newGuest.lastVisit).getTime() ===
             new Date(existingGuest.lastVisit).getTime();
 
-        if (!sameVisit) {
-          state.guestVisits = state.guestVisits.map((g) =>
-            g.guestId === newGuest.guestId ? newGuest : g
-          );
-        }
+        if (sameVisit) return; // ❌ Avoid duplicate
+
+        // ✅ Update only if new visit
+        state.guestVisits = state.guestVisits.map((g) =>
+          g.guestId === newGuest.guestId ? newGuest : g
+        );
       } else {
+        // ✅ New guest
         state.guestVisits.unshift(newGuest);
         if (state.guestVisits.length > MAX_GUEST_VISITS) {
           state.guestVisits = state.guestVisits.slice(0, MAX_GUEST_VISITS);

@@ -16,18 +16,19 @@ const RecentGuestVisits = () => {
   const itemsPerPage = 10;
 
   // Simulate guest for testing
-  const simulateGuest = () => {
-    dispatch(
-      addGuestVisit({
-        guestId: `guest-${Date.now()}`,
-        ip: "127.0.0.1",
-        location: "IN",
-        visitCount: 1,
-        lastVisit: new Date().toISOString(),
-        userAgent: "ManualTest/1.0",
-      })
-    );
-  };
+ const simulateGuest = () => {
+  dispatch(
+    addGuestVisit({
+      guestId: "test-guest",
+      ip: "127.0.0.1",
+      location: "IN",
+      visitCount: 1,
+      lastVisit: new Date().toISOString(),
+      userAgent: "ManualTest/1.0",
+    })
+  );
+};
+
 
   // Filter and sort data
   const filteredAndSortedVisits = useMemo(() => {

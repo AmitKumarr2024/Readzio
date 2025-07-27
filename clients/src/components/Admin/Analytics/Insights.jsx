@@ -37,15 +37,14 @@ const RecentGuestVisits = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const simulateGuest = () => {
-    const guestId = `guest-${Date.now()}`;
     dispatch(
       addGuestVisit({
-        guestId,
+        guestId: "test-guest",
         ip: "127.0.0.1",
         location: "IN",
         visitCount: 1,
         lastVisit: new Date().toISOString(),
-        userAgent: navigator.userAgent || "ManualTest/1.0",
+        userAgent: "ManualTest/1.0",
       })
     );
   };
@@ -53,7 +52,9 @@ const RecentGuestVisits = () => {
   useEffect(() => {
     const storedVisits = localStorage.getItem("guestVisits");
     if (storedVisits) {
-      JSON.parse(storedVisits).forEach((visit) => dispatch(addGuestVisit(visit)));
+      JSON.parse(storedVisits).forEach((visit) =>
+        dispatch(addGuestVisit(visit))
+      );
     }
     setIsLoading(false);
   }, [dispatch]);
@@ -75,7 +76,8 @@ const RecentGuestVisits = () => {
     >
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-3">
-          <Users className="w-6 h-6 text-red-600 dark:text-red-400" /> Guest Visit Logs
+          <Users className="w-6 h-6 text-red-600 dark:text-red-400" /> Guest
+          Visit Logs
         </h2>
         <button
           onClick={simulateGuest}
@@ -121,7 +123,9 @@ const RecentGuestVisits = () => {
                   <td className="px-6 py-3">{guest.visitCount}</td>
                   <td className="px-6 py-3">
                     {guest.lastVisit
-                      ? formatDistanceToNow(new Date(guest.lastVisit), { addSuffix: true })
+                      ? formatDistanceToNow(new Date(guest.lastVisit), {
+                          addSuffix: true,
+                        })
                       : "—"}
                   </td>
                   <td className="px-6 py-3 text-sm truncate max-w-[250px]">
@@ -258,9 +262,12 @@ const Insights = () => {
   };
 
   useEffect(() => {
-    const socket = io(process.env.REACT_APP_SOCKET_URL || "http://localhost:3000", {
-      reconnectionAttempts: 5,
-    });
+    const socket = io(
+      process.env.REACT_APP_SOCKET_URL || "http://localhost:3000",
+      {
+        reconnectionAttempts: 5,
+      }
+    );
     socket.on("guestVisitUpdate", (data) => {
       dispatch(addGuestVisit(data));
     });
@@ -354,13 +361,17 @@ const Insights = () => {
             count: uniqueGuestCount,
             icon: Users,
             color: "pink",
-            label: guestVisits.length > 0
-              ? `Guest from ${guestVisits[0].location || "—"} • ${
-                  guestVisits[0].lastVisit
-                    ? formatDistanceToNow(new Date(guestVisits[0].lastVisit), { addSuffix: true })
-                    : "just now"
-                }`
-              : "Guest Visitors",
+            label:
+              guestVisits.length > 0
+                ? `Guest from ${guestVisits[0].location || "—"} • ${
+                    guestVisits[0].lastVisit
+                      ? formatDistanceToNow(
+                          new Date(guestVisits[0].lastVisit),
+                          { addSuffix: true }
+                        )
+                      : "just now"
+                  }`
+                : "Guest Visitors",
           },
         ].map(({ type, count, icon: Icon, color, label }) => (
           <motion.div
@@ -419,7 +430,8 @@ const Insights = () => {
         className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
       >
         <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-          <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" /> All User Locations
+          <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" /> All
+          User Locations
         </h2>
         <ErrorBoundary
           fallback={
@@ -443,7 +455,8 @@ const Insights = () => {
         className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
       >
         <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-          <BarChart className="w-8 h-8 text-blue-600 dark:text-blue-400" /> Site Insights
+          <BarChart className="w-8 h-8 text-blue-600 dark:text-blue-400" /> Site
+          Insights
         </h2>
 
         <motion.div
@@ -505,7 +518,8 @@ const Insights = () => {
                 className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
               >
                 <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Post Insights
+                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
+                  Post Insights
                 </h3>
                 <div className="space-y-3 text-text-main-light dark:text-text-main-dark">
                   <p className="text-base">
@@ -549,7 +563,8 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Traffic Overview
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
+                Traffic Overview
               </h3>
               <div className="space-y-3 text-text-main-light dark:text-text-main-dark">
                 <p className="text-base">
@@ -590,7 +605,8 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <BarChart className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Traffic Distribution
+                <BarChart className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
+                Traffic Distribution
               </h3>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
@@ -627,7 +643,8 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Top Posts
+                <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
+                Top Posts
               </h3>
               {analytics.topPosts?.length > 0 ? (
                 <ul className="space-y-4">
@@ -670,7 +687,8 @@ const Insights = () => {
               className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
             >
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" /> Top Active Users
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
+                Top Active Users
               </h3>
               {Array.isArray(analytics.topUsers) &&
               analytics.topUsers.length > 0 ? (
@@ -715,7 +733,8 @@ const Insights = () => {
         className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
       >
         <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-          <Users className="w-8 h-8 text-red-600 dark:text-red-400" /> Guest Visit Logs
+          <Users className="w-8 h-8 text-red-600 dark:text-red-400" /> Guest
+          Visit Logs
         </h2>
         <RecentGuestVisits />
       </motion.div>
