@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import { CLIENT_URL } from "../config/dotenv.js";
 import { verifyToken } from "../../servers/Utils/verifyToken.js";
+import UserModel from "../../servers/Models/User.js";
 import PostModel from "../../servers/Models/Post.js";
 
 const connectedUsers = new Set();
@@ -10,15 +11,14 @@ export const io = new Server({
   cors: {
     origin: (origin, callback) => {
       const allowedOrigins = [
-        CLIENT_URL?.replace(/\/$/, ""), // safely remove slash
+        CLIENT_URL?.replace(/\/$/, ""),
         "http://localhost:5173",
         "http://localhost:8001",
         "https://inksha.onrender.com",
       ].filter(Boolean);
+
       if (!origin) {
-        console.log(
-          "[Socket:CORS] ⚠️ No origin provided (possibly polling or localhost access)"
-        );
+        console.log("[Socket:CORS] ⚠️ No origin (polling or localhost?)");
         return callback(null, true);
       }
 
@@ -37,9 +37,12 @@ export const io = new Server({
   pingTimeout: 60000,
 });
 
+// Authentication middleware
 io.use(async (socket, next) => {
   console.log("[Socket:Auth] Authenticating", { socketId: socket.id });
+
   let token = socket.handshake.auth.token;
+
   if (!token && socket.handshake.headers.cookie) {
     const cookies = socket.handshake.headers.cookie
       .split("; ")
@@ -57,19 +60,14 @@ io.use(async (socket, next) => {
       socket.userId = decoded.userId?.toString();
       socket.role = decoded.role;
       socket.isAdmin = decoded.isAdmin;
+
       console.log("[Socket:Auth] ✅ Authenticated:", {
         userId: socket.userId,
         role: socket.role,
-        source: token
-          ? socket.handshake.auth.token
-            ? "auth.token"
-            : "cookie"
-          : "none",
+        source: socket.handshake.auth.token ? "auth.token" : "cookie",
       });
     } else {
-      console.warn(
-        "[Socket:Auth] No token provided, allowing guest connection"
-      );
+      console.warn("[Socket:Auth] Guest connection allowed (no token)");
     }
     next();
   } catch (err) {
@@ -78,33 +76,62 @@ io.use(async (socket, next) => {
   }
 });
 
-io.on("connection", (socket) => {
+// Main socket connection
+io.on("connection", async (socket) => {
   console.log("[Socket:Connection] New connection:", {
     socketId: socket.id,
     userId: socket.userId,
   });
 
+  // User is authenticated
   if (socket.userId) {
     connectedUsers.add(socket.userId);
     socket.join(socket.userId);
     io.emit("userStatus", { userId: socket.userId, isOnline: true });
     io.emit("onlineUsersCount", connectedUsers.size);
-    console.log("[Socket:Connected] User added:", {
+    console.log("[Socket:Connected] ✅ User joined:", {
       userId: socket.userId,
       socketId: socket.id,
-      onlineCount: connectedUsers.size,
     });
+
+    // ✅ Feedback prompt check
+    try {
+      const user = await UserModel.findById(socket.userId).select(
+        "joiningDate feedbackPrompt"
+      );
+
+      const joinedDaysAgo =
+        (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24);
+
+      if (
+        joinedDaysAgo >= 7 &&
+        (!user.feedbackPrompt ||
+          (!user.feedbackPrompt.shown && !user.feedbackPrompt.responded))
+      ) {
+        socket.emit("showFeedbackPrompt", {
+          message: "How do you like our app?",
+        });
+
+        user.feedbackPrompt = {
+          shown: true,
+          shownAt: new Date(),
+          responded: false,
+        };
+        await user.save();
+        console.log("[Socket] 📬 Feedback prompt emitted");
+      }
+    } catch (err) {
+      console.error("[Socket] ⚠️ Feedback check failed:", err.message);
+    }
   }
 
+  // Manual room join
   socket.on("join", (roomId) => {
-    console.log("[Socket:Join] Received join:", {
-      roomId,
-      socketUserId: socket.userId,
-    });
+    console.log("[Socket:Join] Received:", { roomId });
 
     if (roomId === "adminRoom") {
-      console.log("[Socket:Join] ✅ Admin joined adminRoom");
       socket.join("adminRoom");
+      console.log("[Socket:Join] ✅ Admin joined adminRoom");
       return;
     }
 
@@ -117,27 +144,29 @@ io.on("connection", (socket) => {
       console.log("[Socket:Join] User joined:", {
         userId: roomId,
         socketId: socket.id,
-        onlineCount: connectedUsers.size,
       });
     } else {
-      console.warn("[Socket:Join] Invalid or mismatched roomId:", {
+      console.warn("[Socket:Join] ⚠️ Invalid join:", {
         roomId,
         socketUserId: socket.userId,
       });
     }
   });
 
+  // Location updates
   socket.on("userLocationUpdate", (data) => {
     console.log("[Socket] 📍 userLocationUpdate:", data);
     io.to("adminRoom").emit("userLocationUpdate", data);
   });
 
+  // Online user list
   socket.on("getOnlineUsers", () => {
     const list = Array.from(connectedUsers);
     socket.emit("onlineUsersList", list);
-    console.log("[Socket] 📡 Sent online users to:", socket.userId || "guest");
+    console.log("[Socket] 📡 Online users sent:", list.length);
   });
 
+  // Ad impression
   socket.on("adImpression", ({ postId, adIndex, adSlot, timeSpent }) => {
     console.log("[Socket] 📢 adImpression:", {
       userId: socket.userId,
@@ -157,6 +186,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // On disconnect
   socket.on("disconnect", (reason) => {
     if (socket.userId) {
       connectedUsers.delete(socket.userId);
@@ -165,10 +195,9 @@ io.on("connection", (socket) => {
       console.log("[Socket:Disconnected]", {
         userId: socket.userId,
         reason,
-        onlineCount: connectedUsers.size,
       });
     } else {
-      console.log("[Socket:Disconnected] Guest disconnected:", {
+      console.log("[Socket:Disconnected] Guest:", {
         socketId: socket.id,
         reason,
       });
@@ -178,12 +207,14 @@ io.on("connection", (socket) => {
 
 console.log("[Socket] ✅ Initialized");
 
+// Attach to server
 export default function initializeSocket(server) {
   io.attach(server);
-  console.log("[Socket] Attached to server");
+  console.log("[Socket] 🔌 Attached to HTTP server");
   return io;
 }
 
+// Emit helpers for posts
 export const emitPostUpdated = (post) => {
   console.log("[Socket] 🔄 emitPostUpdated:", post._id);
   io.emit("postUpdated", post);

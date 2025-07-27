@@ -1,5 +1,8 @@
 import express from "express";
 import { protectedRoute } from "../Middlewares/authMiddleware.js";
+import { geoLocationMiddleware } from "../Middlewares/geoLocationMiddleware.js";
+import upload from "../Middlewares/uploadImage.js";
+
 import {
   clearOldActivity,
   clearUserActivity,
@@ -14,50 +17,53 @@ import {
   saveUserCookieConsent,
   getIPLocation,
   trackIPLocation,
-} from "../Controllers/userController.js";
-import upload from "../Middlewares/uploadImage.js";
-import { geoLocationMiddleware } from "../Middlewares/geoLocationMiddleware.js";
+  shouldShowFeedbackPrompt,
+  submitFeedback,
+  getAllFeedbacks,
+} from "../../servers/Controllers/userController.js";
 
 const routes = new express.Router();
 
-// Protected routes for user operations
-// GET /get-user - Fetches authenticated user's profile
+// 🔐 Protected user profile routes
 routes.get("/get-user", protectedRoute, getProfile);
-// GET /get-single-user/:id - Fetches a user by ID
 routes.get("/get-single-user/:id", getSingleUserById);
-// GET /get-all-user - Fetches all users
 routes.get("/get-all-user", protectedRoute, getAllUser);
-// GET /activity/:id - Fetches user activity
-routes.get("/activity/:id", protectedRoute, getUserActivity);
-// GET /locations - Fetches all user locations
+
+// 📍 Location tracking
 routes.get("/locations", protectedRoute, getAllUserLocations);
-// POST /save-location - Saves user location
 routes.post("/save-location", protectedRoute, saveUserLocation);
-// PATCH /update-user - Updates user profile with optional avatar/banner upload
-routes.patch(
-  "/update-user",
-  protectedRoute,
-  upload.fields([{ name: "avatar" }, { name: "banner" }]),
-  updateProfile
-);
-// DELETE /delete-user - Deletes authenticated user
-routes.delete("/delete-user", protectedRoute, deleteUser);
-// DELETE /activity/clear - Clears user activity
-routes.delete("/activity/clear", protectedRoute, clearUserActivity);
-// DELETE /activity/clear-old - Clears old activity
-routes.delete("/activity/clear-old", protectedRoute, clearOldActivity);
-// POST /consent - Saves user cookie consent
-routes.post("/consent", saveUserCookieConsent);
 
-// GET /ip-location - Returns IP-based location (public)
+// 🌐 IP-based geo location
 routes.get("/ip-location", geoLocationMiddleware, getIPLocation);
-
-// POST /track-ip-location - Saves IP-based location (authenticated only)
 routes.post(
   "/track-ip-location",
   geoLocationMiddleware,
   protectedRoute,
   trackIPLocation
 );
+
+// 🧾 Activity & profile
+routes.get("/activity/:id", protectedRoute, getUserActivity);
+routes.delete("/activity/clear", protectedRoute, clearUserActivity);
+routes.delete("/activity/clear-old", protectedRoute, clearOldActivity);
+
+// 🧑‍🎨 Profile update with image upload
+routes.patch(
+  "/update-user",
+  protectedRoute,
+  upload.fields([{ name: "avatar" }, { name: "banner" }]),
+  updateProfile
+);
+
+// ❌ Account deletion
+routes.delete("/delete-user", protectedRoute, deleteUser);
+
+// 🍪 Cookie consent
+routes.post("/consent", saveUserCookieConsent);
+
+// ⭐ Feedback system
+routes.get("/feedback/check", protectedRoute, shouldShowFeedbackPrompt);
+routes.post("/feedback/submit", protectedRoute, submitFeedback);
+routes.get("/feedback/all", protectedRoute, getAllFeedbacks); // 👈 Admin check should be inside controller
 
 export default routes;

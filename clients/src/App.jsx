@@ -21,6 +21,7 @@ import { useSocketConnectionStatus } from "./AppRootFile/hook/useSocketConnectio
 import useAdBlockDetector from "./Ads/useAdBlockDetector";
 import AdBlockWarning from "./Ads/AdBlockWarning";
 import CookieConsentBanner from "./AppRootFile/components/CookieConsentBanner";
+import FeedbackModal from "./AppRootFile/components/FeedbackModal";
 
 // Root component for app layout and initialization
 export default function App() {
@@ -67,14 +68,19 @@ export default function App() {
   useClearUserError();
   useBannerExpiration();
 
-  const { newNotification } = useSelector((state) => state.socket);
+  const { newNotification, feedbackPrompt } = useSelector(
+    (state) => state.socket
+  );
   const isTransitionLoading = navigation.state === "loading";
 
   // Sync notifications to localStorage
   useEffect(() => {
     try {
       if (newNotification && newNotification._id && newNotification.expiresAt) {
-        localStorage.setItem("newNotification", JSON.stringify(newNotification));
+        localStorage.setItem(
+          "newNotification",
+          JSON.stringify(newNotification)
+        );
       } else {
         localStorage.removeItem("newNotification");
       }
@@ -94,6 +100,12 @@ export default function App() {
     }
   };
 
+  const handleCloseFeedback = () => {
+    setShowThankYou(true);
+    dispatch(setFeedbackPrompt(null));
+    setTimeout(() => setShowThankYou(false), 2000);
+  };
+
   // Show splash loader during boot
   if (booting) return <SplashLoader />;
 
@@ -102,15 +114,22 @@ export default function App() {
     <div
       className={`min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark`}
     >
-      
       {isAdBlocked && <AdBlockWarning />}
       <ScrollToTop />
       <Navbar />
+
       {showGooglePopup && <GoogleLoginPopup />}
       {newNotification && newNotification._id && (
         <BroadcastBanner
           newNotification={newNotification}
           handleDismiss={handleDismiss}
+        />
+      )}
+      {feedbackPrompt && (
+        <FeedbackModal
+          isOpen={true}
+          message={feedbackPrompt?.message}
+          onClose={handleCloseFeedback}
         />
       )}
       <PageTransitionLoader isLoading={isTransitionLoading} />

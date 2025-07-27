@@ -445,6 +445,59 @@ export const trackUserIPLocation = createAsyncThunk(
   }
 );
 
+// Check if user should see feedback prompt
+export const shouldShowFeedbackPrompt = createAsyncThunk(
+  "user/shouldShowFeedbackPrompt",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await axiosInstance.get("/user/feedback/check", {
+        withCredentials: true,
+      });
+      return res.data.shouldPrompt;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to check feedback prompt"
+      );
+    }
+  }
+);
+
+// Submit feedback
+export const submitUserFeedback = createAsyncThunk(
+  "user/submitUserFeedback",
+  async ({ rating, message }, { rejectWithValue }) => {
+    try {
+      const res = await axiosInstance.post(
+        "/user/feedback/submit",
+        { rating, message },
+        { withCredentials: true }
+      );
+      return res.data.success;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to submit feedback"
+      );
+    }
+  }
+);
+
+// Admin: Fetch all feedbacks
+export const fetchAllUserFeedback = createAsyncThunk(
+  "user/fetchAllUserFeedback",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await axiosInstance.get("/user/feedback/all", {
+        withCredentials: true,
+      });
+      return res.data.feedback || [];
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch feedbacks"
+      );
+    }
+  }
+);
+
 export const clearSearchedUsers = () => ({
   type: "user/clearSearchedUsers",
 });
@@ -467,6 +520,16 @@ const initialState = {
   activity: [],
   activityLoading: false,
   activityError: null,
+  feedback: {
+    shouldPrompt: false,
+    submitting: false,
+    submitted: false,
+    error: null,
+    list: [],
+    loadingList: false,
+    errorList: null,
+  },
+
   userLocations: {
     list: [],
     count: 0,
@@ -501,6 +564,18 @@ const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
+    resetFeedbackState: (state) => {
+      state.feedback = {
+        shouldPrompt: false,
+        submitting: false,
+        submitted: false,
+        error: null,
+        list: [],
+        loadingList: false,
+        errorList: null,
+      };
+    },
+
     clearGeoJson: (state) => {
       console.log("[UserSlice] clearGeoJson: Clearing GeoJSON state");
       state.geoJson = { data: null, loading: false, error: null };
@@ -891,6 +966,44 @@ const userSlice = createSlice({
       })
       .addCase(trackUserIPLocation.rejected, (state) => {
         state.ipLocation.tracked = false;
+      })
+      // Check feedback prompt
+      .addCase(shouldShowFeedbackPrompt.pending, (state) => {
+        state.feedback.shouldPrompt = false;
+      })
+      .addCase(shouldShowFeedbackPrompt.fulfilled, (state, action) => {
+        state.feedback.shouldPrompt = action.payload;
+      })
+      .addCase(shouldShowFeedbackPrompt.rejected, (state) => {
+        state.feedback.shouldPrompt = false;
+      })
+
+      // Submit feedback
+      .addCase(submitUserFeedback.pending, (state) => {
+        state.feedback.submitting = true;
+        state.feedback.error = null;
+      })
+      .addCase(submitUserFeedback.fulfilled, (state) => {
+        state.feedback.submitting = false;
+        state.feedback.submitted = true;
+      })
+      .addCase(submitUserFeedback.rejected, (state, action) => {
+        state.feedback.submitting = false;
+        state.feedback.error = action.payload;
+      })
+
+      // Admin: Get all feedback
+      .addCase(fetchAllUserFeedback.pending, (state) => {
+        state.feedback.loadingList = true;
+        state.feedback.errorList = null;
+      })
+      .addCase(fetchAllUserFeedback.fulfilled, (state, action) => {
+        state.feedback.loadingList = false;
+        state.feedback.list = action.payload;
+      })
+      .addCase(fetchAllUserFeedback.rejected, (state, action) => {
+        state.feedback.loadingList = false;
+        state.feedback.errorList = action.payload;
       });
   },
 });
@@ -904,6 +1017,7 @@ export const {
   clearSelectedUser,
   resetUpdateStatus,
   clearIPLocation,
+  resetFeedbackState,
 } = userSlice.actions;
 
 export default userSlice.reducer;

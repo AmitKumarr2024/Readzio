@@ -285,6 +285,12 @@ export const initializeSocket = createAsyncThunk(
         });
         debouncedGuestVisit(guest, dispatch);
       });
+      socket.off("showFeedbackPrompt").on("showFeedbackPrompt", (data) => {
+        log("[socketSlice] 💬 Received showFeedbackPrompt:", data);
+        dispatch(
+          setFeedbackPrompt(data?.message || "We'd love your feedback!")
+        );
+      });
     });
   }
 );
@@ -308,6 +314,7 @@ const socketSlice = createSlice({
     status: "disconnected",
     error: null,
     onlineUsersCount: 0,
+    feedbackPrompt: null,
     userStatus: {},
     newNotification: null,
     userLocations: [],
@@ -316,6 +323,10 @@ const socketSlice = createSlice({
     postCounts: { allPostsCount: 0, followingPostsCount: 0, myPostsCount: 0 },
   },
   reducers: {
+    setFeedbackPrompt(state, action) {
+      state.feedbackPrompt = action.payload;
+    },
+
     setSocketInstance(state, action) {
       state.socketInstance = action.payload;
       state.status = action.payload?.connected ? "connected" : "disconnected";
@@ -491,6 +502,7 @@ export const {
   setNotificationDismissReason,
   setPostCounts,
   addGuestVisit,
+  setFeedbackPrompt,
 } = socketSlice.actions;
 
 export const selectSocketState = createSelector(

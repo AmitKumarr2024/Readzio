@@ -20,6 +20,7 @@ import NotificationManager from "../../components/Admin/BannerNotification/Notif
 import { Bell, X, Download } from "lucide-react";
 import AdminSubscriptionControls from "../../components/Admin/subscriptionControl/AdminSubscriptionControls";
 import AdsDashboard from "../../components/Admin/Ads/AdsDashboard";
+import FeedbackDashboard from "../../components/Admin/Feedback/FeedbackDashboard";
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -82,6 +83,7 @@ const AdminDashboard = () => {
     { id: "banner-notifications", label: "Banner Notifications" },
     { id: "subscriptions", label: "Subscriptions" },
     { id: "ads-dashboard", label: "Ads Dashboard" },
+    { id: "feedback", label: "User Feedback" },
   ];
 
   return (
@@ -190,6 +192,7 @@ const AdminDashboard = () => {
             <AdminSubscriptionControls userId={user?._id} user={user} />
           )}
           {activeTab === "ads-dashboard" && <AdsDashboard />}
+          {activeTab === "feedback" && <FeedbackDashboard />}
         </ErrorBoundary>
       </motion.div>
     </div>

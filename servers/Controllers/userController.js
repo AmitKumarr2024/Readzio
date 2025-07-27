@@ -817,6 +817,118 @@ export const saveUserCookieConsent = async (req, res, next) => {
   }
 };
 
+export const shouldShowFeedbackPrompt = async (req, res, next) => {
+  try {
+    const user = await UserModel.findById(req.user._id).select(
+      "joiningDate feedbackPrompt"
+    );
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    const accountAgeInDays = Math.floor(
+      (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24)
+    );
+
+    const shouldShow =
+      accountAgeInDays >= 7 &&
+      (!user.feedbackPrompt ||
+        (!user.feedbackPrompt.shown && !user.feedbackPrompt.responded));
+
+    if (shouldShow) {
+      user.feedbackPrompt = {
+        shown: true,
+        shownAt: new Date(),
+        responded: false,
+      };
+      await user.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      showFeedback: shouldShow,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+export const submitFeedback = async (req, res, next) => {
+  try {
+    const { rating, message } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      throw new AppError("Invalid rating (1-5 required)", 400);
+    }
+
+    const user = await UserModel.findById(req.user._id);
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    user.feedbackPrompt = {
+      ...user.feedbackPrompt,
+      responded: true,
+      rating,
+      message,
+    };
+
+    await user.save();
+
+    res.status(200).json({ success: true, message: "Feedback submitted" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/user/feedback/all (Admin only)
+export const getAllFeedbacks = async (req, res, next) => {
+  try {
+    // Ensure only admins can access this
+    if (!req.user?.isAdmin) {
+      return next(new AppError("Access denied: Admins only", 403));
+    }
+
+    // Get all users with feedback
+    const feedbackUsers = await UserModel.find({
+      "feedbackPrompt.responded": true,
+    })
+      .select(
+        "name email avatar feedbackPrompt.createdAt feedbackPrompt.rating feedbackPrompt.message"
+      )
+      .sort({ "feedbackPrompt.shownAt": -1 }) // newest first
+      .lean();
+
+    const feedbacks = feedbackUsers.map((user) => ({
+      userId: user._id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      rating: user.feedbackPrompt?.rating,
+      message: user.feedbackPrompt?.message,
+      submittedAt: user.feedbackPrompt?.shownAt,
+    }));
+
+    res.status(200).json({
+      success: true,
+      total: feedbacks.length,
+      feedbacks,
+    });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch feedback",
+            500,
+            "GetAllFeedbacks",
+            "Error in getAllFeedbacks"
+          )
+    );
+  }
+};
+
 // Schedules daily cleanup of old activity records
 cron.schedule("0 0 * * *", clearOldActivity, {
   scheduled: true,

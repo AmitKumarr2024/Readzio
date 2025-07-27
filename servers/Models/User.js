@@ -243,6 +243,13 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    feedbackPrompt: {
+      shown: { type: Boolean, default: false },
+      shownAt: { type: Date },
+      responded: { type: Boolean, default: false },
+      rating: { type: Number, min: 1, max: 5 },
+      message: { type: String },
+    },
   },
   { timestamps: true } // Adds createdAt and updatedAt
 );
