@@ -14,7 +14,6 @@ import toast from "react-hot-toast";
 
 const isDev = import.meta.env.MODE === "development";
 const MAX_USER_LOCATIONS = 500;
-const MAX_GUEST_VISITS = 100;
 
 const log = (...args) => {
   if (isDev) console.log(...args);
@@ -34,7 +33,9 @@ export const fetchActiveNotifications = createAsyncThunk(
 
       const response = await axiosInstance.get(
         "/bannerNotification/get-Notification",
-        { withCredentials: true }
+        {
+          withCredentials: true,
+        }
       );
 
       const notifications = response.data.notifications || [];
@@ -63,7 +64,9 @@ export const fetchInitialPostCounts = createAsyncThunk(
   async (_, { rejectWithValue, getState }) => {
     try {
       const { user } = getState().auth;
-      log("[fetchInitialPostCounts] Authenticated user:", user);
+
+      // 🔍 Add this log
+      console.log("[fetchInitialPostCounts] Authenticated user:", user);
 
       if (!user?._id) throw new Error("User not authenticated");
 
@@ -86,18 +89,26 @@ export const fetchInitialPostCounts = createAsyncThunk(
   }
 );
 
+const initialState = {
+  socketInstance: null,
+  status: "disconnected",
+  error: null,
+  onlineUsersCount: 0,
+  userStatus: {},
+  newNotification: null,
+  userLocations: [],
+  guestVisits: [],
+  notificationDismissReason: null,
+  postCounts: { allPostsCount: 0, followingPostsCount: 0, myPostsCount: 0 },
+};
+
 export const initializeSocket = createAsyncThunk(
   "socket/initialize",
   async (_, { dispatch, getState }) => {
     log("[socketSlice] Initializing socket...");
-    const { user, isGuest } = getState().auth;
     let token = getToken();
 
-    // Skip auth and post counts for guests
-    if (!token && !user?._id && isGuest) {
-      log("[socketSlice] Guest user, skipping join/postCounts");
-    } else if (!token) {
-      // fallback: try checking auth
+    if (!token) {
       try {
         await dispatch(checkAuth()).unwrap();
         token = getToken();
@@ -119,14 +130,11 @@ export const initializeSocket = createAsyncThunk(
 
       socket.on("connect", () => {
         const userId = getState().auth.user?._id?.toString();
-        const isGuest = getState().auth?.isGuest;
-
-        if (!isGuest && userId) {
+        if (userId) {
           socket.emit("join", userId);
           socket.emit("join", "adminRoom");
           dispatch(fetchInitialPostCounts());
         }
-
         dispatch(setSocketInstance(socket));
         resolve(socket);
       });
@@ -266,24 +274,9 @@ export const initializeSocket = createAsyncThunk(
           });
         });
 
-      const debouncedGuestVisit = debounce((guest, dispatch) => {
-        log("[socketSlice] 🔵 [Debounced] Processing guestVisitUpdate:", {
-          guestId: guest.guestId,
-          visitCount: guest.visitCount,
-          lastVisit: guest.lastVisit,
-          timestamp: new Date().toISOString(),
-        });
-        dispatch(addGuestVisit(guest));
-      }, 1000);
-
       socket.off("guestVisitUpdate").on("guestVisitUpdate", (guest) => {
-        log("[socketSlice] 🔴 Received guestVisitUpdate:", {
-          guestId: guest.guestId,
-          visitCount: guest.visitCount,
-          lastVisit: guest.lastVisit,
-          timestamp: new Date().toISOString(),
-        });
-        debouncedGuestVisit(guest, dispatch);
+        console.log("[socketSlice] 🔵 Received guestVisitUpdate:", guest);
+        dispatch(addGuestVisit(guest));
       });
     });
   }
@@ -303,18 +296,7 @@ export const disconnectSocket = createAsyncThunk(
 
 const socketSlice = createSlice({
   name: "socket",
-  initialState: {
-    socketInstance: null,
-    status: "disconnected",
-    error: null,
-    onlineUsersCount: 0,
-    userStatus: {},
-    newNotification: null,
-    userLocations: [],
-    guestVisits: [],
-    notificationDismissReason: null,
-    postCounts: { allPostsCount: 0, followingPostsCount: 0, myPostsCount: 0 },
-  },
+  initialState,
   reducers: {
     setSocketInstance(state, action) {
       state.socketInstance = action.payload;
@@ -352,7 +334,7 @@ const socketSlice = createSlice({
       ) {
         return;
       }
-      if (state.userLocations.length >= MAX_USER_LOCATIONS) {
+      if (state.userLocations.length > MAX_USER_LOCATIONS) {
         state.userLocations.shift();
       }
       state.userLocations = [
@@ -371,67 +353,19 @@ const socketSlice = createSlice({
     },
     addGuestVisit: (state, action) => {
       const newGuest = action.payload;
-      log("[addGuestVisit] Processing new guest:", {
-        guestId: newGuest.guestId,
-        visitCount: newGuest.visitCount,
-        lastVisit: newGuest.lastVisit,
-        currentGuestVisitsLength: state.guestVisits.length,
-        timestamp: new Date().toISOString(),
-      });
 
-      const existingGuest = state.guestVisits.find(
+      // If guest already exists, replace; otherwise prepend
+      const existingIndex = state.guestVisits.findIndex(
         (g) => g.guestId === newGuest.guestId
       );
 
-      if (existingGuest) {
-        log("[addGuestVisit] Existing guest found:", {
-          existing: {
-            guestId: existingGuest.guestId,
-            visitCount: existingGuest.visitCount,
-            lastVisit: existingGuest.lastVisit,
-          },
-          newGuest: {
-            guestId: newGuest.guestId,
-            visitCount: newGuest.visitCount,
-            lastVisit: newGuest.lastVisit,
-          },
-        });
-
-        const sameVisit =
-          newGuest.visitCount === existingGuest.visitCount &&
-          new Date(newGuest.lastVisit).getTime() ===
-            new Date(existingGuest.lastVisit).getTime();
-
-        if (sameVisit) {
-          log("[addGuestVisit] ❌ Duplicate guest visit detected, skipping:", {
-            guestId: newGuest.guestId,
-            visitCount: newGuest.visitCount,
-            lastVisit: newGuest.lastVisit,
-          });
-          return;
-        }
-
-        log("[addGuestVisit] ✅ Updating existing guest:", {
-          guestId: newGuest.guestId,
-          visitCount: newGuest.visitCount,
-          lastVisit: newGuest.lastVisit,
-        });
-        state.guestVisits = state.guestVisits.map((g) =>
-          g.guestId === newGuest.guestId ? newGuest : g
-        );
+      if (existingIndex !== -1) {
+        state.guestVisits[existingIndex] = newGuest;
       } else {
-        log("[addGuestVisit] ✅ Adding new guest:", {
-          guestId: newGuest.guestId,
-          visitCount: newGuest.visitCount,
-          lastVisit: newGuest.lastVisit,
-          guestVisitsLength: state.guestVisits.length + 1,
-        });
         state.guestVisits.unshift(newGuest);
-        if (state.guestVisits.length > MAX_GUEST_VISITS) {
-          log(
-            `[addGuestVisit] Trimming guestVisits to ${MAX_GUEST_VISITS}, removing oldest entry`
-          );
-          state.guestVisits = state.guestVisits.slice(0, MAX_GUEST_VISITS);
+        // Optional: limit list to avoid memory bloating
+        if (state.guestVisits.length > 100) {
+          state.guestVisits = state.guestVisits.slice(0, 100);
         }
       }
     },

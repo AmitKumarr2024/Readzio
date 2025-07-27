@@ -34,6 +34,8 @@ const IMPRESSION_INTERVAL = 30;
 
 const isDev = process.env.NODE_ENV === "development";
 
+
+
 const StatModal = ({ type, count, onClose }) => {
   const modalVariants = {
     initial: { scale: 0.9, opacity: 0 },
@@ -163,9 +165,12 @@ const Insights = () => {
   };
 
   useEffect(() => {
-    const socket = io(process.env.VITE_API_BASE_URL, {
-      reconnectionAttempts: 5,
-    });
+    const socket = io(
+      process.env.VITE_API_BASE_URL ,
+      {
+        reconnectionAttempts: 5,
+      }
+    );
     socket.on("guestVisitUpdate", (data) => {
       console.log("[Insights] Received guestVisitUpdate from socket:", data);
       dispatch(addGuestVisit(data));
