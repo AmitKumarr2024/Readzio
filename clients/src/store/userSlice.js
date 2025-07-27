@@ -489,7 +489,7 @@ export const fetchAllUserFeedback = createAsyncThunk(
       const res = await axiosInstance.get("/user/feedback/all", {
         withCredentials: true,
       });
-      return res.data.feedback || [];
+      return res.data.feedbacks || [];
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || "Failed to fetch feedbacks"
