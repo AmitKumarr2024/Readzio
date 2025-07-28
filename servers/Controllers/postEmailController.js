@@ -29,17 +29,17 @@ export const sendDailyPostEmail = async (req, res, next) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
+    // Step 1: Fetch today's published posts
     let posts = await PostModel.find({
       createdAt: { $gte: todayStart },
       isPublished: true,
     })
-
       .select("title slug thumbnail author readTime likesCount commentsCount")
       .populate("author", "name avatar")
       .lean({ virtuals: true });
 
     console.log(
-      "dailypostsss",
+      "[DailyEmail] Today's posts:",
       posts.map((p) => ({
         title: p.title,
         readTime: p.readTime,
@@ -48,40 +48,28 @@ export const sendDailyPostEmail = async (req, res, next) => {
       }))
     );
 
+    // Step 2: If less than 10, fill with older random published posts
     if (posts.length < 10) {
-      const additionalPostsNeeded = 10 - posts.length;
-      const popularPosts = await PostModel.find({
-        createdAt: { $lt: todayStart },
-        isPublished: true,
-      })
+      const needed = 10 - posts.length;
 
-        .sort({ views: -1 })
-        .select("title slug thumbnail author readTime likesCount commentsCount")
-        .populate("author", "name avatar")
-        .limit(additionalPostsNeeded)
-        .lean({ virtuals: true });
+      const randomFallbackPosts = await PostModel.aggregate([
+        { $match: { createdAt: { $lt: todayStart }, isPublished: true } },
+        { $sample: { size: needed } },
+      ]);
 
-      // ✅ Fix: Merge posts correctly
-      posts = [...posts, ...popularPosts];
-    }
-
-    if (posts.length === 0) {
-      const fallbackMailOption = createMailOption({
-        to: users.map((user) => user.email),
-        subject: "Your Inksha Daily Brief (No New Posts)",
-        name: "User",
-        email: "",
-        message: "No new posts today. Check out our platform for more content!",
-        hasButton: true,
-        buttonText: "Visit Platform",
-        buttonUrl: "https://inksha-uedq.onrender.com",
-        posts: [],
+      const populatedFallback = await PostModel.populate(randomFallbackPosts, {
+        path: "author",
+        select: "name avatar",
       });
 
-      await transporter.sendMail(fallbackMailOption);
+      posts = [...posts, ...populatedFallback];
+    }
 
+    // Step 3: If no posts found even in fallback, skip sending
+    if (posts.length === 0) {
+      console.warn("[DailyEmail] No posts available at all. Skipping email.");
       return res.status(200).json({
-        message: "No posts available, sent fallback email",
+        message: "No posts available to send. Skipped email.",
         results: [],
         postCount: 0,
       });
@@ -90,6 +78,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     const postSlugs = posts.map((post) => post.slug);
     const results = [];
 
+    // Step 4: Send email to each verified user
     for (const user of users) {
       const mailOption = createMailOption({
         to: user.email,
@@ -139,6 +128,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
       }
     }
 
+    // Step 5: Send report to admin
     const admin = await UserModel.findOne({ role: "admin" }).lean();
     if (admin) {
       const adminMailOption = createMailOption({
@@ -176,7 +166,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
 };
 
 // Retrieves daily post email report with pagination and optional date filter
-// Retrieves daily post email report with pagination and optional date filter
+
 export const getDailyPostEmailReport = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, date } = req.query;
