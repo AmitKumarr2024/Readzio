@@ -38,8 +38,8 @@ routes.post("/save-location", protectedRoute, saveUserLocation);
 routes.get("/ip-location", geoLocationMiddleware, getIPLocation);
 routes.post(
   "/track-ip-location",
-  geoLocationMiddleware,
   protectedRoute,
+  geoLocationMiddleware,
   trackIPLocation
 );
 
