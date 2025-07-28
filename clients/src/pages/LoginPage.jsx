@@ -3,7 +3,7 @@ import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { googleLogin, login } from "../store/authSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import {
   FaUserCircle,
   FaLock,

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { sendVerifyOtp, verifyEmail } from "../../store/authSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { FaKey, FaEnvelope } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 

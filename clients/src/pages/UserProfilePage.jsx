@@ -4,7 +4,7 @@ import { getUser, resetUpdateStatus } from "../store/userSlice";
 import { initializeSocket } from "../store/socketSlice";
 import UserProfileView from "../components/UserProfile/UserProfileView";
 import UserProfileEdit from "../components/UserProfile/UserProfileEdit";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import Skeleton from "@/components/Ui/Skeleton"; 
 
 // Manages user profile view/edit with socket updates

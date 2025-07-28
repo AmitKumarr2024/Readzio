@@ -10,7 +10,7 @@ import {
   resetSlugAvailability,
   checkSlugAvailability,
 } from "../../../store/categorySlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { motion } from "framer-motion";
 import { FaFolderPlus, FaPlus, FaSpinner } from "react-icons/fa";
 

@@ -7,7 +7,7 @@ import {
   updateSubscriptionPlan,
 } from "../../../../store/subscriptionSlice";
 import Pagination from "../../../../Utils/Pagination";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import ConfirmModal from "../../../../Utils/ConfirmModal";
 import { paiseToRupees } from "../../../../Utils/currency";
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import toast from 'react-hot-toast';
+import {toast} from 'react-hot-toast';
 import UserCard from './UserCard';
 import { getUserById } from '../../../store/userSlice';
 import { getFollowStatus, fetchFollowing, fetchFollowers, followUser, unfollowUser } from '../../../store/followSlice';

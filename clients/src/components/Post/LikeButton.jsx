@@ -5,7 +5,7 @@ import {
   togglePostLike,
 } from "../../store/PostInteractions";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 const LikeButton = ({ postId }) => {
   const dispatch = useDispatch();

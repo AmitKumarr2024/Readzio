@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCategories, createCategory, clearError, selectCategory } from "../../store/categorySlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { X } from "lucide-react";
 import { FaPlus } from "react-icons/fa";
 import { motion } from "framer-motion";

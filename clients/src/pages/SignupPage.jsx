@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { useDispatch, useSelector } from "react-redux";
 import { googleLogin, signup, login } from "../store/authSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { FaUserPlus, FaUserCircle, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 
 // Handles user signup with form and Google OAuth

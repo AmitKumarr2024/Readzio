@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { FaSearch, FaSort } from "react-icons/fa";
 import { FiDollarSign } from "react-icons/fi";
 import { fetchAllPaymentRecords } from "../../../store/paymentSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 const selectPaymentState = (state) => state.payment || {};
 

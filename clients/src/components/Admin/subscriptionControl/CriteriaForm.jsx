@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { updateGlobalEligibilityCriteria } from "../../../store/adminSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { FaSpinner } from "react-icons/fa";
 
 // Component to manage subscription eligibility criteria

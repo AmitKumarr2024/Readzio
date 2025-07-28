@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { sendAdminAppeal } from "../../store/postSlice";
 
 // Component for displaying an overlay for blocked posts with appeal option for authors

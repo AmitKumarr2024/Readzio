@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { X, Plus } from "lucide-react";
 import {
   fetchCategories,

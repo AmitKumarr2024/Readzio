@@ -5,7 +5,7 @@ import {
   fetchSubscriptionPlansByAuthor,
   activateSubscriptionPlan,
 } from "../../../../store/subscriptionSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import PriceConfirmModal from "../../../../Utils/PriceConfirmModal";
 import Pagination from "../../../../Utils/Pagination";
 import {

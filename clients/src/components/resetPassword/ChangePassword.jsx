@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { FaLock, FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
 import axiosInstance from "../../connection/axiosInstance";
 

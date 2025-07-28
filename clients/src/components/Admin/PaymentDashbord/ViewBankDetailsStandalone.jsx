@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ClipboardCopy } from "lucide-react";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { sendAdminNotification } from "../../../store/notificationSlice";
 import { FaPaperPlane } from "react-icons/fa";

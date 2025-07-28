@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createBannerNotification } from "../../../store/adminSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { Send, Globe, MapPin } from "lucide-react";
 
 const CreateBannerForm = () => {

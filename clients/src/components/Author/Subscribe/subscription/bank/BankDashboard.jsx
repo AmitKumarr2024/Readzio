@@ -8,7 +8,7 @@ import {
   deleteBankDetails,
   clearMessages,
 } from "../../../../../store/bankSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { motion } from "framer-motion";
 import TabNavigation from "./TabNavigation";
 import BankForm from "./BankForm";

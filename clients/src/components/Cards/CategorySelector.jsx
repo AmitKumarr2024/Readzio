@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchCategories, createCategory, selectCategory } from '../features/categories/categorySlice';
-import toast from 'react-hot-toast';
+import {toast} from 'react-hot-toast';
 import { X } from 'lucide-react';
 
 const CategorySelector = ({ onBack, onContinue, onClose, isNewUser = false }) => {

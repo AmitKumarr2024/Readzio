@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { getAllPosts, deletePost } from "../../../store/postSlice";
 import { Button } from "../../../Utils/Button";
 import EditPostModal from "./EditPostModal";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { Pencil, Trash } from "lucide-react";
 import Pagination from "../../../Utils/Pagination";
 import { motion } from "framer-motion";

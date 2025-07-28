@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { verifyResetOtp } from "../../store/authSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { FaKey, FaArrowLeft } from "react-icons/fa";
 
 const VerifyOtp = ({ email, setOtp, setStep, setError }) => {

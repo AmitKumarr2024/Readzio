@@ -13,7 +13,7 @@ import {
   clearMessages,
 } from "../../../store/bankSlice";
 import axiosInstance from "../../../connection/axiosInstance";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import DashboardHeader from "./dashboard components/DashboardHeader";
 import DashboardTabs from "./dashboard components/DashboardTabs";
 import StatsCards from "./dashboard components/StatsCards";

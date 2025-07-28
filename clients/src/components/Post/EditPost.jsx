@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import PostEditor from "../CreatePost/PostEditor";
 import { updatePost, getSinglePost, clearError } from "../../store/postSlice";
 import LoadingBar from "../../Utils/LoadingBar";
-import { toast, Toaster } from "react-hot-toast";
+import { toast} from "react-hot-toast";
 import TagsInput from "../CreatePost/TagsInput";
 import { resetPostMeta, setPostType, setTags } from "../../store/Post/postMetaSlice";
 import { fetchCategories, selectCategory } from "../../store/categorySlice";
@@ -146,7 +146,6 @@ const EditPost = () => {
 
   return (
     <ErrorBoundary>
-      <Toaster position="top-center" reverseOrder={false} />
       <LoadingBar loading={updateLoading} />
       <Transition show={isOpen} as={React.Fragment}>
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4 sm:px-6 lg:px-8">

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { incrementPostShare } from "../../store/PostInteractions";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 const ShareButton = ({ postId, postUrl, className = "" }) => {
   const dispatch = useDispatch();

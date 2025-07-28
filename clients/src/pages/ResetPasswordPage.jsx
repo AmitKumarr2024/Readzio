@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { sendResetOtp } from "../store/authSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { FaEnvelope, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import VerifyOtp from "../components/resetPassword/VerifyOtp";
 import ChangePassword from "../components/resetPassword/ChangePassword";

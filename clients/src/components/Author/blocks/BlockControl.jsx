@@ -4,7 +4,7 @@ import { blockUser, unblockUser } from "../../../store/blockSlice";
 import { motion } from "framer-motion";
 import { FaUserLock } from "react-icons/fa";
 import { Lock, Unlock, User } from "lucide-react";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 const BlockControl = ({ allUser, refetchUsers }) => {
   const dispatch = useDispatch();

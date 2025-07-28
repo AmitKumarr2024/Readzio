@@ -1,7 +1,7 @@
 // import React, { useEffect } from 'react';
 // import { useParams, useNavigate } from 'react-router-dom';
 // import { useDispatch, useSelector } from 'react-redux';
-// import toast from 'react-hot-toast';
+// import {toast} from 'react-hot-toast';
 // // import { fetchSubscriptionPlan } from '../../../store/subscriptionPlanSlice';
 
 // const SubscriptionPlanDisplay = () => {

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { newNotificationReceived } from "../../store/socketSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 // Clears expired non-sticky banner notifications
 export const useBannerExpiration = () => {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { sendRenewalReminders } from "../../../../store/subscriptionSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 const RenewalReminders = () => {
   const dispatch = useDispatch();

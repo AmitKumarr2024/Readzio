@@ -5,7 +5,7 @@ import {
   togglePostBookmark,
 } from "../../store/PostInteractions";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 // Validate ObjectId format
 const isValidObjectId = (id) => /^[a-f\d]{24}$/i.test(id);

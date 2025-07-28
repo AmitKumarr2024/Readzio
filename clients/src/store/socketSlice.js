@@ -10,7 +10,7 @@ import { checkAuth } from "./authSlice";
 import { addNotification, updateUnreadCount } from "./notificationSlice";
 import { debounce } from "lodash";
 import { fetchBannerNotifications } from "./adminSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 const isDev = import.meta.env.MODE === "development";
 const MAX_USER_LOCATIONS = 500;

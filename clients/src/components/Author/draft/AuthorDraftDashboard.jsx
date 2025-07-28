@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { FaSpinner, FaEdit, FaTrash, FaEye } from "react-icons/fa";
 import { Button } from "../../../Utils/Button";
 import { getDraftAndPendingPosts, deletePost } from "../../../store/postSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 const AuthorDraftDashboard = () => {
   const dispatch = useDispatch();

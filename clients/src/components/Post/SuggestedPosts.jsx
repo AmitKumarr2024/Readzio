@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { fetchSuggestedPosts } from "../../store/suggestedPostsSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import TimeAgo from "../../Utils/TimeAgo";
 import Skeleton from "@/components/Ui/Skeleton";
 import adsConfig from "../../Utils/adsConfig";

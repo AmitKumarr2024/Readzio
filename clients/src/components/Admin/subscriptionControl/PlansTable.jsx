@@ -7,7 +7,7 @@ import {
   updateSubscriptionPlanStatus,
 } from "../../../store/adminSlice";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 // Component to display and manage subscription plans with infinite scroll
 const PlansTable = () => {

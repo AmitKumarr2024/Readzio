@@ -1,6 +1,6 @@
 // src/components/Post/DisplayPost/PostHeader.jsx
 import React from "react";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 const PostHeader = ({ post }) => {
   const fallbackImage = "https://placehold.co/600x400?text=No+Image";

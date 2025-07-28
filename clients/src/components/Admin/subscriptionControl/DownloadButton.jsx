@@ -3,7 +3,7 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { downloadAllDataCsv } from '../../../store/adminSlice';
 import { FaDownload } from 'react-icons/fa';
-import toast from 'react-hot-toast';
+import {toast} from 'react-hot-toast';
 
 // Component to trigger data download in Excel format
 const DownloadButton = () => {

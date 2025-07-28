@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Toaster, toast } from "react-hot-toast";
+import {  toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import CategorySelector from "../components/CreatePost/CategorySelector";

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { motion } from "framer-motion";
 import { BookOpenText, PenLine, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -13,8 +13,10 @@ const PostTypeSelector = ({ onContinue, onClose }) => {
   const { postType } = useSelector((state) => state.postMeta);
 
   const handleSelect = (type) => {
+    if (hasSelected) return; // prevent double toast/click
     setHasSelected(true);
     dispatch(setPostType(type));
+    toast.success(`Post type set to ${type}`);
     onContinue();
   };
 

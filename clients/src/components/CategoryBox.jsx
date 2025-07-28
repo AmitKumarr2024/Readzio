@@ -7,7 +7,7 @@ import {
   fetchUserSelectedCategories,
   fetchCategories,
 } from "../store/categorySlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 // CategoryBox.jsx
 // Displays a dropdown of user-selected or default categories with loading and error states.

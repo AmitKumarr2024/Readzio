@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Send, Loader2 } from "lucide-react";
 import SpaceBackground from "../Utils/SpaceBackground";
 import { createContactMessage } from "../store/adminSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 
 // Handles contact form submission
 const Contact = () => {

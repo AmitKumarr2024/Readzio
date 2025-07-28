@@ -22,7 +22,7 @@ import SubscriptionBanner from "../Post/DisplayPost/SubscriptionBanner";
 import AuthorSidebar from "../Post/DisplayPost/AuthorSidebar";
 import UserModal from "../Post/DisplayPost/UserModal";
 import SuggestedPosts from "./SuggestedPosts";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { selectPostViews } from "../../Utils/postSelectors";
 import CommentBox from "./CommentBox";
 import DeleteModal from "./DeleteModal";

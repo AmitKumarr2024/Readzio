@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { getAllUsers, toggleBlockUser, toggleUserRole, deleteUser, clearError } from '../../store/adminSlice';
 import Pagination from '../../Utils/Pagination';
 import { Search, SortAsc, SortDesc } from 'lucide-react';
-import toast from 'react-hot-toast';
+import {toast} from 'react-hot-toast';
 
 const UserManagement = () => {
   const dispatch = useDispatch();

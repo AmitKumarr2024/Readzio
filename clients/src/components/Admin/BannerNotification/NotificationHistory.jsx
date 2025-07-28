@@ -6,7 +6,7 @@ import {
 } from "../../../store/adminSlice";
 import { useEffect, useState } from "react";
 import Pagination from "../../../Utils/Pagination";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import { io } from "socket.io-client";
 
 const NotificationHistory = () => {

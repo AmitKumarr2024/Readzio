@@ -8,7 +8,7 @@ import {
 } from "../../../store/adminSlice";
 import Pagination from "../../../Utils/Pagination";
 import { Search, SortAsc, SortDesc } from "lucide-react";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import PostSizeSummary from "./PostSizeSummary";
 
 const PostManagement = () => {

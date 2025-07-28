@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { updateSubscriptionPlan } from "../../../../store/subscriptionSlice";
-import toast from "react-hot-toast";
+import {toast} from "react-hot-toast";
 import Pagination from "../../../../Utils/Pagination";
 import { rupeesToPaise, paiseToRupees } from "../../../../Utils/currency";
 
