@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import { BookOpenText, PenLine, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -24,7 +24,6 @@ const PostTypeSelector = ({ onContinue, onClose }) => {
 
   return (
     <>
-      <Toaster position="top-center" reverseOrder={false} />
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}

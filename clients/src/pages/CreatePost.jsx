@@ -117,7 +117,7 @@ const CreatePost = () => {
 
   return (
     <div className="flex flex-col md:flex-row bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
-      <Toaster position="top-right" />
+     
       <LoadingBar loading={createLoading} />
       {showPostTypeModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">

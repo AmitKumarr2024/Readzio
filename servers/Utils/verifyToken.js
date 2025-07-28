@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../config/dotenv.js";
-import logger from "../utils/Logger.js";
+import { JWT_SECRET } from "../../servers/config/dotenv.js";
+import logger from "../../servers/Utils/Logger.js";
 
 export const verifyToken = (token) => {
   try {

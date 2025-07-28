@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchCategories, createCategory, selectCategory } from '../features/categories/categorySlice';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { X } from 'lucide-react';
 
 const CategorySelector = ({ onBack, onContinue, onClose, isNewUser = false }) => {
@@ -51,7 +51,6 @@ const CategorySelector = ({ onBack, onContinue, onClose, isNewUser = false }) =>
 
   return (
     <>
-      <Toaster position="top-center" reverseOrder={false} />
       <div className="relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-full max-w-md mx-auto">
         <button
           onClick={handleClose}

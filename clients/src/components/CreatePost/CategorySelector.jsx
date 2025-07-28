@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCategories, createCategory, clearError, selectCategory } from "../../store/categorySlice";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { X } from "lucide-react";
 import { FaPlus } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -98,7 +98,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
 
   return (
     <>
-      <Toaster position="top-center" />
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}

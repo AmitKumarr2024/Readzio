@@ -10,7 +10,7 @@ import {
   resetSlugAvailability,
   checkSlugAvailability,
 } from "../../../store/categorySlice";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import { FaFolderPlus, FaPlus, FaSpinner } from "react-icons/fa";
 
@@ -245,7 +245,6 @@ const CategoryManagement = () => {
       transition={{ duration: 0.6, ease: "easeOut" }}
       className="min-h-screen bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark py-12 px-4 sm:px-6 lg:px-8"
     >
-      <Toaster position="top-center" />
       <div className="max-w-3xl mx-auto">
         <motion.div
           className="bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark backdrop-blur-xl rounded-2xl shadow-xl p-6"
