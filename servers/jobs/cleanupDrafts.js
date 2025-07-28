@@ -50,9 +50,9 @@ cron.schedule(
 
       // Logs success (replace with proper logging in production)
       // Note: Consider using a logging library (e.g., Winston) instead
-      console.log(
-        `Draft cleanup complete: ${result.deletedCount} drafts removed`
-      );
+      // console.log(
+      //   `Draft cleanup complete: ${result.deletedCount} drafts removed`
+      // );
     } catch (error) {
       // AppError with context for draft cleanup
       throw error instanceof AppError

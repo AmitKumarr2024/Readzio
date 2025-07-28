@@ -8,25 +8,21 @@ export function startDailyDigestJob() {
     "0 8 * * *",
     async () => {
       try {
-        const now = new Date().toLocaleString("en-IN", {
-          timeZone: "Asia/Kolkata",
-        });
-        console.log(`[Cron:DailyDigest] Triggered at: ${now}`);
-
         await sendDailyPostEmail(
           {},
           {
             status: () => ({
-              json: (data) =>
-                console.log("[Cron:DailyDigest] Email result:", data),
+              json: () => {
+                // No success logs
+              },
             }),
           },
           (err) => {
-            if (err) console.error("[Cron:DailyDigest] Next Error:", err.message);
+            if (err) {
+              console.error("[Cron:DailyDigest] Next Error:", err.message);
+            }
           }
         );
-
-        console.log("[Cron:DailyDigest] Finished.");
       } catch (err) {
         console.error("[Cron:DailyDigest] Failed:", err.message);
       }
@@ -34,13 +30,14 @@ export function startDailyDigestJob() {
     { timezone: "Asia/Kolkata" }
   );
 
-  // ✅ Optional dev/test cron - Runs every 1 minute to test
-  cron.schedule("* * * * *", () => {
-    const now = new Date().toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-    });
-    console.log(`[Cron:Test] Running every minute at: ${now}`);
-  });
+  // ❌ Remove dev/test cron completely to avoid noise
+  // cron.schedule("* * * * *", () => {
+  //   const now = new Date().toLocaleString("en-IN", {
+  //     timeZone: "Asia/Kolkata",
+  //   });
+  //   console.log(`[Cron:Test] Running every minute at: ${now}`);
+  // });
 
-  console.log("[Cron:Startup] Daily digest job scheduled.");
+  // ❌ Remove startup log
+  // console.log("[Cron:Startup] Daily digest job scheduled.");
 }

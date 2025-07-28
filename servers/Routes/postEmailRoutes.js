@@ -20,7 +20,7 @@ router.delete("/notifications", protectedRoute, deleteAllNotifications);
 // ✅ Manual test route to trigger email now
 router.get("/test", async (req, res) => {
   try {
-    console.log("[ManualTrigger] Calling sendDailyPostEmail");
+    // console.log("[ManualTrigger] Calling sendDailyPostEmail");
     await sendDailyPostEmail(req, res, () => {});
   } catch (err) {
     console.error("[ManualTrigger] Error:", err.message);

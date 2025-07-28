@@ -23,7 +23,7 @@ const TagsInput = () => {
     }
     dispatch(setTags([...tags, trimmed]));
     setInputValue('');
-    console.log('Tag added:', trimmed, 'New tags:', [...tags, trimmed]);
+    // console.log('Tag added:', trimmed, 'New tags:', [...tags, trimmed]);
   }, [inputValue, tags, dispatch]);
 
   const removeTag = useCallback((tagToRemove) => {

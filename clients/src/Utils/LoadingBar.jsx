@@ -7,7 +7,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
 
   // Manage loading state with delay
   useEffect(() => {
-    console.log("[DEBUG] LoadingBar: loading state changed:", loading);
+    // console.log("[DEBUG] LoadingBar: loading state changed:", loading);
     if (loading) {
       setShowBar(true);
     } else {

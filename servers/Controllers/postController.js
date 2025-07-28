@@ -280,12 +280,12 @@ export const createPost = async (req, res, next) => {
     );
 
     const { readTime, readingTime } = calculateReadTime(processedBlocks);
-    console.log(
-      "[CreatePost] Read time generated:",
-      readTime,
-      "| Minutes:",
-      readingTime
-    );
+    // console.log(
+    //   "[CreatePost] Read time generated:",
+    //   readTime,
+    //   "| Minutes:",
+    //   readingTime
+    // );
 
     let processedThumbnail = rawThumbnail;
     if (rawThumbnail) {
@@ -487,16 +487,16 @@ export const getAllPosts = async (req, res, next) => {
       });
     }
 
-    console.log(
-      "[getAllPosts] Sending posts:",
-      posts.map((p) => ({
-        _id: p._id,
-        slug: p.slug,
-        readTime: p.readTime,
-        readingTime: p.readingTime,
-        title: p.title,
-      }))
-    );
+    // console.log(
+    //   "[getAllPosts] Sending posts:",
+    //   posts.map((p) => ({
+    //     _id: p._id,
+    //     slug: p.slug,
+    //     readTime: p.readTime,
+    //     readingTime: p.readingTime,
+    //     title: p.title,
+    //   }))
+    // );
 
     res.status(200).json({ success: true, total, page, posts });
   } catch (error) {
@@ -592,14 +592,14 @@ export const getSinglePost = async (req, res, next) => {
       });
     }
 
-    console.log(
-      "[GetSinglePost] Post fetched:",
-      post._id,
-      "isPublished:",
-      post.isPublished,
-      "blocked:",
-      post.blocked
-    );
+    // console.log(
+    //   "[GetSinglePost] Post fetched:",
+    //   post._id,
+    //   "isPublished:",
+    //   post.isPublished,
+    //   "blocked:",
+    //   post.blocked
+    // );
 
     res.status(200).json({ success: true, post });
   } catch (error) {
@@ -718,9 +718,9 @@ export const updatePostBySlug = async (req, res, next) => {
     const userId = req.user?._id;
     const userRole = req.user?.role;
 
-    console.log(
-      `[updatePostBySlug] Attempting to update post with slug: ${slug}, userId: ${userId}, role: ${userRole}`
-    );
+    // console.log(
+    //   `[updatePostBySlug] Attempting to update post with slug: ${slug}, userId: ${userId}, role: ${userRole}`
+    // );
 
     if (!slug) {
       throw new AppError("Missing slug", 400, "UpdatePostBySlug");
@@ -789,12 +789,12 @@ export const updatePostBySlug = async (req, res, next) => {
     }
 
     const { readTime, readingTime } = calculateReadTime(updates.blocks);
-    console.log(
-      "[UpdatePostBySlug] Read time generated:",
-      readTime,
-      "| Minutes:",
-      readingTime
-    );
+    // console.log(
+    //   "[UpdatePostBySlug] Read time generated:",
+    //   readTime,
+    //   "| Minutes:",
+    //   readingTime
+    // );
     updates.readTime = readTime;
     updates.readingTime = readingTime;
 
@@ -851,7 +851,7 @@ export const updatePostBySlug = async (req, res, next) => {
       message: `Edited post: ${updatedPost.title}`,
     });
 
-    console.log(`[updatePostBySlug] Successfully updated post: ${slug}`);
+    // console.log(`[updatePostBySlug] Successfully updated post: ${slug}`);
     res.status(200).json({
       success: true,
       message: "Post updated successfully",
@@ -999,7 +999,7 @@ export const sendDailyPostEmail = async () => {
       .lean();
 
     if (!posts.length) {
-      console.log("No new posts to send.");
+      // console.log("No new posts to send.");
       return;
     }
 
@@ -1039,7 +1039,7 @@ export const sendDailyPostEmail = async () => {
     }
 
     await processEmailQueue();
-    console.log("Daily post emails queued successfully.");
+    // console.log("Daily post emails queued successfully.");
   } catch (error) {
     console.error("Error sending daily post emails:", error);
     throw new AppError(
@@ -1124,7 +1124,7 @@ export const submitAppeal = async (req, res, next) => {
 export const incrementShareCount = async (req, res, next) => {
   try {
     const { postId } = req.params;
-    console.log(`[incrementPostShare] PostId:`, postId);
+    // console.log(`[incrementPostShare] PostId:`, postId);
 
     if (!mongoose.Types.ObjectId.isValid(postId)) {
       throw new AppError("Invalid post ID", 400, "IncrementShareCount");
@@ -1253,13 +1253,13 @@ export const getPublicPost = async (req, res, next) => {
         "GetPublicPost"
       );
     }
-    console.log("[getSinglePost] Sending post:", {
-      _id: post._id,
-      slug: post.slug,
-      readTime: post.readTime,
-      readingTime: post.readingTime,
-      title: post.title,
-    });
+    // console.log("[getSinglePost] Sending post:", {
+    //   _id: post._id,
+    //   slug: post.slug,
+    //   readTime: post.readTime,
+    //   readingTime: post.readingTime,
+    //   title: post.title,
+    // });
 
     res.status(200).json({ success: true, post });
   } catch (error) {
@@ -1338,16 +1338,16 @@ export const getFollowingPosts = async (req, res, next) => {
       action: "VIEWED_FOLLOWING_POSTS",
       message: `Viewed posts from followed users`,
     });
-    console.log(
-      "[getFollowingPosts] Sending posts:",
-      posts.map((p) => ({
-        _id: p._id,
-        slug: p.slug,
-        readTime: p.readTime,
-        readingTime: p.readingTime,
-        title: p.title,
-      }))
-    );
+    // console.log(
+    //   "[getFollowingPosts] Sending posts:",
+    //   posts.map((p) => ({
+    //     _id: p._id,
+    //     slug: p.slug,
+    //     readTime: p.readTime,
+    //     readingTime: p.readingTime,
+    //     title: p.title,
+    //   }))
+    // );
 
     res.status(200).json({
       success: true,

@@ -17,7 +17,13 @@ const MAX_USER_LOCATIONS = 500;
 const MAX_GUEST_VISITS = 100;
 
 const log = (...args) => {
-  if (isDev) console.log(...args);
+  const [first] = args;
+  if (
+    first instanceof Error ||
+    (typeof first === "string" && first.toLowerCase().includes("error"))
+  ) {
+    console.error(...args);
+  }
 };
 
 const debouncedLocationHandler = debounce((dispatch, location) => {

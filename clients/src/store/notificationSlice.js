@@ -1,179 +1,246 @@
-import { createAsyncThunk, createSlice, createSelector } from '@reduxjs/toolkit';
-import axiosInstance from '../connection/axiosInstance';
+import {
+  createAsyncThunk,
+  createSlice,
+  createSelector,
+} from "@reduxjs/toolkit";
+import axiosInstance from "../connection/axiosInstance";
 
 // Simplified logging for production
 const logAction = (action, payload, label) => {
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`[${label}] ${action.type}`, { payload });
+  if (action?.error) {
+    console.error(`[${label}] ${action.type} failed`, {
+      error: action.error,
+      payload,
+    });
   }
 };
 
 export const fetchNotifications = createAsyncThunk(
-  'notifications/fetchAll',
+  "notifications/fetchAll",
   async ({ page = 1, limit = 20 } = {}, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get('/notification/notifications', {
+      const response = await axiosInstance.get("/notification/notifications", {
         params: { page, limit },
       });
       const notifications = Array.isArray(response.data?.notifications)
         ? response.data.notifications
         : [];
-      return { notifications, page, total: response.data?.total || notifications.length };
+      return {
+        notifications,
+        page,
+        total: response.data?.total || notifications.length,
+      };
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Failed to fetch notifications';
-      logAction({ type: 'fetchNotifications/rejected' }, { error: errorMsg }, 'NotificationSlice');
+      const errorMsg =
+        err.response?.data?.message || "Failed to fetch notifications";
+      logAction(
+        { type: "fetchNotifications/rejected" },
+        { error: errorMsg },
+        "NotificationSlice"
+      );
       return rejectWithValue(errorMsg);
     }
   }
 );
 
 export const fetchUnreadCount = createAsyncThunk(
-  'notifications/fetchCount',
+  "notifications/fetchCount",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get('/notification/unread-count');
+      const response = await axiosInstance.get("/notification/unread-count");
       return Number(response.data?.count) || 0;
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Failed to fetch unread count';
-      logAction({ type: 'fetchCount/rejected' }, { error: errorMsg }, 'NotificationSlice');
+      const errorMsg =
+        err.response?.data?.message || "Failed to fetch unread count";
+      logAction(
+        { type: "fetchCount/rejected" },
+        { error: errorMsg },
+        "NotificationSlice"
+      );
       return rejectWithValue(errorMsg);
     }
   }
 );
 
 export const markAsRead = createAsyncThunk(
-  'notifications/markAsRead',
+  "notifications/markAsRead",
   async (id, { rejectWithValue }) => {
-    if (!id || id === 'undefined') {
-      const errorMsg = 'Invalid notification ID';
-      logAction({ type: 'markAsRead/rejected' }, { error: errorMsg, id }, 'NotificationSlice');
+    if (!id || id === "undefined") {
+      const errorMsg = "Invalid notification ID";
+      logAction(
+        { type: "markAsRead/rejected" },
+        { error: errorMsg, id },
+        "NotificationSlice"
+      );
       return rejectWithValue(errorMsg);
     }
     try {
-      const response = await axiosInstance.patch(`/notification/mark-as-read/${id}`);
+      const response = await axiosInstance.patch(
+        `/notification/mark-as-read/${id}`
+      );
       return { id, notification: response.data.notification };
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Failed to mark as read';
-      logAction({ type: 'markAsRead/rejected' }, { error: errorMsg, id }, 'NotificationSlice');
+      const errorMsg = err.response?.data?.message || "Failed to mark as read";
+      logAction(
+        { type: "markAsRead/rejected" },
+        { error: errorMsg, id },
+        "NotificationSlice"
+      );
       return rejectWithValue(errorMsg);
     }
   }
 );
 
 export const markAllAsRead = createAsyncThunk(
-  'notifications/markAllAsRead',
+  "notifications/markAllAsRead",
   async (_, { rejectWithValue }) => {
     try {
-      await axiosInstance.patch('/notification/mark-all-as-read');
+      await axiosInstance.patch("/notification/mark-all-as-read");
       return true;
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Failed to mark all as read';
-      logAction({ type: 'markAllAsRead/rejected' }, { error: errorMsg }, 'NotificationSlice');
+      const errorMsg =
+        err.response?.data?.message || "Failed to mark all as read";
+      logAction(
+        { type: "markAllAsRead/rejected" },
+        { error: errorMsg },
+        "NotificationSlice"
+      );
       return rejectWithValue(errorMsg);
     }
   }
 );
 
 export const sendAdminNotification = createAsyncThunk(
-  'notifications/sendAdminNotification',
+  "notifications/sendAdminNotification",
   async ({ userId, content, navigateTo }, { rejectWithValue, getState }) => {
     if (!userId || !content) {
-      return rejectWithValue('Missing userId or content');
+      return rejectWithValue("Missing userId or content");
     }
     try {
       const defaultNavigateTo = `/author-profile/${userId}?tab=bank-details`;
       const finalNavigateTo = navigateTo || defaultNavigateTo;
       const { auth } = getState();
       const currentUserId = auth?.user?._id;
-      const response = await axiosInstance.post('/notification/admin', {
+      const response = await axiosInstance.post("/notification/admin", {
         userId,
         content,
         navigateTo: finalNavigateTo,
       });
       return currentUserId === userId ? response.data.notification : null;
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Failed to send notification';
-      logAction({ type: 'sendAdminNotification/rejected' }, { error: errorMsg, userId }, 'NotificationSlice');
+      const errorMsg =
+        err.response?.data?.message || "Failed to send notification";
+      logAction(
+        { type: "sendAdminNotification/rejected" },
+        { error: errorMsg, userId },
+        "NotificationSlice"
+      );
       return rejectWithValue(errorMsg);
     }
   }
 );
 
 export const broadcastNotification = createAsyncThunk(
-  'notifications/broadcastNotification',
+  "notifications/broadcastNotification",
   async ({ content }, { rejectWithValue }) => {
     if (!content) {
-      return rejectWithValue('Content is required');
+      return rejectWithValue("Content is required");
     }
     try {
-      await axiosInstance.post('/notification/broadcast', { content });
+      await axiosInstance.post("/notification/broadcast", { content });
       return null; // Handled via socket
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Failed to broadcast notification';
-      logAction({ type: 'broadcastNotification/rejected' }, { error: errorMsg }, 'NotificationSlice');
+      const errorMsg =
+        err.response?.data?.message || "Failed to broadcast notification";
+      logAction(
+        { type: "broadcastNotification/rejected" },
+        { error: errorMsg },
+        "NotificationSlice"
+      );
       return rejectWithValue(errorMsg);
     }
   }
 );
 
 export const replyToAdminNotification = createAsyncThunk(
-  'notifications/reply',
+  "notifications/reply",
   async ({ notificationId, content }, { rejectWithValue }) => {
     if (!notificationId || !content) {
-      return rejectWithValue('Missing notificationId or content');
+      return rejectWithValue("Missing notificationId or content");
     }
     try {
-      const response = await axiosInstance.post('/notification/reply', {
+      const response = await axiosInstance.post("/notification/reply", {
         notificationId,
         content,
       });
       return response.data.notification;
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Failed to reply to notification';
-      logAction({ type: 'replyToAdminNotification/rejected' }, { error: errorMsg, notificationId }, 'NotificationSlice');
+      const errorMsg =
+        err.response?.data?.message || "Failed to reply to notification";
+      logAction(
+        { type: "replyToAdminNotification/rejected" },
+        { error: errorMsg, notificationId },
+        "NotificationSlice"
+      );
       return rejectWithValue(errorMsg);
     }
   }
 );
 
 export const deleteNotification = createAsyncThunk(
-  'notifications/delete',
+  "notifications/delete",
   async (id, { rejectWithValue }) => {
-    if (!id || id === 'undefined') {
-      const errorMsg = 'Invalid notification ID';
-      logAction({ type: 'deleteNotification/rejected' }, { error: errorMsg, id }, 'NotificationSlice');
+    if (!id || id === "undefined") {
+      const errorMsg = "Invalid notification ID";
+      logAction(
+        { type: "deleteNotification/rejected" },
+        { error: errorMsg, id },
+        "NotificationSlice"
+      );
       return rejectWithValue(errorMsg);
     }
     try {
       await axiosInstance.delete(`/notification/${id}`);
       return id;
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Failed to delete notification';
-      logAction({ type: 'deleteNotification/rejected' }, { error: errorMsg, id }, 'NotificationSlice');
+      const errorMsg =
+        err.response?.data?.message || "Failed to delete notification";
+      logAction(
+        { type: "deleteNotification/rejected" },
+        { error: errorMsg, id },
+        "NotificationSlice"
+      );
       return rejectWithValue(errorMsg);
     }
   }
 );
 
 export const getUserNotificationHistory = createAsyncThunk(
-  'notifications/getUserNotificationHistory',
+  "notifications/getUserNotificationHistory",
   async (userId, { rejectWithValue }) => {
     if (!userId) {
-      return rejectWithValue('Missing userId');
+      return rejectWithValue("Missing userId");
     }
     try {
       const response = await axiosInstance.get(`/notification/user/${userId}`);
-      return Array.isArray(response.data?.notifications) ? response.data.notifications : [];
+      return Array.isArray(response.data?.notifications)
+        ? response.data.notifications
+        : [];
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Failed to fetch user history';
-      logAction({ type: 'getUserNotificationHistory/rejected' }, { error: errorMsg, userId }, 'NotificationSlice');
+      const errorMsg =
+        err.response?.data?.message || "Failed to fetch user history";
+      logAction(
+        { type: "getUserNotificationHistory/rejected" },
+        { error: errorMsg, userId },
+        "NotificationSlice"
+      );
       return rejectWithValue(errorMsg);
     }
   }
 );
 
 const notificationSlice = createSlice({
-  name: 'notifications',
+  name: "notifications",
   initialState: {
     notifications: [],
     unreadCount: 0,
@@ -243,9 +310,14 @@ const notificationSlice = createSlice({
         state.error = null;
       })
       .addCase(markAsRead.fulfilled, (state, action) => {
-        const index = state.notifications.findIndex((n) => n._id === action.payload.id);
+        const index = state.notifications.findIndex(
+          (n) => n._id === action.payload.id
+        );
         if (index !== -1) {
-          state.notifications[index] = { ...state.notifications[index], ...action.payload.notification };
+          state.notifications[index] = {
+            ...state.notifications[index],
+            ...action.payload.notification,
+          };
           if (action.payload.notification.read) {
             state.unreadCount = Math.max(0, state.unreadCount - 1);
           }
@@ -261,7 +333,10 @@ const notificationSlice = createSlice({
         state.error = null;
       })
       .addCase(markAllAsRead.fulfilled, (state) => {
-        state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
+        state.notifications = state.notifications.map((n) => ({
+          ...n,
+          read: true,
+        }));
         state.unreadCount = 0;
         state.loading = false;
       })
@@ -320,7 +395,9 @@ const notificationSlice = createSlice({
         state.error = null;
       })
       .addCase(deleteNotification.fulfilled, (state, action) => {
-        state.notifications = state.notifications.filter((n) => n._id !== action.payload);
+        state.notifications = state.notifications.filter(
+          (n) => n._id !== action.payload
+        );
         state.unreadCount = state.notifications.filter((n) => !n.read).length;
         state.loading = false;
       })
@@ -343,7 +420,8 @@ const notificationSlice = createSlice({
   },
 });
 
-export const { resetNotifications, addNotification, updateUnreadCount } = notificationSlice.actions;
+export const { resetNotifications, addNotification, updateUnreadCount } =
+  notificationSlice.actions;
 
 const selectNotificationState = (state) => state.notifications || {};
 

@@ -42,15 +42,15 @@ const router = express.Router();
 const validatePostId = validateObjectId("postId");
 const validateUserId = validateObjectId("userId");
 
-// Middleware to log route parameters and queries
+// Middleware to log only errors (not params or queries)
 const logParams = (req, res, next) => {
-  console.log(
-    `[postRoutes] Route: ${req.originalUrl}, Params:`,
-    req.params,
-    "Query:",
-    req.query
-  );
-  next();
+  try {
+    // No log in normal flow
+    next();
+  } catch (err) {
+    console.error("[logParams] ❌ Middleware error:", err);
+    next(err); // pass error to error handler
+  }
 };
 
 // Public routes

@@ -28,20 +28,20 @@ const axiosInstance = axios.create({
 
 // Optional: Log requests for debugging
 axiosInstance.interceptors.request.use((config) => {
-  console.log("API Request:", {
-    url: config.url,
-    method: config.method,
-  });
+  // console.log("API Request:", {
+  //   url: config.url,
+  //   method: config.method,
+  // });
   return config;
 });
 
 // Optional: Log responses & handle errors nicely
 axiosInstance.interceptors.response.use(
   (response) => {
-    console.log("API Response:", {
-      url: response.config.url,
-      status: response.status,
-    });
+    // console.log("API Response:", {
+    //   url: response.config.url,
+    //   status: response.status,
+    // });
     return response;
   },
   (error) => {

@@ -17,15 +17,8 @@ export const io = new Server({
         "https://inksha-uedq.onrender.com",
       ].filter(Boolean);
 
-      if (!origin) {
-        console.log("[Socket:CORS] ⚠️ No origin (polling or localhost?)");
-        return callback(null, true);
-      }
-
-      if (allowedOrigins.includes(origin)) {
-        console.log("[Socket:CORS] ✅ Allowed:", origin);
-        return callback(null, true);
-      }
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
 
       console.error("[Socket:CORS] ❌ Blocked:", origin);
       return callback(new Error("CORS not allowed"));
@@ -39,8 +32,6 @@ export const io = new Server({
 
 // Authentication middleware
 io.use(async (socket, next) => {
-  console.log("[Socket:Auth] Authenticating", { socketId: socket.id });
-
   let token = socket.handshake.auth.token;
 
   if (!token && socket.handshake.headers.cookie) {
@@ -60,14 +51,6 @@ io.use(async (socket, next) => {
       socket.userId = decoded.userId?.toString();
       socket.role = decoded.role;
       socket.isAdmin = decoded.isAdmin;
-
-      console.log("[Socket:Auth] ✅ Authenticated:", {
-        userId: socket.userId,
-        role: socket.role,
-        source: socket.handshake.auth.token ? "auth.token" : "cookie",
-      });
-    } else {
-      console.warn("[Socket:Auth] Guest connection allowed (no token)");
     }
     next();
   } catch (err) {
@@ -78,23 +61,12 @@ io.use(async (socket, next) => {
 
 // Main socket connection
 io.on("connection", async (socket) => {
-  console.log("[Socket:Connection] New connection:", {
-    socketId: socket.id,
-    userId: socket.userId,
-  });
-
-  // User is authenticated
   if (socket.userId) {
     connectedUsers.add(socket.userId);
     socket.join(socket.userId);
     io.emit("userStatus", { userId: socket.userId, isOnline: true });
     io.emit("onlineUsersCount", connectedUsers.size);
-    console.log("[Socket:Connected] ✅ User joined:", {
-      userId: socket.userId,
-      socketId: socket.id,
-    });
 
-    // ✅ Feedback prompt check
     try {
       const user = await UserModel.findById(socket.userId).select(
         "joiningDate feedbackPrompt"
@@ -118,20 +90,15 @@ io.on("connection", async (socket) => {
           responded: false,
         };
         await user.save();
-        console.log("[Socket] 📬 Feedback prompt emitted");
       }
     } catch (err) {
       console.error("[Socket] ⚠️ Feedback check failed:", err.message);
     }
   }
 
-  // Manual room join
   socket.on("join", (roomId) => {
-    console.log("[Socket:Join] Received:", { roomId });
-
     if (roomId === "adminRoom") {
       socket.join("adminRoom");
-      console.log("[Socket:Join] ✅ Admin joined adminRoom");
       return;
     }
 
@@ -141,40 +108,19 @@ io.on("connection", async (socket) => {
       connectedUsers.add(roomId);
       io.emit("userStatus", { userId: roomId, isOnline: true });
       io.emit("onlineUsersCount", connectedUsers.size);
-      console.log("[Socket:Join] User joined:", {
-        userId: roomId,
-        socketId: socket.id,
-      });
-    } else {
-      console.warn("[Socket:Join] ⚠️ Invalid join:", {
-        roomId,
-        socketUserId: socket.userId,
-      });
     }
   });
 
-  // Location updates
   socket.on("userLocationUpdate", (data) => {
-    console.log("[Socket] 📍 userLocationUpdate:", data);
     io.to("adminRoom").emit("userLocationUpdate", data);
   });
 
-  // Online user list
   socket.on("getOnlineUsers", () => {
     const list = Array.from(connectedUsers);
     socket.emit("onlineUsersList", list);
-    console.log("[Socket] 📡 Online users sent:", list.length);
   });
 
-  // Ad impression
   socket.on("adImpression", ({ postId, adIndex, adSlot, timeSpent }) => {
-    console.log("[Socket] 📢 adImpression:", {
-      userId: socket.userId,
-      postId,
-      adIndex,
-      adSlot,
-      timeSpent,
-    });
     if (socket.userId) {
       io.to(socket.userId).emit("adImpressionRecorded", {
         postId,
@@ -186,41 +132,26 @@ io.on("connection", async (socket) => {
     }
   });
 
-  // On disconnect
   socket.on("disconnect", (reason) => {
     if (socket.userId) {
       connectedUsers.delete(socket.userId);
       io.emit("userStatus", { userId: socket.userId, isOnline: false });
       io.emit("onlineUsersCount", connectedUsers.size);
-      console.log("[Socket:Disconnected]", {
-        userId: socket.userId,
-        reason,
-      });
-    } else {
-      console.log("[Socket:Disconnected] Guest:", {
-        socketId: socket.id,
-        reason,
-      });
     }
   });
 });
 
-console.log("[Socket] ✅ Initialized");
-
 // Attach to server
 export default function initializeSocket(server) {
   io.attach(server);
-  console.log("[Socket] 🔌 Attached to HTTP server");
   return io;
 }
 
 // Emit helpers for posts
 export const emitPostUpdated = (post) => {
-  console.log("[Socket] 🔄 emitPostUpdated:", post._id);
   io.emit("postUpdated", post);
 };
 
 export const emitPostDeleted = (postId) => {
-  console.log("[Socket] 🗑️ emitPostDeleted:", postId);
   io.emit("postDeleted", postId);
 };

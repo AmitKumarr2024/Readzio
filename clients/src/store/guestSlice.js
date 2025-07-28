@@ -13,10 +13,10 @@ export const fetchPublicPosts = createAsyncThunk(
   "guest/fetchPublicPosts",
   async ({ page = 1, limit = 12 }, { rejectWithValue }) => {
     try {
-      console.log("[guestSlice:fetchPublicPosts] Fetching posts:", {
-        page,
-        limit,
-      });
+      // console.log("[guestSlice:fetchPublicPosts] Fetching posts:", {
+      //   page,
+      //   limit,
+      // });
       const res = await axiosInstance.get("/public/posts", {
         params: { page, limit },
       });
@@ -24,7 +24,7 @@ export const fetchPublicPosts = createAsyncThunk(
         ...post,
         blocks: Array.isArray(post.blocks) ? post.blocks : [],
       }));
-      console.log("[guestSlice:fetchPublicPosts] Fetched posts:", posts.length);
+      // console.log("[guestSlice:fetchPublicPosts] Fetched posts:", posts.length);
       return { posts, total: res.data.total, page: res.data.page };
     } catch (err) {
       const errMsg =
@@ -39,18 +39,18 @@ export const fetchPublicPostBySlug = createAsyncThunk(
   "guest/fetchPublicPostBySlug",
   async (slug, { rejectWithValue }) => {
     try {
-      console.log("[guestSlice:fetchPublicPostBySlug] Fetching post:", slug);
+      // console.log("[guestSlice:fetchPublicPostBySlug] Fetching post:", slug);
       const res = await axiosInstance.get(`/public/post/${slug}`);
       const post = {
         ...res.data.post,
         blocks: Array.isArray(res.data.post.blocks) ? res.data.post.blocks : [],
       };
-      console.log(
-        "[guestSlice:fetchPublicPostBySlug] Fetched post:",
-        post._id,
-        "blocks:",
-        post.blocks.length
-      );
+      // console.log(
+      //   "[guestSlice:fetchPublicPostBySlug] Fetched post:",
+      //   post._id,
+      //   "blocks:",
+      //   post.blocks.length
+      // );
       return post;
     } catch (err) {
       const errMsg = err.response?.data?.message || "Post not found";
@@ -64,12 +64,12 @@ export const trackGuestView = createAsyncThunk(
   "guest/trackGuestView",
   async (slug, { rejectWithValue }) => {
     try {
-      console.log("[guestSlice:trackGuestView] Tracking view:", slug);
+      // console.log("[guestSlice:trackGuestView] Tracking view:", slug);
       const res = await axiosInstance.post(`/public/post/${slug}/view`);
-      console.log(
-        "[guestSlice:trackGuestView] View tracked:",
-        res.data.message
-      );
+      // console.log(
+      //   "[guestSlice:trackGuestView] View tracked:",
+      //   res.data.message
+      // );
       return res.data.message;
     } catch (err) {
       const errMsg = err.response?.data?.message || "Failed to track view";
@@ -83,11 +83,11 @@ export const searchPublicPosts = createAsyncThunk(
   "guest/searchPublicPosts",
   async ({ query, page = 1, limit = 12 }, { rejectWithValue }) => {
     try {
-      console.log("[guestSlice:searchPublicPosts] Searching posts:", {
-        query,
-        page,
-        limit,
-      });
+      // console.log("[guestSlice:searchPublicPosts] Searching posts:", {
+      //   query,
+      //   page,
+      //   limit,
+      // });
       const res = await axiosInstance.get("/public/search-posts", {
         params: { query, page, limit },
       });
@@ -95,10 +95,10 @@ export const searchPublicPosts = createAsyncThunk(
         ...post,
         blocks: Array.isArray(post.blocks) ? post.blocks : [],
       }));
-      console.log(
-        "[guestSlice:searchPublicPosts] Fetched posts:",
-        posts.length
-      );
+      // console.log(
+      //   "[guestSlice:searchPublicPosts] Fetched posts:",
+      //   posts.length
+      // );
       return { posts, total: res.data.total, page: res.data.page };
     } catch (err) {
       const errMsg =
@@ -113,10 +113,10 @@ export const trackGuestVisit = createAsyncThunk(
   "guest/trackGuestVisit",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("[guestSlice:trackGuestVisit] Tracking guest visit");
+      // console.log("[guestSlice:trackGuestVisit] Tracking guest visit");
       const res = await axiosInstance.post("/public/guest/visit");
 
-      console.log("[guestSlice:trackGuestVisit] Tracked:", res.data.message);
+      // console.log("[guestSlice:trackGuestVisit] Tracked:", res.data.message);
 
       // 🟢 Store correct guestId locally
       if (res.data.guest?.guestId) {
@@ -138,7 +138,7 @@ const guestSlice = createSlice({
   initialState,
   reducers: {
     clearGuestState(state) {
-      console.log("[guestSlice:clearGuestState]");
+      // console.log("[guestSlice:clearGuestState]");
       state.posts = [];
       state.singlePost = null;
       state.loading = false;
@@ -146,19 +146,19 @@ const guestSlice = createSlice({
       state.viewTracked = false;
     },
     clearGuestError(state) {
-      console.log("[guestSlice:clearGuestError]");
+      // console.log("[guestSlice:clearGuestError]");
       state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchPublicPosts.pending, (state) => {
-        console.log("[guestSlice:fetchPublicPosts] Pending");
+        // console.log("[guestSlice:fetchPublicPosts] Pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchPublicPosts.fulfilled, (state, action) => {
-        console.log("[guestSlice:fetchPublicPosts] Fulfilled");
+        // console.log("[guestSlice:fetchPublicPosts] Fulfilled");
         state.loading = false;
         state.posts = action.payload.posts;
         state.total = action.payload.total;
@@ -173,13 +173,13 @@ const guestSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(fetchPublicPostBySlug.pending, (state) => {
-        console.log("[guestSlice:fetchPublicPostBySlug] Pending");
+        // console.log("[guestSlice:fetchPublicPostBySlug] Pending");
         state.loading = true;
         state.error = null;
         state.singlePost = null;
       })
       .addCase(fetchPublicPostBySlug.fulfilled, (state, action) => {
-        console.log("[guestSlice:fetchPublicPostBySlug] Fulfilled");
+        // console.log("[guestSlice:fetchPublicPostBySlug] Fulfilled");
         state.loading = false;
         state.singlePost = action.payload;
       })
@@ -192,12 +192,12 @@ const guestSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(trackGuestView.pending, (state) => {
-        console.log("[guestSlice:trackGuestView] Pending");
+        // console.log("[guestSlice:trackGuestView] Pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(trackGuestView.fulfilled, (state) => {
-        console.log("[guestSlice:trackGuestView] Fulfilled");
+        // console.log("[guestSlice:trackGuestView] Fulfilled");
         state.loading = false;
         state.viewTracked = true;
       })
@@ -207,12 +207,12 @@ const guestSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(searchPublicPosts.pending, (state) => {
-        console.log("[guestSlice:searchPublicPosts] Pending");
+        // console.log("[guestSlice:searchPublicPosts] Pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(searchPublicPosts.fulfilled, (state, action) => {
-        console.log("[guestSlice:searchPublicPosts] Fulfilled");
+        // console.log("[guestSlice:searchPublicPosts] Fulfilled");
         state.loading = false;
         state.posts = action.payload.posts;
         state.total = action.payload.total;
@@ -227,14 +227,14 @@ const guestSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(trackGuestVisit.pending, (state) => {
-        console.log("[guestSlice:trackGuestVisit] Pending");
+        // console.log("[guestSlice:trackGuestVisit] Pending");
         state.loading = true;
       })
       .addCase(trackGuestVisit.fulfilled, (state) => {
-        console.log(
-          "[guestSlice:trackGuestVisit] Fulfilled guest:",
-          action.payload
-        );
+        // console.log(
+        //   "[guestSlice:trackGuestVisit] Fulfilled guest:",
+        //   action.payload
+        // );
         state.loading = false;
         state.lastTrackedGuest = action.payload;
       })

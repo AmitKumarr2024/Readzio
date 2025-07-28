@@ -114,7 +114,7 @@ const Navbar = () => {
       dispatch(trackGuestVisit())
         .unwrap()
         .then(() => {
-          console.log("✅ Guest visit tracked");
+          // console.log("✅ Guest visit tracked");
           sessionStorage.setItem("guestTracked", "1");
         })
         .catch((err) => console.warn("❌ Guest visit failed:", err));

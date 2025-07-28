@@ -17,7 +17,7 @@ import UserSubscriptionPlan from "../../servers/Models/UserSubscriptionModel.js"
 
 // Validates ObjectId and throws AppError with context for invalid IDs
 const validateObjectId = (id, type = "ID") => {
-  console.log(`[validateObjectId] 🔍 Validating ${type}:`, id);
+  // console.log(`[validateObjectId] 🔍 Validating ${type}:`, id);
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError(
       `Invalid ${type}`,
@@ -35,11 +35,11 @@ export const getAllUsers = async (req, res, next) => {
     const limit = Math.min(parseInt(req.query.limit) || 100, 1000);
     const skip = (page - 1) * limit;
 
-    console.log("[AdminController:getAllUsers] 🔍 Params:", {
-      page,
-      limit,
-      skip,
-    });
+    // console.log("[AdminController:getAllUsers] 🔍 Params:", {
+    //   page,
+    //   limit,
+    //   skip,
+    // });
 
     const projection =
       "name email gender avatar banner bio profession location createdAt role blocked bookmarks following followers blockedUsers subscribedCategories subscribedAuthors subscribers hasSubscriptionPlan subscriptionPlan subscriptionDate isEligibleForSubscription";
@@ -48,15 +48,15 @@ export const getAllUsers = async (req, res, next) => {
       UserModel.find({}).select(projection).skip(skip).limit(limit).lean(),
       UserModel.countDocuments(),
     ]);
-    console.log(
-      "[AdminController:getAllUsers] 📊 Users fetched:",
-      users.length,
-      "Total:",
-      totalUsers
-    );
+    // console.log(
+    //   "[AdminController:getAllUsers] 📊 Users fetched:",
+    //   users.length,
+    //   "Total:",
+    //   totalUsers
+    // );
 
     const totalPages = Math.ceil(totalUsers / limit);
-    console.log("[AdminController:getAllUsers] 📄 Total pages:", totalPages);
+    // console.log("[AdminController:getAllUsers] 📄 Total pages:", totalPages);
 
     res.status(200).json({
       success: true,
@@ -82,10 +82,10 @@ export const getAllUsers = async (req, res, next) => {
 export const toggleBlockUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    console.log("[AdminController:toggleBlockUser] 🔍 User ID:", userId);
+    // console.log("[AdminController:toggleBlockUser] 🔍 User ID:", userId);
 
     const user = await UserModel.findById(userId);
-    console.log("[AdminController:toggleBlockUser] 👤 User found:", !!user);
+    // console.log("[AdminController:toggleBlockUser] 👤 User found:", !!user);
 
     if (!user)
       throw new AppError(
@@ -97,10 +97,10 @@ export const toggleBlockUser = async (req, res, next) => {
 
     user.blocked = !user.blocked;
     await user.save();
-    console.log(
-      "[AdminController:toggleBlockUser] 🔄 Blocked status:",
-      user.blocked
-    );
+    // console.log(
+    //   "[AdminController:toggleBlockUser] 🔄 Blocked status:",
+    //   user.blocked
+    // );
 
     res.status(200).json({
       success: true,
@@ -128,10 +128,10 @@ export const toggleBlockUser = async (req, res, next) => {
 export const toggleUserRole = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    console.log("[AdminController:toggleUserRole] 🔍 User ID:", userId);
+    // console.log("[AdminController:toggleUserRole] 🔍 User ID:", userId);
 
     const user = await UserModel.findById(userId);
-    console.log("[AdminController:toggleUserRole] 👤 User found:", !!user);
+    // console.log("[AdminController:toggleUserRole] 👤 User found:", !!user);
 
     if (!user)
       throw new AppError(
@@ -143,10 +143,10 @@ export const toggleUserRole = async (req, res, next) => {
 
     if (user.role === "admin") {
       const adminCount = await UserModel.countDocuments({ role: "admin" });
-      console.log(
-        "[AdminController:toggleUserRole] 👑 Admin count:",
-        adminCount
-      );
+      // console.log(
+      //   "[AdminController:toggleUserRole] 👑 Admin count:",
+      //   adminCount
+      // );
       if (adminCount <= 1) {
         throw new AppError(
           "Cannot remove the last admin",
@@ -160,7 +160,7 @@ export const toggleUserRole = async (req, res, next) => {
     user.role = user.role === "admin" ? "user" : "admin";
     user.isAdmin = user.role === "admin";
     await user.save();
-    console.log("[AdminController:toggleUserRole] 🔄 New role:", user.role);
+    // console.log("[AdminController:toggleUserRole] 🔄 New role:", user.role);
 
     res.status(200).json({
       success: true,
@@ -188,10 +188,10 @@ export const toggleUserRole = async (req, res, next) => {
 export const deleteUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    console.log("[AdminController:deleteUser] 🔍 User ID:", userId);
+    // console.log("[AdminController:deleteUser] 🔍 User ID:", userId);
 
     const deletedUser = await UserModel.findByIdAndDelete(userId);
-    console.log("[AdminController:deleteUser] 🗑️ User deleted:", !!deletedUser);
+    // console.log("[AdminController:deleteUser] 🗑️ User deleted:", !!deletedUser);
 
     if (!deletedUser)
       throw new AppError(
@@ -221,10 +221,10 @@ export const deleteUser = async (req, res, next) => {
 export const getAllPosts = async (req, res, next) => {
   try {
     const posts = await PostModel.find().populate("author", "name email");
-    console.log(
-      "[AdminController:getAllPosts] 📝 Posts fetched:",
-      posts.length
-    );
+    // console.log(
+    //   "[AdminController:getAllPosts] 📝 Posts fetched:",
+    //   posts.length
+    // );
 
     const postsWithSize = posts.map((post) => {
       const blocksText =
@@ -233,10 +233,10 @@ export const getAllPosts = async (req, res, next) => {
           .join(" ") || "";
       const sizeInCharacters = blocksText.length;
       const sizeInKB = Buffer.byteLength(blocksText, "utf-8") / 1024;
-      console.log(`[AdminController:getAllPosts] 📏 Post ${post._id} size:`, {
-        sizeInCharacters,
-        sizeInKB,
-      });
+      // console.log(`[AdminController:getAllPosts] 📏 Post ${post._id} size:`, {
+      //   sizeInCharacters,
+      //   sizeInKB,
+      // });
 
       return {
         ...post.toObject(),
@@ -263,10 +263,10 @@ export const getAllPosts = async (req, res, next) => {
 export const toggleBlockPost = async (req, res, next) => {
   try {
     const { postId } = req.params;
-    console.log("[AdminController:toggleBlockPost] 🔍 Post ID:", postId);
+    // console.log("[AdminController:toggleBlockPost] 🔍 Post ID:", postId);
 
     const post = await PostModel.findById(postId);
-    console.log("[AdminController:toggleBlockPost] 📝 Post found:", !!post);
+    // console.log("[AdminController:toggleBlockPost] 📝 Post found:", !!post);
 
     if (!post)
       throw new AppError(
@@ -279,10 +279,10 @@ export const toggleBlockPost = async (req, res, next) => {
     post.blocked = !post.blocked;
     if (!Array.isArray(post.likes)) post.likes = [];
     await post.save();
-    console.log(
-      "[AdminController:toggleBlockPost] 🔄 Blocked status:",
-      post.blocked
-    );
+    // console.log(
+    //   "[AdminController:toggleBlockPost] 🔄 Blocked status:",
+    //   post.blocked
+    // );
 
     emitPostUpdated(post);
     res.status(200).json({
@@ -311,10 +311,10 @@ export const toggleBlockPost = async (req, res, next) => {
 export const deletePost = async (req, res, next) => {
   try {
     const { postId } = req.params;
-    console.log("[AdminController:deletePost] 🔍 Post ID:", postId);
+    // console.log("[AdminController:deletePost] 🔍 Post ID:", postId);
 
     const deletedPost = await PostModel.findByIdAndDelete(postId);
-    console.log("[AdminController:deletePost] 🗑️ Post deleted:", !!deletedPost);
+    // console.log("[AdminController:deletePost] 🗑️ Post deleted:", !!deletedPost);
 
     if (!deletedPost)
       throw new AppError(
@@ -346,11 +346,11 @@ export const recordReadingTime = async (req, res, next) => {
   try {
     const { postId, timeSpent } = req.body;
     const userId = req.user?._id || null;
-    console.log("[TrackController:recordReadingTime] 🔍 Input:", {
-      postId,
-      timeSpent,
-      userId,
-    });
+    // console.log("[TrackController:recordReadingTime] 🔍 Input:", {
+    //   postId,
+    //   timeSpent,
+    //   userId,
+    // });
 
     if (!postId || typeof timeSpent !== "number" || isNaN(timeSpent)) {
       throw new AppError(
@@ -362,7 +362,7 @@ export const recordReadingTime = async (req, res, next) => {
     }
 
     const post = await PostModel.findById(postId);
-    console.log("[TrackController:recordReadingTime] 📝 Post found:", !!post);
+    // console.log("[TrackController:recordReadingTime] 📝 Post found:", !!post);
 
     if (!post)
       throw new AppError(
@@ -381,10 +381,10 @@ export const recordReadingTime = async (req, res, next) => {
       ip: req.ip,
       userAgent: req.headers["user-agent"],
     });
-    console.log("[TrackController:recordReadingTime] 📈 Traffic recorded");
+    // console.log("[TrackController:recordReadingTime] 📈 Traffic recorded");
 
     await PostModel.findByIdAndUpdate(postId, { $inc: { timeSpent } });
-    console.log("[TrackController:recordReadingTime] 📝 Post updated");
+    // console.log("[TrackController:recordReadingTime] 📝 Post updated");
 
     res.status(200).json({ success: true, message: "Reading time recorded" });
   } catch (error) {
@@ -409,28 +409,28 @@ export const recordReadingTime = async (req, res, next) => {
 export const getReadingDetailsByPost = async (req, res, next) => {
   try {
     const { postId } = req.params;
-    console.log(
-      "[TrackController:getReadingDetailsByPost] 🔍 Post ID:",
-      postId
-    );
+    // console.log(
+    //   "[TrackController:getReadingDetailsByPost] 🔍 Post ID:",
+    //   postId
+    // );
 
     const trafficLogs = await TrafficModel.find({ postId }).populate(
       "userId",
       "name email"
     );
-    console.log(
-      "[TrackController:getReadingDetailsByPost] 📊 Traffic logs:",
-      trafficLogs.length
-    );
+    // console.log(
+    //   "[TrackController:getReadingDetailsByPost] 📊 Traffic logs:",
+    //   trafficLogs.length
+    // );
 
     const totalTime = trafficLogs.reduce(
       (sum, log) => sum + (log.timeSpent || 0),
       0
     );
-    console.log(
-      "[TrackController:getReadingDetailsByPost] ⏱️ Total time:",
-      totalTime
-    );
+    // console.log(
+    //   "[TrackController:getReadingDetailsByPost] ⏱️ Total time:",
+    //   totalTime
+    // );
 
     res.status(200).json({
       success: true,
@@ -465,10 +465,10 @@ export const getSiteAnalytics = async (req, res, next) => {
     const { startDate, endDate } = req.query;
     const start = startDate ? new Date(startDate) : new Date(0);
     const end = endDate ? new Date(endDate) : new Date();
-    console.log("[AnalyticsController:getSiteAnalytics] 📅 Date range:", {
-      start,
-      end,
-    });
+    // console.log("[AnalyticsController:getSiteAnalytics] 📅 Date range:", {
+    //   start,
+    //   end,
+    // });
 
     if (start > end)
       throw new AppError(
@@ -499,10 +499,10 @@ export const getSiteAnalytics = async (req, res, next) => {
         },
       },
     ]);
-    console.log(
-      "[AnalyticsController:getSiteAnalytics] 📊 Traffic stats:",
-      trafficStats[0] || {}
-    );
+    // console.log(
+    //   "[AnalyticsController:getSiteAnalytics] 📊 Traffic stats:",
+    //   trafficStats[0] || {}
+    // );
 
     const topPosts = await TrafficModel.aggregate([
       { $match: { timestamp: { $gte: start, $lte: end } } },
@@ -534,10 +534,10 @@ export const getSiteAnalytics = async (req, res, next) => {
       { $sort: { totalTimeSpent: -1 } },
       { $limit: 5 },
     ]);
-    console.log(
-      "[AnalyticsController:getSiteAnalytics] 📈 Top posts:",
-      topPosts.length
-    );
+    // console.log(
+    //   "[AnalyticsController:getSiteAnalytics] 📈 Top posts:",
+    //   topPosts.length
+    // );
 
     const userStats = await UserModel.aggregate([
       {
@@ -559,10 +559,10 @@ export const getSiteAnalytics = async (req, res, next) => {
       { $sort: { totalTimeSpent: -1 } },
       { $limit: 5 },
     ]);
-    console.log(
-      "[AnalyticsController:getSiteAnalytics] 👥 Top users:",
-      userStats.length
-    );
+    // console.log(
+    //   "[AnalyticsController:getSiteAnalytics] 👥 Top users:",
+    //   userStats.length
+    // );
 
     res.status(200).json({
       success: true,
@@ -598,7 +598,7 @@ export const getSiteAnalytics = async (req, res, next) => {
 // Exports all data as Excel
 export const downloadAllDataCsv = async (req, res, next) => {
   try {
-    console.log("[AdminController:downloadAllDataCsv] 🚀 Starting data export");
+    // console.log("[AdminController:downloadAllDataCsv] 🚀 Starting data export");
 
     // Check admin access
     if (!req.user?.isAdmin) {
@@ -612,18 +612,18 @@ export const downloadAllDataCsv = async (req, res, next) => {
 
     // Fetch data
     const users = await UserModel.find({}).lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 👤 Users fetched:",
-      users.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 👤 Users fetched:",
+    //   users.length
+    // );
 
     const posts = await PostModel.find({})
       .populate("author", "name email")
       .lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 📝 Posts fetched:",
-      posts.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 📝 Posts fetched:",
+    //   posts.length
+    // );
 
     const traffic = await TrafficModel.find({})
       .populate({
@@ -632,10 +632,10 @@ export const downloadAllDataCsv = async (req, res, next) => {
         options: { strictPopulate: false },
       })
       .lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 📈 Traffic fetched:",
-      traffic.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 📈 Traffic fetched:",
+    //   traffic.length
+    // );
 
     // Fetch plans from UserSubscriptionPlan
     const plansRaw = await UserSubscriptionPlan.find({
@@ -643,10 +643,10 @@ export const downloadAllDataCsv = async (req, res, next) => {
     })
       .populate("author", "name email")
       .lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 📋 Plans fetched:",
-      plansRaw.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 📋 Plans fetched:",
+    //   plansRaw.length
+    // );
 
     // Fetch subscriptions from UserSubscription
     const subscriptions = await UserSubscription.find({})
@@ -661,16 +661,16 @@ export const downloadAllDataCsv = async (req, res, next) => {
         options: { strictPopulate: false },
       })
       .lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 💳 Subscriptions fetched:",
-      subscriptions.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 💳 Subscriptions fetched:",
+    //   subscriptions.length
+    // );
 
     const payments = await PaymentModel.find().lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 💸 Payments fetched:",
-      payments.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 💸 Payments fetched:",
+    //   payments.length
+    // );
 
     const wb = XLSX.utils.book_new();
 
@@ -687,10 +687,10 @@ export const downloadAllDataCsv = async (req, res, next) => {
       Location: user.location || "",
       IsEligibleForSubscription: user.isEligibleForSubscription ? "Yes" : "No",
     }));
-    console.log(
-      "[AdminController:downloadAllDataCsv] 📊 Users sheet created:",
-      userData.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 📊 Users sheet created:",
+    //   userData.length
+    // );
     XLSX.utils.book_append_sheet(
       wb,
       XLSX.utils.json_to_sheet(userData),
@@ -715,10 +715,10 @@ export const downloadAllDataCsv = async (req, res, next) => {
           ).toFixed(2)
         : "0.00",
     }));
-    console.log(
-      "[AdminController:downloadAllDataCsv] 📝 Posts sheet created:",
-      postData.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 📝 Posts sheet created:",
+    //   postData.length
+    // );
     XLSX.utils.book_append_sheet(
       wb,
       XLSX.utils.json_to_sheet(postData),
@@ -738,10 +738,10 @@ export const downloadAllDataCsv = async (req, res, next) => {
       IP: record.ip || "",
       UserAgent: record.userAgent || "",
     }));
-    console.log(
-      "[AdminController:downloadAllDataCsv] 📈 Traffic sheet created:",
-      trafficData.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 📈 Traffic sheet created:",
+    //   trafficData.length
+    // );
     XLSX.utils.book_append_sheet(
       wb,
       XLSX.utils.json_to_sheet(trafficData),
@@ -763,11 +763,11 @@ export const downloadAllDataCsv = async (req, res, next) => {
           (sum, sub) => sum + (sub.amountPaid || plan.price || 0),
           0
         );
-        console.log(
-          "[AdminController:downloadAllDataCsv] 📋 Plan stats:",
-          plan._id,
-          { subscriberCount, totalRevenue }
-        );
+        // console.log(
+        //   "[AdminController:downloadAllDataCsv] 📋 Plan stats:",
+        //   plan._id,
+        //   { subscriberCount, totalRevenue }
+        // );
 
         return {
           PlanID: plan._id.toString(),
@@ -787,10 +787,10 @@ export const downloadAllDataCsv = async (req, res, next) => {
         };
       })
     );
-    console.log(
-      "[AdminController:downloadAllDataCsv] 📋 Plans sheet created:",
-      planStats.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 📋 Plans sheet created:",
+    //   planStats.length
+    // );
     XLSX.utils.book_append_sheet(
       wb,
       XLSX.utils.json_to_sheet(planStats),
@@ -811,10 +811,10 @@ export const downloadAllDataCsv = async (req, res, next) => {
       CreatedAt: sub.createdAt ? new Date(sub.createdAt).toISOString() : "",
       AmountPaid: sub.amountPaid ? (sub.amountPaid / 100).toFixed(2) : "0.00",
     }));
-    console.log(
-      "[AdminController:downloadAllDataCsv] 💳 Subscriptions sheet created:",
-      subscriptionData.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 💳 Subscriptions sheet created:",
+    //   subscriptionData.length
+    // );
     XLSX.utils.book_append_sheet(
       wb,
       XLSX.utils.json_to_sheet(subscriptionData),
@@ -833,10 +833,10 @@ export const downloadAllDataCsv = async (req, res, next) => {
         ? new Date(payment.createdAt).toISOString()
         : "",
     }));
-    console.log(
-      "[AdminController:downloadAllDataCsv] 💸 Payments sheet created:",
-      paymentData.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 💸 Payments sheet created:",
+    //   paymentData.length
+    // );
     XLSX.utils.book_append_sheet(
       wb,
       XLSX.utils.json_to_sheet(paymentData),
@@ -845,7 +845,7 @@ export const downloadAllDataCsv = async (req, res, next) => {
 
     // Send as Excel buffer
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
-    console.log("[AdminController:downloadAllDataCsv] 📤 Excel buffer created");
+    // console.log("[AdminController:downloadAllDataCsv] 📤 Excel buffer created");
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -881,10 +881,10 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    console.log(
-      "[AdminController:getAllSubscriptionPlans] 📦 Pagination params:",
-      { page, limit, skip }
-    );
+    // console.log(
+    //   "[AdminController:getAllSubscriptionPlans] 📦 Pagination params:",
+    //   { page, limit, skip }
+    // );
 
     if (!req.user?.isAdmin) {
       throw new AppError(
@@ -909,10 +909,10 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
       .populate("author", "name")
       .lean();
 
-    console.log(
-      "[AdminController:getAllSubscriptionPlans] 📋 Plans fetched:",
-      plans.length
-    );
+    // console.log(
+    //   "[AdminController:getAllSubscriptionPlans] 📋 Plans fetched:",
+    //   plans.length
+    // );
 
     const enrichedPlans = await Promise.all(
       plans.map(async (plan) => {
@@ -930,11 +930,11 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
               : sum,
           0
         );
-        console.log(
-          "[AdminController:getAllSubscriptionPlans] 📊 Plan stats:",
-          plan._id,
-          { activeSubscribers, totalRevenue }
-        );
+        // console.log(
+        //   "[AdminController:getAllSubscriptionPlans] 📊 Plan stats:",
+        //   plan._id,
+        //   { activeSubscribers, totalRevenue }
+        // );
 
         return {
           ...plan,
@@ -985,17 +985,17 @@ export const toggleUserEligibility = async (req, res, next) => {
       );
 
     const { userId, enable } = req.body;
-    console.log("[AdminController:toggleUserEligibility] 🔍 Input:", {
-      userId,
-      enable,
-    });
+    // console.log("[AdminController:toggleUserEligibility] 🔍 Input:", {
+    //   userId,
+    //   enable,
+    // });
 
     validateObjectId(userId, "User ID");
     const user = await UserModel.findById(userId);
-    console.log(
-      "[AdminController:toggleUserEligibility] 👤 User found:",
-      !!user
-    );
+    // console.log(
+    //   "[AdminController:toggleUserEligibility] 👤 User found:",
+    //   !!user
+    // );
 
     if (!user)
       throw new AppError(
@@ -1007,10 +1007,10 @@ export const toggleUserEligibility = async (req, res, next) => {
 
     user.isEligibleForSubscription = enable;
     await user.save();
-    console.log(
-      "[AdminController:toggleUserEligibility] 🔄 Eligibility updated:",
-      user.isEligibleForSubscription
-    );
+    // console.log(
+    //   "[AdminController:toggleUserEligibility] 🔄 Eligibility updated:",
+    //   user.isEligibleForSubscription
+    // );
 
     await recordActivity({
       userId: req.user._id.toString(),
@@ -1067,15 +1067,15 @@ export const updateGlobalEligibilityCriteria = async (req, res, next) => {
       minEngagementRate = 0.05,
       minAccountAgeDays = 30,
     } = req.body;
-    console.log(
-      "[AdminController:updateGlobalEligibilityCriteria] 🔍 Criteria:",
-      {
-        minFollowers,
-        minPosts,
-        minEngagementRate,
-        minAccountAgeDays,
-      }
-    );
+    // console.log(
+    //   "[AdminController:updateGlobalEligibilityCriteria] 🔍 Criteria:",
+    //   {
+    //     minFollowers,
+    //     minPosts,
+    //     minEngagementRate,
+    //     minAccountAgeDays,
+    //   }
+    // );
 
     // Validate all fields
     if (minFollowers < 0 || minPosts < 0 || minAccountAgeDays < 0) {
@@ -1100,10 +1100,10 @@ export const updateGlobalEligibilityCriteria = async (req, res, next) => {
       { minFollowers, minPosts, minEngagementRate, minAccountAgeDays },
       { upsert: true, new: true }
     );
-    console.log(
-      "[AdminController:updateGlobalEligibilityCriteria] 📋 Config updated:",
-      config
-    );
+    // console.log(
+    //   "[AdminController:updateGlobalEligibilityCriteria] 📋 Config updated:",
+    //   config
+    // );
 
     await recordActivity({
       userId: req.user._id.toString(),
@@ -1148,11 +1148,11 @@ export const setUserEligibilityOverride = async (req, res, next) => {
 
     const { userId } = req.params;
     const { isEligibleForSubscription, bypassSubscriptionCriteria } = req.body;
-    console.log("[AdminController:setUserEligibilityOverride] 🔍 Input:", {
-      userId,
-      isEligibleForSubscription,
-      bypassSubscriptionCriteria,
-    });
+    // console.log("[AdminController:setUserEligibilityOverride] 🔍 Input:", {
+    //   userId,
+    //   isEligibleForSubscription,
+    //   bypassSubscriptionCriteria,
+    // });
 
     validateObjectId(userId, "User ID");
 
@@ -1168,13 +1168,13 @@ export const setUserEligibilityOverride = async (req, res, next) => {
       },
       { new: true }
     );
-    console.log(
-      "[AdminController:setUserEligibilityOverride] 👤 User updated:",
-      {
-        isEligibleForSubscription: user.isEligibleForSubscription,
-        bypassSubscriptionCriteria: user.bypassSubscriptionCriteria,
-      }
-    );
+    // console.log(
+    //   "[AdminController:setUserEligibilityOverride] 👤 User updated:",
+    //   {
+    //     isEligibleForSubscription: user.isEligibleForSubscription,
+    //     bypassSubscriptionCriteria: user.bypassSubscriptionCriteria,
+    //   }
+    // );
 
     if (!user)
       throw new AppError(
@@ -1219,14 +1219,14 @@ export const setUserEligibilityOverride = async (req, res, next) => {
 export const checkUserEligibility = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    console.log("[AdminController:checkUserEligibility] 🔍 User ID:", userId);
+    // console.log("[AdminController:checkUserEligibility] 🔍 User ID:", userId);
 
     validateObjectId(userId, "User ID");
     const user = await UserModel.findById(userId).lean();
-    console.log(
-      "[AdminController:checkUserEligibility] 👤 User found:",
-      !!user
-    );
+    // console.log(
+    //   "[AdminController:checkUserEligibility] 👤 User found:",
+    //   !!user
+    // );
 
     if (!user)
       throw new AppError(
@@ -1241,10 +1241,10 @@ export const checkUserEligibility = async (req, res, next) => {
       author: userId,
       isPublished: true,
     });
-    console.log("[AdminController:checkUserEligibility] 📊 Stats:", {
-      followerCount,
-      postCount,
-    });
+    // console.log("[AdminController:checkUserEligibility] 📊 Stats:", {
+    //   followerCount,
+    //   postCount,
+    // });
 
     const posts = await PostModel.find({
       author: userId,
@@ -1258,10 +1258,10 @@ export const checkUserEligibility = async (req, res, next) => {
 
     const accountAgeDays =
       (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-    console.log(
-      "[AdminController:checkUserEligibility] ⏳ Account age (days):",
-      accountAgeDays
-    );
+    // console.log(
+    //   "[AdminController:checkUserEligibility] ⏳ Account age (days):",
+    //   accountAgeDays
+    // );
 
     let config = await SubscriptionConfig.findOne({
       key: "subscriptionEligibility",
@@ -1279,10 +1279,10 @@ export const checkUserEligibility = async (req, res, next) => {
     const isEligible =
       user.isEligibleForSubscription ||
       (followerCount >= config.minFollowers && postCount >= config.minPosts);
-    console.log(
-      "[AdminController:checkUserEligibility] ✅ Eligibility:",
-      isEligible
-    );
+    // console.log(
+    //   "[AdminController:checkUserEligibility] ✅ Eligibility:",
+    //   isEligible
+    // );
 
     const response = {
       success: true,
@@ -1298,10 +1298,10 @@ export const checkUserEligibility = async (req, res, next) => {
       },
       manuallySet: !!user.isEligibleForSubscription,
     };
-    console.log(
-      "[AdminController:checkUserEligibility] 📤 Response:",
-      response
-    );
+    // console.log(
+    //   "[AdminController:checkUserEligibility] 📤 Response:",
+    //   response
+    // );
     res.status(200).json(response);
   } catch (error) {
     console.error(
@@ -1333,10 +1333,10 @@ export const toggleSubscriptionPlanStatus = async (req, res, next) => {
       );
 
     const { planId, status } = req.body;
-    console.log("[AdminController:toggleSubscriptionPlanStatus] 🔍 Input:", {
-      planId,
-      status,
-    });
+    // console.log("[AdminController:toggleSubscriptionPlanStatus] 🔍 Input:", {
+    //   planId,
+    //   status,
+    // });
 
     validateObjectId(planId, "Plan ID");
     if (!["active", "suspended"].includes(status)) {
@@ -1349,10 +1349,10 @@ export const toggleSubscriptionPlanStatus = async (req, res, next) => {
     }
 
     const plan = await SubscriptionPlan.findById(planId);
-    console.log(
-      "[AdminController:toggleSubscriptionPlanStatus] 📋 Plan found:",
-      !!plan
-    );
+    // console.log(
+    //   "[AdminController:toggleSubscriptionPlanStatus] 📋 Plan found:",
+    //   !!plan
+    // );
 
     if (!plan)
       throw new AppError(
@@ -1364,10 +1364,10 @@ export const toggleSubscriptionPlanStatus = async (req, res, next) => {
 
     plan.status = status;
     await plan.save();
-    console.log(
-      "[AdminController:toggleSubscriptionPlanStatus] 🔄 Plan status:",
-      plan.status
-    );
+    // console.log(
+    //   "[AdminController:toggleSubscriptionPlanStatus] 🔄 Plan status:",
+    //   plan.status
+    // );
 
     await recordActivity({
       userId: req.user._id.toString(),
@@ -1410,17 +1410,17 @@ export const grantSubscriptionAccess = async (req, res, next) => {
       );
 
     const { userId, grant } = req.body;
-    console.log("[AdminController:grantSubscriptionAccess] 🔍 Input:", {
-      userId,
-      grant,
-    });
+    // console.log("[AdminController:grantSubscriptionAccess] 🔍 Input:", {
+    //   userId,
+    //   grant,
+    // });
 
     validateObjectId(userId, "User ID");
     const user = await UserModel.findById(userId);
-    console.log(
-      "[AdminController:grantSubscriptionAccess] 👤 User found:",
-      !!user
-    );
+    // console.log(
+    //   "[AdminController:grantSubscriptionAccess] 👤 User found:",
+    //   !!user
+    // );
 
     if (!user)
       throw new AppError(
@@ -1432,10 +1432,10 @@ export const grantSubscriptionAccess = async (req, res, next) => {
 
     user.isEligibleForSubscription = grant;
     await user.save();
-    console.log(
-      "[AdminController:grantSubscriptionAccess] 🔄 Eligibility updated:",
-      user.isEligibleForSubscription
-    );
+    // console.log(
+    //   "[AdminController:grantSubscriptionAccess] 🔄 Eligibility updated:",
+    //   user.isEligibleForSubscription
+    // );
 
     await recordActivity({
       userId: req.user._id.toString(),

@@ -11,26 +11,25 @@ const connectDb = async () => {
       minPoolSize: 2,
     });
 
-    console.log(`✅ MongoDB connected to host: ${connect.connection.host}`);
-
-    mongoose.connection.on("connected", () =>
-      console.log("🟢 Mongoose event: connected")
-    );
-
-    mongoose.connection.on("disconnected", () =>
-      console.warn("🟡 Mongoose event: disconnected")
-    );
-
+    // ✅ Only listen to errors
     mongoose.connection.on("error", (err) =>
       console.error("🔴 Mongoose event: error", err)
     );
 
+    // Optional: remove these if you want ZERO logs unless it's an error
+    // mongoose.connection.on("connected", () =>
+    //   console.log("🟢 Mongoose event: connected")
+    // );
+    // mongoose.connection.on("disconnected", () =>
+    //   console.warn("🟡 Mongoose event: disconnected")
+    // );
+
     process.on("SIGINT", async () => {
       await mongoose.connection.close();
-      console.log("🔌 Mongoose connection closed on app termination");
+      // You may also remove this if not needed
+      // console.log("🔌 Mongoose connection closed on app termination");
       process.exit(0);
     });
-
   } catch (error) {
     console.error("❌ MongoDB connection error:", error.message);
     console.error("🔍 Full error:", error);

@@ -42,7 +42,7 @@ const SearchModal = ({ isOpen, onClose }) => {
   return (
     <AnimatePresence
       onExitComplete={() => {
-        console.log("Modal exit complete");
+        // console.log("Modal exit complete");
         document.body.style.overflow = "";
       }}
     >
@@ -66,7 +66,7 @@ const SearchModal = ({ isOpen, onClose }) => {
           >
             <button
               onClick={() => {
-                console.log("Close button clicked");
+                // console.log("Close button clicked");
                 onClose();
               }}
               className="absolute -top-4 -right-4 bg-red-600 text-white rounded-full p-2 hover:bg-red-700 dark:hover:bg-red-500 transition duration-300 shadow-md"

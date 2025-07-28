@@ -130,12 +130,12 @@ const Insights = () => {
   const offlineUsers = Math.max(0, totalUsers - onlineUsersCount);
   const uniqueGuestCount = useMemo(() => {
     const count = new Set(guestVisits.map((g) => g.guestId)).size;
-    console.log(
-      "[Insights] Calculated uniqueGuestCount:",
-      count,
-      "from guestVisits:",
-      guestVisits
-    );
+    // console.log(
+    //   "[Insights] Calculated uniqueGuestCount:",
+    //   count,
+    //   "from guestVisits:",
+    //   guestVisits
+    // );
     return count;
   }, [guestVisits]);
 
@@ -151,7 +151,7 @@ const Insights = () => {
       { name: "Unique Posts", value: analytics.traffic?.uniquePostsCount || 0 },
       { name: "Guest Users", value: uniqueGuestCount || 0 },
     ];
-    console.log("[Insights] Pie chart data:", data);
+    // console.log("[Insights] Pie chart data:", data);
     return data;
   }, [analytics.traffic, uniqueGuestCount]);
 
@@ -164,7 +164,7 @@ const Insights = () => {
 
   useEffect(() => {
     if (currentUser && currentUser._id) {
-      console.log("[Insights] 🔒 Logged-in user — skip guest dispatch");
+      // console.log("[Insights] 🔒 Logged-in user — skip guest dispatch");
       return;
     }
 
@@ -177,15 +177,15 @@ const Insights = () => {
       lastVisit: new Date().toISOString(),
       userAgent: navigator.userAgent || "Unknown",
     };
-    console.log("[Insights] Dispatching initial guest visit:", guestData);
+    // console.log("[Insights] Dispatching initial guest visit:", guestData);
     dispatch(addGuestVisit(guestData));
   }, [dispatch, currentUser]);
 
   useEffect(() => {
-    console.log(
-      "[Insights] Fetching site analytics with date range:",
-      dateRange
-    );
+    // console.log(
+    //   "[Insights] Fetching site analytics with date range:",
+    //   dateRange
+    // );
     dispatch(
       fetchSiteAnalytics({
         startDate: dateRange.startDate,
@@ -196,9 +196,9 @@ const Insights = () => {
   }, [dispatch, dateRange]);
 
   const handleDateChange = (e) => {
-    console.log("[Insights] Date range changed:", {
-      [e.target.name]: e.target.value,
-    });
+    // console.log("[Insights] Date range changed:", {
+    //   [e.target.name]: e.target.value,
+    // });
     setDateRange({ ...dateRange, [e.target.name]: e.target.value });
   };
 

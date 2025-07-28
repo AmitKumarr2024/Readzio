@@ -208,7 +208,7 @@ export const searchUsers = async (req, res, next) => {
   try {
     const query = req.query.query?.trim();
 
-    console.log(`[searchUsers] Query: "${query}"`);
+    // console.log(`[searchUsers] Query: "${query}"`);
 
     if (!query || query.length < 3) {
       throw new AppError(

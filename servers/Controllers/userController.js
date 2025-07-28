@@ -928,7 +928,7 @@ export const getAllFeedbacks = async (req, res, next) => {
       return next(new AppError("Access denied: Admins only", 403));
     }
 
-    console.log("[getAllFeedbacks] 🔍 Fetching feedback...");
+    // console.log("[getAllFeedbacks] 🔍 Fetching feedback...");
 
     const feedbackUsers = await UserModel.find({
       "feedbackPrompt.responded": true,
@@ -939,17 +939,17 @@ export const getAllFeedbacks = async (req, res, next) => {
       .sort({ "feedbackPrompt.shownAt": -1 })
       .lean();
 
-    console.log(
-      `[getAllFeedbacks] 🧾 Found ${feedbackUsers.length} users with feedback`
-    );
+    // console.log(
+    //   `[getAllFeedbacks] 🧾 Found ${feedbackUsers.length} users with feedback`
+    // );
 
     const feedbacks = feedbackUsers.map((user) => {
-      console.log("🧠 Feedback user:", {
-        name: user.name,
-        rating: user.feedbackPrompt?.rating,
-        message: user.feedbackPrompt?.message,
-        shownAt: user.feedbackPrompt?.shownAt,
-      });
+      // console.log("🧠 Feedback user:", {
+      //   name: user.name,
+      //   rating: user.feedbackPrompt?.rating,
+      //   message: user.feedbackPrompt?.message,
+      //   shownAt: user.feedbackPrompt?.shownAt,
+      // });
 
       return {
         userId: user._id,

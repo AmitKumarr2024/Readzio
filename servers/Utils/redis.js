@@ -3,7 +3,8 @@ import Redis from "ioredis";
 const redisHost = process.env.REDIS_HOST || "localhost";
 const redisPort = parseInt(process.env.REDIS_PORT, 10) || 6379;
 const redisPassword = process.env.REDIS_PASSWORD || undefined;
-const redisTls = process.env.REDIS_TLS === "true" ? { rejectUnauthorized: false } : undefined;
+const redisTls =
+  process.env.REDIS_TLS === "true" ? { rejectUnauthorized: false } : undefined;
 
 if (!redisHost || !redisPort) {
   console.error("[Redis:Config] REDIS_HOST or REDIS_PORT missing");
@@ -23,9 +24,9 @@ const redis = new Redis({
   },
 });
 
-// ✅ Event listeners
+// ✅ Event listeners — only error logs retained
 redis.on("connect", () => {
-  console.log("[Redis:Connect] Connected to Redis", { host: redisHost, port: redisPort });
+  // Connection success — no log needed
 });
 
 redis.on("error", (err) => {
@@ -38,10 +39,10 @@ redis.on("error", (err) => {
 });
 
 redis.on("reconnecting", (delay) => {
-  console.log("[Redis:Reconnecting] Attempting reconnect in", delay, "ms");
+  // Reconnecting — no log
 });
 
-// ✅ Export standard Redis instance for Socket.IO pub/sub adapter
+// ✅ Export Redis instance for app use
 export default redis;
 
 // 🔄 OPTIONAL: For Redis Cluster (Uncomment to use)

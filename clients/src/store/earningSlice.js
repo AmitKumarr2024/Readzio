@@ -5,10 +5,10 @@ import axiosInstance from "../connection/axiosInstance";
 export const fetchUserEarnings = createAsyncThunk(
   "earnings/fetchUserEarnings",
   async (_, { rejectWithValue }) => {
-    console.log("📩 Fetching user earnings");
+    // console.log("📩 Fetching user earnings");
     try {
       const response = await axiosInstance.get("/earning/earnings");
-      console.log("✅ Fetched user earnings:", response.data);
+      // console.log("✅ Fetched user earnings:", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -26,13 +26,13 @@ export const fetchUserEarnings = createAsyncThunk(
 export const fetchAllUsersEarnings = createAsyncThunk(
   "earnings/fetchAllUsersEarnings",
   async ({ page = 1, limit = 10, from, to }, { rejectWithValue }) => {
-    console.log("📩 Fetching all users' earnings", { page, limit, from, to });
+    // console.log("📩 Fetching all users' earnings", { page, limit, from, to });
     try {
       const query = new URLSearchParams({ page, limit });
       if (from) query.append("from", from);
       if (to) query.append("to", to);
       const response = await axiosInstance.get(`/earning/admin/earnings?${query}`);
-      console.log("✅ Fetched all users' earnings:", response.data);
+      // console.log("✅ Fetched all users' earnings:", response.data);
       return {
         earnings: response.data.earnings || [],
         currentPage: response.data.currentPage || 1,
@@ -55,10 +55,10 @@ export const fetchAllUsersEarnings = createAsyncThunk(
 export const fetchEarningsByUserId = createAsyncThunk(
   "earnings/fetchEarningsByUserId",
   async (userId, { rejectWithValue }) => {
-    console.log("📩 Fetching earnings for user:", userId);
+    // console.log("📩 Fetching earnings for user:", userId);
     try {
       const response = await axiosInstance.get(`/earning/admin/user/${userId}`);
-      console.log("✅ Fetched user earnings:", response.data);
+      // console.log("✅ Fetched user earnings:", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -76,10 +76,10 @@ export const fetchEarningsByUserId = createAsyncThunk(
 export const fetchEarningsSummary = createAsyncThunk(
   "earnings/fetchEarningsSummary",
   async (_, { rejectWithValue }) => {
-    console.log("📩 Fetching earnings summary");
+    // console.log("📩 Fetching earnings summary");
     try {
       const response = await axiosInstance.get("/earning/admin/earnings");
-      console.log("✅ Fetched earnings summary:", response.data);
+      // console.log("✅ Fetched earnings summary:", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -97,12 +97,12 @@ export const fetchEarningsSummary = createAsyncThunk(
 export const processBulkPayouts = createAsyncThunk(
   "earnings/processBulkPayouts",
   async (users, { rejectWithValue }) => {
-    console.log("📩 Processing bulk payouts:", users);
+    // console.log("📩 Processing bulk payouts:", users);
     try {
       const response = await axiosInstance.post("/earning/admin/payouts", {
         users,
       });
-      console.log("✅ Payouts processed:", response.data);
+      // console.log("✅ Payouts processed:", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -120,12 +120,12 @@ export const processBulkPayouts = createAsyncThunk(
 export const refundPayout = createAsyncThunk(
   "earnings/refundPayout",
   async (paymentId, { rejectWithValue }) => {
-    console.log("📩 Refunding payout:", paymentId);
+    // console.log("📩 Refunding payout:", paymentId);
     try {
       const response = await axiosInstance.post("/earning/admin/refund", {
         paymentId,
       });
-      console.log("✅ Payout refunded:", response.data);
+      // console.log("✅ Payout refunded:", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -143,10 +143,10 @@ export const refundPayout = createAsyncThunk(
 export const resetUserEarnings = createAsyncThunk(
   "earnings/resetUserEarnings",
   async (userId, { rejectWithValue }) => {
-    console.log("📩 Resetting earnings for user:", userId);
+    // console.log("📩 Resetting earnings for user:", userId);
     try {
       const response = await axiosInstance.delete(`/earning/admin/user/${userId}`);
-      console.log("✅ User earnings reset:", response.data);
+      // console.log("✅ User earnings reset:", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -164,10 +164,10 @@ export const resetUserEarnings = createAsyncThunk(
 export const recordSubscriptionPayment = createAsyncThunk(
   "earnings/recordSubscriptionPayment",
   async (paymentData, { rejectWithValue }) => {
-    console.log("📩 Recording subscription payment:", paymentData);
+    // console.log("📩 Recording subscription payment:", paymentData);
     try {
       const response = await axiosInstance.post("/earning/subscription", paymentData);
-      console.log("✅ Subscription payment recorded:", response.data);
+      // console.log("✅ Subscription payment recorded:", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -185,10 +185,10 @@ export const recordSubscriptionPayment = createAsyncThunk(
 export const recordAdsPayment = createAsyncThunk(
   "earnings/recordAdsPayment",
   async (paymentData, { rejectWithValue }) => {
-    console.log("📩 Recording ads payment:", paymentData);
+    // console.log("📩 Recording ads payment:", paymentData);
     try {
       const response = await axiosInstance.post("/earning/ads", paymentData);
-      console.log("✅ Ads payment recorded:", response.data);
+      // console.log("✅ Ads payment recorded:", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -206,12 +206,12 @@ export const recordAdsPayment = createAsyncThunk(
 export const distributeAdsRevenue = createAsyncThunk(
   "earnings/distributeAdsRevenue",
   async (totalAmount, { rejectWithValue }) => {
-    console.log("📩 Distributing ads revenue:", totalAmount);
+    // console.log("📩 Distributing ads revenue:", totalAmount);
     try {
       const response = await axiosInstance.post("/earning/distribute", {
         totalAmount,
       });
-      console.log("✅ Ads revenue distributed:", response.data);
+      // console.log("✅ Ads revenue distributed:", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -254,15 +254,15 @@ const earningSlice = createSlice({
   },
   reducers: {
     clearError: (state) => {
-      console.log("🧹 Clearing error state");
+      // console.log("🧹 Clearing error state");
       state.error = null;
     },
     clearSuccess: (state) => {
-      console.log("🧹 Clearing success state");
+      // console.log("🧹 Clearing success state");
       state.success = null;
     },
     resetEarnings: (state) => {
-      console.log("🔄 Resetting earnings state");
+      // console.log("🔄 Resetting earnings state");
       state.userEarnings = {
         subscriptionEarnings: 0,
         adsEarnings: 0,
@@ -282,28 +282,28 @@ const earningSlice = createSlice({
     // Fetch user earnings
     builder
       .addCase(fetchUserEarnings.pending, (state) => {
-        console.log("⏳ Fetch user earnings pending");
+        // console.log("⏳ Fetch user earnings pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchUserEarnings.fulfilled, (state, action) => {
-        console.log("✅ Fetch user earnings fulfilled");
+        // console.log("✅ Fetch user earnings fulfilled");
         state.loading = false;
         state.userEarnings = action.payload;
       })
       .addCase(fetchUserEarnings.rejected, (state, action) => {
-        console.log("❌ Fetch user earnings rejected");
+        // console.log("❌ Fetch user earnings rejected");
         state.loading = false;
         state.error = action.payload;
       })
       // Fetch all users' earnings (admin)
       .addCase(fetchAllUsersEarnings.pending, (state) => {
-        console.log("⏳ Fetch all users earnings pending");
+        // console.log("⏳ Fetch all users earnings pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchAllUsersEarnings.fulfilled, (state, action) => {
-        console.log("✅ Fetch all users earnings fulfilled:", action.payload);
+        // console.log("✅ Fetch all users earnings fulfilled:", action.payload);
         state.loading = false;
         state.paginatedUsersEarnings = action.payload.earnings || [];
         state.allUsersEarnings = action.payload.earnings || [];
@@ -314,19 +314,19 @@ const earningSlice = createSlice({
         };
       })
       .addCase(fetchAllUsersEarnings.rejected, (state, action) => {
-        console.log("❌ Fetch all users earnings rejected:", action.payload);
+        // console.log("❌ Fetch all users earnings rejected:", action.payload);
         state.loading = false;
         state.error = action.payload;
         state.pagination = { currentPage: 1, totalPages: 1, totalCount: 0 };
       })
       // Fetch earnings by user ID (admin)
       .addCase(fetchEarningsByUserId.pending, (state) => {
-        console.log("⏳ Fetch earnings by user ID pending");
+        // console.log("⏳ Fetch earnings by user ID pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchEarningsByUserId.fulfilled, (state, action) => {
-        console.log("✅ Fetch earnings by user ID fulfilled");
+        // console.log("✅ Fetch earnings by user ID fulfilled");
         state.loading = false;
         const userId = action.payload?.user?._id;
         if (userId) {
@@ -334,70 +334,70 @@ const earningSlice = createSlice({
         }
       })
       .addCase(fetchEarningsByUserId.rejected, (state, action) => {
-        console.log("❌ Fetch earnings by user ID rejected");
+        // console.log("❌ Fetch earnings by user ID rejected");
         state.loading = false;
         state.error = action.payload;
       })
       // Fetch earnings summary (admin)
       .addCase(fetchEarningsSummary.pending, (state) => {
-        console.log("⏳ Fetch earnings summary pending");
+        // console.log("⏳ Fetch earnings summary pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchEarningsSummary.fulfilled, (state, action) => {
-        console.log("✅ Fetch earnings summary fulfilled");
+        // console.log("✅ Fetch earnings summary fulfilled");
         state.loading = false;
         state.summary = action.payload;
       })
       .addCase(fetchEarningsSummary.rejected, (state, action) => {
-        console.log("❌ Fetch earnings summary rejected");
+        // console.log("❌ Fetch earnings summary rejected");
         state.loading = false;
         state.error = action.payload;
       })
       // Process bulk payouts (admin)
       .addCase(processBulkPayouts.pending, (state) => {
-        console.log("⏳ Process bulk payouts pending");
+        // console.log("⏳ Process bulk payouts pending");
         state.loading = true;
         state.error = null;
         state.success = null;
       })
       .addCase(processBulkPayouts.fulfilled, (state, action) => {
-        console.log("✅ Process bulk payouts fulfilled");
+        // console.log("✅ Process bulk payouts fulfilled");
         state.loading = false;
         state.payouts = action.payload.payouts;
         state.success = action.payload.message;
       })
       .addCase(processBulkPayouts.rejected, (state, action) => {
-        console.log("❌ Process bulk payouts rejected");
+        // console.log("❌ Process bulk payouts rejected");
         state.loading = false;
         state.error = action.payload;
       })
       // Refund payout (admin)
       .addCase(refundPayout.pending, (state) => {
-        console.log("⏳ Refund payout pending");
+        // console.log("⏳ Refund payout pending");
         state.loading = true;
         state.error = null;
         state.success = null;
       })
       .addCase(refundPayout.fulfilled, (state, action) => {
-        console.log("✅ Refund payout fulfilled");
+        // console.log("✅ Refund payout fulfilled");
         state.loading = false;
         state.success = action.payload.message;
       })
       .addCase(refundPayout.rejected, (state, action) => {
-        console.log("❌ Refund payout rejected");
+        // console.log("❌ Refund payout rejected");
         state.loading = false;
         state.error = action.payload;
       })
       // Reset user earnings (admin)
       .addCase(resetUserEarnings.pending, (state) => {
-        console.log("⏳ Reset user earnings pending");
+        // console.log("⏳ Reset user earnings pending");
         state.loading = true;
         state.error = null;
         state.success = null;
       })
       .addCase(resetUserEarnings.fulfilled, (state, action) => {
-        console.log("✅ Reset user earnings fulfilled");
+        // console.log("✅ Reset user earnings fulfilled");
         state.loading = false;
         state.success = action.payload.message;
         state.userEarningsById = {};
@@ -409,61 +409,61 @@ const earningSlice = createSlice({
         );
       })
       .addCase(resetUserEarnings.rejected, (state, action) => {
-        console.log("❌ Reset user earnings rejected");
+        // console.log("❌ Reset user earnings rejected");
         state.loading = false;
         state.error = action.payload;
       })
       // Record subscription payment
       .addCase(recordSubscriptionPayment.pending, (state) => {
-        console.log("⏳ Record subscription payment pending");
+        // console.log("⏳ Record subscription payment pending");
         state.loading = true;
         state.error = null;
         state.success = null;
       })
       .addCase(recordSubscriptionPayment.fulfilled, (state, action) => {
-        console.log("✅ Record subscription payment fulfilled");
+        // console.log("✅ Record subscription payment fulfilled");
         state.loading = false;
         state.success = action.payload.message;
         state.userEarnings.paymentRecords.push(action.payload.payment);
       })
       .addCase(recordSubscriptionPayment.rejected, (state, action) => {
-        console.log("❌ Record subscription payment rejected");
+        // console.log("❌ Record subscription payment rejected");
         state.loading = false;
         state.error = action.payload;
       })
       // Record ads payment
       .addCase(recordAdsPayment.pending, (state) => {
-        console.log("⏳ Record ads payment pending");
+        // console.log("⏳ Record ads payment pending");
         state.loading = true;
         state.error = null;
         state.success = null;
       })
       .addCase(recordAdsPayment.fulfilled, (state, action) => {
-        console.log("✅ Record ads payment fulfilled");
+        // console.log("✅ Record ads payment fulfilled");
         state.loading = false;
         state.success = action.payload.message;
         state.userEarnings.paymentRecords.push(action.payload.payment);
       })
       .addCase(recordAdsPayment.rejected, (state, action) => {
-        console.log("❌ Record ads payment rejected");
+        // console.log("❌ Record ads payment rejected");
         state.loading = false;
         state.error = action.payload;
       })
       // Distribute ads revenue
       .addCase(distributeAdsRevenue.pending, (state) => {
-        console.log("⏳ Distribute ads revenue pending");
+        // console.log("⏳ Distribute ads revenue pending");
         state.loading = true;
         state.error = null;
         state.success = null;
       })
       .addCase(distributeAdsRevenue.fulfilled, (state, action) => {
-        console.log("✅ Distribute ads revenue fulfilled");
+        // console.log("✅ Distribute ads revenue fulfilled");
         state.loading = false;
         state.success = action.payload.message;
         state.payouts = action.payload.payments || [];
       })
       .addCase(distributeAdsRevenue.rejected, (state, action) => {
-        console.log("❌ Distribute ads revenue rejected");
+        // console.log("❌ Distribute ads revenue rejected");
         state.loading = false;
         state.error = action.payload;
       });

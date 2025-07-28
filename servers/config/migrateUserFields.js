@@ -10,23 +10,23 @@ export async function migrateUserFields() {
       serverSelectionTimeoutMS: 10000,
       family: 4,
     });
-    console.log("Successfully Connected with MongoDb");
+    // console.log("Successfully Connected with MongoDb");
 
     // Update documents where followers is not an array
     const followersResult = await UserModel.updateMany(
       { followers: { $not: { $type: "array" } } },
       { $set: { followers: [] } }
     );
-    console.log(`Updated ${followersResult.modifiedCount} users' followers field`);
+    // console.log(`Updated ${followersResult.modifiedCount} users' followers field`);
 
     // Update documents where following is not an array
     const followingResult = await UserModel.updateMany(
       { following: { $not: { $type: "array" } } },
       { $set: { following: [] } }
     );
-    console.log(`Updated ${followingResult.modifiedCount} users' following field`);
+    // console.log(`Updated ${followingResult.modifiedCount} users' following field`);
 
-    console.log("Migration completed successfully");
+    // console.log("Migration completed successfully");
   } catch (error) {
     console.error("Migration failed:", error);
   } finally {

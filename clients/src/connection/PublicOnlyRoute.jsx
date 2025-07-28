@@ -11,9 +11,9 @@ const PublicOnlyRoute = ({ children }) => {
     (state) => state.auth
   );
 
-  console.log("isAuthenticated:", isAuthenticated);
-  console.log("authInitialized:", authInitialized);
-  console.log("location.state:", location.state);
+  // console.log("isAuthenticated:", isAuthenticated);
+  // console.log("authInitialized:", authInitialized);
+  // console.log("location.state:", location.state);
 
   useEffect(() => {
     if (!authInitialized && !isCheckingAuth) {

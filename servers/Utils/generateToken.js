@@ -22,10 +22,10 @@ export const generateToken = (user, res) => {
     path: "/",
   });
 
-  console.log("[generateToken] Token created:", {
-    userId: user._id,
-    role,
-    isAdmin,
-  });
+  // console.log("[generateToken] Token created:", {
+  //   userId: user._id,
+  //   role,
+  //   isAdmin,
+  // });
   return token;
 };

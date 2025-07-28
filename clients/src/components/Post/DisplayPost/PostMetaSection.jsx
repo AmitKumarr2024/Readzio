@@ -14,13 +14,13 @@ const PostMetaSection = ({
   formatTime,
   setIsDeleteModalOpen,
 }) => {
-  console.log("[PostMetaSection] Props:", {
-    post,
-    isUserSubscribed,
-    isAuthor,
-    isPostRestricted,
-    categoryMap,
-  });
+  // console.log("[PostMetaSection] Props:", {
+  //   post,
+  //   isUserSubscribed,
+  //   isAuthor,
+  //   isPostRestricted,
+  //   categoryMap,
+  // });
   return (
     <div className="mb-8">
       <div className="flex gap-3 mb-6 flex-wrap">

@@ -33,7 +33,7 @@ import guestRoutes from "./Routes/guestRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 
-console.log("[Server:Startup] Initializing Express server");
+// console.log("[Server:Startup] Initializing Express server");
 
 const app = express();
 const server = http.createServer(app);
@@ -60,7 +60,7 @@ app.use((req, res, next) => {
 
 // Compression middleware
 app.use(compression());
-console.log("[Server:Middleware] Compression applied");
+// console.log("[Server:Middleware] Compression applied");
 
 // CORS config
 const allowedOrigins = [
@@ -70,13 +70,13 @@ const allowedOrigins = [
   "https://inksha-uedq.onrender.com",
 ].filter(Boolean);
 
-console.log("[Server:CORS] Allowed origins:", allowedOrigins);
+// console.log("[Server:CORS] Allowed origins:", allowedOrigins);
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
-        console.log("[Server:CORS] ✅ Allowed:", origin);
+        // console.log("[Server:CORS] ✅ Allowed:", origin);
         return callback(null, true);
       }
       console.error("[Server:CORS] ❌ Blocked:", origin);
@@ -92,7 +92,7 @@ app.use(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
-console.log("[Server:Middleware] JSON, URL-encoded, cookie-parser applied");
+// console.log("[Server:Middleware] JSON, URL-encoded, cookie-parser applied");
 
 // 🔌 Mount API Routes
 const routes = [
@@ -116,7 +116,7 @@ const routes = [
 ];
 
 routes.forEach(([path, router]) => {
-  console.log(`🔌 Mounting route: ${path}`);
+  // console.log(`🔌 Mounting route: ${path}`);
   app.use(path, router);
 });
 
@@ -128,7 +128,7 @@ const clientIndexPath = path.join(clientPath, "index.html");
 // Log all requests to /public
 // Now correctly targets servers/public
 const publicPath = path.join(__dirname, "servers", "public");
-console.log("✅ Public folder served at:", publicPath);
+// console.log("✅ Public folder served at:", publicPath);
 
 app.use("/public", express.static(publicPath));
 
@@ -171,25 +171,25 @@ app.get("/health", (req, res) => {
 
 // Custom global error handler
 app.use(errorHandler);
-console.log("[Server:Middleware] Error handler applied");
+// console.log("[Server:Middleware] Error handler applied");
 
 // In development, print all route paths
 if (NODE_ENV !== "production") {
-  console.log("📜 Dumping all registered route paths (dev):");
+  // console.log("📜 Dumping all registered route paths (dev):");
   try {
     app._router.stack.forEach((middleware) => {
       if (middleware?.route?.path) {
         const methods = Object.keys(middleware.route.methods)
           .join(", ")
           .toUpperCase();
-        console.log(`✔ ${methods} ${middleware.route.path}`);
+        // console.log(`✔ ${methods} ${middleware.route.path}`);
       } else if (middleware?.name === "router" && middleware?.handle?.stack) {
         middleware.handle.stack.forEach((handler) => {
           if (handler?.route?.path) {
             const methods = Object.keys(handler.route.methods)
               .join(", ")
               .toUpperCase();
-            console.log(`✔ ${methods} ${handler.route.path}`);
+            // console.log(`✔ ${methods} ${handler.route.path}`);
           }
         });
       }
@@ -222,15 +222,15 @@ process.on("unhandledRejection", (err) => {
 // Start server
 const startServer = async () => {
   try {
-    console.log("[Server:Startup] Connecting to MongoDB...");
+    // console.log("[Server:Startup] Connecting to MongoDB...");
     await connectDb();
-    console.log("[Server:Startup] ✅ Database connected");
+    // console.log("[Server:Startup] ✅ Database connected");
 
     startTempCleanup();
     startDailyDigestJob();
 
     server.listen(PORT, () => {
-      console.log(`[Server:Startup] ✅ Inksha API is running on port ${PORT}`);
+      // console.log(`[Server:Startup] ✅ Inksha API is running on port ${PORT}`);
     });
   } catch (err) {
     console.error("[Server:Startup] ❌ Failed to start:", err.message);

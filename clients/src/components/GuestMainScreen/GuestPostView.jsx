@@ -19,7 +19,7 @@ const GuestPostView = () => {
   useEffect(() => {
     dispatch(trackGuestVisit())
       .unwrap()
-      .then(() => console.log("✅ Guest visit tracked"))
+      // .then(() => console.log("✅ Guest visit tracked"))
       .catch((err) => console.error("❌ Track guest visit failed", err));
 
     dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
