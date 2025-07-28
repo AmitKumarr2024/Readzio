@@ -1740,10 +1740,10 @@ const adminSlice = createSlice({
           minEngagementRate: 0.05,
           minAccountAgeDays: 30,
         };
-        console.log(
-          "[adminSlice:checkUserEligibility] 📋 Updated subscriptionCriteria state:",
-          state.subscriptionCriteria
-        );
+        // console.log(
+        //   "[adminSlice:checkUserEligibility] 📋 Updated subscriptionCriteria state:",
+        //   state.subscriptionCriteria
+        // );
         state.error = action.payload.message
           ? { message: action.payload.message }
           : null;

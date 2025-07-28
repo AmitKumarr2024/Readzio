@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { fetchSuggestedPosts } from "../../store/suggestedPostsSlice";
-import {toast} from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import TimeAgo from "../../Utils/TimeAgo";
 import Skeleton from "@/components/Ui/Skeleton";
 import adsConfig from "../../Utils/adsConfig";
@@ -162,7 +162,7 @@ const SuggestedPosts = () => {
                 </Link>
 
                 {adPositions.includes(index + 1) && (
-                  <div className="w-full min-h-[250px] p-3 rounded-xs shadow-md bg-white dark:bg-gray-800">
+                  <div className="w-full min-h-[250px] p-4 rounded-2xl shadow bg-background-light dark:bg-background-dark">
                     <InFeedAd postId={post._id} />
                   </div>
                 )}
