@@ -45,13 +45,13 @@ const InFeedAd = ({ postId }) => {
   }, [isAdBlocked, socketInstance, postId]);
 
   return (
-    <div className="w-full max-w-full overflow-hidden">
+    <div className="w-full flex justify-center overflow-hidden">
       <div
-        className="mx-auto bg-white dark:bg-gray-800 rounded-md shadow border p-3"
+        className="bg-white dark:bg-gray-800 rounded-md shadow border p-3"
         style={{
           minWidth: "250px",
           width: "100%",
-          maxWidth: "100%",
+          maxWidth: "600px", // Optional: limits ad width on large screens
         }}
       >
         <ins
