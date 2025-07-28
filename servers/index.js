@@ -36,6 +36,7 @@ import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 // console.log("[Server:Startup] Initializing Express server");
 
 const app = express();
+app.set("trust proxy", true);
 const server = http.createServer(app);
 const io = initializeSocket(server);
 
@@ -131,10 +132,6 @@ const publicPath = path.join(__dirname, "servers", "public");
 // console.log("✅ Public folder served at:", publicPath);
 
 app.use("/public", express.static(publicPath));
-
-
-
-
 
 // Static ads.txt file
 app.get("/ads.txt", (req, res) => {

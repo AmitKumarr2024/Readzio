@@ -1,25 +1,24 @@
-import mongoose from "mongoose";
-import { recordActivity } from "../../servers/helpers/activityHelper.js";
-import UserLocation from "../Models/UserLocation.js";
-import { AppError } from "../../servers/Utils/AppError.js";
-
-// GeoIP Middleware — removes predefined location fallback
 export const geoLocationMiddleware = async (req, res, next) => {
   try {
-    const ip = req.ip || req.connection?.remoteAddress || null;
+    let ip =
+      req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip;
 
-    // Reject private or unknown IPs
+    // Normalize IPv6 mapped IPv4 (e.g. ::ffff:192.168.x.x)
+    if (ip.startsWith("::ffff:")) ip = ip.slice(7);
+
+    // Skip if it's localhost or private IP
     const isPrivateIP =
       !ip ||
-      ip === "::1" ||
       ip === "127.0.0.1" ||
+      ip === "::1" ||
       ip.startsWith("192.168.") ||
       ip.startsWith("10.") ||
       ip.startsWith("172.");
 
     if (isPrivateIP) {
+      console.warn("[GeoIP] Skipping private IP:", ip);
       req.geoLocation = null;
-      return next(); // Don't save or assign location
+      return next();
     }
 
     const response = await fetch(
@@ -29,7 +28,7 @@ export const geoLocationMiddleware = async (req, res, next) => {
 
     if (data.status !== "success" || !data.lat || !data.lon) {
       req.geoLocation = null;
-      return next(); // Fail silently
+      return next();
     }
 
     const locationData = {
@@ -48,20 +47,11 @@ export const geoLocationMiddleware = async (req, res, next) => {
       },
     };
 
-    if (req.user?._id) {
-      await UserLocation.create(locationData);
-      await recordActivity({
-        userId: req.user._id,
-        action: "LOCATION_LOGGED",
-        message: `User ${req.user.name} location logged: ${locationData.city}, ${locationData.country}`,
-      });
-    }
-
     req.geoLocation = locationData;
     next();
   } catch (error) {
     console.error("[geoLocationMiddleware]", error.message);
     req.geoLocation = null;
-    next(); // Continue even on failure
+    next();
   }
 };
