@@ -51,11 +51,14 @@ const InFeedAd = ({ postId }) => {
   }, [isAdBlocked, socketInstance, postId]);
 
   return (
-    <div className="w-full bg-white dark:bg-gray-800 rounded-md shadow border p-3">
+    <div
+      className="w-full bg-white dark:bg-gray-800 rounded-md shadow border p-3"
+      style={{ minWidth: 250 }}
+    >
       <ins
         ref={adRef}
         className="adsbygoogle"
-        style={{ display: "block" }}
+        style={{ display: "block", minWidth: 250 }}
         data-ad-client="ca-pub-8408980890451581"
         data-ad-slot="8028537328"
         data-ad-format="fluid"
