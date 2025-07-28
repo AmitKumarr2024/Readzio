@@ -318,7 +318,7 @@ const DisplayPost = () => {
     return (
       <>
         <Helmet>
-          <title>{activePost.title || "Loading..."} | My Blog</title>
+          <title>{activePost.title || "Loading..."} | Inksha</title>
           <meta name="robots" content="index, follow" />
 
           <meta name="description" content={plainText} />
