@@ -47,7 +47,7 @@ const InFeedAd = ({ postId }) => {
   return (
     <div className="w-full flex justify-center my-6">
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow p-4"
+        className=" p-4"
         style={{
           width: "100%",
           maxWidth: "600px",
