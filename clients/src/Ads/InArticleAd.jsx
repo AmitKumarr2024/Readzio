@@ -10,11 +10,11 @@ const InArticleAd = ({ postId }) => {
   const { socketInstance } = useSelector(selectSocketState);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !adRef.current) return;
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch (err) {
-      console.warn("[InArticleAd] initial push failed", err);
+      console.warn("[InArticleAd] Initial ad push failed", err);
     }
   }, []);
 
@@ -38,7 +38,7 @@ const InArticleAd = ({ postId }) => {
           try {
             (window.adsbygoogle = window.adsbygoogle || []).push({});
           } catch (err) {
-            console.warn("[InArticleAd] view-triggered push failed", err);
+            console.warn("[InArticleAd] View-triggered ad push failed", err);
           }
         }
       },
@@ -50,20 +50,28 @@ const InArticleAd = ({ postId }) => {
   }, [isAdBlocked, socketInstance, postId]);
 
   return (
-    <div className="w-full my-6">
-      <ins
-        ref={adRef}
-        className="adsbygoogle"
-        style={{ display: "block", textAlign: "center" }}
-        data-ad-client="ca-pub-8408980890451581"
-        data-ad-slot="4935470124"
-        data-ad-format="fluid"
-        data-ad-layout="in-article"
-        data-full-width-responsive="true"
-      />
-      <p className="mt-1 text-xs text-center italic text-gray-500 dark:text-gray-400">
-        Sponsored
-      </p>
+    <div className="w-full flex justify-center my-6">
+      <div
+        className="w-full"
+        style={{
+          maxWidth: "700px",
+          textAlign: "center", // Optional for outer div
+        }}
+      >
+        <ins
+          ref={adRef}
+          className="adsbygoogle"
+          style={{ display: "block", textAlign: "center" }}
+          data-ad-client="ca-pub-8408980890451581"
+          data-ad-slot="4935470124"
+          data-ad-format="fluid"
+          data-ad-layout="in-article"
+          data-full-width-responsive="true"
+        />
+        <p className="mt-1 text-xs text-center italic text-gray-500 dark:text-gray-400">
+          Sponsored
+        </p>
+      </div>
     </div>
   );
 };

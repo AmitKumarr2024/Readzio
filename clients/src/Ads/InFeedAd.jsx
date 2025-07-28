@@ -15,7 +15,7 @@ const InFeedAd = ({ postId }) => {
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch (err) {
-      console.warn("[InFeedAd] Initial ad push failed", err);
+      console.warn("[InFeedAd] Ad push failed", err);
     }
   }, []);
 
@@ -45,13 +45,13 @@ const InFeedAd = ({ postId }) => {
   }, [isAdBlocked, socketInstance, postId]);
 
   return (
-    <div className="w-full flex justify-center overflow-hidden">
+    <div className="w-full flex justify-center my-6">
       <div
-        className="bg-white dark:bg-gray-800 rounded-md shadow border p-3"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow p-4"
         style={{
-          minWidth: "250px",
           width: "100%",
-          maxWidth: "600px", // Optional: limits ad width on large screens
+          maxWidth: "600px",
+          minWidth: "280px",
         }}
       >
         <ins
@@ -60,11 +60,11 @@ const InFeedAd = ({ postId }) => {
           style={{
             display: "block",
             width: "100%",
-            minWidth: "250px",
           }}
           data-ad-client="ca-pub-8408980890451581"
           data-ad-slot="8028537328"
           data-ad-format="fluid"
+          data-ad-layout-key="-6t+ed+2i-1n-4w"
           data-full-width-responsive="true"
         />
         <p className="mt-2 text-xs text-center italic text-gray-500 dark:text-gray-400">
