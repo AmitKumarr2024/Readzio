@@ -10,7 +10,7 @@ const InFeedAd = ({ postId }) => {
   const { socketInstance } = useSelector(selectSocketState);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !adRef.current) return;
 
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
@@ -35,12 +35,6 @@ const InFeedAd = ({ postId }) => {
               timeSpent: 30,
             });
           }
-
-          try {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-          } catch (err) {
-            console.warn("[InFeedAd] Ad push failed on view", err);
-          }
         }
       },
       { threshold: 0.25 }
@@ -51,22 +45,32 @@ const InFeedAd = ({ postId }) => {
   }, [isAdBlocked, socketInstance, postId]);
 
   return (
-    <div
-      className="w-full bg-white dark:bg-gray-800 rounded-md shadow border p-3"
-      style={{ minWidth: 250 }}
-    >
-      <ins
-        ref={adRef}
-        className="adsbygoogle"
-        style={{ display: "block", minWidth: 250 }}
-        data-ad-client="ca-pub-8408980890451581"
-        data-ad-slot="8028537328"
-        data-ad-format="fluid"
-        data-full-width-responsive="true"
-      />
-      <p className="mt-2 text-xs text-center italic text-gray-500 dark:text-gray-400">
-        Sponsored
-      </p>
+    <div className="w-full max-w-full overflow-hidden">
+      <div
+        className="mx-auto bg-white dark:bg-gray-800 rounded-md shadow border p-3"
+        style={{
+          minWidth: "250px",
+          width: "100%",
+          maxWidth: "100%",
+        }}
+      >
+        <ins
+          ref={adRef}
+          className="adsbygoogle"
+          style={{
+            display: "block",
+            width: "100%",
+            minWidth: "250px",
+          }}
+          data-ad-client="ca-pub-8408980890451581"
+          data-ad-slot="8028537328"
+          data-ad-format="fluid"
+          data-full-width-responsive="true"
+        />
+        <p className="mt-2 text-xs text-center italic text-gray-500 dark:text-gray-400">
+          Sponsored
+        </p>
+      </div>
     </div>
   );
 };
