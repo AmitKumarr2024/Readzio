@@ -73,7 +73,6 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
     action: "EMAIL_FAILED_ALL_ATTEMPTS",
     message: `All ${attempts} email attempts failed for ${mailOption.to}: ${lastError.message}`,
   });
-  // Uses AppError to provide context and user message for email failures
   throw new AppError(
     `Failed to send email after ${attempts} attempts: ${lastError.message}`,
     500,
@@ -86,7 +85,6 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
 export const sendVerifyOtp = async (req, res, next) => {
   try {
     const { userId } = req.body;
-    // Validates userId presence
     if (!userId)
       throw new AppError(
         "User ID is required",
@@ -96,7 +94,6 @@ export const sendVerifyOtp = async (req, res, next) => {
       );
 
     const user = await UserModel.findById(userId);
-    // Checks if user exists
     if (!user)
       throw new AppError(
         "User not found",
@@ -104,7 +101,6 @@ export const sendVerifyOtp = async (req, res, next) => {
         "SendVerifyOtp",
         "User does not exist"
       );
-    // Checks if account is already verified
     if (user.isAccountVerified)
       throw new AppError(
         "Account is already verified",
@@ -138,7 +134,6 @@ export const sendVerifyOtp = async (req, res, next) => {
       .status(201)
       .json({ success: true, message: "Verification OTP sent to your email" });
   } catch (error) {
-    // AppError with context for OTP sending issues
     next(
       error instanceof AppError
         ? error
@@ -156,7 +151,6 @@ export const sendVerifyOtp = async (req, res, next) => {
 export const verifyEmail = async (req, res, next) => {
   try {
     const { userId, otp } = req.body;
-    // Validates required fields
     if (!userId || !otp)
       throw new AppError(
         "User ID and OTP are required",
@@ -166,7 +160,6 @@ export const verifyEmail = async (req, res, next) => {
       );
 
     const user = await UserModel.findById(userId);
-    // Checks if user exists
     if (!user)
       throw new AppError(
         "User not found",
@@ -174,10 +167,8 @@ export const verifyEmail = async (req, res, next) => {
         "VerifyEmail",
         "User does not exist"
       );
-    // Validates OTP
     if (user.verifyOtp !== otp)
       throw new AppError("Invalid OTP", 401, "VerifyEmail", "OTP is incorrect");
-    // Checks OTP expiration
     if (user.verifyOtpExpireAt < Date.now())
       throw new AppError("OTP expired", 401, "VerifyEmail", "OTP has expired");
 
@@ -187,7 +178,7 @@ export const verifyEmail = async (req, res, next) => {
     await user.save();
 
     await recordActivity({
-      userId: newUser._id,
+      userId: user._id, // Fixed: Use user._id
       action: "EMAIL_VERIFIED",
       message: `User ${user.name} verified email from ${
         user.location || "unknown location"
@@ -198,7 +189,6 @@ export const verifyEmail = async (req, res, next) => {
       .status(201)
       .json({ success: true, message: "Email verified successfully" });
   } catch (error) {
-    // AppError with context for email verification issues
     next(
       error instanceof AppError
         ? error
@@ -216,7 +206,6 @@ export const verifyEmail = async (req, res, next) => {
 export const resetAccountVerification = async (req, res, next) => {
   try {
     const { userId } = req.body;
-    // Validates userId presence
     if (!userId)
       throw new AppError(
         "User ID is required",
@@ -226,7 +215,6 @@ export const resetAccountVerification = async (req, res, next) => {
       );
 
     const user = await UserModel.findById(userId);
-    // Checks if user exists
     if (!user)
       throw new AppError(
         "User not found",
@@ -244,7 +232,6 @@ export const resetAccountVerification = async (req, res, next) => {
       .status(200)
       .json({ success: true, message: "Account verification reset" });
   } catch (error) {
-    // AppError with context for verification reset
     next(
       error instanceof AppError
         ? error
@@ -262,7 +249,6 @@ export const resetAccountVerification = async (req, res, next) => {
 export const sendResetOtp = async (req, res, next) => {
   try {
     const { email } = req.body;
-    // Validates email presence
     if (!email)
       throw new AppError(
         "Email is required",
@@ -272,7 +258,6 @@ export const sendResetOtp = async (req, res, next) => {
       );
 
     const user = await UserModel.findOne({ email });
-    // Checks if user exists
     if (!user)
       throw new AppError(
         "User not found",
@@ -309,7 +294,6 @@ export const sendResetOtp = async (req, res, next) => {
       message: "Password reset OTP sent to your email",
     });
   } catch (error) {
-    // AppError with context for password reset OTP issues
     next(
       error instanceof AppError
         ? error
@@ -327,7 +311,6 @@ export const sendResetOtp = async (req, res, next) => {
 export const verifyResetOtp = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
-    // Validates required fields
     if (!email || !otp)
       throw new AppError(
         "Email and OTP are required",
@@ -337,7 +320,6 @@ export const verifyResetOtp = async (req, res, next) => {
       );
 
     const user = await UserModel.findOne({ email });
-    // Checks if user exists
     if (!user)
       throw new AppError(
         "User not found",
@@ -345,7 +327,6 @@ export const verifyResetOtp = async (req, res, next) => {
         "VerifyResetOtp",
         "User does not exist"
       );
-    // Validates OTP
     if (user.resetOtp !== otp)
       throw new AppError(
         "Invalid OTP",
@@ -353,7 +334,6 @@ export const verifyResetOtp = async (req, res, next) => {
         "VerifyResetOtp",
         "OTP is incorrect"
       );
-    // Checks OTP expiration
     if (user.resetOtpExpireAt < Date.now())
       throw new AppError(
         "OTP expired",
@@ -366,7 +346,6 @@ export const verifyResetOtp = async (req, res, next) => {
       .status(200)
       .json({ success: true, message: "OTP verified successfully" });
   } catch (error) {
-    // AppError with context for OTP verification
     next(
       error instanceof AppError
         ? error
@@ -384,7 +363,6 @@ export const verifyResetOtp = async (req, res, next) => {
 export const resetPassword = async (req, res, next) => {
   try {
     const { email, otp, newPassword } = req.body;
-    // Validates required fields
     if (!email || !otp || !newPassword)
       throw new AppError(
         "Email, OTP, and new password are required",
@@ -394,7 +372,6 @@ export const resetPassword = async (req, res, next) => {
       );
 
     const user = await UserModel.findOne({ email });
-    // Checks if user exists
     if (!user)
       throw new AppError(
         "User not found",
@@ -402,7 +379,6 @@ export const resetPassword = async (req, res, next) => {
         "ResetPassword",
         "User does not exist"
       );
-    // Validates OTP
     if (user.resetOtp !== otp)
       throw new AppError(
         "Invalid OTP",
@@ -410,7 +386,6 @@ export const resetPassword = async (req, res, next) => {
         "ResetPassword",
         "OTP is incorrect"
       );
-    // Checks OTP expiration
     if (user.resetOtpExpireAt < Date.now())
       throw new AppError(
         "OTP expired",
@@ -426,7 +401,7 @@ export const resetPassword = async (req, res, next) => {
     await user.save();
 
     await recordActivity({
-      userId: newUser._id,
+      userId: user._id, // Fixed: Use user._id
       action: "PASSWORD_RESET",
       message: `User ${user.name} reset password from ${
         user.location || "unknown location"
@@ -437,7 +412,6 @@ export const resetPassword = async (req, res, next) => {
       .status(201)
       .json({ success: true, message: "Password reset successfully" });
   } catch (error) {
-    // AppError with context for password reset
     next(
       error instanceof AppError
         ? error
@@ -457,7 +431,6 @@ export const Signup = async (req, res, next) => {
   const geoLocation = req.geoLocation;
 
   try {
-    // Validates required fields
     if (!fullName || !email || !password)
       throw new AppError(
         "All fields are required",
@@ -465,7 +438,6 @@ export const Signup = async (req, res, next) => {
         "Signup",
         "Missing required fields"
       );
-    // Validates email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw new AppError(
         "Invalid email format",
@@ -476,7 +448,6 @@ export const Signup = async (req, res, next) => {
     const normalizedEmail = email.trim().toLowerCase();
     const existingUser = await UserModel.findOne({ email: normalizedEmail });
 
-    // Checks for existing user or Google account conflict
     if (existingUser)
       throw new AppError(
         existingUser.authProvider === "google"
@@ -579,7 +550,6 @@ export const Signup = async (req, res, next) => {
       token,
     });
   } catch (error) {
-    // AppError with context for signup issues
     next(
       error instanceof AppError
         ? error
@@ -589,13 +559,11 @@ export const Signup = async (req, res, next) => {
 };
 
 // Handles user login
-// Handles user login
 export const Login = async (req, res, next) => {
   const { email, password } = req.body;
   const geoLocation = req.geoLocation;
 
   try {
-    // Validates required fields
     if (!email || !password)
       throw new AppError(
         "Email and password are required",
@@ -609,7 +577,6 @@ export const Login = async (req, res, next) => {
       "+password"
     );
 
-    // Checks if user exists
     if (!user)
       throw new AppError(
         "User not found",
@@ -618,8 +585,7 @@ export const Login = async (req, res, next) => {
         "Invalid email or password"
       );
 
-    // Validates password using bcrypt directly
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await user.comparePassword(password);
     if (!isMatch)
       throw new AppError(
         "Invalid credentials",
@@ -628,7 +594,6 @@ export const Login = async (req, res, next) => {
         "Incorrect password"
       );
 
-    // Update user location if available
     if (geoLocation) {
       user.location = `${geoLocation.city}, ${geoLocation.country}`;
       await UserLocation.create({
@@ -664,7 +629,6 @@ export const Login = async (req, res, next) => {
       token,
     });
   } catch (error) {
-    // AppError with context for login issues
     next(
       error instanceof AppError
         ? error
@@ -697,7 +661,6 @@ export const Logout = async (req, res, next) => {
     });
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
-    // AppError with context for logout issues
     next(
       error instanceof AppError
         ? error
@@ -711,7 +674,6 @@ export const checkAuth = async (req, res, next) => {
   const geoLocation = req.geoLocation;
 
   try {
-    // Validates user presence
     if (!req.user?._id)
       throw new AppError(
         "Unauthorized - No user found",
@@ -721,7 +683,6 @@ export const checkAuth = async (req, res, next) => {
       );
 
     const token = req.cookies.jwt;
-    // Checks for token
     if (!token)
       throw new AppError(
         "No token found",
@@ -750,7 +711,6 @@ export const checkAuth = async (req, res, next) => {
       isAccountVerified: req.user.isAccountVerified,
     });
   } catch (error) {
-    // AppError with context for auth check issues
     next(
       error instanceof AppError
         ? error
@@ -770,7 +730,6 @@ export const googleLogin = async (req, res, next) => {
   const geoLocation = req.geoLocation;
 
   try {
-    // Validates Google token
     if (!token)
       throw new AppError(
         "Google token is required",
@@ -779,13 +738,13 @@ export const googleLogin = async (req, res, next) => {
         "Google token missing"
       );
 
+    log("[GoogleLogin] Verifying Google token");
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: GOOGLE_CLIENT_ID,
     });
 
     const { sub: googleId, email, name, picture } = ticket.getPayload();
-    // Validates email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw new AppError(
         "Invalid email from Google",
@@ -794,10 +753,10 @@ export const googleLogin = async (req, res, next) => {
         "Invalid Google email"
       );
 
+    log("[GoogleLogin] Finding or creating user for email:", email);
     let user = await UserModel.findOne({ $or: [{ googleId }, { email }] });
     let isNewUser = false;
 
-    // Checks for existing user or local account conflict
     if (user) {
       if (user.authProvider === "local")
         throw new AppError(
@@ -807,6 +766,7 @@ export const googleLogin = async (req, res, next) => {
           "Email conflict with local account"
         );
     } else {
+      log("[GoogleLogin] Creating new user");
       user = new UserModel({
         name: name || "Unnamed Author",
         email,
@@ -827,7 +787,7 @@ export const googleLogin = async (req, res, next) => {
 
     if (geoLocation && user._id) {
       await UserLocation.create({
-        userId: newUser._id,
+        userId: user._id,
         ip: geoLocation.ip,
         city: geoLocation.city,
         country: geoLocation.country,
@@ -844,6 +804,7 @@ export const googleLogin = async (req, res, next) => {
       (sendEmail === "true" || isAutoEmailDate()) &&
       !user.stopEmailAttempts
     ) {
+      log("[GoogleLogin] Preparing welcome email for:", email);
       const mailOption = createMailOption({
         to: email,
         subject: "Welcome to Our Platform!",
@@ -859,10 +820,12 @@ export const googleLogin = async (req, res, next) => {
       });
 
       try {
+        log("[GoogleLogin] Sending welcome email");
         const emailResult = await sendEmailWithRetries(mailOption, user._id);
         user.emailAttempts = emailResult.attempts;
         user.emailStatus = "sent";
       } catch (emailError) {
+        log("[GoogleLogin] Email sending failed:", emailError.message);
         user.emailAttempts = emailError.attempts || 3;
         user.emailStatus = "failed";
         user.emailLastError = emailError.message;
@@ -871,22 +834,29 @@ export const googleLogin = async (req, res, next) => {
         throw emailError;
       }
     } else if (isNewUser) {
+      log("[GoogleLogin] Skipping welcome email");
       await recordActivity({
-        userId: newUser._id,
+        userId: user._id,
         action: "EMAIL_SKIPPED",
         message: `Welcome email not sent for ${email}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
       });
     }
 
-    if (isNewUser) await user.save();
+    if (isNewUser) {
+      log("[GoogleLogin] Saving new user");
+      await user.save();
+    }
+
+    log("[GoogleLogin] Recording login activity for userId:", user._id);
     await recordActivity({
-      userId: newUser._id,
+      userId: user._id,
       action: "GOOGLE_LOGGED_IN",
       message: `User ${user.name} logged in with Google from ${
         user.location || "unknown location"
       }`,
     });
 
+    log("[GoogleLogin] Generating JWT token");
     const jwtToken = generateToken(user, res);
     res.status(200).json({
       message: isNewUser
@@ -905,7 +875,7 @@ export const googleLogin = async (req, res, next) => {
       token: jwtToken,
     });
   } catch (error) {
-    // AppError with context for Google login issues
+    log("[GoogleLogin] Error:", error.message);
     next(
       error instanceof AppError
         ? error
@@ -924,7 +894,6 @@ export const checkEmailStatus = async (req, res, next) => {
   const { email } = req.query;
 
   try {
-    // Validates email format
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw new AppError(
         "Valid email is required",
@@ -936,7 +905,6 @@ export const checkEmailStatus = async (req, res, next) => {
     const user = await UserModel.findOne({ email }).select(
       "emailStatus emailAttempts emailLastError stopEmailAttempts name location"
     );
-    // Checks if user exists
     if (!user)
       throw new AppError(
         "User not found",
@@ -946,7 +914,7 @@ export const checkEmailStatus = async (req, res, next) => {
       );
 
     await recordActivity({
-      userId: newUser._id,
+      userId: user._id, // Fixed: Use user._id
       action: "CHECKED_EMAIL_STATUS",
       message: `User ${user.name} checked email status for ${email}`,
     });
@@ -961,7 +929,6 @@ export const checkEmailStatus = async (req, res, next) => {
       location: user.location,
     });
   } catch (error) {
-    // AppError with context for email status check
     next(
       error instanceof AppError
         ? error
@@ -978,7 +945,6 @@ export const checkEmailStatus = async (req, res, next) => {
 // Fetches email statuses for all users (admin only)
 export const getAllEmailStatuses = async (req, res, next) => {
   try {
-    // Validates admin access
     if (req.user.role !== "admin")
       throw new AppError(
         "Admin access required",
@@ -998,7 +964,6 @@ export const getAllEmailStatuses = async (req, res, next) => {
 
     res.status(200).json({ users, total, page, limit });
   } catch (error) {
-    // AppError with context for fetching all email statuses
     next(
       error instanceof AppError
         ? error
