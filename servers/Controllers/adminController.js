@@ -1216,11 +1216,7 @@ export const setUserEligibilityOverride = async (req, res, next) => {
 };
 
 // Checks user eligibility for subscription
-import UserModel from "../Models/User.js";
-import PostModel from "../Models/Post.js";
-import SubscriptionConfig from "../Models/SubscriptionConfig.js";
-import { AppError } from "../../servers/Utils/AppError.js";
-import { validateObjectId } from "../../servers/helpers/validateObjectId.js";
+
 
 export const checkUserEligibility = async (req, res, next) => {
   try {
