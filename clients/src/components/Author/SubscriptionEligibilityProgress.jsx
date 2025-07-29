@@ -107,7 +107,7 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
                 {minFollowers.toLocaleString()}
               </p>
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                {followerProgress.toFixed(0)}%
+                {Number(followerProgress).toFixed(0)}%
               </span>
             </div>
             <Progress value={followerProgress} className="h-2 bg-indigo-600" />
@@ -120,7 +120,7 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
                 Posts: {postCount} / {minPosts}
               </p>
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                {postProgress.toFixed(0)}%
+                {Number(postProgress).toFixed(0)}%
               </span>
             </div>
             <Progress value={postProgress} className="h-2 bg-indigo-600" />
@@ -130,7 +130,7 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
           <div>
             <div className="flex justify-between items-center mb-1">
               <p className="text-base sm:text-lg font-medium text-gray-700 dark:text-gray-200">
-                Engagement Rate: {engagementRate.toFixed(1)}% /{" "}
+                Engagement Rate: {Number(engagementProgress).toFixed(0)}% /{" "}
                 {minEngagementRate}%
               </p>
               <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -150,7 +150,7 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
                 Account Age: {accountAgeDays} / {minAccountAgeDays} days
               </p>
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                {ageProgress.toFixed(0)}%
+                {Number(ageProgress).toFixed(0)}%
               </span>
             </div>
             <Progress value={ageProgress} className="h-2 bg-indigo-600" />
