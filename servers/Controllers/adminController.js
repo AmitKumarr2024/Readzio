@@ -1219,14 +1219,20 @@ export const setUserEligibilityOverride = async (req, res, next) => {
 export const checkUserEligibility = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    console.log(
-      "🔍 [checkUserEligibility] Checking eligibility for userId:",
-      userId
-    );
+    const requestingUserId = req.user?._id.toString();
+
+    // Restrict to requesting user's own eligibility
+    if (userId !== requestingUserId) {
+      throw new AppError(
+        "Unauthorized: Can only check own eligibility",
+        403,
+        "CheckUserEligibility",
+        "User ID mismatch"
+      );
+    }
 
     validateObjectId(userId, "User ID");
     const user = await UserModel.findById(userId).lean();
-
     if (!user) {
       throw new AppError(
         "User not found",
@@ -1257,8 +1263,8 @@ export const checkUserEligibility = async (req, res, next) => {
 
     const totalViews = posts.reduce((sum, post) => sum + (post.views || 0), 0);
 
-    const rawEngagementRate = totalViews > 0 ? totalEngagement / totalViews : 0;
-    const engagementRate = Number((rawEngagementRate * 100).toFixed(2));
+    const engagementRate =
+      totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
 
     const accountAgeDays = Math.floor(
       (Date.now() - new Date(user.createdAt || user.joiningDate).getTime()) /
@@ -1270,22 +1276,23 @@ export const checkUserEligibility = async (req, res, next) => {
       postCount,
       totalEngagement,
       totalViews,
-      engagementRate,
+      engagementRate: engagementRate.toFixed(2),
       accountAgeDays,
     });
 
     let config = await SubscriptionConfig.findOne({
       key: "subscriptionEligibility",
-    });
+    }).lean();
 
     if (!config) {
-      config = await SubscriptionConfig.create({
+      config = {
         key: "subscriptionEligibility",
         minFollowers: 10000,
         minPosts: 30,
         minEngagementRate: 0.05,
         minAccountAgeDays: 30,
-      });
+      };
+      await SubscriptionConfig.create(config);
     }
 
     console.log("⚙️ [checkUserEligibility] Subscription config in use:", {
@@ -1309,21 +1316,47 @@ export const checkUserEligibility = async (req, res, next) => {
         effectiveEngagementRate >= config.minEngagementRate * 100 &&
         effectiveAccountAgeDays >= config.minAccountAgeDays);
 
+    // Identify unmet criteria
+    const unmetCriteria = [];
+    if (effectiveFollowerCount < config.minFollowers) {
+      unmetCriteria.push(
+        `Need ${config.minFollowers - effectiveFollowerCount} more followers`
+      );
+    }
+    if (effectivePostCount < config.minPosts) {
+      unmetCriteria.push(
+        `Need ${config.minPosts - effectivePostCount} more published posts`
+      );
+    }
+    if (effectiveEngagementRate < config.minEngagementRate * 100) {
+      unmetCriteria.push(
+        `Engagement rate ${effectiveEngagementRate.toFixed(
+          2
+        )}% is below required ${(config.minEngagementRate * 100).toFixed(2)}%`
+      );
+    }
+    if (effectiveAccountAgeDays < config.minAccountAgeDays) {
+      unmetCriteria.push(
+        `Account age ${effectiveAccountAgeDays} days is below required ${config.minAccountAgeDays} days`
+      );
+    }
+
     const response = {
       success: true,
       userId,
       isEligible,
       followerCount: effectiveFollowerCount,
       postCount: effectivePostCount,
-      engagementRate: Number(effectiveEngagementRate), // Send as number
+      engagementRate: Number(effectiveEngagementRate.toFixed(2)),
       accountAgeDays: effectiveAccountAgeDays,
       criteria: {
         minFollowers: config.minFollowers,
         minPosts: config.minPosts,
-        minEngagementRate: config.minEngagementRate * 100, // convert to %
+        minEngagementRate: Number((config.minEngagementRate * 100).toFixed(2)),
         minAccountAgeDays: config.minAccountAgeDays,
       },
       manuallySet: !!user.isEligibleForSubscription,
+      unmetCriteria: isEligible ? [] : unmetCriteria,
     };
 
     console.log("✅ [checkUserEligibility] Final response:", response);
@@ -1344,6 +1377,7 @@ export const checkUserEligibility = async (req, res, next) => {
     );
   }
 };
+
 // Toggles subscription plan status
 export const toggleSubscriptionPlanStatus = async (req, res, next) => {
   try {
