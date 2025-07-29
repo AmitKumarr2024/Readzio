@@ -574,105 +574,33 @@ export const Signup = async (req, res, next) => {
 // Handles user login
 export const Login = async (req, res, next) => {
   const { email, password } = req.body;
-  const geoLocation = req.geoLocation;
-
   try {
     if (!email || !password)
-      throw new AppError(
-        "Email and password are required",
-        400,
-        "Login",
-        "Missing required fields"
-      );
-
+      throw new AppError("Email and password required", 400, "Login", "Missing fields");
     const normalizedEmail = email.trim().toLowerCase();
-    console.log(
-      "[Login] Attempting login for email:",
-      normalizedEmail,
-      "Password length:",
-      password.length
-    );
-    const user = await UserModel.findOne({ email: normalizedEmail }).select(
-      "+password"
-    );
-
+    console.log("[Login] Attempting login for email:", normalizedEmail);
+    const user = await UserModel.findOne({ email: normalizedEmail }).select("+password");
     if (!user) {
-      console.log("[Login] User not found for email:", normalizedEmail);
-      throw new AppError(
-        "User not found",
-        400,
-        "Login",
-        "Invalid email or password"
-      );
+      console.log("[Login] User not found");
+      throw new AppError("User not found", 400, "Login", "Invalid email or password");
     }
-
-    console.log(
-      "[Login] User found:",
-      user._id,
-      "authProvider:",
-      user.authProvider
-    );
-    if (user.authProvider !== "local") {
-      throw new AppError(
-        "Use Google login for this account",
-        400,
-        "Login",
-        "Account not registered with password"
-      );
-    }
-
-    const isMatch = await UserModel.comparePassword(password);
+    console.log("[Login] User found:", user._id);
+    const isMatch = await user.comparePassword(password);
     console.log("[Login] Password match:", isMatch);
     if (!isMatch)
-      throw new AppError(
-        "Invalid credentials",
-        400,
-        "Login",
-        "Incorrect password"
-      );
-
-    if (geoLocation) {
-      user.location = `${geoLocation.city}, ${geoLocation.country}`;
-      await UserLocation.create({
-        userId: user._id,
-        ip: geoLocation.ip,
-        city: geoLocation.city,
-        country: geoLocation.country,
-        coordinates: {
-          type: "Point",
-          coordinates: [geoLocation.longitude, geoLocation.latitude],
-        },
-        timestamp: new Date(),
-      });
-      await user.save();
-    }
-
+      throw new AppError("Invalid credentials", 400, "Login", "Incorrect password");
     const token = generateToken(user, res);
     console.log("[Login] Token generated:", token.substring(0, 20) + "...");
-
-    await recordActivity({
-      userId: user._id,
-      action: "LOGGED_IN",
-      message: `User ${user.name} logged in from ${
-        user.location || "unknown location"
-      }`,
-    });
-
     res.status(200).json({
       _id: user._id,
       fullName: user.name,
       email: user.email,
       role: user.role,
-      location: user.location,
       token,
     });
   } catch (error) {
     console.error("[Login] Error:", error.message);
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(error.message, 500, "Login", "Failed to log in")
-    );
+    next(error instanceof AppError ? error : new AppError(error.message, 500, "Login", "Failed to log in"));
   }
 };
 
