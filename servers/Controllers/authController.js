@@ -473,7 +473,7 @@ export const Signup = async (req, res, next) => {
         "Signup",
         "Invalid email format"
       );
-
+    const normalizedEmail = email.trim().toLowerCase();
     const existingUser = await UserModel.findOne({ email: normalizedEmail });
 
     // Checks for existing user or Google account conflict
@@ -492,7 +492,7 @@ export const Signup = async (req, res, next) => {
 
     const newUser = new UserModel({
       name: fullName,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       authProvider: "local",
       role: "user",
