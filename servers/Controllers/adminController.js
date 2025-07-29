@@ -1219,32 +1219,33 @@ export const setUserEligibilityOverride = async (req, res, next) => {
 export const checkUserEligibility = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    // console.log("[AdminController:checkUserEligibility] 🔍 User ID:", userId);
+    console.log(
+      "🔍 [checkUserEligibility] Checking eligibility for userId:",
+      userId
+    );
 
     validateObjectId(userId, "User ID");
-    const user = await UserModel.findById(userId).lean();
-    // console.log(
-    //   "[AdminController:checkUserEligibility] 👤 User found:",
-    //   !!user
-    // );
 
-    if (!user)
+    const user = await UserModel.findById(userId).lean();
+    if (!user) {
+      console.warn("❌ [checkUserEligibility] User not found.");
       throw new AppError(
         "User not found",
         404,
         "CheckUserEligibility",
         "User does not exist"
       );
+    }
+    console.log(
+      "👤 [checkUserEligibility] User found:",
+      user.name || user.email
+    );
 
     const followerCount = user.followers?.length || 0;
     const postCount = await PostModel.countDocuments({
       author: userId,
       isPublished: true,
     });
-    // console.log("[AdminController:checkUserEligibility] 📊 Stats:", {
-    //   followerCount,
-    //   postCount,
-    // });
 
     const posts = await PostModel.find({
       author: userId,
@@ -1255,18 +1256,29 @@ export const checkUserEligibility = async (req, res, next) => {
         sum + (post.likes?.length || 0) + (post.comments?.length || 0),
       0
     );
+    const totalViews = posts.reduce((sum, post) => sum + (post.views || 0), 0);
+    const engagementRate = totalViews > 0 ? totalEngagement / totalViews : 0;
 
     const accountAgeDays =
       (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-    // console.log(
-    //   "[AdminController:checkUserEligibility] ⏳ Account age (days):",
-    //   accountAgeDays
-    // );
 
+    console.log("📊 [checkUserEligibility] Stats:", {
+      followerCount,
+      postCount,
+      totalEngagement,
+      totalViews,
+      engagementRate,
+      accountAgeDays: Math.floor(accountAgeDays),
+    });
+
+    // ✅ Fetch or Create Config
     let config = await SubscriptionConfig.findOne({
       key: "subscriptionEligibility",
     });
     if (!config) {
+      console.warn(
+        "⚠️ [checkUserEligibility] No config found, creating default config..."
+      );
       config = await SubscriptionConfig.create({
         key: "subscriptionEligibility",
         minFollowers: 10000,
@@ -1276,13 +1288,19 @@ export const checkUserEligibility = async (req, res, next) => {
       });
     }
 
+    console.log("⚙️ [checkUserEligibility] Subscription config in use:", {
+      minFollowers: config.minFollowers,
+      minPosts: config.minPosts,
+      minEngagementRate: config.minEngagementRate,
+      minAccountAgeDays: config.minAccountAgeDays,
+    });
+
     const isEligible =
       user.isEligibleForSubscription ||
-      (followerCount >= config.minFollowers && postCount >= config.minPosts);
-    // console.log(
-    //   "[AdminController:checkUserEligibility] ✅ Eligibility:",
-    //   isEligible
-    // );
+      (followerCount >= config.minFollowers &&
+        postCount >= config.minPosts &&
+        engagementRate >= config.minEngagementRate &&
+        accountAgeDays >= config.minAccountAgeDays);
 
     const response = {
       success: true,
@@ -1290,26 +1308,26 @@ export const checkUserEligibility = async (req, res, next) => {
       isEligible,
       followerCount,
       postCount,
+      engagementRate: Number((engagementRate * 100).toFixed(2)),
+      accountAgeDays: Math.floor(accountAgeDays),
       criteria: {
         minFollowers: config.minFollowers,
         minPosts: config.minPosts,
-        minEngagementRate: config.minEngagementRate * 100,
+        minEngagementRate: Number((config.minEngagementRate * 100).toFixed(2)),
         minAccountAgeDays: config.minAccountAgeDays,
       },
       manuallySet: !!user.isEligibleForSubscription,
     };
-    // console.log(
-    //   "[AdminController:checkUserEligibility] 📤 Response:",
-    //   response
-    // );
+
+    console.log("✅ [checkUserEligibility] Final response:", response);
+
     res.status(200).json(response);
   } catch (error) {
     console.error(
-      "[AdminController:checkUserEligibility] ❌ Error:",
+      "❌ [checkUserEligibility] Error:",
       error.message,
       error.stack
     );
-    // AppError with context for eligibility check
     next(
       new AppError(
         error.message,
