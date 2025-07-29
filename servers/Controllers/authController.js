@@ -457,7 +457,7 @@ export const Signup = async (req, res, next) => {
   const geoLocation = req.geoLocation;
 
   try {
-    // Validates required fields
+    // 1. Basic validation
     if (!fullName || !email || !password)
       throw new AppError(
         "All fields are required",
@@ -465,7 +465,7 @@ export const Signup = async (req, res, next) => {
         "Signup",
         "Missing required fields"
       );
-    // Validates email format
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw new AppError(
         "Invalid email format",
@@ -477,7 +477,7 @@ export const Signup = async (req, res, next) => {
     const normalizedEmail = email.toLowerCase();
     const existingUser = await UserModel.findOne({ email: normalizedEmail });
 
-    // Checks for existing user or Google account conflict
+    // 2. Check if email is already registered
     if (existingUser)
       throw new AppError(
         existingUser.authProvider === "google"
@@ -488,12 +488,13 @@ export const Signup = async (req, res, next) => {
         "Email already exists"
       );
 
+    // 3. Create new user
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const newUser = new UserModel({
       name: fullName,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       authProvider: "local",
       role: "user",
@@ -508,9 +509,10 @@ export const Signup = async (req, res, next) => {
 
     await newUser.save();
 
+    // 4. Save user location if available
     if (geoLocation && newUser._id) {
       await UserLocation.create({
-        userId: user._id,
+        userId: newUser._id,
         ip: geoLocation.ip,
         city: geoLocation.city,
         country: geoLocation.country,
@@ -522,20 +524,22 @@ export const Signup = async (req, res, next) => {
       });
     }
 
+    // 5. Handle test email case
     const isTestEmail =
-      email.toLowerCase() === "test@test.com" ||
-      email.toLowerCase().endsWith("@test.com");
+      normalizedEmail === "test@test.com" ||
+      normalizedEmail.endsWith("@test.com");
 
+    // 6. Send welcome email
     if (
       !isTestEmail &&
       (sendEmail === "true" || isAutoEmailDate()) &&
       !newUser.stopEmailAttempts
     ) {
       const mailOption = createMailOption({
-        to: email,
+        to: normalizedEmail,
         subject: "Welcome to Our Platform!",
         name: fullName,
-        email,
+        email: normalizedEmail,
         message: `Thank you for signing up! You're joining us from ${
           newUser.location || "an unknown location"
         }. We're excited to have you on board.`,
@@ -544,6 +548,7 @@ export const Signup = async (req, res, next) => {
         buttonUrl: "https://inksha-uedq.onrender.com",
         isWelcome: true,
       });
+
       try {
         const emailResult = await sendEmailWithRetries(mailOption, newUser._id);
         newUser.emailAttempts = emailResult.attempts;
@@ -560,25 +565,28 @@ export const Signup = async (req, res, next) => {
       await recordActivity({
         userId: newUser._id,
         action: "EMAIL_SKIPPED_TEST",
-        message: `Skipped welcome email for test email: ${email}`,
+        message: `Skipped welcome email for test email: ${normalizedEmail}`,
       });
     } else {
       await recordActivity({
-        userId: user._id,
+        userId: newUser._id,
         action: "EMAIL_SKIPPED",
-        message: `Welcome email not sent for ${email}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
+        message: `Welcome email not sent for ${normalizedEmail}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
       });
     }
 
     await newUser.save();
+
+    // 7. Log activity
     await recordActivity({
-      userId: user._id,
+      userId: newUser._id,
       action: "SIGNED_UP",
       message: `User ${fullName} signed up from ${
         newUser.location || "unknown location"
       }`,
     });
 
+    // 8. Issue token
     const token = generateToken(newUser, res);
     res.status(201).json({
       message: "User registered successfully",
@@ -591,7 +599,6 @@ export const Signup = async (req, res, next) => {
       token,
     });
   } catch (error) {
-    // AppError with context for signup issues
     next(
       error instanceof AppError
         ? error
