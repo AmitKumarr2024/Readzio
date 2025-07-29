@@ -621,7 +621,7 @@ export const Login = async (req, res, next) => {
       );
     }
 
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await UserModel.comparePassword(password);
     console.log("[Login] Password match:", isMatch);
     if (!isMatch)
       throw new AppError(
