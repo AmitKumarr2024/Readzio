@@ -1,992 +1,1013 @@
-
-import mongoose from "mongoose";
-import cron from "node-cron";
-import UserModel from "../../servers/Models/User.js";
+import bcrypt from "bcryptjs";
 import { AppError } from "../../servers/Utils/AppError.js";
-import { uploadToCloudinary } from "../../servers/Utils/uploadToCloudinary.js";
+import { OAuth2Client } from "google-auth-library";
+import {
+  AUTO_EMAIL_DATE,
+  GOOGLE_CLIENT_ID,
+  SENDER_EMAIL,
+} from "../config/dotenv.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
-import ActivityModel from "../Models/ActivityModel.js";
-import { io } from "../sockets/socket.js";
+import transporter from "../config/nodeMailer.js";
+import createMailOption from "../../servers/helpers/emailHelper.js";
+import { generateToken } from "../Utils/generateToken.js";
 import UserLocation from "../Models/UserLocation.js";
+import UserModel from "../../servers/Models/User.js";
 
-// GET /api/user/ip-location
-export const getIPLocation = async (req, res, next) => {
-  try {
-    if (!req.geoLocation) {
-      throw new AppError(
-        "Geolocation not available",
-        400,
-        "GetIPLocation",
-        "No geoLocation data attached"
-      );
+const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+const log = process.env.NODE_ENV === "production" ? () => {} : console.log;
+
+// Checks if today matches the configured auto-email date
+const isAutoEmailDate = () => {
+  const today = new Date();
+  const autoEmailDate = parseInt(AUTO_EMAIL_DATE || "1", 10);
+  return today.getDate() === autoEmailDate;
+};
+
+const emailQueue = [];
+
+// Processes email queue with retry logic
+const processEmailQueue = async () => {
+  while (emailQueue.length) {
+    const { mailOption, userId } = emailQueue.shift();
+    try {
+      await sendEmailWithRetries(mailOption, userId);
+    } catch (error) {
+      emailQueue.push({ mailOption, userId });
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
-
-    res.status(200).json({
-      success: true,
-      location: req.geoLocation,
-    });
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to get IP location",
-            500,
-            "GetIPLocation",
-            "Error in getIPLocation"
-          )
-    );
   }
 };
 
-// POST /api/user/track-ip-location
-export const trackIPLocation = async (req, res, next) => {
-  console.log("user in geoLocationMiddleware", req.user);
-  console.log("geoLocation in trackIPLocation", req.geoLocation);
+// Sends email with retry logic, uses AppError for failure
+const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
+  let attempts = 0;
+  let lastError = null;
 
-  try {
-    if (!req.geoLocation || !req.geoLocation.userId) {
-      throw new AppError(
-        "No authenticated user for tracking IP location",
-        400,
-        "TrackIPLocation",
-        "Missing geoLocation userId"
-      );
+  while (attempts < maxAttempts) {
+    try {
+      attempts++;
+      await transporter.sendMail(mailOption);
+      await recordActivity({
+        userId,
+        action: "EMAIL_SENT",
+        message: `Email sent to ${mailOption.to} after ${attempts} attempt(s)`,
+      });
+      return { success: true, attempts };
+    } catch (error) {
+      lastError = error;
+      await recordActivity({
+        userId,
+        action: "EMAIL_FAILED",
+        message: `Email failed for ${mailOption.to} on attempt ${attempts}: ${error.message}`,
+      });
+      if (attempts < maxAttempts) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 * attempts ** 2)
+        );
+      }
     }
-
-    await UserLocation.create(req.geoLocation);
-
-    res.status(204).end(); // No content needed
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to track IP location",
-            500,
-            "TrackIPLocation",
-            "Error in trackIPLocation"
-          )
-    );
   }
+
+  await recordActivity({
+    userId,
+    action: "EMAIL_FAILED_ALL_ATTEMPTS",
+    message: `All ${attempts} email attempts failed for ${mailOption.to}: ${lastError.message}`,
+  });
+  // Uses AppError to provide context and user message for email failures
+  throw new AppError(
+    `Failed to send email after ${attempts} attempts: ${lastError.message}`,
+    500,
+    "SendEmailWithRetries",
+    "Email delivery failed"
+  );
 };
 
-// Saves user location with validation and emits updates
-export const saveUserLocation = async (req, res, next) => {
+// Sends OTP for email verification
+export const sendVerifyOtp = async (req, res, next) => {
   try {
-    const { coordinates, city, country } = req.body;
-    const latitude = coordinates?.lat;
-    const longitude = coordinates?.lon;
-
-    // Validates coordinates
-    if (
-      !latitude ||
-      !longitude ||
-      latitude === 0 ||
-      longitude === 0 ||
-      isNaN(latitude) ||
-      isNaN(longitude)
-    ) {
+    const { userId } = req.body;
+    // Validates userId presence
+    if (!userId)
       throw new AppError(
-        "Invalid or missing coordinates",
+        "User ID is required",
         400,
-        "SaveUserLocation",
-        "Coordinates must be valid non-zero numbers"
+        "SendVerifyOtp",
+        "User ID missing"
       );
-    }
 
-    // Validates user
-    const user = await UserModel.findById(req.user._id).select("followers");
-    if (!user) {
+    const user = await UserModel.findById(userId);
+    // Checks if user exists
+    if (!user)
       throw new AppError(
         "User not found",
         404,
-        "SaveUserLocation",
-        "Authenticated user does not exist"
+        "SendVerifyOtp",
+        "User does not exist"
       );
+    // Checks if account is already verified
+    if (user.isAccountVerified)
+      throw new AppError(
+        "Account is already verified",
+        400,
+        "SendVerifyOtp",
+        "Account already verified"
+      );
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    user.verifyOtp = otp;
+    user.verifyOtpExpireAt = Date.now() + 60 * 60 * 1000; // 1 hour
+    await user.save();
+
+    const mailOption = createMailOption({
+      to: user.email,
+      subject: "Account Verification OTP",
+      name: user.name || "User",
+      email: user.email,
+      message: "Please use the following OTP to verify your email address.",
+      otp,
+      supportEmail: SENDER_EMAIL,
+      isResetOtp: false,
+    });
+
+    const emailResult = await sendEmailWithRetries(mailOption, user._id);
+    user.emailAttempts = emailResult.attempts;
+    user.emailStatus = "sent";
+    await user.save();
+
+    res
+      .status(201)
+      .json({ success: true, message: "Verification OTP sent to your email" });
+  } catch (error) {
+    // AppError with context for OTP sending issues
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "SendVerifyOtp",
+            "Failed to send verification OTP"
+          )
+    );
+  }
+};
+
+// Verifies email with OTP
+export const verifyEmail = async (req, res, next) => {
+  try {
+    const { userId, otp } = req.body;
+    // Validates required fields
+    if (!userId || !otp)
+      throw new AppError(
+        "User ID and OTP are required",
+        400,
+        "VerifyEmail",
+        "Missing required fields"
+      );
+
+    const user = await UserModel.findById(userId);
+    // Checks if user exists
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "VerifyEmail",
+        "User does not exist"
+      );
+    // Validates OTP
+    if (user.verifyOtp !== otp)
+      throw new AppError("Invalid OTP", 401, "VerifyEmail", "OTP is incorrect");
+    // Checks OTP expiration
+    if (user.verifyOtpExpireAt < Date.now())
+      throw new AppError("OTP expired", 401, "VerifyEmail", "OTP has expired");
+
+    user.isAccountVerified = true;
+    user.verifyOtp = "";
+    user.verifyOtpExpireAt = 0;
+    await user.save();
+
+    await recordActivity({
+      userId: newUser._id,
+      action: "EMAIL_VERIFIED",
+      message: `User ${user.name} verified email from ${
+        user.location || "unknown location"
+      }`,
+    });
+
+    res
+      .status(201)
+      .json({ success: true, message: "Email verified successfully" });
+  } catch (error) {
+    // AppError with context for email verification issues
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "VerifyEmail",
+            "Failed to verify email"
+          )
+    );
+  }
+};
+
+// Resets account verification status
+export const resetAccountVerification = async (req, res, next) => {
+  try {
+    const { userId } = req.body;
+    // Validates userId presence
+    if (!userId)
+      throw new AppError(
+        "User ID is required",
+        400,
+        "ResetAccountVerification",
+        "User ID missing"
+      );
+
+    const user = await UserModel.findById(userId);
+    // Checks if user exists
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "ResetAccountVerification",
+        "User does not exist"
+      );
+
+    user.isAccountVerified = false;
+    user.verifyOtp = "";
+    user.verifyOtpExpireAt = 0;
+    await user.save();
+
+    res
+      .status(200)
+      .json({ success: true, message: "Account verification reset" });
+  } catch (error) {
+    // AppError with context for verification reset
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "ResetAccountVerification",
+            "Failed to reset account verification"
+          )
+    );
+  }
+};
+
+// Sends OTP for password reset
+export const sendResetOtp = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    // Validates email presence
+    if (!email)
+      throw new AppError(
+        "Email is required",
+        400,
+        "SendResetOtp",
+        "Email missing"
+      );
+
+    const user = await UserModel.findOne({ email });
+    // Checks if user exists
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "SendResetOtp",
+        "User does not exist"
+      );
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    log("Generated OTP:", otp);
+    user.resetOtp = otp;
+    user.resetOtpExpireAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+    await user.save();
+
+    const mailOption = createMailOption({
+      to: user.email,
+      subject: "Password Reset OTP",
+      name: user.name || "User",
+      email: user.email,
+      message: "Please use the following OTP to reset your password.",
+      otp,
+      supportEmail: SENDER_EMAIL,
+      isResetOtp: true,
+    });
+
+    log("Mail Option:", mailOption);
+    const emailResult = await sendEmailWithRetries(mailOption, user._id);
+    user.emailAttempts = emailResult.attempts;
+    user.emailStatus = "sent";
+    await user.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Password reset OTP sent to your email",
+    });
+  } catch (error) {
+    // AppError with context for password reset OTP issues
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "SendResetOtp",
+            "Failed to send password reset OTP"
+          )
+    );
+  }
+};
+
+// Verifies password reset OTP
+export const verifyResetOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    // Validates required fields
+    if (!email || !otp)
+      throw new AppError(
+        "Email and OTP are required",
+        400,
+        "VerifyResetOtp",
+        "Missing required fields"
+      );
+
+    const user = await UserModel.findOne({ email });
+    // Checks if user exists
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "VerifyResetOtp",
+        "User does not exist"
+      );
+    // Validates OTP
+    if (user.resetOtp !== otp)
+      throw new AppError(
+        "Invalid OTP",
+        401,
+        "VerifyResetOtp",
+        "OTP is incorrect"
+      );
+    // Checks OTP expiration
+    if (user.resetOtpExpireAt < Date.now())
+      throw new AppError(
+        "OTP expired",
+        401,
+        "VerifyResetOtp",
+        "OTP has expired"
+      );
+
+    res
+      .status(200)
+      .json({ success: true, message: "OTP verified successfully" });
+  } catch (error) {
+    // AppError with context for OTP verification
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "VerifyResetOtp",
+            "Failed to verify OTP"
+          )
+    );
+  }
+};
+
+// Resets password using OTP
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    // Validates required fields
+    if (!email || !otp || !newPassword)
+      throw new AppError(
+        "Email, OTP, and new password are required",
+        400,
+        "ResetPassword",
+        "Missing required fields"
+      );
+
+    const user = await UserModel.findOne({ email });
+    // Checks if user exists
+    if (!user)
+      throw new AppError(
+        "User not found",
+        404,
+        "ResetPassword",
+        "User does not exist"
+      );
+    // Validates OTP
+    if (user.resetOtp !== otp)
+      throw new AppError(
+        "Invalid OTP",
+        401,
+        "ResetPassword",
+        "OTP is incorrect"
+      );
+    // Checks OTP expiration
+    if (user.resetOtpExpireAt < Date.now())
+      throw new AppError(
+        "OTP expired",
+        401,
+        "ResetPassword",
+        "OTP has expired"
+      );
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    user.resetOtp = "";
+    user.resetOtpExpireAt = 0;
+    await user.save();
+
+    await recordActivity({
+      userId: newUser._id,
+      action: "PASSWORD_RESET",
+      message: `User ${user.name} reset password from ${
+        user.location || "unknown location"
+      }`,
+    });
+
+    res
+      .status(201)
+      .json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
+    // AppError with context for password reset
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "ResetPassword",
+            "Failed to reset password"
+          )
+    );
+  }
+};
+
+// Handles user signup
+export const Signup = async (req, res, next) => {
+  const { fullName, email, password, sendEmail } = req.body;
+  const geoLocation = req.geoLocation;
+
+  try {
+    // Validates required fields
+    if (!fullName || !email || !password)
+      throw new AppError(
+        "All fields are required",
+        400,
+        "Signup",
+        "Missing required fields"
+      );
+    // Validates email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      throw new AppError(
+        "Invalid email format",
+        400,
+        "Signup",
+        "Invalid email format"
+      );
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = await UserModel.findOne({ email: normalizedEmail });
+
+    // Checks for existing user or Google account conflict
+    if (existingUser)
+      throw new AppError(
+        existingUser.authProvider === "google"
+          ? "Email registered with Google. Use Google login."
+          : "User with this email already exists",
+        400,
+        "Signup",
+        "Email already exists"
+      );
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUser = new UserModel({
+      name: fullName,
+      email: normalizedEmail,
+      password: hashedPassword,
+      authProvider: "local",
+      role: "user",
+      emailAttempts: 0,
+      emailStatus: "not_sent",
+      stopEmailAttempts: false,
+      isAccountVerified: false,
+      location: geoLocation
+        ? `${geoLocation.city}, ${geoLocation.country}`
+        : "",
+    });
+
+    await newUser.save();
+
+    if (geoLocation && newUser._id) {
+      await UserLocation.create({
+        userId: newUser._id,
+        ip: geoLocation.ip,
+        city: geoLocation.city,
+        country: geoLocation.country,
+        coordinates: {
+          type: "Point",
+          coordinates: [geoLocation.longitude, geoLocation.latitude],
+        },
+        timestamp: new Date(),
+      });
     }
 
-    const ip = req.geoLocation?.ip || req.ip || "";
-    const geoData = UserLocation.resolveGeoLocation(longitude, latitude);
+    if (
+      (sendEmail === "true" || isAutoEmailDate()) &&
+      !newUser.stopEmailAttempts
+    ) {
+      const mailOption = createMailOption({
+        to: email,
+        subject: "Welcome to Our Platform!",
+        name: fullName,
+        email,
+        message: `Thank you for signing up! You're joining us from ${
+          newUser.location || "an unknown location"
+        }. We're excited to have you on board.`,
+        hasButton: true,
+        buttonText: "Get Started",
+        buttonUrl: "https://inksha-uedq.onrender.com",
+        isWelcome: true,
+      });
+      try {
+        const emailResult = await sendEmailWithRetries(mailOption, newUser._id);
+        newUser.emailAttempts = emailResult.attempts;
+        newUser.emailStatus = "sent";
+      } catch (emailError) {
+        newUser.emailAttempts = emailError.attempts || 3;
+        newUser.emailStatus = "failed";
+        newUser.emailLastError = emailError.message;
+        newUser.stopEmailAttempts = true;
+        await newUser.save();
+        throw emailError;
+      }
+    } else {
+      await recordActivity({
+        userId: newUser._id,
+        action: "EMAIL_SKIPPED",
+        message: `Welcome email not sent for ${email}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
+      });
+    }
 
-    // Prepares location data
-    const locationData = {
-      userId: req.user._id,
-      coordinates: { type: "Point", coordinates: [longitude, latitude] },
-      city: city || "Unknown",
-      country: geoData.country || country || "Unknown",
-      state: geoData.state || "Unknown",
-      pincode: geoData.pincode || "Unknown",
-      ip,
-      timestamp: new Date(),
-    };
+    await newUser.save();
+    await recordActivity({
+      userId: newUser._id,
+      action: "SIGNED_UP",
+      message: `User ${fullName} signed up from ${
+        newUser.location || "unknown location"
+      }`,
+    });
 
-    // Replaces existing location for the user
-    await UserLocation.deleteMany({ userId: req.user._id });
-    const location = await UserLocation.create(locationData);
+    const token = generateToken(newUser, res);
+    res.status(201).json({
+      message: "User registered successfully",
+      _id: newUser._id,
+      fullName: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      location: newUser.location,
+      isAccountVerified: newUser.isAccountVerified,
+      token,
+    });
+  } catch (error) {
+    // AppError with context for signup issues
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "Signup", "Failed to register user")
+    );
+  }
+};
 
-    // Logs activity
+// Handles user login
+// Handles user login
+export const Login = async (req, res, next) => {
+  const { email, password } = req.body;
+  const geoLocation = req.geoLocation;
+
+  try {
+    // Validates required fields
+    if (!email || !password)
+      throw new AppError(
+        "Email and password are required",
+        400,
+        "Login",
+        "Missing required fields"
+      );
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await UserModel.findOne({ email: normalizedEmail }).select(
+      "+password"
+    );
+
+    // Checks if user exists
+    if (!user)
+      throw new AppError(
+        "User not found",
+        400,
+        "Login",
+        "Invalid email or password"
+      );
+
+    // Validates password using bcrypt directly
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      throw new AppError(
+        "Invalid credentials",
+        400,
+        "Login",
+        "Incorrect password"
+      );
+
+    // Update user location if available
+    if (geoLocation) {
+      user.location = `${geoLocation.city}, ${geoLocation.country}`;
+      await UserLocation.create({
+        userId: user._id,
+        ip: geoLocation.ip,
+        city: geoLocation.city,
+        country: geoLocation.country,
+        coordinates: {
+          type: "Point",
+          coordinates: [geoLocation.longitude, geoLocation.latitude],
+        },
+        timestamp: new Date(),
+      });
+      await user.save();
+    }
+
+    const token = generateToken(user, res);
+
+    await recordActivity({
+      userId: user._id,
+      action: "LOGGED_IN",
+      message: `User ${user.name} logged in from ${
+        user.location || "unknown location"
+      }`,
+    });
+
+    res.status(200).json({
+      _id: user._id,
+      fullName: user.name,
+      email: user.email,
+      role: user.role,
+      location: user.location,
+      token,
+    });
+  } catch (error) {
+    // AppError with context for login issues
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "Login", "Failed to log in")
+    );
+  }
+};
+
+// Handles user logout
+export const Logout = async (req, res, next) => {
+  const geoLocation = req.geoLocation;
+
+  try {
+    if (req.user?._id) {
+      await recordActivity({
+        userId: req.user._id,
+        action: "LOGGED_OUT",
+        message: `User ${req.user.name} logged out from ${
+          geoLocation
+            ? `${geoLocation.city}, ${geoLocation.country}`
+            : "unknown location"
+        }`,
+      });
+    }
+
+    res.clearCookie("jwt", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    // AppError with context for logout issues
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "Logout", "Failed to log out")
+    );
+  }
+};
+
+// Checks user authentication status
+export const checkAuth = async (req, res, next) => {
+  const geoLocation = req.geoLocation;
+
+  try {
+    // Validates user presence
+    if (!req.user?._id)
+      throw new AppError(
+        "Unauthorized - No user found",
+        401,
+        "CheckAuth",
+        "User not authenticated"
+      );
+
+    const token = req.cookies.jwt;
+    // Checks for token
+    if (!token)
+      throw new AppError(
+        "No token found",
+        401,
+        "CheckAuth",
+        "Authentication token missing"
+      );
+
     await recordActivity({
       userId: req.user._id,
-      action: "SAVED_USER_LOCATION",
-      message: `Saved location at ${locationData.city}, ${
-        locationData.country
-      } (State: ${locationData.state}, Pincode: ${locationData.pincode}) from ${
-        req.geoLocation
-          ? `${req.geoLocation.city}, ${req.geoLocation.country}`
+      action: "CHECKED_AUTH",
+      message: `User ${req.user.name} checked authentication status from ${
+        geoLocation
+          ? `${geoLocation.city}, ${geoLocation.country}`
           : "unknown location"
       }`,
     });
 
-    // Emits location update to admin and followers
-    const socketLocationData = {
-      userId: req.user._id.toString(),
-      coordinates: { lat: latitude, lon: longitude },
-      city: locationData.city,
-      country: locationData.country,
-      state: locationData.state,
-      pincode: locationData.pincode,
-      timestamp: location.timestamp.getTime(),
-    };
-
-    io.to("adminRoom").emit("userLocationUpdate", socketLocationData);
-    user.followers.forEach((followerId) => {
-      io.to(followerId.toString()).emit(
-        "userLocationUpdate",
-        socketLocationData
-      );
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Location saved successfully",
-      location: socketLocationData,
+    res.status(200).json({
+      _id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role,
+      location: req.user.location,
+      token,
+      isAccountVerified: req.user.isAccountVerified,
     });
   } catch (error) {
-    // AppError with context for saving user location
+    // AppError with context for auth check issues
     next(
       error instanceof AppError
         ? error
         : new AppError(
-            error.message || "Failed to save user location",
+            error.message,
             500,
-            "SaveUserLocation",
-            "Error in saveUserLocation"
+            "CheckAuth",
+            "Failed to check authentication"
           )
     );
   }
 };
 
-// Retrieves paginated user locations with user details
-export const getAllUserLocations = async (req, res, next) => {
+// Handles Google login
+export const googleLogin = async (req, res, next) => {
+  const { token, sendEmail } = req.body;
+  const geoLocation = req.geoLocation;
+
   try {
-    const { page = 1, limit = 12 } = req.query;
-    const pageNum = Math.max(parseInt(page), 1);
-    const limitNum = Math.max(parseInt(limit), 1);
+    // Validates Google token
+    if (!token)
+      throw new AppError(
+        "Google token is required",
+        400,
+        "GoogleLogin",
+        "Google token missing"
+      );
 
-    // Aggregates latest locations per user
-    const locations = await UserLocation.aggregate([
-      {
-        $lookup: {
-          from: "users",
-          localField: "userId",
-          foreignField: "_id",
-          as: "user",
-        },
-      },
-      {
-        $unwind: {
-          path: "$user",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $sort: { timestamp: -1 },
-      },
-      {
-        $group: {
-          _id: "$userId",
-          userId: { $first: "$userId" },
-          coordinates: { $first: "$coordinates" },
-          city: { $first: "$city" },
-          country: { $first: "$country" },
-          state: { $first: "$state" },
-          pincode: { $first: "$pincode" },
-          timestamp: { $first: "$timestamp" },
-          name: { $first: "$user.name" },
-        },
-      },
-      {
-        $project: {
-          userId: 1,
-          coordinates: 1,
-          city: 1,
-          country: 1,
-          state: 1,
-          pincode: 1,
-          timestamp: 1,
-          name: 1,
-        },
-      },
-      {
-        $skip: (pageNum - 1) * limitNum,
-      },
-      {
-        $limit: limitNum,
-      },
-    ]);
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: GOOGLE_CLIENT_ID,
+    });
 
-    // Counts total unique user locations
-    const total = await UserLocation.aggregate([
-      { $group: { _id: "$userId" } },
-      { $count: "total" },
-    ]);
+    const { sub: googleId, email, name, picture } = ticket.getPayload();
+    // Validates email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      throw new AppError(
+        "Invalid email from Google",
+        400,
+        "GoogleLogin",
+        "Invalid Google email"
+      );
 
-    const totalCount = total.length > 0 ? total[0].total : 0;
+    let user = await UserModel.findOne({ $or: [{ googleId }, { email }] });
+    let isNewUser = false;
 
-    // Formats location data, handling invalid coordinates
-    const validLocations = locations.map((loc) => {
-      if (
-        !loc.coordinates ||
-        !Array.isArray(loc.coordinates.coordinates) ||
-        loc.coordinates.coordinates.length < 2
-      ) {
-        return {
-          userId: loc.userId.toString(),
-          coordinates: null,
-          city: loc.city || "Unknown",
-          country: loc.country || "Unknown",
-          state: loc.state || "Unknown",
-          pincode: loc.pincode || "Unknown",
-          timestamp: loc.timestamp,
-          name: loc.name || "Unknown",
-        };
-      }
-      return {
-        userId: loc.userId.toString(),
+    // Checks for existing user or local account conflict
+    if (user) {
+      if (user.authProvider === "local")
+        throw new AppError(
+          "Email registered with password-based account. Use password login.",
+          400,
+          "GoogleLogin",
+          "Email conflict with local account"
+        );
+    } else {
+      user = new UserModel({
+        name: name || "Unnamed Author",
+        email,
+        googleId,
+        avatar: picture,
+        username: email.split("@")[0],
+        authProvider: "google",
+        role: "user",
+        emailAttempts: 0,
+        emailStatus: "not_sent",
+        stopEmailAttempts: false,
+        location: geoLocation
+          ? `${geoLocation.city}, ${geoLocation.country}`
+          : "",
+      });
+      isNewUser = true;
+    }
+
+    if (geoLocation && user._id) {
+      await UserLocation.create({
+        userId: newUser._id,
+        ip: geoLocation.ip,
+        city: geoLocation.city,
+        country: geoLocation.country,
         coordinates: {
-          lat: loc.coordinates.coordinates[1],
-          lon: loc.coordinates.coordinates[0],
+          type: "Point",
+          coordinates: [geoLocation.longitude, geoLocation.latitude],
         },
-        city: loc.city || "Unknown",
-        country: loc.country || "Unknown",
-        state: loc.state || "Unknown",
-        pincode: loc.pincode || "Unknown",
-        timestamp: loc.timestamp,
-        name: loc.name || "Unknown",
-      };
-    });
-
-    res.status(200).json({
-      success: true,
-      locations: validLocations,
-      page: pageNum,
-      total: totalCount,
-      totalPages: Math.ceil(totalCount / limitNum),
-    });
-  } catch (error) {
-    // AppError with context for fetching user locations
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to fetch user locations",
-            500,
-            "GetAllUserLocations",
-            "Error in getAllUserLocations"
-          )
-    );
-  }
-};
-
-// Retrieves authenticated user's profile
-export const getProfile = async (req, res, next) => {
-  try {
-    // Validates authentication
-    if (!req.user?._id) {
-      throw new AppError(
-        "Unauthorized - No user found",
-        401,
-        "GetProfile",
-        "User not authenticated"
-      );
+        timestamp: new Date(),
+      });
     }
 
-    // Fetches user profile
-    const profile = await UserModel.findById(req.user._id).select("-password");
-    if (!profile) {
-      throw new AppError(
-        "User not found",
-        404,
-        "GetProfile",
-        "Authenticated user does not exist"
-      );
+    if (
+      isNewUser &&
+      (sendEmail === "true" || isAutoEmailDate()) &&
+      !user.stopEmailAttempts
+    ) {
+      const mailOption = createMailOption({
+        to: email,
+        subject: "Welcome to Our Platform!",
+        name: name || "User",
+        email,
+        message: `Thank you for signing up with Google! You're joining us from ${
+          user.location || "an unknown location"
+        }. We're excited to have you on board.`,
+        hasButton: true,
+        buttonText: "Get Started",
+        buttonUrl: "https://inksha-uedq.onrender.com",
+        isWelcome: true,
+      });
+
+      try {
+        const emailResult = await sendEmailWithRetries(mailOption, user._id);
+        user.emailAttempts = emailResult.attempts;
+        user.emailStatus = "sent";
+      } catch (emailError) {
+        user.emailAttempts = emailError.attempts || 3;
+        user.emailStatus = "failed";
+        user.emailLastError = emailError.message;
+        user.stopEmailAttempts = true;
+        await user.save();
+        throw emailError;
+      }
+    } else if (isNewUser) {
+      await recordActivity({
+        userId: newUser._id,
+        action: "EMAIL_SKIPPED",
+        message: `Welcome email not sent for ${email}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
+      });
     }
 
-    // Logs activity
+    if (isNewUser) await user.save();
     await recordActivity({
-      userId: req.user._id,
-      action: "LOGGED_IN",
-      message: "Viewed own profile",
+      userId: newUser._id,
+      action: "GOOGLE_LOGGED_IN",
+      message: `User ${user.name} logged in with Google from ${
+        user.location || "unknown location"
+      }`,
     });
 
-    res.status(200).json({ success: true, data: profile });
-  } catch (error) {
-    // AppError with context for fetching profile
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to fetch profile",
-            500,
-            "GetProfile",
-            "Error in getProfile"
-          )
-    );
-  }
-};
-
-// Retrieves paginated list of all users
-export const getAllUser = async (req, res, next) => {
-  try {
-    const page = Math.max(parseInt(req.query.page) || 1, 1);
-    const limit = Math.min(parseInt(req.query.limit) || 100, 1000);
-    const skip = (page - 1) * limit;
-
-    const projection =
-      "name email gender avatar banner bio profession location createdAt role blocked bookmarks following followers blockedUsers subscribedCategories subscribedAuthors subscribers hasSubscriptionPlan subscriptionPlan subscriptionDate";
-
-    // Fetches users and total count
-    const [users, totalUsers] = await Promise.all([
-      UserModel.find().select(projection).skip(skip).limit(limit).lean(),
-      UserModel.countDocuments(),
-    ]);
-
+    const jwtToken = generateToken(user, res);
     res.status(200).json({
-      success: true,
-      users,
-      totalUsers,
-      totalPages: Math.ceil(totalUsers / limit),
-      currentPage: page,
-    });
-  } catch (error) {
-    // AppError with context for fetching all users
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to fetch users",
-            500,
-            "GetAllUser",
-            "Error in getAllUser"
-          )
-    );
-  }
-};
-
-// Updates user profile with avatar and banner compression
-export const updateProfile = async (req, res, next) => {
-  try {
-    // Validates authentication
-    if (!req.user?._id) {
-      throw new AppError(
-        "Unauthorized - No user found",
-        401,
-        "UpdateProfile",
-        "User not authenticated"
-      );
-    }
-
-    // Fetches user
-    const user = await UserModel.findById(req.user._id);
-    if (!user) {
-      throw new AppError(
-        "User not found",
-        404,
-        "UpdateProfile",
-        "Authenticated user does not exist"
-      );
-    }
-
-    // Updates allowed fields
-    const updatableFields = [
-      "name",
-      "bio",
-      "gender",
-      "location",
-      "profession",
-      "email",
-      "avatar",
-      "banner",
-      "blocked",
-    ];
-
-    updatableFields.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        user[field] = req.body[field];
-      }
-    });
-
-    // Handles avatar and banner uploads with compression
-    if (req.files) {
-      if (req.files.avatar?.[0]) {
-        try {
-          const uploadedAvatar = await uploadToCloudinary({
-            buffer: req.files.avatar[0].buffer,
-            folder: "blog/users/avatar",
-            transformation: [
-              { width: 800, height: 800, crop: "limit" },
-              { quality: "auto:good", fetch_format: "auto" }, // Compresses image while maintaining good quality
-            ],
-          });
-          user.avatar = uploadedAvatar.secure_url;
-        } catch (err) {
-          throw new AppError(
-            "Failed to upload avatar",
-            500,
-            "UpdateProfile",
-            "Error uploading avatar to Cloudinary"
-          );
-        }
-      }
-
-      if (req.files.banner?.[0]) {
-        try {
-          const uploadedBanner = await uploadToCloudinary({
-            buffer: req.files.banner[0].buffer,
-            folder: "blog/users/banner",
-            transformation: [
-              { width: 1200, height: 400, crop: "limit" },
-              { quality: "auto:good", fetch_format: "auto" }, // Compresses image while maintaining good quality
-            ],
-          });
-          user.banner = uploadedBanner.secure_url;
-        } catch (err) {
-          throw new AppError(
-            "Failed to upload banner",
-            500,
-            "UpdateProfile",
-            "Error uploading banner to Cloudinary"
-          );
-        }
-      }
-    }
-
-    await user.save();
-
-    // Logs activity
-    await recordActivity({
-      userId: req.user._id,
-      action: "UPDATED_PROFILE",
-      message: "Updated their profile",
-    });
-
-    // Emits profile update to admin and followers
-    const profileUpdateData = {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      banner: user.banner,
-      bio: user.bio,
-      gender: user.gender,
-      location: user.location,
-      profession: user.profession,
-      role: user.role,
-      blocked: user.blocked,
-    };
-
-    io.to("adminRoom").emit("userProfileUpdate", profileUpdateData);
-    user.followers.forEach((followerId) => {
-      io.to(followerId.toString()).emit("userProfileUpdate", profileUpdateData);
-    });
-
-    res.status(200).json({
-      success: true,
-      message: "Profile updated successfully",
-      data: {
+      message: isNewUser
+        ? "Google signup successful"
+        : "Google login successful",
+      user: {
         _id: user._id,
         name: user.name,
         email: user.email,
         avatar: user.avatar,
-        banner: user.banner,
-        bio: user.bio,
-        gender: user.gender,
-        location: user.location,
-        profession: user.profession,
-        role: user.role,
-        blocked: user.blocked,
-        googleId: user.googleId,
+        username: user.username,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        joiningDate: user.joiningDate,
-        bookmarks: user.bookmarks,
-        followers: user.followers,
-        following: user.following,
-        blockedUsers: user.blockedUsers,
+        role: user.role,
+        location: user.location,
       },
+      token: jwtToken,
     });
   } catch (error) {
-    // AppError with context for updating profile
+    // AppError with context for Google login issues
     next(
       error instanceof AppError
         ? error
         : new AppError(
-            error.message || "Failed to update profile",
+            error.message,
             500,
-            "UpdateProfile",
-            "Error in updateProfile"
+            "GoogleLogin",
+            "Failed to process Google login"
           )
     );
   }
 };
 
-// Deletes authenticated user's account
-export const deleteUser = async (req, res, next) => {
-  try {
-    const userId = req.user?._id;
-    if (!userId) {
-      throw new AppError(
-        "Unauthorized",
-        401,
-        "DeleteUser",
-        "User not authenticated"
-      );
-    }
+// Checks email status for a user
+export const checkEmailStatus = async (req, res, next) => {
+  const { email } = req.query;
 
-    // Deletes user
-    const deleted = await UserModel.findByIdAndDelete(userId);
-    if (!deleted) {
+  try {
+    // Validates email format
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      throw new AppError(
+        "Valid email is required",
+        400,
+        "CheckEmailStatus",
+        "Invalid email format"
+      );
+
+    const user = await UserModel.findOne({ email }).select(
+      "emailStatus emailAttempts emailLastError stopEmailAttempts name location"
+    );
+    // Checks if user exists
+    if (!user)
       throw new AppError(
         "User not found",
         404,
-        "DeleteUser",
-        "Authenticated user does not exist"
+        "CheckEmailStatus",
+        "User does not exist"
       );
-    }
 
-    // Logs activity
     await recordActivity({
-      userId,
-      action: "DELETED_ACCOUNT",
-      message: "Deleted their account",
+      userId: newUser._id,
+      action: "CHECKED_EMAIL_STATUS",
+      message: `User ${user.name} checked email status for ${email}`,
     });
 
-    // Emits deletion event to admin
-    io.to("adminRoom").emit("userDeleted", { userId });
-
-    res
-      .status(200)
-      .json({ success: true, message: "User deleted successfully" });
+    res.status(200).json({
+      message: "Email status retrieved successfully",
+      email,
+      emailStatus: user.emailStatus,
+      emailAttempts: user.emailAttempts,
+      emailLastError: user.emailLastError || null,
+      stopEmailAttempts: user.stopEmailAttempts || false,
+      location: user.location,
+    });
   } catch (error) {
-    // AppError with context for deleting user
+    // AppError with context for email status check
     next(
       error instanceof AppError
         ? error
         : new AppError(
-            error.message || "Failed to delete user",
+            error.message,
             500,
-            "DeleteUser",
-            "Error in deleteUser"
+            "CheckEmailStatus",
+            "Failed to retrieve email status"
           )
     );
   }
 };
 
-// Retrieves a single user by ID
-export const getSingleUserById = async (req, res, next) => {
+// Fetches email statuses for all users (admin only)
+export const getAllEmailStatuses = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
-    // Validates user ID
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    // Validates admin access
+    if (req.user.role !== "admin")
       throw new AppError(
-        "Invalid user ID",
-        400,
-        "GetSingleUserById",
-        "Invalid MongoDB ObjectId"
+        "Admin access required",
+        403,
+        "GetAllEmailStatuses",
+        "Admin privileges required"
       );
-    }
 
-    // Fetches user
-    const user = await UserModel.findById(id)
-      .select("-password -googleId")
-      .populate("subscribedAuthors", "name email avatar")
-      .lean();
-
-    if (!user) {
-      throw new AppError(
-        "User not found",
-        404,
-        "GetSingleUserById",
-        "User does not exist"
-      );
-    }
-
-    // Logs activity for authenticated users
-    if (req.user && req.user._id) {
-      await recordActivity({
-        userId: req.user._id,
-        action: "VIEWED_PROFILE",
-        message: `Viewed profile of user ${id}`,
-      });
-    }
-
-    res.status(200).json({ success: true, data: user });
-  } catch (error) {
-    // AppError with context for fetching single user
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to fetch user",
-            500,
-            "GetSingleUserById",
-            "Error in getSingleUserById"
-          )
-    );
-  }
-};
-
-// Retrieves user activity history
-export const getUserActivity = async (req, res, next) => {
-  try {
-    const userId = req.params.id;
-
-    // Validates user ID
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      throw new AppError(
-        "Invalid user ID",
-        400,
-        "GetUserActivity",
-        "Invalid MongoDB ObjectId"
-      );
-    }
-
-    // Fetches user
-    const user = await UserModel.findById(userId).select("name").lean();
-    if (!user) {
-      throw new AppError(
-        "User not found",
-        404,
-        "GetUserActivity",
-        "User does not exist"
-      );
-    }
-
-    // Fetches activity history
-    const activityList = await ActivityModel.find({ user: userId })
-      .sort({ createdAt: -1 })
-      .populate("targetPost", "title slug")
-      .populate("targetComment", "text")
-      .lean();
-
-    // Logs activity for authenticated users
-    if (req.user && req.user._id) {
-      const targetUserName = user.name || userId;
-      await recordActivity({
-        userId: req.user._id,
-        action: "VIEWED_ACTIVITY",
-        message: `Viewed activity of user ${targetUserName}`,
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      activity: activityList,
-    });
-  } catch (error) {
-    // AppError with context for fetching user activity
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to fetch user activity",
-            500,
-            "GetUserActivity",
-            "Error in getUserActivity"
-          )
-    );
-  }
-};
-
-// Clears activity history for the authenticated user
-export const clearUserActivity = async (req, res, next) => {
-  try {
-    const userId = req.user._id;
-
-    // Deletes user activity
-    await ActivityModel.deleteMany({ user: userId });
-
-    res.status(200).json({
-      success: true,
-      message: "Activity history cleared",
-    });
-  } catch (error) {
-    // AppError with context for clearing user activity
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to clear user activity",
-            500,
-            "ClearUserActivity",
-            "Error in clearUserActivity"
-          )
-    );
-  }
-};
-
-// Clears old activity records older than one day
-export const clearOldActivity = async (req, res, next) => {
-  try {
-    const oneDayAgo = new Date();
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-
-    // Deletes old activity records
-    const result = await ActivityModel.deleteMany({
-      createdAt: { $lt: oneDayAgo },
-    });
-
-    const message = `Cleared ${result.deletedCount} old activity records`;
-
-    if (res) {
-      res.status(200).json({
-        success: true,
-        message,
-      });
-    }
-  } catch (error) {
-    // AppError with context for clearing old activity
-    if (next) {
-      next(
-        error instanceof AppError
-          ? error
-          : new AppError(
-              error.message || "Failed to clear old activity",
-              500,
-              "ClearOldActivity",
-              "Error in clearOldActivity"
-            )
-      );
-    }
-  }
-};
-
-// Saves user cookie consent
-export const saveUserCookieConsent = async (req, res, next) => {
-  try {
-    const { consent } = req.body;
-    const userId = req.user?._id;
-
-    // Validates consent value
-    if (typeof consent !== "boolean") {
-      throw new AppError(
-        "Invalid consent value",
-        400,
-        "SaveUserCookieConsent",
-        "Consent must be a boolean"
-      );
-    }
-
-    // Updates user consent in database if authenticated
-    if (userId) {
-      await UserModel.findByIdAndUpdate(userId, { cookieConsent: consent });
-    }
-
-    // Sets consent cookie
-    res.cookie("user_cookie_consent", String(consent), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
-      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
-    });
-
-    res.status(200).json({
-      success: true,
-      message: `Consent ${consent ? "accepted" : "declined"}`,
-    });
-  } catch (error) {
-    // AppError with context for saving cookie consent
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to save cookie consent",
-            500,
-            "SaveUserCookieConsent",
-            "Error in saveUserCookieConsent"
-          )
-    );
-  }
-};
-
-// POST /api/user/feedback/trigger/:userId (Admin only)
-// POST /api/user/feedback/manual/:userId (admin only)
-export const adminSendFeedbackPrompt = async (req, res, next) => {
-  try {
-    if (!req.user?.isAdmin) {
-      return next(
-        new AppError("Only admins can trigger feedback prompts", 403)
-      );
-    }
-
-    const { userId } = req.params;
-    const user = await UserModel.findById(userId);
-    if (!user) {
-      return next(new AppError("User not found", 404));
-    }
-
-    // Update user's feedbackPrompt status in DB
-    user.feedbackPrompt = {
-      shown: true,
-      shownAt: new Date(),
-      responded: false,
-    };
-    await user.save();
-
-    // 🔴 Emit socket to that user's room
-    io.to(userId).emit("showFeedbackPrompt", {
-      message: "📬 We'd love your feedback. How are we doing?",
-      fromAdmin: true,
-    });
-
-    res.status(200).json({
-      success: true,
-      message: `Feedback prompt sent to ${user.name}`,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const shouldShowFeedbackPrompt = async (req, res, next) => {
-  try {
-    const user = await UserModel.findById(req.user._id).select(
-      "joiningDate feedbackPrompt"
-    );
-
-    if (!user) {
-      return next(new AppError("User not found", 404));
-    }
-
-    const accountAgeInDays = Math.floor(
-      (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24)
-    );
-
-    const shouldShow =
-      accountAgeInDays >= 7 &&
-      (!user.feedbackPrompt ||
-        (!user.feedbackPrompt.shown && !user.feedbackPrompt.responded));
-
-    if (shouldShow) {
-      user.feedbackPrompt = {
-        shown: true,
-        shownAt: new Date(),
-        responded: false,
-      };
-      await user.save();
-    }
-
-    res.status(200).json({
-      success: true,
-      showFeedback: shouldShow,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-export const submitFeedback = async (req, res, next) => {
-  try {
-    const { rating, message } = req.body;
-
-    if (!rating || rating < 1 || rating > 5) {
-      throw new AppError("Invalid rating (1-5 required)", 400);
-    }
-
-    const user = await UserModel.findById(req.user._id);
-
-    if (!user) {
-      return next(new AppError("User not found", 404));
-    }
-
-    user.feedbackPrompt = {
-      ...user.feedbackPrompt,
-      responded: true,
-      rating,
-      message,
-    };
-
-    await user.save();
-
-    res.status(200).json({ success: true, message: "Feedback submitted" });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// GET /api/user/feedback/all (Admin only)
-export const getAllFeedbacks = async (req, res, next) => {
-  try {
-    if (!req.user?.isAdmin) {
-      return next(new AppError("Access denied: Admins only", 403));
-    }
-
-    // console.log("[getAllFeedbacks] 🔍 Fetching feedback...");
-
-    const feedbackUsers = await UserModel.find({
-      "feedbackPrompt.responded": true,
-    })
+    const { page = 1, limit = 10 } = req.query;
+    const users = await UserModel.find()
       .select(
-        "name email avatar feedbackPrompt.createdAt feedbackPrompt.rating feedbackPrompt.message feedbackPrompt.shownAt"
+        "email emailStatus emailAttempts emailLastError stopEmailAttempts name location"
       )
-      .sort({ "feedbackPrompt.shownAt": -1 })
-      .lean();
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+    const total = await UserModel.countDocuments();
 
-    // console.log(
-    //   `[getAllFeedbacks] 🧾 Found ${feedbackUsers.length} users with feedback`
-    // );
-
-    const feedbacks = feedbackUsers.map((user) => {
-      // console.log("🧠 Feedback user:", {
-      //   name: user.name,
-      //   rating: user.feedbackPrompt?.rating,
-      //   message: user.feedbackPrompt?.message,
-      //   shownAt: user.feedbackPrompt?.shownAt,
-      // });
-
-      return {
-        userId: user._id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        rating: user.feedbackPrompt?.rating,
-        message: user.feedbackPrompt?.message,
-        submittedAt: user.feedbackPrompt?.shownAt,
-      };
-    });
-
-    res.status(200).json({
-      success: true,
-      total: feedbacks.length,
-      feedbacks,
-    });
+    res.status(200).json({ users, total, page, limit });
   } catch (error) {
+    // AppError with context for fetching all email statuses
     next(
       error instanceof AppError
         ? error
         : new AppError(
-            error.message || "Failed to fetch feedback",
+            error.message,
             500,
-            "GetAllFeedbacks",
-            "Error in getAllFeedbacks"
+            "GetAllEmailStatuses",
+            "Failed to fetch email statuses"
           )
     );
   }
 };
-
-// Schedules daily cleanup of old activity records
-cron.schedule("0 0 * * *", clearOldActivity, {
-  scheduled: true,
-  timezone: "Asia/Kolkata",
-});
