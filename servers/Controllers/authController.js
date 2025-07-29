@@ -1062,31 +1062,20 @@ export const loginTestUser = async (req, res, next) => {
         .json({ message: "Test user not found. Create it first." });
     }
 
-    const token = jwt.sign(
-      { id: testUser._id },
-      process.env.JWT_SECRET || "defaultsecret",
-      { expiresIn: "7d" }
-    );
+    // ✅ Use your existing token utility
+    const token = generateToken(testUser, res);
 
-    // Set token cookie
-    res
-      .cookie("token", token, {
-        httpOnly: true,
-        sameSite: "Lax",
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      })
-      .status(200)
-      .json({
-        message: "Logged in as Test User",
-        user: {
-          _id: testUser._id,
-          name: testUser.name,
-          email: testUser.email,
-          username: testUser.username,
-          role: testUser.role,
-        },
-      });
+    res.status(200).json({
+      message: "Logged in as Test User",
+      user: {
+        _id: testUser._id,
+        name: testUser.name,
+        email: testUser.email,
+        username: testUser.username,
+        role: testUser.role,
+      },
+      token,
+    });
   } catch (err) {
     console.error("Test login failed:", err);
     res.status(500).json({ message: "Internal server error" });
