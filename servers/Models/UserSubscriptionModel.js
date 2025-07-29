@@ -77,5 +77,7 @@ planSchema.pre("save", function (next) {
 });
 
 // Creates and exports the UserSubscriptionPlan model
-const UserSubscriptionPlan = mongoose.model("UserSubscriptionPlan", planSchema);
+const UserSubscriptionPlan =
+  mongoose.models.UserSubscriptionPlan ||
+  mongoose.model("UserSubscriptionPlan", planSchema);
 export default UserSubscriptionPlan;

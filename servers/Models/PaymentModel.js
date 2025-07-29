@@ -160,5 +160,6 @@ paymentSchema.index({ payoutId: 1 }); // For payout lookup
 paymentSchema.index({ "payoutDetails.payoutMethod": 1 }); // For payout method queries
 
 // Creates and exports the Payment model
-const PaymentModel = mongoose.model("Payment", paymentSchema);
+const PaymentModel =
+  mongoose.models.Payment || mongoose.model("Payment", paymentSchema);
 export default PaymentModel;

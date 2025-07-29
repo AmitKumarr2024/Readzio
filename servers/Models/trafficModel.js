@@ -11,27 +11,28 @@ const trafficSchema = new mongoose.Schema({
   // HTTP method
   method: String,
   // Timestamp of request
-  timestamp: { 
-    type: Date, 
-    default: Date.now 
+  timestamp: {
+    type: Date,
+    default: Date.now,
   },
   // Optional user associated with the request
-  userId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "User" 
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
   },
   // Optional post associated with the request
-  postId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "Post" 
+  postId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Post",
   },
   // Time spent on the page (in seconds)
-  timeSpent: { 
-    type: Number, 
-    default: 0 
+  timeSpent: {
+    type: Number,
+    default: 0,
   },
 });
 
 // Creates and exports the Traffic model
-const TrafficModel = mongoose.model("Traffic", trafficSchema);
+const TrafficModel =
+  mongoose.models.Traffic || mongoose.model("Traffic", trafficSchema);
 export default TrafficModel;

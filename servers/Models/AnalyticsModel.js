@@ -15,6 +15,8 @@ const AnalyticsSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-const AnalyticsModel = mongoose.model("Analytics-Guest", AnalyticsSchema);
+export const AnalyticsModel =
+  mongoose.models.Analytics_Guest ||
+  mongoose.model("Analytics_Guest", AnalyticsSchema);
 
 export default AnalyticsModel;

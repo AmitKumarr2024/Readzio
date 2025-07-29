@@ -13,5 +13,6 @@ const guestSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const GuestModel = mongoose.model("Guest", guestSchema);
+export const GuestModel =
+  mongoose.models.Guest || mongoose.model("Guest", guestSchema);
 export default GuestModel;

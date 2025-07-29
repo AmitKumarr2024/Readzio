@@ -18,7 +18,10 @@ const categorySchema = new mongoose.Schema({
     unique: true, // Creates index
     trim: true,
     lowercase: true,
-    match: [/^[a-z0-9-]+$/, "Slug must be lowercase, alphanumeric, and contain only dashes"],
+    match: [
+      /^[a-z0-9-]+$/,
+      "Slug must be lowercase, alphanumeric, and contain only dashes",
+    ],
   },
   // Optional category description
   description: {
@@ -40,5 +43,6 @@ const categorySchema = new mongoose.Schema({
 });
 
 // Creates and exports the Category model
-const CategoryModel = mongoose.model("Category", categorySchema);
+export const CategoryModel =
+  mongoose.models.Category || mongoose.model("Category", categorySchema);
 export default CategoryModel;

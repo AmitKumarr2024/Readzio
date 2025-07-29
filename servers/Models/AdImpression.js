@@ -25,5 +25,6 @@ const adImpressionSchema = new mongoose.Schema({
 });
 
 // Creates and exports the AdImpression model
-const AdImpressionModel = mongoose.model("AdImpression", adImpressionSchema);
+const AdImpressionModel = mongoose.models.AdImpression || mongoose.model("AdImpression", adImpressionSchema);
+
 export default AdImpressionModel;

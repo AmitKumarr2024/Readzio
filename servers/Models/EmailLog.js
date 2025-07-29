@@ -78,4 +78,7 @@ EmailLogSchema.index({ emailStatus: 1, stopEmailAttempts: 1 }); // For status-ba
 EmailLogSchema.index({ sentAt: -1 }); // For sorting by send time
 
 // Creates and exports the EmailLog model
-export default mongoose.model("EmailLog", EmailLogSchema);
+const EmailLogModel =
+  mongoose.models.EmailLog || mongoose.model("EmailLog", EmailLogSchema);
+
+export default EmailLogModel;

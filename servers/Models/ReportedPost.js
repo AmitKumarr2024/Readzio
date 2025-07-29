@@ -4,40 +4,40 @@ import mongoose from "mongoose";
 const reportedPostSchema = new mongoose.Schema(
   {
     // Reported post
-    post: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: "Post", 
-      required: true 
+    post: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+      required: true,
     },
     // User who reported the post
-    reporter: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: "User", 
-      required: true 
+    reporter: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
     // Reason for reporting
-    reason: { 
-      type: String, 
-      required: true 
+    reason: {
+      type: String,
+      required: true,
     },
     // Additional details for the report
-    details: { 
-      type: String 
+    details: {
+      type: String,
     },
     // Indicates if report has been reviewed
-    isReviewed: { 
-      type: Boolean, 
-      default: false 
+    isReviewed: {
+      type: Boolean,
+      default: false,
     },
     // Indicates if report was forwarded to author
-    forwardedToAuthor: { 
-      type: Boolean, 
-      default: false 
+    forwardedToAuthor: {
+      type: Boolean,
+      default: false,
     },
     // Indicates if report was acknowledged
-    isAcknowledged: { 
-      type: Boolean, 
-      default: false 
+    isAcknowledged: {
+      type: Boolean,
+      default: false,
     },
     // Timestamp of report creation
     createdAt: {
@@ -49,4 +49,6 @@ const reportedPostSchema = new mongoose.Schema(
 );
 
 // Creates and exports the ReportedPost model
-export default mongoose.model("ReportedPost", reportedPostSchema);
+const ReportedPostModel =
+  mongoose.models.ReportedPost ||
+  mongoose.model("ReportedPost", reportedPostSchema);

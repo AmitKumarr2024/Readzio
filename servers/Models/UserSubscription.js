@@ -3,26 +3,26 @@ import mongoose from "mongoose";
 // Defines schema for user subscriptions
 const userSubscriptionSchema = new mongoose.Schema({
   // Subscribed user
-  userId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "User", 
-    required: true 
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
   },
   // Subscription plan
-  planId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "UserSubscriptionPlan", 
-    required: true 
+  planId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "UserSubscriptionPlan",
+    required: true,
   },
   // Payment ID for the subscription
-  paymentId: { 
-    type: String, 
-    required: true 
+  paymentId: {
+    type: String,
+    required: true,
   },
   // Subscription expiry date
-  expiryDate: { 
-    type: Date, 
-    required: true 
+  expiryDate: {
+    type: Date,
+    required: true,
   },
   // Subscription status
   status: {
@@ -31,24 +31,24 @@ const userSubscriptionSchema = new mongoose.Schema({
     default: "active",
   },
   // Amount paid for the subscription
-  amountPaid: { 
-    type: Number, 
-    required: true 
+  amountPaid: {
+    type: Number,
+    required: true,
   },
   // Timestamp of creation
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
+  createdAt: {
+    type: Date,
+    default: Date.now,
   },
   // Timestamp of last update
-  updatedAt: { 
-    type: Date, 
-    default: Date.now 
+  updatedAt: {
+    type: Date,
+    default: Date.now,
   },
   // Timestamp of last reminder sent
-  lastReminderSent: { 
-    type: Date, 
-    default: null 
+  lastReminderSent: {
+    type: Date,
+    default: null,
   },
 });
 
@@ -59,5 +59,7 @@ userSubscriptionSchema.pre("save", function (next) {
 });
 
 // Creates and exports the UserSubscription model
-const UserSubscription = mongoose.model("UserSubscription", userSubscriptionSchema);
+const UserSubscription =
+  mongoose.models.UserSubscription ||
+  mongoose.model("UserSubscription", userSubscriptionSchema);
 export default UserSubscription;

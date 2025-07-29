@@ -43,19 +43,19 @@ const commentSchema = new mongoose.Schema(
       default: () => ({}),
     },
     // Soft delete flag
-    deleted: { 
-      type: Boolean, 
-      default: false 
+    deleted: {
+      type: Boolean,
+      default: false,
     },
     // Indicates if comment was edited
-    edited: { 
-      type: Boolean, 
-      default: false 
+    edited: {
+      type: Boolean,
+      default: false,
     },
     // Moderation flag for reported comments
-    isFlagged: { 
-      type: Boolean, 
-      default: false 
+    isFlagged: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true } // Adds createdAt and updatedAt
@@ -73,5 +73,7 @@ commentSchema.set("toObject", { virtuals: true });
 commentSchema.set("toJSON", { virtuals: true });
 
 // Creates and exports the Comment model
-const CommentModel = mongoose.models.Comment || mongoose.model("Comment", commentSchema);
+const CommentModel =
+  mongoose.models.Comment || mongoose.model("Comment", commentSchema);
+
 export default CommentModel;
