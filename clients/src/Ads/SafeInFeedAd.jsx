@@ -8,6 +8,12 @@ const SafeInFeedAd = ({ postId }) => {
   const retryTimeoutRef = useRef(null);
 
   useEffect(() => {
+    const isSmallScreen = window.innerWidth < 480;
+    if (isSmallScreen) {
+      setFallback(true);
+      return;
+    }
+
     const checkAdRendered = () => {
       const el = ref.current;
       if (!el || el.offsetHeight < 4) {

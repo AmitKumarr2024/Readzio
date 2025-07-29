@@ -5,10 +5,8 @@ import { fetchSuggestedPosts } from "../../store/suggestedPostsSlice";
 import { toast } from "react-hot-toast";
 import TimeAgo from "../../Utils/TimeAgo";
 import Skeleton from "@/components/Ui/Skeleton";
-import adsConfig from "../../Utils/adsConfig";
-import InFeedAd from "../../Ads/InFeedAd";
-import MultiplexAd from "../../Ads/MultiplexAd";
 import HorizontalBannerAd from "../../Ads/HorizontalBannerAd";
+import SafeInFeedAd from "../../Ads/SafeInFeedAd";
 
 const SuggestedPosts = () => {
   const dispatch = useDispatch();
@@ -162,8 +160,10 @@ const SuggestedPosts = () => {
                 </Link>
 
                 {adPositions.includes(index + 1) && (
-                  <div className="w-full min-h-[250px] p-4 rounded-2xl shadow bg-background-light dark:bg-background-dark">
-                    <InFeedAd postId={post._id} />
+                  <div className="w-full max-w-full overflow-hidden px-2 sm:px-0">
+                    <div className="mx-auto w-full max-w-[728px]">
+                      <SafeInFeedAd postId={post._id} />
+                    </div>
                   </div>
                 )}
                 {multiplexAdPositions.includes(index + 1) && (

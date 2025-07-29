@@ -45,13 +45,11 @@ const InFeedAd = ({ postId }) => {
   }, [isAdBlocked, socketInstance, postId]);
 
   return (
-    <div className="w-full flex justify-center my-6">
+    <div className="w-full flex justify-center px-2 sm:px-0 my-6">
       <div
-        className=" p-4"
+        className="w-full"
         style={{
-          width: "100%",
-          maxWidth: "600px",
-          minWidth: "280px",
+          maxWidth: "728px", // keeps ad centered and safe on large screens
         }}
       >
         <ins
