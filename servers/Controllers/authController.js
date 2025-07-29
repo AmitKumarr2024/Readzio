@@ -426,7 +426,6 @@ export const resetPassword = async (req, res, next) => {
 };
 
 // Handles user signup
-// Handles user signup
 export const Signup = async (req, res, next) => {
   const { fullName, email, password, sendEmail } = req.body;
   const geoLocation = req.geoLocation;
