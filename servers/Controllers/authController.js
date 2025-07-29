@@ -468,7 +468,10 @@ export const Signup = async (req, res, next) => {
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    console.log("[Signup] Password hashed successfully");
+    console.log(
+      "[Signup] Password hashed:",
+      hashedPassword.substring(0, 20) + "..."
+    );
 
     const newUser = new UserModel({
       name: fullName,
@@ -523,13 +526,15 @@ export const Signup = async (req, res, next) => {
         const emailResult = await sendEmailWithRetries(mailOption, newUser._id);
         newUser.emailAttempts = emailResult.attempts;
         newUser.emailStatus = "sent";
+        newUser.emailLastError = null;
+        await newUser.save(); // Save only email-related fields
       } catch (emailError) {
         console.error("[Signup] Email error:", emailError.message);
         newUser.emailAttempts = emailError.attempts || 3;
         newUser.emailStatus = "failed";
         newUser.emailLastError = emailError.message;
         newUser.stopEmailAttempts = true;
-        await newUser.save();
+        await newUser.save(); // Save email error fields
       }
     } else {
       await recordActivity({
@@ -539,7 +544,6 @@ export const Signup = async (req, res, next) => {
       });
     }
 
-    await newUser.save();
     await recordActivity({
       userId: newUser._id,
       action: "SIGNED_UP",
@@ -576,19 +580,36 @@ export const Login = async (req, res, next) => {
   const { email, password } = req.body;
   try {
     if (!email || !password)
-      throw new AppError("Email and password required", 400, "Login", "Missing fields");
+      throw new AppError(
+        "Email and password required",
+        400,
+        "Login",
+        "Missing fields"
+      );
     const normalizedEmail = email.trim().toLowerCase();
     console.log("[Login] Attempting login for email:", normalizedEmail);
-    const user = await UserModel.findOne({ email: normalizedEmail }).select("+password");
+    const user = await UserModel.findOne({ email: normalizedEmail }).select(
+      "+password"
+    );
     if (!user) {
       console.log("[Login] User not found");
-      throw new AppError("User not found", 400, "Login", "Invalid email or password");
+      throw new AppError(
+        "User not found",
+        400,
+        "Login",
+        "Invalid email or password"
+      );
     }
     console.log("[Login] User found:", user._id);
     const isMatch = await user.comparePassword(password);
     console.log("[Login] Password match:", isMatch);
     if (!isMatch)
-      throw new AppError("Invalid credentials", 400, "Login", "Incorrect password");
+      throw new AppError(
+        "Invalid credentials",
+        400,
+        "Login",
+        "Incorrect password"
+      );
     const token = generateToken(user, res);
     console.log("[Login] Token generated:", token.substring(0, 20) + "...");
     res.status(200).json({
@@ -600,7 +621,11 @@ export const Login = async (req, res, next) => {
     });
   } catch (error) {
     console.error("[Login] Error:", error.message);
-    next(error instanceof AppError ? error : new AppError(error.message, 500, "Login", "Failed to log in"));
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "Login", "Failed to log in")
+    );
   }
 };
 
