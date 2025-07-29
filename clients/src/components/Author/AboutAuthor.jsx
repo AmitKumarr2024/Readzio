@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import {
-  getUserById,
-  fetchUserActivity,
-} from "../../store/userSlice";
+import { getUserById, fetchUserActivity } from "../../store/userSlice";
 import { fetchUserPosts } from "../../store/postSlice";
 import {
   followUser,
@@ -15,20 +12,28 @@ import {
 } from "../../store/followSlice";
 import { fetchUserAchievements } from "../../store/achievementSlice";
 import { logout } from "../../store/authSlice";
-import Skeleton from "@/components/Ui/Skeleton"; 
+import Skeleton from "@/components/Ui/Skeleton";
 
 const AboutAuthor = ({ authorId }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
+  const { selectedUser, selectedUserLoading, selectedUserError } = useSelector(
+    (state) => state.user
+  );
   const {
-    selectedUser,
-    selectedUserLoading,
-    selectedUserError,
-  } = useSelector((state) => state.user);
-  const { posts, totalPosts, loading: postsLoading } = useSelector((state) => state.post);
-  const { userId, following, loading: followLoading } = useSelector((state) => state.follow);
-  const { badges, loading: achievementsLoading } = useSelector((state) => state.achievements);
+    posts,
+    totalPosts,
+    loading: postsLoading,
+  } = useSelector((state) => state.post);
+  const {
+    userId,
+    following,
+    loading: followLoading,
+  } = useSelector((state) => state.follow);
+  const { badges, loading: achievementsLoading } = useSelector(
+    (state) => state.achievements
+  );
 
   const [activeTab, setActiveTab] = useState("Posts");
   const [isFollowing, setIsFollowing] = useState(false);
@@ -70,15 +75,12 @@ const AboutAuthor = ({ authorId }) => {
   }
 
   if (selectedUserError || !selectedUser) {
-    return (
-      <div className="text-center py-4">
-        Author Details Not Found 😕
-      </div>
-    );
+    return <div className="text-center py-4">Author Details Not Found 😕</div>;
   }
 
   const followersCount = selectedUser.followers?.length || 0;
   const followingCount = selectedUser.following?.length || 0;
+  const isSelf = userId?.toString() === authorId?.toString();
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark">
@@ -96,17 +98,28 @@ const AboutAuthor = ({ authorId }) => {
           <h1 className="text-3xl font-extrabold">
             {selectedUser.name || "Unknown User"}
           </h1>
-          <p className="text-lg font-medium">@{selectedUser.handle || "unknown"}</p>
-          <p className="text-base">{selectedUser.profession || "Content Creator"}</p>
+          <p className="text-lg font-medium">
+            @{selectedUser.handle || "unknown"}
+          </p>
+          <p className="text-base">
+            {selectedUser.profession || "Content Creator"}
+          </p>
         </div>
 
         <div className="flex flex-wrap justify-center gap-4 py-6">
           {["Posts", "Followers", "Following"].map((label, i) => (
-            <div key={i} className="min-w-[120px] text-center border rounded-xl p-4">
+            <div
+              key={i}
+              className="min-w-[120px] text-center border rounded-xl p-4"
+            >
               {selectedUserLoading || followLoading ? (
                 <>
                   <Skeleton width="w-10" height="h-6" className="mx-auto" />
-                  <Skeleton width="w-20" height="h-3" className="mx-auto mt-1" />
+                  <Skeleton
+                    width="w-20"
+                    height="h-3"
+                    className="mx-auto mt-1"
+                  />
                 </>
               ) : (
                 <>
@@ -125,16 +138,25 @@ const AboutAuthor = ({ authorId }) => {
         </div>
 
         <div className="flex justify-center gap-4">
-          {userId === authorId ? (
+          {isSelf ? (
             <>
-              <button onClick={handleEditProfile} className="btn">Edit Profile</button>
-              <button onClick={handleLogout} className="btn bg-red-500 hover:bg-red-600 text-white">Logout</button>
+              <button onClick={handleEditProfile} className="btn">
+                Edit Profile
+              </button>
+              <button
+                onClick={handleLogout}
+                className="btn bg-red-500 hover:bg-red-600 text-white"
+              >
+                Logout
+              </button>
             </>
           ) : (
             <button
               onClick={handleFollowToggle}
               className={`btn text-white ${
-                isFollowing ? "bg-red-600 hover:bg-red-700" : "bg-indigo-600 hover:bg-indigo-700"
+                isFollowing
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-indigo-600 hover:bg-indigo-700"
               }`}
             >
               {isFollowing ? "Unfollow" : "Follow"}
@@ -148,7 +170,9 @@ const AboutAuthor = ({ authorId }) => {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 font-bold ${
-                activeTab === tab ? "border-b-2 border-black dark:border-white" : "text-gray-400"
+                activeTab === tab
+                  ? "border-b-2 border-black dark:border-white"
+                  : "text-gray-400"
               }`}
             >
               {tab}
@@ -160,13 +184,20 @@ const AboutAuthor = ({ authorId }) => {
           <div className="py-6">
             {postsLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Array(6).fill().map((_, i) => (
-                  <div key={i} className="border rounded-xl p-4">
-                    <Skeleton width="w-full" height="h-32" rounded="rounded-lg" className="mb-2" />
-                    <Skeleton width="w-3/4" height="h-4" className="mb-1" />
-                    <Skeleton width="w-1/2" height="h-3" />
-                  </div>
-                ))}
+                {Array(6)
+                  .fill()
+                  .map((_, i) => (
+                    <div key={i} className="border rounded-xl p-4">
+                      <Skeleton
+                        width="w-full"
+                        height="h-32"
+                        rounded="rounded-lg"
+                        className="mb-2"
+                      />
+                      <Skeleton width="w-3/4" height="h-4" className="mb-1" />
+                      <Skeleton width="w-1/2" height="h-3" />
+                    </div>
+                  ))}
               </div>
             ) : posts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -183,10 +214,17 @@ const AboutAuthor = ({ authorId }) => {
                         className="w-full h-32 object-cover rounded-lg mb-2"
                       />
                     ) : (
-                      <Skeleton width="w-full" height="h-32" rounded="rounded-lg" className="mb-2" />
+                      <Skeleton
+                        width="w-full"
+                        height="h-32"
+                        rounded="rounded-lg"
+                        className="mb-2"
+                      />
                     )}
                     <h4 className="text-lg font-semibold">{post.title}</h4>
-                    <p className="text-sm mt-1">{post.excerpt || "No excerpt available."}</p>
+                    <p className="text-sm mt-1">
+                      {post.excerpt || "No excerpt available."}
+                    </p>
                     <p className="text-sm mt-1">Views: {post.views || 0}</p>
                   </div>
                 ))}
@@ -205,16 +243,26 @@ const AboutAuthor = ({ authorId }) => {
             </div>
             {achievementsLoading ? (
               <div className="flex flex-wrap gap-3 mt-4">
-                {Array(4).fill().map((_, i) => (
-                  <Skeleton key={i} width="w-24" height="h-8" rounded="rounded-lg" />
-                ))}
+                {Array(4)
+                  .fill()
+                  .map((_, i) => (
+                    <Skeleton
+                      key={i}
+                      width="w-24"
+                      height="h-8"
+                      rounded="rounded-lg"
+                    />
+                  ))}
               </div>
             ) : badges.length > 0 ? (
               <div className="mt-4">
                 <h4 className="text-lg font-semibold mb-2">Achievements</h4>
                 <div className="flex flex-wrap gap-2">
                   {badges.map((badge, i) => (
-                    <div key={i} className="bg-yellow-100 p-2 rounded-lg text-sm font-medium shadow-sm">
+                    <div
+                      key={i}
+                      className="bg-yellow-100 p-2 rounded-lg text-sm font-medium shadow-sm"
+                    >
                       {badge.name}
                     </div>
                   ))}
