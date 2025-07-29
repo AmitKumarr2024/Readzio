@@ -508,12 +508,14 @@ export const Signup = async (req, res, next) => {
 
     if (geoLocation && newUser._id) {
       await UserLocation.create({
-        userId: newUser._id,
+        userId: user._id,
         ip: geoLocation.ip,
         city: geoLocation.city,
         country: geoLocation.country,
-        latitude: geoLocation.latitude,
-        longitude: geoLocation.longitude,
+        coordinates: {
+          type: "Point",
+          coordinates: [geoLocation.longitude, geoLocation.latitude],
+        },
         timestamp: new Date(),
       });
     }
@@ -627,10 +629,13 @@ export const Login = async (req, res, next) => {
         ip: geoLocation.ip,
         city: geoLocation.city,
         country: geoLocation.country,
-        latitude: geoLocation.latitude,
-        longitude: geoLocation.longitude,
+        coordinates: {
+          type: "Point",
+          coordinates: [geoLocation.longitude, geoLocation.latitude],
+        },
         timestamp: new Date(),
       });
+
       await user.save();
     }
 
@@ -819,8 +824,10 @@ export const googleLogin = async (req, res, next) => {
         ip: geoLocation.ip,
         city: geoLocation.city,
         country: geoLocation.country,
-        latitude: geoLocation.latitude,
-        longitude: geoLocation.longitude,
+        coordinates: {
+          type: "Point",
+          coordinates: [geoLocation.longitude, geoLocation.latitude],
+        },
         timestamp: new Date(),
       });
     }

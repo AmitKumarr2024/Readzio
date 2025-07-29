@@ -1,7 +1,6 @@
 export const geoLocationMiddleware = async (req, res, next) => {
   try {
-    let ip =
-      req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip;
+    let ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip;
 
     // Normalize IPv6 mapped IPv4 (e.g. ::ffff:192.168.x.x)
     if (ip.startsWith("::ffff:")) ip = ip.slice(7);
@@ -26,12 +25,17 @@ export const geoLocationMiddleware = async (req, res, next) => {
     );
     const data = await response.json();
 
-    if (data.status !== "success" || !data.lat || !data.lon) {
+    const lat = parseFloat(data.lat);
+    const lon = parseFloat(data.lon);
+
+    // Validate lat/lon
+    if (data.status !== "success" || isNaN(lat) || isNaN(lon)) {
       req.geoLocation = null;
       return next();
     }
 
-    const locationData = {
+    // Attach formatted geolocation data to the request
+    req.geoLocation = {
       userId: req.user?._id || null,
       ip,
       city: data.city || "Unknown",
@@ -39,15 +43,15 @@ export const geoLocationMiddleware = async (req, res, next) => {
       countryCode: data.countryCode || "XX",
       state: data.regionName || "Unknown",
       pincode: data.zip || "Unknown",
-      latitude: parseFloat(data.lat),
-      longitude: parseFloat(data.lon),
+      latitude: lat,
+      longitude: lon,
       coordinates: {
         type: "Point",
-        coordinates: [parseFloat(data.lon), parseFloat(data.lat)],
+        coordinates: [lon, lat],
       },
+      timestamp: new Date(), // ✅ Required for location tracking
     };
 
-    req.geoLocation = locationData;
     next();
   } catch (error) {
     console.error("[geoLocationMiddleware]", error.message);
