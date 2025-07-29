@@ -430,11 +430,9 @@ const Postbox = ({
                     return (
                       <div
                         key={item.id}
-                        className="col-span-full w-full flex justify-center px-2 sm:px-0"
+                        className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden w-full"
                       >
-                        <div className="w-full max-w-[728px]">
-                          <SafeInFeedAd postId={item.postId} />
-                        </div>
+                        <SafeInFeedAd postId={item.postId} />
                       </div>
                     );
                   }
