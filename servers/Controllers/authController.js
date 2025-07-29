@@ -779,11 +779,10 @@ export const checkAuth = async (req, res, next) => {
 
 // Handles Google login
 export const googleLogin = async (req, res, next) => {
-  const { token, sendEmail } = req.body;
+  const { token } = req.body;
   const geoLocation = req.geoLocation;
 
   try {
-    // Validates Google token
     if (!token)
       throw new AppError(
         "Google token is required",
@@ -798,7 +797,7 @@ export const googleLogin = async (req, res, next) => {
     });
 
     const { sub: googleId, email, name, picture } = ticket.getPayload();
-    // Validates email format
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw new AppError(
         "Invalid email from Google",
@@ -810,7 +809,6 @@ export const googleLogin = async (req, res, next) => {
     let user = await UserModel.findOne({ $or: [{ googleId }, { email }] });
     let isNewUser = false;
 
-    // Checks for existing user or local account conflict
     if (user) {
       if (user.authProvider === "local")
         throw new AppError(
@@ -856,12 +854,8 @@ export const googleLogin = async (req, res, next) => {
       email.toLowerCase() === "test@test.com" ||
       email.toLowerCase().endsWith("@test.com");
 
-    if (
-      isNewUser &&
-      !isTestEmail &&
-      (sendEmail === "true" || isAutoEmailDate()) &&
-      !user.stopEmailAttempts
-    ) {
+    // ✅ Send welcome email for all new users except test emails
+    if (isNewUser && !isTestEmail && !user.stopEmailAttempts) {
       const mailOption = createMailOption({
         to: email,
         subject: "Welcome to Our Platform!",
@@ -897,6 +891,7 @@ export const googleLogin = async (req, res, next) => {
     }
 
     if (isNewUser) await user.save();
+
     await recordActivity({
       userId: user._id,
       action: "GOOGLE_LOGGED_IN",
@@ -923,7 +918,6 @@ export const googleLogin = async (req, res, next) => {
       token: jwtToken,
     });
   } catch (error) {
-    // AppError with context for Google login issues
     next(
       error instanceof AppError
         ? error
