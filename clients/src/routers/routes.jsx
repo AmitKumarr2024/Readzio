@@ -86,6 +86,7 @@ const routes = createBrowserRouter([
       { path: "user", element: <UserProfilePage /> },
       { path: "user-setting", element: <UserSettingsPage /> },
       { path: "author-profile/:id", element: <AuthorProfilePage /> },
+      { path: "author-profile/:id", element: <AuthorProfilePage /> },
       { path: "plans/:id", element: <UserPlanPage /> },
       { path: "bookmark", element: <BookmarkComponent /> },
       { path: "acknowledge/:reportId", element: <AcknowledgeConfirmation /> },

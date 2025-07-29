@@ -431,6 +431,12 @@ export const Signup = async (req, res, next) => {
   const geoLocation = req.geoLocation;
 
   try {
+    console.log("[Signup] Request body:", {
+      fullName,
+      email,
+      password,
+      sendEmail,
+    });
     if (!fullName || !email || !password)
       throw new AppError(
         "All fields are required",
@@ -446,8 +452,10 @@ export const Signup = async (req, res, next) => {
         "Invalid email format"
       );
     const normalizedEmail = email.trim().toLowerCase();
-    const existingUser = await UserModel.findOne({ email: normalizedEmail });
+    console.log("[Signup] Normalized email:", normalizedEmail);
 
+    const existingUser = await UserModel.findOne({ email: normalizedEmail });
+    console.log("[Signup] Existing user:", !!existingUser);
     if (existingUser)
       throw new AppError(
         existingUser.authProvider === "google"
@@ -460,6 +468,7 @@ export const Signup = async (req, res, next) => {
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+    console.log("[Signup] Password hashed successfully");
 
     const newUser = new UserModel({
       name: fullName,
@@ -477,6 +486,7 @@ export const Signup = async (req, res, next) => {
     });
 
     await newUser.save();
+    console.log("[Signup] User saved:", newUser._id);
 
     if (geoLocation && newUser._id) {
       await UserLocation.create({
@@ -514,12 +524,12 @@ export const Signup = async (req, res, next) => {
         newUser.emailAttempts = emailResult.attempts;
         newUser.emailStatus = "sent";
       } catch (emailError) {
+        console.error("[Signup] Email error:", emailError.message);
         newUser.emailAttempts = emailError.attempts || 3;
         newUser.emailStatus = "failed";
         newUser.emailLastError = emailError.message;
         newUser.stopEmailAttempts = true;
         await newUser.save();
-        throw emailError;
       }
     } else {
       await recordActivity({
@@ -539,6 +549,8 @@ export const Signup = async (req, res, next) => {
     });
 
     const token = generateToken(newUser, res);
+    console.log("[Signup] Token generated for user:", newUser._id);
+
     res.status(201).json({
       message: "User registered successfully",
       _id: newUser._id,
@@ -550,6 +562,7 @@ export const Signup = async (req, res, next) => {
       token,
     });
   } catch (error) {
+    console.error("[Signup] Error:", error.message);
     next(
       error instanceof AppError
         ? error

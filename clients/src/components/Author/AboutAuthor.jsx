@@ -58,7 +58,7 @@ const AboutAuthor = ({ authorId }) => {
     });
   };
 
-  const handleEditProfile = () => navigate("/edit-profile");
+  const handleEditProfile = () => navigate("/user");
   const handleLogout = () => {
     dispatch(logout());
     navigate("/login");

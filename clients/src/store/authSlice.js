@@ -20,16 +20,17 @@ export const signup = createAsyncThunk(
   "auth/signup",
   async ({ fullName, email, password, sendEmail }, { rejectWithValue }) => {
     try {
+      console.log("[AuthSlice:signup] Sending signup request:", {
+        fullName,
+        email,
+        password,
+      });
       const res = await axiosInstance.post(
         "/auth/signup",
-        {
-          fullName,
-          email,
-          password,
-          sendEmail,
-        },
+        { fullName, email, password, sendEmail },
         { withCredentials: true }
       );
+      console.log("[AuthSlice:signup] Response:", res.data);
       return res.data;
     } catch (err) {
       console.error("[AuthSlice:signup] Error:", err.response?.data?.message);
@@ -44,11 +45,16 @@ export const login = createAsyncThunk(
   "auth/login",
   async ({ email, password }, { rejectWithValue }) => {
     try {
+      console.log("[AuthSlice:login] Sending login request:", {
+        email,
+        password,
+      });
       const res = await axiosInstance.post(
         "/auth/login",
         { email, password },
         { withCredentials: true }
       );
+      console.log("[AuthSlice:login] Response:", res.data);
       return res.data;
     } catch (err) {
       console.error("[AuthSlice:login] Error:", err.response?.data?.message);
