@@ -1024,87 +1024,71 @@ export const getAllEmailStatuses = async (req, res, next) => {
   }
 };
 
-// Create test user manually (one-time call if not present)
 export const createTestUser = async (req, res, next) => {
   try {
-    const email = "test@test.com";
-    const password = "test@123456";
-    const existing = await UserModel.findOne({ email });
+    const existingUser = await UserModel.findOne({ email: "test@test.com" });
 
-    if (existing) {
+    if (existingUser) {
       return res.status(200).json({ message: "Test user already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash("test@123456", 10);
 
-    const user = new UserModel({
+    const testUser = await UserModel.create({
       name: "Test User",
-      email,
+      email: "test@test.com",
       password: hashedPassword,
-      isAccountVerified: true,
+      username: "testuser",
+      provider: "local",
+      verified: true,
       role: "user",
-      authProvider: "local",
-      location: "Simulated City, Testland",
     });
 
-    await user.save();
-
-    res.status(201).json({ message: "Test user created", email });
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message,
-            500,
-            "CreateTestUser",
-            "Failed to create test user"
-          )
-    );
+    res.status(201).json({ message: "Test user created successfully" });
+  } catch (err) {
+    console.error("Error creating test user:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// Login test user
+// Login as test user (email/password ignored)
 export const loginTestUser = async (req, res, next) => {
   try {
-    const email = "test@test.com";
-    const password = "test@123456";
+    const testUser = await UserModel.findOne({ email: "test@test.com" });
 
-    const user = await UserModel.findOne({ email }).select("+password");
+    if (!testUser) {
+      return res
+        .status(404)
+        .json({ message: "Test user not found. Create it first." });
+    }
 
-    if (!user)
-      throw new AppError(
-        "Test user not found",
-        404,
-        "LoginTestUser",
-        "User missing"
-      );
-
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch)
-      throw new AppError(
-        "Invalid credentials",
-        401,
-        "LoginTestUser",
-        "Incorrect password"
-      );
-
-    const token = generateToken(user, res);
-
-    res.status(200).json({
-      message: "Test login successful",
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      token,
-    });
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(error.message, 500, "LoginTestUser", "Test login failed")
+    const token = jwt.sign(
+      { id: testUser._id },
+      process.env.JWT_SECRET || "defaultsecret",
+      { expiresIn: "7d" }
     );
+
+    // Set token cookie
+    res
+      .cookie("token", token, {
+        httpOnly: true,
+        sameSite: "Lax",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      })
+      .status(200)
+      .json({
+        message: "Logged in as Test User",
+        user: {
+          _id: testUser._id,
+          name: testUser.name,
+          email: testUser.email,
+          username: testUser.username,
+          role: testUser.role,
+        },
+      });
+  } catch (err) {
+    console.error("Test login failed:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

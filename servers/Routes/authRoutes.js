@@ -52,6 +52,6 @@ routes.get("/check-email-status", checkEmailStatus);
 routes.get("/all-email-statuses", protectedRoute, getAllEmailStatuses);
 
 // ─── Test Routes (for test@test.com) ───
-routes.post("/create-test-user", createTestUser); // 🔐 Use once or protect
-routes.post("/login-test", loginTestUser);
+routes.post("/create-test-user", createTestUser); // One-time setup
+routes.post("/login-test", loginTestUser); // Use from frontend
 export default routes;
