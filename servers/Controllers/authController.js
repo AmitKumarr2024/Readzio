@@ -1023,3 +1023,88 @@ export const getAllEmailStatuses = async (req, res, next) => {
     );
   }
 };
+
+// Create test user manually (one-time call if not present)
+export const createTestUser = async (req, res, next) => {
+  try {
+    const email = "test@test.com";
+    const password = "test@123456";
+    const existing = await UserModel.findOne({ email });
+
+    if (existing) {
+      return res.status(200).json({ message: "Test user already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = new UserModel({
+      name: "Test User",
+      email,
+      password: hashedPassword,
+      isAccountVerified: true,
+      role: "user",
+      authProvider: "local",
+      location: "Simulated City, Testland",
+    });
+
+    await user.save();
+
+    res.status(201).json({ message: "Test user created", email });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "CreateTestUser",
+            "Failed to create test user"
+          )
+    );
+  }
+};
+
+// Login test user
+export const loginTestUser = async (req, res, next) => {
+  try {
+    const email = "test@test.com";
+    const password = "test@123456";
+
+    const user = await UserModel.findOne({ email }).select("+password");
+
+    if (!user)
+      throw new AppError(
+        "Test user not found",
+        404,
+        "LoginTestUser",
+        "User missing"
+      );
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch)
+      throw new AppError(
+        "Invalid credentials",
+        401,
+        "LoginTestUser",
+        "Incorrect password"
+      );
+
+    const token = generateToken(user, res);
+
+    res.status(200).json({
+      message: "Test login successful",
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token,
+    });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "LoginTestUser", "Test login failed")
+    );
+  }
+};
