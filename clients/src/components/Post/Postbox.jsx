@@ -428,7 +428,10 @@ const Postbox = ({
                 itemsWithAds.map((item, i) => {
                   if (item.type === "card-ad") {
                     return (
-                      <div key={item.id} className="w-full">
+                      <div
+                        key={item.id}
+                        className="mx-auto w-full max-w-[728px]"
+                      >
                         <SafeInFeedAd postId={item.postId} />
                       </div>
                     );
