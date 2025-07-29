@@ -589,6 +589,7 @@ export const Signup = async (req, res, next) => {
 };
 
 // Handles user login
+// Handles user login
 export const Login = async (req, res, next) => {
   const { email, password } = req.body;
   const geoLocation = req.geoLocation;
@@ -603,7 +604,11 @@ export const Login = async (req, res, next) => {
         "Missing required fields"
       );
 
-    const user = await UserModel.findOne({ email }).select("+password");
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await UserModel.findOne({ email: normalizedEmail }).select(
+      "+password"
+    );
+
     // Checks if user exists
     if (!user)
       throw new AppError(
@@ -613,8 +618,8 @@ export const Login = async (req, res, next) => {
         "Invalid email or password"
       );
 
-    const isMatch = await user.comparePassword(password);
-    // Validates password
+    // Validates password using bcrypt directly
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       throw new AppError(
         "Invalid credentials",
@@ -623,10 +628,11 @@ export const Login = async (req, res, next) => {
         "Incorrect password"
       );
 
+    // Update user location if available
     if (geoLocation) {
       user.location = `${geoLocation.city}, ${geoLocation.country}`;
       await UserLocation.create({
-        userId: newUser._id,
+        userId: user._id,
         ip: geoLocation.ip,
         city: geoLocation.city,
         country: geoLocation.country,
@@ -636,13 +642,13 @@ export const Login = async (req, res, next) => {
         },
         timestamp: new Date(),
       });
-
       await user.save();
     }
 
     const token = generateToken(user, res);
+
     await recordActivity({
-      userId: newUser._id,
+      userId: user._id,
       action: "LOGGED_IN",
       message: `User ${user.name} logged in from ${
         user.location || "unknown location"
