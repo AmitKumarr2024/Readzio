@@ -12,6 +12,11 @@ import {
   FaEyeSlash,
 } from "react-icons/fa";
 
+const TEST_USER = {
+  email: "test@test.com",
+  password: "test@123456",
+};
+
 const LoginPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -32,14 +37,15 @@ const LoginPage = () => {
   const handleManualLogin = async (e) => {
     e.preventDefault();
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       if (
-        email.trim().toLowerCase() === "test@test.com" &&
-        password === "test@123456"
+        normalizedEmail === TEST_USER.email &&
+        password === TEST_USER.password
       ) {
         await dispatch(loginTestUser()).unwrap();
         toast.success("Logged in as Test User!");
       } else {
-        await dispatch(login({ email, password })).unwrap();
+        await dispatch(login({ email: normalizedEmail, password })).unwrap();
         toast.success("Login successful!");
       }
 
@@ -73,7 +79,7 @@ const LoginPage = () => {
   };
 
   return (
-    <GoogleOAuthProvider clientId="44790425597-foad407541te4lpt84dbhk77v28m5hl7.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId="YOUR_GOOGLE_CLIENT_ID_HERE">
       <div className="min-h-screen flex items-center justify-center bg-gray-200">
         <div className="max-w-4xl w-full bg-white rounded-xl shadow-2xl flex flex-col md:flex-row overflow-hidden">
           {/* Left section */}
@@ -170,7 +176,6 @@ const LoginPage = () => {
                 </button>
               </form>
 
-              {/* Google login */}
               <div className="my-6 text-center text-gray-500">or</div>
               <div className="flex justify-center">
                 <GoogleLogin
@@ -179,7 +184,6 @@ const LoginPage = () => {
                 />
               </div>
 
-              {/* Links */}
               <div className="mt-6 text-center text-gray-600 space-y-2">
                 <p>
                   Don't have an account?{" "}
