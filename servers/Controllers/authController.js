@@ -573,19 +573,24 @@ export const Login = async (req, res, next) => {
       );
 
     const normalizedEmail = email.trim().toLowerCase();
+    console.log("[Login] Attempting login for email:", normalizedEmail);
     const user = await UserModel.findOne({ email: normalizedEmail }).select(
       "+password"
     );
 
-    if (!user)
+    if (!user) {
+      console.log("[Login] User not found for email:", normalizedEmail);
       throw new AppError(
         "User not found",
         400,
         "Login",
         "Invalid email or password"
       );
+    }
 
+    console.log("[Login] User found:", user._id, "Checking password...");
     const isMatch = await user.comparePassword(password);
+    console.log("[Login] Password match:", isMatch);
     if (!isMatch)
       throw new AppError(
         "Invalid credentials",
@@ -611,6 +616,7 @@ export const Login = async (req, res, next) => {
     }
 
     const token = generateToken(user, res);
+    console.log("[Login] Token generated for user:", user._id);
 
     await recordActivity({
       userId: user._id,
@@ -629,6 +635,7 @@ export const Login = async (req, res, next) => {
       token,
     });
   } catch (error) {
+    console.error("[Login] Error:", error.message);
     next(
       error instanceof AppError
         ? error
