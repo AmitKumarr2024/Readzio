@@ -1215,87 +1215,135 @@ export const setUserEligibilityOverride = async (req, res, next) => {
   }
 };
 
-
-// Checks user eligibility for subscription
+// Check if a user is eligible for subscription
 export const checkUserEligibility = async (req, res, next) => {
   try {
     const { userId } = req.params;
+    console.log(
+      "🔍 [checkUserEligibility] Checking eligibility for userId:",
+      userId
+    );
 
     validateObjectId(userId, "User ID");
     const user = await UserModel.findById(userId).lean();
 
-    if (!user)
+    if (!user) {
       throw new AppError(
         "User not found",
         404,
         "CheckUserEligibility",
         "User does not exist"
       );
+    }
 
-    const followerCount = user.followers?.length || 0;
-    const postCount = await PostModel.countDocuments({
-      author: userId,
-      isPublished: true,
-    });
+    console.log("👤 [checkUserEligibility] User found:", user.name);
+
+    const followerCount = Array.isArray(user.followers)
+      ? user.followers.length
+      : 0;
 
     const posts = await PostModel.find({
       author: userId,
       isPublished: true,
     }).lean();
+
+    const postCount = posts.length;
+
     const totalEngagement = posts.reduce(
       (sum, post) =>
         sum + (post.likes?.length || 0) + (post.comments?.length || 0),
       0
     );
 
-    const accountAgeDays =
-      (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    const totalViews = posts.reduce((sum, post) => sum + (post.views || 0), 0);
+
+    const rawEngagementRate = totalViews > 0 ? totalEngagement / totalViews : 0;
+    const engagementRate = Number((rawEngagementRate * 100).toFixed(2));
+
+    const accountAgeDays = Math.floor(
+      (Date.now() - new Date(user.createdAt || user.joiningDate).getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
+
+    console.log("📊 [checkUserEligibility] Stats:", {
+      followerCount,
+      postCount,
+      totalEngagement,
+      totalViews,
+      engagementRate,
+      accountAgeDays,
+    });
 
     let config = await SubscriptionConfig.findOne({
       key: "subscriptionEligibility",
     });
+
     if (!config) {
-      config = new SubscriptionConfig({
+      config = await SubscriptionConfig.create({
         key: "subscriptionEligibility",
-      }); // Use schema defaults
-      await config.save();
+        minFollowers: 10000,
+        minPosts: 30,
+        minEngagementRate: 0.05,
+        minAccountAgeDays: 30,
+      });
     }
+
+    console.log("⚙️ [checkUserEligibility] Subscription config in use:", {
+      minFollowers: config.minFollowers,
+      minPosts: config.minPosts,
+      minEngagementRate: config.minEngagementRate,
+      minAccountAgeDays: config.minAccountAgeDays,
+    });
+
+    const override = user.milestoneOverride || {};
+
+    const effectiveFollowerCount = override.followerCount ?? followerCount;
+    const effectivePostCount = override.postCount ?? postCount;
+    const effectiveEngagementRate = override.engagementRate ?? engagementRate;
+    const effectiveAccountAgeDays = override.accountAgeDays ?? accountAgeDays;
 
     const isEligible =
       user.isEligibleForSubscription ||
-      (followerCount >= config.minFollowers &&
-        postCount >= config.minPosts &&
-        (totalEngagement / (postCount || 1)) >= config.minEngagementRate &&
-        accountAgeDays >= config.minAccountAgeDays);
+      (effectiveFollowerCount >= config.minFollowers &&
+        effectivePostCount >= config.minPosts &&
+        effectiveEngagementRate >= config.minEngagementRate * 100 &&
+        effectiveAccountAgeDays >= config.minAccountAgeDays);
 
-    res.status(200).json({
+    const response = {
       success: true,
       userId,
       isEligible,
-      followerCount,
-      postCount,
-      engagementRate: totalEngagement / (postCount || 1),
-      accountAgeDays: Math.floor(accountAgeDays),
+      followerCount: effectiveFollowerCount,
+      postCount: effectivePostCount,
+      engagementRate: Number(effectiveEngagementRate), // Send as number
+      accountAgeDays: effectiveAccountAgeDays,
       criteria: {
         minFollowers: config.minFollowers,
         minPosts: config.minPosts,
-        minEngagementRate: config.minEngagementRate * 100,
+        minEngagementRate: config.minEngagementRate * 100, // convert to %
         minAccountAgeDays: config.minAccountAgeDays,
       },
       manuallySet: !!user.isEligibleForSubscription,
-    });
+    };
+
+    console.log("✅ [checkUserEligibility] Final response:", response);
+    res.status(200).json(response);
   } catch (error) {
+    console.error(
+      "[checkUserEligibility] ❌ Error:",
+      error.message,
+      error.stack
+    );
     next(
       new AppError(
-        error.message,
-        500,
+        error.message || "Failed to check user eligibility",
+        error.statusCode || 500,
         "CheckUserEligibility",
         "Failed to check user eligibility"
       )
     );
   }
 };
-
 // Toggles subscription plan status
 export const toggleSubscriptionPlanStatus = async (req, res, next) => {
   try {
