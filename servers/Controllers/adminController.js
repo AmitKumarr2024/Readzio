@@ -1216,6 +1216,12 @@ export const setUserEligibilityOverride = async (req, res, next) => {
 };
 
 // Checks user eligibility for subscription
+import UserModel from "../Models/User.js";
+import PostModel from "../Models/Post.js";
+import SubscriptionConfig from "../Models/SubscriptionConfig.js";
+import { AppError } from "../../servers/Utils/AppError.js";
+import { validateObjectId } from "../../servers/helpers/validateObjectId.js";
+
 export const checkUserEligibility = async (req, res, next) => {
   try {
     const { userId } = req.params;
@@ -1271,21 +1277,17 @@ export const checkUserEligibility = async (req, res, next) => {
       accountAgeDays: Math.floor(accountAgeDays),
     });
 
-    // ✅ Fetch or Create Config
-    let config = await SubscriptionConfig.findOne({
+    // ✅ Get config, but DO NOT fall back to invalid defaults
+    const config = await SubscriptionConfig.findOne({
       key: "subscriptionEligibility",
     });
+
     if (!config) {
-      console.warn(
-        "⚠️ [checkUserEligibility] No config found, creating default config..."
+      throw new AppError(
+        "Subscription eligibility config not set. Please initialize it.",
+        500,
+        "CheckUserEligibility"
       );
-      config = await SubscriptionConfig.create({
-        key: "subscriptionEligibility",
-        minFollowers: 10000,
-        minPosts: 30,
-        minEngagementRate: 0.05, // 5%
-        minAccountAgeDays: 30,
-      });
     }
 
     console.log("⚙️ [checkUserEligibility] Subscription config in use:", {
@@ -1308,7 +1310,7 @@ export const checkUserEligibility = async (req, res, next) => {
       isEligible,
       followerCount,
       postCount,
-      engagementRate: Number((engagementRate * 100).toFixed(2)),
+      engagementRate: Number((engagementRate * 100).toFixed(2)), // as percent
       accountAgeDays: Math.floor(accountAgeDays),
       criteria: {
         minFollowers: config.minFollowers,
