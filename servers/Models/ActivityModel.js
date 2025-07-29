@@ -144,6 +144,7 @@ const activitySchema = new mongoose.Schema(
 
         // DEV/DEBUG
         "VITE_BACKEND_URL",
+        "VIEWED_ACTIVITY"
       ],
     },
 

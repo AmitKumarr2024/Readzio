@@ -17,7 +17,6 @@ import UserSubscriptionPlan from "../../servers/Models/UserSubscriptionModel.js"
 
 // Validates ObjectId and throws AppError with context for invalid IDs
 const validateObjectId = (id, type = "ID") => {
-  // console.log(`[validateObjectId] 🔍 Validating ${type}:`, id);
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError(
       `Invalid ${type}`,
@@ -1216,6 +1215,7 @@ export const setUserEligibilityOverride = async (req, res, next) => {
 };
 
 // Check if a user is eligible for subscription
+// Check if a user is eligible for subscription
 export const checkUserEligibility = async (req, res, next) => {
   try {
     const { userId } = req.params;
@@ -1357,6 +1357,9 @@ export const checkUserEligibility = async (req, res, next) => {
       },
       manuallySet: !!user.isEligibleForSubscription,
       unmetCriteria: isEligible ? [] : unmetCriteria,
+      nextSteps: isEligible
+        ? "You are eligible to create subscription plans."
+        : "Increase your followers, posts, engagement, or account age to meet the criteria.",
     };
 
     console.log("✅ [checkUserEligibility] Final response:", response);
