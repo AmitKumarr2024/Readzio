@@ -1215,6 +1215,7 @@ export const setUserEligibilityOverride = async (req, res, next) => {
 };
 
 // Check if a user is eligible for subscription
+// Check if a user is eligible for subscription
 export const checkUserEligibility = async (req, res, next) => {
   try {
     const { userId } = req.params;
@@ -1231,6 +1232,15 @@ export const checkUserEligibility = async (req, res, next) => {
     }
 
     validateObjectId(userId, "User ID");
+
+    // Check Redis cache
+    const cacheKey = `eligibility:${userId}`;
+    const cachedResult = await redisClient.get(cacheKey);
+    if (cachedResult) {
+      console.log("📦 [checkUserEligibility] Cache hit for user:", userId);
+      return res.status(200).json(JSON.parse(cachedResult));
+    }
+
     const user = await UserModel.findById(userId).lean();
     if (!user) {
       throw new AppError(
@@ -1246,25 +1256,19 @@ export const checkUserEligibility = async (req, res, next) => {
     const followerCount = Array.isArray(user.followers)
       ? user.followers.length
       : 0;
-
     const posts = await PostModel.find({
       author: userId,
       isPublished: true,
     }).lean();
-
     const postCount = posts.length;
-
     const totalEngagement = posts.reduce(
       (sum, post) =>
         sum + (post.likes?.length || 0) + (post.comments?.length || 0),
       0
     );
-
     const totalViews = posts.reduce((sum, post) => sum + (post.views || 0), 0);
-
     const engagementRate =
       totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
-
     const accountAgeDays = Math.floor(
       (Date.now() - new Date(user.createdAt || user.joiningDate).getTime()) /
         (1000 * 60 * 60 * 24)
@@ -1282,7 +1286,6 @@ export const checkUserEligibility = async (req, res, next) => {
     let config = await SubscriptionConfig.findOne({
       key: "subscriptionEligibility",
     }).lean();
-
     if (!config) {
       config = {
         key: "subscriptionEligibility",
@@ -1302,7 +1305,6 @@ export const checkUserEligibility = async (req, res, next) => {
     });
 
     const override = user.milestoneOverride || {};
-
     const effectiveFollowerCount = override.followerCount ?? followerCount;
     const effectivePostCount = override.postCount ?? postCount;
     const effectiveEngagementRate = override.engagementRate ?? engagementRate;
@@ -1312,36 +1314,66 @@ export const checkUserEligibility = async (req, res, next) => {
       user.isEligibleForSubscription ||
       (effectiveFollowerCount >= config.minFollowers &&
         effectivePostCount >= config.minPosts &&
-        effectiveEngagementRate >= config.minEngagementRate * 100 &&
+        effectiveEngagementRate >= config.minEngagementRate &&
         effectiveAccountAgeDays >= config.minAccountAgeDays);
 
-    // Identify unmet criteria with progress
     const unmetCriteria = [];
     const progress = {
-      followers: config.minFollowers > 0 ? Math.min((effectiveFollowerCount / config.minFollowers) * 100, 100).toFixed(2) : 100,
-      posts: config.minPosts > 0 ? Math.min((effectivePostCount / config.minPosts) * 100, 100).toFixed(2) : 100,
-      engagementRate: config.minEngagementRate > 0 ? Math.min((effectiveEngagementRate / (config.minEngagementRate * 100)) * 100, 100).toFixed(2) : 100,
-      accountAge: config.minAccountAgeDays > 0 ? Math.min((effectiveAccountAgeDays / config.minAccountAgeDays) * 100, 100).toFixed(2) : 100,
+      followers:
+        config.minFollowers > 0
+          ? Math.min(
+              (effectiveFollowerCount / config.minFollowers) * 100,
+              100
+            ).toFixed(2)
+          : 100,
+      posts:
+        config.minPosts > 0
+          ? Math.min((effectivePostCount / config.minPosts) * 100, 100).toFixed(
+              2
+            )
+          : 100,
+      engagementRate:
+        config.minEngagementRate > 0
+          ? Math.min(
+              (effectiveEngagementRate / config.minEngagementRate) * 100,
+              100
+            ).toFixed(2)
+          : 100,
+      accountAge:
+        config.minAccountAgeDays > 0
+          ? Math.min(
+              (effectiveAccountAgeDays / config.minAccountAgeDays) * 100,
+              100
+            ).toFixed(2)
+          : 100,
     };
 
     if (effectiveFollowerCount < config.minFollowers) {
       unmetCriteria.push(
-        `Need ${config.minFollowers - effectiveFollowerCount} more followers (${progress.followers}% complete)`
+        `Need ${config.minFollowers - effectiveFollowerCount} more followers (${
+          progress.followers
+        }%)`
       );
     }
     if (effectivePostCount < config.minPosts) {
       unmetCriteria.push(
-        `Need ${config.minPosts - effectivePostCount} more published posts (${progress.posts}% complete)`
+        `Need ${config.minPosts - effectivePostCount} more posts (${
+          progress.posts
+        }%)`
       );
     }
-    if (effectiveEngagementRate < config.minEngagementRate * 100) {
+    if (effectiveEngagementRate < config.minEngagementRate) {
       unmetCriteria.push(
-        `Engagement rate ${effectiveEngagementRate.toFixed(2)}% is below required ${(config.minEngagementRate * 100).toFixed(2)}% (${progress.engagementRate}% complete)`
+        `Engagement rate ${effectiveEngagementRate.toFixed(
+          2
+        )}% < ${config.minEngagementRate.toFixed(2)}% (${
+          progress.engagementRate
+        }%)`
       );
     }
     if (effectiveAccountAgeDays < config.minAccountAgeDays) {
       unmetCriteria.push(
-        `Account age ${effectiveAccountAgeDays} days is below required ${config.minAccountAgeDays} days (${progress.accountAge}% complete)`
+        `Account age ${effectiveAccountAgeDays} days < ${config.minAccountAgeDays} days (${progress.accountAge}%)`
       );
     }
 
@@ -1358,7 +1390,7 @@ export const checkUserEligibility = async (req, res, next) => {
       criteria: {
         minFollowers: config.minFollowers,
         minPosts: config.minPosts,
-        minEngagementRate: Number((config.minEngagementRate * 100).toFixed(2)),
+        minEngagementRate: Number(config.minEngagementRate.toFixed(2)),
         minAccountAgeDays: config.minAccountAgeDays,
       },
       progress: {
@@ -1370,10 +1402,12 @@ export const checkUserEligibility = async (req, res, next) => {
       manuallySet: !!user.isEligibleForSubscription,
       unmetCriteria: isEligible ? [] : unmetCriteria,
       nextSteps: isEligible
-        ? "You are eligible to create subscription plans. Start creating plans now!"
-        : "Increase your followers, posts, engagement, or account age to meet the criteria. Check your progress below.",
+        ? "Eligible to create subscription plans!"
+        : "Boost followers, posts, engagement, or account age.",
     };
 
+    // Cache response for 5 minutes
+    await redisClient.setEx(cacheKey, 300, JSON.stringify(response));
     console.log("✅ [checkUserEligibility] Final response:", response);
     res.status(200).json(response);
   } catch (error) {
@@ -1384,10 +1418,9 @@ export const checkUserEligibility = async (req, res, next) => {
     );
     next(
       new AppError(
-        error.message || "Failed to check user eligibility",
+        error.message || "Failed to check eligibility",
         error.statusCode || 500,
-        "CheckUserEligibility",
-        "Failed to check user eligibility"
+        "CheckUserEligibility"
       )
     );
   }
