@@ -187,7 +187,7 @@ export const verifyEmail = async (req, res, next) => {
     await user.save();
 
     await recordActivity({
-      userId: user._id,
+      userId: newUser._id,
       action: "EMAIL_VERIFIED",
       message: `User ${user.name} verified email from ${
         user.location || "unknown location"
@@ -426,7 +426,7 @@ export const resetPassword = async (req, res, next) => {
     await user.save();
 
     await recordActivity({
-      userId: user._id,
+      userId: newUser._id,
       action: "PASSWORD_RESET",
       message: `User ${user.name} reset password from ${
         user.location || "unknown location"
@@ -474,7 +474,8 @@ export const Signup = async (req, res, next) => {
         "Invalid email format"
       );
 
-    const existingUser = await UserModel.findOne({ email });
+    const existingUser = await UserModel.findOne({ email: normalizedEmail });
+
     // Checks for existing user or Google account conflict
     if (existingUser)
       throw new AppError(
@@ -508,7 +509,7 @@ export const Signup = async (req, res, next) => {
 
     if (geoLocation && newUser._id) {
       await UserLocation.create({
-        userId: user._id,
+        userId: newUser._id,
         ip: geoLocation.ip,
         city: geoLocation.city,
         country: geoLocation.country,
@@ -625,7 +626,7 @@ export const Login = async (req, res, next) => {
     if (geoLocation) {
       user.location = `${geoLocation.city}, ${geoLocation.country}`;
       await UserLocation.create({
-        userId: user._id,
+        userId: newUser._id,
         ip: geoLocation.ip,
         city: geoLocation.city,
         country: geoLocation.country,
@@ -641,7 +642,7 @@ export const Login = async (req, res, next) => {
 
     const token = generateToken(user, res);
     await recordActivity({
-      userId: user._id,
+      userId: newUser._id,
       action: "LOGGED_IN",
       message: `User ${user.name} logged in from ${
         user.location || "unknown location"
@@ -820,7 +821,7 @@ export const googleLogin = async (req, res, next) => {
 
     if (geoLocation && user._id) {
       await UserLocation.create({
-        userId: user._id,
+        userId: newUser._id,
         ip: geoLocation.ip,
         city: geoLocation.city,
         country: geoLocation.country,
@@ -865,7 +866,7 @@ export const googleLogin = async (req, res, next) => {
       }
     } else if (isNewUser) {
       await recordActivity({
-        userId: user._id,
+        userId: newUser._id,
         action: "EMAIL_SKIPPED",
         message: `Welcome email not sent for ${email}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
       });
@@ -873,7 +874,7 @@ export const googleLogin = async (req, res, next) => {
 
     if (isNewUser) await user.save();
     await recordActivity({
-      userId: user._id,
+      userId: newUser._id,
       action: "GOOGLE_LOGGED_IN",
       message: `User ${user.name} logged in with Google from ${
         user.location || "unknown location"
@@ -939,7 +940,7 @@ export const checkEmailStatus = async (req, res, next) => {
       );
 
     await recordActivity({
-      userId: user._id,
+      userId: newUser._id,
       action: "CHECKED_EMAIL_STATUS",
       message: `User ${user.name} checked email status for ${email}`,
     });

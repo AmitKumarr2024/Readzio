@@ -33,8 +33,8 @@ const userLocationSchema = new mongoose.Schema({
       required: true,
     },
     coordinates: {
-      type: "Point",
-      coordinates: [longitude, latitude],
+      type: [Number], // [longitude, latitude]
+      required: true,
     },
   },
   // City name
