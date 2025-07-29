@@ -267,28 +267,6 @@ export const verifyResetOtp = createAsyncThunk(
   }
 );
 
-export const loginTestUser = createAsyncThunk(
-  "auth/loginTestUser",
-  async (_, { rejectWithValue }) => {
-    try {
-      const res = await axiosInstance.post(
-        "/auth/login-test",
-        {},
-        { withCredentials: true }
-      );
-      return res.data;
-    } catch (err) {
-      console.error(
-        "[AuthSlice:loginTestUser] Error:",
-        err.response?.data?.message
-      );
-      return rejectWithValue(
-        err.response?.data || { message: "Test login failed" }
-      );
-    }
-  }
-);
-
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -573,34 +551,6 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload?.message || "Failed to verify OTP";
         state.otpStatus = null;
-      })
-      .addCase(loginTestUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.isCheckingAuth = true;
-      })
-      .addCase(loginTestUser.fulfilled, (state, action) => {
-        const { _id, name, email, role, token, isAccountVerified } =
-          action.payload;
-        localStorage.setItem("jwt", token);
-        state.user = { _id, name, email, role };
-        state.role = role;
-        state.isAuthenticated = true;
-        state.token = token;
-        state.isAccountVerified = isAccountVerified || false;
-        state.loading = false;
-        state.isCheckingAuth = false;
-        state.sessionExpired = false;
-      })
-      .addCase(loginTestUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload?.message || "Test login failed";
-        state.isAuthenticated = false;
-        state.user = null;
-        state.token = null;
-        state.role = null;
-        state.isCheckingAuth = false;
-        state.sessionExpired = false;
       });
   },
 });

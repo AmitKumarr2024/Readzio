@@ -187,7 +187,7 @@ export const verifyEmail = async (req, res, next) => {
     await user.save();
 
     await recordActivity({
-      userId: user._id,
+      userId: newUser._id,
       action: "EMAIL_VERIFIED",
       message: `User ${user.name} verified email from ${
         user.location || "unknown location"
@@ -426,7 +426,7 @@ export const resetPassword = async (req, res, next) => {
     await user.save();
 
     await recordActivity({
-      userId: user._id,
+      userId: newUser._id,
       action: "PASSWORD_RESET",
       message: `User ${user.name} reset password from ${
         user.location || "unknown location"
@@ -457,7 +457,7 @@ export const Signup = async (req, res, next) => {
   const geoLocation = req.geoLocation;
 
   try {
-    // 1. Basic validation
+    // Validates required fields
     if (!fullName || !email || !password)
       throw new AppError(
         "All fields are required",
@@ -465,7 +465,7 @@ export const Signup = async (req, res, next) => {
         "Signup",
         "Missing required fields"
       );
-
+    // Validates email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw new AppError(
         "Invalid email format",
@@ -474,10 +474,9 @@ export const Signup = async (req, res, next) => {
         "Invalid email format"
       );
 
-    const normalizedEmail = email.toLowerCase();
     const existingUser = await UserModel.findOne({ email: normalizedEmail });
 
-    // 2. Check if email is already registered
+    // Checks for existing user or Google account conflict
     if (existingUser)
       throw new AppError(
         existingUser.authProvider === "google"
@@ -488,13 +487,12 @@ export const Signup = async (req, res, next) => {
         "Email already exists"
       );
 
-    // 3. Create new user
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const newUser = new UserModel({
       name: fullName,
-      email: normalizedEmail,
+      email,
       password: hashedPassword,
       authProvider: "local",
       role: "user",
@@ -509,7 +507,6 @@ export const Signup = async (req, res, next) => {
 
     await newUser.save();
 
-    // 4. Save user location if available
     if (geoLocation && newUser._id) {
       await UserLocation.create({
         userId: newUser._id,
@@ -524,22 +521,15 @@ export const Signup = async (req, res, next) => {
       });
     }
 
-    // 5. Handle test email case
-    const isTestEmail =
-      normalizedEmail === "test@test.com" ||
-      normalizedEmail.endsWith("@test.com");
-
-    // 6. Send welcome email
     if (
-      !isTestEmail &&
       (sendEmail === "true" || isAutoEmailDate()) &&
       !newUser.stopEmailAttempts
     ) {
       const mailOption = createMailOption({
-        to: normalizedEmail,
+        to: email,
         subject: "Welcome to Our Platform!",
         name: fullName,
-        email: normalizedEmail,
+        email,
         message: `Thank you for signing up! You're joining us from ${
           newUser.location || "an unknown location"
         }. We're excited to have you on board.`,
@@ -548,7 +538,6 @@ export const Signup = async (req, res, next) => {
         buttonUrl: "https://inksha-uedq.onrender.com",
         isWelcome: true,
       });
-
       try {
         const emailResult = await sendEmailWithRetries(mailOption, newUser._id);
         newUser.emailAttempts = emailResult.attempts;
@@ -561,23 +550,15 @@ export const Signup = async (req, res, next) => {
         await newUser.save();
         throw emailError;
       }
-    } else if (isTestEmail) {
-      await recordActivity({
-        userId: newUser._id,
-        action: "EMAIL_SKIPPED_TEST",
-        message: `Skipped welcome email for test email: ${normalizedEmail}`,
-      });
     } else {
       await recordActivity({
         userId: newUser._id,
         action: "EMAIL_SKIPPED",
-        message: `Welcome email not sent for ${normalizedEmail}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
+        message: `Welcome email not sent for ${email}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
       });
     }
 
     await newUser.save();
-
-    // 7. Log activity
     await recordActivity({
       userId: newUser._id,
       action: "SIGNED_UP",
@@ -586,7 +567,6 @@ export const Signup = async (req, res, next) => {
       }`,
     });
 
-    // 8. Issue token
     const token = generateToken(newUser, res);
     res.status(201).json({
       message: "User registered successfully",
@@ -599,6 +579,7 @@ export const Signup = async (req, res, next) => {
       token,
     });
   } catch (error) {
+    // AppError with context for signup issues
     next(
       error instanceof AppError
         ? error
@@ -645,7 +626,7 @@ export const Login = async (req, res, next) => {
     if (geoLocation) {
       user.location = `${geoLocation.city}, ${geoLocation.country}`;
       await UserLocation.create({
-        userId: user._id,
+        userId: newUser._id,
         ip: geoLocation.ip,
         city: geoLocation.city,
         country: geoLocation.country,
@@ -661,7 +642,7 @@ export const Login = async (req, res, next) => {
 
     const token = generateToken(user, res);
     await recordActivity({
-      userId: user._id,
+      userId: newUser._id,
       action: "LOGGED_IN",
       message: `User ${user.name} logged in from ${
         user.location || "unknown location"
@@ -779,10 +760,11 @@ export const checkAuth = async (req, res, next) => {
 
 // Handles Google login
 export const googleLogin = async (req, res, next) => {
-  const { token } = req.body;
+  const { token, sendEmail } = req.body;
   const geoLocation = req.geoLocation;
 
   try {
+    // Validates Google token
     if (!token)
       throw new AppError(
         "Google token is required",
@@ -797,7 +779,7 @@ export const googleLogin = async (req, res, next) => {
     });
 
     const { sub: googleId, email, name, picture } = ticket.getPayload();
-
+    // Validates email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw new AppError(
         "Invalid email from Google",
@@ -809,6 +791,7 @@ export const googleLogin = async (req, res, next) => {
     let user = await UserModel.findOne({ $or: [{ googleId }, { email }] });
     let isNewUser = false;
 
+    // Checks for existing user or local account conflict
     if (user) {
       if (user.authProvider === "local")
         throw new AppError(
@@ -838,7 +821,7 @@ export const googleLogin = async (req, res, next) => {
 
     if (geoLocation && user._id) {
       await UserLocation.create({
-        userId: user._id,
+        userId: newUser._id,
         ip: geoLocation.ip,
         city: geoLocation.city,
         country: geoLocation.country,
@@ -850,12 +833,11 @@ export const googleLogin = async (req, res, next) => {
       });
     }
 
-    const isTestEmail =
-      email.toLowerCase() === "test@test.com" ||
-      email.toLowerCase().endsWith("@test.com");
-
-    // ✅ Send welcome email for all new users except test emails
-    if (isNewUser && !isTestEmail && !user.stopEmailAttempts) {
+    if (
+      isNewUser &&
+      (sendEmail === "true" || isAutoEmailDate()) &&
+      !user.stopEmailAttempts
+    ) {
       const mailOption = createMailOption({
         to: email,
         subject: "Welcome to Our Platform!",
@@ -882,18 +864,17 @@ export const googleLogin = async (req, res, next) => {
         await user.save();
         throw emailError;
       }
-    } else if (isNewUser && isTestEmail) {
+    } else if (isNewUser) {
       await recordActivity({
-        userId: user._id,
-        action: "EMAIL_SKIPPED_TEST",
-        message: `Skipped welcome email for Google signup (test email): ${email}`,
+        userId: newUser._id,
+        action: "EMAIL_SKIPPED",
+        message: `Welcome email not sent for ${email}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
       });
     }
 
     if (isNewUser) await user.save();
-
     await recordActivity({
-      userId: user._id,
+      userId: newUser._id,
       action: "GOOGLE_LOGGED_IN",
       message: `User ${user.name} logged in with Google from ${
         user.location || "unknown location"
@@ -918,6 +899,7 @@ export const googleLogin = async (req, res, next) => {
       token: jwtToken,
     });
   } catch (error) {
+    // AppError with context for Google login issues
     next(
       error instanceof AppError
         ? error
@@ -958,7 +940,7 @@ export const checkEmailStatus = async (req, res, next) => {
       );
 
     await recordActivity({
-      userId: user._id,
+      userId: newUser._id,
       action: "CHECKED_EMAIL_STATUS",
       message: `User ${user.name} checked email status for ${email}`,
     });
@@ -1021,63 +1003,5 @@ export const getAllEmailStatuses = async (req, res, next) => {
             "Failed to fetch email statuses"
           )
     );
-  }
-};
-
-export const createTestUser = async (req, res, next) => {
-  try {
-    const existingUser = await UserModel.findOne({ email: "test@test.com" });
-
-    if (existingUser) {
-      return res.status(200).json({ message: "Test user already exists" });
-    }
-
-    const hashedPassword = await bcrypt.hash("test@123456", 10);
-
-    const testUser = await UserModel.create({
-      name: "Test User",
-      email: "test@test.com",
-      password: hashedPassword,
-      username: "testuser",
-      provider: "local",
-      verified: true,
-      role: "user",
-    });
-
-    res.status(201).json({ message: "Test user created successfully" });
-  } catch (err) {
-    console.error("Error creating test user:", err);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-// Login as test user (email/password ignored)
-export const loginTestUser = async (req, res, next) => {
-  try {
-    const testUser = await UserModel.findOne({ email: "test@test.com" });
-
-    if (!testUser) {
-      return res
-        .status(404)
-        .json({ message: "Test user not found. Create it first." });
-    }
-
-    // ✅ Use your existing token utility
-    const token = generateToken(testUser, res);
-
-    res.status(200).json({
-      message: "Logged in as Test User",
-      user: {
-        _id: testUser._id,
-        name: testUser.name,
-        email: testUser.email,
-        username: testUser.username,
-        role: testUser.role,
-      },
-      token,
-    });
-  } catch (err) {
-    console.error("Test login failed:", err);
-    res.status(500).json({ message: "Internal server error" });
   }
 };
