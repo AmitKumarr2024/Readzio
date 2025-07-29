@@ -1,14 +1,15 @@
-import React from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { checkUserEligibility } from '../../store/adminSlice';
-import Progress from '../../Utils/Progress';
-import { FaSpinner, FaExclamationCircle, FaRocket } from 'react-icons/fa';
-import { motion } from 'framer-motion';
+import React, { useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { checkUserEligibility } from "../../store/adminSlice";
+import Progress from "../../Utils/Progress";
+import { FaSpinner, FaExclamationCircle, FaRocket } from "react-icons/fa";
+import { motion } from "framer-motion";
 
 const SubscriptionEligibilityProgress = ({ userId }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
   const {
     userEligibility,
     subscriptionCriteria,
@@ -16,10 +17,8 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
     subscriptionError,
   } = useSelector((state) => state.admin);
 
-  React.useEffect(() => {
-    if (userId) {
-      dispatch(checkUserEligibility(userId));
-    }
+  useEffect(() => {
+    if (userId) dispatch(checkUserEligibility(userId));
   }, [dispatch, userId]);
 
   if (subscriptionLoading) {
@@ -42,10 +41,17 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
     );
   }
 
+  // Exit if eligible
   if (userEligibility?.isEligible) return null;
 
-  const { followerCount = 0, postCount = 0, engagementRate = 0, accountAgeDays = 0 } =
-    userEligibility || {};
+  // Fallbacks for incomplete data
+  const {
+    followerCount = 0,
+    postCount = 0,
+    engagementRate = 0,
+    accountAgeDays = 0,
+  } = userEligibility || {};
+
   const {
     minFollowers = 10000,
     minPosts = 30,
@@ -53,23 +59,24 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
     minAccountAgeDays = 180,
   } = subscriptionCriteria || {};
 
-  const followerProgress = minFollowers > 0 ? Math.min((followerCount / minFollowers) * 100, 100) : 0;
-  const postProgress = minPosts > 0 ? Math.min((postCount / minPosts) * 100, 100) : 0;
-  const engagementProgress = minEngagementRate > 0
-    ? Math.min((engagementRate / minEngagementRate) * 100, 100)
-    : 0;
-  const ageProgress = minAccountAgeDays > 0
-    ? Math.min((accountAgeDays / minAccountAgeDays) * 100, 100)
-    : 0;
+  // Calculate progress
+  const safePercent = (val) => (Number.isFinite(val) ? Math.min(val, 100) : 0);
+
+  const followerProgress = safePercent((followerCount / minFollowers) * 100);
+  const postProgress = safePercent((postCount / minPosts) * 100);
+  const engagementProgress = safePercent(
+    (engagementRate / minEngagementRate) * 100
+  );
+  const ageProgress = safePercent((accountAgeDays / minAccountAgeDays) * 100);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: 'easeOut' }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
       className="w-full max-w-4xl overflow-auto bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 sm:p-6"
     >
-      <div className="w-full max-w-3xl bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 sm:p-6 transform transition-all duration-300 hover:shadow-xl">
+      <div className="w-full max-w-3xl bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 sm:p-6 hover:shadow-xl transition-shadow duration-300">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
             Unlock Subscriptions & Earnings
@@ -77,18 +84,27 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
           <FaRocket className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
         </div>
         <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 mb-4">
-          Reach{' '}
-          <span className="font-medium">{minFollowers.toLocaleString()} followers</span>,{' '}
-          <span className="font-medium">{minPosts} published posts</span>,{' '}
-          <span className="font-medium">{minEngagementRate}% engagement</span>, and{' '}
-          <span className="font-medium">{minAccountAgeDays} days account age</span>{' '}
+          Reach{" "}
+          <span className="font-medium">
+            {minFollowers.toLocaleString()} followers
+          </span>
+          , <span className="font-medium">{minPosts} published posts</span>,{" "}
+          <span className="font-medium">{minEngagementRate}% engagement</span>,
+          and{" "}
+          <span className="font-medium">
+            {minAccountAgeDays} days account age
+          </span>{" "}
           to start monetizing your content!
         </p>
+
+        {/* Progress Bars */}
         <div className="space-y-4">
+          {/* Followers */}
           <div>
             <div className="flex justify-between items-center mb-1">
               <p className="text-base sm:text-lg font-medium text-gray-700 dark:text-gray-200">
-                Followers: {followerCount.toLocaleString()} / {minFollowers.toLocaleString()}
+                Followers: {followerCount.toLocaleString()} /{" "}
+                {minFollowers.toLocaleString()}
               </p>
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {followerProgress.toFixed(0)}%
@@ -96,6 +112,8 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
             </div>
             <Progress value={followerProgress} className="h-2 bg-indigo-600" />
           </div>
+
+          {/* Posts */}
           <div>
             <div className="flex justify-between items-center mb-1">
               <p className="text-base sm:text-lg font-medium text-gray-700 dark:text-gray-200">
@@ -107,17 +125,25 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
             </div>
             <Progress value={postProgress} className="h-2 bg-indigo-600" />
           </div>
+
+          {/* Engagement */}
           <div>
             <div className="flex justify-between items-center mb-1">
               <p className="text-base sm:text-lg font-medium text-gray-700 dark:text-gray-200">
-                Engagement Rate: {engagementRate.toFixed(1)}% / {minEngagementRate}%
+                Engagement Rate: {engagementRate.toFixed(1)}% /{" "}
+                {minEngagementRate}%
               </p>
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {engagementProgress.toFixed(0)}%
               </span>
             </div>
-            <Progress value={engagementProgress} className="h-2 bg-indigo-600" />
+            <Progress
+              value={engagementProgress}
+              className="h-2 bg-indigo-600"
+            />
           </div>
+
+          {/* Account Age */}
           <div>
             <div className="flex justify-between items-center mb-1">
               <p className="text-base sm:text-lg font-medium text-gray-700 dark:text-gray-200">
@@ -130,8 +156,10 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
             <Progress value={ageProgress} className="h-2 bg-indigo-600" />
           </div>
         </div>
+
+        {/* CTA */}
         <motion.button
-          onClick={() => navigate('/profile')}
+          onClick={() => navigate("/profile")}
           className="mt-6 w-full py-3 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all duration-300"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
