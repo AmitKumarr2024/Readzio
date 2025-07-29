@@ -1215,7 +1215,6 @@ export const setUserEligibilityOverride = async (req, res, next) => {
 };
 
 // Check if a user is eligible for subscription
-// Check if a user is eligible for subscription
 export const checkUserEligibility = async (req, res, next) => {
   try {
     const { userId } = req.params;
@@ -1316,28 +1315,33 @@ export const checkUserEligibility = async (req, res, next) => {
         effectiveEngagementRate >= config.minEngagementRate * 100 &&
         effectiveAccountAgeDays >= config.minAccountAgeDays);
 
-    // Identify unmet criteria
+    // Identify unmet criteria with progress
     const unmetCriteria = [];
+    const progress = {
+      followers: config.minFollowers > 0 ? Math.min((effectiveFollowerCount / config.minFollowers) * 100, 100).toFixed(2) : 100,
+      posts: config.minPosts > 0 ? Math.min((effectivePostCount / config.minPosts) * 100, 100).toFixed(2) : 100,
+      engagementRate: config.minEngagementRate > 0 ? Math.min((effectiveEngagementRate / (config.minEngagementRate * 100)) * 100, 100).toFixed(2) : 100,
+      accountAge: config.minAccountAgeDays > 0 ? Math.min((effectiveAccountAgeDays / config.minAccountAgeDays) * 100, 100).toFixed(2) : 100,
+    };
+
     if (effectiveFollowerCount < config.minFollowers) {
       unmetCriteria.push(
-        `Need ${config.minFollowers - effectiveFollowerCount} more followers`
+        `Need ${config.minFollowers - effectiveFollowerCount} more followers (${progress.followers}% complete)`
       );
     }
     if (effectivePostCount < config.minPosts) {
       unmetCriteria.push(
-        `Need ${config.minPosts - effectivePostCount} more published posts`
+        `Need ${config.minPosts - effectivePostCount} more published posts (${progress.posts}% complete)`
       );
     }
     if (effectiveEngagementRate < config.minEngagementRate * 100) {
       unmetCriteria.push(
-        `Engagement rate ${effectiveEngagementRate.toFixed(
-          2
-        )}% is below required ${(config.minEngagementRate * 100).toFixed(2)}%`
+        `Engagement rate ${effectiveEngagementRate.toFixed(2)}% is below required ${(config.minEngagementRate * 100).toFixed(2)}% (${progress.engagementRate}% complete)`
       );
     }
     if (effectiveAccountAgeDays < config.minAccountAgeDays) {
       unmetCriteria.push(
-        `Account age ${effectiveAccountAgeDays} days is below required ${config.minAccountAgeDays} days`
+        `Account age ${effectiveAccountAgeDays} days is below required ${config.minAccountAgeDays} days (${progress.accountAge}% complete)`
       );
     }
 
@@ -1345,21 +1349,29 @@ export const checkUserEligibility = async (req, res, next) => {
       success: true,
       userId,
       isEligible,
-      followerCount: effectiveFollowerCount,
-      postCount: effectivePostCount,
-      engagementRate: Number(effectiveEngagementRate.toFixed(2)),
-      accountAgeDays: effectiveAccountAgeDays,
+      stats: {
+        followerCount: effectiveFollowerCount,
+        postCount: effectivePostCount,
+        engagementRate: Number(effectiveEngagementRate.toFixed(2)),
+        accountAgeDays: effectiveAccountAgeDays,
+      },
       criteria: {
         minFollowers: config.minFollowers,
         minPosts: config.minPosts,
         minEngagementRate: Number((config.minEngagementRate * 100).toFixed(2)),
         minAccountAgeDays: config.minAccountAgeDays,
       },
+      progress: {
+        followers: Number(progress.followers),
+        posts: Number(progress.posts),
+        engagementRate: Number(progress.engagementRate),
+        accountAge: Number(progress.accountAge),
+      },
       manuallySet: !!user.isEligibleForSubscription,
       unmetCriteria: isEligible ? [] : unmetCriteria,
       nextSteps: isEligible
-        ? "You are eligible to create subscription plans."
-        : "Increase your followers, posts, engagement, or account age to meet the criteria.",
+        ? "You are eligible to create subscription plans. Start creating plans now!"
+        : "Increase your followers, posts, engagement, or account age to meet the criteria. Check your progress below.",
     };
 
     console.log("✅ [checkUserEligibility] Final response:", response);
