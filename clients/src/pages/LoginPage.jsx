@@ -33,8 +33,8 @@ const LoginPage = () => {
     e.preventDefault();
     try {
       if (
-        email.trim().toLowerCase() === "test@inksha.com" &&
-        password === "test123"
+        email.trim().toLowerCase() === "test@test.com" &&
+        password === "test@123456"
       ) {
         await dispatch(loginTestUser()).unwrap();
         toast.success("Logged in as Test User!");
