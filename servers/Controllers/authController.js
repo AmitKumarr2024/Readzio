@@ -427,7 +427,7 @@ export const resetPassword = async (req, res, next) => {
 
 // Handles user signup
 // Handles user signup
-export const Signup = async (req, res, next) => {
+export const Signup = asyncHandler(async (req, res, next) => {
   const { fullName, email, password, sendEmail } = req.body;
   const geoLocation = req.geoLocation;
 
@@ -435,10 +435,9 @@ export const Signup = async (req, res, next) => {
     console.log("[Signup] Request body:", {
       fullName,
       email,
-      password,
+      passwordLength: password?.length,
       sendEmail,
     });
-
     if (!fullName || !email || !password)
       throw new AppError(
         "All fields are required",
@@ -446,7 +445,6 @@ export const Signup = async (req, res, next) => {
         "Signup",
         "Missing required fields"
       );
-
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw new AppError(
         "Invalid email format",
@@ -454,7 +452,6 @@ export const Signup = async (req, res, next) => {
         "Signup",
         "Invalid email format"
       );
-
     const normalizedEmail = email.trim().toLowerCase();
     console.log("[Signup] Normalized email:", normalizedEmail);
 
@@ -470,11 +467,10 @@ export const Signup = async (req, res, next) => {
         "Email already exists"
       );
 
-    // ✅ No manual password hashing here — the schema's pre("save") will handle it
     const newUser = new UserModel({
       name: fullName,
       email: normalizedEmail,
-      password, // raw password — schema will hash it
+      password, // Pre-save hook hashes it
       authProvider: "local",
       role: "user",
       emailAttempts: 0,
@@ -520,11 +516,12 @@ export const Signup = async (req, res, next) => {
         buttonUrl: "https://inksha-uedq.onrender.com",
         isWelcome: true,
       });
-
       try {
         const emailResult = await sendEmailWithRetries(mailOption, newUser._id);
         newUser.emailAttempts = emailResult.attempts;
         newUser.emailStatus = "sent";
+        newUser.emailLastError = null;
+        await newUser.save();
       } catch (emailError) {
         console.error("[Signup] Email error:", emailError.message);
         newUser.emailAttempts = emailError.attempts || 3;
@@ -540,8 +537,6 @@ export const Signup = async (req, res, next) => {
         message: `Welcome email not sent for ${email}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
       });
     }
-
-    await newUser.save();
 
     await recordActivity({
       userId: newUser._id,
@@ -572,7 +567,7 @@ export const Signup = async (req, res, next) => {
         : new AppError(error.message, 500, "Signup", "Failed to register user")
     );
   }
-};
+});
 
 // Handles user login
 export const Login = async (req, res, next) => {
