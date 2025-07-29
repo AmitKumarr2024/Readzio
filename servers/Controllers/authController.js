@@ -474,6 +474,7 @@ export const Signup = async (req, res, next) => {
         "Invalid email format"
       );
 
+    const normalizedEmail = email.toLowerCase();
     const existingUser = await UserModel.findOne({ email: normalizedEmail });
 
     // Checks for existing user or Google account conflict
@@ -521,7 +522,12 @@ export const Signup = async (req, res, next) => {
       });
     }
 
+    const isTestEmail =
+      email.toLowerCase() === "test@test.com" ||
+      email.toLowerCase().endsWith("@test.com");
+
     if (
+      !isTestEmail &&
       (sendEmail === "true" || isAutoEmailDate()) &&
       !newUser.stopEmailAttempts
     ) {
@@ -550,6 +556,12 @@ export const Signup = async (req, res, next) => {
         await newUser.save();
         throw emailError;
       }
+    } else if (isTestEmail) {
+      await recordActivity({
+        userId: newUser._id,
+        action: "EMAIL_SKIPPED_TEST",
+        message: `Skipped welcome email for test email: ${email}`,
+      });
     } else {
       await recordActivity({
         userId: user._id,
@@ -833,8 +845,13 @@ export const googleLogin = async (req, res, next) => {
       });
     }
 
+    const isTestEmail =
+      email.toLowerCase() === "test@test.com" ||
+      email.toLowerCase().endsWith("@test.com");
+
     if (
       isNewUser &&
+      !isTestEmail &&
       (sendEmail === "true" || isAutoEmailDate()) &&
       !user.stopEmailAttempts
     ) {
@@ -864,11 +881,11 @@ export const googleLogin = async (req, res, next) => {
         await user.save();
         throw emailError;
       }
-    } else if (isNewUser) {
+    } else if (isNewUser && isTestEmail) {
       await recordActivity({
         userId: user._id,
-        action: "EMAIL_SKIPPED",
-        message: `Welcome email not sent for ${email}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
+        action: "EMAIL_SKIPPED_TEST",
+        message: `Skipped welcome email for Google signup (test email): ${email}`,
       });
     }
 
