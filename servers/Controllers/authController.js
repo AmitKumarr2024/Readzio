@@ -586,7 +586,12 @@ export const Login = async (req, res, next) => {
       );
 
     const normalizedEmail = email.trim().toLowerCase();
-    console.log("[Login] Attempting login for email:", normalizedEmail);
+    console.log(
+      "[Login] Attempting login for email:",
+      normalizedEmail,
+      "Password length:",
+      password.length
+    );
     const user = await UserModel.findOne({ email: normalizedEmail }).select(
       "+password"
     );
@@ -601,7 +606,21 @@ export const Login = async (req, res, next) => {
       );
     }
 
-    console.log("[Login] User found:", user._id, "Checking password...");
+    console.log(
+      "[Login] User found:",
+      user._id,
+      "authProvider:",
+      user.authProvider
+    );
+    if (user.authProvider !== "local") {
+      throw new AppError(
+        "Use Google login for this account",
+        400,
+        "Login",
+        "Account not registered with password"
+      );
+    }
+
     const isMatch = await user.comparePassword(password);
     console.log("[Login] Password match:", isMatch);
     if (!isMatch)
@@ -629,7 +648,7 @@ export const Login = async (req, res, next) => {
     }
 
     const token = generateToken(user, res);
-    console.log("[Login] Token generated for user:", user._id);
+    console.log("[Login] Token generated:", token.substring(0, 20) + "...");
 
     await recordActivity({
       userId: user._id,
