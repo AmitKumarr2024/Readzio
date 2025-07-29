@@ -52,3 +52,5 @@ const reportedPostSchema = new mongoose.Schema(
 const ReportedPostModel =
   mongoose.models.ReportedPost ||
   mongoose.model("ReportedPost", reportedPostSchema);
+
+  export default ReportedPostModel;

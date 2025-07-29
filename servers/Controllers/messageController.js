@@ -1,11 +1,12 @@
 import { CLIENT_URL, SENDER_EMAIL } from "../config/dotenv.js";
-import ReportedPost from "../../servers/Models/ReportedPost.js";
+
 import { AppError } from "../../servers/Utils/AppError.js";
 import mongoose from "mongoose";
 import validator from "validator";
 import ContactMessage from "../../servers/Models/ContactMessage.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
+import ReportedPostModel from "../../servers/Models/ReportedPost.js";
 
 // Creates a new contact message
 export const createContactMessage = async (req, res, next) => {
@@ -101,7 +102,7 @@ export const createReport = async (req, res, next) => {
         "Invalid post ID format"
       );
 
-    const report = new ReportedPost({
+    const report = new ReportedPostModel({
       post: postId,
       reporter,
       reason,
@@ -129,7 +130,7 @@ export const createReport = async (req, res, next) => {
 export const getAllReportedPosts = async (req, res, next) => {
   try {
     // Fetches all reports with populated post and reporter details
-    const reports = await ReportedPost.find()
+    const reports = await ReportedPostModel.find()
       .populate({
         path: "post",
         select: "title author",
@@ -170,7 +171,7 @@ export const reviewReport = async (req, res, next) => {
       );
 
     // Fetches report with populated post and author
-    const report = await ReportedPost.findById(reportId).populate({
+    const report = await ReportedPostModel.findById(reportId).populate({
       path: "post",
       select: "title author",
       populate: { path: "author", select: "name email" },
@@ -234,7 +235,7 @@ export const sendReportNotification = async (req, res, next) => {
       );
 
     // Fetches report with populated post and author
-    const report = await ReportedPost.findById(reportId).populate({
+    const report = await ReportedPostModel.findById(reportId).populate({
       path: "post",
       select: "title author",
       populate: { path: "author", select: "name email" },
@@ -387,7 +388,7 @@ export const acknowledgeReport = async (req, res, next) => {
       );
 
     // Fetches report with populated post and author
-    const report = await ReportedPost.findById(reportId).populate({
+    const report = await ReportedPostModel.findById(reportId).populate({
       path: "post",
       select: "author",
       populate: { path: "author", select: "_id" },
