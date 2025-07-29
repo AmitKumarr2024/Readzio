@@ -430,12 +430,15 @@ const Postbox = ({
                     return (
                       <div
                         key={item.id}
-                        className="mx-auto w-full max-w-[728px]"
+                        className="col-span-full w-full flex justify-center px-2 sm:px-0"
                       >
-                        <SafeInFeedAd postId={item.postId} />
+                        <div className="w-full max-w-[728px]">
+                          <SafeInFeedAd postId={item.postId} />
+                        </div>
                       </div>
                     );
                   }
+
                   if (item.type === "multiplex-ad") {
                     return (
                       <div
