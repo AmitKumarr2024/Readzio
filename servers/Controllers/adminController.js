@@ -1219,10 +1219,15 @@ export const setUserEligibilityOverride = async (req, res, next) => {
 export const checkUserEligibility = async (req, res, next) => {
   try {
     const { userId } = req.params;
+    // console.log("[AdminController:checkUserEligibility] 🔍 User ID:", userId);
 
     validateObjectId(userId, "User ID");
-
     const user = await UserModel.findById(userId).lean();
+    // console.log(
+    //   "[AdminController:checkUserEligibility] 👤 User found:",
+    //   !!user
+    // );
+
     if (!user)
       throw new AppError(
         "User not found",
@@ -1232,94 +1237,79 @@ export const checkUserEligibility = async (req, res, next) => {
       );
 
     const followerCount = user.followers?.length || 0;
+    const postCount = await PostModel.countDocuments({
+      author: userId,
+      isPublished: true,
+    });
+    // console.log("[AdminController:checkUserEligibility] 📊 Stats:", {
+    //   followerCount,
+    //   postCount,
+    // });
 
     const posts = await PostModel.find({
       author: userId,
       isPublished: true,
     }).lean();
-
-    const postCount = posts.length;
-
     const totalEngagement = posts.reduce(
       (sum, post) =>
         sum + (post.likes?.length || 0) + (post.comments?.length || 0),
       0
     );
 
-    const totalReach = posts.reduce((sum, post) => sum + (post.views || 0), 0);
-
-    const engagementRate = totalReach > 0 ? totalEngagement / totalReach : 0;
-
     const accountAgeDays =
       (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    // console.log(
+    //   "[AdminController:checkUserEligibility] ⏳ Account age (days):",
+    //   accountAgeDays
+    // );
 
-    const config = await SubscriptionConfig.findOne({
+    let config = await SubscriptionConfig.findOne({
       key: "subscriptionEligibility",
     });
-
     if (!config) {
-      throw new AppError(
-        "Global subscription eligibility config not set",
-        500,
-        "CheckUserEligibility",
-        "Subscription config not found"
-      );
+      config = await SubscriptionConfig.create({
+        key: "subscriptionEligibility",
+        minFollowers: 10000,
+        minPosts: 30,
+        minEngagementRate: 0.05, // 5%
+        minAccountAgeDays: 30,
+      });
     }
 
-    // Check if admin manually marked user eligible
-    const isManuallyEligible = user.isEligibleForSubscription;
-
-    // Check if user bypasses config criteria
-    const isBypass = user.bypassSubscriptionCriteria;
-
-    // Apply override if present
-    const overrides = user.milestoneOverride || {};
-    const parseRate = (val) => {
-      const num = typeof val === "number" ? val : parseFloat(val);
-      return Number.isFinite(num) && num >= 0 ? num : null;
-    };
-    const effectiveFollowerCount = overrides.followerCount ?? followerCount;
-    const effectivePostCount = overrides.postCount ?? postCount;
-    const effectiveEngagementRate =
-      parseRate(overrides.engagementRate) ?? engagementRate;
-
-    const effectiveAccountAge = overrides.accountAgeDays ?? accountAgeDays;
-
     const isEligible =
-      isManuallyEligible ||
-      isBypass ||
-      (effectiveFollowerCount >= config.minFollowers &&
-        effectivePostCount >= config.minPosts &&
-        effectiveEngagementRate >= config.minEngagementRate &&
-        effectiveAccountAge >= config.minAccountAgeDays);
+      user.isEligibleForSubscription ||
+      (followerCount >= config.minFollowers && postCount >= config.minPosts);
+    // console.log(
+    //   "[AdminController:checkUserEligibility] ✅ Eligibility:",
+    //   isEligible
+    // );
 
-    res.status(200).json({
+    const response = {
       success: true,
       userId,
       isEligible,
-      followerCount: effectiveFollowerCount,
-      postCount: effectivePostCount,
-      engagementRate: Number.isFinite(effectiveEngagementRate)
-        ? Number((effectiveEngagementRate * 100).toFixed(2))
-        : 0,
-
-      accountAgeDays: Math.floor(effectiveAccountAge),
+      followerCount,
+      postCount,
       criteria: {
         minFollowers: config.minFollowers,
         minPosts: config.minPosts,
-        minEngagementRate: (config.minEngagementRate * 100).toFixed(2), // percent
+        minEngagementRate: config.minEngagementRate * 100,
         minAccountAgeDays: config.minAccountAgeDays,
       },
       manuallySet: !!user.isEligibleForSubscription,
-      bypassed: !!user.bypassSubscriptionCriteria,
-      usedOverrides: Object.keys(overrides).length > 0,
-    });
+    };
+    // console.log(
+    //   "[AdminController:checkUserEligibility] 📤 Response:",
+    //   response
+    // );
+    res.status(200).json(response);
   } catch (error) {
     console.error(
       "[AdminController:checkUserEligibility] ❌ Error:",
       error.message,
       error.stack
     );
+    // AppError with context for eligibility check
     next(
       new AppError(
         error.message,
@@ -1487,62 +1477,61 @@ export const grantSubscriptionAccess = async (req, res, next) => {
 export const overrideUserMilestones = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const { followerCount, postCount, engagementRate, accountAgeDays } =
-      req.body;
+    const {
+      followerCount,
+      postCount,
+      engagementRate,
+      accountAgeDays,
+      isEligibleForSubscription,
+    } = req.body;
+
+    if (!req.user?.isAdmin)
+      throw new AppError(
+        "Admin access required",
+        403,
+        "OverrideUserMilestones"
+      );
 
     validateObjectId(userId, "User ID");
 
-    // ✅ Validate engagementRate is a valid number if provided
-    if (
-      engagementRate !== undefined &&
-      !Number.isFinite(Number(engagementRate))
-    ) {
-      throw new AppError(
-        "Invalid engagement rate",
-        400,
-        "OverrideUserMilestones",
-        "Engagement rate must be a valid number"
-      );
-    }
-
     const user = await UserModel.findById(userId);
     if (!user)
-      throw new AppError(
-        "User not found",
-        404,
-        "OverrideUserMilestones",
-        "User does not exist"
-      );
+      throw new AppError("User not found", 404, "OverrideUserMilestones");
 
-    // Build override object
-    const override = {
-      ...(followerCount !== undefined && {
-        followerCount: Number(followerCount),
-      }),
-      ...(postCount !== undefined && {
-        postCount: Number(postCount),
-      }),
-      ...(engagementRate !== undefined && {
-        engagementRate: Number(engagementRate),
-      }),
-      ...(accountAgeDays !== undefined && {
-        accountAgeDays: Number(accountAgeDays),
-      }),
+    user.milestoneOverride = {
+      followerCount:
+        followerCount ?? user.milestoneOverride?.followerCount ?? null,
+      postCount: postCount ?? user.milestoneOverride?.postCount ?? null,
+      engagementRate:
+        engagementRate ?? user.milestoneOverride?.engagementRate ?? null,
+      accountAgeDays:
+        accountAgeDays ?? user.milestoneOverride?.accountAgeDays ?? null,
     };
 
-    user.milestoneOverride = override;
+    if (isEligibleForSubscription !== undefined)
+      user.isEligibleForSubscription = isEligibleForSubscription;
 
     await user.save();
 
+    await recordActivity({
+      userId: req.user._id.toString(),
+      action: "OVERRIDDEN_USER_MILESTONES",
+      message: `Admin overrode milestone for user ${userId}`,
+      targetUserId: userId,
+    });
+
     res.status(200).json({
       success: true,
-      message: "Milestone overrides updated successfully",
-      override,
+      message: "User milestone overridden successfully",
+      userId,
+      milestoneOverride: user.milestoneOverride,
+      isEligibleForSubscription: user.isEligibleForSubscription,
     });
   } catch (error) {
     console.error(
       "[AdminController:overrideUserMilestones] ❌ Error:",
-      error.message
+      error.message,
+      error.stack
     );
     next(
       new AppError(
