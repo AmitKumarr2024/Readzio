@@ -426,6 +426,7 @@ export const resetPassword = async (req, res, next) => {
 };
 
 // Handles user signup
+// Handles user signup
 export const Signup = async (req, res, next) => {
   const { fullName, email, password, sendEmail } = req.body;
   const geoLocation = req.geoLocation;
@@ -437,6 +438,7 @@ export const Signup = async (req, res, next) => {
       password,
       sendEmail,
     });
+
     if (!fullName || !email || !password)
       throw new AppError(
         "All fields are required",
@@ -444,6 +446,7 @@ export const Signup = async (req, res, next) => {
         "Signup",
         "Missing required fields"
       );
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw new AppError(
         "Invalid email format",
@@ -451,6 +454,7 @@ export const Signup = async (req, res, next) => {
         "Signup",
         "Invalid email format"
       );
+
     const normalizedEmail = email.trim().toLowerCase();
     console.log("[Signup] Normalized email:", normalizedEmail);
 
@@ -466,17 +470,11 @@ export const Signup = async (req, res, next) => {
         "Email already exists"
       );
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    console.log(
-      "[Signup] Password hashed:",
-      hashedPassword.substring(0, 20) + "..."
-    );
-
+    // ✅ No manual password hashing here — the schema's pre("save") will handle it
     const newUser = new UserModel({
       name: fullName,
       email: normalizedEmail,
-      password: hashedPassword,
+      password, // raw password — schema will hash it
       authProvider: "local",
       role: "user",
       emailAttempts: 0,
@@ -522,19 +520,18 @@ export const Signup = async (req, res, next) => {
         buttonUrl: "https://inksha-uedq.onrender.com",
         isWelcome: true,
       });
+
       try {
         const emailResult = await sendEmailWithRetries(mailOption, newUser._id);
         newUser.emailAttempts = emailResult.attempts;
         newUser.emailStatus = "sent";
-        newUser.emailLastError = null;
-        await newUser.save(); // Save only email-related fields
       } catch (emailError) {
         console.error("[Signup] Email error:", emailError.message);
         newUser.emailAttempts = emailError.attempts || 3;
         newUser.emailStatus = "failed";
         newUser.emailLastError = emailError.message;
         newUser.stopEmailAttempts = true;
-        await newUser.save(); // Save email error fields
+        await newUser.save();
       }
     } else {
       await recordActivity({
@@ -543,6 +540,8 @@ export const Signup = async (req, res, next) => {
         message: `Welcome email not sent for ${email}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
       });
     }
+
+    await newUser.save();
 
     await recordActivity({
       userId: newUser._id,
