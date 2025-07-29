@@ -1274,9 +1274,15 @@ export const checkUserEligibility = async (req, res, next) => {
 
     // Apply override if present
     const overrides = user.milestoneOverride || {};
+    const parseRate = (val) => {
+      const num = typeof val === "number" ? val : parseFloat(val);
+      return Number.isFinite(num) && num >= 0 ? num : null;
+    };
     const effectiveFollowerCount = overrides.followerCount ?? followerCount;
     const effectivePostCount = overrides.postCount ?? postCount;
-    const effectiveEngagementRate = overrides.engagementRate ?? engagementRate;
+    const effectiveEngagementRate =
+      parseRate(overrides.engagementRate) ?? engagementRate;
+
     const effectiveAccountAge = overrides.accountAgeDays ?? accountAgeDays;
 
     const isEligible =
@@ -1293,7 +1299,10 @@ export const checkUserEligibility = async (req, res, next) => {
       isEligible,
       followerCount: effectiveFollowerCount,
       postCount: effectivePostCount,
-      engagementRate: (effectiveEngagementRate * 100).toFixed(2), // percent
+      engagementRate: Number.isFinite(effectiveEngagementRate)
+        ? Number((effectiveEngagementRate * 100).toFixed(2))
+        : 0,
+
       accountAgeDays: Math.floor(effectiveAccountAge),
       criteria: {
         minFollowers: config.minFollowers,
@@ -1478,61 +1487,62 @@ export const grantSubscriptionAccess = async (req, res, next) => {
 export const overrideUserMilestones = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const {
-      followerCount,
-      postCount,
-      engagementRate,
-      accountAgeDays,
-      isEligibleForSubscription,
-    } = req.body;
-
-    if (!req.user?.isAdmin)
-      throw new AppError(
-        "Admin access required",
-        403,
-        "OverrideUserMilestones"
-      );
+    const { followerCount, postCount, engagementRate, accountAgeDays } =
+      req.body;
 
     validateObjectId(userId, "User ID");
 
+    // ✅ Validate engagementRate is a valid number if provided
+    if (
+      engagementRate !== undefined &&
+      !Number.isFinite(Number(engagementRate))
+    ) {
+      throw new AppError(
+        "Invalid engagement rate",
+        400,
+        "OverrideUserMilestones",
+        "Engagement rate must be a valid number"
+      );
+    }
+
     const user = await UserModel.findById(userId);
     if (!user)
-      throw new AppError("User not found", 404, "OverrideUserMilestones");
+      throw new AppError(
+        "User not found",
+        404,
+        "OverrideUserMilestones",
+        "User does not exist"
+      );
 
-    user.milestoneOverride = {
-      followerCount:
-        followerCount ?? user.milestoneOverride?.followerCount ?? null,
-      postCount: postCount ?? user.milestoneOverride?.postCount ?? null,
-      engagementRate:
-        engagementRate ?? user.milestoneOverride?.engagementRate ?? null,
-      accountAgeDays:
-        accountAgeDays ?? user.milestoneOverride?.accountAgeDays ?? null,
+    // Build override object
+    const override = {
+      ...(followerCount !== undefined && {
+        followerCount: Number(followerCount),
+      }),
+      ...(postCount !== undefined && {
+        postCount: Number(postCount),
+      }),
+      ...(engagementRate !== undefined && {
+        engagementRate: Number(engagementRate),
+      }),
+      ...(accountAgeDays !== undefined && {
+        accountAgeDays: Number(accountAgeDays),
+      }),
     };
 
-    if (isEligibleForSubscription !== undefined)
-      user.isEligibleForSubscription = isEligibleForSubscription;
+    user.milestoneOverride = override;
 
     await user.save();
 
-    await recordActivity({
-      userId: req.user._id.toString(),
-      action: "OVERRIDDEN_USER_MILESTONES",
-      message: `Admin overrode milestone for user ${userId}`,
-      targetUserId: userId,
-    });
-
     res.status(200).json({
       success: true,
-      message: "User milestone overridden successfully",
-      userId,
-      milestoneOverride: user.milestoneOverride,
-      isEligibleForSubscription: user.isEligibleForSubscription,
+      message: "Milestone overrides updated successfully",
+      override,
     });
   } catch (error) {
     console.error(
       "[AdminController:overrideUserMilestones] ❌ Error:",
-      error.message,
-      error.stack
+      error.message
     );
     next(
       new AppError(
