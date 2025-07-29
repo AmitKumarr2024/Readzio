@@ -427,7 +427,7 @@ export const resetPassword = async (req, res, next) => {
 
 // Handles user signup
 // Handles user signup
-export const Signup = asyncHandler(async (req, res, next) => {
+export const Signup = async (req, res, next) => {
   const { fullName, email, password, sendEmail } = req.body;
   const geoLocation = req.geoLocation;
 
@@ -439,18 +439,22 @@ export const Signup = asyncHandler(async (req, res, next) => {
       sendEmail,
     });
     if (!fullName || !email || !password)
-      throw new AppError(
-        "All fields are required",
-        400,
-        "Signup",
-        "Missing required fields"
+      return next(
+        new AppError(
+          "All fields are required",
+          400,
+          "Signup",
+          "Missing required fields"
+        )
       );
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      throw new AppError(
-        "Invalid email format",
-        400,
-        "Signup",
-        "Invalid email format"
+      return next(
+        new AppError(
+          "Invalid email format",
+          400,
+          "Signup",
+          "Invalid email format"
+        )
       );
     const normalizedEmail = email.trim().toLowerCase();
     console.log("[Signup] Normalized email:", normalizedEmail);
@@ -458,13 +462,15 @@ export const Signup = asyncHandler(async (req, res, next) => {
     const existingUser = await UserModel.findOne({ email: normalizedEmail });
     console.log("[Signup] Existing user:", !!existingUser);
     if (existingUser)
-      throw new AppError(
-        existingUser.authProvider === "google"
-          ? "Email registered with Google. Use Google login."
-          : "User with this email already exists",
-        400,
-        "Signup",
-        "Email already exists"
+      return next(
+        new AppError(
+          existingUser.authProvider === "google"
+            ? "Email registered with Google. Use Google login."
+            : "User with this email already exists",
+          400,
+          "Signup",
+          "Email already exists"
+        )
       );
 
     const newUser = new UserModel({
@@ -561,13 +567,13 @@ export const Signup = asyncHandler(async (req, res, next) => {
     });
   } catch (error) {
     console.error("[Signup] Error:", error.message);
-    next(
+    return next(
       error instanceof AppError
         ? error
         : new AppError(error.message, 500, "Signup", "Failed to register user")
     );
   }
-});
+};
 
 // Handles user login
 export const Login = async (req, res, next) => {
