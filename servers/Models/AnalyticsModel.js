@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 
 const AnalyticsSchema = new mongoose.Schema({
+  _id: {
+    type: String,
+    default: "guest-analytics", // fixed unique ID
+  },
   traffic: {
     totalVisits: { type: Number, default: 0 },
     uniqueUsersCount: { type: Number, default: 0 },

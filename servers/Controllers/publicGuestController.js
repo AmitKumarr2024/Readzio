@@ -228,9 +228,9 @@ export const trackGuestVisit = async (req, res, next) => {
 
     if (isNewGuest) {
       await AnalyticsModel.findOneAndUpdate(
-        {},
+        { _id: "guest-analytics" },
         { $inc: { "traffic.guestUsersCount": 1 } },
-        { upsert: true }
+        { upsert: true, new: true, setDefaultsOnInsert: true }
       );
     }
 

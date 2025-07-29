@@ -1,164 +1,195 @@
 import mongoose from "mongoose";
 
-// Defines schema for tracking user activities
+// Activity Schema to track user behavior/actions
 const activitySchema = new mongoose.Schema(
   {
-    // References the user performing the action
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true, // Optimizes queries by user
+      index: true,
     },
-    // Specifies the type of action performed
     action: {
       type: String,
+      required: true,
       enum: [
+        // POST actions
         "POST_CREATED",
         "POST_EDITED",
         "POST_DELETED",
+        "POST_BLOCKED",
+        "POST_APPEAL_SUBMITTED",
+
+        // COMMENT actions
         "COMMENTED",
         "COMMENT_DELETED",
+
+        // SOCIAL actions
         "LIKED",
         "BOOKMARKED",
+        "SHARED",
         "FOLLOWED_USER",
         "UNFOLLOWED_USER",
+        "BLOCKED_USER",
+        "UNBLOCKED_USER",
+
+        // POLL
         "VOTED_IN_POLL",
-        "REPORTED_CONTENT",
-        "LOGGED_IN",
+        "POLL_VOTED",
+
+        // PROFILE
+        "VIEWED_PROFILE",
         "UPDATED_PROFILE",
         "VIEWED_USERS",
         "DELETED_ACCOUNT",
-        "VIEWED_PROFILE",
-        "VIEWED_ACTIVITY",
-        "VIEWED_POSTS",
-        "VIEWED_POST",
-        "SIGNED_UP",
-        "LOGGED_OUT",
-        "CHECKED_AUTH",
-        "GOOGLE_LOGGED_IN",
-        "BLOCKED_USER",
-        "UNBLOCKED_USER",
-        "CREATED_RAZORPAY_ORDER",
-        "VERIFIED_PAYMENT",
-        "FAILED_PAYMENT_VERIFICATION",
-        "PROCESSED_BULK_PAYOUT",
-        "ATTEMPTED_BULK_PAYOUT",
-        "SEARCHED_POSTS",
-        "VIEWED_TRENDING_POSTS",
-        "VIEWED_LATEST_POSTS",
-        "VIEWED_SUBSCRIBED_POSTS",
-        "SUBSCRIBED_CATEGORY",
-        "UNSUBSCRIBED_CATEGORY",
-        "VIEWED_FOLLOWERS_LIST",
-        "VIEWED_FOLLOWING_LIST",
-        "CREATED_SUBSCRIPTION_PLAN",
-        "SUBSCRIBED_TO_PLAN",
-        "DELETED_SUBSCRIPTION",
-        "DELETED_SUBSCRIPTION_PLAN",
-        "UPDATED_SUBSCRIPTION_PLAN",
         "UPDATED_BANK_DETAILS",
-        "RAZORPAY_KEY_SECRET",
-        "CANCELLED_SUBSCRIPTION",
+        "PASSWORD_UPDATED",
+        "PASSWORD_VERIFIED_FOR_DELETION",
+        "RESET_USER_MILESTONES",
+        "OVERRIDDEN_USER_MILESTONES",
+
+        // AUTH
+        "LOGGED_IN",
+        "LOGGED_OUT",
+        "GOOGLE_LOGGED_IN",
+        "SIGNED_UP",
+        "CHECKED_AUTH",
+
+        // SUBSCRIPTION
         "CREATED_SUBSCRIPTION",
-        "UNSUBSCRIBED_FROM_AUTHOR",
-        "UPDATED_PAYOUT_DETAILS",
-        "CREATED_PAYOUT_DETAILS",
-        "DELETED_PAYOUT_DETAILS",
-        "VIEWED_EARNINGS",
-        "VIEWED_SUGGESTED_POSTS",
-        "VIEWED_ALL_EARNINGS",
-        "CREATED_PAYOUT",
-        "VIEWED_ALL_AD_EARNINGS",
-        "SET_AD_CONFIG",
-        "RECORDED_AD_EARNINGS",
-        "POST_BLOCKED",
-        "APPROVED_EMAILS",
-        "GENERATED_EARNINGS_REPORT",
-        "DELETED_PENDING_EMAILS",
-        "GENERATED_PENDING_EMAILS",
-        "CHECKED_EMAIL_STATUS",
-        "ERR_CONNECTION_RESET",
-        "FETCHED_ALL_USER_LOCATIONS",
-        "SAVED_USER_LOCATION",
-        "FETCHED_FOLLOWING",
-        "FETCHED_FOLLOWERS",
-        "INDIA_COUNTRY_PATH",
-        "EMAIL_FAILED",
-        "EMAIL_SENT",
-        "EMAIL_VERIFIED",
-        "PASSWORD_RESET",
-        "SENDER_EMAIL",
-        "EMAIL_SKIPPED",
-        "EMAIL_FAILED_ALL_ATTEMPTS",
-        "DISMISSED_NOTIFICATION",
-        "DEACTIVATED_NOTIFICATION",
-        "CREATED_NOTIFICATION",
-        "POST_APPEAL_SUBMITTED",
-        "PERMISSION_DENIED",
-        "POSITION_UNAVAILABLE",
-        "TIMEOUT",
-        "LOCATION_LOGGED",
-        "POLL_VOTED",
-        "VIEWED_FOLLOWING_POSTS",
-        "GRANTED_FULL_ACCESS",
+        "CANCELLED_SUBSCRIPTION",
+        "CREATED_SUBSCRIPTION_PLAN",
+        "UPDATED_SUBSCRIPTION_PLAN",
+        "DELETED_SUBSCRIPTION_PLAN",
+        "SUBSCRIBED_TO_PLAN",
         "REMOVED_USER_FROM_PLAN",
         "TOGGLED_PLAN_RESTRICTIONS",
         "UPDATED_SUBSCRIPTION_CRITERIA",
         "TOGGLED_SUBSCRIPTION_PLAN_STATUS",
-        "VITE_BACKEND_URL",
+        "UNSUBSCRIBED_FROM_AUTHOR",
+
+        // EARNINGS & PAYOUT
+        "VIEWED_EARNINGS",
+        "VIEWED_ALL_EARNINGS",
+        "VIEWED_ALL_AD_EARNINGS",
+        "CREATED_PAYOUT",
+        "UPDATED_PAYOUT_DETAILS",
+        "CREATED_PAYOUT_DETAILS",
+        "DELETED_PAYOUT_DETAILS",
+        "PROCESSED_BULK_PAYOUT",
+        "ATTEMPTED_BULK_PAYOUT",
+        "GENERATED_EARNINGS_REPORT",
+
+        // POSTS INTERACTION
+        "VIEWED_POSTS",
+        "VIEWED_POST",
+        "VIEWED_TRENDING_POSTS",
+        "VIEWED_LATEST_POSTS",
+        "VIEWED_SUBSCRIBED_POSTS",
+        "VIEWED_SUGGESTED_POSTS",
+        "VIEWED_FOLLOWING_POSTS",
+        "SUBSCRIBED_CATEGORY",
+        "UNSUBSCRIBED_CATEGORY",
+        "SEARCHED_POSTS",
+
+        // FOLLOWERS
+        "VIEWED_FOLLOWERS_LIST",
+        "VIEWED_FOLLOWING_LIST",
+        "FETCHED_FOLLOWERS",
+        "FETCHED_FOLLOWING",
+
+        // EMAIL
+        "EMAIL_SENT",
+        "EMAIL_VERIFIED",
+        "EMAIL_FAILED",
+        "EMAIL_SKIPPED",
+        "EMAIL_FAILED_ALL_ATTEMPTS",
+        "SENDER_EMAIL",
+        "EMAIL_SKIPPED",
+        "APPROVED_EMAILS",
+        "GENERATED_PENDING_EMAILS",
+        "DELETED_PENDING_EMAILS",
+        "CHECKED_EMAIL_STATUS",
+
+        // RAZORPAY
+        "CREATED_RAZORPAY_ORDER",
+        "VERIFIED_PAYMENT",
+        "FAILED_PAYMENT_VERIFICATION",
+        "RAZORPAY_KEY_SECRET",
+
+        // ADS
+        "SET_AD_CONFIG",
+        "RECORDED_AD_EARNINGS",
+
+        // LOCATION
+        "LOCATION_LOGGED",
+        "INDIA_COUNTRY_PATH",
+        "FETCHED_ALL_USER_LOCATIONS",
+        "SAVED_USER_LOCATION",
+
+        // ERRORS
+        "ERR_CONNECTION_RESET",
         "ERR_CONNECTION_REFUSED",
-        "JWT_SECRET",
         "ERR_BLOCKED_BY_CLIENT",
-        "PASSWORD_VERIFIED_FOR_DELETION",
-        "PASSWORD_UPDATED",
-        "RESET_USER_MILESTONES",
-        "OVERRIDDEN_USER_MILESTONES",
+        "JWT_SECRET",
+        "PASSWORD_RESET",
+        "PERMISSION_DENIED",
+        "TIMEOUT",
+        "POSITION_UNAVAILABLE",
+
+        // NOTIFICATIONS
+        "CREATED_NOTIFICATION",
+        "DISMISSED_NOTIFICATION",
+        "DEACTIVATED_NOTIFICATION",
+
+        // DEV/DEBUG
+        "VITE_BACKEND_URL",
       ],
-      required: true,
     },
-    // Optional reference to a related post
+
+    // Optional references
     targetPost: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
     },
-    // Optional reference to a related comment
     targetComment: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Comment",
     },
-    // Optional reference to a related user
     targetUser: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
-    // Optional category related to the action
     targetCategory: {
       type: String,
+      trim: true,
     },
-    // Descriptive message for the activity
+
     message: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 500, // Limits message length for storage efficiency
+      maxlength: 500,
     },
-    // Soft delete flag
+
     isDeleted: {
       type: Boolean,
       default: false,
-      index: true, // Optimizes queries for non-deleted activities
+      index: true,
     },
   },
-  { timestamps: true } // Automatically adds createdAt and updatedAt
+  {
+    timestamps: true, // Adds createdAt, updatedAt
+  }
 );
 
-// Indexes for efficient querying
-activitySchema.index({ user: 1, action: 1, createdAt: -1 }); // For user activity history
-activitySchema.index({ targetPost: 1 }); // For post-related activities
-activitySchema.index({ targetComment: 1 }); // For comment-related activities
-activitySchema.index({ targetUser: 1 }); // For user-related activities
+// Indexes for performance
+activitySchema.index({ user: 1, action: 1, createdAt: -1 });
+activitySchema.index({ targetPost: 1 });
+activitySchema.index({ targetComment: 1 });
+activitySchema.index({ targetUser: 1 });
 
-// Creates and exports the Activity model
-const ActivityModel = mongoose.model("Activity", activitySchema);
+const ActivityModel =
+  mongoose.models.Activity || mongoose.model("Activity", activitySchema);
+
 export default ActivityModel;
