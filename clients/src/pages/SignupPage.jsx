@@ -3,8 +3,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { useDispatch, useSelector } from "react-redux";
 import { googleLogin, signup, login } from "../store/authSlice";
-import {toast} from "react-hot-toast";
-import { FaUserPlus, FaUserCircle, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import { toast } from "react-hot-toast";
+import {
+  FaUserPlus,
+  FaUserCircle,
+  FaLock,
+  FaEye,
+  FaEyeSlash,
+} from "react-icons/fa";
 
 // Handles user signup with form and Google OAuth
 const SignupPage = () => {
@@ -70,7 +76,10 @@ const SignupPage = () => {
   // Handle Google login success
   const handleGoogleLoginSuccess = async (credentialResponse) => {
     try {
-      await dispatch(googleLogin(credentialResponse.credential)).unwrap();
+      await dispatch(
+        googleLogin({ token: credentialResponse.credential })
+      ).unwrap();
+
       toast.success("Google account created and logged in!");
       navigate("/select-category");
     } catch (err) {
@@ -160,9 +169,15 @@ const SignupPage = () => {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute top-3 right-3 text-gray-500 hover:text-indigo-600"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
-                    {showPassword ? <FaEyeSlash className="text-lg md:text-xl" /> : <FaEye className="text-lg md:text-xl" />}
+                    {showPassword ? (
+                      <FaEyeSlash className="text-lg md:text-xl" />
+                    ) : (
+                      <FaEye className="text-lg md:text-xl" />
+                    )}
                   </button>
                 </div>
                 {/* Confirm password input */}
@@ -182,9 +197,17 @@ const SignupPage = () => {
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute top-3 right-3 text-gray-500 hover:text-indigo-600"
-                    aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                    aria-label={
+                      showConfirmPassword
+                        ? "Hide confirm password"
+                        : "Show confirm password"
+                    }
                   >
-                    {showConfirmPassword ? <FaEyeSlash className="text-lg md:text-xl" /> : <FaEye className="text-lg md:text-xl" />}
+                    {showConfirmPassword ? (
+                      <FaEyeSlash className="text-lg md:text-xl" />
+                    ) : (
+                      <FaEye className="text-lg md:text-xl" />
+                    )}
                   </button>
                 </div>
                 {/* Terms checkbox */}
@@ -198,9 +221,15 @@ const SignupPage = () => {
                     required
                     className="h-5 w-5 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-400"
                   />
-                  <label htmlFor="acceptedTerms" className="ml-2 text-sm text-gray-700">
+                  <label
+                    htmlFor="acceptedTerms"
+                    className="ml-2 text-sm text-gray-700"
+                  >
                     I accept the{" "}
-                    <Link to="/terms-and-conditions" className="text-indigo-600 hover:underline font-medium">
+                    <Link
+                      to="/terms-and-conditions"
+                      className="text-indigo-600 hover:underline font-medium"
+                    >
                       Terms and Conditions
                     </Link>
                   </label>
@@ -212,9 +241,24 @@ const SignupPage = () => {
                   disabled={loading}
                 >
                   {loading ? (
-                    <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" />
+                    <svg
+                      className="animate-spin h-5 w-5 mr-2 text-white"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+                      />
                     </svg>
                   ) : (
                     <FaUserPlus className="mr-2 text-lg md:text-xl" />
@@ -240,7 +284,10 @@ const SignupPage = () => {
               {/* Login link */}
               <p className="mt-6 text-center text-gray-600">
                 Already have an account?{" "}
-                <Link to="/login" className="text-indigo-600 hover:underline font-medium">
+                <Link
+                  to="/login"
+                  className="text-indigo-600 hover:underline font-medium"
+                >
                   Log in
                 </Link>
               </p>
