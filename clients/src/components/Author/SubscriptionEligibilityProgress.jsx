@@ -16,9 +16,7 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
   } = useSelector((state) => state.admin);
 
   React.useEffect(() => {
-    if (userId) {
-      dispatch(checkUserEligibility(userId));
-    }
+    if (userId) dispatch(checkUserEligibility(userId));
   }, [dispatch, userId]);
 
   if (subscriptionLoading) {
@@ -41,24 +39,28 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
     );
   }
 
-  if (userEligibility?.isEligible) return null; // Render nothing if eligible
+  if (userEligibility?.isEligible) return null;
 
-  const { followerCount, postCount, engagementRate, accountAgeDays, criteria } =
-    userEligibility || {};
   const {
-    minFollowers = 10000,
-    minPosts = 30,
-    minEngagementRate = 5,
-    minAccountAgeDays = 180,
+    followerCount = 0,
+    postCount = 0,
+    engagementRate = 0,
+    accountAgeDays = 0,
+  } = userEligibility || {};
+  const {
+    minFollowers = 1,
+    minPosts = 1,
+    minEngagementRate = 1,
+    minAccountAgeDays = 1,
   } = subscriptionCriteria || {};
 
-  const followerProgress = Math.min((followerCount / minFollowers) * 100, 100);
-  const postProgress = Math.min((postCount / minPosts) * 100, 100);
-  const engagementProgress = Math.min(
-    (engagementRate / minEngagementRate) * 100,
-    100
-  );
-  const ageProgress = Math.min((accountAgeDays / minAccountAgeDays) * 100, 100);
+  const followerProgress =
+    Math.min((followerCount / minFollowers) * 100, 100) || 0;
+  const postProgress = Math.min((postCount / minPosts) * 100, 100) || 0;
+  const engagementProgress =
+    Math.min((engagementRate / minEngagementRate) * 100, 100) || 0;
+  const ageProgress =
+    Math.min((accountAgeDays / minAccountAgeDays) * 100, 100) || 0;
 
   return (
     <div className="w-full max-w-6xl overflow-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8 md:p-12">
@@ -86,7 +88,7 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
           <div>
             <div className="flex justify-between items-center mb-3">
               <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200">
-                Followers: {followerCount?.toLocaleString() || 0}/
+                Followers: {followerCount.toLocaleString()}/
                 {minFollowers.toLocaleString()}
               </p>
               <span className="text-base sm:text-lg md:text-xl text-gray-500 dark:text-gray-400">
@@ -100,7 +102,7 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
           <div>
             <div className="flex justify-between items-center mb-3">
               <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200">
-                Published Posts: {postCount || 0}/{minPosts}
+                Published Posts: {postCount}/{minPosts}
               </p>
               <span className="text-base sm:text-lg md:text-xl text-gray-500 dark:text-gray-400">
                 {postProgress >= 100
@@ -113,7 +115,7 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
           <div>
             <div className="flex justify-between items-center mb-3">
               <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200">
-                Engagement Rate: {(engagementRate || 0).toFixed(2)}%/
+                Engagement Rate: {engagementRate.toFixed(2)}%/
                 {minEngagementRate}%
               </p>
               <span className="text-base sm:text-lg md:text-xl text-gray-500 dark:text-gray-400">
@@ -127,8 +129,8 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
           <div>
             <div className="flex justify-between items-center mb-3">
               <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200">
-                Account Age: {Math.floor(accountAgeDays || 0)}/
-                {minAccountAgeDays} days
+                Account Age: {Math.floor(accountAgeDays)}/{minAccountAgeDays}{" "}
+                days
               </p>
               <span className="text-base sm:text-lg md:text-xl text-gray-500 dark:text-gray-400">
                 {ageProgress >= 100

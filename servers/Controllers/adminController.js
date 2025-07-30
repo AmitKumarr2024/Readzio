@@ -1219,33 +1219,16 @@ export const setUserEligibilityOverride = async (req, res, next) => {
 export const checkUserEligibility = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    // console.log("[AdminController:checkUserEligibility] 🔍 User ID:", userId);
-
     validateObjectId(userId, "User ID");
     const user = await UserModel.findById(userId).lean();
-    // console.log(
-    //   "[AdminController:checkUserEligibility] 👤 User found:",
-    //   !!user
-    // );
-
     if (!user)
-      throw new AppError(
-        "User not found",
-        404,
-        "CheckUserEligibility",
-        "User does not exist"
-      );
+      throw new AppError("User not found", 404, "CheckUserEligibility");
 
     const followerCount = user.followers?.length || 0;
     const postCount = await PostModel.countDocuments({
       author: userId,
       isPublished: true,
     });
-    // console.log("[AdminController:checkUserEligibility] 📊 Stats:", {
-    //   followerCount,
-    //   postCount,
-    // });
-
     const posts = await PostModel.find({
       author: userId,
       isPublished: true,
@@ -1255,13 +1238,9 @@ export const checkUserEligibility = async (req, res, next) => {
         sum + (post.likes?.length || 0) + (post.comments?.length || 0),
       0
     );
-
+    const engagementRate = postCount > 0 ? totalEngagement / postCount : 0;
     const accountAgeDays =
       (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-    // console.log(
-    //   "[AdminController:checkUserEligibility] ⏳ Account age (days):",
-    //   accountAgeDays
-    // );
 
     let config = await SubscriptionConfig.findOne({
       key: "subscriptionEligibility",
@@ -1269,27 +1248,28 @@ export const checkUserEligibility = async (req, res, next) => {
     if (!config) {
       config = await SubscriptionConfig.create({
         key: "subscriptionEligibility",
-        minFollowers: 10000,
-        minPosts: 30,
-        minEngagementRate: 0.05,
-        minAccountAgeDays: 120,
+        minFollowers: 1,
+        minPosts: 1,
+        minEngagementRate: 0.01, // 1%
+        minAccountAgeDays: 1,
       });
     }
 
     const isEligible =
       user.isEligibleForSubscription ||
-      (followerCount >= config.minFollowers && postCount >= config.minPosts);
-    // console.log(
-    //   "[AdminController:checkUserEligibility] ✅ Eligibility:",
-    //   isEligible
-    // );
+      (followerCount >= config.minFollowers &&
+        postCount >= config.minPosts &&
+        engagementRate >= config.minEngagementRate &&
+        accountAgeDays >= config.minAccountAgeDays);
 
-    const response = {
+    res.status(200).json({
       success: true,
       userId,
       isEligible,
       followerCount,
       postCount,
+      engagementRate: engagementRate * 100, // Convert to percentage
+      accountAgeDays,
       criteria: {
         minFollowers: config.minFollowers,
         minPosts: config.minPosts,
@@ -1297,19 +1277,13 @@ export const checkUserEligibility = async (req, res, next) => {
         minAccountAgeDays: config.minAccountAgeDays,
       },
       manuallySet: !!user.isEligibleForSubscription,
-    };
-    // console.log(
-    //   "[AdminController:checkUserEligibility] 📤 Response:",
-    //   response
-    // );
-    res.status(200).json(response);
+    });
   } catch (error) {
     console.error(
       "[AdminController:checkUserEligibility] ❌ Error:",
       error.message,
       error.stack
     );
-    // AppError with context for eligibility check
     next(
       new AppError(
         error.message,
