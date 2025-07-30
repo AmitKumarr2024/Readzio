@@ -1,6 +1,3 @@
-import React, { useState } from "react";
-import Pagination from "../../../Utils/Pagination";
-
 const FeedbackTable = ({ feedbackList, loading, error }) => {
   const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,9 +42,7 @@ const FeedbackTable = ({ feedbackList, loading, error }) => {
         <h2 className="text-3xl font-extrabold tracking-tight">
           📋 User Feedback
         </h2>
-        <p className="text-lg font-semibold">
-          Total: {feedbackList.length}
-        </p>
+        <p className="text-lg font-semibold">Total: {feedbackList.length}</p>
       </div>
 
       {selectedFeedback && (
@@ -90,6 +85,16 @@ const FeedbackTable = ({ feedbackList, loading, error }) => {
               </span>
               {new Date(selectedFeedback.submittedAt).toLocaleString()}
             </p>
+            <p className="flex items-center">
+              <span className="font-semibold text-blue-600 dark:text-blue-400 mr-2">
+                Prompt Status:
+              </span>
+              {selectedFeedback.shown
+                ? selectedFeedback.responded
+                  ? "Sent & Responded"
+                  : "Sent & Pending"
+                : "Not Sent"}
+            </p>
           </div>
           <button
             onClick={() => setSelectedFeedback(null)}
@@ -130,7 +135,9 @@ const FeedbackTable = ({ feedbackList, loading, error }) => {
         </div>
       </div>
 
-      {loading && <p className="text-gray-600 dark:text-gray-400">Loading...</p>}
+      {loading && (
+        <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+      )}
       {error && <p className="text-red-500">{error}</p>}
       {!loading && filteredFeedback.length === 0 && (
         <p className="text-gray-600 dark:text-gray-400">No feedback yet.</p>
@@ -145,6 +152,7 @@ const FeedbackTable = ({ feedbackList, loading, error }) => {
                 <th className="p-4 text-left font-semibold">Rating</th>
                 <th className="p-4 text-left font-semibold">Message</th>
                 <th className="p-4 text-left font-semibold">Submitted At</th>
+                <th className="p-4 text-left font-semibold">Prompt Status</th>
               </tr>
             </thead>
             <tbody>
@@ -163,6 +171,13 @@ const FeedbackTable = ({ feedbackList, loading, error }) => {
                   <td className="p-4 truncate max-w-xs">{feedback.message}</td>
                   <td className="p-4">
                     {new Date(feedback.submittedAt).toLocaleString()}
+                  </td>
+                  <td className="p-4">
+                    {feedback.shown
+                      ? feedback.responded
+                        ? "Sent & Responded"
+                        : "Sent & Pending"
+                      : "Not Sent"}
                   </td>
                 </tr>
               ))}

@@ -931,39 +931,26 @@ export const getAllFeedbacks = async (req, res, next) => {
       return next(new AppError("Access denied: Admins only", 403));
     }
 
-    // console.log("[getAllFeedbacks] 🔍 Fetching feedback...");
-
     const feedbackUsers = await UserModel.find({
       "feedbackPrompt.responded": true,
     })
       .select(
-        "name email avatar feedbackPrompt.createdAt feedbackPrompt.rating feedbackPrompt.message feedbackPrompt.shownAt"
+        "name email avatar feedbackPrompt.createdAt feedbackPrompt.rating feedbackPrompt.message feedbackPrompt.shown feedbackPrompt.shownAt feedbackPrompt.responded"
       )
       .sort({ "feedbackPrompt.shownAt": -1 })
       .lean();
 
-    // console.log(
-    //   `[getAllFeedbacks] 🧾 Found ${feedbackUsers.length} users with feedback`
-    // );
-
-    const feedbacks = feedbackUsers.map((user) => {
-      // console.log("🧠 Feedback user:", {
-      //   name: user.name,
-      //   rating: user.feedbackPrompt?.rating,
-      //   message: user.feedbackPrompt?.message,
-      //   shownAt: user.feedbackPrompt?.shownAt,
-      // });
-
-      return {
-        userId: user._id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        rating: user.feedbackPrompt?.rating,
-        message: user.feedbackPrompt?.message,
-        submittedAt: user.feedbackPrompt?.shownAt,
-      };
-    });
+    const feedbacks = feedbackUsers.map((user) => ({
+      userId: user._id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      rating: user.feedbackPrompt?.rating,
+      message: user.feedbackPrompt?.message,
+      shown: user.feedbackPrompt?.shown,
+      responded: user.feedbackPrompt?.responded,
+      submittedAt: user.feedbackPrompt?.shownAt,
+    }));
 
     res.status(200).json({
       success: true,
