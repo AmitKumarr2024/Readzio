@@ -137,7 +137,7 @@ const CategoryBox = () => {
                       // });
                       // Example: logToAnalytics("[CategoryBox] Category clicked", { categoryId: category._id, categoryName: category.name });
                     }}
-                    className="flex items-center justify-center gap-1 rounded-full bg-gray-100 py-2 text-base font-medium text-text-main-light transition-colors hover:bg-blue-100 dark:bg-gray-800 dark:text-text-main-dark dark:hover:bg-blue-900"
+                    className="flex items-center justify-center gap-1 rounded-full w-fit bg-gray-100 py-2 text-base font-medium text-text-main-light transition-colors hover:bg-blue-100 dark:bg-gray-800 dark:text-text-main-dark dark:hover:bg-blue-900"
                   >
                     {category.name}
                     {category.createdBy && (

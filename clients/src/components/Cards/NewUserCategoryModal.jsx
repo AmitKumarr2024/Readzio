@@ -57,16 +57,29 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
 
   useEffect(() => {
     if (userSelectedCategories.length > 0) {
-      setSelectedCategories(userSelectedCategories.map((cat) => cat._id));
+      const validCategoryIds = userSelectedCategories
+        .map((cat) => cat._id)
+        .filter((id) => categories.some((category) => category._id === id));
+      setSelectedCategories(validCategoryIds);
     }
-  }, [userSelectedCategories]);
+  }, [userSelectedCategories, categories]);
 
   useEffect(() => {
     if (error) toast.error(error);
     if (userError) toast.error(userError || "Failed to fetch user");
   }, [error, userError]);
 
+  const generateSlug = (name) =>
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+
   const handleCategoryToggle = (categoryId) => {
+    if (!categories.some((cat) => cat._id === categoryId)) {
+      toast.error("Invalid category selected");
+      return;
+    }
     setSelectedCategories((prev) =>
       prev.includes(categoryId)
         ? prev.filter((id) => id !== categoryId)
@@ -76,31 +89,44 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
 
   const handleNewCategoryChange = (e) => {
     const { name, value } = e.target;
-    setNewCategory((prev) => ({ ...prev, [name]: value }));
+    setNewCategory((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "name" ? { slug: generateSlug(value) } : {}),
+    }));
     setFormError("");
   };
 
   const handleAddCategory = async () => {
     if (!token) {
       toast.error("Please log in to add categories");
+      navigate("/login");
       return;
     }
-    if (!newCategory.name || !newCategory.slug) {
+    const { name, slug, description } = newCategory;
+    const trimmedName = name.trim();
+    const trimmedSlug = slug.trim();
+
+    if (!trimmedName || !trimmedSlug) {
       setFormError("Name and slug are required");
       return;
     }
-    if (!/^[a-z0-9-]+$/.test(newCategory.slug)) {
+    if (!/^[a-z0-9-]+$/.test(trimmedSlug)) {
       setFormError(
         "Slug must be lowercase, alphanumeric, and contain only dashes"
       );
       return;
     }
+    if (categories.some((cat) => cat.slug === trimmedSlug)) {
+      setFormError("Category slug already exists");
+      return;
+    }
     try {
       const result = await dispatch(
         createCategory({
-          name: newCategory.name,
-          slug: newCategory.slug,
-          description: newCategory.description,
+          name: trimmedName,
+          slug: trimmedSlug,
+          description: description.trim() || undefined,
         })
       ).unwrap();
       toast.success("Category created");
@@ -125,13 +151,21 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
     }
     if (!userId) {
       toast.error("User not found");
+      navigate("/login");
+      return;
+    }
+    const validCategoryIds = selectedCategories.filter((id) =>
+      categories.some((cat) => cat._id === id)
+    );
+    if (validCategoryIds.length === 0) {
+      toast.error("No valid categories selected");
       return;
     }
     try {
       await dispatch(
         assignCategoriesToUser({
           userId,
-          categoryIds: selectedCategories,
+          categoryIds: validCategoryIds,
           newCategories: [],
         })
       ).unwrap();
@@ -155,41 +189,41 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 flex items-center justify-center z-50 px-4 sm:px-6">
-      <div className="relative bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-[95vw] sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-gray-500/50 dark:bg-gray-900/50 flex items-center justify-center z-50 px-4 sm:px-6">
+      <div className="relative bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl shadow-lg p-4 sm:p-6 w-full max-w-md mx-auto max-h-[80vh] overflow-y-auto">
         <button
           onClick={handleCloseModal}
-          className="absolute top-4 right-4 text-gray-500 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-400 transition-all duration-300"
+          className="absolute top-2 right-2 text-gray-500 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-400 transition-all duration-300"
           aria-label="Close"
         >
-          <X size={28} className="w-7 h-7 sm:w-8 sm:h-8" />
+          <X size={24} className="w-6 h-6" />
         </button>
 
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-center text-gray-900 dark:text-gray-100 mb-4 sm:mb-6 tracking-tight">
+        <h2 className="text-xl sm:text-2xl font-bold text-center text-gray-900 dark:text-gray-100 mb-4 tracking-tight">
           Discover Your Interests
         </h2>
-        <p className="text-gray-500 dark:text-gray-400 text-center mb-6 sm:mb-8 text-base sm:text-lg md:text-xl">
+        <p className="text-gray-500 dark:text-gray-400 text-center mb-4 text-sm sm:text-base">
           Pick categories to tailor your experience
         </p>
 
         {status === "loading" && (
-          <p className="text-center text-gray-600 dark:text-gray-300 text-lg md:text-xl animate-pulse">
+          <p className="text-center text-gray-600 dark:text-gray-300 text-sm sm:text-base animate-pulse">
             Loading categories...
           </p>
         )}
         {status === "failed" && (
-          <p className="text-center text-red-500 dark:text-red-400 text-lg md:text-xl">
+          <p className="text-center text-red-500 dark:text-red-400 text-sm sm:text-base">
             Failed to load categories
           </p>
         )}
         {status === "succeeded" && categories.length === 0 && (
-          <div className="mb-6 sm:mb-8">
-            <p className="text-center text-gray-600 dark:text-gray-300 text-lg md:text-xl mb-4 sm:mb-6">
+          <div className="mb-4">
+            <p className="text-center text-gray-600 dark:text-gray-300 text-sm sm:text-base mb-3">
               No categories available. Add a new category below.
             </p>
-            <div className="mt-4 sm:mt-6 space-y-4 bg-gray-50 dark:bg-gray-700/50 p-4 sm:p-6 rounded-2xl">
+            <div className="space-y-3 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
               {formError && (
-                <p className="text-red-500 dark:text-red-400 text-center text-sm sm:text-base">
+                <p className="text-red-500 dark:text-red-400 text-center text-xs sm:text-sm">
                   {formError}
                 </p>
               )}
@@ -199,26 +233,26 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
                 placeholder="Category Name"
                 value={newCategory.name}
                 onChange={handleNewCategoryChange}
-                className="w-full p-3 sm:p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300"
+                className="w-full p-2 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-xs sm:text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300"
               />
               <input
                 type="text"
                 name="slug"
-                placeholder="Slug (e.g., custom-category)"
+                placeholder="Slug (auto-generated)"
                 value={newCategory.slug}
                 onChange={handleNewCategoryChange}
-                className="w-full p-3 sm:p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300"
+                className="w-full p-2 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-xs sm:text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300"
               />
               <textarea
                 name="description"
                 placeholder="Description (optional)"
                 value={newCategory.description}
                 onChange={handleNewCategoryChange}
-                className="w-full p-3 sm:p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300 resize-none h-24 sm:h-28 md:h-32"
+                className="w-full p-2 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-xs sm:text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300 resize-none h-20"
               />
               <button
                 onClick={handleAddCategory}
-                className="w-full px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-sm sm:text-base md:text-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-md active:scale-95"
+                className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold text-xs sm:text-sm hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-sm active:scale-95"
               >
                 Create Category
               </button>
@@ -227,37 +261,37 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
         )}
 
         {status === "succeeded" && categories.length > 0 && (
-          <div className="mb-6 sm:mb-8">
-            <div className="flex flex-wrap gap-2 sm:gap-3 md:gap-4 justify-center mb-4 sm:mb-6">
+          <div className="mb-4">
+            <div className="flex flex-wrap gap-2 justify-center mb-3">
               {categories.map((category) => (
                 <button
                   key={category._id}
                   onClick={() => handleCategoryToggle(category._id)}
-                  className={`px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-full text-sm sm:text-base md:text-lg font-semibold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                  className={`px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
                     selectedCategories.includes(category._id)
-                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm"
                       : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-indigo-100 dark:hover:bg-indigo-900 hover:text-indigo-700 dark:hover:text-indigo-300"
                   }`}
                 >
                   {category.name}
                   {category.createdBy && (
-                    <span className="ml-2 text-yellow-400">★</span>
+                    <span className="ml-1 text-yellow-400">★</span>
                   )}
                 </button>
               ))}
             </div>
             <button
               onClick={() => setShowAddCategory(!showAddCategory)}
-              className="flex items-center gap-2 mx-auto text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-semibold text-sm sm:text-base md:text-lg transition-all duration-300"
+              className="flex items-center gap-1 mx-auto text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-semibold text-xs sm:text-sm transition-all duration-300"
             >
-              <Plus size={20} className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Plus size={16} className="w-4 h-4 sm:w-5 sm:h-5" />
               {showAddCategory ? "Hide Add Category" : "Add New Category"}
             </button>
 
             {showAddCategory && (
-              <div className="mt-4 sm:mt-6 space-y-4 bg-gray-50 dark:bg-gray-700/50 p-4 sm:p-6 rounded-2xl">
+              <div className="mt-3 space-y-3 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
                 {formError && (
-                  <p className="text-red-500 dark:text-red-400 text-center text-sm sm:text-base">
+                  <p className="text-red-500 dark:text-red-400 text-center text-xs sm:text-sm">
                     {formError}
                   </p>
                 )}
@@ -267,26 +301,26 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
                   placeholder="Category Name"
                   value={newCategory.name}
                   onChange={handleNewCategoryChange}
-                  className="w-full p-3 sm:p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300"
+                  className="w-full p-2 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-xs sm:text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300"
                 />
                 <input
                   type="text"
                   name="slug"
-                  placeholder="Slug (e.g., custom-category)"
+                  placeholder="Slug (auto-generated)"
                   value={newCategory.slug}
                   onChange={handleNewCategoryChange}
-                  className="w-full p-3 sm:p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300"
+                  className="w-full p-2 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-xs sm:text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300"
                 />
                 <textarea
                   name="description"
                   placeholder="Description (optional)"
                   value={newCategory.description}
                   onChange={handleNewCategoryChange}
-                  className="w-full p-3 sm:p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300 resize-none h-24 sm:h-28 md:h-32"
+                  className="w-full p-2 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 dark:focus:ring-indigo-700 text-xs sm:text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all duration-300 resize-none h-20"
                 />
                 <button
                   onClick={handleAddCategory}
-                  className="w-full px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-sm sm:text-base md:text-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-md active:scale-95"
+                  className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold text-xs sm:text-sm hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-sm active:scale-95"
                 >
                   Create Category
                 </button>
@@ -295,17 +329,17 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row justify-between gap-2">
           <button
             onClick={handleSkip}
-            className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl font-semibold text-sm sm:text-base md:text-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300 shadow-sm active:scale-95"
+            className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg font-semibold text-xs sm:text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300 shadow-sm active:scale-95"
           >
             Skip
           </button>
           <button
             onClick={handleSelect}
             disabled={selectedCategories.length === 0}
-            className={`flex-1 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-semibold text-sm sm:text-base md:text-lg transition-all duration-300 shadow-md active:scale-95 ${
+            className={`flex-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-300 shadow-sm active:scale-95 ${
               selectedCategories.length > 0
                 ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
                 : "bg-emerald-300 dark:bg-emerald-700/50 text-white dark:text-gray-300 cursor-not-allowed"
