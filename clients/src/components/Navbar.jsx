@@ -271,7 +271,7 @@ const Navbar = () => {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium text-text-main-light dark:text-text-main-dark">
+                  <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-lg font-medium text-text-main-light dark:text-text-main-dark">
                     {userName[0]}
                   </div>
                 )}
