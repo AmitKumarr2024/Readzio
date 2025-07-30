@@ -1,32 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  fetchAllUserFeedback,
   getAllUsers,
   sendManualFeedbackPrompt,
 } from "../../../store/userSlice";
-import { initializeSocket } from "../../../store/socketSlice";
 import { toast } from "react-hot-toast";
 import Pagination from "../../../Utils/Pagination";
 import { motion } from "framer-motion";
 
 const UserFeedbackPrompt = () => {
   const dispatch = useDispatch();
-  const {
-    users,
-    loading,
-    error,
-    totalPages = 1,
-  } = useSelector((state) => state.user);
-  const { isConnected } = useSelector((state) => state.socket);
+  const { users, loading, error, totalPages = 1 } = useSelector(
+    (state) => state.user
+  );
+
   const [sending, setSending] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const itemsPerPage = 10;
 
-  // Initialize WebSocket and fetch users
+  // 🔁 Fetch users with page and search
   useEffect(() => {
-    dispatch(initializeSocket());
     dispatch(
       getAllUsers({
         page: currentPage,
@@ -34,8 +28,7 @@ const UserFeedbackPrompt = () => {
         search: searchTerm,
       })
     );
-    dispatch(fetchAllUserFeedback());
-  }, [dispatch, currentPage, searchTerm]);
+  }, [dispatch, currentPage, searchTerm, itemsPerPage]);
 
   const handleSendFeedbackPrompt = async (userId) => {
     try {
@@ -47,15 +40,6 @@ const UserFeedbackPrompt = () => {
         })
       ).unwrap();
       toast.success("📨 Feedback request sent");
-      // Refetch users to update status
-      dispatch(
-        getAllUsers({
-          page: currentPage,
-          limit: itemsPerPage,
-          search: searchTerm,
-        })
-      );
-      dispatch(fetchAllUserFeedback());
     } catch (err) {
       toast.error("Failed to send feedback prompt");
     } finally {
@@ -63,6 +47,7 @@ const UserFeedbackPrompt = () => {
     }
   };
 
+  // Handle page change
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -81,11 +66,6 @@ const UserFeedbackPrompt = () => {
         <h2 className="text-3xl font-extrabold tracking-tight mb-6 text-center">
           Send Feedback Prompts
         </h2>
-        {!isConnected && (
-          <p className="text-center text-yellow-500 mb-4">
-            WebSocket disconnected. Real-time updates may be delayed.
-          </p>
-        )}
 
         <div className="mb-6 flex justify-center">
           <input
@@ -94,7 +74,7 @@ const UserFeedbackPrompt = () => {
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setCurrentPage(1);
+              setCurrentPage(1); // Reset to first page on search
             }}
             className="w-full max-w-md p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
           />
@@ -120,7 +100,6 @@ const UserFeedbackPrompt = () => {
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-500 text-white text-sm uppercase tracking-wider">
                   <th className="p-4 text-left font-semibold">Name</th>
                   <th className="p-4 text-left font-semibold">Email</th>
-                  <th className="p-4 text-left font-semibold">Prompt Status</th>
                   <th className="p-4 text-left font-semibold">Action</th>
                 </tr>
               </thead>
@@ -136,14 +115,9 @@ const UserFeedbackPrompt = () => {
                     <td className="p-4 font-medium">{user.name}</td>
                     <td className="p-4">{user.email}</td>
                     <td className="p-4">
-                      {user.feedbackPrompt?.shown ? "Send" : "Not Send"}
-                    </td>
-                    <td className="p-4">
                       <motion.button
                         onClick={() => handleSendFeedbackPrompt(user._id)}
-                        disabled={
-                          sending[user._id] || user.feedbackPrompt?.shown
-                        }
+                        disabled={sending[user._id]}
                         className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -162,7 +136,7 @@ const UserFeedbackPrompt = () => {
           <div className="mt-6 flex justify-center">
             <Pagination
               currentPage={currentPage}
-              totalPages={Math.max(1, totalPages)}
+              totalPages={Math.max(1, totalPages)} // Ensure at least 1 page
               onPageChange={handlePageChange}
             />
           </div>
