@@ -598,7 +598,7 @@ export const getSiteAnalytics = async (req, res, next) => {
 // Exports all data as Excel
 export const downloadAllDataCsv = async (req, res, next) => {
   try {
-    // console.log("[AdminController:downloadAllDataCsv] 🚀 Starting data export");
+    console.log("[AdminController:downloadAllDataCsv] 🚀 Starting data export");
 
     // Check admin access
     if (!req.user?.isAdmin) {
@@ -612,18 +612,18 @@ export const downloadAllDataCsv = async (req, res, next) => {
 
     // Fetch data
     const users = await UserModel.find({}).lean();
-    // console.log(
-    //   "[AdminController:downloadAllDataCsv] 👤 Users fetched:",
-    //   users.length
-    // );
+    console.log(
+      "[AdminController:downloadAllDataCsv] 👤 Users fetched:",
+      users.length
+    );
 
     const posts = await PostModel.find({})
       .populate("author", "name email")
       .lean();
-    // console.log(
-    //   "[AdminController:downloadAllDataCsv] 📝 Posts fetched:",
-    //   posts.length
-    // );
+    console.log(
+      "[AdminController:downloadAllDataCsv] 📝 Posts fetched:",
+      posts.length
+    );
 
     const traffic = await TrafficModel.find({})
       .populate({
@@ -632,23 +632,21 @@ export const downloadAllDataCsv = async (req, res, next) => {
         options: { strictPopulate: false },
       })
       .lean();
-    // console.log(
-    //   "[AdminController:downloadAllDataCsv] 📈 Traffic fetched:",
-    //   traffic.length
-    // );
+    console.log(
+      "[AdminController:downloadAllDataCsv] 📈 Traffic fetched:",
+      traffic.length
+    );
 
-    // Fetch plans from UserSubscriptionPlan
     const plansRaw = await UserSubscriptionPlan.find({
       $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
     })
       .populate("author", "name email")
       .lean();
-    // console.log(
-    //   "[AdminController:downloadAllDataCsv] 📋 Plans fetched:",
-    //   plansRaw.length
-    // );
+    console.log(
+      "[AdminController:downloadAllDataCsv] 📋 Plans fetched:",
+      plansRaw.length
+    );
 
-    // Fetch subscriptions from UserSubscription
     const subscriptions = await UserSubscription.find({})
       .populate({
         path: "userId",
@@ -661,16 +659,28 @@ export const downloadAllDataCsv = async (req, res, next) => {
         options: { strictPopulate: false },
       })
       .lean();
-    // console.log(
-    //   "[AdminController:downloadAllDataCsv] 💳 Subscriptions fetched:",
-    //   subscriptions.length
-    // );
+    console.log(
+      "[AdminController:downloadAllDataCsv] 💳 Subscriptions fetched:",
+      subscriptions.length
+    );
 
     const payments = await PaymentModel.find().lean();
-    // console.log(
-    //   "[AdminController:downloadAllDataCsv] 💸 Payments fetched:",
-    //   payments.length
-    // );
+    console.log(
+      "[AdminController:downloadAllDataCsv] 💸 Payments fetched:",
+      payments.length
+    );
+
+    const feedbackUsers = await UserModel.find({
+      "feedbackPrompt.responded": true,
+    })
+      .select(
+        "name email avatar feedbackPrompt.rating feedbackPrompt.message feedbackPrompt.shownAt"
+      )
+      .lean();
+    console.log(
+      "[AdminController:downloadAllDataCsv] 📬 Feedback fetched:",
+      feedbackUsers.length
+    );
 
     const wb = XLSX.utils.book_new();
 
@@ -687,10 +697,6 @@ export const downloadAllDataCsv = async (req, res, next) => {
       Location: user.location || "",
       IsEligibleForSubscription: user.isEligibleForSubscription ? "Yes" : "No",
     }));
-    // console.log(
-    //   "[AdminController:downloadAllDataCsv] 📊 Users sheet created:",
-    //   userData.length
-    // );
     XLSX.utils.book_append_sheet(
       wb,
       XLSX.utils.json_to_sheet(userData),
@@ -715,10 +721,6 @@ export const downloadAllDataCsv = async (req, res, next) => {
           ).toFixed(2)
         : "0.00",
     }));
-    // console.log(
-    //   "[AdminController:downloadAllDataCsv] 📝 Posts sheet created:",
-    //   postData.length
-    // );
     XLSX.utils.book_append_sheet(
       wb,
       XLSX.utils.json_to_sheet(postData),
@@ -738,10 +740,6 @@ export const downloadAllDataCsv = async (req, res, next) => {
       IP: record.ip || "",
       UserAgent: record.userAgent || "",
     }));
-    // console.log(
-    //   "[AdminController:downloadAllDataCsv] 📈 Traffic sheet created:",
-    //   trafficData.length
-    // );
     XLSX.utils.book_append_sheet(
       wb,
       XLSX.utils.json_to_sheet(trafficData),
@@ -763,11 +761,6 @@ export const downloadAllDataCsv = async (req, res, next) => {
           (sum, sub) => sum + (sub.amountPaid || plan.price || 0),
           0
         );
-        // console.log(
-        //   "[AdminController:downloadAllDataCsv] 📋 Plan stats:",
-        //   plan._id,
-        //   { subscriberCount, totalRevenue }
-        // );
 
         return {
           PlanID: plan._id.toString(),
@@ -787,10 +780,6 @@ export const downloadAllDataCsv = async (req, res, next) => {
         };
       })
     );
-    // console.log(
-    //   "[AdminController:downloadAllDataCsv] 📋 Plans sheet created:",
-    //   planStats.length
-    // );
     XLSX.utils.book_append_sheet(
       wb,
       XLSX.utils.json_to_sheet(planStats),
@@ -811,10 +800,6 @@ export const downloadAllDataCsv = async (req, res, next) => {
       CreatedAt: sub.createdAt ? new Date(sub.createdAt).toISOString() : "",
       AmountPaid: sub.amountPaid ? (sub.amountPaid / 100).toFixed(2) : "0.00",
     }));
-    // console.log(
-    //   "[AdminController:downloadAllDataCsv] 💳 Subscriptions sheet created:",
-    //   subscriptionData.length
-    // );
     XLSX.utils.book_append_sheet(
       wb,
       XLSX.utils.json_to_sheet(subscriptionData),
@@ -833,19 +818,32 @@ export const downloadAllDataCsv = async (req, res, next) => {
         ? new Date(payment.createdAt).toISOString()
         : "",
     }));
-    // console.log(
-    //   "[AdminController:downloadAllDataCsv] 💸 Payments sheet created:",
-    //   paymentData.length
-    // );
     XLSX.utils.book_append_sheet(
       wb,
       XLSX.utils.json_to_sheet(paymentData),
       "Payments"
     );
 
+    // Feedback Sheet
+    const feedbackData = feedbackUsers.map((user) => ({
+      UserID: user._id.toString(),
+      Name: user.name || "",
+      Email: user.email || "",
+      Avatar: user.avatar || "",
+      Rating: user.feedbackPrompt?.rating || "",
+      Message: user.feedbackPrompt?.message || "",
+      SubmittedAt: user.feedbackPrompt?.shownAt
+        ? new Date(user.feedbackPrompt.shownAt).toISOString()
+        : "",
+    }));
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(feedbackData),
+      "Feedback"
+    );
+
     // Send as Excel buffer
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
-    // console.log("[AdminController:downloadAllDataCsv] 📤 Excel buffer created");
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -861,7 +859,6 @@ export const downloadAllDataCsv = async (req, res, next) => {
       error.message,
       error.stack
     );
-    // AppError with context for Excel export issues
     next(
       error instanceof AppError
         ? error
@@ -874,7 +871,6 @@ export const downloadAllDataCsv = async (req, res, next) => {
     );
   }
 };
-
 // Fetches all subscription plans with pagination
 export const getAllSubscriptionPlans = async (req, res, next) => {
   try {
