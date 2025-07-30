@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
+  fetchAllUserFeedback,
   getAllUsers,
   sendManualFeedbackPrompt,
 } from "../../../store/userSlice";
@@ -43,6 +44,16 @@ const UserFeedbackPrompt = () => {
         })
       ).unwrap();
       toast.success("📨 Feedback request sent");
+      // Refetch users to update status in UserFeedbackPrompt
+      dispatch(
+        getAllUsers({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+        })
+      );
+      // Trigger refetch of feedbacks for FeedbackTable
+      dispatch(fetchAllUserFeedback());
     } catch (err) {
       toast.error("Failed to send feedback prompt");
     } finally {

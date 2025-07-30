@@ -40,9 +40,6 @@ export const getIPLocation = async (req, res, next) => {
 
 // POST /api/user/track-ip-location
 export const trackIPLocation = async (req, res, next) => {
-  console.log("user in geoLocationMiddleware", req.user);
-  console.log("geoLocation in trackIPLocation", req.geoLocation);
-
   try {
     if (!req.geoLocation || !req.geoLocation.userId) {
       throw new AppError(
