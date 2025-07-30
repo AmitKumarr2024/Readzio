@@ -850,7 +850,7 @@ export const downloadAllDataCsv = async (req, res, next) => {
     );
     res.setHeader(
       "Content-Disposition",
-      'attachment; filename="all_data_export.xlsx"'
+      'attachment; filename="Inksha_official_details_data.xlsx"'
     );
     res.status(200).send(excelBuffer);
   } catch (error) {
