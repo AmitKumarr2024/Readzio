@@ -8,6 +8,7 @@ import { FaSpinner, FaExclamationCircle, FaRocket } from "react-icons/fa";
 const SubscriptionEligibilityProgress = ({ userId }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
   const {
     userEligibility,
     subscriptionCriteria,
@@ -16,8 +17,25 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
   } = useSelector((state) => state.admin);
 
   React.useEffect(() => {
+    console.log(
+      "[SubscriptionProgress] 🔄 useEffect triggered with userId:",
+      userId
+    );
     if (userId) dispatch(checkUserEligibility(userId));
   }, [dispatch, userId]);
+
+  React.useEffect(() => {
+    console.log("[SubscriptionProgress] 🧪 Redux Data:");
+    console.log("  userEligibility:", userEligibility);
+    console.log("  subscriptionCriteria:", subscriptionCriteria);
+    console.log("  loading:", subscriptionLoading);
+    console.log("  error:", subscriptionError);
+  }, [
+    userEligibility,
+    subscriptionCriteria,
+    subscriptionLoading,
+    subscriptionError,
+  ]);
 
   if (subscriptionLoading) {
     return (
@@ -47,6 +65,7 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
     engagementRate = 0,
     accountAgeDays = 0,
   } = userEligibility || {};
+
   const {
     minFollowers = 1,
     minPosts = 1,
@@ -61,6 +80,21 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
     Math.min((engagementRate / minEngagementRate) * 100, 100) || 0;
   const ageProgress =
     Math.min((accountAgeDays / minAccountAgeDays) * 100, 100) || 0;
+
+  console.log("[SubscriptionProgress] 🧮 Progress Calculated:", {
+    followerCount,
+    minFollowers,
+    followerProgress,
+    postCount,
+    minPosts,
+    postProgress,
+    engagementRate,
+    minEngagementRate,
+    engagementProgress,
+    accountAgeDays,
+    minAccountAgeDays,
+    ageProgress,
+  });
 
   return (
     <div className="w-full max-w-6xl overflow-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8 md:p-12">
@@ -85,6 +119,7 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
           to start monetizing your content!
         </p>
         <div className="space-y-8">
+          {/* Follower progress */}
           <div>
             <div className="flex justify-between items-center mb-3">
               <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200">
@@ -99,6 +134,8 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
             </div>
             <Progress value={followerProgress} className="h-8 rounded-full" />
           </div>
+
+          {/* Post progress */}
           <div>
             <div className="flex justify-between items-center mb-3">
               <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200">
@@ -112,6 +149,8 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
             </div>
             <Progress value={postProgress} className="h-8 rounded-full" />
           </div>
+
+          {/* Engagement progress */}
           <div>
             <div className="flex justify-between items-center mb-3">
               <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200">
@@ -126,6 +165,8 @@ const SubscriptionEligibilityProgress = ({ userId }) => {
             </div>
             <Progress value={engagementProgress} className="h-8 rounded-full" />
           </div>
+
+          {/* Account age progress */}
           <div>
             <div className="flex justify-between items-center mb-3">
               <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200">
