@@ -12,6 +12,7 @@ import createMailOption from "../../servers/helpers/emailHelper.js";
 import { generateToken } from "../Utils/generateToken.js";
 import UserLocation from "../Models/UserLocation.js";
 import UserModel from "../../servers/Models/User.js";
+import mongoose from "mongoose";
 
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 const log = process.env.NODE_ENV === "production" ? () => {} : console.log;
@@ -28,18 +29,23 @@ const emailQueue = [];
 // Processes email queue with retry logic
 const processEmailQueue = async () => {
   while (emailQueue.length) {
-    const { mailOption, userId } = emailQueue.shift();
+    const { mailOption, userId, type } = emailQueue.shift();
     try {
-      await sendEmailWithRetries(mailOption, userId);
+      await sendEmailWithRetries(mailOption, userId, type);
     } catch (error) {
-      emailQueue.push({ mailOption, userId });
+      emailQueue.push({ mailOption, userId, type });
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
 };
 
 // Sends email with retry logic, uses AppError for failure
-const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
+const sendEmailWithRetries = async (
+  mailOption,
+  userId,
+  type,
+  maxAttempts = 3
+) => {
   let attempts = 0;
   let lastError = null;
 
@@ -50,7 +56,7 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
       await recordActivity({
         userId,
         action: "EMAIL_SENT",
-        message: `Email sent to ${mailOption.to} after ${attempts} attempt(s)`,
+        message: `Email (${type}) sent to ${mailOption.to} after ${attempts} attempt(s)`,
       });
       return { success: true, attempts };
     } catch (error) {
@@ -58,7 +64,7 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
       await recordActivity({
         userId,
         action: "EMAIL_FAILED",
-        message: `Email failed for ${mailOption.to} on attempt ${attempts}: ${error.message}`,
+        message: `Email (${type}) failed for ${mailOption.to} on attempt ${attempts}: ${error.message}`,
       });
       if (attempts < maxAttempts) {
         await new Promise((resolve) =>
@@ -71,7 +77,7 @@ const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
   await recordActivity({
     userId,
     action: "EMAIL_FAILED_ALL_ATTEMPTS",
-    message: `All ${attempts} email attempts failed for ${mailOption.to}: ${lastError.message}`,
+    message: `All ${attempts} email (${type}) attempts failed for ${mailOption.to}: ${lastError.message}`,
   });
   throw new AppError(
     `Failed to send email after ${attempts} attempts: ${lastError.message}`,
@@ -125,7 +131,11 @@ export const sendVerifyOtp = async (req, res, next) => {
       isResetOtp: false,
     });
 
-    const emailResult = await sendEmailWithRetries(mailOption, user._id);
+    const emailResult = await sendEmailWithRetries(
+      mailOption,
+      user._id,
+      "signup"
+    );
     user.emailAttempts = emailResult.attempts;
     user.emailStatus = "sent";
     await user.save();
@@ -178,7 +188,7 @@ export const verifyEmail = async (req, res, next) => {
     await user.save();
 
     await recordActivity({
-      userId: user._id, // Fixed: Use user._id
+      userId: user._id,
       action: "EMAIL_VERIFIED",
       message: `User ${user.name} verified email from ${
         user.location || "unknown location"
@@ -284,7 +294,11 @@ export const sendResetOtp = async (req, res, next) => {
     });
 
     log("Mail Option:", mailOption);
-    const emailResult = await sendEmailWithRetries(mailOption, user._id);
+    const emailResult = await sendEmailWithRetries(
+      mailOption,
+      user._id,
+      "signup"
+    );
     user.emailAttempts = emailResult.attempts;
     user.emailStatus = "sent";
     await user.save();
@@ -401,7 +415,7 @@ export const resetPassword = async (req, res, next) => {
     await user.save();
 
     await recordActivity({
-      userId: user._id, // Fixed: Use user._id
+      userId: user._id,
       action: "PASSWORD_RESET",
       message: `User ${user.name} reset password from ${
         user.location || "unknown location"
@@ -437,6 +451,7 @@ export const Signup = async (req, res, next) => {
       passwordLength: password?.length,
       sendEmail,
     });
+
     if (!fullName || !email || !password)
       return next(
         new AppError(
@@ -475,7 +490,7 @@ export const Signup = async (req, res, next) => {
     const newUser = new UserModel({
       name: fullName,
       email: normalizedEmail,
-      password, // Pre-save hook hashes it
+      password,
       authProvider: "local",
       role: "user",
       emailAttempts: 0,
@@ -504,43 +519,46 @@ export const Signup = async (req, res, next) => {
       });
     }
 
-    if (
-      (sendEmail === "true" || isAutoEmailDate()) &&
-      !newUser.stopEmailAttempts
-    ) {
-      const mailOption = createMailOption({
-        to: email,
-        subject: "Welcome to Our Platform!",
-        name: fullName,
-        email,
-        message: `Thank you for signing up! You're joining us from ${
-          newUser.location || "an unknown location"
-        }. We're excited to have you on board.`,
-        hasButton: true,
-        buttonText: "Get Started",
-        buttonUrl: "https://inksha-uedq.onrender.com",
-        isWelcome: true,
-      });
-      try {
-        const emailResult = await sendEmailWithRetries(mailOption, newUser._id);
-        newUser.emailAttempts = emailResult.attempts;
-        newUser.emailStatus = "sent";
-        newUser.emailLastError = null;
-        await newUser.save();
-      } catch (emailError) {
-        console.error("[Signup] Email error:", emailError.message);
-        newUser.emailAttempts = emailError.attempts || 3;
-        newUser.emailStatus = "failed";
-        newUser.emailLastError = emailError.message;
-        newUser.stopEmailAttempts = true;
-        await newUser.save();
-      }
-    } else {
-      await recordActivity({
-        userId: newUser._id,
-        action: "EMAIL_SKIPPED",
-        message: `Welcome email not sent for ${email}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
-      });
+    // Reset email attempts before sending welcome email
+    await UserModel.updateOne(
+      { _id: newUser._id },
+      { stopEmailAttempts: false, emailStatus: "not_sent", emailAttempts: 0 }
+    );
+    console.log(
+      "[Signup] Attempting to send welcome email to:",
+      normalizedEmail
+    );
+    const mailOption = createMailOption({
+      to: normalizedEmail,
+      subject: "Welcome to Our Platform!",
+      name: fullName,
+      email: normalizedEmail,
+      message: `Thank you for signing up! You're joining us from ${
+        newUser.location || "an unknown location"
+      }. We're excited to have you on board.`,
+      hasButton: true,
+      buttonText: "Get Started",
+      buttonUrl: "https://inksha-uedq.onrender.com",
+      isWelcome: true,
+      supportEmail: SENDER_EMAIL,
+    });
+    try {
+      const emailResult = await sendEmailWithRetries(
+        mailOption,
+        newUser._id,
+        "signup"
+      );
+      newUser.emailAttempts = emailResult.attempts;
+      newUser.emailStatus = "sent";
+      newUser.emailLastError = null;
+      await newUser.save();
+      console.log("[Signup] Welcome email sent to:", normalizedEmail);
+    } catch (emailError) {
+      console.error("[Signup] Email error:", emailError.message);
+      newUser.emailAttempts = emailError.attempts || 3;
+      newUser.emailStatus = "failed";
+      newUser.emailLastError = emailError.message;
+      await newUser.save();
     }
 
     await recordActivity({
@@ -790,51 +808,49 @@ export const googleLogin = async (req, res, next) => {
       });
     }
 
-    if (
-      isNewUser &&
-      (sendEmail === "true" || isAutoEmailDate()) &&
-      !user.stopEmailAttempts
-    ) {
-      log("[GoogleLogin] Preparing welcome email for:", email);
-      const mailOption = createMailOption({
-        to: email,
-        subject: "Welcome to Our Platform!",
-        name: name || "User",
-        email,
-        message: `Thank you for signing up with Google! You're joining us from ${
-          user.location || "an unknown location"
-        }. We're excited to have you on board.`,
-        hasButton: true,
-        buttonText: "Get Started",
-        buttonUrl: "https://inksha-uedq.onrender.com",
-        isWelcome: true,
-      });
-
-      try {
-        log("[GoogleLogin] Sending welcome email");
-        const emailResult = await sendEmailWithRetries(mailOption, user._id);
-        user.emailAttempts = emailResult.attempts;
-        user.emailStatus = "sent";
-      } catch (emailError) {
-        log("[GoogleLogin] Email sending failed:", emailError.message);
-        user.emailAttempts = emailError.attempts || 3;
-        user.emailStatus = "failed";
-        user.emailLastError = emailError.message;
-        user.stopEmailAttempts = true;
-        await user.save();
-        throw emailError;
-      }
-    } else if (isNewUser) {
-      log("[GoogleLogin] Skipping welcome email");
-      await recordActivity({
-        userId: user._id,
-        action: "EMAIL_SKIPPED",
-        message: `Welcome email not sent for ${email}: sendEmail=${sendEmail}, autoEmailDate=${isAutoEmailDate()}`,
-      });
-    }
-
     if (isNewUser) {
       log("[GoogleLogin] Saving new user");
+      await user.save();
+    }
+
+    // Reset email attempts before sending welcome email
+    await UserModel.updateOne(
+      { _id: user._id },
+      { stopEmailAttempts: false, emailStatus: "not_sent", emailAttempts: 0 }
+    );
+
+    log("[GoogleLogin] Preparing welcome email for:", email);
+    const mailOption = createMailOption({
+      to: email,
+      subject: "Welcome to Our Platform!",
+      name: name || "User",
+      email,
+      message: `Thank you for signing up with Google! You're joining us from ${
+        user.location || "an unknown location"
+      }. We're excited to have you on board.`,
+      hasButton: true,
+      buttonText: "Get Started",
+      buttonUrl: "https://inksha-uedq.onrender.com",
+      isWelcome: true,
+      supportEmail: SENDER_EMAIL,
+    });
+
+    try {
+      log("[GoogleLogin] Sending welcome email");
+      const emailResult = await sendEmailWithRetries(
+        mailOption,
+        user._id,
+        "signup"
+      );
+      user.emailAttempts = emailResult.attempts;
+      user.emailStatus = "sent";
+      await user.save();
+      log("[GoogleLogin] Welcome email sent to:", email);
+    } catch (emailError) {
+      log("[GoogleLogin] Email sending failed:", emailError.message);
+      user.emailAttempts = emailError.attempts || 3;
+      user.emailStatus = "failed";
+      user.emailLastError = emailError.message;
       await user.save();
     }
 
@@ -905,7 +921,7 @@ export const checkEmailStatus = async (req, res, next) => {
       );
 
     await recordActivity({
-      userId: user._id, // Fixed: Use user._id
+      userId: user._id,
       action: "CHECKED_EMAIL_STATUS",
       message: `User ${user.name} checked email status for ${email}`,
     });
@@ -963,6 +979,76 @@ export const getAllEmailStatuses = async (req, res, next) => {
             500,
             "GetAllEmailStatuses",
             "Failed to fetch email statuses"
+          )
+    );
+  }
+};
+
+// Test endpoint to send welcome email
+export const testWelcomeEmail = async (req, res, next) => {
+  try {
+    const { userId, email } = req.body;
+    if (!userId || !email) {
+      throw new AppError(
+        "User ID and email required",
+        400,
+        "TestWelcomeEmail",
+        "Missing fields"
+      );
+    }
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      throw new AppError(
+        "User not found",
+        404,
+        "TestWelcomeEmail",
+        "User does not exist"
+      );
+    }
+    await UserModel.updateOne(
+      { _id: userId },
+      { stopEmailAttempts: false, emailStatus: "not_sent", emailAttempts: 0 }
+    );
+    const mailOption = createMailOption({
+      to: email,
+      subject: "Welcome to Our Platform!",
+      name: user.name || "User",
+      email,
+      message: `Thank you for signing up! You're joining us from ${
+        user.location || "an unknown location"
+      }. We're excited to have you on board.`,
+      hasButton: true,
+      buttonText: "Get Started",
+      buttonUrl: "https://inksha-uedq.onrender.com",
+      isWelcome: true,
+      supportEmail: SENDER_EMAIL,
+    });
+    console.log("[TestWelcomeEmail] Sending welcome email to:", email);
+    const emailResult = await sendEmailWithRetries(
+      mailOption,
+      user._id,
+      "signup"
+    );
+    await UserModel.updateOne(
+      { _id: userId },
+      {
+        emailAttempts: emailResult.attempts,
+        emailStatus: "sent",
+        emailLastError: null,
+      }
+    );
+    console.log("[TestWelcomeEmail] Welcome email sent to:", email);
+    res.status(200).json({ success: true, message: "Test welcome email sent" });
+  } catch (error) {
+    console.error("[TestWelcomeEmail] Error:", error.message);
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message,
+            500,
+            "TestWelcomeEmail",
+            "Failed to send test email"
           )
     );
   }
