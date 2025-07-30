@@ -7,7 +7,7 @@ const Progress = ({ value, className }) => {
   return (
     <div className={`relative w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 ${className}`}>
       <div
-        className="bg-gradient-to-r from-blue-500 to-indigo-600 h-4 rounded-full transition-all duration-500 ease-in-out"
+        className="bg-gradient-to-r from-blue-500 to-indigo-600 h-10 rounded-full transition-all duration-500 ease-in-out"
         style={{ width: `${clampedValue}%` }}
       ></div>
       <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs font-medium text-white dark:text-gray-100">

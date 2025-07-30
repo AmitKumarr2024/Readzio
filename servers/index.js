@@ -172,18 +172,17 @@ app.use(errorHandler);
 
 // In development, print all route paths
 if (NODE_ENV !== "production") {
-  // console.log("📜 Dumping all registered route paths (dev):");
   try {
     app._router.stack.forEach((middleware) => {
       if (middleware?.route?.path) {
-        const methods = Object.keys(middleware.route.methods)
+        const methods = Object.keys(middleware?.route?.methods || {})
           .join(", ")
           .toUpperCase();
         // console.log(`✔ ${methods} ${middleware.route.path}`);
       } else if (middleware?.name === "router" && middleware?.handle?.stack) {
         middleware.handle.stack.forEach((handler) => {
           if (handler?.route?.path) {
-            const methods = Object.keys(handler.route.methods)
+            const methods = Object.keys(handler?.route?.methods || {})
               .join(", ")
               .toUpperCase();
             // console.log(`✔ ${methods} ${handler.route.path}`);
@@ -192,7 +191,15 @@ if (NODE_ENV !== "production") {
       }
     });
   } catch (err) {
-    console.error("❌ Route inspection error:", err.message);
+    console.error(
+      "❌ Route inspection error:",
+      err?.message || "Unknown error"
+    );
+    if (err instanceof Error) {
+      console.error(err.stack);
+    } else {
+      console.error("Non-Error thrown:", err);
+    }
   }
 }
 
