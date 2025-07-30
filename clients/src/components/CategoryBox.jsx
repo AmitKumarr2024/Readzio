@@ -108,21 +108,19 @@ const CategoryBox = () => {
                   : "Please log in to view your categories."}
               </p>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-15 gap-4 p-2 sm:p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 p-3 sm:p-5 max-w-7xl mx-auto">
                 {displayedCategories.map((category) => (
                   <Link
                     to={`/category/${category.slug}`}
                     key={category._id}
                     title={`Go to ${category.name} category`}
-                    onClick={() => {
-                      setOpen(false);
-                    }}
-                    className="flex items-center justify-center gap-1 rounded-full w-full bg-gray-100 py-2 text-base font-medium text-text-main-light transition-colors hover:bg-blue-100 dark:bg-gray-800 dark:text-text-main-dark dark:hover:bg-blue-900"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 rounded-full transition-colors hover:bg-blue-100 hover:text-blue-700 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-blue-800 dark:hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
                   >
-                    {category.name}
+                    <span className="truncate">{category.name}</span>
                     {category.createdBy && (
                       <span
-                        className="text-xs text-yellow-400"
+                        className="text-xs text-yellow-400 flex-shrink-0"
                         aria-label="Featured category"
                         role="img"
                       >
