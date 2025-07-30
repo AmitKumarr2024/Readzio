@@ -10,9 +10,12 @@ import { motion } from "framer-motion";
 
 const UserFeedbackPrompt = () => {
   const dispatch = useDispatch();
-  const { users, loading, error, totalPages = 1 } = useSelector(
-    (state) => state.user
-  );
+  const {
+    users,
+    loading,
+    error,
+    totalPages = 1,
+  } = useSelector((state) => state.user);
 
   const [sending, setSending] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
@@ -100,6 +103,7 @@ const UserFeedbackPrompt = () => {
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-500 text-white text-sm uppercase tracking-wider">
                   <th className="p-4 text-left font-semibold">Name</th>
                   <th className="p-4 text-left font-semibold">Email</th>
+                  <th className="p-4 text-left font-semibold">Prompt Status</th>
                   <th className="p-4 text-left font-semibold">Action</th>
                 </tr>
               </thead>
@@ -114,6 +118,13 @@ const UserFeedbackPrompt = () => {
                   >
                     <td className="p-4 font-medium">{user.name}</td>
                     <td className="p-4">{user.email}</td>
+                    <td className="p-4">
+                      {user.feedbackPrompt?.shown
+                        ? user.feedbackPrompt.responded
+                          ? "Sent & Responded"
+                          : "Sent & Pending"
+                        : "Not Sent"}
+                    </td>
                     <td className="p-4">
                       <motion.button
                         onClick={() => handleSendFeedbackPrompt(user._id)}
@@ -136,7 +147,7 @@ const UserFeedbackPrompt = () => {
           <div className="mt-6 flex justify-center">
             <Pagination
               currentPage={currentPage}
-              totalPages={Math.max(1, totalPages)} // Ensure at least 1 page
+              totalPages={Math.max(1, totalPages)}
               onPageChange={handlePageChange}
             />
           </div>
