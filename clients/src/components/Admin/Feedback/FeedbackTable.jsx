@@ -1,3 +1,6 @@
+import React, { useState } from "react";
+import Pagination from "../../../Utils/Pagination";
+
 const FeedbackTable = ({ feedbackList, loading, error }) => {
   const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
