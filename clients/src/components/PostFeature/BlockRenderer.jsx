@@ -1,4 +1,3 @@
-// BlockRenderer.js
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -224,7 +223,11 @@ const BlockRenderer = ({
           />
         );
       case "ad":
-        return <InArticleAd key={`ad-${i}`} postId={postId} className="my-6" />;
+        return (
+          <div className="my-6 w-full">
+            <InArticleAd key={`ad-${i}`} postId={postId} />
+          </div>
+        );
       default:
         return (
           <div key={i} className="text-red-500 italic my-6">
@@ -306,9 +309,9 @@ const BlockRenderer = ({
   };
 
   return (
-    <div className="relative flex flex-col">
+    <div className="relative flex flex-col space-y-0">
       {displayedBlocks.map((block, i) => (
-        <div key={i} className="animate-slide-up">
+        <div key={i} className="animate-slide-up w-full">
           {renderBlock(block, i)}
         </div>
       ))}
