@@ -71,12 +71,9 @@ const BlockRenderer = ({
       "table",
     ];
 
-    const totalBlocks = blocks.length;
     const validIndices = [];
-
-    for (let i = 0; i < totalBlocks; i++) {
-      const type = blocks[i]?.type;
-      if (validTypes.includes(type)) {
+    for (let i = 0; i < blocks.length; i++) {
+      if (validTypes.includes(blocks[i]?.type)) {
         validIndices.push(i);
       }
     }
@@ -84,16 +81,18 @@ const BlockRenderer = ({
     if (validIndices.length < 6) return blocks;
 
     const adInsertions = [];
-    const minGap = 6;
-    const maxAds = Math.min(5, Math.floor(validIndices.length / minGap));
-    let current = 2 + Math.floor(Math.random() * 2);
-    let adsInserted = 0;
+    const interval = 6; // Place ad after every 6 valid blocks
+    let current = 5; // Place first ad after 6th valid block (index 5)
+    const maxAds = Math.min(5, Math.floor(validIndices.length / interval));
 
-    while (adsInserted < maxAds && current < validIndices.length - 2) {
+    for (
+      let adsInserted = 0;
+      adsInserted < maxAds && current < validIndices.length;
+      adsInserted++
+    ) {
       const adAfterIndex = validIndices[current];
       adInsertions.push(adAfterIndex);
-      current += minGap + Math.floor(Math.random() * 3);
-      adsInserted++;
+      current += interval;
     }
 
     adInsertions.reverse().forEach((insertAt, index) => {
@@ -311,12 +310,12 @@ const BlockRenderer = ({
   return (
     <div className="relative flex flex-col space-y-0">
       {displayedBlocks.map((block, i) => (
-        <div key={i} className="animate-slide-up w-full">
+        <div key={i} className="w-full">
           {renderBlock(block, i)}
         </div>
       ))}
       {isPostRestricted && !showFullContent && (
-        <div className="mt-6 p-6 bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl text-center shadow-lg animate-fade-in font-(family-name:--font-Urbanist)">
+        <div className="my-6 p-6 bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl text-center shadow-lg font-(family-name:--font-Urbanist)">
           <p className="text-white mb-4 text-lg font-medium">
             Unlock the full story with a subscription.
           </p>

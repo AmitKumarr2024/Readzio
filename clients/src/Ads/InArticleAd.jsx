@@ -54,9 +54,11 @@ const InArticleAd = ({ postId }) => {
       <div className="w-full max-w-[728px] h-[90px] overflow-hidden flex justify-center items-center">
         {isAdBlocked ? (
           <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded">
-            <span className="text-gray-600 dark:text-gray-300 text-sm">
-              Ad Blocked
-            </span>
+            <img
+              src="https://placehold.co/728x90?text=Ad+Blocked"
+              alt="Ad Blocked"
+              className="w-full h-full object-cover"
+            />
           </div>
         ) : (
           <>
@@ -71,6 +73,7 @@ const InArticleAd = ({ postId }) => {
                 width: "100%",
                 height: "90px",
                 textAlign: "center",
+                overflow: "hidden",
               }}
               data-ad-client="ca-pub-8408980890451581"
               data-ad-slot="4935470124"
