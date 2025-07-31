@@ -1,3 +1,4 @@
+// BlockRenderer.js
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -14,13 +15,9 @@ import QuoteBlockOutput from "../actualPostDisplay/QuoteBlockOutput";
 import TableBlocksOutput from "../actualPostDisplay/TableBlocksOutput";
 import VideoBlockOutput from "../actualPostDisplay/VideoBlockOutput";
 import { getSubscriptionStatusByAuthor } from "../../store/subscriptionSlice";
-import GoogleAd from "../../Ads/GoogleAd";
 import PostTags from "../Post/DisplayPost/PostTags";
 import Skeleton from "@/components/Ui/Skeleton";
-import adsConfig from "../../Utils/adsConfig";
 import InArticleAd from "../../Ads/InArticleAd";
-
-const placeholderAdImage = "https://placehold.co/150x100?text=Ad+Failed";
 
 const BlockRenderer = ({
   blocks,
@@ -78,7 +75,6 @@ const BlockRenderer = ({
     const totalBlocks = blocks.length;
     const validIndices = [];
 
-    // Collect only indices of valid ad positions
     for (let i = 0; i < totalBlocks; i++) {
       const type = blocks[i]?.type;
       if (validTypes.includes(type)) {
@@ -91,17 +87,16 @@ const BlockRenderer = ({
     const adInsertions = [];
     const minGap = 6;
     const maxAds = Math.min(5, Math.floor(validIndices.length / minGap));
-    let current = 2 + Math.floor(Math.random() * 2); // Start after 2–3 valid blocks
+    let current = 2 + Math.floor(Math.random() * 2);
     let adsInserted = 0;
 
     while (adsInserted < maxAds && current < validIndices.length - 2) {
       const adAfterIndex = validIndices[current];
       adInsertions.push(adAfterIndex);
-      current += minGap + Math.floor(Math.random() * 3); // gap: 6–8
+      current += minGap + Math.floor(Math.random() * 3);
       adsInserted++;
     }
 
-    // Insert ads in reverse to avoid index shifting
     adInsertions.reverse().forEach((insertAt, index) => {
       adBlocks.splice(insertAt + 1, 0, {
         type: "ad",
@@ -120,7 +115,7 @@ const BlockRenderer = ({
           <TextBlock
             key={i}
             value={block.value}
-            className="text-gray-700 dark:text-gray-200 mb-6"
+            className="text-gray-700 dark:text-gray-200 my-6"
           />
         );
       case "image":
@@ -229,10 +224,10 @@ const BlockRenderer = ({
           />
         );
       case "ad":
-        return <InArticleAd key={`ad-${i}`} postId={postId} />;
+        return <InArticleAd key={`ad-${i}`} postId={postId} className="my-6" />;
       default:
         return (
-          <div key={i} className="text-red-500 italic">
+          <div key={i} className="text-red-500 italic my-6">
             Unsupported content block.
           </div>
         );
@@ -311,7 +306,7 @@ const BlockRenderer = ({
   };
 
   return (
-    <div className="relative">
+    <div className="relative flex flex-col">
       {displayedBlocks.map((block, i) => (
         <div key={i} className="animate-slide-up">
           {renderBlock(block, i)}

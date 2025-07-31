@@ -85,9 +85,9 @@ const UserCard = ({
                 {/* User Info */}
                 <td className="align-top">
                   <h3 className="font-bold text-2xl mb-1">{authorName}</h3>
-                  <p className="text-lg text-gray-600 dark:text-gray-300 mb-1">
+                  {/* <p className="text-lg text-gray-600 dark:text-gray-300 mb-1">
                     @{user.username || user.email || "unknown"}
-                  </p>
+                  </p> */}
                   {user.email && (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       Email: {user.email}
