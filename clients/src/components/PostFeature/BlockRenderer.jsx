@@ -292,7 +292,9 @@ const BlockRenderer = ({
       : getAdBlocks(blocks);
   const previewBlocks = blocks
     .slice(0, previewBlockLimit)
-    .filter((block) => ["text", "image", "heading"].includes(block.type));
+    .filter((block) =>
+      ["text", "image", "heading", "table"].includes(block.type)
+    );
   const displayedBlocks = showFullContent ? blocksWithAds : previewBlocks;
 
   const handleSeeMore = () => {
