@@ -1,5 +1,5 @@
 // File: src/components/EditPost.js
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import PostEditor from "../CreatePost/PostEditor";
@@ -43,51 +43,6 @@ const EditPost = () => {
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState([]);
   const [isOpen, setIsOpen] = useState(true);
-  const modalRef = useRef(null);
-  const scrollPositionRef = useRef(0);
-
-  const defaultTableData = [
-    ["Reservoir", "Region", "Status & Observation"],
-    [
-      "Nagarjuna Sagar",
-      "South (AP/TG)",
-      "586/590 ft, releasing 1.4+ lakh cusecs",
-    ],
-    [
-      "Linganamakki",
-      "South (KA)",
-      "Inflow over 47,000 cusecs; nearing max capacity",
-    ],
-    [
-      "Khadakwasla & Varasgaon",
-      "West (MH)",
-      "Over 90% full; stable metro supply",
-    ],
-    [
-      "KRS Dam",
-      "South (KA)",
-      "Discharge of 83,358 cusecs; flood alerts active",
-    ],
-  ];
-
-  const saveScrollPosition = () => {
-    if (modalRef.current) {
-      scrollPositionRef.current = modalRef.current.scrollTop;
-      console.log("[DEBUG] Saved scroll position:", scrollPositionRef.current);
-    }
-  };
-
-  const restoreScrollPosition = () => {
-    if (modalRef.current) {
-      requestAnimationFrame(() => {
-        modalRef.current.scrollTop = scrollPositionRef.current;
-        console.log(
-          "[DEBUG] Restored scroll position:",
-          scrollPositionRef.current
-        );
-      });
-    }
-  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -119,13 +74,12 @@ const EditPost = () => {
       const normalizedBlocks = (currentPost.blocks || []).map((block) => {
         if (block.type === "table") {
           console.log("[DEBUG] Table block before normalization:", block);
-          // Use items if valid, else defaultTableData
           const data =
             Array.isArray(block.data) && block.data.length > 0
               ? block.data
               : Array.isArray(block.items) && block.items.length > 0
               ? block.items
-              : defaultTableData;
+              : [];
           const normalizedBlock = {
             id: block.id,
             type: "table",
@@ -153,8 +107,6 @@ const EditPost = () => {
     ) {
       dispatch(selectCategory(category));
     }
-
-    restoreScrollPosition();
   }, [currentPost, categories, dispatch]);
 
   useEffect(() => {
@@ -183,7 +135,7 @@ const EditPost = () => {
             ? block.data
             : Array.isArray(block.items) && block.items.length > 0
             ? block.items
-            : defaultTableData;
+            : [];
         const normalizedBlock = {
           id: block.id,
           type: "table",
@@ -211,7 +163,6 @@ const EditPost = () => {
     };
 
     try {
-      saveScrollPosition();
       const action = await dispatch(
         updatePost({ slug: currentPost.slug, updateData })
       );
@@ -226,23 +177,17 @@ const EditPost = () => {
   };
 
   const handleCategoryChange = (e) => {
-    saveScrollPosition();
     const categoryId = e.target.value;
     const selected = categories.find((cat) => cat._id === categoryId);
     dispatch(selectCategory(selected || null));
-    restoreScrollPosition();
   };
 
   const handleTitleChange = (e) => {
-    saveScrollPosition();
     setTitle(e.target.value);
-    restoreScrollPosition();
   };
 
   const handleBlocksChange = (newBlocks) => {
-    saveScrollPosition();
     setBlocks(newBlocks);
-    restoreScrollPosition();
   };
 
   if (!isAuthenticated) return null;
@@ -295,10 +240,7 @@ const EditPost = () => {
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <div
-              ref={modalRef}
-              className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 animate-slide-up"
-            >
+            <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 animate-slide-up">
               <button
                 onClick={() => {
                   setIsOpen(false);
@@ -352,11 +294,7 @@ const EditPost = () => {
                   <select
                     className="w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-white transition-all"
                     value={postType}
-                    onChange={(e) => {
-                      saveScrollPosition();
-                      dispatch(setPostType(e.target.value));
-                      restoreScrollPosition();
-                    }}
+                    onChange={(e) => dispatch(setPostType(e.target.value))}
                   >
                     <option value="">Select post type</option>
                     <option value="article">Article</option>
@@ -365,12 +303,7 @@ const EditPost = () => {
                 </div>
 
                 <div>
-                  <TagsInput
-                    onChange={() => {
-                      saveScrollPosition();
-                      restoreScrollPosition();
-                    }}
-                  />
+                  <TagsInput />
                 </div>
 
                 <div>
