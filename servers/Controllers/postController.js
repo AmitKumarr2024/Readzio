@@ -1,3 +1,4 @@
+// File: src/servers/Controllers/postController.js
 import PostModel from "../../servers/Models/Post.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import { v4 as uuidv4 } from "uuid";
@@ -7,9 +8,6 @@ import slugify from "slugify";
 import axios from "axios";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import mongoose from "mongoose";
-import { checkIfSubscribed } from "../Utils/checkIfSubscribed.js";
-import PostInteraction from "../../servers/Models/PostInteraction.js";
-import UserModel from "../../servers/Models/User.js";
 import { io } from "../../servers/sockets/socket.js";
 import { calculateReadTime } from "../helpers/postHelper.js";
 
@@ -62,7 +60,6 @@ export const voteOnPoll = async (req, res, next) => {
       throw new AppError("User already voted", 400, "VoteOnPoll");
     }
 
-    // Increment vote count and add user to votedUserIds
     pollBlock.options[optionIndex].votes =
       (pollBlock.options[optionIndex].votes || 0) + 1;
     pollBlock.votedUserIds.push({ userId, votedAt: new Date() });
@@ -112,7 +109,7 @@ export const createPost = async (req, res, next) => {
 
     if (!req.user?._id)
       throw new AppError(
-        "User You must be signed in to access this feature.",
+        "You must be signed in to access this feature.",
         401,
         "CreatePost"
       );
@@ -134,6 +131,19 @@ export const createPost = async (req, res, next) => {
           400,
           "CreatePost"
         );
+      }
+      if (block.type === "table") {
+        if (
+          !Array.isArray(block.data) ||
+          block.data.length === 0 ||
+          !block.data.every((row) => Array.isArray(row) && row.length > 0)
+        ) {
+          throw new AppError(
+            `Table block at index ${index} must have non-empty data array`,
+            400,
+            "CreatePost"
+          );
+        }
       }
       return {
         id: block.id || uuidv4(),
@@ -182,7 +192,6 @@ export const createPost = async (req, res, next) => {
             "Invalid image format"
           );
 
-        // Resize only if necessary, preserving aspect ratio
         if (metadata.width > 1200 || metadata.height > 1200) {
           image.resize({
             width: 1200,
@@ -192,11 +201,9 @@ export const createPost = async (req, res, next) => {
           });
         }
 
-        // Convert to WebP for better compression
         const compressedBuffer = await image
-          .webp({ quality: 75, effort: 4 }) // effort: 4 balances speed and compression
+          .webp({ quality: 75, effort: 4 })
           .toBuffer();
-
         const result = await uploadToCloudinary({
           buffer: compressedBuffer,
           folder,
@@ -222,70 +229,12 @@ export const createPost = async (req, res, next) => {
 
     const processedBlocks = await Promise.all(
       blocksWithIds.map(async (block) => {
-        const processed = { ...block };
-        if (block.type === "image" && block.src) {
-          processed.src = await processImage(
-            block.src,
-            `block ${block.id}`,
-            "blogs/post/blocks/images/"
-          );
-        }
-        if (block.type === "poll") {
-          if (!block.question || !Array.isArray(block.options)) {
-            throw new AppError(
-              "Poll requires question and options array",
-              400,
-              "CreatePost"
-            );
-          }
-          processed.options = block.options.map((opt) => ({
-            option: typeof opt === "string" ? opt : opt.option,
-            votes: opt.votes || 0,
-          }));
-          processed.votedUserIds = block.votedUserIds || [];
-        }
-        if (block.type === "list" && Array.isArray(block.items)) {
-          processed.items = block.items.map((item) =>
-            item == null ? "" : String(item)
-          );
-        }
-        const allowedFields = [
-          "id",
-          "type",
-          "value",
-          "level",
-          "text",
-          "code",
-          "caption",
-          "src",
-          "href",
-          "url",
-          "name",
-          "size",
-          "ordered",
-          "author",
-          "question",
-          "options",
-          "votedUserIds",
-          "items",
-          "data",
-          "blocked",
-        ];
-        return Object.fromEntries(
-          Object.entries(processed).filter(([key]) =>
-            allowedFields.includes(key)
-          )
-        );
+        const processed = await processBlock(block);
+        return processed;
       })
     );
 
     const { readTime, readingTime } = calculateReadTime(processedBlocks);
-    // console.log(
-    //   "[CreatePost] Read time generated:",
-    //   readTime,
-    //   "| Minutes:",
-    //   readingTime
-    // );
 
     let processedThumbnail = rawThumbnail;
     if (rawThumbnail) {
@@ -343,8 +292,8 @@ export const createPost = async (req, res, next) => {
       isPinned,
       isPublished: true,
       language,
-      readTime, // ✅ "2 min read"
-      readingTime, // ✅ 2 (numeric, in minutes)
+      readTime,
+      readingTime,
     };
 
     const session = await mongoose.startSession();
@@ -487,17 +436,6 @@ export const getAllPosts = async (req, res, next) => {
       });
     }
 
-    // console.log(
-    //   "[getAllPosts] Sending posts:",
-    //   posts.map((p) => ({
-    //     _id: p._id,
-    //     slug: p.slug,
-    //     readTime: p.readTime,
-    //     readingTime: p.readingTime,
-    //     title: p.title,
-    //   }))
-    // );
-
     res.status(200).json({ success: true, total, page, posts });
   } catch (error) {
     console.error("[getAllPosts] Error:", error);
@@ -526,7 +464,6 @@ export const getSinglePost = async (req, res, next) => {
 
     const sanitizedSlug = slug.trim().toLowerCase();
 
-    // Build secure query based on user type
     const query = {
       slug: sanitizedSlug,
       ...(userId
@@ -534,10 +471,10 @@ export const getSinglePost = async (req, res, next) => {
             $or: [
               { isPublished: true, blocked: false },
               { author: userId },
-              ...(userRole === "admin" ? [{}] : []), // Admin can see all
+              ...(userRole === "admin" ? [{}] : []),
             ],
           }
-        : { isPublished: true, blocked: false }), // Guest
+        : { isPublished: true, blocked: false }),
     };
 
     const post = await PostModel.findOne(query)
@@ -546,7 +483,7 @@ export const getSinglePost = async (req, res, next) => {
         title slug category excerpt thumbnail author createdAt
         isPublished isPinned isPremium isSubscriberOnly blocked message readTime
         likesCount commentsCount viewsCount bookmarksCount likes
-        tags language isFeatured allowComments timeSpent  updatedAt
+        tags language isFeatured allowComments timeSpent updatedAt
         shareCount sharedBy blocks
       `
       )
@@ -568,7 +505,6 @@ export const getSinglePost = async (req, res, next) => {
       );
     }
 
-    // Blocked post check (author or admin only)
     if (
       post.blocked &&
       (!userId ||
@@ -582,7 +518,6 @@ export const getSinglePost = async (req, res, next) => {
       );
     }
 
-    // Log activity
     if (userId) {
       await recordActivity({
         userId,
@@ -591,15 +526,6 @@ export const getSinglePost = async (req, res, next) => {
         message: `Viewed post: ${post.title}`,
       });
     }
-
-    // console.log(
-    //   "[GetSinglePost] Post fetched:",
-    //   post._id,
-    //   "isPublished:",
-    //   post.isPublished,
-    //   "blocked:",
-    //   post.blocked
-    // );
 
     res.status(200).json({ success: true, post });
   } catch (error) {
@@ -633,10 +559,7 @@ export const trackTimeSpent = async (req, res, next) => {
     const [interactionUpdate, postUpdate] = await Promise.all([
       PostInteraction.findOneAndUpdate(
         { postId, userId },
-        {
-          $inc: { timeSpent: duration },
-          $set: { updatedAt: new Date() },
-        },
+        { $inc: { timeSpent: duration }, $set: { updatedAt: new Date() } },
         { upsert: true, new: false }
       ),
       PostModel.updateOne({ _id: postId }, { $inc: { timeSpent: duration } }),
@@ -646,16 +569,12 @@ export const trackTimeSpent = async (req, res, next) => {
       throw new AppError("Post not found", 404, "trackTimeSpent");
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Time spent recorded",
-    });
+    res.status(200).json({ success: true, message: "Time spent recorded" });
   } catch (error) {
     console.error("[trackTimeSpent] Error:", {
       message: error.message,
       stack: error.stack,
     });
-
     next(
       error instanceof AppError
         ? error
@@ -664,11 +583,9 @@ export const trackTimeSpent = async (req, res, next) => {
   }
 };
 
-// Process block (sanitize and enforce defaults)
-const processBlock = async (block) => {
+export const processBlock = async (block) => {
   const processedBlock = { ...block };
 
-  // Sanitize text fields to prevent XSS (basic example, use a library like sanitize-html in production)
   if (processedBlock.text) {
     processedBlock.text = processedBlock.text.replace(
       /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
@@ -682,15 +599,25 @@ const processBlock = async (block) => {
     );
   }
 
-  // Ensure poll block has valid structure
+  if (block.type === "table") {
+    if (
+      !Array.isArray(block.data) ||
+      block.data.length === 0 ||
+      !block.data.every((row) => Array.isArray(row) && row.length > 0)
+    ) {
+      throw new AppError(
+        "Table block must have non-empty data array",
+        400,
+        "ProcessBlock"
+      );
+    }
+  }
+
   if (block.type === "poll") {
     processedBlock.question = processedBlock.question || "Default Question";
     processedBlock.options = Array.isArray(processedBlock.options)
       ? processedBlock.options.map((opt) => ({
-          option:
-            typeof opt.option === "string"
-              ? opt.option
-              : `Option ${opt.option || ""}`,
+          option: typeof opt === "string" ? opt : `Option ${opt.option || ""}`,
           votes: Number.isInteger(opt.votes) ? opt.votes : 0,
         }))
       : [];
@@ -711,16 +638,15 @@ const processBlock = async (block) => {
   return processedBlock;
 };
 
-// Update Post by Slug
 export const updatePostBySlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
     const userId = req.user?._id;
     const userRole = req.user?.role;
 
-    // console.log(
-    //   `[updatePostBySlug] Attempting to update post with slug: ${slug}, userId: ${userId}, role: ${userRole}`
-    // );
+    console.log(
+      `[updatePostBySlug] Attempting to update post with slug: ${slug}, userId: ${userId}, role: ${userRole}`
+    );
 
     if (!slug) {
       throw new AppError("Missing slug", 400, "UpdatePostBySlug");
@@ -736,7 +662,6 @@ export const updatePostBySlug = async (req, res, next) => {
 
     const updates = { ...req.body };
 
-    // Validate and transform blocks if provided
     if (updates.blocks) {
       updates.blocks = await Promise.all(
         updates.blocks.map(async (block, i) => {
@@ -747,15 +672,25 @@ export const updatePostBySlug = async (req, res, next) => {
               "UpdatePostBySlug"
             );
           }
-
-          // Process block fields (sanitize, enforce defaults)
+          if (block.type === "table") {
+            if (
+              !Array.isArray(block.data) ||
+              block.data.length === 0 ||
+              !block.data.every((row) => Array.isArray(row) && row.length > 0)
+            ) {
+              throw new AppError(
+                `Table block at index ${i} must have non-empty data array`,
+                400,
+                "UpdatePostBySlug"
+              );
+            }
+          }
           const processedBlock = await processBlock({
             ...block,
             id: block.id || uuidv4(),
             blocked: typeof block.blocked === "boolean" ? block.blocked : false,
           });
 
-          // Whitelist allowed fields
           const allowedFields = [
             "id",
             "type",
@@ -789,16 +724,9 @@ export const updatePostBySlug = async (req, res, next) => {
     }
 
     const { readTime, readingTime } = calculateReadTime(updates.blocks);
-    // console.log(
-    //   "[UpdatePostBySlug] Read time generated:",
-    //   readTime,
-    //   "| Minutes:",
-    //   readingTime
-    // );
     updates.readTime = readTime;
     updates.readingTime = readingTime;
 
-    // Case-insensitive slug query
     const query =
       userRole === "admin"
         ? { slug: { $regex: new RegExp(`^${slug}$`, "i") } }
@@ -824,15 +752,8 @@ export const updatePostBySlug = async (req, res, next) => {
 
     const updatedPost = await PostModel.findOneAndUpdate(
       query,
-      {
-        ...updates,
-        isPublished: true,
-        lastEditedAt: new Date(),
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
+      { ...updates, isPublished: true, lastEditedAt: new Date() },
+      { new: true, runValidators: true }
     ).select(
       "title slug category excerpt thumbnail blocks author isPublished isPinned createdAt lastEditedAt"
     );
@@ -851,7 +772,7 @@ export const updatePostBySlug = async (req, res, next) => {
       message: `Edited post: ${updatedPost.title}`,
     });
 
-    // console.log(`[updatePostBySlug] Successfully updated post: ${slug}`);
+    console.log(`[updatePostBySlug] Successfully updated post: ${slug}`);
     res.status(200).json({
       success: true,
       message: "Post updated successfully",
@@ -949,10 +870,7 @@ export const toggleBlockPost = async (req, res, next) => {
       { new: true, runValidators: true }
     );
 
-    io.emit("postBlockToggled", {
-      postId: post._id,
-      blocked: post.blocked,
-    });
+    io.emit("postBlockToggled", { postId: post._id, blocked: post.blocked });
     await recordActivity({
       userId: req.user._id,
       action: updatedPost.blocked ? "POST_BLOCKED" : "POST_UNBLOCKED",
@@ -975,77 +893,6 @@ export const toggleBlockPost = async (req, res, next) => {
       error instanceof AppError
         ? error
         : new AppError(error.message, 500, "ToggleBlockPost Controller")
-    );
-  }
-};
-
-export const sendDailyPostEmail = async () => {
-  try {
-    const users = await UserModel.find({
-      emailStatus: "sent",
-      stopEmailAttempts: false,
-    })
-      .select("name email")
-      .lean();
-
-    const posts = await PostModel.find({
-      isPublished: true,
-      blocked: false,
-      createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-    })
-      .select("title slug excerpt")
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .lean();
-
-    if (!posts.length) {
-      // console.log("No new posts to send.");
-      return;
-    }
-
-    const postListHtml = posts
-      .map(
-        (post) => `
-        <div style="margin-bottom: 20px;">
-          <h3 style="margin: 0; font-size: 18px;">
-            <a href="https://yourwebsite.com/post/${post.slug}" style="color: #4F46E5; text-decoration: none;">${post.title}</a>
-          </h3>
-          <p style="font-size: 14px; color: #333333;">${post.excerpt}</p>
-        </div>`
-      )
-      .join("");
-
-    for (const user of users) {
-      const mailOption = createMailOption({
-        to: user.email,
-        subject: "Your Daily Digest from Mount Amit",
-        name: user.name || "User",
-        email: user.email,
-        message: `
-          <p style="font-size: 14px; line-height: 150%;">
-            Here are the latest posts from Mount Amit:
-          </p>
-          ${postListHtml}
-          <p style="font-size: 14px; line-height: 150%;">
-            Enjoy reading, and stay tuned for more updates!
-          </p>`,
-        supportEmail: process.env.SENDER_EMAIL,
-        hasButton: true,
-        buttonText: "Read More",
-        buttonUrl: "https://yourwebsite.com",
-      });
-
-      emailQueue.push({ mailOption, userId: user._id });
-    }
-
-    await processEmailQueue();
-    // console.log("Daily post emails queued successfully.");
-  } catch (error) {
-    console.error("Error sending daily post emails:", error);
-    throw new AppError(
-      "Failed to send daily post emails",
-      500,
-      "SendDailyPostEmail"
     );
   }
 };
@@ -1096,17 +943,11 @@ export const submitAppeal = async (req, res, next) => {
       message: `Appeal submitted for post: ${post.title} - ${message}`,
     });
 
-    io.emit("newAppeal", {
-      postId,
-      userId,
-      message,
-      postTitle: post.title,
-    });
+    io.emit("newAppeal", { postId, userId, message, postTitle: post.title });
 
-    res.status(200).json({
-      success: true,
-      message: "Appeal submitted successfully",
-    });
+    res
+      .status(200)
+      .json({ success: true, message: "Appeal submitted successfully" });
   } catch (error) {
     console.error("[SubmitAppeal] Error:", error);
     next(
@@ -1124,7 +965,6 @@ export const submitAppeal = async (req, res, next) => {
 export const incrementShareCount = async (req, res, next) => {
   try {
     const { postId } = req.params;
-    // console.log(`[incrementPostShare] PostId:`, postId);
 
     if (!mongoose.Types.ObjectId.isValid(postId)) {
       throw new AppError("Invalid post ID", 400, "IncrementShareCount");
@@ -1140,11 +980,13 @@ export const incrementShareCount = async (req, res, next) => {
       throw new AppError("Post not found", 404, "IncrementShareCount");
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Share count incremented",
-      shareCount: result.shareCount,
-    });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "Share count incremented",
+        shareCount: result.shareCount,
+      });
   } catch (error) {
     console.error("[incrementShareCount] Error:", error);
     next(
@@ -1154,68 +996,6 @@ export const incrementShareCount = async (req, res, next) => {
             error.message || "Failed to increment share count",
             500,
             "IncrementShareCount"
-          )
-    );
-  }
-};
-
-export const getDraftAndPendingPosts = async (req, res, next) => {
-  try {
-    const userId = req.user?._id;
-    if (!userId) {
-      throw new AppError(
-        "You must be signed in to access this feature.",
-        401,
-        "GetDraftAndPendingPosts"
-      );
-    }
-
-    const page = parseInt(req.query.page) || 1;
-    const limit = Math.min(parseInt(req.query.limit) || 10, 100);
-    const skip = (page - 1) * limit;
-
-    const query = {
-      author: userId,
-      blocked: { $ne: true },
-    };
-
-    const [posts, total] = await Promise.all([
-      PostModel.find(query)
-        .select(
-          "title slug category excerpt thumbnail author createdAt isPublished"
-        )
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate("author", "name avatar")
-        .lean(),
-      PostModel.countDocuments(query),
-    ]);
-
-    if (!posts.length) {
-      return res.status(200).json({
-        success: true,
-        message: "No posts found",
-        total: 0,
-        page,
-        posts: [],
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      total,
-      page,
-      posts,
-    });
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to fetch posts",
-            500,
-            "GetDraftAndPendingPosts"
           )
     );
   }
@@ -1237,10 +1017,7 @@ export const getPublicPost = async (req, res, next) => {
       blocked: false,
     })
       .select(
-        `
-        title slug category excerpt thumbnail author createdAt
-        isPublished readTime readingTime tags language viewsCount shareCount
-      `
+        "title slug category excerpt thumbnail author createdAt isPublished readTime readingTime tags language viewsCount shareCount"
       )
       .populate("author", "name avatar")
       .populate("category", "name slug")
@@ -1253,13 +1030,6 @@ export const getPublicPost = async (req, res, next) => {
         "GetPublicPost"
       );
     }
-    // console.log("[getSinglePost] Sending post:", {
-    //   _id: post._id,
-    //   slug: post.slug,
-    //   readTime: post.readTime,
-    //   readingTime: post.readingTime,
-    //   title: post.title,
-    // });
 
     res.status(200).json({ success: true, post });
   } catch (error) {
@@ -1275,7 +1045,7 @@ export const getFollowingPosts = async (req, res, next) => {
   try {
     const userId = req.user?._id;
     const page = parseInt(req.query.page) || 1;
-    const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Higher limit for proactive fetching
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
     const skip = (page - 1) * limit;
 
     if (!userId) {
@@ -1286,7 +1056,6 @@ export const getFollowingPosts = async (req, res, next) => {
       );
     }
 
-    // Fetch the user's following list
     const user = await UserModel.findById(userId).select("following").lean();
     if (!user) {
       throw new AppError("User not found", 404, "GetFollowingPosts");
@@ -1306,7 +1075,6 @@ export const getFollowingPosts = async (req, res, next) => {
       });
     }
 
-    // Query posts from followed users
     const query = {
       author: { $in: followingIds },
       isPublished: true,
@@ -1332,29 +1100,13 @@ export const getFollowingPosts = async (req, res, next) => {
       PostModel.countDocuments(query),
     ]);
 
-    // Log activity
     await recordActivity({
       userId,
       action: "VIEWED_FOLLOWING_POSTS",
       message: `Viewed posts from followed users`,
     });
-    // console.log(
-    //   "[getFollowingPosts] Sending posts:",
-    //   posts.map((p) => ({
-    //     _id: p._id,
-    //     slug: p.slug,
-    //     readTime: p.readTime,
-    //     readingTime: p.readingTime,
-    //     title: p.title,
-    //   }))
-    // );
 
-    res.status(200).json({
-      success: true,
-      total,
-      page,
-      posts,
-    });
+    res.status(200).json({ success: true, total, page, posts });
   } catch (error) {
     console.error("[GetFollowingPosts] Error:", error);
     next(
