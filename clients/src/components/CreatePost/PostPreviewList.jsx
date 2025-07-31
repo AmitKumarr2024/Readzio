@@ -12,7 +12,12 @@ import TableBlock from "../PostFeature/TableBlock";
 import PostView from "./PostView";
 import { getSinglePost, deletePost } from "../../store/postSlice";
 import ConfirmPostModal from "./ConfirmPostModal";
-import { setIsFeatured, setIsPinned, setIsPublished, setLanguage } from "../../store/Post/postMetaSlice";
+import {
+  setIsFeatured,
+  setIsPinned,
+  setIsPublished,
+  setLanguage,
+} from "../../store/Post/postMetaSlice";
 
 const PostPreviewList = ({
   currentDraftPost,
@@ -42,18 +47,6 @@ const PostPreviewList = ({
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { singlePost, singlePostStatus } = useSelector((state) => state.post);
-
-  // useEffect(() => {
-  //   console.log("[DEBUG] PostPreviewList: Props received:", {
-  //     currentDraftPost,
-  //     postType,
-  //     category,
-  //     categoryName,
-  //     allPosts,
-  //     createLoading,
-  //     createError,
-  //   });
-  // }, [currentDraftPost, postType, category, categoryName, allPosts, createLoading, createError]);
 
   useEffect(() => {
     if (singlePost) setIsModalOpen(true);
@@ -93,22 +86,32 @@ const PostPreviewList = ({
 
   const createPost = () => {
     if (!currentDraftPost?.title) return toast.error("Please enter a title");
-    if (!currentDraftPost?.blocks?.length) return toast.error("Please add content blocks");
+    if (!currentDraftPost?.blocks?.length)
+      return toast.error("Please add content blocks");
     if (!postType) return toast.error("Please select a post type");
     if (!category) return toast.error("Please select a category");
-    if (!language.match(/^[a-z]{2}$/i)) return toast.error("Invalid language code (e.g., 'en')");
+    if (!language.match(/^[a-z]{2}$/i))
+      return toast.error("Invalid language code (e.g., 'en')");
 
     if (!isFeatured && !isPinned && !isPublished && language === "en") {
-      toast.error("Set at least one metadata field (feature, pin, publish, or language)");
+      toast.error(
+        "Set at least one metadata field (feature, pin, publish, or language)"
+      );
       return;
     }
 
-    // console.log("[DEBUG] createPost metadata:", { isFeatured, isPinned, isPublished, language, category, categoryName });
     setShowConfirmModal(true);
   };
 
   const handleModalConfirm = async ({ tags, thumbnail }) => {
-    const newPostData = { tags, thumbnail, isFeatured, isPinned, isPublished, language };
+    const newPostData = {
+      tags,
+      thumbnail,
+      isFeatured,
+      isPinned,
+      isPublished,
+      language,
+    };
     setShowConfirmModal(false);
     setPostData(newPostData);
     setIsPostConfirmed(true);
@@ -122,7 +125,6 @@ const PostPreviewList = ({
 
   const handleConfirmPublish = async () => {
     setIsPostConfirmed(false);
-    // console.log("[DEBUG] Initiating post creation with data:", postData);
     await onCreatePost(postData);
     setPostData(null);
     setCountdown(5);
@@ -141,12 +143,13 @@ const PostPreviewList = ({
       dispatch(deletePost(postId))
         .unwrap()
         .then(() => toast.success("Post deleted successfully"))
-        .catch((err) => toast.error(`Failed to delete post: ${err.message || err}`));
+        .catch((err) =>
+          toast.error(`Failed to delete post: ${err.message || err}`)
+        );
     }
   };
 
   const deleteBlock = (index) => {
-    // console.log("[DEBUG] Deleting block at index:", index);
     if (!onUpdateDraft) {
       toast.error("No update function provided");
       return;
@@ -161,27 +164,32 @@ const PostPreviewList = ({
       if (!block || !block.type) {
         console.warn(`[DEBUG] Invalid block at index ${i}:`, block);
         toast.error("Invalid block detected");
-        return <div key={i} className="my-4 text-red-500 italic">Invalid block</div>;
+        return (
+          <div key={i} className="my-4 text-red-500 italic">
+            Invalid block
+          </div>
+        );
       }
 
-      // console.log(`[DEBUG] Rendering block ${i}:`, block);
-
+      // Normalize table block data to match TableBlocksOutput expectation
       if (block.type === "table") {
-        // console.log(`[DEBUG] Table block props before render:`, {
-        //   headers: block.headers || [],
-        //   rows: block.rows || [[]],
-        //   caption: block.caption || "",
-        // });
-        if (!block.headers?.length && !block.rows?.some((row) => row.length)) {
-          console.warn(`[DEBUG] Empty table block at index ${i}:`, block);
-          toast.error("Table block is empty. Using default data.");
-          block = {
-            ...block,
-            headers: block.headers?.length ? block.headers : ["Header 1", "Header 2"],
-            rows: block.rows?.some((row) => row.length) ? block.rows : [["Cell 1", "Cell 2"], ["Cell 3", "Cell 4"]],
-            caption: block.caption || "",
-          };
-        }
+        const headers = block.headers || [];
+        const rows = block.rows && Array.isArray(block.rows) ? block.rows : [];
+        const data =
+          headers.length || rows.length
+            ? [headers, ...rows]
+            : [
+                ["Header 1", "Header 2"],
+                ["Cell 1", "Cell 2"],
+                ["Cell 3", "Cell 4"],
+              ];
+        block = {
+          ...block,
+          data,
+          caption: block.caption || "",
+          headers: undefined, // Remove headers to avoid passing unused props
+          rows: undefined, // Remove rows to avoid passing unused props
+        };
       }
 
       const blockProps = {
@@ -196,12 +204,22 @@ const PostPreviewList = ({
       switch (block.type) {
         case "code":
           return (
-            <div key={i} className="relative my-4 bg-gray-800 dark:bg-gray-900 text-text-main-light dark:text-text-main-dark rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800">
-              <SyntaxHighlighter language={block.language || "javascript"} style={tomorrow} showLineNumbers wrapLines>
+            <div
+              key={i}
+              className="relative my-4 bg-gray-800 dark:bg-gray-900 text-text-main-light dark:text-text-main-dark rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800"
+            >
+              <SyntaxHighlighter
+                language={block.language || "javascript"}
+                style={tomorrow}
+                showLineNumbers
+                wrapLines
+              >
                 {block.code || block.value || ""}
               </SyntaxHighlighter>
               <button
-                onClick={() => handleCopyCode(block.code || block.value || "", i)}
+                onClick={() =>
+                  handleCopyCode(block.code || block.value || "", i)
+                }
                 className="absolute top-2 right-2 bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600 transition z-10"
               >
                 {copiedIndex === i ? "Copied!" : "Copy"}
@@ -217,7 +235,10 @@ const PostPreviewList = ({
           );
         case "file":
           return (
-            <div key={i} className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
               <FileBlock {...blockProps} />
               <button
                 onClick={() => deleteBlock(i)}
@@ -230,7 +251,10 @@ const PostPreviewList = ({
           );
         case "list":
           return (
-            <div key={i} className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
               {block.ordered ? (
                 <ol className="list-decimal list-inside space-y-1">
                   {(block.items || []).map((item, j) => (
@@ -255,8 +279,17 @@ const PostPreviewList = ({
           );
         case "video":
           return (
-            <div key={i} className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
-              <VideoBlock src={block.src || ""} caption={block.caption || ""} autoPlay={false} muted={false} loop={false} />
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
+              <VideoBlock
+                src={block.src || ""}
+                caption={block.caption || ""}
+                autoPlay={false}
+                muted={false}
+                loop={false}
+              />
               <button
                 onClick={() => deleteBlock(i)}
                 className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
@@ -268,7 +301,10 @@ const PostPreviewList = ({
           );
         case "image":
           return (
-            <div key={i} className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
               {block.src ? (
                 <img
                   src={block.src}
@@ -277,9 +313,13 @@ const PostPreviewList = ({
                   loading="lazy"
                 />
               ) : (
-                <div className="w-full h-48 flex items-center justify-center italic opacity-80">No image source provided</div>
+                <div className="w-full h-48 flex items-center justify-center italic opacity-80">
+                  No image source provided
+                </div>
               )}
-              {block.caption && <p className="mt-2 text-sm italic">{block.caption}</p>}
+              {block.caption && (
+                <p className="mt-2 text-sm italic">{block.caption}</p>
+              )}
               <button
                 onClick={() => deleteBlock(i)}
                 className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
@@ -293,7 +333,13 @@ const PostPreviewList = ({
           return (
             <div key={i} className="relative my-4">
               <h2
-                className={`font-semibold ${block.level === 1 ? "text-2xl" : block.level === 3 ? "text-lg" : "text-xl"}`}
+                className={`font-semibold ${
+                  block.level === 1
+                    ? "text-2xl"
+                    : block.level === 3
+                    ? "text-lg"
+                    : "text-xl"
+                }`}
               >
                 {block.text || "Empty heading"}
               </h2>
@@ -310,7 +356,9 @@ const PostPreviewList = ({
           return (
             <div key={i} className="relative my-4">
               <hr className="border-gray-200 dark:border-gray-800" />
-              {block.caption && <p className="mt-2 text-sm italic">{block.caption}</p>}
+              {block.caption && (
+                <p className="mt-2 text-sm italic">{block.caption}</p>
+              )}
               <button
                 onClick={() => deleteBlock(i)}
                 className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
@@ -323,7 +371,12 @@ const PostPreviewList = ({
         case "link":
           return (
             <div key={i} className="relative my-4">
-              <a href={block.href || "#"} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
+              <a
+                href={block.href || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 hover:underline"
+              >
                 {block.text || block.href || "Empty link"}
               </a>
               <button
@@ -337,11 +390,18 @@ const PostPreviewList = ({
           );
         case "poll":
           return (
-            <div key={i} className="relative my-4 p-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
-              <h3 className="text-lg font-medium">{block.question || "Poll"}</h3>
+            <div
+              key={i}
+              className="relative my-4 p-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800"
+            >
+              <h3 className="text-lg font-medium">
+                {block.question || "Poll"}
+              </h3>
               <ul className="mt-2 space-y-2">
                 {(block.options || []).map((opt, j) => (
-                  <li key={j}>{typeof opt === "string" ? opt : opt.option || "Option"}</li>
+                  <li key={j}>
+                    {typeof opt === "string" ? opt : opt.option || "Option"}
+                  </li>
                 ))}
               </ul>
               <button
@@ -355,10 +415,15 @@ const PostPreviewList = ({
           );
         case "quote":
           return (
-            <div key={i} className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
               <blockquote className="border-l-4 border-blue-500 dark:border-blue-600 pl-4 italic">
                 <p>{block.text || "Empty quote"}</p>
-                {block.author && <footer className="mt-2 text-sm">— {block.author}</footer>}
+                {block.author && (
+                  <footer className="mt-2 text-sm">— {block.author}</footer>
+                )}
               </blockquote>
               <button
                 onClick={() => deleteBlock(i)}
@@ -371,8 +436,11 @@ const PostPreviewList = ({
           );
         case "table":
           return (
-            <div key={i} className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
-              <TableBlock headers={block.headers || []} rows={block.rows || [[]]} caption={block.caption || ""} />
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
+              <TableBlock data={block.data} caption={block.caption || ""} />
               <button
                 onClick={() => deleteBlock(i)}
                 className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
@@ -384,8 +452,16 @@ const PostPreviewList = ({
           );
         case "text":
           return (
-            <div key={i} className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
-              <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: block.value || "Empty text" }} />
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
+              <div
+                className="prose max-w-none"
+                dangerouslySetInnerHTML={{
+                  __html: block.value || "Empty text",
+                }}
+              />
               <button
                 onClick={() => deleteBlock(i)}
                 className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
@@ -396,7 +472,10 @@ const PostPreviewList = ({
             </div>
           );
         default:
-          console.warn(`[DEBUG] Unsupported block type at index ${i}:`, block.type);
+          console.warn(
+            `[DEBUG] Unsupported block type at index ${i}:`,
+            block.type
+          );
           return (
             <div key={i} className="relative my-4 text-red-500 italic">
               Unsupported block type: {block.type}
@@ -418,12 +497,20 @@ const PostPreviewList = ({
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800">
       {currentDraftPost && (
         <>
-          <h2 className="text-3xl sm:text-4xl font-bold text-center text-blue-600 dark:text-blue-400 mb-6">Draft Preview</h2>
-          <h1 className="text-2xl sm:text-3xl font-semibold mb-4 capitalize">{currentDraftPost.title || "Untitled Draft"}</h1>
-          <p className="mb-4 opacity-80">Category: {categoryName || "Uncategorized"}</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-center text-blue-600 dark:text-blue-400 mb-6">
+            Draft Preview
+          </h2>
+          <h1 className="text-2xl sm:text-3xl font-semibold mb-4 capitalize">
+            {currentDraftPost.title || "Untitled Draft"}
+          </h1>
+          <p className="mb-4 opacity-80">
+            Category: {categoryName || "Uncategorized"}
+          </p>
           <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 mb-8 border border-gray-200 dark:border-gray-800">
             {currentDraftPost.blocks?.length === 0 ? (
-              <p className="italic text-center opacity-80">No content blocks added yet.</p>
+              <p className="italic text-center opacity-80">
+                No content blocks added yet.
+              </p>
             ) : (
               currentDraftPost.blocks.map((block, i) => renderBlock(block, i))
             )}
@@ -473,18 +560,25 @@ const PostPreviewList = ({
             onClick={createPost}
             disabled={createLoading}
             className={`w-full flex items-center justify-center text-lg font-semibold py-3 rounded-lg shadow-sm transition duration-300 ${
-              createLoading ? "bg-blue-400 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600 text-white"
+              createLoading
+                ? "bg-blue-400 cursor-not-allowed"
+                : "bg-blue-500 hover:bg-blue-600 text-white"
             }`}
           >
             {createLoading ? (
               <>
-                Creating... <PacmanLoader size={12} color="#ffffff" className="ml-2" />
+                Creating...{" "}
+                <PacmanLoader size={12} color="#ffffff" className="ml-2" />
               </>
             ) : (
               "Create Post"
             )}
           </button>
-          {createError && <p className="mt-2 text-red-500 text-sm text-center">{createError}</p>}
+          {createError && (
+            <p className="mt-2 text-red-500 text-sm text-center">
+              {createError}
+            </p>
+          )}
         </>
       )}
 
@@ -493,7 +587,9 @@ const PostPreviewList = ({
       ) : (
         <div className="grid gap-6 mt-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {allPosts.map((post) => {
-            const firstBlock = post.blocks.find((b) => ["image", "text", "file", "heading"].includes(b.type));
+            const firstBlock = post.blocks.find((b) =>
+              ["image", "text", "file", "heading"].includes(b.type)
+            );
             return (
               <motion.div
                 key={post._id}
@@ -503,7 +599,10 @@ const PostPreviewList = ({
                 exit={{ opacity: 0, y: -20 }}
                 className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-lg transition-all duration-300"
               >
-                <div onClick={() => dispatch(getSinglePost(post.slug))} className="cursor-pointer">
+                <div
+                  onClick={() => dispatch(getSinglePost(post.slug))}
+                  className="cursor-pointer"
+                >
                   {firstBlock?.type === "image" ? (
                     <img
                       src={firstBlock.src}
@@ -513,9 +612,14 @@ const PostPreviewList = ({
                       loading="lazy"
                     />
                   ) : firstBlock?.type === "text" ? (
-                    <div className="p-4 line-clamp-3 text-sm" dangerouslySetInnerHTML={{ __html: firstBlock.value }} />
+                    <div
+                      className="p-4 line-clamp-3 text-sm"
+                      dangerouslySetInnerHTML={{ __html: firstBlock.value }}
+                    />
                   ) : (
-                    <div className="p-4 italic text-sm">No preview available</div>
+                    <div className="p-4 italic text-sm">
+                      No preview available
+                    </div>
                   )}
                 </div>
               </motion.div>
@@ -526,7 +630,10 @@ const PostPreviewList = ({
 
       <AnimatePresence>
         {showConfirmModal && (
-          <ConfirmPostModal onConfirm={handleModalConfirm} onCancel={handleCancelPublish} />
+          <ConfirmPostModal
+            onConfirm={handleModalConfirm}
+            onCancel={handleCancelPublish}
+          />
         )}
       </AnimatePresence>
 
