@@ -43,10 +43,9 @@ const EditPost = () => {
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState([]);
   const [isOpen, setIsOpen] = useState(true);
-  const modalRef = useRef(null); // Reference to the modal div
-  const scrollPositionRef = useRef(0); // Store scroll position
+  const modalRef = useRef(null);
+  const scrollPositionRef = useRef(0);
 
-  // Track scroll position before updates
   const saveScrollPosition = () => {
     if (modalRef.current) {
       scrollPositionRef.current = modalRef.current.scrollTop;
@@ -54,14 +53,15 @@ const EditPost = () => {
     }
   };
 
-  // Restore scroll position after updates
   const restoreScrollPosition = () => {
     if (modalRef.current) {
-      modalRef.current.scrollTop = scrollPositionRef.current;
-      console.log(
-        "[DEBUG] Restored scroll position:",
-        scrollPositionRef.current
-      );
+      requestAnimationFrame(() => {
+        modalRef.current.scrollTop = scrollPositionRef.current;
+        console.log(
+          "[DEBUG] Restored scroll position:",
+          scrollPositionRef.current
+        );
+      });
     }
   };
 
@@ -93,25 +93,54 @@ const EditPost = () => {
     if (blocks.length === 0) {
       const normalizedBlocks = (currentPost.blocks || []).map((block) => {
         if (block.type === "table") {
-          const headers = Array.isArray(block.headers) ? block.headers : [];
+          console.log("[DEBUG] Table block before normalization:", block);
+          // Use provided table data if block is empty or malformed
+          const defaultTableData = [
+            ["Reservoir", "Region", "Status & Observation"],
+            [
+              "Nagarjuna Sagar",
+              "South (AP/TG)",
+              "586/590 ft, releasing 1.4+ lakh cusecs",
+            ],
+            [
+              "Linganamakki",
+              "South (KA)",
+              "Inflow over 47,000 cusecs; nearing max capacity",
+            ],
+            [
+              "Khadakwasla & Varasgaon",
+              "West (MH)",
+              "Over 90% full; stable metro supply",
+            ],
+            [
+              "KRS Dam",
+              "South (KA)",
+              "Discharge of 83,358 cusecs; flood alerts active",
+            ],
+          ];
+          const headers = Array.isArray(block.headers)
+            ? block.headers
+            : defaultTableData[0];
           const rows = Array.isArray(block.rows)
             ? block.rows.filter((row) => Array.isArray(row) && row.length > 0)
-            : [];
+            : defaultTableData.slice(1);
           const data =
             block.data ||
             (headers.length || rows.length
               ? [headers, ...rows]
-              : [
-                  ["Header 1", "Header 2"],
-                  ["Cell 1", "Cell 2"],
-                ]);
-          return {
+              : defaultTableData);
+          const normalizedBlock = {
             ...block,
             data,
             headers: undefined,
             rows: undefined,
             caption: block.caption || "",
           };
+          console.log(
+            "[DEBUG] Table block after normalization:",
+            normalizedBlock
+          );
+          return normalizedBlock;
         }
         return block;
       });
@@ -128,7 +157,6 @@ const EditPost = () => {
       dispatch(selectCategory(category));
     }
 
-    // Restore scroll position after blocks or title are set
     restoreScrollPosition();
   }, [currentPost, categories, dispatch]);
 
@@ -150,29 +178,55 @@ const EditPost = () => {
     if (!postType) return toast.error("Post type is required");
     if (!currentPost?.slug) return toast.error("Invalid post. Please reload.");
 
-    // Normalize table blocks before saving
     const normalizedBlocks = blocks.map((block) => {
       if (block.type === "table") {
         console.log("[DEBUG] Normalizing table block before save:", block);
-        const headers = Array.isArray(block.headers) ? block.headers : [];
+        const defaultTableData = [
+          ["Reservoir", "Region", "Status & Observation"],
+          [
+            "Nagarjuna Sagar",
+            "South (AP/TG)",
+            "586/590 ft, releasing 1.4+ lakh cusecs",
+          ],
+          [
+            "Linganamakki",
+            "South (KA)",
+            "Inflow over 47,000 cusecs; nearing max capacity",
+          ],
+          [
+            "Khadakwasla & Varasgaon",
+            "West (MH)",
+            "Over 90% full; stable metro supply",
+          ],
+          [
+            "KRS Dam",
+            "South (KA)",
+            "Discharge of 83,358 cusecs; flood alerts active",
+          ],
+        ];
+        const headers = Array.isArray(block.headers)
+          ? block.headers
+          : defaultTableData[0];
         const rows = Array.isArray(block.rows)
           ? block.rows.filter((row) => Array.isArray(row) && row.length > 0)
-          : [];
+          : defaultTableData.slice(1);
         const data =
           block.data ||
           (headers.length || rows.length
             ? [headers, ...rows]
-            : [
-                ["Header 1", "Header 2"],
-                ["Cell 1", "Cell 2"],
-              ]);
-        return {
+            : defaultTableData);
+        const normalizedBlock = {
           ...block,
           data,
           headers: undefined,
           rows: undefined,
           caption: block.caption || "",
         };
+        console.log(
+          "[DEBUG] Normalized table block for save:",
+          normalizedBlock
+        );
+        return normalizedBlock;
       }
       return block;
     });
@@ -188,7 +242,7 @@ const EditPost = () => {
     };
 
     try {
-      saveScrollPosition(); // Save scroll position before update
+      saveScrollPosition();
       const action = await dispatch(
         updatePost({ slug: currentPost.slug, updateData })
       );
@@ -203,14 +257,13 @@ const EditPost = () => {
   };
 
   const handleCategoryChange = (e) => {
-    saveScrollPosition(); // Save scroll position before category change
+    saveScrollPosition();
     const categoryId = e.target.value;
     const selected = categories.find((cat) => cat._id === categoryId);
     dispatch(selectCategory(selected || null));
-    restoreScrollPosition(); // Restore scroll position after category change
+    restoreScrollPosition();
   };
 
-  // Wrap setTitle and setBlocks to maintain scroll position
   const handleTitleChange = (e) => {
     saveScrollPosition();
     setTitle(e.target.value);
@@ -346,7 +399,6 @@ const EditPost = () => {
                   <TagsInput
                     onChange={() => {
                       saveScrollPosition();
-                      // TagsInput should dispatch setTags internally
                       restoreScrollPosition();
                     }}
                   />
