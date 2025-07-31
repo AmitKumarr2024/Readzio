@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { MessageCircle, Eye, Heart, Bookmark, Share2 } from "lucide-react";
-import TimeAgo from "../../Utils/TimeAgo";
 import { fetchSubscriptionPlansByAuthor } from "../../store/subscriptionSlice";
 import Skeleton from "@/components/Ui/Skeleton";
 
@@ -76,6 +75,13 @@ const CardOfPost = ({
     );
   }
 
+  // Format date to a standard format (e.g., MM/DD/YYYY)
+  const formattedDate = new Date(createdAt || new Date()).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+
   return (
     <Link
       to={`/post/${slug}`}
@@ -108,7 +114,9 @@ const CardOfPost = ({
               <td className="truncate">
                 {categoryMap[category._id] || "Uncategorized"}
               </td>
-              <td className="truncate">{author.name || "Anonymous"}</td>
+              <td className="truncate font-bold text-gray-700 dark:text-gray-200">
+                {author.name || "Anonymous"}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -148,7 +156,7 @@ const CardOfPost = ({
           </tbody>
         </table>
         <div className="text-xs text-gray-400 dark:text-gray-500">
-          <TimeAgo date={createdAt || new Date()} />
+          {formattedDate}
         </div>
         {isSubscribedToAuthor && authorId !== currentUser?._id && (
           <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
