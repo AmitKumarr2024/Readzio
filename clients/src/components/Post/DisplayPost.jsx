@@ -1,3 +1,4 @@
+// File: src/components/DisplayPost.js
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
@@ -70,30 +71,6 @@ const DisplayPost = () => {
   const activePost = isAuthenticated ? post : guestPost;
   const activeLoading = isAuthenticated ? loading : guestLoading;
   const activeError = isAuthenticated ? error : guestError;
-
-  const defaultTableData = [
-    ["Reservoir", "Region", "Status & Observation"],
-    [
-      "Nagarjuna Sagar",
-      "South (AP/TG)",
-      "586/590 ft, releasing 1.4+ lakh cusecs",
-    ],
-    [
-      "Linganamakki",
-      "South (KA)",
-      "Inflow over 47,000 cusecs; nearing max capacity",
-    ],
-    [
-      "Khadakwasla & Varasgaon",
-      "West (MH)",
-      "Over 90% full; stable metro supply",
-    ],
-    [
-      "KRS Dam",
-      "South (KA)",
-      "Discharge of 83,358 cusecs; flood alerts active",
-    ],
-  ];
 
   const categoryMap = useMemo(() => {
     return categories.reduce((map, cat) => {
@@ -262,7 +239,7 @@ const DisplayPost = () => {
             ? block.data
             : Array.isArray(block.items) && block.items.length > 0
             ? block.items
-            : defaultTableData;
+            : [];
         const normalizedBlock = {
           id: block.id,
           type: "table",
