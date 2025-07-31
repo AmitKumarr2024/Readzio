@@ -83,7 +83,7 @@ const InArticleAd = ({ postId }) => {
                 data-full-width-responsive="false"
               />
             </div>
-            <p className="mt-1 text-xs text-center italic text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-xs text-start italic text-gray-500 dark:text-gray-400">
               Sponsored
             </p>
           </>
