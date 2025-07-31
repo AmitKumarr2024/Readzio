@@ -51,9 +51,9 @@ const InArticleAd = ({ postId }) => {
 
   return (
     <div className="in-article-ad w-full my-6 flex justify-center">
-      <div className="w-full max-w-[728px] h-[90px] overflow-hidden flex justify-center items-center">
+      <div className="w-full max-w-[728px] flex flex-col items-center">
         {isAdBlocked ? (
-          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded">
+          <div className="w-full h-[90px] bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded">
             <img
               src="https://placehold.co/728x90?text=Ad+Blocked"
               alt="Ad Blocked"
@@ -62,25 +62,27 @@ const InArticleAd = ({ postId }) => {
           </div>
         ) : (
           <>
-            <ins
-              ref={adRef}
-              className="adsbygoogle"
-              style={{
-                display: "block",
-                position: "static !important",
-                top: "auto !important",
-                left: "auto !important",
-                width: "100%",
-                height: "90px",
-                textAlign: "center",
-                overflow: "hidden",
-              }}
-              data-ad-client="ca-pub-8408980890451581"
-              data-ad-slot="4935470124"
-              data-ad-format="auto"
-              data-ad-layout="in-article"
-              data-full-width-responsive="false"
-            />
+            <div className="w-full h-[90px] overflow-hidden flex justify-center items-center">
+              <ins
+                ref={adRef}
+                className="adsbygoogle"
+                style={{
+                  display: "block",
+                  position: "static !important",
+                  top: "auto !important",
+                  left: "auto !important",
+                  width: "100%",
+                  height: "90px",
+                  textAlign: "center",
+                  overflow: "hidden",
+                }}
+                data-ad-client="ca-pub-8408980890451581"
+                data-ad-slot="4935470124"
+                data-ad-format="auto"
+                data-ad-layout="in-article"
+                data-full-width-responsive="false"
+              />
+            </div>
             <p className="mt-1 text-xs text-center italic text-gray-500 dark:text-gray-400">
               Sponsored
             </p>
