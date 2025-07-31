@@ -1,4 +1,4 @@
-// File: src/components/TableBlocksOutput.js (assumed)
+// File: src/components/TableBlocksOutput.js
 const TableBlocksOutput = ({ data, caption }) => {
   console.log("[DEBUG] TableBlocksOutput data:", data);
   if (!Array.isArray(data) || data.length === 0) {

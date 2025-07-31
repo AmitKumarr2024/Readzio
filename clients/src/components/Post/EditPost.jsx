@@ -46,6 +46,30 @@ const EditPost = () => {
   const modalRef = useRef(null);
   const scrollPositionRef = useRef(0);
 
+  const defaultTableData = [
+    ["Reservoir", "Region", "Status & Observation"],
+    [
+      "Nagarjuna Sagar",
+      "South (AP/TG)",
+      "586/590 ft, releasing 1.4+ lakh cusecs",
+    ],
+    [
+      "Linganamakki",
+      "South (KA)",
+      "Inflow over 47,000 cusecs; nearing max capacity",
+    ],
+    [
+      "Khadakwasla & Varasgaon",
+      "West (MH)",
+      "Over 90% full; stable metro supply",
+    ],
+    [
+      "KRS Dam",
+      "South (KA)",
+      "Discharge of 83,358 cusecs; flood alerts active",
+    ],
+  ];
+
   const saveScrollPosition = () => {
     if (modalRef.current) {
       scrollPositionRef.current = modalRef.current.scrollTop;
@@ -94,46 +118,18 @@ const EditPost = () => {
       const normalizedBlocks = (currentPost.blocks || []).map((block) => {
         if (block.type === "table") {
           console.log("[DEBUG] Table block before normalization:", block);
-          // Use provided table data if block is empty or malformed
-          const defaultTableData = [
-            ["Reservoir", "Region", "Status & Observation"],
-            [
-              "Nagarjuna Sagar",
-              "South (AP/TG)",
-              "586/590 ft, releasing 1.4+ lakh cusecs",
-            ],
-            [
-              "Linganamakki",
-              "South (KA)",
-              "Inflow over 47,000 cusecs; nearing max capacity",
-            ],
-            [
-              "Khadakwasla & Varasgaon",
-              "West (MH)",
-              "Over 90% full; stable metro supply",
-            ],
-            [
-              "KRS Dam",
-              "South (KA)",
-              "Discharge of 83,358 cusecs; flood alerts active",
-            ],
-          ];
-          const headers = Array.isArray(block.headers)
-            ? block.headers
-            : defaultTableData[0];
-          const rows = Array.isArray(block.rows)
-            ? block.rows.filter((row) => Array.isArray(row) && row.length > 0)
-            : defaultTableData.slice(1);
-          const data =
-            block.data ||
-            (headers.length || rows.length
-              ? [headers, ...rows]
-              : defaultTableData);
+          // Prioritize items if valid, else use defaultTableData
+          const items =
+            Array.isArray(block.items) && block.items.length > 0
+              ? block.items
+              : defaultTableData;
+          const data = block.data || items;
           const normalizedBlock = {
             ...block,
             data,
             headers: undefined,
             rows: undefined,
+            items: undefined,
             caption: block.caption || "",
           };
           console.log(
@@ -181,45 +177,17 @@ const EditPost = () => {
     const normalizedBlocks = blocks.map((block) => {
       if (block.type === "table") {
         console.log("[DEBUG] Normalizing table block before save:", block);
-        const defaultTableData = [
-          ["Reservoir", "Region", "Status & Observation"],
-          [
-            "Nagarjuna Sagar",
-            "South (AP/TG)",
-            "586/590 ft, releasing 1.4+ lakh cusecs",
-          ],
-          [
-            "Linganamakki",
-            "South (KA)",
-            "Inflow over 47,000 cusecs; nearing max capacity",
-          ],
-          [
-            "Khadakwasla & Varasgaon",
-            "West (MH)",
-            "Over 90% full; stable metro supply",
-          ],
-          [
-            "KRS Dam",
-            "South (KA)",
-            "Discharge of 83,358 cusecs; flood alerts active",
-          ],
-        ];
-        const headers = Array.isArray(block.headers)
-          ? block.headers
-          : defaultTableData[0];
-        const rows = Array.isArray(block.rows)
-          ? block.rows.filter((row) => Array.isArray(row) && row.length > 0)
-          : defaultTableData.slice(1);
-        const data =
-          block.data ||
-          (headers.length || rows.length
-            ? [headers, ...rows]
-            : defaultTableData);
+        const items =
+          Array.isArray(block.items) && block.items.length > 0
+            ? block.items
+            : defaultTableData;
+        const data = block.data || items;
         const normalizedBlock = {
           ...block,
           data,
           headers: undefined,
           rows: undefined,
+          items: undefined,
           caption: block.caption || "",
         };
         console.log(
