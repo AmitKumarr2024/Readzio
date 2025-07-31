@@ -1,3 +1,4 @@
+// File: src/components/PostPreviewList.js
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -26,7 +27,6 @@ const PostPreviewList = ({
   category,
   categoryName,
   allPosts,
-  deletePost,
   createLoading,
   createError,
   onCreatePost,
@@ -47,6 +47,26 @@ const PostPreviewList = ({
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { singlePost, singlePostStatus } = useSelector((state) => state.post);
+
+  useEffect(() => {
+    console.log("[DEBUG] PostPreviewList: Props received:", {
+      currentDraftPost,
+      postType,
+      category,
+      categoryName,
+      allPosts,
+      createLoading,
+      createError,
+    });
+  }, [
+    currentDraftPost,
+    postType,
+    category,
+    categoryName,
+    allPosts,
+    createLoading,
+    createError,
+  ]);
 
   useEffect(() => {
     if (singlePost) setIsModalOpen(true);
@@ -100,6 +120,14 @@ const PostPreviewList = ({
       return;
     }
 
+    console.log("[DEBUG] createPost metadata:", {
+      isFeatured,
+      isPinned,
+      isPublished,
+      language,
+      category,
+      categoryName,
+    });
     setShowConfirmModal(true);
   };
 
@@ -125,6 +153,7 @@ const PostPreviewList = ({
 
   const handleConfirmPublish = async () => {
     setIsPostConfirmed(false);
+    console.log("[DEBUG] Initiating post creation with data:", postData);
     await onCreatePost(postData);
     setPostData(null);
     setCountdown(5);
@@ -150,6 +179,7 @@ const PostPreviewList = ({
   };
 
   const deleteBlock = (index) => {
+    console.log("[DEBUG] Deleting block at index:", index);
     if (!onUpdateDraft) {
       toast.error("No update function provided");
       return;
@@ -171,25 +201,31 @@ const PostPreviewList = ({
         );
       }
 
-      // Normalize table block data to match TableBlocksOutput expectation
+      console.log(`[DEBUG] Rendering block ${i}:`, block);
+
       if (block.type === "table") {
-        const headers = block.headers || [];
-        const rows = block.rows && Array.isArray(block.rows) ? block.rows : [];
-        const data =
-          headers.length || rows.length
-            ? [headers, ...rows]
-            : [
-                ["Header 1", "Header 2"],
-                ["Cell 1", "Cell 2"],
-                ["Cell 3", "Cell 4"],
-              ];
-        block = {
-          ...block,
-          data,
+        console.log(`[DEBUG] Table block props before render:`, {
+          headers: block.headers || [],
+          rows: block.rows || [[]],
           caption: block.caption || "",
-          headers: undefined, // Remove headers to avoid passing unused props
-          rows: undefined, // Remove rows to avoid passing unused props
-        };
+        });
+        if (!block.headers?.length && !block.rows?.some((row) => row.length)) {
+          console.warn(`[DEBUG] Empty table block at index ${i}:`, block);
+          toast.error("Table block is empty. Using default data.");
+          block = {
+            ...block,
+            headers: block.headers?.length
+              ? block.headers
+              : ["Header 1", "Header 2"],
+            rows: block.rows?.some((row) => row.length)
+              ? block.rows
+              : [
+                  ["Cell 1", "Cell 2"],
+                  ["Cell 3", "Cell 4"],
+                ],
+            caption: block.caption || "",
+          };
+        }
       }
 
       const blockProps = {
@@ -440,7 +476,11 @@ const PostPreviewList = ({
               key={i}
               className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
             >
-              <TableBlock data={block.data} caption={block.caption || ""} />
+              <TableBlock
+                headers={block.headers || []}
+                rows={block.rows || [[]]}
+                caption={block.caption || ""}
+              />
               <button
                 onClick={() => deleteBlock(i)}
                 className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"

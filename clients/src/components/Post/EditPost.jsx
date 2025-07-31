@@ -1,12 +1,17 @@
-import React, { useEffect, useState } from "react";
+// File: src/components/EditPost.js
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import PostEditor from "../CreatePost/PostEditor";
 import { updatePost, getSinglePost, clearError } from "../../store/postSlice";
 import LoadingBar from "../../Utils/LoadingBar";
-import { toast} from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import TagsInput from "../CreatePost/TagsInput";
-import { resetPostMeta, setPostType, setTags } from "../../store/Post/postMetaSlice";
+import {
+  resetPostMeta,
+  setPostType,
+  setTags,
+} from "../../store/Post/postMetaSlice";
 import { fetchCategories, selectCategory } from "../../store/categorySlice";
 import { X } from "lucide-react";
 import { Transition } from "@headlessui/react";
@@ -28,13 +33,37 @@ const EditPost = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((state) => state.auth);
-  const { currentPost, loading, error, updateLoading, updateSuccess } = useSelector((state) => state.post);
+  const { currentPost, loading, error, updateLoading, updateSuccess } =
+    useSelector((state) => state.post);
   const { postType, tags } = useSelector((state) => state.postMeta);
-  const { categories, selectedCategory } = useSelector((state) => state.categories);
+  const { categories, selectedCategory } = useSelector(
+    (state) => state.categories
+  );
 
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState([]);
   const [isOpen, setIsOpen] = useState(true);
+  const modalRef = useRef(null); // Reference to the modal div
+  const scrollPositionRef = useRef(0); // Store scroll position
+
+  // Track scroll position before updates
+  const saveScrollPosition = () => {
+    if (modalRef.current) {
+      scrollPositionRef.current = modalRef.current.scrollTop;
+      console.log("[DEBUG] Saved scroll position:", scrollPositionRef.current);
+    }
+  };
+
+  // Restore scroll position after updates
+  const restoreScrollPosition = () => {
+    if (modalRef.current) {
+      modalRef.current.scrollTop = scrollPositionRef.current;
+      console.log(
+        "[DEBUG] Restored scroll position:",
+        scrollPositionRef.current
+      );
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -61,14 +90,46 @@ const EditPost = () => {
     if (!currentPost) return;
 
     if (title === "") setTitle(currentPost.title || "");
-    if (blocks.length === 0) setBlocks(currentPost.blocks || []);
+    if (blocks.length === 0) {
+      const normalizedBlocks = (currentPost.blocks || []).map((block) => {
+        if (block.type === "table") {
+          const headers = Array.isArray(block.headers) ? block.headers : [];
+          const rows = Array.isArray(block.rows)
+            ? block.rows.filter((row) => Array.isArray(row) && row.length > 0)
+            : [];
+          const data =
+            block.data ||
+            (headers.length || rows.length
+              ? [headers, ...rows]
+              : [
+                  ["Header 1", "Header 2"],
+                  ["Cell 1", "Cell 2"],
+                ]);
+          return {
+            ...block,
+            data,
+            headers: undefined,
+            rows: undefined,
+            caption: block.caption || "",
+          };
+        }
+        return block;
+      });
+      setBlocks(normalizedBlocks);
+    }
     if (!postType) dispatch(setPostType(currentPost.postType || ""));
     if (tags.length === 0) dispatch(setTags(currentPost.tags || []));
 
     const category = categories.find((cat) => cat._id === currentPost.category);
-    if (category && (!selectedCategory || selectedCategory._id !== category._id)) {
+    if (
+      category &&
+      (!selectedCategory || selectedCategory._id !== category._id)
+    ) {
       dispatch(selectCategory(category));
     }
+
+    // Restore scroll position after blocks or title are set
+    restoreScrollPosition();
   }, [currentPost, categories, dispatch]);
 
   useEffect(() => {
@@ -83,21 +144,54 @@ const EditPost = () => {
 
   const handleSave = async () => {
     if (!title.trim()) return toast.error("Post title cannot be empty");
-    if (blocks.length === 0) return toast.error("Add at least one content block");
+    if (blocks.length === 0)
+      return toast.error("Add at least one content block");
     if (!selectedCategory) return toast.error("Please select a category");
     if (!postType) return toast.error("Post type is required");
     if (!currentPost?.slug) return toast.error("Invalid post. Please reload.");
+
+    // Normalize table blocks before saving
+    const normalizedBlocks = blocks.map((block) => {
+      if (block.type === "table") {
+        console.log("[DEBUG] Normalizing table block before save:", block);
+        const headers = Array.isArray(block.headers) ? block.headers : [];
+        const rows = Array.isArray(block.rows)
+          ? block.rows.filter((row) => Array.isArray(row) && row.length > 0)
+          : [];
+        const data =
+          block.data ||
+          (headers.length || rows.length
+            ? [headers, ...rows]
+            : [
+                ["Header 1", "Header 2"],
+                ["Cell 1", "Cell 2"],
+              ]);
+        return {
+          ...block,
+          data,
+          headers: undefined,
+          rows: undefined,
+          caption: block.caption || "",
+        };
+      }
+      return block;
+    });
+
+    console.log("[DEBUG] Saving post with blocks:", normalizedBlocks);
 
     const updateData = {
       title,
       category: selectedCategory._id,
       postType,
       tags,
-      blocks: blocks.map((block) => ({ ...block, blocked: false })),
+      blocks: normalizedBlocks.map((block) => ({ ...block, blocked: false })),
     };
 
     try {
-      const action = await dispatch(updatePost({ slug: currentPost.slug, updateData }));
+      saveScrollPosition(); // Save scroll position before update
+      const action = await dispatch(
+        updatePost({ slug: currentPost.slug, updateData })
+      );
       if (updatePost.fulfilled.match(action)) {
         dispatch(clearError());
       } else {
@@ -109,21 +203,42 @@ const EditPost = () => {
   };
 
   const handleCategoryChange = (e) => {
+    saveScrollPosition(); // Save scroll position before category change
     const categoryId = e.target.value;
     const selected = categories.find((cat) => cat._id === categoryId);
     dispatch(selectCategory(selected || null));
+    restoreScrollPosition(); // Restore scroll position after category change
+  };
+
+  // Wrap setTitle and setBlocks to maintain scroll position
+  const handleTitleChange = (e) => {
+    saveScrollPosition();
+    setTitle(e.target.value);
+    restoreScrollPosition();
+  };
+
+  const handleBlocksChange = (newBlocks) => {
+    saveScrollPosition();
+    setBlocks(newBlocks);
+    restoreScrollPosition();
   };
 
   if (!isAuthenticated) return null;
 
   if (!slug || slug === "undefined") {
-    return <div className="p-6 text-center text-red-500 bg-red-100 rounded-2xl mx-auto max-w-4xl">Invalid post slug.</div>;
+    return (
+      <div className="p-6 text-center text-red-500 bg-red-100 rounded-2xl mx-auto max-w-4xl">
+        Invalid post slug.
+      </div>
+    );
   }
 
   if (loading && !currentPost) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-        <div className="text-center text-gray-600 dark:text-gray-300 animate-pulse">Loading post...</div>
+        <div className="text-center text-gray-600 dark:text-gray-300 animate-pulse">
+          Loading post...
+        </div>
       </div>
     );
   }
@@ -158,7 +273,10 @@ const EditPost = () => {
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 animate-slide-up">
+            <div
+              ref={modalRef}
+              className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 animate-slide-up"
+            >
               <button
                 onClick={() => {
                   setIsOpen(false);
@@ -183,7 +301,7 @@ const EditPost = () => {
                     type="text"
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-white transition-all"
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={handleTitleChange}
                   />
                 </div>
 
@@ -212,7 +330,11 @@ const EditPost = () => {
                   <select
                     className="w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-white transition-all"
                     value={postType}
-                    onChange={(e) => dispatch(setPostType(e.target.value))}
+                    onChange={(e) => {
+                      saveScrollPosition();
+                      dispatch(setPostType(e.target.value));
+                      restoreScrollPosition();
+                    }}
                   >
                     <option value="">Select post type</option>
                     <option value="article">Article</option>
@@ -221,7 +343,13 @@ const EditPost = () => {
                 </div>
 
                 <div>
-                  <TagsInput />
+                  <TagsInput
+                    onChange={() => {
+                      saveScrollPosition();
+                      // TagsInput should dispatch setTags internally
+                      restoreScrollPosition();
+                    }}
+                  />
                 </div>
 
                 <div>
@@ -232,11 +360,11 @@ const EditPost = () => {
                     <PostEditor
                       size={100}
                       blocks={blocks}
-                      setBlocks={setBlocks}
+                      setBlocks={handleBlocksChange}
                       postType={postType}
                       category={selectedCategory?._id || ""}
                       title={title}
-                      setTitle={setTitle}
+                      setTitle={handleTitleChange}
                     />
                   </div>
                 </div>

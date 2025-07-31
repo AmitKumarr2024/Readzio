@@ -1,3 +1,4 @@
+// File: src/components/BlockRenderer.js
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -81,8 +82,8 @@ const BlockRenderer = ({
     if (validIndices.length < 6) return blocks;
 
     const adInsertions = [];
-    const interval = 6; // Place ad after every 6 valid blocks
-    let current = 5; // Place first ad after 6th valid block (index 5)
+    const interval = 6;
+    let current = 5;
     const maxAds = Math.min(5, Math.floor(validIndices.length / interval));
 
     for (
@@ -107,13 +108,32 @@ const BlockRenderer = ({
   };
 
   const renderBlock = (block, i) => {
+    if (!block || !block.type) {
+      console.warn(`[DEBUG] Invalid block at index ${i}:`, block);
+      return (
+        <div key={i} className="text-red-500 italic my-6">
+          Invalid content block.
+        </div>
+      );
+    }
+
+    // Normalize table block data
+    if (block.type === "table") {
+      console.log(`[DEBUG] Table block before normalization:`, block);
+      const headers = Array.isArray(block.headers) ? block.headers : [];
+      const rows = Array.isArray(block.rows) ? block.rows.filter(row => Array.isArray(row) && row.length > 0) : [];
+      const data = block.data || (headers.length || rows.length ? [headers, ...rows] : [["Header 1", "Header 2"], ["Cell 1", "Cell 2"]]);
+      block = { ...block, data, caption: block.caption || "", headers: undefined, rows: undefined };
+      console.log(`[DEBUG] Table block after normalization:`, block);
+    }
+
     switch (block.type) {
       case "text":
         return (
           <TextBlock
             key={i}
-            value={block.value}
-            className="text-gray-700 dark:text-gray-200 my-6"
+            value={block.value || "Empty text"}
+            className="text-text-main-light dark:text-text-main-dark my-6"
           />
         );
       case "image":
@@ -132,7 +152,7 @@ const BlockRenderer = ({
             code={block.code}
             language={block.language || "javascript"}
             caption={block.caption}
-            className="my-6 bg-gray-800 rounded-lg p-4"
+            className="my-6 bg-gray-800 dark:bg-gray-900 rounded-lg p-4"
           />
         );
       case "video":
@@ -150,16 +170,16 @@ const BlockRenderer = ({
             key={i}
             text={block.text}
             author={block.author}
-            className="my-6 border-l-4 border-blue-600 pl-4 italic text-gray-700 dark:text-gray-200"
+            className="my-6 border-l-4 border-blue-600 dark:border-blue-400 pl-4 italic text-text-main-light dark:text-text-main-dark"
           />
         );
       case "list":
         return (
           <ListBlockOutput
             key={i}
-            items={block.items}
+            items={block.items || []}
             ordered={block.ordered}
-            className="my-6 text-gray-700 dark:text-gray-200"
+            className="my-6 text-text-main-light dark:text-text-main-dark"
           />
         );
       case "heading":
@@ -167,10 +187,10 @@ const BlockRenderer = ({
           <HeadingOutput
             key={i}
             level={block.level || 2}
-            text={block.text}
+            text={block.text || "Empty heading"}
             className={`text-${
               block.level === 1 ? "4xl" : block.level === 2 ? "3xl" : "2xl"
-            } font-bold text-gray-900 dark:text-white my-6`}
+            } font-bold text-text-main-light dark:text-text-main-dark my-6`}
           />
         );
       case "table":
@@ -189,7 +209,7 @@ const BlockRenderer = ({
             href={block.href}
             text={block.text}
             caption={block.caption}
-            className="my-6 text-blue-600 hover:underline"
+            className="my-6 text-blue-600 dark:text-blue-400 hover:underline"
           />
         );
       case "hr":
@@ -197,7 +217,7 @@ const BlockRenderer = ({
           <HrOutput
             key={i}
             caption={block.caption}
-            className="my-6 border-gray-200 dark:border-gray-700"
+            className="my-6 border-border-light dark:border-border-dark"
           />
         );
       case "file":
@@ -206,7 +226,7 @@ const BlockRenderer = ({
             key={i}
             url={block.url}
             name={block.name}
-            className="my-6 text-blue-600 hover:underline"
+            className="my-6 text-blue-600 dark:text-blue-400 hover:underline"
           />
         );
       case "poll":
@@ -216,9 +236,9 @@ const BlockRenderer = ({
             slug={slug}
             blockId={block.id}
             question={block.question}
-            options={block.options}
+            options={block.options || []}
             caption={block.caption}
-            className="my-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg"
+            className="my-6 p-4 bg-background-alt-light dark:bg-background-alt-dark rounded-lg"
           />
         );
       case "ad":
@@ -228,9 +248,10 @@ const BlockRenderer = ({
           </div>
         );
       default:
+        console.warn(`[DEBUG] Unsupported block type at index ${i}:`, block.type);
         return (
           <div key={i} className="text-red-500 italic my-6">
-            Unsupported content block.
+            Unsupported content block: {block.type}
           </div>
         );
     }
@@ -239,16 +260,16 @@ const BlockRenderer = ({
   if (subscriptionLoading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="w-full h-32 rounded-lg bg-gray-200 dark:bg-gray-700" />
-        <Skeleton className="h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
+        <Skeleton className="w-full h-32 rounded-lg bg-background-alt-light dark:bg-background-alt-dark" />
+        <Skeleton className="h-6 w-3/4 rounded bg-background-alt-light dark:bg-background-alt-dark" />
         <table className="w-full">
           <tbody>
             <tr>
               <td>
-                <Skeleton className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" />
+                <Skeleton className="h-4 w-24 rounded bg-background-alt-light dark:bg-background-alt-dark" />
               </td>
               <td>
-                <Skeleton className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" />
+                <Skeleton className="h-4 w-24 rounded bg-background-alt-light dark:bg-background-alt-dark" />
               </td>
             </tr>
           </tbody>
@@ -257,24 +278,24 @@ const BlockRenderer = ({
           <tbody>
             <tr>
               <td>
-                <Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+                <Skeleton className="h-4 w-12 rounded bg-background-alt-light dark:bg-background-alt-dark" />
               </td>
               <td>
-                <Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+                <Skeleton className="h-4 w-12 rounded bg-background-alt-light dark:bg-background-alt-dark" />
               </td>
               <td>
-                <Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+                <Skeleton className="h-4 w-12 rounded bg-background-alt-light dark:bg-background-alt-dark" />
               </td>
               <td>
-                <Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+                <Skeleton className="h-4 w-12 rounded bg-background-alt-light dark:bg-background-alt-dark" />
               </td>
               <td>
-                <Skeleton className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+                <Skeleton className="h-4 w-12 rounded bg-background-alt-light dark:bg-background-alt-dark" />
               </td>
             </tr>
           </tbody>
         </table>
-        <Skeleton className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
+        <Skeleton className="h-4 w-16 rounded bg-background-alt-light dark:bg-background-alt-dark" />
       </div>
     );
   }
