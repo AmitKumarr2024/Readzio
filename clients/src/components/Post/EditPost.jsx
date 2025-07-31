@@ -115,22 +115,23 @@ const EditPost = () => {
 
     if (title === "") setTitle(currentPost.title || "");
     if (blocks.length === 0) {
+      console.log("[DEBUG] currentPost.blocks:", currentPost.blocks);
       const normalizedBlocks = (currentPost.blocks || []).map((block) => {
         if (block.type === "table") {
           console.log("[DEBUG] Table block before normalization:", block);
-          // Prioritize items if valid, else use defaultTableData
-          const items =
-            Array.isArray(block.items) && block.items.length > 0
+          // Use items if valid, else defaultTableData
+          const data =
+            Array.isArray(block.data) && block.data.length > 0
+              ? block.data
+              : Array.isArray(block.items) && block.items.length > 0
               ? block.items
               : defaultTableData;
-          const data = block.data || items;
           const normalizedBlock = {
-            ...block,
+            id: block.id,
+            type: "table",
             data,
-            headers: undefined,
-            rows: undefined,
-            items: undefined,
             caption: block.caption || "",
+            blocked: block.blocked || false,
           };
           console.log(
             "[DEBUG] Table block after normalization:",
@@ -177,18 +178,18 @@ const EditPost = () => {
     const normalizedBlocks = blocks.map((block) => {
       if (block.type === "table") {
         console.log("[DEBUG] Normalizing table block before save:", block);
-        const items =
-          Array.isArray(block.items) && block.items.length > 0
+        const data =
+          Array.isArray(block.data) && block.data.length > 0
+            ? block.data
+            : Array.isArray(block.items) && block.items.length > 0
             ? block.items
             : defaultTableData;
-        const data = block.data || items;
         const normalizedBlock = {
-          ...block,
+          id: block.id,
+          type: "table",
           data,
-          headers: undefined,
-          rows: undefined,
-          items: undefined,
           caption: block.caption || "",
+          blocked: block.blocked || false,
         };
         console.log(
           "[DEBUG] Normalized table block for save:",
@@ -206,7 +207,7 @@ const EditPost = () => {
       category: selectedCategory._id,
       postType,
       tags,
-      blocks: normalizedBlocks.map((block) => ({ ...block, blocked: false })),
+      blocks: normalizedBlocks,
     };
 
     try {
