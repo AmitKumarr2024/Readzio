@@ -19,6 +19,16 @@ import {
   setLanguage,
 } from "../../store/Post/postMetaSlice";
 
+// LoadingBar component
+const LoadingBar = ({ loading }) => {
+  if (!loading) return null;
+  return (
+    <div className="fixed top-0 left-0 w-full h-1 bg-blue-500 animate-pulse z-50">
+      <div className="h-full bg-blue-700 animate-loading-bar"></div>
+    </div>
+  );
+};
+
 const PostPreviewList = ({
   currentDraftPost,
   onUpdateDraft,
@@ -574,6 +584,7 @@ const PostPreviewList = ({
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800">
+      <LoadingBar loading={createLoading} />
       {currentDraftPost && (
         <>
           <h2 className="text-3xl sm:text-4xl font-bold text-center text-blue-600 dark:text-blue-400 mb-6">
