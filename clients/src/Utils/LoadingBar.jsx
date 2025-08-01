@@ -13,21 +13,22 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
       setShowBar(true);
       setProgress(0);
 
+      // Progress from 0 → 100% in 1 second (10ms per step)
       interval = setInterval(() => {
         setProgress((prev) => {
           if (prev < 100) return prev + 1;
           clearInterval(interval);
           return prev;
         });
-      }, 90); // 🔁 uniform 90ms per step
+      }, 10);
     } else {
       clearInterval(interval);
-      setProgress(100); // instant finish if loading ends early
+      setProgress(100);
 
       const timeout = setTimeout(() => {
         setShowBar(false);
-        setProgress(0); // reset for next time
-      }, 600);
+        setProgress(0);
+      }, 500);
 
       return () => clearTimeout(timeout);
     }
@@ -46,7 +47,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
               <motion.div
                 className="h-full bg-[#ff002b]"
                 animate={{ width: `${progress}%` }}
-                transition={{ ease: "linear", duration: 0.2 }}
+                transition={{ ease: "linear", duration: 0.1 }}
               />
             </div>
           </div>
