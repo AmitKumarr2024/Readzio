@@ -2,34 +2,35 @@ import React, { useEffect, useState } from "react";
 import { PacmanLoader } from "react-spinners";
 import { motion } from "framer-motion";
 
-// Displays loading overlay with synced progress bar
+// Synced loading progress bar with 98% limit
 const LoadingBar = ({ loading, text = "Loading..." }) => {
   const [progress, setProgress] = useState(0);
   const [showBar, setShowBar] = useState(false);
 
   useEffect(() => {
     let interval;
+
     if (loading) {
       setShowBar(true);
       setProgress(0);
 
-      // Gradually increase progress toward 95%
+      // Increase progress slowly to 98% every 70ms
       interval = setInterval(() => {
         setProgress((prev) => {
-          if (prev < 95) return prev + 1;
+          if (prev < 98) return prev + 1;
           return prev;
         });
-      }, 50); // 1% every 50ms ≈ 5s to 95%
+      }, 70); // <- updated here
     } else {
-      // Finish remaining progress to 100%
+      // Finish progress quickly to 100%
       clearInterval(interval);
       setProgress(100);
 
-      // Hide after short delay
       const timeout = setTimeout(() => {
         setShowBar(false);
-        setProgress(0); // reset
+        setProgress(0); // reset after hide
       }, 600);
+
       return () => clearTimeout(timeout);
     }
 
@@ -46,7 +47,6 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
             <div className="w-64 h-2 bg-gray-300 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-[#ff002b]"
-                initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ ease: "linear", duration: 0.2 }}
               />
