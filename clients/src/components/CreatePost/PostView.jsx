@@ -42,7 +42,7 @@ const PostView = ({ post }) => {
         return (
           <div
             key={i}
-            className="leading-relaxed text-text-main-light dark:text-text-main-dark text-base list-inside my-4"
+            className="rich-content text-text-main-light dark:text-text-main-dark leading-relaxed text-base my-4"
             dangerouslySetInnerHTML={{
               __html: DOMPurify.sanitize(block.value || "Empty text"),
             }}

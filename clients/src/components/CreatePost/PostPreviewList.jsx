@@ -568,11 +568,12 @@ const PostPreviewList = ({
               className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
             >
               <div
-                className="leading-relaxed text-base list-inside"
+                className="rich-content leading-relaxed text-base"
                 dangerouslySetInnerHTML={{
                   __html: DOMPurify.sanitize(block.value || "Empty text"),
                 }}
               />
+
               <button
                 onClick={() => deleteBlock(i)}
                 className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"

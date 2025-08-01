@@ -9,8 +9,8 @@
   color: black;
 }
 
+/* Light theme variables */
 @theme {
-  /* Light theme variables */
   --font-Urbanist: "Urbanist", sans-serif;
   --color-background-light: #ffffff;
   --color-primary-light: #3b82f6;
@@ -19,9 +19,9 @@
   --color-text-main-light: #111827;
   --color-sub-text-light: #6b7280;
   --color-white-text-light: #ffffff;
-  --gradient-start-light: #6366f1; /* indigo-500 */
-  --gradient-mid-light: #a855f7; /* purple-500 */
-  --gradient-end-light: #ec4899; /* pink-500 */
+  --gradient-start-light: #6366f1;
+  --gradient-mid-light: #a855f7;
+  --gradient-end-light: #ec4899;
 }
 
 /* Dark theme variables */
@@ -34,35 +34,34 @@
     --color-text-main-dark: #f3f4f6;
     --color-sub-text-dark: #9ca3af;
     --color-white-text-dark: #ffffff;
-    --gradient-start-dark: #1e293b; /* slate-800 */
-    --gradient-mid-dark: #334155; /* slate-700 */
-    --gradient-end-dark: #0f172a; /* slate-900 */
+    --gradient-start-dark: #1e293b;
+    --gradient-mid-dark: #334155;
+    --gradient-end-dark: #0f172a;
   }
 }
 
-ul.list-disc {
-  list-style-type: disc;
-  list-style-position: inside;
+/* ✅ Global list styling for HTML content (e.g. rendered with dangerouslySetInnerHTML) */
+ul,
+ol {
+  list-style: inside;
   margin: 1rem 0;
-  padding-left: 1.5rem;
+  padding-left: 1.25rem;
 }
-ol.list-decimal {
-  list-style-type: decimal;
-  list-style-position: inside;
-  margin: 1rem 0;
-  padding-left: 1.5rem;
-}
-ul.list-disc li,
-ol.list-decimal li {
+
+ul li,
+ol li {
   margin-bottom: 0.5rem;
 }
 
-/* Prevent global resets from overriding Tailwind list styles */
-ul:not(.list-disc),
-ol:not(.list-decimal) {
-  list-style-type: revert-layer;
-  padding: revert-layer;
-  margin: revert-layer;
+.rich-content ul,
+.rich-content ol {
+  list-style: inside;
+  margin: 1rem 0;
+  padding-left: 1.25rem;
+}
+
+.rich-content li {
+  margin-bottom: 0.5rem;
 }
 
 /* Toast styling */
@@ -136,7 +135,6 @@ ol:not(.list-decimal) {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -147,30 +145,26 @@ ol:not(.list-decimal) {
   width: 12px;
   height: 12px;
 }
-
 ::-webkit-scrollbar-track {
   background: var(--color-scrollbar-track);
   border-radius: 8px;
 }
-
 ::-webkit-scrollbar-thumb {
   background-color: var(--color-scrollbar-thumb);
   border-radius: 8px;
   border: 3px solid var(--color-scrollbar-track);
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-scrollbar-thumb-hover);
 }
 
-/* Skeleton loading animation */
-/* .skeleton {
+/* Skeleton loading animation (optional)
+.skeleton {
   overflow: hidden;
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s infinite;
-} */
-
-/* @keyframes skeleton-loading {
+}
+@keyframes skeleton-loading {
   0% {
     background-position: -200% 0;
   }
