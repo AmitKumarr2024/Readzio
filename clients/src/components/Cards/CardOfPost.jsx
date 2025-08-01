@@ -46,36 +46,24 @@ const CardOfPost = ({
         <Skeleton className="w-full aspect-video rounded-t-lg bg-gray-200 dark:bg-gray-700" />
         <div className="p-4 space-y-3">
           <Skeleton className="h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
-          <table className="w-full text-sm">
-            <tbody>
-              <tr>
-                <td className="pr-2">
-                  <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
-                </td>
-                <td>
-                  <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <table className="w-full text-sm">
-            <tbody>
-              <tr className="flex flex-wrap gap-2">
-                {[...Array(5)].map((_, i) => (
-                  <td key={i}>
-                    <Skeleton className="h-4 w-10 rounded bg-gray-200 dark:bg-gray-700" />
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
+          <div className="flex flex-col sm:flex-row sm:gap-4">
+            <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
+            <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton
+                key={i}
+                className="h-4 w-10 rounded bg-gray-200 dark:bg-gray-700"
+              />
+            ))}
+          </div>
           <Skeleton className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
         </div>
       </div>
     );
   }
 
-  // Format date to a standard format (e.g., MM/DD/YYYY)
   const formattedDate = new Date(createdAt || new Date()).toLocaleDateString(
     "en-US",
     {
@@ -111,53 +99,34 @@ const CardOfPost = ({
         <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white group-hover:text-blue-500 line-clamp-2">
           {title || "Untitled"}
         </h3>
-        <table className="w-full text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          <tbody>
-            <tr className="flex flex-col sm:flex-row sm:gap-4">
-              <td className="truncate">
-                {categoryMap[category._id] || "Uncategorized"}
-              </td>
-              <td className="truncate font-bold text-gray-700 dark:text-gray-200">
-                {author.name || "Anonymous"}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table className="w-full text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          <tbody>
-            <tr className="flex flex-wrap gap-2 sm:gap-4">
-              <td>
-                <span className="flex items-center gap-1">
-                  <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />{" "}
-                  {commentsCount}
-                </span>
-              </td>
-              <td>
-                <span className="flex items-center gap-1">
-                  <Eye className="w-4 h-4 sm:w-5 sm:h-5" /> {viewsCount}
-                </span>
-              </td>
-              <td>
-                <span className="flex items-center gap-1">
-                  <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />{" "}
-                  {likesCount}
-                </span>
-              </td>
-              <td>
-                <span className="flex items-center gap-1">
-                  <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />{" "}
-                  {bookmarksCount}
-                </span>
-              </td>
-              <td>
-                <span className="flex items-center gap-1">
-                  <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />{" "}
-                  {shareCount}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div className="flex flex-col sm:flex-row sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+          <span className="truncate">
+            {categoryMap[category._id] || "Uncategorized"}
+          </span>
+          <span className="truncate font-bold text-gray-700 dark:text-gray-200">
+            {author.name || "Anonymous"}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-1">
+            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" /> {commentsCount}
+          </span>
+          <span className="flex items-center gap-1">
+            <Eye className="w-4 h-4 sm:w-5 sm:h-5" /> {viewsCount}
+          </span>
+          <span className="flex items-center gap-1">
+            <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />{" "}
+            {likesCount}
+          </span>
+          <span className="flex items-center gap-1">
+            <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />{" "}
+            {bookmarksCount}
+          </span>
+          <span className="flex items-center gap-1">
+            <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />{" "}
+            {shareCount}
+          </span>
+        </div>
         <div className="text-xs text-gray-400 dark:text-gray-500">
           {formattedDate}
         </div>
