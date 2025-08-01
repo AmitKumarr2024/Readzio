@@ -344,7 +344,6 @@ const EditorTextBlock = ({ value, onUpdate }) => {
           text-xs sm:text-sm
           prose prose-sm dark:prose-invert
           [&>ul]:list-disc [&>ul]:pl-5
-          [&>ol]:list-decimal [&>ol]:pl-5
           [&>ul]:space-y-1 [&>ol]:space-y-1
         "
         role="textbox"

@@ -72,6 +72,24 @@ ol li {
   margin-bottom: 0.5rem;
 }
 
+[contenteditable] ol {
+  list-style-type: decimal !important;
+  list-style-position: inside;
+  padding-left: 1.25rem;
+  margin: 1rem 0;
+}
+
+[contenteditable] ul {
+  list-style-type: disc !important;
+  list-style-position: inside;
+  padding-left: 1.25rem;
+  margin: 1rem 0;
+}
+
+[contenteditable] li {
+  margin-bottom: 0.5rem;
+}
+
 /* Toast styling */
 .toast-theme {
   font-family: var(--font-urbanist);
