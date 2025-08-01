@@ -27,6 +27,7 @@ import { selectPostViews } from "../../Utils/postSelectors";
 import CommentBox from "./CommentBox";
 import DeleteModal from "./DeleteModal";
 import Skeleton from "@/components/Ui/Skeleton";
+import adsConfig from "../../Utils/adsConfig";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import DisplayAd from "../../Ads/DisplayAd";
 
@@ -70,30 +71,6 @@ const DisplayPost = () => {
   const activePost = isAuthenticated ? post : guestPost;
   const activeLoading = isAuthenticated ? loading : guestLoading;
   const activeError = isAuthenticated ? error : guestError;
-
-  const defaultTableData = [
-    ["Reservoir", "Region", "Status & Observation"],
-    [
-      "Nagarjuna Sagar",
-      "South (AP/TG)",
-      "586/590 ft, releasing 1.4+ lakh cusecs",
-    ],
-    [
-      "Linganamakki",
-      "South (KA)",
-      "Inflow over 47,000 cusecs; nearing max capacity",
-    ],
-    [
-      "Khadakwasla & Varasgaon",
-      "West (MH)",
-      "Over 90% full; stable metro supply",
-    ],
-    [
-      "KRS Dam",
-      "South (KA)",
-      "Discharge of 83,358 cusecs; flood alerts active",
-    ],
-  ];
 
   const categoryMap = useMemo(() => {
     return categories.reduce((map, cat) => {
@@ -252,34 +229,6 @@ const DisplayPost = () => {
     }`.trim();
   };
 
-  const normalizedBlocks = useMemo(() => {
-    if (!activePost?.blocks) return [];
-    return activePost.blocks.map((block) => {
-      if (block.type === "table") {
-        console.log("[DEBUG] Table block before normalization:", block);
-        const data =
-          Array.isArray(block.data) && block.data.length > 0
-            ? block.data
-            : Array.isArray(block.items) && block.items.length > 0
-            ? block.items
-            : defaultTableData;
-        const normalizedBlock = {
-          id: block.id,
-          type: "table",
-          data,
-          caption: block.caption || "",
-          blocked: block.blocked || false,
-        };
-        console.log(
-          "[DEBUG] Table block after normalization:",
-          normalizedBlock
-        );
-        return normalizedBlock;
-      }
-      return block;
-    });
-  }, [activePost?.blocks]);
-
   const renderSkeleton = () => (
     <div className="space-y-6">
       <Skeleton height="h-8" width="w-3/4" />
@@ -339,9 +288,9 @@ const DisplayPost = () => {
     }
 
     const firstImage =
-      normalizedBlocks?.find((b) => b.type === "image")?.src || "";
+      activePost.blocks?.find((b) => b.type === "image")?.src || "";
     const plainText =
-      normalizedBlocks
+      activePost.blocks
         ?.filter((b) => b.type === "text")
         .map((b) => b.content || b.text || "")
         .join(" ")
@@ -371,6 +320,7 @@ const DisplayPost = () => {
         <Helmet>
           <title>{activePost.title || "Loading..."} | Inksha</title>
           <meta name="robots" content="index, follow" />
+
           <meta name="description" content={plainText} />
           <link rel="canonical" href={`${BASE_URL}/post/${activePost?.slug}`} />
           <meta
@@ -387,6 +337,7 @@ const DisplayPost = () => {
           <meta name="twitter:card" content="summary_large_image" />
         </Helmet>
 
+        {/* ✅ JSON-LD for Google SEO */}
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
 
         <article className="space-y-6">
@@ -401,7 +352,7 @@ const DisplayPost = () => {
             setIsDeleteModalOpen={setIsDeleteModalOpen}
           />
           <BlockContentRenderer
-            post={{ ...activePost, blocks: normalizedBlocks }}
+            post={activePost}
             isAuthor={isAuthor}
             showAnyway={showAnyway}
             setShowAnyway={setShowAnyway}
