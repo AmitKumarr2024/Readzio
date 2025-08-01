@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
 import FileBlock from "../PostFeature/FileBlock";
-import ListBlock from "../PostFeature/ListBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
 import { deletePost } from "../../store/postSlice";
 
@@ -144,11 +143,24 @@ const PostView = ({ post }) => {
         );
       case "list":
         return (
-          <ListBlock
+          <div
             key={i}
-            items={block.items || []}
-            ordered={block.ordered || false}
-          />
+            className="my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+          >
+            {block.ordered ? (
+              <ol className="list-decimal list-inside space-y-1">
+                {(block.items || []).map((item, j) => (
+                  <li key={j}>{item || "Empty item"}</li>
+                ))}
+              </ol>
+            ) : (
+              <ul className="list-disc list-inside space-y-1">
+                {(block.items || []).map((item, j) => (
+                  <li key={j}>{item || "Empty item"}</li>
+                ))}
+              </ul>
+            )}
+          </div>
         );
       case "poll":
         return (
