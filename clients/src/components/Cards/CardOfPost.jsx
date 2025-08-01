@@ -52,10 +52,7 @@ const CardOfPost = ({
           </div>
           <div className="flex flex-wrap gap-2">
             {[...Array(5)].map((_, i) => (
-              <Skeleton
-                key={i}
-                className="h-4 w-10 rounded bg-gray-200 dark:bg-gray-700"
-              />
+              <Skeleton key={i} className="h-4 w-10 rounded bg-gray-200 dark:bg-gray-700" />
             ))}
           </div>
           <Skeleton className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
@@ -64,14 +61,11 @@ const CardOfPost = ({
     );
   }
 
-  const formattedDate = new Date(createdAt || new Date()).toLocaleDateString(
-    "en-US",
-    {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }
-  );
+  const formattedDate = new Date(createdAt || new Date()).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
 
   return (
     <Link
@@ -115,16 +109,13 @@ const CardOfPost = ({
             <Eye className="w-4 h-4 sm:w-5 sm:h-5" /> {viewsCount}
           </span>
           <span className="flex items-center gap-1">
-            <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />{" "}
-            {likesCount}
+            <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" /> {likesCount}
           </span>
           <span className="flex items-center gap-1">
-            <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />{" "}
-            {bookmarksCount}
+            <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" /> {bookmarksCount}
           </span>
           <span className="flex items-center gap-1">
-            <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />{" "}
-            {shareCount}
+            <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" /> {shareCount}
           </span>
         </div>
         <div className="text-xs text-gray-400 dark:text-gray-500">
