@@ -1,35 +1,40 @@
 import React, { useEffect, useState } from "react";
 import { PacmanLoader } from "react-spinners";
-import { motion, useAnimation } from "framer-motion";
+import { motion } from "framer-motion";
 
+// Displays loading overlay with synced progress bar
 const LoadingBar = ({ loading, text = "Loading..." }) => {
+  const [progress, setProgress] = useState(0);
   const [showBar, setShowBar] = useState(false);
-  const controls = useAnimation();
 
   useEffect(() => {
+    let interval;
     if (loading) {
       setShowBar(true);
+      setProgress(0);
 
-      // Step 1: slowly animate to ~95% while loading
-      controls.start({
-        width: "95%",
-        transition: { duration: 5, ease: "linear" },
-      });
+      // Gradually increase progress toward 95%
+      interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev < 95) return prev + 1;
+          return prev;
+        });
+      }, 50); // 1% every 50ms ≈ 5s to 95%
     } else {
-      // Step 2: quickly finish to 100%
-      controls.start({
-        width: "100%",
-        transition: { duration: 0.5 },
-      });
+      // Finish remaining progress to 100%
+      clearInterval(interval);
+      setProgress(100);
 
-      // Step 3: after short delay, hide bar
+      // Hide after short delay
       const timeout = setTimeout(() => {
         setShowBar(false);
-        controls.set({ width: "0%" }); // reset width after hiding
-      }, 500);
+        setProgress(0); // reset
+      }, 600);
       return () => clearTimeout(timeout);
     }
-  }, [loading, controls]);
+
+    return () => clearInterval(interval);
+  }, [loading]);
 
   return (
     <>
@@ -41,8 +46,9 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
             <div className="w-64 h-2 bg-gray-300 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-[#ff002b]"
-                initial={{ width: "0%" }}
-                animate={controls}
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ ease: "linear", duration: 0.2 }}
               />
             </div>
           </div>
