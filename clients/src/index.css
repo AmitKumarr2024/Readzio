@@ -55,9 +55,17 @@ ol li {
 
 .rich-content ul,
 .rich-content ol {
-  list-style: inside;
+  list-style-position: inside;
   margin: 1rem 0;
   padding-left: 1.25rem;
+}
+
+.rich-content ul {
+  list-style-type: disc;
+}
+
+.rich-content ol {
+  list-style-type: decimal; /* ✅ Ensure numbers are shown */
 }
 
 .rich-content li {
