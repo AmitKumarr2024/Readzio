@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
         // Add safelist to prevent purging of list-related classes
         safelist: ["list-disc", "list-decimal", "list-inside"],
       }),
+      
     ],
     resolve: {
       alias: {

@@ -41,23 +41,46 @@
 }
 
 /* ✅ Global list styling for HTML content (e.g. rendered with dangerouslySetInnerHTML) */
-ul,
-ol {
-  list-style: inside;
-  margin: 1rem 0;
-  padding-left: 1.25rem;
+.rich-content {
+  line-height: 1.75; /* similar to prose */
+  font-size: 1rem; /* text-base */
+  color: var(--color-text-main-light);
 }
 
-ul li,
-ol li {
-  margin-bottom: 0.5rem;
+.dark .rich-content {
+  color: var(--color-text-main-dark);
+}
+
+.rich-content h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.rich-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.rich-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.rich-content p {
+  margin-bottom: 1rem;
 }
 
 .rich-content ul,
 .rich-content ol {
-  list-style-position: inside;
+  padding-left: 1.5rem;
   margin: 1rem 0;
-  padding-left: 1.25rem;
+  list-style-position: inside;
 }
 
 .rich-content ul {
@@ -65,27 +88,35 @@ ol li {
 }
 
 .rich-content ol {
-  list-style-type: decimal; /* ✅ Ensure numbers are shown */
+  list-style-type: decimal;
 }
 
 .rich-content li {
   margin-bottom: 0.5rem;
 }
 
-[contenteditable] ol {
-  list-style-type: decimal !important;
-  list-style-position: inside;
-  padding-left: 1.25rem;
-  margin: 1rem 0;
+.rich-content a {
+  color: #3b82f6;
+  text-decoration: underline;
 }
 
+.dark .rich-content a {
+  color: #60a5fa;
+}
+
+/* ✅ For contentEditable styling */
 [contenteditable] ul {
   list-style-type: disc !important;
   list-style-position: inside;
   padding-left: 1.25rem;
   margin: 1rem 0;
 }
-
+[contenteditable] ol {
+  list-style-type: decimal !important;
+  list-style-position: inside;
+  padding-left: 1.25rem;
+  margin: 1rem 0;
+}
 [contenteditable] li {
   margin-bottom: 0.5rem;
 }

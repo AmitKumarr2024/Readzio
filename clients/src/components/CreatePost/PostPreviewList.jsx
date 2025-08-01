@@ -568,7 +568,7 @@ const PostPreviewList = ({
               className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
             >
               <div
-                className="rich-content leading-relaxed text-base"
+                className="rich-content text-base leading-relaxed my-4"
                 dangerouslySetInnerHTML={{
                   __html: DOMPurify.sanitize(block.value || "Empty text"),
                 }}
