@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { PacmanLoader } from "react-spinners";
 import { motion, useAnimation } from "framer-motion";
 
-// Displays loading overlay with text and animated progress bar
 const LoadingBar = ({ loading, text = "Loading..." }) => {
   const [showBar, setShowBar] = useState(false);
   const controls = useAnimation();
@@ -11,20 +10,23 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
     if (loading) {
       setShowBar(true);
 
-      // Immediately reset to 0% before starting animation
-      controls.set({ width: "0%" });
-
+      // Step 1: slowly animate to ~95% while loading
       controls.start({
-        width: "100%",
-        transition: { duration: 3, ease: "linear" },
+        width: "95%",
+        transition: { duration: 5, ease: "linear" },
       });
     } else {
+      // Step 2: quickly finish to 100%
       controls.start({
-        width: "0%",
-        transition: { duration: 0.3 },
+        width: "100%",
+        transition: { duration: 0.5 },
       });
 
-      const timeout = setTimeout(() => setShowBar(false), 300);
+      // Step 3: after short delay, hide bar
+      const timeout = setTimeout(() => {
+        setShowBar(false);
+        controls.set({ width: "0%" }); // reset width after hiding
+      }, 500);
       return () => clearTimeout(timeout);
     }
   }, [loading, controls]);
