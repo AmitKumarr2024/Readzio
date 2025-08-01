@@ -13,33 +13,21 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
       setShowBar(true);
       setProgress(0);
 
-      const getDelay = (value) => {
-        if (value <= 50) return 50; // Fast: 1–50%
-        if (value <= 70) return 1000; // Medium: 51–70%
-        return 1400; // Slow: 71–100%
-      };
-
-      const updateProgress = () => {
+      interval = setInterval(() => {
         setProgress((prev) => {
-          if (prev < 100) {
-            const next = prev + 1;
-            clearInterval(interval);
-            interval = setInterval(updateProgress, getDelay(next));
-            return next;
-          }
+          if (prev < 100) return prev + 1;
+          clearInterval(interval);
           return prev;
         });
-      };
-
-      interval = setInterval(updateProgress, getDelay(0));
+      }, 90); // 🔁 uniform 90ms per step
     } else {
       clearInterval(interval);
-      setProgress(100);
+      setProgress(100); // instant finish if loading ends early
 
       const timeout = setTimeout(() => {
         setShowBar(false);
-        setProgress(0);
-      }, 1000); // allow animation before hiding
+        setProgress(0); // reset for next time
+      }, 600);
 
       return () => clearTimeout(timeout);
     }
