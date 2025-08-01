@@ -1,8 +1,17 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useEffect } from "react";
+import { motion, useAnimation } from "framer-motion";
 import { HashLoader } from "react-spinners";
 
 export default function SplashLoader() {
+  const controls = useAnimation();
+
+  useEffect(() => {
+    controls.start({
+      width: "100%",
+      transition: { duration: 3, ease: "linear" },
+    });
+  }, [controls]);
+
   return (
     <motion.div
       initial={{ opacity: 1 }}
@@ -17,6 +26,13 @@ export default function SplashLoader() {
       >
         Loading...
       </motion.p>
+      <div className="w-64 h-2 bg-gray-300 rounded-full overflow-hidden mt-4">
+        <motion.div
+          className="h-full bg-[#f30000]"
+          initial={{ width: "0%" }}
+          animate={controls}
+        />
+      </div>
     </motion.div>
   );
 }

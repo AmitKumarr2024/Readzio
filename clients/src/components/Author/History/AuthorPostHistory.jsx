@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { getAllPosts, deletePost } from "../../../store/postSlice";
 import { Button } from "../../../Utils/Button";
 import EditPostModal from "./EditPostModal";
-import {toast} from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { Pencil, Trash } from "lucide-react";
 import Pagination from "../../../Utils/Pagination";
 import { motion } from "framer-motion";
@@ -147,7 +147,9 @@ function AuthorPostHistory({ userId }) {
                       <motion.tr
                         key={post._id}
                         className={`hover:bg-indigo-400  transition-all duration-200 ${
-                          idx % 2 === 1 ? "bg-background-light dark:bg-background-dark " : ""
+                          idx % 2 === 1
+                            ? "bg-background-light dark:bg-background-dark "
+                            : ""
                         }`}
                         whileHover={{ scale: 1.01 }}
                       >
@@ -278,7 +280,7 @@ function AuthorPostHistory({ userId }) {
               animate={{ opacity: 1 }}
               className="text-center text-text-main-light dark:text-text-main-dark text-lg py-36"
             >
-              Koi post history nahi hai! 📝
+              No Post available !! 📝
             </motion.p>
           )}
 
