@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
@@ -73,8 +73,6 @@ const SortableBlock = ({ block, index, children }) => {
 };
 
 const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
-  const blockRefs = useRef([]);
-
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -83,6 +81,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     })
   );
 
+  const preventScroll = useCallback(() => {
+    const scrollPosition = window.scrollY;
+    return () => {
+      window.scrollTo(0, scrollPosition);
+    };
+  }, []);
+
   const handleDragEnd = (event) => {
     const { active, over } = event;
     console.log("[PostEditor] Drag end:", {
@@ -90,6 +95,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
       overId: over?.id,
     });
     if (active.id !== over?.id) {
+      const restoreScroll = preventScroll();
       const oldIndex = blocks.findIndex((block) => block.id === active.id);
       const newIndex = blocks.findIndex((block) => block.id === over?.id);
       const newBlocks = [...blocks];
@@ -97,11 +103,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
       newBlocks.splice(newIndex, 0, movedBlock);
       setBlocks(newBlocks);
       console.log("[PostEditor] Blocks reordered:", newBlocks);
+      restoreScroll();
     }
   };
 
   const addBlock = (type, options = {}) => {
     console.log("[PostEditor] Adding block:", { type, options });
+    const restoreScroll = preventScroll();
     const newBlock =
       type === "text"
         ? { id: uuidv4(), type, value: "<p></p>" }
@@ -127,11 +135,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         ? {
             id: uuidv4(),
             type,
-            headers: ["Header 1", "Header 2"],
-            rows: [
+            data: [
               ["", ""],
               ["", ""],
-            ],
+            ], // Use data to match EditPost.js
             caption: "",
           }
         : type === "video"
@@ -139,10 +146,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         : null;
 
     if (newBlock) {
-      if (
-        type === "table" &&
-        (!newBlock.headers.length || !newBlock.rows.length)
-      ) {
+      if (type === "table" && !newBlock.data.length) {
         toast.error("Invalid table configuration.");
         return;
       }
@@ -151,6 +155,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
       toast.success(
         `${type.charAt(0).toUpperCase() + type.slice(1)} block added`
       );
+      restoreScroll();
     }
   };
 
@@ -161,16 +166,20 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
       "with data:",
       newData
     );
+    const restoreScroll = preventScroll();
     const updated = [...blocks];
     updated[index] = { ...updated[index], ...newData };
     setBlocks(updated);
+    restoreScroll();
   };
 
   const removeBlock = (index) => {
     console.log("[PostEditor] Removing block at index:", index);
+    const restoreScroll = preventScroll();
     const updated = blocks.filter((_, i) => i !== index);
     setBlocks(updated);
     toast.success("Block removed");
+    restoreScroll();
   };
 
   const handleImageUpload = (file, index) => {
@@ -189,6 +198,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
       toast.error("Please upload an image file.");
       return;
     }
+    const restoreScroll = preventScroll();
     const reader = new FileReader();
     reader.onload = () => {
       updateBlock(index, {
@@ -197,8 +207,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
       });
       console.log("[PostEditor] Image uploaded for block index:", index);
       toast.success("Image uploaded");
+      restoreScroll();
     };
-    reader.onerror = () => toast.error("Failed to upload image");
+    reader.onerror = () => {
+      toast.error("Failed to upload image");
+      restoreScroll();
+    };
     reader.readAsDataURL(file);
   };
 
@@ -215,6 +229,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
       toast.error("File size exceeds 10MB limit.");
       return;
     }
+    const restoreScroll = preventScroll();
     const url = URL.createObjectURL(file);
     updateBlock(index, {
       url,
@@ -223,20 +238,8 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     });
     console.log("[PostEditor] File uploaded for block index:", index);
     toast.success("File uploaded");
+    restoreScroll();
   };
-
-  useEffect(() => {
-    console.log("[PostEditor] Blocks updated:", blocks);
-    if (blockRefs.current.length > blocks.length) {
-      blockRefs.current = blockRefs.current.slice(0, blocks.length);
-    }
-    if (blocks.length > 0) {
-      const lastBlock = blockRefs.current[blocks.length - 1];
-      if (lastBlock) {
-        lastBlock.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }
-  }, [blocks]);
 
   const sizeToWidthClass = (size) => {
     const widthMap = {
@@ -643,6 +646,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 )}
                                 <button
                                   onClick={() => {
+                                    const restoreScroll = preventScroll();
                                     const newHeaders = [
                                       ...(block.headers || []),
                                       "",
@@ -656,6 +660,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       rows: newRows.length ? newRows : [[""]],
                                     });
                                     toast.success("Header added");
+                                    restoreScroll();
                                   }}
                                   className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition"
                                   aria-label="Add table header"
@@ -676,6 +681,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     type="text"
                                     value={cell}
                                     onChange={(e) => {
+                                      const restoreScroll = preventScroll();
                                       const newRows = [...block.rows];
                                       newRows[rowIndex][cellIndex] =
                                         e.target.value;
@@ -683,6 +689,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                         ...block,
                                         rows: newRows,
                                       });
+                                      restoreScroll();
                                     }}
                                     placeholder={`R${rowIndex + 1} C${
                                       cellIndex + 1
@@ -703,12 +710,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               <input
                                 type="text"
                                 value={block.caption || ""}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  const restoreScroll = preventScroll();
                                   updateBlock(index, {
                                     ...block,
                                     caption: e.target.value,
-                                  })
-                                }
+                                  });
+                                  restoreScroll();
+                                }}
                                 placeholder="Table caption"
                                 className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-200 dark:border-gray-800 rounded bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 aria-label="Table caption"
@@ -718,6 +727,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <div className="flex flex-wrap gap-2">
                               <button
                                 onClick={() => {
+                                  const restoreScroll = preventScroll();
                                   const newRows = [...(block.rows || [])];
                                   newRows.push(
                                     Array(block.headers?.length || 1).fill("")
@@ -727,6 +737,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     rows: newRows,
                                   });
                                   toast.success("Row added");
+                                  restoreScroll();
                                 }}
                                 className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition"
                                 aria-label="Add table row"
@@ -735,6 +746,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               </button>
                               <button
                                 onClick={() => {
+                                  const restoreScroll = preventScroll();
                                   const newHeaders = [
                                     ...(block.headers || []),
                                     "",
@@ -748,6 +760,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     rows: newRows.length ? newRows : [[""]],
                                   });
                                   toast.success("Column added");
+                                  restoreScroll();
                                 }}
                                 className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition"
                                 aria-label="Add table column"
@@ -756,6 +769,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               </button>
                               <button
                                 onClick={() => {
+                                  const restoreScroll = preventScroll();
                                   if (block.rows?.length > 1) {
                                     const newRows = block.rows.slice(0, -1);
                                     updateBlock(index, {
@@ -766,6 +780,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                   } else {
                                     toast.error("At least one row is required");
                                   }
+                                  restoreScroll();
                                 }}
                                 className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
                                 aria-label="Remove table row"
@@ -774,6 +789,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               </button>
                               <button
                                 onClick={() => {
+                                  const restoreScroll = preventScroll();
                                   if (block.headers?.length > 1) {
                                     const newHeaders = block.headers.slice(
                                       0,
@@ -793,6 +809,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       "At least one column is required"
                                     );
                                   }
+                                  restoreScroll();
                                 }}
                                 className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
                                 aria-label="Remove table column"
@@ -824,12 +841,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <input
                               type="url"
                               value={block.src}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                const restoreScroll = preventScroll();
                                 updateBlock(index, {
                                   ...block,
                                   src: e.target.value,
-                                })
-                              }
+                                });
+                                restoreScroll();
+                              }}
                               placeholder="https://example.com/video.mp4"
                               className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Video URL"
@@ -842,12 +861,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <input
                               type="text"
                               value={block.caption}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                const restoreScroll = preventScroll();
                                 updateBlock(index, {
                                   ...block,
                                   caption: e.target.value,
-                                })
-                              }
+                                });
+                                restoreScroll();
+                              }}
                               placeholder="Caption text"
                               className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Video caption"
@@ -871,11 +892,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
 
                 return (
                   <SortableBlock key={block.id} block={block} index={index}>
-                    <motion.div
-                      key={block.id}
-                      {...motionDivProps}
-                      ref={(el) => (blockRefs.current[index] = el)}
-                    >
+                    <motion.div key={block.id} {...motionDivProps}>
                       {blockContent}
                     </motion.div>
                   </SortableBlock>

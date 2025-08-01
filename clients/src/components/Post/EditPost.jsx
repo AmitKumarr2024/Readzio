@@ -1,4 +1,3 @@
-// File: src/components/EditPost.js
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -79,7 +78,10 @@ const EditPost = () => {
               ? block.data
               : Array.isArray(block.items) && block.items.length > 0
               ? block.items
-              : [];
+              : [
+                  ["", ""],
+                  ["", ""],
+                ]; // Default 2x2 table
           const normalizedBlock = {
             id: block.id,
             type: "table",
@@ -135,7 +137,10 @@ const EditPost = () => {
             ? block.data
             : Array.isArray(block.items) && block.items.length > 0
             ? block.items
-            : [];
+            : [
+                ["", ""],
+                ["", ""],
+              ]; // Default 2x2 table
         const normalizedBlock = {
           id: block.id,
           type: "table",
@@ -240,7 +245,7 @@ const EditPost = () => {
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 animate-slide-up">
+            <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
               <button
                 onClick={() => {
                   setIsOpen(false);
