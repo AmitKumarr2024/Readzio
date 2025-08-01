@@ -15,18 +15,18 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
 
       interval = setInterval(() => {
         setProgress((prev) => {
-          if (prev < 100) return prev + 5; // 20 steps of 5%
+          if (prev < 100) return prev + 5; // 5% per step
           clearInterval(interval);
           return prev;
         });
-      }, 1000); // 1 second per step
+      }, 1500); // 🔁 1500ms delay per step (30s total)
     } else {
       clearInterval(interval);
-      setProgress(100); // Ensure it finishes
+      setProgress(100); // finish instantly
 
       const timeout = setTimeout(() => {
         setShowBar(false);
-        setProgress(0); // Reset for next time
+        setProgress(0); // reset for next time
       }, 1000);
 
       return () => clearTimeout(timeout);
