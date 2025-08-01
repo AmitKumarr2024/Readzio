@@ -87,10 +87,24 @@ const CreatePost = () => {
     if (!/^[a-z]{2}$/i.test(metaData.language))
       return toast.error("Invalid language code");
 
-    const updatedBlocks = blocks.map((block) => ({
-      ...block,
-      blocked: false,
-    }));
+    // Transform table blocks to include data field
+    const updatedBlocks = blocks.map((block) => {
+      if (block.type === "table") {
+        if (!block.headers?.length || !block.rows?.some((row) => row.length)) {
+          toast.error("Table block must have non-empty headers and rows");
+          throw new Error("Invalid table block");
+        }
+        return {
+          ...block,
+          data: [block.headers, ...block.rows], // Combine headers and rows into data
+          blocked: false,
+        };
+      }
+      return {
+        ...block,
+        blocked: false,
+      };
+    });
 
     const postData = {
       postType,
