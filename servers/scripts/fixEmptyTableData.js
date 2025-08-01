@@ -3,6 +3,7 @@ dotenv.config();
 import mongoose from "mongoose";
 import Post from "../../servers/Models/Post.js";
 import { MONGO_URI } from "../../servers/config/dotenv.js"; //
+
 async function fixEmptyTableData() {
   try {
     if (!MONGO_URI) {
