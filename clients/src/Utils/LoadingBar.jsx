@@ -16,8 +16,11 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
         transition: { duration: 3, ease: "linear" },
       });
     } else {
+      controls.start({
+        width: "0%",
+        transition: { duration: 0.3 },
+      });
       const timeout = setTimeout(() => setShowBar(false), 300);
-      controls.start({ width: "0%" });
       return () => clearTimeout(timeout);
     }
   }, [loading, controls]);
@@ -25,7 +28,6 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
   return (
     <>
       {showBar && (
-        // Full-screen loading overlay
         <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
             <PacmanLoader color="#ff002b" size={40} />
