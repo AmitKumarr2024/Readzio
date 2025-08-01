@@ -76,11 +76,14 @@ const CardOfPost = ({
   }
 
   // Format date to a standard format (e.g., MM/DD/YYYY)
-  const formattedDate = new Date(createdAt || new Date()).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
+  const formattedDate = new Date(createdAt || new Date()).toLocaleDateString(
+    "en-US",
+    {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }
+  );
 
   return (
     <Link
@@ -165,7 +168,7 @@ const CardOfPost = ({
         )}
         {tags?.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
-            {tags.map((tag) => (
+            {tags.slice(0, 4).map((tag) => (
               <div
                 key={tag}
                 className="text-indigo-500 hover:underline text-xs sm:text-sm font-medium"
@@ -173,6 +176,11 @@ const CardOfPost = ({
                 #{tag}
               </div>
             ))}
+            {tags.length > 4 && (
+              <div className="text-indigo-500 text-xs sm:text-sm font-medium">
+                ...
+              </div>
+            )}
           </div>
         )}
       </div>
