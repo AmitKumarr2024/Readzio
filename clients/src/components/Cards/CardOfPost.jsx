@@ -93,7 +93,7 @@ const CardOfPost = ({
         <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white group-hover:text-blue-500 line-clamp-2">
           {title || "Untitled"}
         </h3>
-        <div className="flex flex-col sm:flex-row sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex flex-col sm:flex-row sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400 justify-between">
           <span className="truncate">
             {categoryMap[category._id] || "Uncategorized"}
           </span>
