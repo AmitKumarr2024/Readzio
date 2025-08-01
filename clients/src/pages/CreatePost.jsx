@@ -14,15 +14,6 @@ import {
   resetPostMeta,
 } from "../store/Post/postMetaSlice";
 
-const LoadingBar = ({ loading }) => {
-  if (!loading) return null;
-  return (
-    <div className="fixed top-0 left-0 w-full h-1 bg-blue-500 animate-pulse z-50">
-      <div className="h-full bg-blue-700 animate-loading-bar"></div>
-    </div>
-  );
-};
-
 const CreatePost = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -88,7 +79,6 @@ const CreatePost = () => {
     if (!/^[a-z]{2}$/i.test(metaData.language))
       return toast.error("Invalid language code");
 
-    // Transform table blocks to include data field
     const updatedBlocks = blocks.map((block) => {
       if (block.type === "table") {
         if (!block.data?.length || !block.data.some((row) => row.length)) {
@@ -156,7 +146,6 @@ const CreatePost = () => {
 
   return (
     <div className="flex flex-col md:flex-row bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
-      <LoadingBar loading={createLoading} />
       {showPostTypeModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
           <PostTypeSelector

@@ -19,16 +19,7 @@ import {
   setIsPublished,
   setLanguage,
 } from "../../store/Post/postMetaSlice";
-
-// LoadingBar component
-const LoadingBar = ({ loading }) => {
-  if (!loading) return null;
-  return (
-    <div className="fixed top-0 left-0 w-full h-1 bg-blue-500 animate-pulse z-50">
-      <div className="h-full bg-blue-700 animate-loading-bar"></div>
-    </div>
-  );
-};
+import LoadingBar from "../../Utils/LoadingBar"; // Import the new LoadingBar
 
 const PostPreviewList = ({
   currentDraftPost,
@@ -52,6 +43,7 @@ const PostPreviewList = ({
   const [isPinned, setIsPinnedLocal] = useState(true);
   const [isPublished, setIsPublishedLocal] = useState(true);
   const [language, setLanguageLocal] = useState("en");
+  const [showPublishLoading, setShowPublishLoading] = useState(false); // New state for publish loading
 
   const modalRef = useRef();
   const dispatch = useDispatch();
@@ -71,6 +63,7 @@ const PostPreviewList = ({
     isPublished,
     language,
     singlePostStatus,
+    showPublishLoading,
   });
 
   useEffect(() => {
@@ -194,9 +187,17 @@ const PostPreviewList = ({
   const handleConfirmPublish = async () => {
     console.log("[PostPreviewList] Confirming publish with data:", postData);
     setIsPostConfirmed(false);
-    await onCreatePost(postData);
-    setPostData(null);
-    setCountdown(5);
+    setShowPublishLoading(true); // Show loading bar
+    try {
+      await onCreatePost(postData);
+      console.log("[PostPreviewList] Post creation successful");
+    } catch (err) {
+      console.error("[PostPreviewList] Post creation failed:", err);
+    } finally {
+      setShowPublishLoading(false); // Hide loading bar
+      setPostData(null);
+      setCountdown(5);
+    }
   };
 
   const handleCancelPublish = () => {
@@ -573,7 +574,6 @@ const PostPreviewList = ({
                   __html: DOMPurify.sanitize(block.value || "Empty text"),
                 }}
               />
-
               <button
                 onClick={() => deleteBlock(i)}
                 className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
@@ -607,7 +607,8 @@ const PostPreviewList = ({
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800">
-      <LoadingBar loading={createLoading} />
+      <LoadingBar loading={showPublishLoading} text="Publishing..." />{" "}
+      {/* Use new LoadingBar */}
       {currentDraftPost && (
         <>
           <h2 className="text-3xl sm:text-4xl font-bold text-center text-blue-600 dark:text-blue-400 mb-6">
@@ -718,7 +719,6 @@ const PostPreviewList = ({
           )}
         </>
       )}
-
       {allPosts.length === 0 ? (
         <p className="text-center mt-8 opacity-80">No posts available yet.</p>
       ) : (
@@ -779,7 +779,6 @@ const PostPreviewList = ({
           })}
         </div>
       )}
-
       <AnimatePresence>
         {showConfirmModal && (
           <ConfirmPostModal
@@ -788,7 +787,6 @@ const PostPreviewList = ({
           />
         )}
       </AnimatePresence>
-
       <AnimatePresence>
         {isPostConfirmed && (
           <motion.div
@@ -813,7 +811,6 @@ const PostPreviewList = ({
           </motion.div>
         )}
       </AnimatePresence>
-
       <AnimatePresence>
         {isModalOpen && singlePost && (
           <motion.div
