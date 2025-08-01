@@ -69,10 +69,10 @@ const EditPost = () => {
 
     if (title === "") setTitle(currentPost.title || "");
     if (blocks.length === 0) {
-      console.log("[DEBUG] currentPost.blocks:", currentPost.blocks);
+      // console.log("[DEBUG] currentPost.blocks:", currentPost.blocks);
       const normalizedBlocks = (currentPost.blocks || []).map((block) => {
         if (block.type === "table") {
-          console.log("[DEBUG] Table block before normalization:", block);
+          // console.log("[DEBUG] Table block before normalization:", block);
           const data =
             Array.isArray(block.data) && block.data.length > 0
               ? block.data
@@ -89,10 +89,10 @@ const EditPost = () => {
             caption: block.caption || "",
             blocked: block.blocked || false,
           };
-          console.log(
-            "[DEBUG] Table block after normalization:",
-            normalizedBlock
-          );
+          // console.log(
+          //   "[DEBUG] Table block after normalization:",
+          //   normalizedBlock
+          // );
           return normalizedBlock;
         }
         return block;
@@ -131,7 +131,7 @@ const EditPost = () => {
 
     const normalizedBlocks = blocks.map((block) => {
       if (block.type === "table") {
-        console.log("[DEBUG] Normalizing table block before save:", block);
+        // console.log("[DEBUG] Normalizing table block before save:", block);
         const data =
           Array.isArray(block.data) && block.data.length > 0
             ? block.data
@@ -148,16 +148,16 @@ const EditPost = () => {
           caption: block.caption || "",
           blocked: block.blocked || false,
         };
-        console.log(
-          "[DEBUG] Normalized table block for save:",
-          normalizedBlock
-        );
+        // console.log(
+        //   "[DEBUG] Normalized table block for save:",
+        //   normalizedBlock
+        // );
         return normalizedBlock;
       }
       return block;
     });
 
-    console.log("[DEBUG] Saving post with blocks:", normalizedBlocks);
+    // console.log("[DEBUG] Saving post with blocks:", normalizedBlocks);
 
     const updateData = {
       title,

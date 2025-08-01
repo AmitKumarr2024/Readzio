@@ -30,7 +30,7 @@ const CreatePost = () => {
   const { categories } = useSelector((state) => state.categories);
 
   useEffect(() => {
-    console.log("[CreatePost] Fetching categories");
+    // console.log("[CreatePost] Fetching categories");
     dispatch(fetchCategories()).catch((e) => {
       console.error("[CreatePost] Fetch categories error:", e);
       toast.error("Failed to load categories.");
@@ -38,10 +38,10 @@ const CreatePost = () => {
   }, [dispatch]);
 
   const categoryMap = useMemo(() => {
-    console.log(
-      "[CreatePost] Creating category map with categories:",
-      categories
-    );
+    // console.log(
+    //   "[CreatePost] Creating category map with categories:",
+    //   categories
+    // );
     const map = {};
     categories.forEach((cat) => {
       map[cat._id] = cat.name;
@@ -53,23 +53,23 @@ const CreatePost = () => {
   const filteredPosts = selectedCategoryId
     ? posts.filter((p) => p.category === selectedCategoryId)
     : posts;
-  console.log("[CreatePost] Filtered posts:", filteredPosts);
+  // console.log("[CreatePost] Filtered posts:", filteredPosts);
 
   const handleCategoryContinue = (selectedCategory) => {
-    console.log("[CreatePost] Category selected:", selectedCategory);
+    // console.log("[CreatePost] Category selected:", selectedCategory);
     if (!selectedCategory?.id) return toast.error("Please select a category");
     dispatch(setCategory(selectedCategory.id));
     setShowCategoryModal(false);
   };
 
   const handleCreatePost = async (metaData) => {
-    console.log("[CreatePost] Creating post with data:", {
-      title,
-      blocks,
-      postType,
-      selectedCategoryId,
-      metaData,
-    });
+    // console.log("[CreatePost] Creating post with data:", {
+    //   title,
+    //   blocks,
+    //   postType,
+    //   selectedCategoryId,
+    //   metaData,
+    // });
     if (!title.trim()) return toast.error("Please enter a title");
     if (!blocks.length) return toast.error("Please add content blocks");
     if (!postType) return toast.error("Please select a post type");
@@ -106,7 +106,7 @@ const CreatePost = () => {
 
     try {
       const resultAction = await dispatch(createPosts(postData)).unwrap();
-      console.log("[CreatePost] Post created successfully:", resultAction);
+      // console.log("[CreatePost] Post created successfully:", resultAction);
       toast.success("Post created successfully!");
       setTitle("");
       setBlocks([]);
@@ -119,7 +119,7 @@ const CreatePost = () => {
   };
 
   const handleDeletePost = (id) => {
-    console.log("[CreatePost] Deleting post with id:", id);
+    // console.log("[CreatePost] Deleting post with id:", id);
     dispatch(deletePost(id))
       .unwrap()
       .then(() => toast.success("Post deleted"))
@@ -130,19 +130,19 @@ const CreatePost = () => {
   };
 
   const handleUpdateDraft = (draft) => {
-    console.log("[CreatePost] Updating draft:", draft);
+    // console.log("[CreatePost] Updating draft:", draft);
     setTitle(draft.title || "");
     setBlocks(draft.blocks || []);
   };
 
-  console.log("[CreatePost] Render state:", {
-    showPostTypeModal,
-    showCategoryModal,
-    title,
-    blocks,
-    postType,
-    selectedCategoryId,
-  });
+  // console.log("[CreatePost] Render state:", {
+  //   showPostTypeModal,
+  //   showCategoryModal,
+  //   title,
+  //   blocks,
+  //   postType,
+  //   selectedCategoryId,
+  // });
 
   return (
     <div className="flex flex-col md:flex-row bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
@@ -151,16 +151,16 @@ const CreatePost = () => {
           <PostTypeSelector
             postType={postType}
             setPostType={(value) => {
-              console.log("[CreatePost] Setting post type:", value);
+              // console.log("[CreatePost] Setting post type:", value);
               dispatch(setPostType(value));
             }}
             onContinue={() => {
-              console.log("[CreatePost] PostTypeSelector continue");
+              // console.log("[CreatePost] PostTypeSelector continue");
               setShowPostTypeModal(false);
               setShowCategoryModal(true);
             }}
             onClose={() => {
-              console.log("[CreatePost] PostTypeSelector close");
+              // console.log("[CreatePost] PostTypeSelector close");
               navigate("/");
             }}
           />
@@ -170,13 +170,13 @@ const CreatePost = () => {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
           <CategorySelector
             onBack={() => {
-              console.log("[CreatePost] CategorySelector back");
+              // console.log("[CreatePost] CategorySelector back");
               setShowCategoryModal(false);
               setShowPostTypeModal(true);
             }}
             onContinue={handleCategoryContinue}
             onClose={() => {
-              console.log("[CreatePost] CategorySelector close");
+              // console.log("[CreatePost] CategorySelector close");
               navigate("/");
             }}
           />
@@ -187,7 +187,7 @@ const CreatePost = () => {
           <div className="w-full flex justify-start px-4 pt-10 pl-11">
             <button
               onClick={() => {
-                console.log("[CreatePost] Cancel button clicked");
+                // console.log("[CreatePost] Cancel button clicked");
                 navigate("/");
               }}
               className="font-bold text-red-600 dark:text-red-400 border border-red-500 dark:border-red-400 px-4 py-1.5 rounded-full shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"

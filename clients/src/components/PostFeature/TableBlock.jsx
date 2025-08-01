@@ -7,7 +7,7 @@ const TableBlock = ({
   ],
   caption = "",
 }) => {
-  console.log("[TableBlock] Rendering with props:", { data, caption });
+  // console.log("[TableBlock] Rendering with props:", { data, caption });
 
   // Extract headers (first row) and rows (remaining) from data
   const headers = Array.isArray(data) && data.length > 0 ? data[0] : [];

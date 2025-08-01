@@ -12,25 +12,25 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   const [urlInput, setUrlInput] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
 
-  console.log("[ConfirmPostModal] Render state:", {
-    tags,
-    selectedThumbnail,
-    activeTab,
-    isConfirming,
-  });
+  // console.log("[ConfirmPostModal] Render state:", {
+  //   tags,
+  //   selectedThumbnail,
+  //   activeTab,
+  //   isConfirming,
+  // });
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
-    console.log("[ConfirmPostModal] File uploaded:", file?.name);
+    // console.log("[ConfirmPostModal] File uploaded:", file?.name);
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setSelectedThumbnail(reader.result);
         setUrlInput("");
-        console.log(
-          "[ConfirmPostModal] Thumbnail set from file:",
-          reader.result
-        );
+        // console.log(
+        //   "[ConfirmPostModal] Thumbnail set from file:",
+        //   reader.result
+        // );
       };
       reader.readAsDataURL(file);
     } else {
@@ -39,21 +39,21 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   };
 
   const handleUrlSubmit = () => {
-    console.log("[ConfirmPostModal] Submitting URL:", urlInput);
+    // console.log("[ConfirmPostModal] Submitting URL:", urlInput);
     if (urlInput && /\.(jpg|jpeg|png|gif|webp)$/i.test(urlInput)) {
       setSelectedThumbnail(urlInput);
       setUrlInput("");
-      console.log("[ConfirmPostModal] Thumbnail set from URL:", urlInput);
+      // console.log("[ConfirmPostModal] Thumbnail set from URL:", urlInput);
     } else {
       toast.error("Please enter a valid image URL.");
     }
   };
 
   const handleConfirm = () => {
-    console.log("[ConfirmPostModal] Confirm clicked:", {
-      tags,
-      selectedThumbnail,
-    });
+    // console.log("[ConfirmPostModal] Confirm clicked:", {
+    //   tags,
+    //   selectedThumbnail,
+    // });
     if (!selectedThumbnail) {
       toast.error(
         "Please select a thumbnail by uploading a file or entering a URL."
@@ -70,16 +70,16 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   };
 
   const handleFinalConfirm = () => {
-    console.log("[ConfirmPostModal] Final confirm:", {
-      tags,
-      thumbnail: selectedThumbnail,
-    });
+    // console.log("[ConfirmPostModal] Final confirm:", {
+    //   tags,
+    //   thumbnail: selectedThumbnail,
+    // });
     setIsConfirming(false);
     onConfirm({ tags, thumbnail: selectedThumbnail });
   };
 
   const handleCancel = () => {
-    console.log("[ConfirmPostModal] Cancel clicked");
+    // console.log("[ConfirmPostModal] Cancel clicked");
     setIsConfirming(false);
     setSelectedThumbnail(null);
     setUrlInput("");
@@ -122,7 +122,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                 <div className="flex gap-4 mb-2">
                   <button
                     onClick={() => {
-                      console.log("[ConfirmPostModal] Switching to upload tab");
+                      // console.log("[ConfirmPostModal] Switching to upload tab");
                       setActiveTab("upload");
                     }}
                     className={`px-4 py-2 text-sm font-medium rounded-lg ${
@@ -135,7 +135,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                   </button>
                   <button
                     onClick={() => {
-                      console.log("[ConfirmPostModal] Switching to URL tab");
+                      // console.log("[ConfirmPostModal] Switching to URL tab");
                       setActiveTab("url");
                     }}
                     className={`px-4 py-2 text-sm font-medium rounded-lg ${

@@ -119,12 +119,12 @@ const BlockRenderer = ({
 
     // Normalize table block data
     if (block.type === "table") {
-      console.log(`[DEBUG] Table block before normalization:`, block);
+      // console.log(`[DEBUG] Table block before normalization:`, block);
       const headers = Array.isArray(block.headers) ? block.headers : [];
       const rows = Array.isArray(block.rows) ? block.rows.filter(row => Array.isArray(row) && row.length > 0) : [];
       const data = block.data || (headers.length || rows.length ? [headers, ...rows] : [["Header 1", "Header 2"], ["Cell 1", "Cell 2"]]);
       block = { ...block, data, caption: block.caption || "", headers: undefined, rows: undefined };
-      console.log(`[DEBUG] Table block after normalization:`, block);
+      // console.log(`[DEBUG] Table block after normalization:`, block);
     }
 
     switch (block.type) {

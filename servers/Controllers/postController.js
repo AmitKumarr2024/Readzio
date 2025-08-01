@@ -14,10 +14,10 @@ import { io } from "../../servers/sockets/socket.js";
 import { calculateReadTime } from "../helpers/postHelper.js";
 
 export const voteOnPoll = async (req, res, next) => {
-  console.log("[voteOnPoll] Starting with:", {
-    body: req.body,
-    userId: req.user?._id,
-  });
+  // console.log("[voteOnPoll] Starting with:", {
+  //   body: req.body,
+  //   userId: req.user?._id,
+  // });
   try {
     const { postId, blockId, optionIndex } = req.body;
     const userId = req.user?._id;
@@ -77,7 +77,7 @@ export const voteOnPoll = async (req, res, next) => {
     pollBlock.votedUserIds.push({ userId, votedAt: new Date() });
     post.blocks[pollBlockIndex] = pollBlock;
 
-    console.log("[voteOnPoll] Updated poll block:", pollBlock);
+    // console.log("[voteOnPoll] Updated poll block:", pollBlock);
 
     const updatedPost = await PostModel.findByIdAndUpdate(
       postId,
@@ -92,10 +92,10 @@ export const voteOnPoll = async (req, res, next) => {
       message: `Voted on poll in post: ${post.title}`,
     });
 
-    console.log(
-      "[voteOnPoll] Success, returning poll:",
-      updatedPost.blocks[pollBlockIndex]
-    );
+    // console.log(
+    //   "[voteOnPoll] Success, returning poll:",
+    //   updatedPost.blocks[pollBlockIndex]
+    // );
 
     res.status(200).json({
       success: true,
@@ -113,10 +113,10 @@ export const voteOnPoll = async (req, res, next) => {
 };
 
 export const createPost = async (req, res, next) => {
-  console.log("[createPost] Starting with:", {
-    body: req.body,
-    userId: req.user?._id,
-  });
+  // console.log("[createPost] Starting with:", {
+  //   body: req.body,
+  //   userId: req.user?._id,
+  // });
   try {
     const {
       title,
@@ -173,10 +173,10 @@ export const createPost = async (req, res, next) => {
     // Validate table blocks
     blocksWithIds.forEach((block, index) => {
       if (block.type === "table") {
-        console.log("[createPost] Validating table block:", {
-          id: block.id,
-          data: block.data,
-        }); // Enhanced logging
+        // console.log("[createPost] Validating table block:", {
+        //   id: block.id,
+        //   data: block.data,
+        // }); // Enhanced logging
         if (
           !block.data ||
           !Array.isArray(block.data) ||
@@ -207,7 +207,7 @@ export const createPost = async (req, res, next) => {
     });
 
     const processImage = async (source, id, folder) => {
-      console.log("[createPost] Processing image:", { id, source });
+      // console.log("[createPost] Processing image:", { id, source });
       try {
         let buffer;
         if (source.startsWith("data:image")) {
@@ -241,7 +241,7 @@ export const createPost = async (req, res, next) => {
 
         const image = sharp(buffer);
         const metadata = await image.metadata();
-        console.log("[createPost] Image metadata:", metadata);
+        // console.log("[createPost] Image metadata:", metadata);
         if (!["jpeg", "png", "webp"].includes(metadata.format)) {
           console.error(
             "[createPost] Unsupported image format:",
@@ -281,7 +281,7 @@ export const createPost = async (req, res, next) => {
           );
         }
 
-        console.log("[createPost] Image uploaded:", result.secure_url);
+        // console.log("[createPost] Image uploaded:", result.secure_url);
         return result.secure_url;
       } catch (err) {
         console.error("[createPost] Image processing error:", err.message);
@@ -302,7 +302,7 @@ export const createPost = async (req, res, next) => {
     );
 
     const { readTime, readingTime } = calculateReadTime(processedBlocks);
-    console.log("[createPost] Read time generated:", { readTime, readingTime });
+    // console.log("[createPost] Read time generated:", { readTime, readingTime });
 
     let processedThumbnail = rawThumbnail;
     if (rawThumbnail) {
@@ -314,10 +314,10 @@ export const createPost = async (req, res, next) => {
     }
 
     const moderateContent = async (text) => {
-      console.log(
-        "[createPost] Moderating content:",
-        text.slice(0, 100) + "..."
-      );
+      // console.log(
+      //   "[createPost] Moderating content:",
+      //   text.slice(0, 100) + "..."
+      // );
       return { isFlagged: false, categories: {} };
     };
 
@@ -351,7 +351,7 @@ export const createPost = async (req, res, next) => {
       finalSlug = `${slug}-${counter++}`;
     }
     slug = finalSlug;
-    console.log("[createPost] Generated slug:", slug);
+    // console.log("[createPost] Generated slug:", slug);
 
     const postData = {
       title,
@@ -374,7 +374,7 @@ export const createPost = async (req, res, next) => {
     session.startTransaction();
     try {
       const [newPost] = await PostModel.create([postData], { session });
-      console.log("[createPost] Post created:", newPost._id);
+      // console.log("[createPost] Post created:", newPost._id);
 
       await recordActivity(
         {
@@ -412,7 +412,7 @@ export const createPost = async (req, res, next) => {
         followingPostsCount,
       });
 
-      console.log("[createPost] Success, returning post:", newPost._id);
+      // console.log("[createPost] Success, returning post:", newPost._id);
       res
         .status(201)
         .json({ success: true, message: "Post created", post: newPost });
@@ -438,10 +438,10 @@ export const createPost = async (req, res, next) => {
 };
 
 export const getAllPosts = async (req, res, next) => {
-  console.log("[getAllPosts] Starting with:", {
-    query: req.query,
-    userId: req.user?._id,
-  });
+  // console.log("[getAllPosts] Starting with:", {
+  //   query: req.query,
+  //   userId: req.user?._id,
+  // });
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 10, 100);
@@ -470,7 +470,7 @@ export const getAllPosts = async (req, res, next) => {
       }
     }
 
-    console.log("[getAllPosts] Query:", query);
+    // console.log("[getAllPosts] Query:", query);
 
     const [posts, total, allPostsCount, myPostsCount, followingPostsCount] =
       await Promise.all([
@@ -509,20 +509,20 @@ export const getAllPosts = async (req, res, next) => {
       ]);
 
     // Log table blocks for debugging
-    posts.forEach((post) => {
-      const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
-      if (tableBlocks.length > 0) {
-        console.log(
-          `[getAllPosts] Post ${post._id} table blocks:`,
-          tableBlocks.map((b) => ({ id: b.id, data: b.data }))
-        );
-      }
-    });
+    // posts.forEach((post) => {
+    //   const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
+    //   if (tableBlocks.length > 0) {
+    //     console.log(
+    //       `[getAllPosts] Post ${post._id} table blocks:`,
+    //       tableBlocks.map((b) => ({ id: b.id, data: b.data }))
+    //     );
+    //   }
+    // });
 
-    console.log(
-      "[getAllPosts] Fetched posts:",
-      posts.map((p) => ({ _id: p._id, title: p.title }))
-    );
+    // console.log(
+    //   "[getAllPosts] Fetched posts:",
+    //   posts.map((p) => ({ _id: p._id, title: p.title }))
+    // );
 
     if (req.user?._id && !isGuest) {
       await recordActivity({
@@ -553,10 +553,10 @@ export const getAllPosts = async (req, res, next) => {
 };
 
 export const getSinglePost = async (req, res, next) => {
-  console.log("[getSinglePost] Starting with:", {
-    slug: req.params.slug,
-    userId: req.user?._id,
-  });
+  // console.log("[getSinglePost] Starting with:", {
+  //   slug: req.params.slug,
+  //   userId: req.user?._id,
+  // });
   try {
     const { slug } = req.params;
     const userId = req.user?._id;
@@ -582,7 +582,7 @@ export const getSinglePost = async (req, res, next) => {
         : { isPublished: true, blocked: false }),
     };
 
-    console.log("[getSinglePost] Query:", query);
+    // console.log("[getSinglePost] Query:", query);
 
     const post = await PostModel.findOne(query)
       .select(
@@ -621,18 +621,18 @@ export const getSinglePost = async (req, res, next) => {
     }
 
     // Log table blocks for debugging
-    const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
-    if (tableBlocks.length > 0) {
-      console.log(
-        `[getSinglePost] Post ${post._id} table blocks:`,
-        tableBlocks.map((b) => ({ id: b.id, data: b.data }))
-      );
-    }
+    // const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
+    // if (tableBlocks.length > 0) {
+    //   console.log(
+    //     `[getSinglePost] Post ${post._id} table blocks:`,
+    //     tableBlocks.map((b) => ({ id: b.id, data: b.data }))
+    //   );
+    // }
 
-    console.log("[getSinglePost] Success, returning post:", {
-      _id: post._id,
-      title: post.title,
-    });
+    // console.log("[getSinglePost] Success, returning post:", {
+    //   _id: post._id,
+    //   title: post.title,
+    // });
 
     res.status(200).json({ success: true, post });
   } catch (error) {
@@ -650,10 +650,10 @@ export const getSinglePost = async (req, res, next) => {
 };
 
 export const trackTimeSpent = async (req, res, next) => {
-  console.log("[trackTimeSpent] Starting with:", {
-    postId: req.params.postId,
-    duration: req.body.duration,
-  });
+  // console.log("[trackTimeSpent] Starting with:", {
+  //   postId: req.params.postId,
+  //   duration: req.body.duration,
+  // });
   try {
     const { postId } = req.params;
     const { duration } = req.body;
@@ -678,7 +678,7 @@ export const trackTimeSpent = async (req, res, next) => {
       PostModel.updateOne({ _id: postId }, { $inc: { timeSpent: duration } }),
     ]);
 
-    console.log("[trackTimeSpent] Updates:", { interactionUpdate, postUpdate });
+    // console.log("[trackTimeSpent] Updates:", { interactionUpdate, postUpdate });
 
     if (!postUpdate.modifiedCount && !interactionUpdate) {
       console.error("[trackTimeSpent] Post not found:", postId);
@@ -697,11 +697,11 @@ export const trackTimeSpent = async (req, res, next) => {
 };
 
 const processBlock = async (block) => {
-  console.log("[processBlock] Processing block:", {
-    id: block.id,
-    type: block.type,
-    data: block.data,
-  }); // Enhanced logging
+  // console.log("[processBlock] Processing block:", {
+  //   id: block.id,
+  //   type: block.type,
+  //   data: block.data,
+  // }); // Enhanced logging
   const processedBlock = { ...block };
 
   if (processedBlock.text) {
@@ -778,11 +778,11 @@ const processBlock = async (block) => {
 };
 
 export const updatePostBySlug = async (req, res, next) => {
-  console.log("[updatePostBySlug] Starting with:", {
-    slug: req.params.slug,
-    userId: req.user?._id,
-    body: req.body,
-  });
+  // console.log("[updatePostBySlug] Starting with:", {
+  //   slug: req.params.slug,
+  //   userId: req.user?._id,
+  //   body: req.body,
+  // });
   try {
     const { slug } = req.params;
     const userId = req.user?._id;
@@ -855,10 +855,10 @@ export const updatePostBySlug = async (req, res, next) => {
     }
 
     const { readTime, readingTime } = calculateReadTime(updates.blocks || []);
-    console.log("[updatePostBySlug] Read time generated:", {
-      readTime,
-      readingTime,
-    });
+    // console.log("[updatePostBySlug] Read time generated:", {
+    //   readTime,
+    //   readingTime,
+    // });
     updates.readTime = readTime;
     updates.readingTime = readingTime;
 
@@ -902,7 +902,7 @@ export const updatePostBySlug = async (req, res, next) => {
       message: `Edited post: ${updatedPost.title}`,
     });
 
-    console.log("[updatePostBySlug] Success, updated post:", updatedPost._id);
+    // console.log("[updatePostBySlug] Success, updated post:", updatedPost._id);
     res.status(200).json({
       success: true,
       message: "Post updated successfully",
@@ -923,10 +923,10 @@ export const updatePostBySlug = async (req, res, next) => {
 };
 
 export const deletePost = async (req, res, next) => {
-  console.log("[deletePost] Starting with:", {
-    postId: req.params.postId,
-    userId: req.user?._id,
-  });
+  // console.log("[deletePost] Starting with:", {
+  //   postId: req.params.postId,
+  //   userId: req.user?._id,
+  // });
   try {
     const { postId } = req.params;
     const post = await PostModel.findById(postId);
@@ -971,7 +971,7 @@ export const deletePost = async (req, res, next) => {
       followingPostsCount,
     });
 
-    console.log("[deletePost] Success, deleted post:", postId);
+    // console.log("[deletePost] Success, deleted post:", postId);
     res.status(200).json({ success: true, message: "Post deleted", postId });
   } catch (error) {
     console.error("[deletePost] Error:", error.message, error.stack);
@@ -988,10 +988,10 @@ export const deletePost = async (req, res, next) => {
 };
 
 export const toggleBlockPost = async (req, res, next) => {
-  console.log("[toggleBlockPost] Starting with:", {
-    postId: req.params.postId,
-    userId: req.user?._id,
-  });
+  // console.log("[toggleBlockPost] Starting with:", {
+  //   postId: req.params.postId,
+  //   userId: req.user?._id,
+  // });
   try {
     const { postId } = req.params;
     if (!mongoose.Types.ObjectId.isValid(postId)) {
@@ -1032,10 +1032,10 @@ export const toggleBlockPost = async (req, res, next) => {
       }`,
     });
 
-    console.log("[toggleBlockPost] Success, post status:", {
-      postId,
-      blocked: updatedPost.blocked,
-    });
+    // console.log("[toggleBlockPost] Success, post status:", {
+    //   postId,
+    //   blocked: updatedPost.blocked,
+    // });
     res.status(200).json({
       success: true,
       message: `Post ${
@@ -1054,7 +1054,7 @@ export const toggleBlockPost = async (req, res, next) => {
 };
 
 export const sendDailyPostEmail = async () => {
-  console.log("[sendDailyPostEmail] Starting");
+  // console.log("[sendDailyPostEmail] Starting");
   try {
     const users = await UserModel.find({
       emailStatus: "sent",
@@ -1074,14 +1074,14 @@ export const sendDailyPostEmail = async () => {
       .lean();
 
     if (!posts.length) {
-      console.log("[sendDailyPostEmail] No new posts to send");
+      // console.log("[sendDailyPostEmail] No new posts to send");
       return;
     }
 
-    console.log(
-      "[sendDailyPostEmail] Posts to send:",
-      posts.map((p) => p.title)
-    );
+    // console.log(
+    //   "[sendDailyPostEmail] Posts to send:",
+    //   posts.map((p) => p.title)
+    // );
 
     const postListHtml = posts
       .map(
@@ -1119,7 +1119,7 @@ export const sendDailyPostEmail = async () => {
     }
 
     await processEmailQueue();
-    console.log("[sendDailyPostEmail] Emails queued successfully");
+    // console.log("[sendDailyPostEmail] Emails queued successfully");
   } catch (error) {
     console.error("[sendDailyPostEmail] Error:", error.message, error.stack);
     throw new AppError(
@@ -1131,10 +1131,10 @@ export const sendDailyPostEmail = async () => {
 };
 
 export const submitAppeal = async (req, res, next) => {
-  console.log("[submitAppeal] Starting with:", {
-    postId: req.params.postId,
-    userId: req.user?._id,
-  });
+  // console.log("[submitAppeal] Starting with:", {
+  //   postId: req.params.postId,
+  //   userId: req.user?._id,
+  // });
   try {
     const { postId } = req.params;
     const { message } = req.body;
@@ -1188,7 +1188,7 @@ export const submitAppeal = async (req, res, next) => {
 
     io.emit("newAppeal", { postId, userId, message, postTitle: post.title });
 
-    console.log("[submitAppeal] Success, appeal submitted for post:", postId);
+    // console.log("[submitAppeal] Success, appeal submitted for post:", postId);
     res
       .status(200)
       .json({ success: true, message: "Appeal submitted successfully" });
@@ -1207,9 +1207,9 @@ export const submitAppeal = async (req, res, next) => {
 };
 
 export const incrementShareCount = async (req, res, next) => {
-  console.log("[incrementShareCount] Starting with:", {
-    postId: req.params.postId,
-  });
+  // console.log("[incrementShareCount] Starting with:", {
+  //   postId: req.params.postId,
+  // });
   try {
     const { postId } = req.params;
 
@@ -1229,10 +1229,10 @@ export const incrementShareCount = async (req, res, next) => {
       throw new AppError("Post not found", 404, "IncrementShareCount");
     }
 
-    console.log(
-      "[incrementShareCount] Success, share count:",
-      result.shareCount
-    );
+    // console.log(
+    //   "[incrementShareCount] Success, share count:",
+    //   result.shareCount
+    // );
     res.status(200).json({
       success: true,
       message: "Share count incremented",
@@ -1253,10 +1253,10 @@ export const incrementShareCount = async (req, res, next) => {
 };
 
 export const getDraftAndPendingPosts = async (req, res, next) => {
-  console.log("[getDraftAndPendingPosts] Starting with:", {
-    userId: req.user?._id,
-    query: req.query,
-  });
+  // console.log("[getDraftAndPendingPosts] Starting with:", {
+  //   userId: req.user?._id,
+  //   query: req.query,
+  // });
   try {
     const userId = req.user?._id;
     if (!userId) {
@@ -1288,23 +1288,23 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
     ]);
 
     // Log table blocks for debugging
-    posts.forEach((post) => {
-      const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
-      if (tableBlocks.length > 0) {
-        console.log(
-          `[getDraftAndPendingPosts] Post ${post._id} table blocks:`,
-          tableBlocks.map((b) => ({ id: b.id, data: b.data }))
-        );
-      }
-    });
+    // posts.forEach((post) => {
+    //   const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
+    //   if (tableBlocks.length > 0) {
+    //     console.log(
+    //       `[getDraftAndPendingPosts] Post ${post._id} table blocks:`,
+    //       tableBlocks.map((b) => ({ id: b.id, data: b.data }))
+    //     );
+    //   }
+    // });
 
-    console.log(
-      "[getDraftAndPendingPosts] Fetched posts:",
-      posts.map((p) => ({ _id: p._id, title: p.title }))
-    );
+    // console.log(
+    //   "[getDraftAndPendingPosts] Fetched posts:",
+    //   posts.map((p) => ({ _id: p._id, title: p.title }))
+    // );
 
     if (!posts.length) {
-      console.log("[getDraftAndPendingPosts] No posts found");
+      // console.log("[getDraftAndPendingPosts] No posts found");
       return res.status(200).json({
         success: true,
         message: "No posts found",
@@ -1334,7 +1334,7 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
 };
 
 export const getPublicPost = async (req, res, next) => {
-  console.log("[getPublicPost] Starting with:", { slug: req.params.slug });
+  // console.log("[getPublicPost] Starting with:", { slug: req.params.slug });
   try {
     const { slug } = req.params;
 
@@ -1370,18 +1370,18 @@ export const getPublicPost = async (req, res, next) => {
     }
 
     // Log table blocks for debugging
-    const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
-    if (tableBlocks.length > 0) {
-      console.log(
-        `[getPublicPost] Post ${post._id} table blocks:`,
-        tableBlocks.map((b) => ({ id: b.id, data: b.data }))
-      );
-    }
+    // const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
+    // if (tableBlocks.length > 0) {
+    //   console.log(
+    //     `[getPublicPost] Post ${post._id} table blocks:`,
+    //     tableBlocks.map((b) => ({ id: b.id, data: b.data }))
+    //   );
+    // }
 
-    console.log("[getPublicPost] Success, returning post:", {
-      _id: post._id,
-      title: post.title,
-    });
+    // console.log("[getPublicPost] Success, returning post:", {
+    //   _id: post._id,
+    //   title: post.title,
+    // });
     res.status(200).json({ success: true, post });
   } catch (error) {
     console.error("[getPublicPost] Error:", error.message, error.stack);
@@ -1394,10 +1394,10 @@ export const getPublicPost = async (req, res, next) => {
 };
 
 export const getFollowingPosts = async (req, res, next) => {
-  console.log("[getFollowingPosts] Starting with:", {
-    userId: req.user?._id,
-    query: req.query,
-  });
+  // console.log("[getFollowingPosts] Starting with:", {
+  //   userId: req.user?._id,
+  //   query: req.query,
+  // });
   try {
     const userId = req.user?._id;
     const page = parseInt(req.query.page) || 1;
@@ -1424,7 +1424,7 @@ export const getFollowingPosts = async (req, res, next) => {
       .filter((id) => mongoose.Types.ObjectId.isValid(id));
 
     if (!followingIds.length) {
-      console.log("[getFollowingPosts] No followed users");
+      // console.log("[getFollowingPosts] No followed users");
       return res.status(200).json({
         success: true,
         total: 0,
@@ -1440,7 +1440,7 @@ export const getFollowingPosts = async (req, res, next) => {
       blocked: false,
     };
 
-    console.log("[getFollowingPosts] Query:", query);
+    // console.log("[getFollowingPosts] Query:", query);
 
     const [posts, total] = await Promise.all([
       PostModel.find(query)
@@ -1462,15 +1462,15 @@ export const getFollowingPosts = async (req, res, next) => {
     ]);
 
     // Log table blocks for debugging
-    posts.forEach((post) => {
-      const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
-      if (tableBlocks.length > 0) {
-        console.log(
-          `[getFollowingPosts] Post ${post._id} table blocks:`,
-          tableBlocks.map((b) => ({ id: b.id, data: b.data }))
-        );
-      }
-    });
+    // posts.forEach((post) => {
+    //   const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
+    //   if (tableBlocks.length > 0) {
+    //     console.log(
+    //       `[getFollowingPosts] Post ${post._id} table blocks:`,
+    //       tableBlocks.map((b) => ({ id: b.id, data: b.data }))
+    //     );
+    //   }
+    // });
 
     await recordActivity({
       userId,
@@ -1478,10 +1478,10 @@ export const getFollowingPosts = async (req, res, next) => {
       message: `Viewed posts from followed users`,
     });
 
-    console.log(
-      "[getFollowingPosts] Success, fetched posts:",
-      posts.map((p) => ({ _id: p._id, title: p.title }))
-    );
+    // console.log(
+    //   "[getFollowingPosts] Success, fetched posts:",
+    //   posts.map((p) => ({ _id: p._id, title: p.title }))
+    // );
     res.status(200).json({ success: true, total, page, posts });
   } catch (error) {
     console.error("[getFollowingPosts] Error:", error.message, error.stack);

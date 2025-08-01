@@ -17,13 +17,13 @@ async function fixEmptyTableData() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log("[fixEmptyTableData] Connected to MongoDB");
+    // console.log("[fixEmptyTableData] Connected to MongoDB");
 
     const posts = await Post.find({ "blocks.type": "table" });
-    console.log(
-      "[fixEmptyTableData] Found posts with table blocks:",
-      posts.length
-    );
+    // console.log(
+    //   "[fixEmptyTableData] Found posts with table blocks:",
+    //   posts.length
+    // );
 
     let updatedCount = 0;
     for (const post of posts) {
@@ -33,9 +33,9 @@ async function fixEmptyTableData() {
           block.type === "table" &&
           (!block.data || block.data.length === 0)
         ) {
-          console.log(
-            `[fixEmptyTableData] Found empty table in post ${post._id}`
-          );
+          // console.log(
+          //   `[fixEmptyTableData] Found empty table in post ${post._id}`
+          // );
           block.data = [["No data available"]];
           updated = true;
         }
@@ -44,16 +44,16 @@ async function fixEmptyTableData() {
       if (updated) {
         await post.save({ validateBeforeSave: true });
         updatedCount++;
-        console.log(`[fixEmptyTableData] Updated post ${post._id}`);
+        // console.log(`[fixEmptyTableData] Updated post ${post._id}`);
       }
     }
-    console.log(`[fixEmptyTableData] Completed, updated ${updatedCount} posts`);
+    // console.log(`[fixEmptyTableData] Completed, updated ${updatedCount} posts`);
   } catch (error) {
     console.error("[fixEmptyTableData] Error:", error.message, error.stack);
     process.exit(1);
   } finally {
     await mongoose.disconnect();
-    console.log("[fixEmptyTableData] Disconnected from MongoDB");
+    // console.log("[fixEmptyTableData] Disconnected from MongoDB");
   }
 }
 

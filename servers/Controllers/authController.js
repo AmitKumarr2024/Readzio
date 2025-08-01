@@ -445,12 +445,12 @@ export const Signup = async (req, res, next) => {
   const geoLocation = req.geoLocation;
 
   try {
-    console.log("[Signup] Request body:", {
-      fullName,
-      email,
-      passwordLength: password?.length,
-      sendEmail,
-    });
+    // console.log("[Signup] Request body:", {
+    //   fullName,
+    //   email,
+    //   passwordLength: password?.length,
+    //   sendEmail,
+    // });
 
     if (!fullName || !email || !password)
       return next(
@@ -471,10 +471,10 @@ export const Signup = async (req, res, next) => {
         )
       );
     const normalizedEmail = email.trim().toLowerCase();
-    console.log("[Signup] Normalized email:", normalizedEmail);
+    // console.log("[Signup] Normalized email:", normalizedEmail);
 
     const existingUser = await UserModel.findOne({ email: normalizedEmail });
-    console.log("[Signup] Existing user:", !!existingUser);
+    // console.log("[Signup] Existing user:", !!existingUser);
     if (existingUser)
       return next(
         new AppError(
@@ -503,7 +503,7 @@ export const Signup = async (req, res, next) => {
     });
 
     await newUser.save();
-    console.log("[Signup] User saved:", newUser._id);
+    // console.log("[Signup] User saved:", newUser._id);
 
     if (geoLocation && newUser._id) {
       await UserLocation.create({
@@ -524,10 +524,10 @@ export const Signup = async (req, res, next) => {
       { _id: newUser._id },
       { stopEmailAttempts: false, emailStatus: "not_sent", emailAttempts: 0 }
     );
-    console.log(
-      "[Signup] Attempting to send welcome email to:",
-      normalizedEmail
-    );
+    // console.log(
+    //   "[Signup] Attempting to send welcome email to:",
+    //   normalizedEmail
+    // );
     const mailOption = createMailOption({
       to: normalizedEmail,
       subject: "Welcome to Our Platform!",
@@ -552,7 +552,7 @@ export const Signup = async (req, res, next) => {
       newUser.emailStatus = "sent";
       newUser.emailLastError = null;
       await newUser.save();
-      console.log("[Signup] Welcome email sent to:", normalizedEmail);
+      // console.log("[Signup] Welcome email sent to:", normalizedEmail);
     } catch (emailError) {
       console.error("[Signup] Email error:", emailError.message);
       newUser.emailAttempts = emailError.attempts || 3;
@@ -570,7 +570,7 @@ export const Signup = async (req, res, next) => {
     });
 
     const token = generateToken(newUser, res);
-    console.log("[Signup] Token generated for user:", newUser._id);
+    // console.log("[Signup] Token generated for user:", newUser._id);
 
     res.status(201).json({
       message: "User registered successfully",
@@ -604,12 +604,12 @@ export const Login = async (req, res, next) => {
         "Missing fields"
       );
     const normalizedEmail = email.trim().toLowerCase();
-    console.log("[Login] Attempting login for email:", normalizedEmail);
+    // console.log("[Login] Attempting login for email:", normalizedEmail);
     const user = await UserModel.findOne({ email: normalizedEmail }).select(
       "+password"
     );
     if (!user) {
-      console.log("[Login] User not found");
+      // console.log("[Login] User not found");
       throw new AppError(
         "User not found",
         400,
@@ -617,9 +617,9 @@ export const Login = async (req, res, next) => {
         "Invalid email or password"
       );
     }
-    console.log("[Login] User found:", user._id);
+    // console.log("[Login] User found:", user._id);
     const isMatch = await user.comparePassword(password);
-    console.log("[Login] Password match:", isMatch);
+    // console.log("[Login] Password match:", isMatch);
     if (!isMatch)
       throw new AppError(
         "Invalid credentials",
@@ -628,7 +628,7 @@ export const Login = async (req, res, next) => {
         "Incorrect password"
       );
     const token = generateToken(user, res);
-    console.log("[Login] Token generated:", token.substring(0, 20) + "...");
+    // console.log("[Login] Token generated:", token.substring(0, 20) + "...");
     res.status(200).json({
       _id: user._id,
       fullName: user.name,
@@ -1023,7 +1023,7 @@ export const testWelcomeEmail = async (req, res, next) => {
       isWelcome: true,
       supportEmail: SENDER_EMAIL,
     });
-    console.log("[TestWelcomeEmail] Sending welcome email to:", email);
+    // console.log("[TestWelcomeEmail] Sending welcome email to:", email);
     const emailResult = await sendEmailWithRetries(
       mailOption,
       user._id,
@@ -1037,7 +1037,7 @@ export const testWelcomeEmail = async (req, res, next) => {
         emailLastError: null,
       }
     );
-    console.log("[TestWelcomeEmail] Welcome email sent to:", email);
+    // console.log("[TestWelcomeEmail] Welcome email sent to:", email);
     res.status(200).json({ success: true, message: "Test welcome email sent" });
   } catch (error) {
     console.error("[TestWelcomeEmail] Error:", error.message);

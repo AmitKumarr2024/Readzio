@@ -37,7 +37,7 @@ const initialState = {
 };
 
 const containsBlobUrl = (data) => {
-  console.log("[containsBlobUrl] Input data:", data);
+  // console.log("[containsBlobUrl] Input data:", data);
   if (!data) return false;
   if (typeof data === "string") return data.includes("blob:");
   if (Array.isArray(data)) return data.some(containsBlobUrl);
@@ -49,12 +49,12 @@ const containsBlobUrl = (data) => {
 export const fetchFollowingPosts = createAsyncThunk(
   "post/fetchFollowingPosts",
   async ({ page = 1, limit = 50 } = {}, { rejectWithValue, getState }) => {
-    console.log("[fetchFollowingPosts] Starting with params:", { page, limit });
+    // console.log("[fetchFollowingPosts] Starting with params:", { page, limit });
     try {
       const { auth } = getState();
-      console.log("[fetchFollowingPosts] Auth state:", auth);
+      // console.log("[fetchFollowingPosts] Auth state:", auth);
       if (!auth.isAuthenticated) {
-        console.log("[fetchFollowingPosts] Not authenticated");
+        // console.log("[fetchFollowingPosts] Not authenticated");
         return rejectWithValue({
           message: "You must be signed in to access this feature.",
         });
@@ -62,11 +62,11 @@ export const fetchFollowingPosts = createAsyncThunk(
       const params = new URLSearchParams();
       params.append("page", page);
       params.append("limit", limit);
-      console.log("[fetchFollowingPosts] Query params:", params.toString());
+      // console.log("[fetchFollowingPosts] Query params:", params.toString());
       const response = await axiosInstance.get(
         `/post/following?${params.toString()}`
       );
-      console.log("[fetchFollowingPosts] Response:", response.data);
+      // console.log("[fetchFollowingPosts] Response:", response.data);
       return {
         posts: response.data.posts,
         total: response.data.total,
@@ -86,18 +86,18 @@ export const fetchFollowingPosts = createAsyncThunk(
 export const fetchPublicPosts = createAsyncThunk(
   "post/fetchPublicPosts",
   async ({ tag = null, after = null }, { rejectWithValue }) => {
-    console.log("[fetchPublicPosts] Starting with params:", { tag, after });
+    // console.log("[fetchPublicPosts] Starting with params:", { tag, after });
     try {
       const params = {
         limit: 12,
         ...(tag && { tag }),
         ...(after && { after }),
       };
-      console.log("[fetchPublicPosts] Query params:", params);
+      // console.log("[fetchPublicPosts] Query params:", params);
       const response = await axiosInstance.get("/post/public/posts", {
         params,
       });
-      console.log("[fetchPublicPosts] Response:", response.data);
+      // console.log("[fetchPublicPosts] Response:", response.data);
       return {
         posts: response.data.posts,
         total: response.data.total,
@@ -117,20 +117,20 @@ export const fetchPublicPosts = createAsyncThunk(
 export const createPosts = createAsyncThunk(
   "post/createPost",
   async (postData, { rejectWithValue, getState }) => {
-    console.log("[createPosts] Starting with postData:", postData);
+    // console.log("[createPosts] Starting with postData:", postData);
     if (
       !postData.blocks ||
       !Array.isArray(postData.blocks) ||
       postData.blocks.length === 0
     ) {
-      console.log("[createPosts] Invalid blocks");
+      // console.log("[createPosts] Invalid blocks");
       return rejectWithValue({ message: "Blocks are required" });
     }
     if (
       containsBlobUrl(postData.thumbnail) ||
       containsBlobUrl(postData.blocks)
     ) {
-      console.log("[createPosts] Blob URL detected");
+      // console.log("[createPosts] Blob URL detected");
       return rejectWithValue({
         message:
           "Upload failed: Please convert Blob URLs to base64 or upload images properly.",
@@ -138,9 +138,9 @@ export const createPosts = createAsyncThunk(
     }
     try {
       const { auth } = getState();
-      console.log("[createPosts] Auth state:", auth);
+      // console.log("[createPosts] Auth state:", auth);
       const response = await axiosInstance.post("/post/post-create", postData);
-      console.log("[createPosts] Response:", response.data);
+      // console.log("[createPosts] Response:", response.data);
       return { ...response.data, authorId: auth.user?._id };
     } catch (error) {
       const errMsg = error.response?.data?.message || "Failed to create post";
@@ -156,18 +156,18 @@ export const getAllPosts = createAsyncThunk(
     { userId, authorIds = [], page = 1, limit = 12, after = null } = {},
     { rejectWithValue, getState }
   ) => {
-    console.log("[getAllPosts] Starting with params:", {
-      userId,
-      authorIds,
-      page,
-      limit,
-      after,
-    });
+    // console.log("[getAllPosts] Starting with params:", {
+    //   userId,
+    //   authorIds,
+    //   page,
+    //   limit,
+    //   after,
+    // });
     try {
       const { auth } = getState();
-      console.log("[getAllPosts] Auth state:", auth);
+      // console.log("[getAllPosts] Auth state:", auth);
       if (!auth.isAuthenticated) {
-        console.log("[getAllPosts] Not authenticated");
+        // console.log("[getAllPosts] Not authenticated");
         return rejectWithValue({
           message: "You must be signed in to access this feature.",
         });
@@ -181,11 +181,11 @@ export const getAllPosts = createAsyncThunk(
         const validIds = authorIds.filter(Boolean);
         if (validIds.length) params.append("authorIds", validIds.join(","));
       }
-      console.log("[getAllPosts] Query params:", params.toString());
+      // console.log("[getAllPosts] Query params:", params.toString());
       const response = await axiosInstance.get(
         `/post/all-post?${params.toString()}`
       );
-      console.log("[getAllPosts] Response:", response.data);
+      // console.log("[getAllPosts] Response:", response.data);
       return {
         posts: response.data.posts,
         total: response.data.total,
@@ -205,14 +205,14 @@ export const getAllPosts = createAsyncThunk(
 export const getLatestPosts = createAsyncThunk(
   "post/getLatestPosts",
   async ({ after = null } = {}, { rejectWithValue }) => {
-    console.log("[getLatestPosts] Starting with params:", { after });
+    // console.log("[getLatestPosts] Starting with params:", { after });
     try {
       const params = { limit: 12, ...(after && { after }) };
-      console.log("[getLatestPosts] Query params:", params);
+      // console.log("[getLatestPosts] Query params:", params);
       const response = await axiosInstance.get("/post/latest-post/latest", {
         params,
       });
-      console.log("[getLatestPosts] Response:", response.data);
+      // console.log("[getLatestPosts] Response:", response.data);
       return {
         posts: response.data.posts,
         total: response.data.total,
@@ -232,14 +232,14 @@ export const getLatestPosts = createAsyncThunk(
 export const getTrendingPosts = createAsyncThunk(
   "post/getTrendingPosts",
   async ({ after = null } = {}, { rejectWithValue }) => {
-    console.log("[getTrendingPosts] Starting with params:", { after });
+    // console.log("[getTrendingPosts] Starting with params:", { after });
     try {
       const params = { limit: 12, ...(after && { after }) };
-      console.log("[getTrendingPosts] Query params:", params);
+      // console.log("[getTrendingPosts] Query params:", params);
       const response = await axiosInstance.get("/post/trending-post/trending", {
         params,
       });
-      console.log("[getTrendingPosts] Response:", response.data);
+      // console.log("[getTrendingPosts] Response:", response.data);
       return {
         posts: response.data.posts,
         total: response.data.total,
@@ -259,11 +259,11 @@ export const getTrendingPosts = createAsyncThunk(
 export const getSearchPosts = createAsyncThunk(
   "post/getSearchPosts",
   async ({ query, userId, after = null }, { rejectWithValue }) => {
-    console.log("[getSearchPosts] Starting with params:", {
-      query,
-      userId,
-      after,
-    });
+    // console.log("[getSearchPosts] Starting with params:", {
+    //   query,
+    //   userId,
+    //   after,
+    // });
     try {
       const queryParams = [
         `query=${encodeURIComponent(query)}`,
@@ -273,11 +273,11 @@ export const getSearchPosts = createAsyncThunk(
       ]
         .filter(Boolean)
         .join("&");
-      console.log("[getSearchPosts] Query params:", queryParams);
+      // console.log("[getSearchPosts] Query params:", queryParams);
       const response = await axiosInstance.get(
         `/post/search-post/search?${queryParams}`
       );
-      console.log("[getSearchPosts] Response:", response.data);
+      // console.log("[getSearchPosts] Response:", response.data);
       return {
         posts: response.data.posts,
         total: response.data.total,
@@ -297,16 +297,16 @@ export const getSearchPosts = createAsyncThunk(
 export const getSinglePost = createAsyncThunk(
   "post/getSinglePost",
   async ({ slug, isGuest = false }, { rejectWithValue }) => {
-    console.log("[getSinglePost] Starting with params:", { slug, isGuest });
+    // console.log("[getSinglePost] Starting with params:", { slug, isGuest });
     try {
       if (!slug || typeof slug !== "string") {
         console.error("[getSinglePost] Invalid slug:", slug);
         return rejectWithValue({ message: "Invalid post slug" });
       }
       const endpoint = isGuest ? `/post/public/${slug}` : `/post/${slug}`;
-      console.log("[getSinglePost] Endpoint:", endpoint);
+      // console.log("[getSinglePost] Endpoint:", endpoint);
       const response = await axiosInstance.get(endpoint);
-      console.log("[getSinglePost] Response:", response.data);
+      // console.log("[getSinglePost] Response:", response.data);
       if (!response.data.post) {
         console.error("[getSinglePost] Post not found for slug:", slug);
         return rejectWithValue({ message: "Post not found" });
@@ -323,13 +323,13 @@ export const getSinglePost = createAsyncThunk(
 export const updatePost = createAsyncThunk(
   "post/updatePost",
   async ({ slug, updateData }, { rejectWithValue }) => {
-    console.log("[updatePost] Starting with params:", { slug, updateData });
+    // console.log("[updatePost] Starting with params:", { slug, updateData });
     try {
       const response = await axiosInstance.patch(
         `/post/update/${slug}`,
         updateData
       );
-      console.log("[updatePost] Response:", response.data);
+      // console.log("[updatePost] Response:", response.data);
       return response.data;
     } catch (error) {
       const errMsg = error.response?.data?.message || "Failed to update post";
@@ -342,10 +342,10 @@ export const updatePost = createAsyncThunk(
 export const deletePost = createAsyncThunk(
   "post/deletePost",
   async (postId, { rejectWithValue }) => {
-    console.log("[deletePost] Starting with postId:", postId);
+    // console.log("[deletePost] Starting with postId:", postId);
     try {
       const response = await axiosInstance.delete(`/post/delete/${postId}`);
-      console.log("[deletePost] Response:", response.data);
+      // console.log("[deletePost] Response:", response.data);
       return { postId, message: response.data.message };
     } catch (error) {
       const errMsg = error.response?.data?.message || "Failed to delete post";
@@ -358,19 +358,19 @@ export const deletePost = createAsyncThunk(
 export const fetchUserPosts = createAsyncThunk(
   "post/fetchUserPosts",
   async ({ userId, after = null, search, sort }, { rejectWithValue }) => {
-    console.log("[fetchUserPosts] Starting with params:", {
-      userId,
-      after,
-      search,
-      sort,
-    });
+    // console.log("[fetchUserPosts] Starting with params:", {
+    //   userId,
+    //   after,
+    //   search,
+    //   sort,
+    // });
     try {
       const params = { limit: 12, ...(after && { after }), search, sort };
-      console.log("[fetchUserPosts] Query params:", params);
+      // console.log("[fetchUserPosts] Query params:", params);
       const response = await axiosInstance.get(`/post/user/${userId}/posts`, {
         params,
       });
-      console.log("[fetchUserPosts] Response:", response.data);
+      // console.log("[fetchUserPosts] Response:", response.data);
       return {
         posts: response.data.posts,
         total: response.data.total,
@@ -390,10 +390,10 @@ export const fetchUserPosts = createAsyncThunk(
 export const startReading = createAsyncThunk(
   "post/startReading",
   async (postId, { rejectWithValue }) => {
-    console.log("[startReading] Starting with postId:", postId);
+    // console.log("[startReading] Starting with postId:", postId);
     try {
       const result = { postId, startTime: Date.now() };
-      console.log("[startReading] Result:", result);
+      // console.log("[startReading] Result:", result);
       return result;
     } catch (error) {
       console.error("[startReading] Error:", error.message);
@@ -405,9 +405,9 @@ export const startReading = createAsyncThunk(
 export const stopReading = createAsyncThunk(
   "post/stopReading",
   async (_, { rejectWithValue }) => {
-    console.log("[stopReading] Starting");
+    // console.log("[stopReading] Starting");
     try {
-      console.log("[stopReading] Result: null");
+      // console.log("[stopReading] Result: null");
       return null;
     } catch (error) {
       console.error("[stopReading] Error:", error.message);
@@ -419,10 +419,10 @@ export const stopReading = createAsyncThunk(
 export const submitReadingTime = createAsyncThunk(
   "post/submitReadingTime",
   async ({ postId, timeSpent }, { rejectWithValue }) => {
-    console.log("[submitReadingTime] Starting with params:", {
-      postId,
-      timeSpent,
-    });
+    // console.log("[submitReadingTime] Starting with params:", {
+    //   postId,
+    //   timeSpent,
+    // });
     try {
       if (!postId || typeof postId !== "string") {
         console.error("[submitReadingTime] Invalid postId:", postId);
@@ -431,7 +431,7 @@ export const submitReadingTime = createAsyncThunk(
       const response = await axiosInstance.post(`/post/time-spent/${postId}`, {
         duration: timeSpent,
       });
-      console.log("[submitReadingTime] Response:", response.data);
+      // console.log("[submitReadingTime] Response:", response.data);
       return response.data;
     } catch (error) {
       const errMsg =
@@ -445,12 +445,12 @@ export const submitReadingTime = createAsyncThunk(
 export const sendAdminAppeal = createAsyncThunk(
   "post/sendAdminAppeal",
   async ({ postId, message }, { rejectWithValue }) => {
-    console.log("[sendAdminAppeal] Starting with params:", { postId, message });
+    // console.log("[sendAdminAppeal] Starting with params:", { postId, message });
     try {
       const response = await axiosInstance.post(`/post/appeal/${postId}`, {
         message,
       });
-      console.log("[sendAdminAppeal] Response:", response.data);
+      // console.log("[sendAdminAppeal] Response:", response.data);
       return response.data;
     } catch (error) {
       const errMsg = error.response?.data?.message || "Failed to send appeal";
@@ -465,7 +465,7 @@ const postSlice = createSlice({
   initialState,
   reducers: {
     clearAllPosts: (state) => {
-      console.log("[clearAllPosts] Clearing all posts");
+      // console.log("[clearAllPosts] Clearing all posts");
       state.posts = [];
       state.publicPosts = [];
       state.followingPosts = [];
@@ -475,7 +475,7 @@ const postSlice = createSlice({
       state.lastFetched = null;
     },
     clearError: (state) => {
-      console.log("[clearError] Clearing errors");
+      // console.log("[clearError] Clearing errors");
       state.error = null;
       state.createError = null;
       state.updateError = null;
@@ -486,27 +486,27 @@ const postSlice = createSlice({
       state.updateSuccess = false;
     },
     setSearch: (state, action) => {
-      console.log("[setSearch] Setting search query:", action.payload);
+      // console.log("[setSearch] Setting search query:", action.payload);
       state.searchQuery = action.payload;
     },
     setSort: (state, action) => {
-      console.log("[setSort] Setting sort option:", action.payload);
+      // console.log("[setSort] Setting sort option:", action.payload);
       state.sortOption = action.payload;
     },
     resetFetch: (state) => {
-      console.log("[resetFetch] Resetting fetch options");
+      // console.log("[resetFetch] Resetting fetch options");
       state.searchQuery = "";
       state.sortOption = "newest";
     },
     clearReadingError: (state) => {
-      console.log("[clearReadingError] Clearing reading error");
+      // console.log("[clearReadingError] Clearing reading error");
       state.error = null;
     },
     updateCurrentPostBlockedStatus: (state, action) => {
-      console.log(
-        "[updateCurrentPostBlockedStatus] Updating with:",
-        action.payload
-      );
+      // console.log(
+      //   "[updateCurrentPostBlockedStatus] Updating with:",
+      //   action.payload
+      // );
       const { postId, blocked } = action.payload;
       if (state.currentPost && state.currentPost._id === postId) {
         state.currentPost.blocked = blocked;
@@ -516,12 +516,12 @@ const postSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchFollowingPosts.pending, (state) => {
-        console.log("[fetchFollowingPosts.pending] Setting loading state");
+        // console.log("[fetchFollowingPosts.pending] Setting loading state");
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchFollowingPosts.fulfilled, (state, action) => {
-        console.log("[fetchFollowingPosts.fulfilled] Payload:", action.payload);
+        // console.log("[fetchFollowingPosts.fulfilled] Payload:", action.payload);
         state.loading = false;
         const newPosts = action.payload.posts;
         const combinedPosts = [...state.followingPosts, ...newPosts];
@@ -532,17 +532,17 @@ const postSlice = createSlice({
         state.lastFetched = action.payload.lastFetched;
       })
       .addCase(fetchFollowingPosts.rejected, (state, action) => {
-        console.log("[fetchFollowingPosts.rejected] Error:", action.payload);
+        // console.log("[fetchFollowingPosts.rejected] Error:", action.payload);
         state.loading = false;
         state.error = action.payload.message;
       })
       .addCase(getAllPosts.pending, (state) => {
-        console.log("[getAllPosts.pending] Setting loading state");
+        // console.log("[getAllPosts.pending] Setting loading state");
         state.loading = true;
         state.error = null;
       })
       .addCase(getAllPosts.fulfilled, (state, action) => {
-        console.log("[getAllPosts.fulfilled] Payload:", action.payload);
+        // console.log("[getAllPosts.fulfilled] Payload:", action.payload);
         state.loading = false;
         const newPosts = action.payload.posts;
         const combinedPosts = [...state.posts, ...newPosts];
@@ -553,17 +553,17 @@ const postSlice = createSlice({
         state.lastFetched = action.payload.lastFetched;
       })
       .addCase(getAllPosts.rejected, (state, action) => {
-        console.log("[getAllPosts.rejected] Error:", action.payload);
+        // console.log("[getAllPosts.rejected] Error:", action.payload);
         state.loading = false;
         state.error = action.payload.message;
       })
       .addCase(fetchPublicPosts.pending, (state) => {
-        console.log("[fetchPublicPosts.pending] Setting loading state");
+        // console.log("[fetchPublicPosts.pending] Setting loading state");
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchPublicPosts.fulfilled, (state, action) => {
-        console.log("[fetchPublicPosts.fulfilled] Payload:", action.payload);
+        // console.log("[fetchPublicPosts.fulfilled] Payload:", action.payload);
         state.loading = false;
         const newPosts = action.payload.posts;
         const combinedPosts = [...state.publicPosts, ...newPosts];
@@ -574,28 +574,28 @@ const postSlice = createSlice({
         state.lastFetched = action.payload.lastFetched;
       })
       .addCase(fetchPublicPosts.rejected, (state, action) => {
-        console.log("[fetchPublicPosts.rejected] Error:", action.payload);
+        // console.log("[fetchPublicPosts.rejected] Error:", action.payload);
         state.loading = false;
         state.error = action.payload.message;
       })
       .addCase(createPosts.fulfilled, (state, action) => {
-        console.log("[createPosts.fulfilled] Payload:", action.payload);
+        // console.log("[createPosts.fulfilled] Payload:", action.payload);
         state.createLoading = false;
         state.posts.unshift(action.payload.post);
         state.followingPosts.unshift(action.payload.post);
       })
       .addCase(createPosts.rejected, (state, action) => {
-        console.log("[createPosts.rejected] Error:", action.payload);
+        // console.log("[createPosts.rejected] Error:", action.payload);
         state.createLoading = false;
         state.createError = action.payload.message;
       })
       .addCase(getLatestPosts.pending, (state) => {
-        console.log("[getLatestPosts.pending] Setting loading state");
+        // console.log("[getLatestPosts.pending] Setting loading state");
         state.latestLoading = true;
         state.latestError = null;
       })
       .addCase(getLatestPosts.fulfilled, (state, action) => {
-        console.log("[getLatestPosts.fulfilled] Payload:", action.payload);
+        // console.log("[getLatestPosts.fulfilled] Payload:", action.payload);
         state.latestLoading = false;
         const newPosts = action.payload.posts;
         const combinedPosts = [...state.latestPosts, ...newPosts];
@@ -605,17 +605,17 @@ const postSlice = createSlice({
         );
       })
       .addCase(getLatestPosts.rejected, (state, action) => {
-        console.log("[getLatestPosts.rejected] Error:", action.payload);
+        // console.log("[getLatestPosts.rejected] Error:", action.payload);
         state.latestLoading = false;
         state.latestError = action.payload.message;
       })
       .addCase(getTrendingPosts.pending, (state) => {
-        console.log("[getTrendingPosts.pending] Setting loading state");
+        // console.log("[getTrendingPosts.pending] Setting loading state");
         state.trendingLoading = true;
         state.trendingError = null;
       })
       .addCase(getTrendingPosts.fulfilled, (state, action) => {
-        console.log("[getTrendingPosts.fulfilled] Payload:", action.payload);
+        // console.log("[getTrendingPosts.fulfilled] Payload:", action.payload);
         state.trendingLoading = false;
         const newPosts = action.payload.posts;
         const combinedPosts = [...state.trendingPosts, ...newPosts];
@@ -625,17 +625,17 @@ const postSlice = createSlice({
         );
       })
       .addCase(getTrendingPosts.rejected, (state, action) => {
-        console.log("[getTrendingPosts.rejected] Error:", action.payload);
+        // console.log("[getTrendingPosts.rejected] Error:", action.payload);
         state.trendingLoading = false;
         state.trendingError = action.payload.message;
       })
       .addCase(getSearchPosts.pending, (state) => {
-        console.log("[getSearchPosts.pending] Setting loading state");
+        // console.log("[getSearchPosts.pending] Setting loading state");
         state.searchLoading = true;
         state.searchError = null;
       })
       .addCase(getSearchPosts.fulfilled, (state, action) => {
-        console.log("[getSearchPosts.fulfilled] Payload:", action.payload);
+        // console.log("[getSearchPosts.fulfilled] Payload:", action.payload);
         state.searchLoading = false;
         const newPosts = action.payload.posts;
         const combinedPosts = [...state.searchPosts, ...newPosts];
@@ -645,35 +645,35 @@ const postSlice = createSlice({
         );
       })
       .addCase(getSearchPosts.rejected, (state, action) => {
-        console.log("[getSearchPosts.rejected] Error:", action.payload);
+        // console.log("[getSearchPosts.rejected] Error:", action.payload);
         state.searchLoading = false;
         state.searchError = action.payload.message;
       })
       .addCase(getSinglePost.pending, (state) => {
-        console.log("[getSinglePost.pending] Setting loading state");
+        // console.log("[getSinglePost.pending] Setting loading state");
         state.loading = true;
         state.error = null;
       })
       .addCase(getSinglePost.fulfilled, (state, action) => {
-        console.log("[getSinglePost.fulfilled] Payload:", action.payload);
+        // console.log("[getSinglePost.fulfilled] Payload:", action.payload);
         state.loading = false;
         state.currentPost = action.payload;
       })
       .addCase(getSinglePost.rejected, (state, action) => {
-        console.log("[getSinglePost.rejected] Error:", action.payload);
+        // console.log("[getSinglePost.rejected] Error:", action.payload);
         state.loading = false;
         state.error = action.payload.message;
         state.currentPost = null;
       })
       .addCase(updatePost.pending, (state) => {
-        console.log("[updatePost.pending] Setting loading state");
+        // console.log("[updatePost.pending] Setting loading state");
         state.updateLoading = true;
         state.updateError = null;
         state.updateMessage = null;
         state.updateSuccess = false;
       })
       .addCase(updatePost.fulfilled, (state, action) => {
-        console.log("[updatePost.fulfilled] Payload:", action.payload);
+        // console.log("[updatePost.fulfilled] Payload:", action.payload);
         state.updateLoading = false;
         state.updateMessage = action.payload.message;
         state.updateSuccess = true;
@@ -714,19 +714,19 @@ const postSlice = createSlice({
         }
       })
       .addCase(updatePost.rejected, (state, action) => {
-        console.log("[updatePost.rejected] Error:", action.payload);
+        // console.log("[updatePost.rejected] Error:", action.payload);
         state.updateLoading = false;
         state.updateError = action.payload.message;
         state.updateSuccess = false;
       })
       .addCase(deletePost.pending, (state) => {
-        console.log("[deletePost.pending] Setting loading state");
+        // console.log("[deletePost.pending] Setting loading state");
         state.deleteLoading = true;
         state.deleteError = null;
         state.deleteMessage = null;
       })
       .addCase(deletePost.fulfilled, (state, action) => {
-        console.log("[deletePost.fulfilled] Payload:", action.payload);
+        // console.log("[deletePost.fulfilled] Payload:", action.payload);
         state.deleteLoading = false;
         state.deleteMessage = action.payload.message;
         state.posts = state.posts.filter(
@@ -752,17 +752,17 @@ const postSlice = createSlice({
         }
       })
       .addCase(deletePost.rejected, (state, action) => {
-        console.log("[deletePost.rejected] Error:", action.payload);
+        // console.log("[deletePost.rejected] Error:", action.payload);
         state.deleteLoading = false;
         state.deleteError = action.payload.message;
       })
       .addCase(fetchUserPosts.pending, (state) => {
-        console.log("[fetchUserPosts.pending] Setting loading state");
+        // console.log("[fetchUserPosts.pending] Setting loading state");
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchUserPosts.fulfilled, (state, action) => {
-        console.log("[fetchUserPosts.fulfilled] Payload:", action.payload);
+        // console.log("[fetchUserPosts.fulfilled] Payload:", action.payload);
         state.loading = false;
         const newPosts = action.payload.posts;
         const combinedPosts = [...state.posts, ...newPosts];
@@ -773,59 +773,59 @@ const postSlice = createSlice({
         state.lastFetched = action.payload.lastFetched;
       })
       .addCase(fetchUserPosts.rejected, (state, action) => {
-        console.log("[fetchUserPosts.rejected] Error:", action.payload);
+        // console.log("[fetchUserPosts.rejected] Error:", action.payload);
         state.loading = false;
         state.error = action.payload.message;
       })
       .addCase(startReading.fulfilled, (state, action) => {
-        console.log("[startReading.fulfilled] Payload:", action.payload);
+        // console.log("[startReading.fulfilled] Payload:", action.payload);
         state.isTracking = true;
         state.postId = action.payload.postId;
         state.startTime = action.payload.startTime;
       })
       .addCase(startReading.rejected, (state, action) => {
-        console.log("[startReading.rejected] Error:", action.payload);
+        // console.log("[startReading.rejected] Error:", action.payload);
         state.isTracking = false;
         state.error = action.payload.message;
       })
       .addCase(stopReading.fulfilled, (state) => {
-        console.log("[stopReading.fulfilled] Resetting tracking state");
+        // console.log("[stopReading.fulfilled] Resetting tracking state");
         state.isTracking = false;
         state.postId = null;
         state.startTime = null;
       })
       .addCase(stopReading.rejected, (state, action) => {
-        console.log("[stopReading.rejected] Error:", action.payload);
+        // console.log("[stopReading.rejected] Error:", action.payload);
         state.error = action.payload.message;
       })
       .addCase(submitReadingTime.pending, (state) => {
-        console.log("[submitReadingTime.pending] Setting loading state");
+        // console.log("[submitReadingTime.pending] Setting loading state");
         state.loading = true;
         state.error = null;
       })
       .addCase(submitReadingTime.fulfilled, (state) => {
-        console.log("[submitReadingTime.fulfilled] Clearing tracking state");
+        // console.log("[submitReadingTime.fulfilled] Clearing tracking state");
         state.loading = false;
         state.isTracking = false;
         state.postId = null;
         state.startTime = null;
       })
       .addCase(submitReadingTime.rejected, (state, action) => {
-        console.log("[submitReadingTime.rejected] Error:", action.payload);
+        // console.log("[submitReadingTime.rejected] Error:", action.payload);
         state.loading = false;
         state.error = action.payload.message;
       })
       .addCase(sendAdminAppeal.pending, (state) => {
-        console.log("[sendAdminAppeal.pending] Setting loading state");
+        // console.log("[sendAdminAppeal.pending] Setting loading state");
         state.appealLoading = true;
         state.appealError = null;
       })
       .addCase(sendAdminAppeal.fulfilled, (state) => {
-        console.log("[sendAdminAppeal.fulfilled] Appeal sent");
+        // console.log("[sendAdminAppeal.fulfilled] Appeal sent");
         state.appealLoading = false;
       })
       .addCase(sendAdminAppeal.rejected, (state, action) => {
-        console.log("[sendAdminAppeal.rejected] Error:", action.payload);
+        // console.log("[sendAdminAppeal.rejected] Error:", action.payload);
         state.appealLoading = false;
         state.appealError = action.payload.message;
       });

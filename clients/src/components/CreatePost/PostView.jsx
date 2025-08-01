@@ -13,10 +13,10 @@ const PostView = ({ post }) => {
     (state) => state.post
   );
 
-  console.log("[PostView] Rendering post:", post);
+  // console.log("[PostView] Rendering post:", post);
 
   if (!post || !post.title) {
-    console.log("[PostView] No post or title available");
+    // console.log("[PostView] No post or title available");
     return (
       <div className="text-lg font-medium w-full text-center text-text-main-light dark:text-text-main-dark">
         <p className="opacity-80">No post selected</p>
@@ -25,20 +25,20 @@ const PostView = ({ post }) => {
   }
 
   const handleDelete = async () => {
-    console.log("[PostView] Deleting post with id:", post._id);
+    // console.log("[PostView] Deleting post with id:", post._id);
     if (!post._id) return;
     if (window.confirm("Are you sure you want to delete this post?")) {
       await dispatch(deletePost(post._id));
-      console.log("[PostView] Delete dispatched for post id:", post._id);
+      // console.log("[PostView] Delete dispatched for post id:", post._id);
     }
   };
 
   const renderBlock = (block, i) => {
-    console.log("[PostView] Rendering block:", { index: i, block });
+    // console.log("[PostView] Rendering block:", { index: i, block });
 
     switch (block.type) {
       case "text":
-        console.log("[PostView] Text block HTML:", block.value);
+        // console.log("[PostView] Text block HTML:", block.value);
         return (
           <div
             className="rich-content  list-inside text-text-main-light dark:text-text-main-dark leading-relaxed text-base my-4"
@@ -145,11 +145,11 @@ const PostView = ({ post }) => {
           </div>
         );
       case "list":
-        console.log("[PostView] List block data:", {
-          block,
-          items: block.items,
-          ordered: block.ordered,
-        });
+        // console.log("[PostView] List block data:", {
+        //   block,
+        //   items: block.items,
+        //   ordered: block.ordered,
+        // });
         if (!block.items || !Array.isArray(block.items)) {
           console.warn("[PostView] Invalid list items:", block.items);
           return (

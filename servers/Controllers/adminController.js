@@ -598,7 +598,7 @@ export const getSiteAnalytics = async (req, res, next) => {
 // Exports all data as Excel
 export const downloadAllDataCsv = async (req, res, next) => {
   try {
-    console.log("[AdminController:downloadAllDataCsv] 🚀 Starting data export");
+    // console.log("[AdminController:downloadAllDataCsv] 🚀 Starting data export");
 
     // Check admin access
     if (!req.user?.isAdmin) {
@@ -612,18 +612,18 @@ export const downloadAllDataCsv = async (req, res, next) => {
 
     // Fetch data
     const users = await UserModel.find({}).lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 👤 Users fetched:",
-      users.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 👤 Users fetched:",
+    //   users.length
+    // );
 
     const posts = await PostModel.find({})
       .populate("author", "name email")
       .lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 📝 Posts fetched:",
-      posts.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 📝 Posts fetched:",
+    //   posts.length
+    // );
 
     const traffic = await TrafficModel.find({})
       .populate({
@@ -632,20 +632,20 @@ export const downloadAllDataCsv = async (req, res, next) => {
         options: { strictPopulate: false },
       })
       .lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 📈 Traffic fetched:",
-      traffic.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 📈 Traffic fetched:",
+    //   traffic.length
+    // );
 
     const plansRaw = await UserSubscriptionPlan.find({
       $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
     })
       .populate("author", "name email")
       .lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 📋 Plans fetched:",
-      plansRaw.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 📋 Plans fetched:",
+    //   plansRaw.length
+    // );
 
     const subscriptions = await UserSubscription.find({})
       .populate({
@@ -659,16 +659,16 @@ export const downloadAllDataCsv = async (req, res, next) => {
         options: { strictPopulate: false },
       })
       .lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 💳 Subscriptions fetched:",
-      subscriptions.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 💳 Subscriptions fetched:",
+    //   subscriptions.length
+    // );
 
     const payments = await PaymentModel.find().lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 💸 Payments fetched:",
-      payments.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 💸 Payments fetched:",
+    //   payments.length
+    // );
 
     const feedbackUsers = await UserModel.find({
       "feedbackPrompt.responded": true,
@@ -677,10 +677,10 @@ export const downloadAllDataCsv = async (req, res, next) => {
         "name email avatar feedbackPrompt.rating feedbackPrompt.message feedbackPrompt.shownAt"
       )
       .lean();
-    console.log(
-      "[AdminController:downloadAllDataCsv] 📬 Feedback fetched:",
-      feedbackUsers.length
-    );
+    // console.log(
+    //   "[AdminController:downloadAllDataCsv] 📬 Feedback fetched:",
+    //   feedbackUsers.length
+    // );
 
     const wb = XLSX.utils.book_new();
 
@@ -1223,8 +1223,8 @@ export const checkUserEligibility = async (req, res, next) => {
       throw new AppError("User not found", 404, "CheckUserEligibility");
 
     // Log basic user info
-    console.log("[Eligibility] 👤 Checking eligibility for user:", userId);
-    console.log("[Eligibility] 📅 Account created at:", user.createdAt);
+    // console.log("[Eligibility] 👤 Checking eligibility for user:", userId);
+    // console.log("[Eligibility] 📅 Account created at:", user.createdAt);
 
     // Get user metrics
     const followerCount =
@@ -1253,12 +1253,12 @@ export const checkUserEligibility = async (req, res, next) => {
       user.milestoneOverride?.accountAgeDays ??
       (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
 
-    console.log("[Eligibility] 📊 Computed user metrics:", {
-      followerCount,
-      postCount,
-      engagementRate,
-      accountAgeDays,
-    });
+    // console.log("[Eligibility] 📊 Computed user metrics:", {
+    //   followerCount,
+    //   postCount,
+    //   engagementRate,
+    //   accountAgeDays,
+    // });
 
     // Fetch eligibility config
     let config = await SubscriptionConfig.findOne({
@@ -1285,12 +1285,12 @@ export const checkUserEligibility = async (req, res, next) => {
       );
     }
 
-    console.log("[Eligibility] 🔧 Current config used:", {
-      minFollowers: config.minFollowers,
-      minPosts: config.minPosts,
-      minEngagementRate: config.minEngagementRate,
-      minAccountAgeDays: config.minAccountAgeDays,
-    });
+    // console.log("[Eligibility] 🔧 Current config used:", {
+    //   minFollowers: config.minFollowers,
+    //   minPosts: config.minPosts,
+    //   minEngagementRate: config.minEngagementRate,
+    //   minAccountAgeDays: config.minAccountAgeDays,
+    // });
 
     const isEligible =
       user.isEligibleForSubscription ||
