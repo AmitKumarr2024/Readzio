@@ -7,10 +7,13 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
   const [showBar, setShowBar] = useState(false);
   const controls = useAnimation();
 
-  // Manage loading state with delay
   useEffect(() => {
     if (loading) {
       setShowBar(true);
+
+      // Immediately reset to 0% before starting animation
+      controls.set({ width: "0%" });
+
       controls.start({
         width: "100%",
         transition: { duration: 3, ease: "linear" },
@@ -20,6 +23,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
         width: "0%",
         transition: { duration: 0.3 },
       });
+
       const timeout = setTimeout(() => setShowBar(false), 300);
       return () => clearTimeout(timeout);
     }
