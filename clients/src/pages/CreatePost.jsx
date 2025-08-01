@@ -6,7 +6,6 @@ import CategorySelector from "../components/CreatePost/CategorySelector";
 import PostTypeSelector from "../components/CreatePost/PostTypeSelector";
 import PostEditor from "../components/CreatePost/PostEditor";
 import PostPreviewList from "../components/CreatePost/PostPreviewList";
-import LoadingBar from "../Utils/LoadingBar";
 import { createPosts, deletePost } from "../store/postSlice";
 import { fetchCategories } from "../store/categorySlice";
 import {
@@ -14,6 +13,15 @@ import {
   setPostType,
   resetPostMeta,
 } from "../store/Post/postMetaSlice";
+
+const LoadingBar = ({ loading }) => {
+  if (!loading) return null;
+  return (
+    <div className="fixed top-0 left-0 w-full h-1 bg-blue-500 animate-pulse z-50">
+      <div className="h-full bg-blue-700 animate-loading-bar"></div>
+    </div>
+  );
+};
 
 const CreatePost = () => {
   const navigate = useNavigate();
@@ -32,12 +40,10 @@ const CreatePost = () => {
 
   useEffect(() => {
     console.log("[CreatePost] Fetching categories");
-    try {
-      dispatch(fetchCategories());
-    } catch (e) {
+    dispatch(fetchCategories()).catch((e) => {
       console.error("[CreatePost] Fetch categories error:", e);
       toast.error("Failed to load categories.");
-    }
+    });
   }, [dispatch]);
 
   const categoryMap = useMemo(() => {
@@ -45,16 +51,11 @@ const CreatePost = () => {
       "[CreatePost] Creating category map with categories:",
       categories
     );
-    try {
-      const map = {};
-      categories.forEach((cat) => {
-        map[cat._id] = cat.name;
-      });
-      return map;
-    } catch (e) {
-      console.error("[CreatePost] Category map error:", e);
-      return {};
-    }
+    const map = {};
+    categories.forEach((cat) => {
+      map[cat._id] = cat.name;
+    });
+    return map;
   }, [categories]);
 
   const posts = post ? [post] : [];
@@ -90,13 +91,12 @@ const CreatePost = () => {
     // Transform table blocks to include data field
     const updatedBlocks = blocks.map((block) => {
       if (block.type === "table") {
-        if (!block.headers?.length || !block.rows?.some((row) => row.length)) {
-          toast.error("Table block must have non-empty headers and rows");
+        if (!block.data?.length || !block.data.some((row) => row.length)) {
+          toast.error("Table block must have non-empty data");
           throw new Error("Invalid table block");
         }
         return {
           ...block,
-          data: [block.headers, ...block.rows], // Combine headers and rows into data
           blocked: false,
         };
       }
