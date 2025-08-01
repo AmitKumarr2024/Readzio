@@ -173,7 +173,10 @@ export const createPost = async (req, res, next) => {
     // Validate table blocks
     blocksWithIds.forEach((block, index) => {
       if (block.type === "table") {
-        console.log("[createPost] Validating table block:", block);
+        console.log("[createPost] Validating table block:", {
+          id: block.id,
+          data: block.data,
+        }); // Enhanced logging
         if (
           !block.data ||
           !Array.isArray(block.data) ||
@@ -293,61 +296,8 @@ export const createPost = async (req, res, next) => {
 
     const processedBlocks = await Promise.all(
       blocksWithIds.map(async (block) => {
-        const processed = { ...block };
-        if (block.type === "image" && block.src) {
-          processed.src = await processImage(
-            block.src,
-            `block ${block.id}`,
-            "blogs/post/blocks/images/"
-          );
-        }
-        if (block.type === "poll") {
-          if (!block.question || !Array.isArray(block.options)) {
-            console.error("[createPost] Invalid poll block:", block);
-            throw new AppError(
-              "Poll requires question and options array",
-              400,
-              "CreatePost"
-            );
-          }
-          processed.options = block.options.map((opt) => ({
-            option: typeof opt === "string" ? opt : opt.option,
-            votes: opt.votes || 0,
-          }));
-          processed.votedUserIds = block.votedUserIds || [];
-        }
-        if (block.type === "list" && Array.isArray(block.items)) {
-          processed.items = block.items.map((item) =>
-            item == null ? "" : String(item)
-          );
-        }
-        const allowedFields = [
-          "id",
-          "type",
-          "value",
-          "level",
-          "text",
-          "code",
-          "caption",
-          "src",
-          "href",
-          "url",
-          "name",
-          "size",
-          "ordered",
-          "author",
-          "question",
-          "options",
-          "votedUserIds",
-          "items",
-          "data",
-          "blocked",
-        ];
-        return Object.fromEntries(
-          Object.entries(processed).filter(([key]) =>
-            allowedFields.includes(key)
-          )
-        );
+        const processed = await processBlock(block); // Use processBlock for consistency
+        return processed;
       })
     );
 
@@ -558,6 +508,17 @@ export const getAllPosts = async (req, res, next) => {
           : Promise.resolve(0),
       ]);
 
+    // Log table blocks for debugging
+    posts.forEach((post) => {
+      const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
+      if (tableBlocks.length > 0) {
+        console.log(
+          `[getAllPosts] Post ${post._id} table blocks:`,
+          tableBlocks.map((b) => ({ id: b.id, data: b.data }))
+        );
+      }
+    });
+
     console.log(
       "[getAllPosts] Fetched posts:",
       posts.map((p) => ({ _id: p._id, title: p.title }))
@@ -659,13 +620,13 @@ export const getSinglePost = async (req, res, next) => {
       );
     }
 
-    if (userId) {
-      await recordActivity({
-        userId,
-        action: "VIEWED_POST",
-        targetPost: post._id,
-        message: `Viewed post: ${post.title}`,
-      });
+    // Log table blocks for debugging
+    const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
+    if (tableBlocks.length > 0) {
+      console.log(
+        `[getSinglePost] Post ${post._id} table blocks:`,
+        tableBlocks.map((b) => ({ id: b.id, data: b.data }))
+      );
     }
 
     console.log("[getSinglePost] Success, returning post:", {
@@ -736,7 +697,11 @@ export const trackTimeSpent = async (req, res, next) => {
 };
 
 const processBlock = async (block) => {
-  console.log("[processBlock] Processing block:", block);
+  console.log("[processBlock] Processing block:", {
+    id: block.id,
+    type: block.type,
+    data: block.data,
+  }); // Enhanced logging
   const processedBlock = { ...block };
 
   if (processedBlock.text) {
@@ -803,6 +768,10 @@ const processBlock = async (block) => {
         "ProcessBlock"
       );
     }
+    // Added: Sanitize table data to ensure strings
+    processedBlock.data = processedBlock.data.map((row) =>
+      row.map((cell) => (cell == null ? "" : String(cell)))
+    );
   }
 
   return processedBlock;
@@ -1318,6 +1287,17 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
       PostModel.countDocuments(query),
     ]);
 
+    // Log table blocks for debugging
+    posts.forEach((post) => {
+      const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
+      if (tableBlocks.length > 0) {
+        console.log(
+          `[getDraftAndPendingPosts] Post ${post._id} table blocks:`,
+          tableBlocks.map((b) => ({ id: b.id, data: b.data }))
+        );
+      }
+    });
+
     console.log(
       "[getDraftAndPendingPosts] Fetched posts:",
       posts.map((p) => ({ _id: p._id, title: p.title }))
@@ -1325,15 +1305,13 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
 
     if (!posts.length) {
       console.log("[getDraftAndPendingPosts] No posts found");
-      return res
-        .status(200)
-        .json({
-          success: true,
-          message: "No posts found",
-          total: 0,
-          page,
-          posts: [],
-        });
+      return res.status(200).json({
+        success: true,
+        message: "No posts found",
+        total: 0,
+        page,
+        posts: [],
+      });
     }
 
     res.status(200).json({ success: true, total, page, posts });
@@ -1388,6 +1366,15 @@ export const getPublicPost = async (req, res, next) => {
         "Post not found or has been deleted",
         404,
         "GetPublicPost"
+      );
+    }
+
+    // Log table blocks for debugging
+    const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
+    if (tableBlocks.length > 0) {
+      console.log(
+        `[getPublicPost] Post ${post._id} table blocks:`,
+        tableBlocks.map((b) => ({ id: b.id, data: b.data }))
       );
     }
 
@@ -1473,6 +1460,17 @@ export const getFollowingPosts = async (req, res, next) => {
         .lean(),
       PostModel.countDocuments(query),
     ]);
+
+    // Log table blocks for debugging
+    posts.forEach((post) => {
+      const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
+      if (tableBlocks.length > 0) {
+        console.log(
+          `[getFollowingPosts] Post ${post._id} table blocks:`,
+          tableBlocks.map((b) => ({ id: b.id, data: b.data }))
+        );
+      }
+    });
 
     await recordActivity({
       userId,

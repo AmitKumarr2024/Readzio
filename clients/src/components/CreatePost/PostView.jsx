@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -14,7 +13,10 @@ const PostView = ({ post }) => {
     (state) => state.post
   );
 
+  console.log("[PostView] Rendering post:", post);
+
   if (!post || !post.title) {
+    console.log("[PostView] No post or title available");
     return (
       <div className="text-lg font-medium w-full text-center text-text-main-light dark:text-text-main-dark">
         <p className="opacity-80">No post selected</p>
@@ -23,14 +25,16 @@ const PostView = ({ post }) => {
   }
 
   const handleDelete = async () => {
+    console.log("[PostView] Deleting post with id:", post._id);
     if (!post._id) return;
     if (window.confirm("Are you sure you want to delete this post?")) {
       await dispatch(deletePost(post._id));
+      console.log("[PostView] Delete dispatched for post id:", post._id);
     }
   };
 
   const renderBlock = (block, i) => {
-    // console.log("[DEBUG] Rendering block", i, block);
+    console.log("[PostView] Rendering block:", { index: i, block });
 
     switch (block.type) {
       case "text":
@@ -200,7 +204,10 @@ const PostView = ({ post }) => {
               </thead>
               <tbody>
                 {rows.map((row, rowIndex) => (
-                  <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-900">
+                  <tr
+                    key={rowIndex}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-900"
+                  >
                     {row.map((cell, cellIndex) => (
                       <td
                         key={cellIndex}
@@ -216,14 +223,12 @@ const PostView = ({ post }) => {
           </div>
         );
       case "video":
-        return (
-          <VideoBlock key={i} src={block.src} caption={block.caption} />
-        );
+        return <VideoBlock key={i} src={block.src} caption={block.caption} />;
       default:
-        console.warn(`[WARN] Unsupported block type: ${block.type}`);
+        console.warn(`[PostView] Unsupported block type: ${block.type}`);
         return (
           <div key={i} className="text-red-500 italic">
-            Unsupported block type: {block.type}
+            Unsupported block type: ${block.type}
           </div>
         );
     }

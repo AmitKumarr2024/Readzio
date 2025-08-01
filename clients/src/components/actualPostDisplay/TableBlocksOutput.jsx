@@ -1,12 +1,11 @@
-// File: src/components/TableBlocksOutput.js
 const TableBlocksOutput = ({ data, caption }) => {
-  console.log("[DEBUG] TableBlocksOutput data:", data);
+  console.log("[TableBlocksOutput] Rendering with data:", { data, caption });
+
   if (!Array.isArray(data) || data.length === 0) {
-    console.log(
-      "[DEBUG] TableBlocksOutput received empty or malformed data, using default"
-    );
+    console.warn("[TableBlocksOutput] Empty or malformed data received");
     return <div className="text-center text-red-500 p-4">No Table Data</div>;
   }
+
   return (
     <div className="my-4 overflow-x-auto">
       <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-700">

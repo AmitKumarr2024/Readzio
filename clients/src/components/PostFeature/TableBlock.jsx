@@ -1,8 +1,7 @@
-// File: src/PostFeature/TableBlock.js
 import React from "react";
 
 const TableBlock = ({ headers = [], rows = [[]], caption = "" }) => {
-  console.log("[DEBUG] TableBlock props:", { headers, rows, caption });
+  console.log("[TableBlock] Rendering with props:", { headers, rows, caption });
 
   const isEmpty =
     headers.length === 0 &&
@@ -14,7 +13,7 @@ const TableBlock = ({ headers = [], rows = [[]], caption = "" }) => {
     : [];
 
   if (isEmpty) {
-    console.warn("[DEBUG] TableBlock received empty or malformed data");
+    console.warn("[TableBlock] Empty or malformed table data detected");
   }
 
   return (

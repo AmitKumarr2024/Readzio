@@ -50,6 +50,12 @@ const SortableBlock = ({ block, index, children }) => {
     position: "relative",
   };
 
+  console.log("[SortableBlock] Rendering block:", {
+    id: block.id,
+    index,
+    isDragging,
+  });
+
   return (
     <div ref={setNodeRef} style={style} className="relative group">
       <button
@@ -79,6 +85,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
+    console.log("[PostEditor] Drag end:", {
+      activeId: active.id,
+      overId: over?.id,
+    });
     if (active.id !== over?.id) {
       const oldIndex = blocks.findIndex((block) => block.id === active.id);
       const newIndex = blocks.findIndex((block) => block.id === over?.id);
@@ -86,10 +96,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
       const [movedBlock] = newBlocks.splice(oldIndex, 1);
       newBlocks.splice(newIndex, 0, movedBlock);
       setBlocks(newBlocks);
+      console.log("[PostEditor] Blocks reordered:", newBlocks);
     }
   };
 
   const addBlock = (type, options = {}) => {
+    console.log("[PostEditor] Adding block:", { type, options });
     const newBlock =
       type === "text"
         ? { id: uuidv4(), type, value: "<p></p>" }
@@ -116,7 +128,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
             id: uuidv4(),
             type,
             headers: ["Header 1", "Header 2"],
-            rows: [["", ""], ["", ""]],
+            rows: [
+              ["", ""],
+              ["", ""],
+            ],
             caption: "",
           }
         : type === "video"
@@ -124,28 +139,47 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         : null;
 
     if (newBlock) {
-      if (type === "table" && (!newBlock.headers.length || !newBlock.rows.length)) {
+      if (
+        type === "table" &&
+        (!newBlock.headers.length || !newBlock.rows.length)
+      ) {
         toast.error("Invalid table configuration.");
         return;
       }
       setBlocks([...blocks, newBlock]);
-      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} block added`);
+      console.log("[PostEditor] Block added:", newBlock);
+      toast.success(
+        `${type.charAt(0).toUpperCase() + type.slice(1)} block added`
+      );
     }
   };
 
   const updateBlock = (index, newData) => {
+    console.log(
+      "[PostEditor] Updating block at index:",
+      index,
+      "with data:",
+      newData
+    );
     const updated = [...blocks];
     updated[index] = { ...updated[index], ...newData };
     setBlocks(updated);
   };
 
   const removeBlock = (index) => {
+    console.log("[PostEditor] Removing block at index:", index);
     const updated = blocks.filter((_, i) => i !== index);
     setBlocks(updated);
     toast.success("Block removed");
   };
 
   const handleImageUpload = (file, index) => {
+    console.log(
+      "[PostEditor] Uploading image for block index:",
+      index,
+      "file:",
+      file?.name
+    );
     if (!file) return;
     if (file.size > MAX_FILE_SIZE) {
       toast.error("File size exceeds 10MB limit.");
@@ -157,7 +191,11 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     }
     const reader = new FileReader();
     reader.onload = () => {
-      updateBlock(index, { src: reader.result, caption: blocks[index].caption });
+      updateBlock(index, {
+        src: reader.result,
+        caption: blocks[index].caption,
+      });
+      console.log("[PostEditor] Image uploaded for block index:", index);
       toast.success("Image uploaded");
     };
     reader.onerror = () => toast.error("Failed to upload image");
@@ -166,6 +204,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
 
   const handleFileUpload = (e, index) => {
     const file = e.target.files[0];
+    console.log(
+      "[PostEditor] Uploading file for block index:",
+      index,
+      "file:",
+      file?.name
+    );
     if (!file) return;
     if (file.size > MAX_FILE_SIZE) {
       toast.error("File size exceeds 10MB limit.");
@@ -177,10 +221,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
       name: file.name,
       size: file.size,
     });
+    console.log("[PostEditor] File uploaded for block index:", index);
     toast.success("File uploaded");
   };
 
   useEffect(() => {
+    console.log("[PostEditor] Blocks updated:", blocks);
     if (blockRefs.current.length > blocks.length) {
       blockRefs.current = blockRefs.current.slice(0, blocks.length);
     }
@@ -202,6 +248,8 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     };
     return widthMap[size] || "w-full";
   };
+
+  console.log("[PostEditor] Rendering with state:", { title, blocks, size });
 
   return (
     <div
@@ -227,6 +275,11 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
           <div className="flex flex-col mx-auto bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark overflow-y-auto mb-4 px-3 sm:px-4 md:px-6 pb-4 sm:pb-6 w-full space-y-4 sm:space-y-6 min-h-[400px] sm:min-h-[430px] pt-4 sm:pt-6 rounded-lg">
             <AnimatePresence>
               {blocks.map((block, index) => {
+                console.log("[PostEditor] Rendering block:", {
+                  index,
+                  type: block.type,
+                  id: block.id,
+                });
                 const motionDivProps = {
                   initial: { opacity: 0, y: 20 },
                   animate: { opacity: 1, y: 0 },
@@ -410,7 +463,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               : "Unordered List Items"}
                           </label>
                           {block.items.map((item, i) => (
-                            <div key={i} className="flex items-center gap-2 mb-2">
+                            <div
+                              key={i}
+                              className="flex items-center gap-2 mb-2"
+                            >
                               <input
                                 type="text"
                                 value={item}
@@ -579,7 +635,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       }}
                                       placeholder={`Header ${headerIndex + 1}`}
                                       className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-200 dark:border-gray-800 rounded bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                      aria-label={`Table header ${headerIndex + 1}`}
+                                      aria-label={`Table header ${
+                                        headerIndex + 1
+                                      }`}
                                     />
                                   )
                                 )}
@@ -630,7 +688,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       cellIndex + 1
                                     }`}
                                     className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-200 dark:border-gray-800 rounded bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    aria-label={`Table cell row ${rowIndex + 1} column ${cellIndex + 1}`}
+                                    aria-label={`Table cell row ${
+                                      rowIndex + 1
+                                    } column ${cellIndex + 1}`}
                                   />
                                 ))}
                               </div>
@@ -729,7 +789,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     });
                                     toast.success("Column removed");
                                   } else {
-                                    toast.error("At least one column is required");
+                                    toast.error(
+                                      "At least one column is required"
+                                    );
                                   }
                                 }}
                                 className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"

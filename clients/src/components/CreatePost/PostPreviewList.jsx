@@ -1,4 +1,3 @@
-// File: src/components/PostPreviewList.js
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -48,13 +47,28 @@ const PostPreviewList = ({
   const navigate = useNavigate();
   const { singlePost, singlePostStatus } = useSelector((state) => state.post);
 
+  console.log("[PostPreviewList] Component render state:", {
+    zoomLevel,
+    copiedIndex,
+    showConfirmModal,
+    isPostConfirmed,
+    countdown,
+    postData,
+    isModalOpen,
+    isFeatured,
+    isPinned,
+    isPublished,
+    language,
+    singlePostStatus,
+  });
+
   useEffect(() => {
-    console.log("[DEBUG] PostPreviewList: Props received:", {
+    console.log("[PostPreviewList] Props received:", {
       currentDraftPost,
       postType,
       category,
       categoryName,
-      allPosts,
+      allPosts: allPosts?.length,
       createLoading,
       createError,
     });
@@ -69,11 +83,13 @@ const PostPreviewList = ({
   ]);
 
   useEffect(() => {
+    console.log("[PostPreviewList] Single post changed:", singlePost);
     if (singlePost) setIsModalOpen(true);
   }, [singlePost]);
 
   useEffect(() => {
     if (modalRef.current && isModalOpen) {
+      console.log("[PostPreviewList] Scrolling modal to bottom");
       requestAnimationFrame(() => {
         modalRef.current.scrollTop = modalRef.current.scrollHeight;
       });
@@ -84,20 +100,24 @@ const PostPreviewList = ({
   useEffect(() => {
     let timer;
     if (isPostConfirmed && countdown > 0 && !createLoading) {
+      console.log("[PostPreviewList] Countdown tick:", countdown);
       timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
     } else if (isPostConfirmed && countdown === 0 && !createLoading) {
+      console.log("[PostPreviewList] Countdown finished, triggering publish");
       handleConfirmPublish();
     }
     return () => clearTimeout(timer);
   }, [isPostConfirmed, countdown, createLoading]);
 
   const closeModal = () => {
+    console.log("[PostPreviewList] Closing modal");
     setIsModalOpen(false);
     setZoomLevel(1);
     dispatch({ type: "post/clearSinglePost" });
   };
 
   const handleCopyCode = (code, i) => {
+    console.log("[PostPreviewList] Copying code for block index:", i);
     navigator.clipboard.writeText(code);
     setCopiedIndex(i);
     setTimeout(() => setCopiedIndex(null), 2000);
@@ -105,6 +125,10 @@ const PostPreviewList = ({
   };
 
   const createPost = () => {
+    console.log(
+      "[PostPreviewList] Initiating post creation with draft:",
+      currentDraftPost
+    );
     if (!currentDraftPost?.title) return toast.error("Please enter a title");
     if (!currentDraftPost?.blocks?.length)
       return toast.error("Please add content blocks");
@@ -120,7 +144,7 @@ const PostPreviewList = ({
       return;
     }
 
-    console.log("[DEBUG] createPost metadata:", {
+    console.log("[PostPreviewList] Post creation metadata:", {
       isFeatured,
       isPinned,
       isPublished,
@@ -132,6 +156,10 @@ const PostPreviewList = ({
   };
 
   const handleModalConfirm = async ({ tags, thumbnail }) => {
+    console.log("[PostPreviewList] Modal confirmed with data:", {
+      tags,
+      thumbnail,
+    });
     const newPostData = {
       tags,
       thumbnail,
@@ -145,6 +173,7 @@ const PostPreviewList = ({
     setIsPostConfirmed(true);
     setCountdown(5);
 
+    console.log("[PostPreviewList] Dispatching metadata updates:", newPostData);
     dispatch(setIsFeatured(isFeatured));
     dispatch(setIsPinned(isPinned));
     dispatch(setIsPublished(isPublished));
@@ -152,14 +181,15 @@ const PostPreviewList = ({
   };
 
   const handleConfirmPublish = async () => {
+    console.log("[PostPreviewList] Confirming publish with data:", postData);
     setIsPostConfirmed(false);
-    console.log("[DEBUG] Initiating post creation with data:", postData);
     await onCreatePost(postData);
     setPostData(null);
     setCountdown(5);
   };
 
   const handleCancelPublish = () => {
+    console.log("[PostPreviewList] Cancelling publish");
     setShowConfirmModal(false);
     setIsPostConfirmed(false);
     setPostData(null);
@@ -168,19 +198,25 @@ const PostPreviewList = ({
   };
 
   const handleDeletePost = (postId) => {
+    console.log("[PostPreviewList] Deleting post with id:", postId);
     if (window.confirm("Are you sure you want to delete this post?")) {
       dispatch(deletePost(postId))
         .unwrap()
-        .then(() => toast.success("Post deleted successfully"))
-        .catch((err) =>
-          toast.error(`Failed to delete post: ${err.message || err}`)
-        );
+        .then(() => {
+          console.log("[PostPreviewList] Post deleted successfully:", postId);
+          toast.success("Post deleted successfully");
+        })
+        .catch((err) => {
+          console.error("[PostPreviewList] Post deletion failed:", err);
+          toast.error(`Failed to delete post: ${err.message || err}`);
+        });
     }
   };
 
   const deleteBlock = (index) => {
-    console.log("[DEBUG] Deleting block at index:", index);
+    console.log("[PostPreviewList] Deleting block at index:", index);
     if (!onUpdateDraft) {
+      console.error("[PostPreviewList] No update function provided");
       toast.error("No update function provided");
       return;
     }
@@ -192,7 +228,7 @@ const PostPreviewList = ({
   const renderBlock = useCallback(
     (block, i) => {
       if (!block || !block.type) {
-        console.warn(`[DEBUG] Invalid block at index ${i}:`, block);
+        console.warn(`[PostPreviewList] Invalid block at index ${i}:`, block);
         toast.error("Invalid block detected");
         return (
           <div key={i} className="my-4 text-red-500 italic">
@@ -201,16 +237,19 @@ const PostPreviewList = ({
         );
       }
 
-      console.log(`[DEBUG] Rendering block ${i}:`, block);
+      console.log(`[PostPreviewList] Rendering block ${i}:`, block);
 
       if (block.type === "table") {
-        console.log(`[DEBUG] Table block props before render:`, {
+        console.log(`[PostPreviewList] Table block props:`, {
           headers: block.headers || [],
           rows: block.rows || [[]],
           caption: block.caption || "",
         });
         if (!block.headers?.length && !block.rows?.some((row) => row.length)) {
-          console.warn(`[DEBUG] Empty table block at index ${i}:`, block);
+          console.warn(
+            `[PostPreviewList] Empty table block at index ${i}:`,
+            block
+          );
           toast.error("Table block is empty. Using default data.");
           block = {
             ...block,
@@ -513,7 +552,7 @@ const PostPreviewList = ({
           );
         default:
           console.warn(
-            `[DEBUG] Unsupported block type at index ${i}:`,
+            `[PostPreviewList] Unsupported block type at index ${i}:`,
             block.type
           );
           return (
@@ -561,7 +600,13 @@ const PostPreviewList = ({
               <input
                 type="checkbox"
                 checked={isFeatured}
-                onChange={() => setIsFeaturedLocal(!isFeatured)}
+                onChange={() => {
+                  console.log(
+                    "[PostPreviewList] Toggling isFeatured:",
+                    !isFeatured
+                  );
+                  setIsFeaturedLocal(!isFeatured);
+                }}
                 className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
               />
               Feature Post
@@ -570,7 +615,13 @@ const PostPreviewList = ({
               <input
                 type="checkbox"
                 checked={isPinned}
-                onChange={() => setIsPinnedLocal(!isPinned)}
+                onChange={() => {
+                  console.log(
+                    "[PostPreviewList] Toggling isPinned:",
+                    !isPinned
+                  );
+                  setIsPinnedLocal(!isPinned);
+                }}
                 className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
               />
               Pin Post
@@ -579,7 +630,13 @@ const PostPreviewList = ({
               <input
                 type="checkbox"
                 checked={isPublished}
-                onChange={() => setIsPublishedLocal(!isPublished)}
+                onChange={() => {
+                  console.log(
+                    "[PostPreviewList] Toggling isPublished:",
+                    !isPublished
+                  );
+                  setIsPublishedLocal(!isPublished);
+                }}
                 className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
               />
               Publish Post
@@ -589,7 +646,13 @@ const PostPreviewList = ({
               <input
                 type="text"
                 value={language}
-                onChange={(e) => setLanguageLocal(e.target.value)}
+                onChange={(e) => {
+                  console.log(
+                    "[PostPreviewList] Updating language:",
+                    e.target.value
+                  );
+                  setLanguageLocal(e.target.value);
+                }}
                 placeholder="e.g., en"
                 className="px-3 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
@@ -627,6 +690,7 @@ const PostPreviewList = ({
       ) : (
         <div className="grid gap-6 mt-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {allPosts.map((post) => {
+            console.log("[PostPreviewList] Rendering post preview:", post._id);
             const firstBlock = post.blocks.find((b) =>
               ["image", "text", "file", "heading"].includes(b.type)
             );
@@ -640,7 +704,13 @@ const PostPreviewList = ({
                 className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-lg transition-all duration-300"
               >
                 <div
-                  onClick={() => dispatch(getSinglePost(post.slug))}
+                  onClick={() => {
+                    console.log(
+                      "[PostPreviewList] Fetching single post:",
+                      post.slug
+                    );
+                    dispatch(getSinglePost(post.slug));
+                  }}
                   className="cursor-pointer"
                 >
                   {firstBlock?.type === "image" ? (
@@ -648,7 +718,13 @@ const PostPreviewList = ({
                       src={firstBlock.src}
                       alt={firstBlock.caption || "Post Image"}
                       className="w-full h-40 object-cover rounded-t-xl hover:scale-105 transition-transform duration-300"
-                      onError={(e) => (e.target.style.display = "none")}
+                      onError={(e) => {
+                        console.error(
+                          "[PostPreviewList] Image load error for post:",
+                          post._id
+                        );
+                        e.target.style.display = "none";
+                      }}
                       loading="lazy"
                     />
                   ) : firstBlock?.type === "text" ? (

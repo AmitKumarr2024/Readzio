@@ -7,19 +7,30 @@ import { toast } from "react-hot-toast";
 
 const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   const tags = useSelector((state) => state.postMeta.tags);
-
   const [selectedThumbnail, setSelectedThumbnail] = useState(null);
   const [activeTab, setActiveTab] = useState("upload");
   const [urlInput, setUrlInput] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
 
+  console.log("[ConfirmPostModal] Render state:", {
+    tags,
+    selectedThumbnail,
+    activeTab,
+    isConfirming,
+  });
+
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
+    console.log("[ConfirmPostModal] File uploaded:", file?.name);
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setSelectedThumbnail(reader.result);
         setUrlInput("");
+        console.log(
+          "[ConfirmPostModal] Thumbnail set from file:",
+          reader.result
+        );
       };
       reader.readAsDataURL(file);
     } else {
@@ -28,17 +39,25 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   };
 
   const handleUrlSubmit = () => {
+    console.log("[ConfirmPostModal] Submitting URL:", urlInput);
     if (urlInput && /\.(jpg|jpeg|png|gif|webp)$/i.test(urlInput)) {
       setSelectedThumbnail(urlInput);
       setUrlInput("");
+      console.log("[ConfirmPostModal] Thumbnail set from URL:", urlInput);
     } else {
       toast.error("Please enter a valid image URL.");
     }
   };
 
   const handleConfirm = () => {
+    console.log("[ConfirmPostModal] Confirm clicked:", {
+      tags,
+      selectedThumbnail,
+    });
     if (!selectedThumbnail) {
-      toast.error("Please select a thumbnail by uploading a file or entering a URL.");
+      toast.error(
+        "Please select a thumbnail by uploading a file or entering a URL."
+      );
       return;
     }
 
@@ -51,11 +70,16 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   };
 
   const handleFinalConfirm = () => {
+    console.log("[ConfirmPostModal] Final confirm:", {
+      tags,
+      thumbnail: selectedThumbnail,
+    });
     setIsConfirming(false);
     onConfirm({ tags, thumbnail: selectedThumbnail });
   };
 
   const handleCancel = () => {
+    console.log("[ConfirmPostModal] Cancel clicked");
     setIsConfirming(false);
     setSelectedThumbnail(null);
     setUrlInput("");
@@ -81,7 +105,9 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
               >
                 <X size={24} />
               </button>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4">Confirm Post Details</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4">
+                Confirm Post Details
+              </h2>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">Tags</label>
                 <TagsInput />
@@ -90,10 +116,15 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                 </p>
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Thumbnail</label>
+                <label className="block text-sm font-medium mb-2">
+                  Thumbnail
+                </label>
                 <div className="flex gap-4 mb-2">
                   <button
-                    onClick={() => setActiveTab("upload")}
+                    onClick={() => {
+                      console.log("[ConfirmPostModal] Switching to upload tab");
+                      setActiveTab("upload");
+                    }}
                     className={`px-4 py-2 text-sm font-medium rounded-lg ${
                       activeTab === "upload"
                         ? "bg-blue-500 text-white"
@@ -103,7 +134,10 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                     Upload Image
                   </button>
                   <button
-                    onClick={() => setActiveTab("url")}
+                    onClick={() => {
+                      console.log("[ConfirmPostModal] Switching to URL tab");
+                      setActiveTab("url");
+                    }}
                     className={`px-4 py-2 text-sm font-medium rounded-lg ${
                       activeTab === "url"
                         ? "bg-blue-500 text-white"
@@ -143,7 +177,9 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                 )}
                 {selectedThumbnail && (
                   <div className="mt-4">
-                    <p className="text-sm font-medium mb-2">Selected Thumbnail:</p>
+                    <p className="text-sm font-medium mb-2">
+                      Selected Thumbnail:
+                    </p>
                     <img
                       src={selectedThumbnail}
                       alt="Selected thumbnail"
@@ -181,7 +217,8 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                 Are you sure you want to publish this post?
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                This action will make the post publicly visible if published is selected.
+                This action will make the post publicly visible if published is
+                selected.
               </p>
               <div className="flex justify-center gap-4">
                 <button

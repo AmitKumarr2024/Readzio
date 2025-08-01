@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import {  toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import CategorySelector from "../components/CreatePost/CategorySelector";
@@ -15,7 +15,6 @@ import {
   resetPostMeta,
 } from "../store/Post/postMetaSlice";
 
-// Creates new post with category and type selection
 const CreatePost = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -23,12 +22,16 @@ const CreatePost = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState([]);
-  const { post, createLoading, createError } = useSelector((state) => state.post);
-  const { postType, category: selectedCategoryId } = useSelector((state) => state.postMeta);
+  const { post, createLoading, createError } = useSelector(
+    (state) => state.post
+  );
+  const { postType, category: selectedCategoryId } = useSelector(
+    (state) => state.postMeta
+  );
   const { categories } = useSelector((state) => state.categories);
 
-  // Fetch categories
   useEffect(() => {
+    console.log("[CreatePost] Fetching categories");
     try {
       dispatch(fetchCategories());
     } catch (e) {
@@ -37,8 +40,11 @@ const CreatePost = () => {
     }
   }, [dispatch]);
 
-  // Create category map
   const categoryMap = useMemo(() => {
+    console.log(
+      "[CreatePost] Creating category map with categories:",
+      categories
+    );
     try {
       const map = {};
       categories.forEach((cat) => {
@@ -55,22 +61,31 @@ const CreatePost = () => {
   const filteredPosts = selectedCategoryId
     ? posts.filter((p) => p.category === selectedCategoryId)
     : posts;
+  console.log("[CreatePost] Filtered posts:", filteredPosts);
 
-  // Handle category selection
   const handleCategoryContinue = (selectedCategory) => {
+    console.log("[CreatePost] Category selected:", selectedCategory);
     if (!selectedCategory?.id) return toast.error("Please select a category");
     dispatch(setCategory(selectedCategory.id));
     setShowCategoryModal(false);
   };
 
-  // Handle post creation
   const handleCreatePost = async (metaData) => {
+    console.log("[CreatePost] Creating post with data:", {
+      title,
+      blocks,
+      postType,
+      selectedCategoryId,
+      metaData,
+    });
     if (!title.trim()) return toast.error("Please enter a title");
     if (!blocks.length) return toast.error("Please add content blocks");
     if (!postType) return toast.error("Please select a post type");
     if (!selectedCategoryId) return toast.error("Please select a category");
-    if (!metaData.tags?.length) return toast.error("Please provide at least one tag");
-    if (!/^[a-z]{2}$/i.test(metaData.language)) return toast.error("Invalid language code");
+    if (!metaData.tags?.length)
+      return toast.error("Please provide at least one tag");
+    if (!/^[a-z]{2}$/i.test(metaData.language))
+      return toast.error("Invalid language code");
 
     const updatedBlocks = blocks.map((block) => ({
       ...block,
@@ -87,6 +102,7 @@ const CreatePost = () => {
 
     try {
       const resultAction = await dispatch(createPosts(postData)).unwrap();
+      console.log("[CreatePost] Post created successfully:", resultAction);
       toast.success("Post created successfully!");
       setTitle("");
       setBlocks([]);
@@ -98,8 +114,8 @@ const CreatePost = () => {
     }
   };
 
-  // Handle post deletion
   const handleDeletePost = (id) => {
+    console.log("[CreatePost] Deleting post with id:", id);
     dispatch(deletePost(id))
       .unwrap()
       .then(() => toast.success("Post deleted"))
@@ -109,26 +125,41 @@ const CreatePost = () => {
       });
   };
 
-  // Update draft
   const handleUpdateDraft = (draft) => {
+    console.log("[CreatePost] Updating draft:", draft);
     setTitle(draft.title || "");
     setBlocks(draft.blocks || []);
   };
 
+  console.log("[CreatePost] Render state:", {
+    showPostTypeModal,
+    showCategoryModal,
+    title,
+    blocks,
+    postType,
+    selectedCategoryId,
+  });
+
   return (
     <div className="flex flex-col md:flex-row bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
-     
       <LoadingBar loading={createLoading} />
       {showPostTypeModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
           <PostTypeSelector
             postType={postType}
-            setPostType={(value) => dispatch(setPostType(value))}
+            setPostType={(value) => {
+              console.log("[CreatePost] Setting post type:", value);
+              dispatch(setPostType(value));
+            }}
             onContinue={() => {
+              console.log("[CreatePost] PostTypeSelector continue");
               setShowPostTypeModal(false);
               setShowCategoryModal(true);
             }}
-            onClose={() => navigate("/")}
+            onClose={() => {
+              console.log("[CreatePost] PostTypeSelector close");
+              navigate("/");
+            }}
           />
         </div>
       )}
@@ -136,11 +167,15 @@ const CreatePost = () => {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
           <CategorySelector
             onBack={() => {
+              console.log("[CreatePost] CategorySelector back");
               setShowCategoryModal(false);
               setShowPostTypeModal(true);
             }}
             onContinue={handleCategoryContinue}
-            onClose={() => navigate("/")}
+            onClose={() => {
+              console.log("[CreatePost] CategorySelector close");
+              navigate("/");
+            }}
           />
         </div>
       )}
@@ -148,7 +183,10 @@ const CreatePost = () => {
         <div className="min-w-full flex container justify-around items-center flex-col flex-wrap md:flex-row">
           <div className="w-full flex justify-start px-4 pt-10 pl-11">
             <button
-              onClick={() => navigate("/")}
+              onClick={() => {
+                console.log("[CreatePost] Cancel button clicked");
+                navigate("/");
+              }}
               className="font-bold text-red-600 dark:text-red-400 border border-red-500 dark:border-red-400 px-4 py-1.5 rounded-full shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"
             >
               ⬅ Cancel & Go Back
@@ -163,7 +201,9 @@ const CreatePost = () => {
               setBlocks={setBlocks}
               postType={postType}
               category={selectedCategoryId}
-              categoryName={categoryMap[selectedCategoryId] || selectedCategoryId}
+              categoryName={
+                categoryMap[selectedCategoryId] || selectedCategoryId
+              }
             />
           </div>
           <div className="w-full md:w-2/5 md:pl-1">
@@ -172,7 +212,9 @@ const CreatePost = () => {
               onUpdateDraft={handleUpdateDraft}
               postType={postType}
               category={selectedCategoryId}
-              categoryName={categoryMap[selectedCategoryId] || selectedCategoryId}
+              categoryName={
+                categoryMap[selectedCategoryId] || selectedCategoryId
+              }
               allPosts={filteredPosts}
               deletePost={handleDeletePost}
               createLoading={createLoading}
