@@ -138,7 +138,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
             data: [
               ["", ""],
               ["", ""],
-            ], // Default 2x2 table
+            ],
             caption: "",
           }
         : type === "video"
@@ -146,7 +146,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         : null;
 
     if (newBlock) {
-      if (type === "table" && !newBlock.data.length) {
+      if (type === "table" && !newBlock.data?.length) {
         toast.error("Invalid table configuration.");
         return;
       }
@@ -204,7 +204,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     reader.onload = () => {
       updateBlock(index, {
         src: reader.result,
-        caption: blocks[index].caption,
+        caption: blocks[index]?.caption || "",
       });
       console.log("[PostEditor] Image uploaded for block index:", index);
       toast.success("Image uploaded");
@@ -218,7 +218,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
   };
 
   const handleFileUpload = (e, index) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     console.log(
       "[PostEditor] Uploading file for block index:",
       index,
@@ -265,7 +265,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         Create Content
       </h1>
 
-      <TitleInput title={title} setTitle={setTitle} />
+      <TitleInput title={title || ""} setTitle={setTitle} />
 
       <DndContext
         sensors={sensors}
@@ -328,9 +328,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       return (
                         <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-800">
                           <FileBlock
-                            url={block.url}
-                            name={block.name}
-                            size={block.size}
+                            url={block.url || ""}
+                            name={block.name || ""}
+                            size={block.size || 0}
                           />
                           <input
                             type="file"
@@ -350,14 +350,17 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                     case "heading":
                       return (
                         <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg space-y-3 sm:space-y-4 border border-gray-200 dark:border-gray-800">
-                          <HeadingBlock level={block.level} text={block.text} />
+                          <HeadingBlock
+                            level={block.level || 2}
+                            text={block.text || ""}
+                          />
                           <div>
                             <label className="block text-xs sm:text-sm font-medium mb-1">
                               Heading Text
                             </label>
                             <input
                               type="text"
-                              value={block.text}
+                              value={block.text || ""}
                               onChange={(e) =>
                                 updateBlock(index, {
                                   ...block,
@@ -374,7 +377,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               Heading Level
                             </label>
                             <select
-                              value={block.level}
+                              value={block.level || 2}
                               onChange={(e) =>
                                 updateBlock(index, {
                                   ...block,
@@ -420,7 +423,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           </label>
                           <input
                             type="url"
-                            value={block.href}
+                            value={block.href || ""}
                             onChange={(e) =>
                               updateBlock(index, {
                                 ...block,
@@ -436,7 +439,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           </label>
                           <input
                             type="text"
-                            value={block.text}
+                            value={block.text || ""}
                             onChange={(e) =>
                               updateBlock(index, {
                                 ...block,
@@ -466,16 +469,16 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               ? "Ordered List Items"
                               : "Unordered List Items"}
                           </label>
-                          {block.items.map((item, i) => (
+                          {(block.items || []).map((item, i) => (
                             <div
                               key={i}
                               className="flex items-center gap-2 mb-2"
                             >
                               <input
                                 type="text"
-                                value={item}
+                                value={item || ""}
                                 onChange={(e) => {
-                                  const newItems = [...block.items];
+                                  const newItems = [...(block.items || [])];
                                   newItems[i] = e.target.value;
                                   updateBlock(index, {
                                     ...block,
@@ -486,10 +489,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 aria-label={`List item ${i + 1}`}
                               />
-                              {block.items.length > 1 && (
+                              {(block.items || []).length > 1 && (
                                 <button
                                   onClick={() => {
-                                    const newItems = block.items.filter(
+                                    const newItems = (block.items || []).filter(
                                       (_, idx) => idx !== i
                                     );
                                     updateBlock(index, {
@@ -508,7 +511,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           <button
                             type="button"
                             onClick={() => {
-                              const newItems = [...block.items, ""];
+                              const newItems = [...(block.items || []), ""];
                               updateBlock(index, { ...block, items: newItems });
                             }}
                             className="mt-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500 text-white text-xs sm:text-sm rounded-lg hover:bg-blue-600 transition"
@@ -531,8 +534,8 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       return (
                         <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-800">
                           <PollBlock
-                            question={block.question}
-                            options={block.options}
+                            question={block.question || ""}
+                            options={block.options || ["", ""]}
                             onChangeQuestion={(newQuestion) =>
                               updateBlock(index, {
                                 ...block,
@@ -540,7 +543,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               })
                             }
                             onChangeOptions={(i, val, remove = false) => {
-                              let newOptions = [...block.options];
+                              let newOptions = [...(block.options || ["", ""])];
                               if (remove && newOptions.length > 2) {
                                 newOptions.splice(i, 1);
                               } else if (i >= newOptions.length) {
@@ -568,11 +571,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                     case "quote":
                       return (
                         <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-800">
-                          <QuoteBlock text={block.text} author={block.author} />
+                          <QuoteBlock
+                            text={block.text || ""}
+                            author={block.author || ""}
+                          />
                           <div className="space-y-2">
                             <input
                               type="text"
-                              value={block.text}
+                              value={block.text || ""}
                               onChange={(e) =>
                                 updateBlock(index, {
                                   ...block,
@@ -585,7 +591,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             />
                             <input
                               type="text"
-                              value={block.author}
+                              value={block.author || ""}
                               onChange={(e) =>
                                 updateBlock(index, {
                                   ...block,
@@ -630,15 +636,18 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 Headers
                               </label>
                               <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(100px,1fr))] gap-2 items-center">
-                                {(block.data[0] || []).map(
+                                {(block.data?.[0] || []).map(
                                   (header, headerIndex) => (
                                     <input
                                       key={headerIndex}
                                       type="text"
-                                      value={header}
+                                      value={header || ""}
                                       onChange={(e) => {
                                         const restoreScroll = preventScroll();
-                                        const newData = [...block.data];
+                                        const newData = [
+                                          ...(block.data || [[]]),
+                                        ];
+                                        newData[0] = [...(newData[0] || [])];
                                         newData[0][headerIndex] =
                                           e.target.value;
                                         console.log(
@@ -666,10 +675,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 <button
                                   onClick={() => {
                                     const restoreScroll = preventScroll();
-                                    const newData = block.data.map((row) => [
-                                      ...row,
-                                      "",
-                                    ]);
+                                    const newData = (block.data || [[]]).map(
+                                      (row) => [...row, ""]
+                                    );
                                     updateBlock(index, {
                                       ...block,
                                       data: newData,
@@ -689,20 +697,25 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               </div>
                             </div>
 
-                            {(block.data.slice(1) || []).map(
+                            {(block.data?.slice(1) || []).map(
                               (row, rowIndex) => (
                                 <div
                                   key={rowIndex}
                                   className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(100px,1fr))] gap-2 items-center"
                                 >
-                                  {row.map((cell, cellIndex) => (
+                                  {(row || []).map((cell, cellIndex) => (
                                     <input
                                       key={cellIndex}
                                       type="text"
-                                      value={cell}
+                                      value={cell || ""}
                                       onChange={(e) => {
                                         const restoreScroll = preventScroll();
-                                        const newData = [...block.data];
+                                        const newData = [
+                                          ...(block.data || [[]]),
+                                        ];
+                                        newData[rowIndex + 1] = [
+                                          ...(newData[rowIndex + 1] || []),
+                                        ];
                                         newData[rowIndex + 1][cellIndex] =
                                           e.target.value;
                                         console.log(
@@ -762,8 +775,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 onClick={() => {
                                   const restoreScroll = preventScroll();
                                   const newData = [
-                                    ...block.data,
-                                    Array(block.data[0]?.length || 1).fill(""),
+                                    ...(block.data || [[]]),
+                                    Array(block.data?.[0]?.length || 1).fill(
+                                      ""
+                                    ),
                                   ];
                                   updateBlock(index, {
                                     ...block,
@@ -784,10 +799,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               <button
                                 onClick={() => {
                                   const restoreScroll = preventScroll();
-                                  const newData = block.data.map((row) => [
-                                    ...row,
-                                    "",
-                                  ]);
+                                  const newData = (block.data || [[]]).map(
+                                    (row) => [...row, ""]
+                                  );
                                   updateBlock(index, {
                                     ...block,
                                     data: newData,
@@ -807,8 +821,11 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               <button
                                 onClick={() => {
                                   const restoreScroll = preventScroll();
-                                  if (block.data.length > 1) {
-                                    const newData = block.data.slice(0, -1);
+                                  if ((block.data || []).length > 1) {
+                                    const newData = (block.data || []).slice(
+                                      0,
+                                      -1
+                                    );
                                     updateBlock(index, {
                                       ...block,
                                       data: newData,
@@ -831,9 +848,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               <button
                                 onClick={() => {
                                   const restoreScroll = preventScroll();
-                                  if (block.data[0]?.length > 1) {
-                                    const newData = block.data.map((row) =>
-                                      row.slice(0, -1)
+                                  if (block.data?.[0]?.length > 1) {
+                                    const newData = (block.data || [[]]).map(
+                                      (row) => row.slice(0, -1)
                                     );
                                     updateBlock(index, {
                                       ...block,
@@ -873,14 +890,17 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                     case "video":
                       return (
                         <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-800">
-                          <VideoBlock src={block.src} caption={block.caption} />
+                          <VideoBlock
+                            src={block.src || ""}
+                            caption={block.caption || ""}
+                          />
                           <div className="mt-2">
                             <label className="block text-xs sm:text-sm font-medium mb-1">
                               Video URL (mp4)
                             </label>
                             <input
                               type="url"
-                              value={block.src}
+                              value={block.src || ""}
                               onChange={(e) => {
                                 const restoreScroll = preventScroll();
                                 updateBlock(index, {
@@ -900,7 +920,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             </label>
                             <input
                               type="text"
-                              value={block.caption}
+                              value={block.caption || ""}
                               onChange={(e) => {
                                 const restoreScroll = preventScroll();
                                 updateBlock(index, {
