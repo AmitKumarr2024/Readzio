@@ -2,6 +2,7 @@ import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
+import DOMPurify from "dompurify";
 import FileBlock from "../PostFeature/FileBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
 import { deletePost } from "../../store/postSlice";
@@ -37,11 +38,14 @@ const PostView = ({ post }) => {
 
     switch (block.type) {
       case "text":
+        console.log("[PostView] Text block HTML:", block.value);
         return (
           <div
             key={i}
-            className="leading-relaxed text-text-main-light dark:text-text-main-dark text-base"
-            dangerouslySetInnerHTML={{ __html: block.value }}
+            className="leading-relaxed text-text-main-light dark:text-text-main-dark text-base list-inside my-4"
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(block.value || "Empty text"),
+            }}
           />
         );
       case "image":
@@ -142,6 +146,19 @@ const PostView = ({ post }) => {
           </div>
         );
       case "list":
+        console.log("[PostView] List block data:", {
+          block,
+          items: block.items,
+          ordered: block.ordered,
+        });
+        if (!block.items || !Array.isArray(block.items)) {
+          console.warn("[PostView] Invalid list items:", block.items);
+          return (
+            <div key={i} className="my-4 text-red-500 italic">
+              Invalid list data: {JSON.stringify(block.items)}
+            </div>
+          );
+        }
         return (
           <div
             key={i}
@@ -149,13 +166,13 @@ const PostView = ({ post }) => {
           >
             {block.ordered ? (
               <ol className="list-decimal list-inside space-y-1">
-                {(block.items || []).map((item, j) => (
+                {block.items.map((item, j) => (
                   <li key={j}>{item || "Empty item"}</li>
                 ))}
               </ol>
             ) : (
               <ul className="list-disc list-inside space-y-1">
-                {(block.items || []).map((item, j) => (
+                {block.items.map((item, j) => (
                   <li key={j}>{item || "Empty item"}</li>
                 ))}
               </ul>

@@ -24,7 +24,7 @@
   --gradient-end-light: #ec4899; /* pink-500 */
 }
 
-/* Dark theme variables*/
+/* Dark theme variables */
 .dark {
   @theme {
     --color-background-dark: #0f172a;
@@ -38,6 +38,31 @@
     --gradient-mid-dark: #334155; /* slate-700 */
     --gradient-end-dark: #0f172a; /* slate-900 */
   }
+}
+
+ul.list-disc {
+  list-style-type: disc;
+  list-style-position: inside;
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+ol.list-decimal {
+  list-style-type: decimal;
+  list-style-position: inside;
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+ul.list-disc li,
+ol.list-decimal li {
+  margin-bottom: 0.5rem;
+}
+
+/* Prevent global resets from overriding Tailwind list styles */
+ul:not(.list-disc),
+ol:not(.list-decimal) {
+  list-style-type: revert-layer;
+  padding: revert-layer;
+  margin: revert-layer;
 }
 
 /* Toast styling */
@@ -102,8 +127,8 @@
   background: linear-gradient(
     to right,
     var(--gradient-start-dark),
-    --gradient-mid-dark,
-    --gradient-end-dark
+    var(--gradient-mid-dark),
+    var(--gradient-end-dark)
   );
 }
 

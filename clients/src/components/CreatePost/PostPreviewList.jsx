@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { PacmanLoader } from "react-spinners";
+import DOMPurify from "dompurify";
 import FileBlock from "../PostFeature/FileBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
 import TableBlock from "../PostFeature/TableBlock";
@@ -335,6 +336,26 @@ const PostPreviewList = ({
             </div>
           );
         case "list":
+          console.log("[PostPreviewList] List block data:", {
+            block,
+            items: block.items,
+            ordered: block.ordered,
+          });
+          if (!block.items || !Array.isArray(block.items)) {
+            console.warn("[PostPreviewList] Invalid list items:", block.items);
+            return (
+              <div key={i} className="my-4 text-red-500 italic">
+                Invalid list data: {JSON.stringify(block.items)}
+                <button
+                  onClick={() => deleteBlock(i)}
+                  className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                  aria-label="Delete list block"
+                >
+                  🗑
+                </button>
+              </div>
+            );
+          }
           return (
             <div
               key={i}
@@ -342,13 +363,13 @@ const PostPreviewList = ({
             >
               {block.ordered ? (
                 <ol className="list-decimal list-inside space-y-1">
-                  {(block.items || []).map((item, j) => (
+                  {block.items.map((item, j) => (
                     <li key={j}>{item || "Empty item"}</li>
                   ))}
                 </ol>
               ) : (
                 <ul className="list-disc list-inside space-y-1">
-                  {(block.items || []).map((item, j) => (
+                  {block.items.map((item, j) => (
                     <li key={j}>{item || "Empty item"}</li>
                   ))}
                 </ul>
@@ -482,7 +503,7 @@ const PostPreviewList = ({
               <h3 className="text-lg font-medium">
                 {block.question || "Poll"}
               </h3>
-              <ul className="mt-2 space-y-2">
+              <ul className="mt-2 space-y-2 list-disc list-inside">
                 {(block.options || []).map((opt, j) => (
                   <li key={j}>
                     {typeof opt === "string" ? opt : opt.option || "Option"}
@@ -540,15 +561,16 @@ const PostPreviewList = ({
             </div>
           );
         case "text":
+          console.log("[PostPreviewList] Text block HTML:", block.value);
           return (
             <div
               key={i}
               className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
             >
               <div
-                className="prose max-w-none"
+                className="leading-relaxed text-base list-inside"
                 dangerouslySetInnerHTML={{
-                  __html: block.value || "Empty text",
+                  __html: DOMPurify.sanitize(block.value || "Empty text"),
                 }}
               />
               <button
@@ -740,8 +762,10 @@ const PostPreviewList = ({
                     />
                   ) : firstBlock?.type === "text" ? (
                     <div
-                      className="p-4 line-clamp-3 text-sm"
-                      dangerouslySetInnerHTML={{ __html: firstBlock.value }}
+                      className="p-4 line-clamp-3 text-sm list-inside"
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(firstBlock.value),
+                      }}
                     />
                   ) : (
                     <div className="p-4 italic text-sm">

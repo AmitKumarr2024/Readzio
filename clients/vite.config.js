@@ -11,7 +11,13 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss({
+        // Add safelist to prevent purging of list-related classes
+        safelist: ["list-disc", "list-decimal", "list-inside"],
+      }),
+    ],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
