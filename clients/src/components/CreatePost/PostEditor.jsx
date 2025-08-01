@@ -611,8 +611,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       return (
                         <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg max-w-full border border-gray-200 dark:border-gray-800">
                           <TableBlock
-                            headers={block.headers || []}
-                            rows={block.rows || [[]]}
+                            data={
+                              block.data || [
+                                ["", ""],
+                                ["", ""],
+                              ]
+                            }
                             caption={block.caption || ""}
                           />
                           <div className="mt-3 sm:mt-4 space-y-3 sm:space-y-4">
@@ -621,20 +625,22 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 Headers
                               </label>
                               <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(100px,1fr))] gap-2 items-center">
-                                {(block.headers || []).map(
+                                {(block.data[0] || []).map(
                                   (header, headerIndex) => (
                                     <input
                                       key={headerIndex}
                                       type="text"
                                       value={header}
                                       onChange={(e) => {
-                                        const newHeaders = [...block.headers];
-                                        newHeaders[headerIndex] =
+                                        const restoreScroll = preventScroll();
+                                        const newData = [...block.data];
+                                        newData[0][headerIndex] =
                                           e.target.value;
                                         updateBlock(index, {
                                           ...block,
-                                          headers: newHeaders,
+                                          data: newData,
                                         });
+                                        restoreScroll();
                                       }}
                                       placeholder={`Header ${headerIndex + 1}`}
                                       className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-200 dark:border-gray-800 rounded bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -647,17 +653,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 <button
                                   onClick={() => {
                                     const restoreScroll = preventScroll();
-                                    const newHeaders = [
-                                      ...(block.headers || []),
+                                    const newData = block.data.map((row, i) => [
+                                      ...row,
                                       "",
-                                    ];
-                                    const newRows = (block.rows || []).map(
-                                      (row) => [...row, ""]
-                                    );
+                                    ]);
                                     updateBlock(index, {
                                       ...block,
-                                      headers: newHeaders,
-                                      rows: newRows.length ? newRows : [[""]],
+                                      data: newData,
                                     });
                                     toast.success("Header added");
                                     restoreScroll();
@@ -670,38 +672,40 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               </div>
                             </div>
 
-                            {(block.rows || []).map((row, rowIndex) => (
-                              <div
-                                key={rowIndex}
-                                className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(100px,1fr))] gap-2 items-center"
-                              >
-                                {row.map((cell, cellIndex) => (
-                                  <input
-                                    key={cellIndex}
-                                    type="text"
-                                    value={cell}
-                                    onChange={(e) => {
-                                      const restoreScroll = preventScroll();
-                                      const newRows = [...block.rows];
-                                      newRows[rowIndex][cellIndex] =
-                                        e.target.value;
-                                      updateBlock(index, {
-                                        ...block,
-                                        rows: newRows,
-                                      });
-                                      restoreScroll();
-                                    }}
-                                    placeholder={`R${rowIndex + 1} C${
-                                      cellIndex + 1
-                                    }`}
-                                    className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-200 dark:border-gray-800 rounded bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    aria-label={`Table cell row ${
-                                      rowIndex + 1
-                                    } column ${cellIndex + 1}`}
-                                  />
-                                ))}
-                              </div>
-                            ))}
+                            {(block.data.slice(1) || []).map(
+                              (row, rowIndex) => (
+                                <div
+                                  key={rowIndex}
+                                  className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(100px,1fr))] gap-2 items-center"
+                                >
+                                  {row.map((cell, cellIndex) => (
+                                    <input
+                                      key={cellIndex}
+                                      type="text"
+                                      value={cell}
+                                      onChange={(e) => {
+                                        const restoreScroll = preventScroll();
+                                        const newData = [...block.data];
+                                        newData[rowIndex + 1][cellIndex] =
+                                          e.target.value;
+                                        updateBlock(index, {
+                                          ...block,
+                                          data: newData,
+                                        });
+                                        restoreScroll();
+                                      }}
+                                      placeholder={`R${rowIndex + 1} C${
+                                        cellIndex + 1
+                                      }`}
+                                      className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-200 dark:border-gray-800 rounded bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      aria-label={`Table cell row ${
+                                        rowIndex + 1
+                                      } column ${cellIndex + 1}`}
+                                    />
+                                  ))}
+                                </div>
+                              )
+                            )}
 
                             <div>
                               <label className="block text-xs sm:text-sm font-medium mb-1">
@@ -728,13 +732,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               <button
                                 onClick={() => {
                                   const restoreScroll = preventScroll();
-                                  const newRows = [...(block.rows || [])];
-                                  newRows.push(
-                                    Array(block.headers?.length || 1).fill("")
-                                  );
+                                  const newData = [
+                                    ...block.data,
+                                    Array(block.data[0]?.length || 1).fill(""),
+                                  ];
                                   updateBlock(index, {
                                     ...block,
-                                    rows: newRows,
+                                    data: newData,
                                   });
                                   toast.success("Row added");
                                   restoreScroll();
@@ -747,17 +751,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               <button
                                 onClick={() => {
                                   const restoreScroll = preventScroll();
-                                  const newHeaders = [
-                                    ...(block.headers || []),
+                                  const newData = block.data.map((row) => [
+                                    ...row,
                                     "",
-                                  ];
-                                  const newRows = (block.rows || []).map(
-                                    (row) => [...row, ""]
-                                  );
+                                  ]);
                                   updateBlock(index, {
                                     ...block,
-                                    headers: newHeaders,
-                                    rows: newRows.length ? newRows : [[""]],
+                                    data: newData,
                                   });
                                   toast.success("Column added");
                                   restoreScroll();
@@ -770,11 +770,11 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               <button
                                 onClick={() => {
                                   const restoreScroll = preventScroll();
-                                  if (block.rows?.length > 1) {
-                                    const newRows = block.rows.slice(0, -1);
+                                  if (block.data.length > 1) {
+                                    const newData = block.data.slice(0, -1);
                                     updateBlock(index, {
                                       ...block,
-                                      rows: newRows,
+                                      data: newData,
                                     });
                                     toast.success("Row removed");
                                   } else {
@@ -790,18 +790,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               <button
                                 onClick={() => {
                                   const restoreScroll = preventScroll();
-                                  if (block.headers?.length > 1) {
-                                    const newHeaders = block.headers.slice(
-                                      0,
-                                      -1
-                                    );
-                                    const newRows = block.rows.map((row) =>
+                                  if (block.data[0]?.length > 1) {
+                                    const newData = block.data.map((row) =>
                                       row.slice(0, -1)
                                     );
                                     updateBlock(index, {
                                       ...block,
-                                      headers: newHeaders,
-                                      rows: newRows,
+                                      data: newData,
                                     });
                                     toast.success("Column removed");
                                   } else {

@@ -1,16 +1,18 @@
 import React from "react";
 
-const TableBlock = ({ headers = [], rows = [[]], caption = "" }) => {
-  console.log("[TableBlock] Rendering with props:", { headers, rows, caption });
+const TableBlock = ({
+  data = [
+    ["", ""],
+    ["", ""],
+  ],
+  caption = "",
+}) => {
+  console.log("[TableBlock] Rendering with props:", { data, caption });
 
-  const isEmpty =
-    headers.length === 0 &&
-    (rows.length === 0 ||
-      rows.every((row) => !Array.isArray(row) || row.length === 0));
-  const normalizedHeaders = Array.isArray(headers) ? headers : [];
-  const normalizedRows = Array.isArray(rows)
-    ? rows.filter((row) => Array.isArray(row) && row.length > 0)
-    : [];
+  // Extract headers (first row) and rows (remaining) from data
+  const headers = Array.isArray(data) && data.length > 0 ? data[0] : [];
+  const rows = Array.isArray(data) && data.length > 1 ? data.slice(1) : [];
+  const isEmpty = headers.length === 0 && rows.length === 0;
 
   if (isEmpty) {
     console.warn("[TableBlock] Empty or malformed table data detected");
@@ -27,10 +29,10 @@ const TableBlock = ({ headers = [], rows = [[]], caption = "" }) => {
         </div>
       ) : (
         <table className="w-full table-auto text-text-main-light dark:text-text-main-dark">
-          {normalizedHeaders.length > 0 && (
+          {headers.length > 0 && (
             <thead className="bg-accent-light dark:bg-accent-dark">
               <tr>
-                {normalizedHeaders.map((header, i) => (
+                {headers.map((header, i) => (
                   <th
                     key={i}
                     className="border border-border-light dark:border-border-dark px-4 py-2 font-semibold text-left tracking-wide text-text-main-light dark:text-text-main-dark"
@@ -43,8 +45,8 @@ const TableBlock = ({ headers = [], rows = [[]], caption = "" }) => {
             </thead>
           )}
           <tbody>
-            {normalizedRows.length > 0 ? (
-              normalizedRows.map((row, i) => (
+            {rows.length > 0 ? (
+              rows.map((row, i) => (
                 <tr
                   key={i}
                   className={`hover:bg-accent-light/50 dark:hover:bg-accent-dark/50 ${
@@ -66,7 +68,7 @@ const TableBlock = ({ headers = [], rows = [[]], caption = "" }) => {
             ) : (
               <tr>
                 <td
-                  colSpan={normalizedHeaders.length || 1}
+                  colSpan={headers.length || 1}
                   className="border border-border-light dark:border-border-dark px-4 py-2 text-center italic text-text-main-light dark:text-text-main-dark"
                 >
                   No rows
