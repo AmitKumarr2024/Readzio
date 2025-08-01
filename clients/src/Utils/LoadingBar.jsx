@@ -3,37 +3,24 @@ import { PacmanLoader } from "react-spinners";
 import { motion } from "framer-motion";
 
 const LoadingBar = ({ loading, text = "Loading..." }) => {
-  const [progress, setProgress] = useState(0);
   const [showBar, setShowBar] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    let interval;
+    let timeout;
 
     if (loading) {
       setShowBar(true);
-      setProgress(0);
-
-      // Progress from 0 → 100% in 1 second (10ms per step)
-      interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev < 100) return prev + 1;
-          clearInterval(interval);
-          return prev;
-        });
-      }, 10);
+      setProgress(100); // animate to 100%
     } else {
-      clearInterval(interval);
-      setProgress(100);
-
-      const timeout = setTimeout(() => {
+      setProgress(100); // ensure it finishes
+      timeout = setTimeout(() => {
         setShowBar(false);
-        setProgress(0);
-      }, 500);
-
-      return () => clearTimeout(timeout);
+        setProgress(0); // reset after hiding
+      }, 300);
     }
 
-    return () => clearInterval(interval);
+    return () => clearTimeout(timeout);
   }, [loading]);
 
   return (
@@ -47,7 +34,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
               <motion.div
                 className="h-full bg-[#ff002b]"
                 animate={{ width: `${progress}%` }}
-                transition={{ ease: "linear", duration: 0.1 }}
+                transition={{ ease: "linear", duration: 0.15 }} // 🔥 150ms
               />
             </div>
           </div>
