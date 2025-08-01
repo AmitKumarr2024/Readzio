@@ -109,7 +109,6 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                 Confirm Post Details
               </h2>
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Tags</label>
                 <TagsInput />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {tags.length}/10 tags
