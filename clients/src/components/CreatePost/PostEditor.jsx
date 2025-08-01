@@ -138,7 +138,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
             data: [
               ["", ""],
               ["", ""],
-            ], // Use data to match EditPost.js
+            ], // Default 2x2 table
             caption: "",
           }
         : type === "video"
@@ -170,6 +170,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     const updated = [...blocks];
     updated[index] = { ...updated[index], ...newData };
     setBlocks(updated);
+    console.log("[PostEditor] Block updated:", updated[index]);
     restoreScroll();
   };
 
@@ -612,10 +613,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                         <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg max-w-full border border-gray-200 dark:border-gray-800">
                           <TableBlock
                             data={
-                              block.data || [
-                                ["", ""],
-                                ["", ""],
-                              ]
+                              block.data &&
+                              Array.isArray(block.data) &&
+                              block.data.length > 0
+                                ? block.data
+                                : [
+                                    ["", ""],
+                                    ["", ""],
+                                  ]
                             }
                             caption={block.caption || ""}
                           />
@@ -636,6 +641,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                         const newData = [...block.data];
                                         newData[0][headerIndex] =
                                           e.target.value;
+                                        console.log(
+                                          "[PostEditor] Updating table header:",
+                                          {
+                                            row: 0,
+                                            col: headerIndex,
+                                            value: e.target.value,
+                                          }
+                                        );
                                         updateBlock(index, {
                                           ...block,
                                           data: newData,
@@ -653,7 +666,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 <button
                                   onClick={() => {
                                     const restoreScroll = preventScroll();
-                                    const newData = block.data.map((row, i) => [
+                                    const newData = block.data.map((row) => [
                                       ...row,
                                       "",
                                     ]);
@@ -661,13 +674,17 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       ...block,
                                       data: newData,
                                     });
-                                    toast.success("Header added");
+                                    console.log(
+                                      "[PostEditor] Added table column:",
+                                      newData
+                                    );
+                                    toast.success("Column added");
                                     restoreScroll();
                                   }}
                                   className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition"
-                                  aria-label="Add table header"
+                                  aria-label="Add table column"
                                 >
-                                  + Add Header
+                                  + Add Column
                                 </button>
                               </div>
                             </div>
@@ -688,6 +705,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                         const newData = [...block.data];
                                         newData[rowIndex + 1][cellIndex] =
                                           e.target.value;
+                                        console.log(
+                                          "[PostEditor] Updating table cell:",
+                                          {
+                                            row: rowIndex + 1,
+                                            col: cellIndex,
+                                            value: e.target.value,
+                                          }
+                                        );
                                         updateBlock(index, {
                                           ...block,
                                           data: newData,
@@ -716,6 +741,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 value={block.caption || ""}
                                 onChange={(e) => {
                                   const restoreScroll = preventScroll();
+                                  console.log(
+                                    "[PostEditor] Updating table caption:",
+                                    e.target.value
+                                  );
                                   updateBlock(index, {
                                     ...block,
                                     caption: e.target.value,
@@ -740,6 +769,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     ...block,
                                     data: newData,
                                   });
+                                  console.log(
+                                    "[PostEditor] Added table row:",
+                                    newData
+                                  );
                                   toast.success("Row added");
                                   restoreScroll();
                                 }}
@@ -759,6 +792,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     ...block,
                                     data: newData,
                                   });
+                                  console.log(
+                                    "[PostEditor] Added table column:",
+                                    newData
+                                  );
                                   toast.success("Column added");
                                   restoreScroll();
                                 }}
@@ -776,6 +813,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       ...block,
                                       data: newData,
                                     });
+                                    console.log(
+                                      "[PostEditor] Removed table row:",
+                                      newData
+                                    );
                                     toast.success("Row removed");
                                   } else {
                                     toast.error("At least one row is required");
@@ -798,6 +839,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       ...block,
                                       data: newData,
                                     });
+                                    console.log(
+                                      "[PostEditor] Removed table column:",
+                                      newData
+                                    );
                                     toast.success("Column removed");
                                   } else {
                                     toast.error(
