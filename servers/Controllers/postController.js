@@ -759,16 +759,25 @@ const processBlock = async (block) => {
   }
 
   if (block.type === "poll") {
-    processedBlock.question = processedBlock.question || "Default Question";
+    processedBlock.question =
+      processedBlock.question?.trim() || "Default Question";
+
     processedBlock.options = Array.isArray(processedBlock.options)
-      ? processedBlock.options.map((opt) => ({
-          option:
-            typeof opt.option === "string"
-              ? opt.option
-              : `Option ${opt.option || ""}`,
-          votes: Number.isInteger(opt.votes) ? opt.votes : 0,
-        }))
+      ? block.options
+          .map((opt) => {
+            const trimmed = (opt.option || "").trim();
+            return trimmed &&
+              trimmed.length >= 2 &&
+              trimmed.toLowerCase() !== "option"
+              ? {
+                  option: trimmed,
+                  votes: Number.isInteger(opt.votes) ? opt.votes : 0,
+                }
+              : null;
+          })
+          .filter(Boolean)
       : [];
+
     processedBlock.votedUserIds = Array.isArray(processedBlock.votedUserIds)
       ? processedBlock.votedUserIds
           .map((vote) =>
@@ -779,7 +788,7 @@ const processBlock = async (block) => {
                 }
               : null
           )
-          .filter((vote) => vote !== null)
+          .filter(Boolean)
       : [];
   }
 
