@@ -535,7 +535,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                         <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-800">
                           <PollBlock
                             question={block.question || ""}
-                            options={block.options || ["", ""]}
+                            options={
+                              Array.isArray(block.options) &&
+                              block.options.length >= 2
+                                ? block.options
+                                : ["", ""]
+                            }
                             onChangeQuestion={(newQuestion) =>
                               updateBlock(index, {
                                 ...block,
@@ -544,19 +549,35 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             }
                             onChangeOptions={(i, val, remove = false) => {
                               let newOptions = [...(block.options || ["", ""])];
-                              if (remove && newOptions.length > 2) {
-                                newOptions.splice(i, 1);
+
+                              // If remove is true and at least 3 options exist
+                              if (remove) {
+                                if (newOptions.length > 2) {
+                                  newOptions.splice(i, 1);
+                                }
                               } else if (i >= newOptions.length) {
                                 newOptions.push(val);
                               } else {
                                 newOptions[i] = val;
                               }
+
+                              // Ensure at least 2 non-empty options after update
+                              if (
+                                newOptions.filter((opt) => opt?.trim() !== "")
+                                  .length < 2
+                              ) {
+                                while (newOptions.length < 2) {
+                                  newOptions.push("");
+                                }
+                              }
+
                               updateBlock(index, {
                                 ...block,
                                 options: newOptions,
                               });
                             }}
                           />
+
                           <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
