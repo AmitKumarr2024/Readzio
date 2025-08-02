@@ -18,16 +18,6 @@ const TrendingPosts = () => {
 
   return (
     <div className="w-full bg-white dark:bg-gray-800 rounded-lg p-4">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 border-b border-gray-300 dark:border-gray-600 pb-2">
-        Trending Posts
-      </h2>
-
-      {loading && (
-        <div className="flex justify-center py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-gray-500"></div>
-        </div>
-      )}
-
       {error && (
         <p className="text-red-500 text-sm bg-red-100 dark:bg-red-900/30 rounded p-2">
           Error: {error}
@@ -42,26 +32,17 @@ const TrendingPosts = () => {
             </p>
           ) : (
             <ul className="space-y-3">
-              {visiblePosts.map(({ _id, title, slug, thumbnail }) => (
+              {visiblePosts.map(({ _id, title, slug }, index) => (
                 <li
                   key={_id}
-                  className="flex gap-2 p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <Link to={`/post/${slug}`} className="flex-shrink-0">
-                    <img
-                      src={thumbnail || "https://placehold.co/100x60?text=Image+Failed"}
-                      alt={title}
-                      className="w-16 h-10 object-cover rounded"
-                    />
+                  <Link
+                    to={`/post/${slug}`}
+                    className="text-sm text-gray-900 dark:text-white hover:text-blue-500 dark:hover:text-blue-400"
+                  >
+                    {index + 1}. {title}
                   </Link>
-                  <div className="flex-1">
-                    <Link
-                      to={`/post/${slug}`}
-                      className="text-sm text-gray-900 dark:text-white hover:text-blue-500 dark:hover:text-blue-400 line-clamp-2"
-                    >
-                      {title}
-                    </Link>
-                  </div>
                 </li>
               ))}
             </ul>
