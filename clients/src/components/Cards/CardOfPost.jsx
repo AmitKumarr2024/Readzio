@@ -78,7 +78,7 @@ const CardOfPost = ({
       to={`/post/${slug}`}
       className="group bg-white dark:bg-gray-800 font-Urbanist rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col h-full max-w-full"
     >
-      <div className="relative w-full aspect-[16/9]">
+      <div className="relative w-full aspect-video">
         <img
           src={thumbnail || "https://placehold.co/400x225?text=No+Image"}
           alt={title || "Post"}
