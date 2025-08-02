@@ -12,48 +12,30 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   const [urlInput, setUrlInput] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
 
-  // console.log("[ConfirmPostModal] Render state:", {
-  //   tags,
-  //   selectedThumbnail,
-  //   activeTab,
-  //   isConfirming,
-  // });
-
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
-    // console.log("[ConfirmPostModal] File uploaded:", file?.name);
-    if (file && file.type.startsWith("image/")) {
+    if (file && ["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setSelectedThumbnail(reader.result);
         setUrlInput("");
-        // console.log(
-        //   "[ConfirmPostModal] Thumbnail set from file:",
-        //   reader.result
-        // );
       };
       reader.readAsDataURL(file);
     } else {
-      toast.error("Please select a valid image file (e.g., JPG, PNG).");
+      toast.error("Please select a valid image file (JPEG, PNG, or WebP).");
     }
   };
 
   const handleUrlSubmit = () => {
-    // console.log("[ConfirmPostModal] Submitting URL:", urlInput);
-    if (urlInput && /\.(jpg|jpeg|png|gif|webp)$/i.test(urlInput)) {
+    if (urlInput && /\.(jpe?g|png|webp)$/i.test(urlInput)) {
       setSelectedThumbnail(urlInput);
       setUrlInput("");
-      // console.log("[ConfirmPostModal] Thumbnail set from URL:", urlInput);
     } else {
-      toast.error("Please enter a valid image URL.");
+      toast.error("Please enter a valid image URL (JPEG, PNG, or WebP).");
     }
   };
 
   const handleConfirm = () => {
-    // console.log("[ConfirmPostModal] Confirm clicked:", {
-    //   tags,
-    //   selectedThumbnail,
-    // });
     if (!selectedThumbnail) {
       toast.error(
         "Please select a thumbnail by uploading a file or entering a URL."
@@ -70,16 +52,11 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   };
 
   const handleFinalConfirm = () => {
-    // console.log("[ConfirmPostModal] Final confirm:", {
-    //   tags,
-    //   thumbnail: selectedThumbnail,
-    // });
     setIsConfirming(false);
     onConfirm({ tags, thumbnail: selectedThumbnail });
   };
 
   const handleCancel = () => {
-    // console.log("[ConfirmPostModal] Cancel clicked");
     setIsConfirming(false);
     setSelectedThumbnail(null);
     setUrlInput("");
@@ -120,10 +97,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                 </label>
                 <div className="flex gap-4 mb-2">
                   <button
-                    onClick={() => {
-                      // console.log("[ConfirmPostModal] Switching to upload tab");
-                      setActiveTab("upload");
-                    }}
+                    onClick={() => setActiveTab("upload")}
                     className={`px-4 py-2 text-sm font-medium rounded-lg ${
                       activeTab === "upload"
                         ? "bg-blue-500 text-white"
@@ -133,10 +107,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                     Upload Image
                   </button>
                   <button
-                    onClick={() => {
-                      // console.log("[ConfirmPostModal] Switching to URL tab");
-                      setActiveTab("url");
-                    }}
+                    onClick={() => setActiveTab("url")}
                     className={`px-4 py-2 text-sm font-medium rounded-lg ${
                       activeTab === "url"
                         ? "bg-blue-500 text-white"
@@ -150,28 +121,36 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                   <div>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       onChange={handleFileUpload}
                       className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-100 dark:file:bg-blue-900 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-200 dark:hover:file:bg-blue-800"
                       aria-label="Upload thumbnail image"
                     />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Supported formats: JPEG, PNG, WebP
+                    </p>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={urlInput}
-                      onChange={(e) => setUrlInput(e.target.value)}
-                      placeholder="Enter image URL"
-                      className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      aria-label="Thumbnail image URL"
-                    />
-                    <button
-                      onClick={handleUrlSubmit}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
-                    >
-                      Submit
-                    </button>
+                  <div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        placeholder="Enter image URL (JPEG, PNG, or WebP)"
+                        className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label="Thumbnail image URL"
+                      />
+                      <button
+                        onClick={handleUrlSubmit}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                      >
+                        Submit
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Supported formats: JPEG, PNG, WebP
+                    </p>
                   </div>
                 )}
                 {selectedThumbnail && (

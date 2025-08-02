@@ -22,7 +22,7 @@ const CardOfPost = ({
   isSubscriberOnly = false,
   timeSpent = 0,
   loading = false,
-  postType = "free",
+  postType,
   tags = [],
   readTime,
 }) => {
@@ -69,7 +69,7 @@ const CardOfPost = ({
       className="group bg-white dark:bg-gray-800 font-Urbanist rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col min-h-[480px]"
     >
       {/* Thumbnail */}
-      <div className="relative w-full aspect-video">
+      <div className="relative w-full h-40 sm:h-48 md:h-56 overflow-hidden">
         <img
           src={thumbnail || "https://placehold.co/400x225?text=No+Image"}
           alt={title || "Post"}
