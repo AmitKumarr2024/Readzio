@@ -13,7 +13,6 @@ import { checkAuth, logout } from "../store/authSlice";
 import { clearUser, getUser, trackUserIPLocation } from "../store/userSlice";
 import ThemeToggleButton from "../layout/ThemeToggleButton";
 import { disconnectSocket, initializeSocket } from "../store/socketSlice";
-import { useGeolocation } from "../AppRootFile/hook/useGeolocation";
 import { trackGuestVisit } from "../store/guestSlice";
 
 const countVariants = {
@@ -99,9 +98,7 @@ const Navbar = () => {
       dispatch(initializeSocket()).catch((err) =>
         console.error("Socket init failed:", err)
       );
-      return () => {
-        dispatch(disconnectSocket());
-      };
+      return () => dispatch(disconnectSocket());
     }
   }, [isAuthenticated, authUser?._id, dispatch]);
 
@@ -113,11 +110,8 @@ const Navbar = () => {
     ) {
       dispatch(trackGuestVisit())
         .unwrap()
-        .then(() => {
-          // console.log("✅ Guest visit tracked");
-          sessionStorage.setItem("guestTracked", "1");
-        })
-        .catch((err) => console.warn("❌ Guest visit failed:", err));
+        .then(() => sessionStorage.setItem("guestTracked", "1"))
+        .catch((err) => console.warn("Guest visit failed:", err));
     }
   }, [isAuthenticated, authInitialized, dispatch]);
 
@@ -132,8 +126,7 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => setMobileMenuOpen(false), 100);
-    return () => clearTimeout(timer);
+    setMobileMenuOpen(false);
   }, [location.pathname]);
 
   const toggleDropdown = () => setDropdownOpen((prev) => !prev);
@@ -168,7 +161,6 @@ const Navbar = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
             className="sticky top-0 z-50 bg-yellow-100 dark:bg-yellow-900/50 text-text-main-light dark:text-text-main-dark px-4 py-2 text-sm flex items-center justify-center gap-2 shadow-md"
           >
             <span>
@@ -185,10 +177,10 @@ const Navbar = () => {
         )}
       </AnimatePresence>
       <nav className="sticky top-0 z-50 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 md:gap-4">
+        <div className="mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className="relative flex flex-col items-center">
-              <div className="absolute -top-4 -right-3 text-lg text-end text-gray-600 dark:text-gray-300">
+              <div className="absolute -top-4 -right-3 text-sm text-gray-600 dark:text-gray-300">
                 {userLocation?.country?.slice(0, 3).toUpperCase()}
               </div>
               <Logo />
@@ -196,38 +188,35 @@ const Navbar = () => {
                 <img
                   src={`https://flagcdn.com/24x18/${userLocation.countryCode.toLowerCase()}.png`}
                   alt={userLocation.country}
-                  className="absolute -top-4 -right-3 w-5 h-4 object-cover rounded-sm border border-gray-300 dark:border-gray-700 shadow-sm"
+                  className="absolute -top-4 -right-3 w-5 h-4 object-cover rounded-sm border border-gray-300 dark:border-gray-700"
                 />
               )}
             </div>
-
-            <div className="flex items-center gap-2">
-              <Link
-                to="/users"
-                className="text-lg font-medium flex items-center gap-2"
-                aria-label="Online users"
+            <Link
+              to="/users"
+              className="flex items-center gap-2 text-sm sm:text-base font-medium"
+              aria-label="Online users"
+            >
+              <span className={`w-3 h-3 rounded-full ${statusClass}`} />
+              <motion.span
+                key={onlineUsersCount}
+                variants={countVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="font-semibold"
               >
-                <span className={`w-3 h-3 rounded-full ${statusClass}`} />
-                <motion.span
-                  key={onlineUsersCount}
-                  variants={countVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  className="font-semibold"
-                >
-                  {onlineUsersCount || 0}
-                </motion.span>
-                <span className="hidden sm:inline">online</span>
-              </Link>
-            </div>
+                {onlineUsersCount || 0}
+              </motion.span>
+              <span className="hidden sm:inline">online</span>
+            </Link>
           </div>
 
-          <div className="hidden md:flex w-full max-w-xs md:max-w-md mx-4">
+          <div className="hidden md:flex flex-1 max-w-xs mx-2 sm:mx-4">
             <SearchInput />
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={toggleMobileSearch}
               className="md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -241,11 +230,10 @@ const Navbar = () => {
               aria-label="Menu"
             >
               <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
                 className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
                 <path
                   strokeLinecap="round"
@@ -255,9 +243,7 @@ const Navbar = () => {
                 />
               </svg>
             </button>
-
             <ThemeToggleButton />
-
             {isAuthenticated && authUser?._id && (
               <Link
                 to="/user"
@@ -271,13 +257,12 @@ const Navbar = () => {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xl font-medium text-text-main-light dark:text-text-main-dark">
+                  <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-lg font-medium">
                     {userName[0]}
                   </div>
                 )}
               </Link>
             )}
-
             {isAuthenticated && authUser?._id ? (
               <>
                 <Link
@@ -285,12 +270,10 @@ const Navbar = () => {
                   className="hidden md:flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm"
                   aria-label="Write a post"
                 >
-                  <TfiWrite size={17} />
-                  <span className="text-xl">Write</span>
+                  <TfiWrite size={16} />
+                  <span>Write</span>
                 </Link>
-
                 <NotificationDropdown />
-
                 <div ref={dropdownRef} className="relative hidden md:block">
                   <button
                     onClick={toggleDropdown}
@@ -305,7 +288,7 @@ const Navbar = () => {
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium text-text-main-light dark:text-text-main-dark">
+                      <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium">
                         {userName[0]}
                       </div>
                     )}
@@ -317,7 +300,7 @@ const Navbar = () => {
                         initial="hidden"
                         animate="visible"
                         exit="hidden"
-                        className="absolute right-0 mt-2 w-48 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-md shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-800"
+                        className="absolute right-0 mt-2 w-48 bg-background-light dark:bg-background-dark rounded-md shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-800"
                       >
                         {userId && (
                           <Link
@@ -410,8 +393,7 @@ const Navbar = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="md:hidden bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark px-4 py-4 space-y-2 shadow-xl border-t border-gray-200 dark:border-gray-800"
+            className="md:hidden bg-background-light dark:bg-background-dark px-4 py-4 space-y-2 shadow-xl border-t border-gray-200 dark:border-gray-800"
           >
             {isAuthenticated && authUser?._id ? (
               <>
@@ -461,7 +443,7 @@ const Navbar = () => {
                 )}
                 <button
                   onClick={handleLogout}
-                  className="block w-full text-left py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                  className="block w790-full text-left py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
                   Logout
                 </button>
@@ -491,8 +473,10 @@ const Navbar = () => {
       <SearchModal isOpen={showMobileSearch} onClose={toggleMobileSearch} />
 
       {!shouldHideCategory && (
-        <div className="sticky top-16 z-30 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
-          <CategoryBox />
+        <div className="sticky top-16 z-30 bg-background-light dark:bg-background-dark">
+          <div className="mx-auto px-4 sm:px-6 lg:px-8">
+            <CategoryBox />
+          </div>
         </div>
       )}
     </>

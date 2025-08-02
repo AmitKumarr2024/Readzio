@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import logger from "../../servers/Utils/Logger.js";
 
 const redisHost = process.env.REDIS_HOST || "localhost";
 const redisPort = parseInt(process.env.REDIS_PORT, 10) || 6379;
@@ -7,30 +8,25 @@ const redisTls =
   process.env.REDIS_TLS === "true" ? { rejectUnauthorized: false } : undefined;
 
 if (!redisHost || !redisPort) {
-  console.error("[Redis:Config] REDIS_HOST or REDIS_PORT missing");
-  process.exit(1);
+  logger.error("[Redis:Config] REDIS_HOST or REDIS_PORT missing");
+  throw new Error("Redis configuration incomplete");
 }
 
-// ✅ Standard Redis config
 const redis = new Redis({
   host: redisHost,
   port: redisPort,
   password: redisPassword,
   tls: redisTls,
   maxRetriesPerRequest: 10,
-  reconnectOnError: (err) => {
-    console.error("[Redis:Reconnect] Error:", err.message);
-    return true; // Always try to reconnect
-  },
+  retryStrategy: (times) => Math.min(times * 50, 2000), // Exponential backoff
 });
 
-// ✅ Event listeners — only error logs retained
 redis.on("connect", () => {
-  // Connection success — no log needed
+  logger.info("[Redis:Connect] Connected to Redis");
 });
 
 redis.on("error", (err) => {
-  console.error("[Redis:Error]", {
+  logger.error("[Redis:Error]", {
     message: err.message,
     stack: err.stack,
     host: redisHost,
@@ -39,23 +35,7 @@ redis.on("error", (err) => {
 });
 
 redis.on("reconnecting", (delay) => {
-  // Reconnecting — no log
+  logger.info("[Redis:Reconnect] Reconnecting", { delay });
 });
 
-// ✅ Export Redis instance for app use
 export default redis;
-
-// 🔄 OPTIONAL: For Redis Cluster (Uncomment to use)
-/*
-const cluster = new Redis.Cluster(
-  [{ host: redisHost, port: redisPort }],
-  {
-    redisOptions: {
-      password: redisPassword,
-      tls: redisTls,
-      maxRetriesPerRequest: 10,
-    },
-  }
-);
-export default cluster;
-*/
