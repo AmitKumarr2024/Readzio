@@ -40,8 +40,13 @@ export const togglePostBookmark = createAsyncThunk(
       );
       return { postId, ...response.data };
     } catch (error) {
-      console.error(`❌ BOOKMARK failed:`, error.response?.data || error.message);
-      return rejectWithValue(error.response?.data?.message || "Bookmark failed");
+      console.error(
+        `❌ BOOKMARK failed:`,
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "Bookmark failed"
+      );
     }
   }
 );
@@ -57,8 +62,13 @@ export const incrementPostView = createAsyncThunk(
       dispatch(setViewCount(response.data.views));
       return { slug, ...response.data };
     } catch (error) {
-      console.error(`❌ VIEW increment failed:`, error.response?.data || error.message);
-      return rejectWithValue(error.response?.data?.message || "View count failed");
+      console.error(
+        `❌ VIEW increment failed:`,
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "View count failed"
+      );
     }
   }
 );
@@ -73,8 +83,13 @@ export const fetchBookmarkedPosts = createAsyncThunk(
       // console.log(`✅ Bookmarked posts fetched:`, response.data);
       return response.data.posts;
     } catch (error) {
-      console.error(`❌ Failed to fetch bookmarked posts:`, error.response?.data || error.message);
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch bookmarked posts");
+      console.error(
+        `❌ Failed to fetch bookmarked posts:`,
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch bookmarked posts"
+      );
     }
   }
 );
@@ -85,12 +100,19 @@ export const trackTimeSpent = createAsyncThunk(
     // console.log(`[trackTimeSpent] PostId: ${postId}, Duration: ${duration}`);
     try {
       // console.log(`⏱️ Tracking time spent for post: ${postId}, duration: ${duration}s`);
-      const response = await axiosInstance.post(`/post/time-spent/${postId}`, { duration });
+      const response = await axiosInstance.post(`/post/time-spent/${postId}`, {
+        duration,
+      });
       // console.log(`✅ TIME SPENT response:`, response.data);
       return { postId, duration, ...response.data };
     } catch (error) {
-      console.error(`❌ TIME SPENT failed:`, error.response?.data || error.message);
-      return rejectWithValue(error.response?.data?.message || "Time tracking failed");
+      console.error(
+        `❌ TIME SPENT failed:`,
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "Time tracking failed"
+      );
     }
   }
 );
@@ -102,16 +124,29 @@ export const fetchBookmarkAndLikeStatus = createAsyncThunk(
     const { auth } = getState();
     if (!auth.isAuthenticated) {
       // console.log(`[fetchBookmarkAndLikeStatus] Guest user, returning default status`);
-      return { postId, liked: false, bookmarked: false, likesCount: 0, bookmarksCount: 0 };
+      return {
+        postId,
+        liked: false,
+        bookmarked: false,
+        likesCount: 0,
+        bookmarksCount: 0,
+      };
     }
     try {
       // console.log(`📥 Fetching bookmark and like status for post: ${postId}`);
-      const response = await axiosInstance.get(`/post/bookmark-status/${postId}`);
+      const response = await axiosInstance.get(
+        `/post/bookmark-status/${postId}`
+      );
       // console.log(`✅ Status fetched:`, response.data);
       return { postId, ...response.data };
     } catch (error) {
-      console.error(`❌ Failed to fetch status:`, error.response?.data || error.message);
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch status");
+      console.error(
+        `❌ Failed to fetch status:`,
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch status"
+      );
     }
   }
 );
@@ -122,12 +157,14 @@ export const incrementPostShare = createAsyncThunk(
     // console.log(`[incrementPostShare] PostId: ${postId}`);
     try {
       // console.log(`🔗 Incrementing share count for post: ${postId}`);
-      const response = await axiosInstance.post(`/post/share/${postId}`);
+      const response = await axiosInstance.post(`/post/${postId}/share`);
       // console.log(`✅ SHARE response:`, response.data);
       return { postId, shareCount: response.data.shareCount };
     } catch (error) {
       console.error(`❌ SHARE failed:`, error.response?.data || error.message);
-      return rejectWithValue(error.response?.data?.message || "Failed to increment share count");
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to increment share count"
+      );
     }
   }
 );
@@ -197,7 +234,9 @@ const postInteractionSlice = createSlice({
             state.bookmarkedPosts.push({ _id: postId });
           }
         } else {
-          state.bookmarkedPosts = state.bookmarkedPosts.filter((p) => p._id !== postId);
+          state.bookmarkedPosts = state.bookmarkedPosts.filter(
+            (p) => p._id !== postId
+          );
         }
         state.loading = false;
       })
@@ -248,7 +287,8 @@ const postInteractionSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchBookmarkAndLikeStatus.fulfilled, (state, action) => {
-        const { postId, liked, likesCount, bookmarked, bookmarksCount } = action.payload;
+        const { postId, liked, likesCount, bookmarked, bookmarksCount } =
+          action.payload;
         state.likes[postId] = { liked, likesCount };
         state.bookmarks[postId] = { bookmarked, bookmarksCount };
         state.loading = false;
