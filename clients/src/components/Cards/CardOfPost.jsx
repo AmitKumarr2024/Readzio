@@ -78,7 +78,7 @@ const CardOfPost = ({
       to={`/post/${slug}`}
       className="group bg-white dark:bg-gray-800 font-Urbanist rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col h-full max-w-full"
     >
-      <div className="relative w-full aspect-video">
+      <div className="relative w-full aspect-[16/9]">
         <img
           src={thumbnail || "https://placehold.co/400x225?text=No+Image"}
           alt={title || "Post"}
@@ -94,7 +94,13 @@ const CardOfPost = ({
             Premium
           </span>
         )}
+        {postType && (
+          <span className="absolute bottom-2 left-2 px-2 py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-white/90 text-black dark:bg-gray-700 dark:text-white">
+            {postType}
+          </span>
+        )}
       </div>
+
       <div className="p-4 flex flex-col gap-3 min-h-[200px]">
         <h3 className="text-lg sm:text-xl font-semibold leading-snug text-gray-900 dark:text-white group-hover:text-blue-500 line-clamp-2">
           {title || "Untitled"}
