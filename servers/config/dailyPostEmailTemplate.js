@@ -79,11 +79,12 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
                       </table>
 
                       <!-- Post Meta -->
-                      <table cellpadding="0" cellspacing="0" role="presentation" style="font-size:13px; color:#6b7280; margin-bottom:15px;">
+                     <table cellpadding="0" cellspacing="0" role="presentation" style="font-size:13px; color:#6b7280; margin-bottom:15px;">
                         <tr>
                           <td style="padding-right:16px;">📖 {{#if this.readTime}}{{this.readTime}}{{else}}0 min{{/if}}</td>
                           <td style="padding-right:16px;">👍 {{#if this.likesCount}}{{this.likesCount}}{{else}}0{{/if}}</td>
-                          <td>💬 {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</td>
+                          <td style="padding-right:16px;">💬 {{#if this.commentsCount}}{{this.commentsCount}}{{else}}0{{/if}}</td>
+                          <td>📤 {{#if this.shareCount}}{{this.shareCount}}{{else}}0{{/if}}</td>
                         </tr>
                       </table>
 
