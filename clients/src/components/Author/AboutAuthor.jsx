@@ -98,9 +98,9 @@ const AboutAuthor = ({ authorId }) => {
           <h1 className="text-3xl font-extrabold">
             {selectedUser.name || "Unknown User"}
           </h1>
-          <p className="text-lg font-medium">
+          {/* <p className="text-lg font-medium">
             @{selectedUser.handle || "unknown"}
-          </p>
+          </p> */}
           <p className="text-base">
             {selectedUser.profession || "Content Creator"}
           </p>

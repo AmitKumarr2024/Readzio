@@ -167,9 +167,9 @@ const SearchInput = ({ className = "", onClose, ...props }) => {
                   <div className="flex-1">
                     <p className="text-base sm:text-xl font-bold text-indigo-700 dark:text-indigo-200">
                       {user?.name}{" "}
-                      <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                      {/* <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                         {user?.username || "N/A"}
-                      </span>
+                      </span> */}
                     </p>
                     <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 truncate">
                       {user.email}
