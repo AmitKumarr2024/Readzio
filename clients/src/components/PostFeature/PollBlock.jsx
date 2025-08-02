@@ -8,26 +8,43 @@ const PollBlock = ({
 }) => {
   const [selected, setSelected] = useState(null);
 
-  // Ensure at least one empty option on initial load
   useEffect(() => {
+    console.log("[PollBlock] Initial options:", options);
     if (options.length === 0) {
-      onChangeOptions(0, ""); // Add empty option
+      console.log("[PollBlock] Adding empty option");
+      onChangeOptions(0, "");
     }
-  }, []);
+  }, [options, onChangeOptions]);
 
   const handleOptionChange = (index, value) => {
+    console.log("[PollBlock] Option changed:", { index, value });
     const trimmed = value.trimStart();
     onChangeOptions(index, trimmed);
   };
 
   const handleAddOption = () => {
-    if (options.length >= 10) return; // Limit to 10 options
+    console.log(
+      "[PollBlock] Adding new option, current length:",
+      options.length
+    );
+    if (options.length >= 10) {
+      console.log("[PollBlock] Max options limit reached (10)");
+      return;
+    }
     onChangeOptions(options.length, "");
   };
 
   const handleRemoveOption = (index) => {
+    console.log("[PollBlock] Removing option at index:", index);
     onChangeOptions(index, null, true);
   };
+
+  console.log(
+    "[PollBlock] Rendering with question:",
+    question,
+    "options:",
+    options
+  );
 
   return (
     <div className="my-4 p-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200">
@@ -35,7 +52,10 @@ const PollBlock = ({
       <input
         type="text"
         value={question}
-        onChange={(e) => onChangeQuestion(e.target.value)}
+        onChange={(e) => {
+          console.log("[PollBlock] Question changed:", e.target.value);
+          onChangeQuestion(e.target.value);
+        }}
         className="w-full mb-3 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         placeholder="Enter poll question"
       />

@@ -14,14 +14,20 @@ import { io } from "../../servers/sockets/socket.js";
 import { calculateReadTime } from "../helpers/postHelper.js";
 
 export const voteOnPoll = async (req, res, next) => {
-  // console.log("[voteOnPoll] Starting with:", {
-  //   body: req.body,
-  //   userId: req.user?._id,
-  // });
+  console.log("[voteOnPoll] Request received:", {
+    body: req.body,
+    userId: req.user?._id,
+  });
   try {
     const { postId, blockId, optionIndex } = req.body;
     const userId = req.user?._id;
 
+    console.log("[voteOnPoll] Validating input:", {
+      postId,
+      blockId,
+      optionIndex,
+      userId,
+    });
     if (!mongoose.Types.ObjectId.isValid(postId)) {
       console.error("[voteOnPoll] Invalid post ID:", postId);
       throw new AppError("Invalid post ID", 400, "VoteOnPoll");
@@ -43,6 +49,7 @@ export const voteOnPoll = async (req, res, next) => {
       );
     }
 
+    console.log("[voteOnPoll] Fetching post:", postId);
     const post = await PostModel.findOne({
       _id: postId,
       isPublished: true,
@@ -54,6 +61,7 @@ export const voteOnPoll = async (req, res, next) => {
       throw new AppError("Post not found or unavailable", 404, "VoteOnPoll");
     }
 
+    console.log("[voteOnPoll] Searching for poll block:", blockId);
     const pollBlockIndex = post.blocks.findIndex(
       (block) => block.id === blockId && block.type === "poll"
     );
@@ -63,6 +71,7 @@ export const voteOnPoll = async (req, res, next) => {
     }
 
     const pollBlock = post.blocks[pollBlockIndex];
+    console.log("[voteOnPoll] Poll block found:", pollBlock);
     if (
       pollBlock.votedUserIds.some(
         (vote) => vote.userId.toString() === userId.toString()
@@ -72,19 +81,22 @@ export const voteOnPoll = async (req, res, next) => {
       throw new AppError("User already voted", 400, "VoteOnPoll");
     }
 
+    console.log("[voteOnPoll] Incrementing votes for option:", optionIndex);
     pollBlock.options[optionIndex].votes =
       (pollBlock.options[optionIndex].votes || 0) + 1;
     pollBlock.votedUserIds.push({ userId, votedAt: new Date() });
     post.blocks[pollBlockIndex] = pollBlock;
 
-    // console.log("[voteOnPoll] Updated poll block:", pollBlock);
+    console.log("[voteOnPoll] Updated poll block:", pollBlock);
 
+    console.log("[voteOnPoll] Saving updated post");
     const updatedPost = await PostModel.findByIdAndUpdate(
       postId,
       { $set: { blocks: post.blocks } },
       { new: true, runValidators: true }
     ).select("title slug blocks");
 
+    console.log("[voteOnPoll] Recording activity for user:", userId);
     await recordActivity({
       userId,
       action: "POLL_VOTED",
@@ -92,18 +104,17 @@ export const voteOnPoll = async (req, res, next) => {
       message: `Voted on poll in post: ${post.title}`,
     });
 
-    // console.log(
-    //   "[voteOnPoll] Success, returning poll:",
-    //   updatedPost.blocks[pollBlockIndex]
-    // );
-
+    console.log(
+      "[voteOnPoll] Vote successful, returning poll:",
+      updatedPost.blocks[pollBlockIndex]
+    );
     res.status(200).json({
       success: true,
       message: "Vote recorded",
       poll: updatedPost.blocks[pollBlockIndex],
     });
   } catch (error) {
-    console.error("[voteOnPoll] Error:", error.message, error.stack);
+    console.error("[voteOnPoll] Error occurred:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
@@ -113,10 +124,10 @@ export const voteOnPoll = async (req, res, next) => {
 };
 
 export const createPost = async (req, res, next) => {
-  // console.log("[createPost] Starting with:", {
-  //   body: req.body,
-  //   userId: req.user?._id,
-  // });
+  console.log("[createPost] Request received:", {
+    body: req.body,
+    userId: req.user?._id,
+  });
   try {
     const {
       title,
@@ -130,6 +141,7 @@ export const createPost = async (req, res, next) => {
       language = "en",
     } = req.body;
 
+    console.log("[createPost] Validating user authentication");
     if (!req.user?._id) {
       console.error("[createPost] User not authenticated");
       throw new AppError(
@@ -139,12 +151,14 @@ export const createPost = async (req, res, next) => {
       );
     }
 
+    console.log("[createPost] Parsing tags");
     const tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
     if (!Array.isArray(tags)) {
       console.error("[createPost] Invalid tags format:", rawTags);
       throw new AppError("Tags must be an array", 400, "CreatePost");
     }
 
+    console.log("[createPost] Parsing blocks");
     const blocks = Array.isArray(rawBlocks)
       ? rawBlocks
       : JSON.parse(rawBlocks || "[]");
@@ -153,6 +167,7 @@ export const createPost = async (req, res, next) => {
       throw new AppError("Blocks must be an array", 400, "CreatePost");
     }
 
+    console.log("[createPost] Assigning block IDs");
     const blocksWithIds = blocks.map((block, index) => {
       if (!block || typeof block !== "object" || !block.type) {
         console.error("[createPost] Invalid block at index:", index, block);
@@ -170,13 +185,13 @@ export const createPost = async (req, res, next) => {
       };
     });
 
-    // Validate table blocks
+    console.log("[createPost] Validating table blocks");
     blocksWithIds.forEach((block, index) => {
       if (block.type === "table") {
-        // console.log("[createPost] Validating table block:", {
-        //   id: block.id,
-        //   data: block.data,
-        // }); // Enhanced logging
+        console.log("[createPost] Validating table block:", {
+          id: block.id,
+          data: block.data,
+        });
         if (
           !block.data ||
           !Array.isArray(block.data) ||
@@ -207,7 +222,7 @@ export const createPost = async (req, res, next) => {
     });
 
     const processImage = async (source, id, folder) => {
-      // console.log("[createPost] Processing image:", { id, source });
+      console.log("[createPost] Processing image:", { id, source });
       try {
         let buffer;
         if (source.startsWith("data:image")) {
@@ -224,6 +239,7 @@ export const createPost = async (req, res, next) => {
           }
           buffer = Buffer.from(base64Data, "base64");
         } else if (source.startsWith("http")) {
+          console.log("[createPost] Fetching image from URL:", source);
           const response = await axios.get(source, {
             responseType: "arraybuffer",
             timeout: 5000,
@@ -241,7 +257,7 @@ export const createPost = async (req, res, next) => {
 
         const image = sharp(buffer);
         const metadata = await image.metadata();
-        // console.log("[createPost] Image metadata:", metadata);
+        console.log("[createPost] Image metadata:", metadata);
         if (!["jpeg", "png", "webp"].includes(metadata.format)) {
           console.error(
             "[createPost] Unsupported image format:",
@@ -256,6 +272,10 @@ export const createPost = async (req, res, next) => {
         }
 
         if (metadata.width > 1200 || metadata.height > 1200) {
+          console.log("[createPost] Resizing image:", {
+            width: metadata.width,
+            height: metadata.height,
+          });
           image.resize({
             width: 1200,
             height: 1200,
@@ -264,6 +284,7 @@ export const createPost = async (req, res, next) => {
           });
         }
 
+        console.log("[createPost] Compressing image to webp");
         const compressedBuffer = await image
           .webp({ quality: 75, effort: 4 })
           .toBuffer();
@@ -281,7 +302,10 @@ export const createPost = async (req, res, next) => {
           );
         }
 
-        // console.log("[createPost] Image uploaded:", result.secure_url);
+        console.log(
+          "[createPost] Image uploaded successfully:",
+          result.secure_url
+        );
         return result.secure_url;
       } catch (err) {
         console.error("[createPost] Image processing error:", err.message);
@@ -294,18 +318,22 @@ export const createPost = async (req, res, next) => {
       }
     };
 
+    console.log("[createPost] Processing blocks");
     const processedBlocks = await Promise.all(
       blocksWithIds.map(async (block) => {
-        const processed = await processBlock(block); // Use processBlock for consistency
+        const processed = await processBlock(block);
+        console.log("[createPost] Block processed:", block.id);
         return processed;
       })
     );
 
+    console.log("[createPost] Calculating read time");
     const { readTime, readingTime } = calculateReadTime(processedBlocks);
-    // console.log("[createPost] Read time generated:", { readTime, readingTime });
+    console.log("[createPost] Read time generated:", { readTime, readingTime });
 
     let processedThumbnail = rawThumbnail;
     if (rawThumbnail) {
+      console.log("[createPost] Processing thumbnail");
       processedThumbnail = await processImage(
         rawThumbnail,
         "thumbnail",
@@ -313,11 +341,12 @@ export const createPost = async (req, res, next) => {
       );
     }
 
+    console.log("[createPost] Moderating content");
     const moderateContent = async (text) => {
-      // console.log(
-      //   "[createPost] Moderating content:",
-      //   text.slice(0, 100) + "..."
-      // );
+      console.log(
+        "[createPost] Moderating content:",
+        text.slice(0, 100) + "..."
+      );
       return { isFlagged: false, categories: {} };
     };
 
@@ -343,6 +372,7 @@ export const createPost = async (req, res, next) => {
       );
     }
 
+    console.log("[createPost] Generating slug");
     let slug = slugify(title, { lower: true, strict: true });
     let finalSlug = slug;
     let counter = 1;
@@ -351,7 +381,7 @@ export const createPost = async (req, res, next) => {
       finalSlug = `${slug}-${counter++}`;
     }
     slug = finalSlug;
-    // console.log("[createPost] Generated slug:", slug);
+    console.log("[createPost] Generated slug:", slug);
 
     const postData = {
       title,
@@ -370,12 +400,15 @@ export const createPost = async (req, res, next) => {
       readingTime,
     };
 
+    console.log("[createPost] Starting transaction");
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
+      console.log("[createPost] Creating post in database");
       const [newPost] = await PostModel.create([postData], { session });
-      // console.log("[createPost] Post created:", newPost._id);
+      console.log("[createPost] Post created:", newPost._id);
 
+      console.log("[createPost] Recording activity");
       await recordActivity(
         {
           userId: req.user._id,
@@ -387,8 +420,10 @@ export const createPost = async (req, res, next) => {
       );
       await session.commitTransaction();
 
+      console.log("[createPost] Emitting postCreated event");
       io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
 
+      console.log("[createPost] Updating post counts");
       const [allPostsCount, myPostsCount, followingPostsCount] =
         await Promise.all([
           PostModel.countDocuments({
@@ -406,22 +441,28 @@ export const createPost = async (req, res, next) => {
             isPublished: true,
           }),
         ]);
+      console.log("[createPost] Post counts:", {
+        allPostsCount,
+        myPostsCount,
+        followingPostsCount,
+      });
       io.to(req.user._id).emit("postCountsUpdated", {
         allPostsCount,
         myPostsCount,
         followingPostsCount,
       });
 
-      // console.log("[createPost] Success, returning post:", newPost._id);
+      console.log("[createPost] Success, returning post:", newPost._id);
       res
         .status(201)
         .json({ success: true, message: "Post created", post: newPost });
     } catch (err) {
-      await session.abortTransaction();
       console.error("[createPost] Transaction failed:", err.message);
+      await session.abortTransaction();
       throw err;
     } finally {
       session.endSession();
+      console.log("[createPost] Transaction session ended");
     }
   } catch (error) {
     console.error("[createPost] Error:", error.message, error.stack);

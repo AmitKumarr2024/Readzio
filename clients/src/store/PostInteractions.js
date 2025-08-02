@@ -172,18 +172,25 @@ export const incrementPostShare = createAsyncThunk(
 export const voteOnPoll = createAsyncThunk(
   "postInteraction/voteOnPoll",
   async ({ postId, blockId, optionIndex }, { rejectWithValue }) => {
-    // console.log(`[voteOnPoll] PostId: ${postId}, BlockId: ${blockId}, OptionIndex: ${optionIndex}`);
+    console.log("[voteOnPoll] Initiating vote with:", {
+      postId,
+      blockId,
+      optionIndex,
+    });
     try {
-      // console.log(`🗳️ Sending vote request for post: ${postId}, block: ${blockId}`);
+      console.log("[voteOnPoll] Sending vote request to /post/vote");
       const response = await axiosInstance.post(`/post/vote`, {
         postId,
         blockId,
         optionIndex,
       });
-      // console.log(`✅ VOTE response:`, response.data);
+      console.log("[voteOnPoll] Vote response received:", response.data);
       return { postId, blockId, poll: response.data.poll };
     } catch (error) {
-      console.error(`❌ VOTE failed:`, error.response?.data || error.message);
+      console.error(
+        "[voteOnPoll] Vote request failed:",
+        error.response?.data || error.message
+      );
       return rejectWithValue(error.response?.data?.message || "Vote failed");
     }
   }

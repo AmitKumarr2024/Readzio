@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { voteOnPoll } from "../../store/PostInteractions"; // Updated import
+import { voteOnPoll } from "../../store/PostInteractions";
 
 const PollBlockOutput = ({
   slug,
@@ -14,14 +14,24 @@ const PollBlockOutput = ({
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
-  const { loading: interactionLoading } = useSelector((state) => state.post); // Updated to use post slice
+  const { loading: interactionLoading } = useSelector((state) => state.post);
   const { currentPost, posts } = useSelector((state) => state.post);
   const userId = user?._id;
 
+  console.log("[PollBlockOutput] Component props:", {
+    slug,
+    question,
+    options,
+    blockId,
+  });
+
   const postFromStore = useMemo(() => {
-    return currentPost?.slug === slug
-      ? currentPost
-      : posts.find((p) => p.slug === slug);
+    const post =
+      currentPost?.slug === slug
+        ? currentPost
+        : posts.find((p) => p.slug === slug);
+    console.log("[PollBlockOutput] Post from store:", post);
+    return post;
   }, [currentPost, posts, slug]);
 
   const pollFromStore = useMemo(() => {
@@ -36,12 +46,12 @@ const PollBlockOutput = ({
       options,
       votedUserIds: [],
     };
-    // console.log("[PollBlockOutput] Poll block retrieved:", pollBlock);
+    console.log("[PollBlockOutput] Poll block retrieved:", pollBlock);
     return pollBlock;
   }, [postFromStore, question, options, blockId]);
 
   const normalizedOptions = useMemo(() => {
-    return (pollFromStore.options || options)
+    const opts = (pollFromStore.options || options)
       .map((opt, idx) => {
         const optionValue = typeof opt === "string" ? opt : opt?.option;
         return {
@@ -53,13 +63,23 @@ const PollBlockOutput = ({
         };
       })
       .filter((opt) => opt.option && typeof opt.option === "string");
+    console.log("[PollBlockOutput] Normalized options:", opts);
+    return opts;
   }, [pollFromStore.options, options]);
 
   const userHasVoted = useMemo(() => {
     const votedUserIds = pollFromStore.votedUserIds || [];
-    return userId && Array.isArray(votedUserIds)
-      ? votedUserIds.some((vote) => vote?.userId?.toString?.() === userId)
-      : false;
+    const hasVoted =
+      userId && Array.isArray(votedUserIds)
+        ? votedUserIds.some((vote) => vote?.userId?.toString?.() === userId)
+        : false;
+    console.log(
+      "[PollBlockOutput] User has voted:",
+      hasVoted,
+      "userId:",
+      userId
+    );
+    return hasVoted;
   }, [pollFromStore.votedUserIds, userId]);
 
   const [votes, setVotes] = useState(() =>
@@ -72,24 +92,28 @@ const PollBlockOutput = ({
   const [isVoting, setIsVoting] = useState(false);
 
   useEffect(() => {
+    console.log("[PollBlockOutput] Updating votes from normalized options");
     const updatedVotes = Object.fromEntries(
       normalizedOptions.map((opt) => [opt.option, opt.votes || 0])
     );
     setVotes(updatedVotes);
     prevVotesRef.current = updatedVotes;
     setSelected(null);
+    console.log("[PollBlockOutput] Updated votes:", updatedVotes);
   }, [normalizedOptions]);
 
   const totalVotes = Object.values(votes).reduce((sum, v) => sum + v, 0);
+  console.log("[PollBlockOutput] Total votes:", totalVotes);
 
   const handleVote = async (option, optionIndex) => {
+    console.log("[PollBlockOutput] Handling vote:", { option, optionIndex });
     if (!isAuthenticated) {
-      // console.log("[PollBlockOutput] Redirecting to login for voting");
+      console.log("[PollBlockOutput] Redirecting to login for voting");
       navigate(`/login?redirect=/post/${slug}`);
       return;
     }
     if (userHasVoted) {
-      // console.log("[PollBlockOutput] User already voted for slug:", slug);
+      console.log("[PollBlockOutput] User already voted for slug:", slug);
       alert("You have already voted.");
       return;
     }
@@ -113,16 +137,21 @@ const PollBlockOutput = ({
     const updatedVotes = { ...votes, [option]: (votes[option] || 0) + 1 };
     setVotes(updatedVotes);
     setSelected(option);
+    console.log("[PollBlockOutput] Optimistic vote update:", updatedVotes);
 
     try {
-      await dispatch(
+      const result = await dispatch(
         voteOnPoll({
           postId: postFromStore._id,
           blockId,
           optionIndex,
         })
       ).unwrap();
-      // console.log("[PollBlockOutput] Vote recorded for post:", postFromStore._id);
+      console.log(
+        "[PollBlockOutput] Vote recorded for post:",
+        postFromStore._id,
+        result
+      );
     } catch (err) {
       console.error("[PollBlockOutput] voteOnPoll failed:", err);
       setVotes(prevVotesRef.current);
@@ -130,8 +159,11 @@ const PollBlockOutput = ({
       alert("Failed to submit vote. Please try again.");
     } finally {
       setIsVoting(false);
+      console.log("[PollBlockOutput] Voting completed, isVoting:", false);
     }
   };
+
+  console.log("[PollBlockOutput] Rendering with pollFromStore:", pollFromStore);
 
   if (!postFromStore && !pollFromStore.question && !normalizedOptions.length) {
     console.warn("[PollBlockOutput] Rendering loading state for slug:", slug);
