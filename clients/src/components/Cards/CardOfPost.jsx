@@ -43,21 +43,11 @@ const CardOfPost = ({
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm w-full h-full overflow-hidden">
-        <Skeleton className="w-full aspect-video rounded-t-lg bg-gray-200 dark:bg-gray-700" />
+        <Skeleton className="w-full aspect-[16/9] rounded-t-lg bg-gray-200 dark:bg-gray-700" />
         <div className="p-4 space-y-3">
           <Skeleton className="h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
-          <div className="flex flex-col sm:flex-row sm:gap-4">
-            <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
-            <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {[...Array(5)].map((_, i) => (
-              <Skeleton
-                key={i}
-                className="h-4 w-10 rounded bg-gray-200 dark:bg-gray-700"
-              />
-            ))}
-          </div>
+          <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
+          <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
           <Skeleton className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
         </div>
       </div>
@@ -76,8 +66,9 @@ const CardOfPost = ({
   return (
     <Link
       to={`/post/${slug}`}
-      className="group bg-white dark:bg-gray-800 font-Urbanist rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col h-full max-w-full"
+      className="group bg-white dark:bg-gray-800 font-Urbanist rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col min-h-[480px]"
     >
+      {/* Thumbnail */}
       <div className="relative w-full aspect-video">
         <img
           src={thumbnail || "https://placehold.co/400x225?text=No+Image"}
@@ -101,46 +92,91 @@ const CardOfPost = ({
         )}
       </div>
 
-      <div className="p-4 flex flex-col gap-3 min-h-[200px]">
+      {/* Content */}
+      <div className="p-4 flex flex-col justify-between flex-grow gap-3">
+        {/* Title */}
         <h3 className="text-lg sm:text-xl font-semibold leading-snug text-gray-900 dark:text-white group-hover:text-blue-500 line-clamp-2">
           {title || "Untitled"}
         </h3>
-        <div className="flex flex-col sm:flex-row sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400 justify-between">
-          <span className="truncate">
-            {categoryMap[category._id] || "Uncategorized"}
-          </span>
-          <span className="truncate font-bold text-gray-700 dark:text-gray-200">
-            {author.name || "Anonymous"}
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          <span className="flex items-center gap-1">
-            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" /> {commentsCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Eye className="w-4 h-4 sm:w-5 sm:h-5" /> {viewsCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />{" "}
-            {likesCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />{" "}
-            {bookmarksCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />{" "}
-            {shareCount}
-          </span>
-        </div>
-        <div className="text-xs text-gray-400 dark:text-gray-500">
-          {formattedDate}
-        </div>
+
+        {/* Info Table */}
+        <table className="w-full text-xs sm:text-sm text-left text-gray-600 dark:text-gray-300 border-separate border-spacing-y-1">
+          <tbody>
+            <tr>
+              <td className="font-semibold">Author</td>
+              <td className="text-right">{author.name || "Anonymous"}</td>
+            </tr>
+            <tr>
+              <td className="font-semibold">Category</td>
+              <td className="text-right">
+                {categoryMap[category._id] || "Uncategorized"}
+              </td>
+            </tr>
+            <tr>
+              <td className="font-semibold">Post Type</td>
+              <td className="text-right">{postType}</td>
+            </tr>
+            <tr>
+              <td className="font-semibold">Date</td>
+              <td className="text-right">{formattedDate}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Stats Table */}
+        <table className="w-full text-xs sm:text-sm text-center text-gray-500 dark:text-gray-400 mt-2">
+          <thead>
+            <tr>
+              <th>Comments</th>
+              <th>Views</th>
+              <th>Likes</th>
+              <th>Bookmarks</th>
+              <th>Shares</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div className="flex justify-center items-center gap-1">
+                  <MessageCircle className="w-4 h-4" />
+                  {commentsCount}
+                </div>
+              </td>
+              <td>
+                <div className="flex justify-center items-center gap-1">
+                  <Eye className="w-4 h-4" />
+                  {viewsCount}
+                </div>
+              </td>
+              <td>
+                <div className="flex justify-center items-center gap-1 text-red-500">
+                  <Heart className="w-4 h-4" />
+                  {likesCount}
+                </div>
+              </td>
+              <td>
+                <div className="flex justify-center items-center gap-1 text-blue-500">
+                  <Bookmark className="w-4 h-4" />
+                  {bookmarksCount}
+                </div>
+              </td>
+              <td>
+                <div className="flex justify-center items-center gap-1 text-green-500">
+                  <Share2 className="w-4 h-4" />
+                  {shareCount}
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Subscription & Tags */}
         {isSubscribedToAuthor && authorId !== currentUser?._id && (
-          <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
+          <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 mt-2 w-fit">
             Subscribed
           </span>
         )}
+
         {tags?.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
             {tags.slice(0, 4).map((tag) => (
