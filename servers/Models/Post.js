@@ -1,5 +1,92 @@
 import mongoose from "mongoose";
+import slugify from "slugify";
 
+// Define blockSchema first
+const blockSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    type: {
+      type: String,
+      required: true,
+      enum: [
+        "text",
+        "image",
+        "code",
+        "video",
+        "quote",
+        "list",
+        "heading",
+        "table",
+        "link",
+        "hr",
+        "file",
+        "poll",
+      ],
+    },
+    blocked: { type: Boolean, default: false },
+    value: String,
+    level: Number,
+    text: String,
+    code: String,
+    caption: String,
+    src: String,
+    href: String,
+    url: String,
+    name: String,
+    size: Number,
+    ordered: Boolean,
+    author: String,
+    question: {
+      type: String,
+      required: function () {
+        return this.type === "poll";
+      },
+    },
+    options: [
+      {
+        option: {
+          type: String,
+          required: function () {
+            return this.parent().type === "poll";
+          },
+        },
+        votes: { type: Number, default: 0 },
+      },
+    ],
+    votedUserIds: {
+      type: [
+        {
+          userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+          votedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+    items: { type: [String], default: [] },
+    data: {
+      type: [[String]],
+      default: [],
+      validate: {
+        validator: function (v) {
+          if (this.type === "table") {
+            console.log("[blockSchema] Validating table data:", v);
+            return (
+              Array.isArray(v) &&
+              v.length > 0 &&
+              v.every((row) => Array.isArray(row) && row.length > 0)
+            );
+          }
+          return true;
+        },
+        message:
+          "Table block data must be a non-empty array of non-empty arrays",
+      },
+    },
+  },
+  { _id: false }
+);
+
+// Then define postSchema
 const postSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
@@ -88,11 +175,6 @@ const postSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-// Remove the virtual postType
-// postSchema.virtual("postType").get(function () {
-//   return this.isPremium || this.isSubscriberOnly ? "premium" : "free";
-// });
 
 postSchema.set("toObject", { virtuals: true });
 postSchema.set("toJSON", { virtuals: true });
