@@ -82,7 +82,7 @@ const CardOfPost = ({
         <img
           src={thumbnail || "https://placehold.co/400x225?text=No+Image"}
           alt={title || "Post"}
-          className="w-full h-full object-cover rounded-t-lg"
+          className="w-full h-full object-contain rounded-t-lg"
           loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
