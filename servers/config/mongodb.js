@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import logger from "../../servers/Utils/Logger.js"; // Assuming winston logger is available
+import logger from "../../servers/Utils/Logger.js";
 
 // Load environment variables
 dotenv.config();
@@ -11,6 +11,19 @@ const connectDb = async (retries = 5, delay = 5000) => {
   if (!MONGO_URI) {
     logger.error("[MongoDB:Config] MONGO_URI is not defined");
     throw new Error("MONGO_URI is not defined in environment variables");
+  }
+
+  // Check if already connected or connecting
+  if (mongoose.connection.readyState === 1) {
+    logger.info("[MongoDB:Connect] Already connected to MongoDB");
+    return;
+  }
+  if (mongoose.connection.readyState === 2) {
+    logger.info("[MongoDB:Connect] Connection in progress, waiting...");
+    await new Promise((resolve) =>
+      mongoose.connection.once("connected", resolve)
+    );
+    return;
   }
 
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -25,7 +38,7 @@ const connectDb = async (retries = 5, delay = 5000) => {
 
       logger.info("[MongoDB:Connect] Connected to MongoDB");
 
-      // Event listeners
+      // Event listeners (only set up once)
       mongoose.connection.on("error", (err) => {
         logger.error("[MongoDB:Event] Connection error", {
           message: err.message,
@@ -48,7 +61,7 @@ const connectDb = async (retries = 5, delay = 5000) => {
         process.exit(0);
       });
 
-      return; // Success, exit function
+      return;
     } catch (error) {
       logger.error(`[MongoDB:Connect] Attempt ${attempt} failed`, {
         message: error.message,
@@ -57,7 +70,7 @@ const connectDb = async (retries = 5, delay = 5000) => {
 
       if (attempt === retries) {
         logger.error("[MongoDB:Connect] Max retries reached, exiting");
-        process.exit(1);
+        throw error;
       }
 
       await new Promise((resolve) => setTimeout(resolve, delay));

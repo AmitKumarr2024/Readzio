@@ -212,7 +212,7 @@ const Navbar = () => {
             </Link>
           </div>
 
-          <div className="hidden md:flex flex-1 max-w-xs mx-2 sm:mx-4">
+          <div className="hidden md:flex flex-1 max-w-2xl mx-2 sm:mx-4">
             <SearchInput />
           </div>
 
