@@ -81,7 +81,7 @@ const ShareButton = ({ postId, postUrl, className = "" }) => {
       </button>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 transition-opacity duration-300">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 transition-opacity duration-300">
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl relative mx-auto transform transition-transform duration-300 scale-100">
             <button
               onClick={() => setIsModalOpen(false)}

@@ -10,7 +10,7 @@ const EngagementButtons = ({ post }) => {
   }
 
   const postId = post._id;
-  const postUrl = `https://your-domain.com/post/${post.slug || postId}`;
+  const postUrl = `https://inksha-uedq.onrender.com/post/${post.slug}`;
 
   return (
     <div className="flex items-center gap-4 my-10 bg-background-light dark:bg-background-dark rounded-2xl p-4 shadow-xl border border-gray-300 dark:border-gray-700">
