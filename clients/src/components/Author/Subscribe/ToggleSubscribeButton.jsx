@@ -1,20 +1,33 @@
-// client/src/components/Author/Subscribe/ToggleSubscribeButton.js
-import React, { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
-const ToggleSubscribeButton = ({ authorId, isSubscribed: isSubscribedProp, currentUserId }) => {
+const ToggleSubscribeButton = ({
+  authorId,
+  isSubscribedProp,
+  currentUserId,
+}) => {
   const navigate = useNavigate();
-  const { subscriptions = [], loading } = useSelector((state) => state.subscription);
+  const { subscriptions = [], loading } = useSelector(
+    (state) => state.subscription
+  );
   const { user, isAuthenticated } = useSelector((state) => state.auth);
 
   const subscriberId = currentUserId || user?._id;
   const [isSubscribedInternal, setIsSubscribedInternal] = useState(false);
 
-  const isSubscribed = typeof isSubscribedProp === 'boolean' ? isSubscribedProp : isSubscribedInternal;
+  const isSubscribed =
+    typeof isSubscribedProp === "boolean"
+      ? isSubscribedProp
+      : isSubscribedInternal;
 
   useEffect(() => {
-    if (!isAuthenticated || !authorId || !subscriberId || authorId === subscriberId) {
+    if (
+      !isAuthenticated ||
+      !authorId ||
+      !subscriberId ||
+      authorId === subscriberId
+    ) {
       setIsSubscribedInternal(false);
       return;
     }
@@ -23,24 +36,28 @@ const ToggleSubscribeButton = ({ authorId, isSubscribed: isSubscribedProp, curre
       (sub) =>
         String(sub.authorId) === String(authorId) &&
         String(sub.userId) === String(subscriberId) &&
-        sub.status === 'active'
+        sub.status === "active"
     );
 
     setIsSubscribedInternal(found);
-  }, [subscriptions, authorId, subscriberId, isAuthenticated, isSubscribedProp]);
+  }, [
+    subscriptions,
+    authorId,
+    subscriberId,
+    isAuthenticated,
+    isSubscribedProp,
+  ]);
 
   const handleClick = () => {
     if (!isAuthenticated) {
-      alert('You must be logged in to subscribe.');
+      alert("You must be logged in to subscribe.");
       return;
     }
 
     if (authorId === subscriberId) {
-      // console.log('⚠️ Cannot subscribe to self.');
       return;
     }
 
-    // Navigate to plan page on click
     navigate(`/plans/${authorId}`);
   };
 
@@ -52,11 +69,17 @@ const ToggleSubscribeButton = ({ authorId, isSubscribed: isSubscribedProp, curre
     <button
       onClick={handleClick}
       disabled={loading}
-      className={`w-full py-2 rounded text-text-main-light dark:text-text-main-dark transition-colors duration-200 ${
-        isSubscribed ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-500 hover:bg-green-600'
-      } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`w-full py-2.5 text-sm font-medium text-white rounded-full shadow-md transition-all duration-300 ${
+        isSubscribed
+          ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 dark:from-blue-600 dark:to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800"
+          : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 dark:from-green-600 dark:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800"
+      } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
     >
-      {loading ? 'Processing...' : isSubscribed ? 'You’re a Member' : 'Subscribe Now'}
+      {loading
+        ? "Processing..."
+        : isSubscribed
+        ? "You're a Member"
+        : "Subscribe Now"}
     </button>
   );
 };
