@@ -283,7 +283,7 @@ const Postbox = ({
       bookmarksCount: post.bookmarksCount ?? 0,
       shareCount: post.shareCount ?? 0,
       isSubscriberOnly: post.isSubscriberOnly ?? false,
-      postType: post.postType ?? "free",
+      postType: post.postType,
       tags: post.tags || [],
       readTime: post?.readTime,
     }));
