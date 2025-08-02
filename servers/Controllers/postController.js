@@ -765,13 +765,24 @@ const processBlock = async (block) => {
     processedBlock.options = Array.isArray(processedBlock.options)
       ? block.options
           .map((opt) => {
-            const trimmed = (opt.option || "").trim();
+            const value =
+              typeof opt === "string"
+                ? opt
+                : typeof opt === "object" && typeof opt.option === "string"
+                ? opt.option
+                : "";
+
+            const trimmed = value.trim();
+
             return trimmed &&
               trimmed.length >= 2 &&
               trimmed.toLowerCase() !== "option"
               ? {
                   option: trimmed,
-                  votes: Number.isInteger(opt.votes) ? opt.votes : 0,
+                  votes:
+                    typeof opt === "object" && Number.isInteger(opt.votes)
+                      ? opt.votes
+                      : 0,
                 }
               : null;
           })
