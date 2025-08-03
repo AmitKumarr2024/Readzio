@@ -6,11 +6,13 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import http from "http";
 import mongoose from "mongoose";
+import rateLimit from "express-rate-limit";
 import { CLIENT_URL, NODE_ENV, PORT } from "./config/dotenv.js";
 import connectDb from "./config/mongodb.js";
 import initializeSocket from "./sockets/socket.js";
 import { startTempCleanup } from "./Utils/cleanupTemp.js";
 import { handleRazorpayWebhook } from "./Controllers/paymentController.js";
+import logger from "./Utils/Logger.js"; // Adjust path as needed
 
 // Routes
 import AuthRoutes from "./Routes/authRoutes.js";
@@ -31,9 +33,6 @@ import PostEmailRoutes from "./Routes/postEmailRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
-import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
-
-// console.log("[Server:Startup] Initializing Express server");
 
 const app = express();
 app.set("trust proxy", true);
@@ -42,7 +41,7 @@ const io = initializeSocket(server);
 
 const __dirname = path.resolve();
 
-// 🔐 Razorpay webhook (raw body needed)
+// Razorpay webhook
 app.post(
   "/api/razorpay/webhook",
   express.json({
@@ -59,9 +58,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// Compression middleware
-app.use(compression());
-// console.log("[Server:Middleware] Compression applied");
+// Compression and rate limiting
+app.use(compression({ level: 6, threshold: 0 }));
+app.use(
+  "/api/",
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // 100 requests per IP
+    message: { success: false, message: "Too many requests" },
+  })
+);
 
 // CORS config
 const allowedOrigins = [
@@ -71,16 +77,20 @@ const allowedOrigins = [
   "https://inksha-uedq.onrender.com",
 ].filter(Boolean);
 
-// console.log("[Server:CORS] Allowed origins:", allowedOrigins);
+if (NODE_ENV !== "production") {
+  logger.info("[Server:CORS] Allowed origins:", allowedOrigins);
+}
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
-        // console.log("[Server:CORS] ✅ Allowed:", origin);
+        if (NODE_ENV !== "production") {
+          logger.info("[Server:CORS] ✅ Allowed:", origin);
+        }
         return callback(null, true);
       }
-      console.error("[Server:CORS] ❌ Blocked:", origin);
+      logger.error("[Server:CORS] ❌ Blocked:", origin);
       return callback(new Error("CORS not allowed"));
     },
     credentials: true,
@@ -90,12 +100,11 @@ app.use(
 );
 
 // Request parsing middleware
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 app.use(cookieParser());
-// console.log("[Server:Middleware] JSON, URL-encoded, cookie-parser applied");
 
-// 🔌 Mount API Routes
+// Mount API Routes
 const routes = [
   ["/api/auth", AuthRoutes],
   ["/api/user", UserRoutes],
@@ -114,24 +123,26 @@ const routes = [
   ["/api/dailyMail", PostEmailRoutes],
   ["/api/bannerNotification", BannerNotificationRoutes],
   ["/api/public", guestRoutes],
+  ["/api/dailyDigest", PostEmailRoutes], // Added for external cron
 ];
 
 routes.forEach(([path, router]) => {
-  // console.log(`🔌 Mounting route: ${path}`);
+  if (NODE_ENV !== "production") {
+    logger.info(`🔌 Mounting route: ${path}`);
+  }
   app.use(path, router);
 });
 
-// ✅ Serve static frontend in production
-const clientPath = path.join(__dirname, "clients", "dist");
-const clientIndexPath = path.join(clientPath, "index.html");
-
-// ✅ Serve static public files (logo.png, robots.txt, etc.)
-// Log all requests to /public
-// Now correctly targets servers/public
+// Serve static public files
 const publicPath = path.join(__dirname, "servers", "public");
-// console.log("✅ Public folder served at:", publicPath);
-
-app.use("/public", express.static(publicPath));
+app.use(
+  "/public",
+  express.static(publicPath, {
+    maxAge: "1d",
+    etag: true,
+    lastModified: true,
+  })
+);
 
 // Static ads.txt file
 app.get("/ads.txt", (req, res) => {
@@ -140,37 +151,38 @@ app.get("/ads.txt", (req, res) => {
     .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
 });
 
-// ✅ Serve frontend in production
-if (NODE_ENV === "production") {
-  if (fs.existsSync(clientIndexPath)) {
-    app.use(express.static(clientPath));
+// Serve frontend in production
+const clientPath = path.join(__dirname, "clients", "dist");
+const clientIndexPath = path.join(clientPath, "index.html");
 
-    // ⚠️ This must come LAST
-    app.get(/^\/(?!api\/).*/, (req, res) => {
-      res.sendFile(clientIndexPath);
-    });
-  } else {
-    console.warn("⚠️ Production build missing: index.html not found");
-  }
+if (NODE_ENV === "production" && fs.existsSync(clientIndexPath)) {
+  app.use(
+    express.static(clientPath, {
+      maxAge: "1h",
+      etag: true,
+      lastModified: true,
+    })
+  );
+  app.get(/^\/(?!api\/).*/, (req, res) => {
+    res.sendFile(clientIndexPath);
+  });
+} else if (NODE_ENV === "production") {
+  logger.warn("⚠️ Production build missing: index.html not found");
 }
 
 // Health check
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
-    message: "Inksha API is running",
-    uptime: process.uptime(),
     database:
       mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-    timestamp: new Date().toISOString(),
   });
 });
 
 // Custom global error handler
 app.use(errorHandler);
-// console.log("[Server:Middleware] Error handler applied");
 
-// In development, print all route paths
+// In development, print routes
 if (NODE_ENV !== "production") {
   try {
     app._router.stack.forEach((middleware) => {
@@ -178,68 +190,72 @@ if (NODE_ENV !== "production") {
         const methods = Object.keys(middleware?.route?.methods || {})
           .join(", ")
           .toUpperCase();
-        // console.log(`✔ ${methods} ${middleware.route.path}`);
+        logger.info(`✔ ${methods} ${middleware.route.path}`);
       } else if (middleware?.name === "router" && middleware?.handle?.stack) {
         middleware.handle.stack.forEach((handler) => {
           if (handler?.route?.path) {
             const methods = Object.keys(handler?.route?.methods || {})
               .join(", ")
               .toUpperCase();
-            // console.log(`✔ ${methods} ${handler.route.path}`);
+            logger.info(`✔ ${methods} ${handler.route.path}`);
           }
         });
       }
     });
   } catch (err) {
-    console.error(
-      "❌ Route inspection error:",
-      err?.message || "Unknown error"
-    );
-    if (err instanceof Error) {
-      console.error(err.stack);
-    } else {
-      console.error("Non-Error thrown:", err);
-    }
+    logger.error("❌ Route inspection error:", err?.message || "Unknown error");
   }
 }
 
 // Socket and HTTP error listeners
 io.on("error", (err) => {
-  console.error("[Server:SocketIO] Error:", err.message);
+  logger.error("[Server:SocketIO] Error:", err.message);
 });
 
 server.on("error", (err) => {
-  console.error("[Server:HTTP] Error:", err.message);
+  logger.error("[Server:HTTP] Error:", err.message);
 });
 
 // Global error listeners
 process.on("uncaughtException", (err) => {
-  console.error("[UncaughtException] ❌", err.message, err.stack);
+  logger.error("[UncaughtException] ❌", err.message, err.stack);
   process.exit(1);
 });
 
 process.on("unhandledRejection", (err) => {
-  console.error("[UnhandledRejection] ❌", err.message);
+  logger.error("[UnhandledRejection] ❌", err.message);
   process.exit(1);
 });
 
 // Start server
 const startServer = async () => {
   try {
-    // console.log("[Server:Startup] Connecting to MongoDB...");
     await connectDb();
-    // console.log("[Server:Startup] ✅ Database connected");
+    logger.info("[Server:Startup] ✅ Database connected");
+
+    // Memory monitoring
+    setInterval(() => {
+      const used = process.memoryUsage();
+      logger.info(
+        `[Memory Usage] RSS: ${(used.rss / 1024 / 1024).toFixed(2)}MB, Heap: ${(
+          used.heapUsed /
+          1024 /
+          1024
+        ).toFixed(2)}MB`
+      );
+    }, 60_000);
 
     startTempCleanup();
-    startDailyDigestJob();
+    // Note: startDailyDigestJob moved to external cron
 
     server.listen(PORT, () => {
-      // console.log(`[Server:Startup] ✅ Inksha API is running on port ${PORT}`);
+      logger.info(`[Server:Startup] ✅ Inksha API is running on port ${PORT}`);
     });
   } catch (err) {
-    console.error("[Server:Startup] ❌ Failed to start:", err.message);
+    logger.error("[Server:Startup] ❌ Failed to start:", err.message);
     process.exit(1);
   }
 };
 
 startServer();
+F
