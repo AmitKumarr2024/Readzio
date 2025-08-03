@@ -276,7 +276,9 @@ const Postbox = ({
       },
       categoryName:
         categoryMap[
-          typeof post?.category === "string" ? post.category : post.category?._id
+          typeof post?.category === "string"
+            ? post.category
+            : post.category?._id
         ] || "Uncategorized",
       likesCount: post?.likes?.length ?? 0,
       viewsCount: post?.viewsCount ?? 0,
@@ -284,6 +286,7 @@ const Postbox = ({
       shareCount: post?.shareCount ?? 0,
       isSubscriberOnly: post?.isSubscriberOnly ?? false,
       postType: post?.postType,
+      isPremium: post?.isPremium,
       tags: post?.tags || [],
       readTime: post?.readTime,
     }));
@@ -463,6 +466,7 @@ const Postbox = ({
                         loading={propLoading && !selectedPosts.length}
                         categoryMap={categoryMap}
                         postType={item?.postType}
+                        isPremium={item?.isPremium}
                         readTime={item?.readTime}
                       />
                     </div>

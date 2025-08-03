@@ -23,6 +23,7 @@ const CardOfPost = ({
   timeSpent = 0,
   loading = false,
   postType,
+  isPremium,
   tags = [],
   readTime,
 }) => {
@@ -33,8 +34,10 @@ const CardOfPost = ({
   const currentUser = useSelector((state) => state.auth.user);
 
   const authorId = author?._id || "";
-  const isPostPremium = postType === "premium";
+  const isPostPremium = isPremium === "premium";
   const isSubscribedToAuthor = isSubscribed[authorId];
+
+  console.log("PostType", postType);
 
   useEffect(() => {
     if (authorId) dispatch(fetchSubscriptionPlansByAuthor(authorId));
