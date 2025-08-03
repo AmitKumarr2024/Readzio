@@ -69,10 +69,8 @@ const EditPost = () => {
 
     if (title === "") setTitle(currentPost.title || "");
     if (blocks.length === 0) {
-      // console.log("[DEBUG] currentPost.blocks:", currentPost.blocks);
       const normalizedBlocks = (currentPost.blocks || []).map((block) => {
         if (block.type === "table") {
-          // console.log("[DEBUG] Table block before normalization:", block);
           const data =
             Array.isArray(block.data) && block.data.length > 0
               ? block.data
@@ -82,24 +80,19 @@ const EditPost = () => {
                   ["", ""],
                   ["", ""],
                 ]; // Default 2x2 table
-          const normalizedBlock = {
+          return {
             id: block.id,
             type: "table",
             data,
             caption: block.caption || "",
             blocked: block.blocked || false,
           };
-          // console.log(
-          //   "[DEBUG] Table block after normalization:",
-          //   normalizedBlock
-          // );
-          return normalizedBlock;
         }
         return block;
       });
       setBlocks(normalizedBlocks);
     }
-    if (!postType) dispatch(setPostType(currentPost.postType || ""));
+    if (!postType) dispatch(setPostType(currentPost.postType || "Article"));
     if (tags.length === 0) dispatch(setTags(currentPost.tags || []));
 
     const category = categories.find((cat) => cat._id === currentPost.category);
@@ -109,7 +102,7 @@ const EditPost = () => {
     ) {
       dispatch(selectCategory(category));
     }
-  }, [currentPost, categories, dispatch]);
+  }, [currentPost, categories, dispatch, postType, selectedCategory, tags]);
 
   useEffect(() => {
     if (updateSuccess) {
@@ -131,7 +124,6 @@ const EditPost = () => {
 
     const normalizedBlocks = blocks.map((block) => {
       if (block.type === "table") {
-        // console.log("[DEBUG] Normalizing table block before save:", block);
         const data =
           Array.isArray(block.data) && block.data.length > 0
             ? block.data
@@ -141,23 +133,16 @@ const EditPost = () => {
                 ["", ""],
                 ["", ""],
               ]; // Default 2x2 table
-        const normalizedBlock = {
+        return {
           id: block.id,
           type: "table",
           data,
           caption: block.caption || "",
           blocked: block.blocked || false,
         };
-        // console.log(
-        //   "[DEBUG] Normalized table block for save:",
-        //   normalizedBlock
-        // );
-        return normalizedBlock;
       }
       return block;
     });
-
-    // console.log("[DEBUG] Saving post with blocks:", normalizedBlocks);
 
     const updateData = {
       title,
@@ -185,6 +170,32 @@ const EditPost = () => {
     const categoryId = e.target.value;
     const selected = categories.find((cat) => cat._id === categoryId);
     dispatch(selectCategory(selected || null));
+  };
+
+  const handlePostTypeChange = async (e) => {
+    const newPostType = e.target.value;
+    if (!["Article", "Blog"].includes(newPostType)) {
+      toast.error("Invalid post type selected");
+      return;
+    }
+    dispatch(setPostType(newPostType)); // Update local state
+    try {
+      const action = await dispatch(
+        updatePost({
+          slug: currentPost.slug,
+          updateData: { postType: newPostType },
+        })
+      );
+      if (updatePost.fulfilled.match(action)) {
+        toast.success(`Post type updated to ${newPostType}`);
+        dispatch(clearError());
+      } else {
+        throw new Error(action.error?.message || "Failed to update post type");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to update post type");
+      dispatch(setPostType(currentPost.postType || "Article")); // Revert on failure
+    }
   };
 
   const handleTitleChange = (e) => {
@@ -299,11 +310,11 @@ const EditPost = () => {
                   <select
                     className="w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-white transition-all"
                     value={postType}
-                    onChange={(e) => dispatch(setPostType(e.target.value))}
+                    onChange={handlePostTypeChange}
                   >
                     <option value="">Select post type</option>
-                    <option value="article">Article</option>
-                    <option value="blog">Blog</option>
+                    <option value="Article">Article</option>
+                    <option value="Blog">Blog</option>
                   </select>
                 </div>
 
