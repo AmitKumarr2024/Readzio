@@ -16,7 +16,7 @@
   "main": "index.js",
   "scripts": {
     "server": "node servers/index.js",
-    "start": "cross-env NODE_OPTIONS=--max-old-space-size=512 node servers/index.js",
+    "start": "NODE_OPTIONS='--max-old-space-size=512' node servers/index.js",
     "build": "npm install --legacy-peer-deps && npm install --prefix clients --legacy-peer-deps && npm run build --prefix clients"
   },
   "dependencies": {
