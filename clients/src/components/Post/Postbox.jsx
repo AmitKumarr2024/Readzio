@@ -266,7 +266,7 @@ const Postbox = ({
   );
 
   const selectedPosts = useMemo(() => {
-    return sortedPosts.map((post) => ({
+    const mappedPosts = sortedPosts.map((post) => ({
       ...post,
       category: {
         _id:
@@ -285,11 +285,13 @@ const Postbox = ({
       bookmarksCount: post?.bookmarksCount ?? 0,
       shareCount: post?.shareCount ?? 0,
       isSubscriberOnly: post?.isSubscriberOnly ?? false,
-      postType: post?.postType,
-      isPremium: post?.isPremium,
+      postType: post?.postType || "Article", // Fallback to "Article" if undefined
+      isPremium: post?.isPremium ?? false,
       tags: post?.tags || [],
       readTime: post?.readTime,
     }));
+    console.log("Postbox - selectedPosts:", mappedPosts); // Log selectedPosts
+    return mappedPosts;
   }, [sortedPosts, categoryMap]);
 
   useEffect(() => {
@@ -336,7 +338,7 @@ const Postbox = ({
 
   const itemsWithAds = useMemo(
     () => insertAdsIntoPosts(selectedPosts),
-    [selectedPosts, screenWidth] // screenWidth triggers re-evaluation!
+    [selectedPosts, screenWidth]
   );
 
   const loadMorePosts = useCallback(() => {

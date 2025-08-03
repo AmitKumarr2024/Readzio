@@ -34,10 +34,10 @@ const CardOfPost = ({
   const currentUser = useSelector((state) => state.auth.user);
 
   const authorId = author?._id || "";
-  const isPostPremium = isPremium === "premium";
+  const isPostPremium = isPremium; // Updated to use boolean directly
   const isSubscribedToAuthor = isSubscribed[authorId];
 
-  console.log("PostType", postType);
+  console.log("CardOfPost - postType:", postType); // Log postType
 
   useEffect(() => {
     if (authorId) dispatch(fetchSubscriptionPlansByAuthor(authorId));
