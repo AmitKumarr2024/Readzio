@@ -95,7 +95,7 @@ const CardOfPost = ({
           </span>
         )}
         {postType && (
-          <span className="absolute bottom-2 left-2 px-2 py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-white/90 text-black dark:bg-gray-700 dark:text-white">
+          <span className="absolute bottom-2 left-2 px-2 py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-blue-500 text-white animate-pulse">
             {postType}
           </span>
         )}
