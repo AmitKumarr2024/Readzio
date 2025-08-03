@@ -542,15 +542,36 @@ const PostPreviewList = ({
             </div>
           );
         case "table":
+          const tableData = {
+            data:
+              Array.isArray(block.data) && block.data.length > 0
+                ? block.data
+                : [
+                    ["Header 1", "Header 2"],
+                    ["Cell 1", "Cell 2"],
+                    ["Cell 3", "Cell 4"],
+                  ],
+            caption: block.caption || "",
+          };
+          if (
+            !Array.isArray(block.data) ||
+            block.data.length === 0 ||
+            !block.data.some((row) => Array.isArray(row) && row.length)
+          ) {
+            console.warn(
+              `[PostPreviewList] Empty table block at index ${i}:`,
+              block
+            );
+            toast.error("Table block is empty. Using default data.");
+          }
           return (
             <div
               key={i}
               className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
             >
-              <TableBlock
-                headers={block.headers || []}
-                rows={block.rows || [[]]}
-                caption={block.caption || ""}
+              <TableBlocksOutput // Use TableBlocksOutput to match data structure
+                data={tableData.data}
+                caption={tableData.caption}
               />
               <button
                 onClick={() => deleteBlock(i)}
