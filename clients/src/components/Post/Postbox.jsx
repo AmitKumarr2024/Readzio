@@ -285,7 +285,7 @@ const Postbox = ({
       bookmarksCount: post?.bookmarksCount ?? 0,
       shareCount: post?.shareCount ?? 0,
       isSubscriberOnly: post?.isSubscriberOnly ?? false,
-      postType: post?.postType || "Article", // Fallback to "Article" if undefined
+      postType: post?.postType, // Fallback to "Article" if undefined
       isPremium: post?.isPremium ?? false,
       tags: post?.tags || [],
       readTime: post?.readTime,
