@@ -276,15 +276,15 @@ const Postbox = ({
       },
       categoryName:
         categoryMap[
-          typeof post.category === "string" ? post.category : post.category?._id
+          typeof post?.category === "string" ? post.category : post.category?._id
         ] || "Uncategorized",
-      likesCount: post.likes?.length ?? 0,
-      viewsCount: post.viewsCount ?? 0,
-      bookmarksCount: post.bookmarksCount ?? 0,
-      shareCount: post.shareCount ?? 0,
-      isSubscriberOnly: post.isSubscriberOnly ?? false,
-      postType: post.postType,
-      tags: post.tags || [],
+      likesCount: post?.likes?.length ?? 0,
+      viewsCount: post?.viewsCount ?? 0,
+      bookmarksCount: post?.bookmarksCount ?? 0,
+      shareCount: post?.shareCount ?? 0,
+      isSubscriberOnly: post?.isSubscriberOnly ?? false,
+      postType: post?.postType,
+      tags: post?.tags || [],
       readTime: post?.readTime,
     }));
   }, [sortedPosts, categoryMap]);
@@ -462,8 +462,8 @@ const Postbox = ({
                         commentsCount={commentCounts[item._id] ?? 0}
                         loading={propLoading && !selectedPosts.length}
                         categoryMap={categoryMap}
-                        postType={item.postType}
-                        readTime={item.readTime}
+                        postType={item?.postType}
+                        readTime={item?.readTime}
                       />
                     </div>
                   );
