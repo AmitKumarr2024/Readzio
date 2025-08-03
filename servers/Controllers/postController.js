@@ -139,6 +139,7 @@ export const createPost = async (req, res, next) => {
       isFeatured = false,
       isPinned = false,
       language = "en",
+      postType = "Blog", // Explicitly set default
     } = req.body;
 
     console.log("[createPost] Validating user authentication");
@@ -398,7 +399,10 @@ export const createPost = async (req, res, next) => {
       language,
       readTime,
       readingTime,
+      postType, // Explicitly include postType
     };
+
+    console.log("[createPost] Post data:", postData);
 
     console.log("[createPost] Starting transaction");
     const session = await mongoose.startSession();
@@ -406,7 +410,9 @@ export const createPost = async (req, res, next) => {
     try {
       console.log("[createPost] Creating post in database");
       const [newPost] = await PostModel.create([postData], { session });
-      console.log("[createPost] Post created:", newPost._id);
+      console.log("[createPost] Post created:", newPost._id, {
+        postType: newPost.postType,
+      });
 
       console.log("[createPost] Recording activity");
       await recordActivity(
@@ -479,10 +485,10 @@ export const createPost = async (req, res, next) => {
 };
 
 export const getAllPosts = async (req, res, next) => {
-  // console.log("[getAllPosts] Starting with:", {
-  //   query: req.query,
-  //   userId: req.user?._id,
-  // });
+  console.log("[getAllPosts] Starting with:", {
+    query: req.query,
+    userId: req.user?._id,
+  });
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 10, 100);
@@ -511,19 +517,19 @@ export const getAllPosts = async (req, res, next) => {
       }
     }
 
-    // console.log("[getAllPosts] Query:", query);
+    console.log("[getAllPosts] Query:", query);
 
     const [posts, total, allPostsCount, myPostsCount, followingPostsCount] =
       await Promise.all([
         PostModel.find(query)
           .select(
             `
-          title slug category excerpt thumbnail author createdAt
-          isPublished isPinned isPremium isSubscriberOnly blocked message readTime
-          likesCount commentsCount viewsCount bookmarksCount likes
-          tags language isFeatured allowComments timeSpent updatedAt
-          shareCount sharedBy blocks
-        `
+            title slug category excerpt thumbnail author createdAt
+            isPublished isPinned isPremium isSubscriberOnly blocked message readTime
+            likesCount commentsCount viewsCount bookmarksCount likes
+            tags language isFeatured allowComments timeSpent updatedAt
+            shareCount sharedBy blocks postType
+          `
           )
           .sort({ createdAt: -1 })
           .skip(skip)
@@ -549,21 +555,10 @@ export const getAllPosts = async (req, res, next) => {
           : Promise.resolve(0),
       ]);
 
-    // Log table blocks for debugging
-    // posts.forEach((post) => {
-    //   const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
-    //   if (tableBlocks.length > 0) {
-    //     console.log(
-    //       `[getAllPosts] Post ${post._id} table blocks:`,
-    //       tableBlocks.map((b) => ({ id: b.id, data: b.data }))
-    //     );
-    //   }
-    // });
-
-    // console.log(
-    //   "[getAllPosts] Fetched posts:",
-    //   posts.map((p) => ({ _id: p._id, title: p.title }))
-    // );
+    console.log(
+      "[getAllPosts] Fetched posts:",
+      posts.map((p) => ({ _id: p._id, title: p.title, postType: p.postType }))
+    );
 
     if (req.user?._id && !isGuest) {
       await recordActivity({
@@ -594,10 +589,10 @@ export const getAllPosts = async (req, res, next) => {
 };
 
 export const getSinglePost = async (req, res, next) => {
-  // console.log("[getSinglePost] Starting with:", {
-  //   slug: req.params.slug,
-  //   userId: req.user?._id,
-  // });
+  console.log("[getSinglePost] Starting with:", {
+    slug: req.params.slug,
+    userId: req.user?._id,
+  });
   try {
     const { slug } = req.params;
     const userId = req.user?._id;
@@ -623,7 +618,7 @@ export const getSinglePost = async (req, res, next) => {
         : { isPublished: true, blocked: false }),
     };
 
-    // console.log("[getSinglePost] Query:", query);
+    console.log("[getSinglePost] Query:", query);
 
     const post = await PostModel.findOne(query)
       .select(
@@ -632,7 +627,7 @@ export const getSinglePost = async (req, res, next) => {
         isPublished isPinned isPremium isSubscriberOnly blocked message readTime
         likesCount commentsCount viewsCount bookmarksCount likes
         tags language isFeatured allowComments timeSpent updatedAt
-        shareCount sharedBy blocks
+        shareCount sharedBy blocks postType
       `
       )
       .populate("author", "name email avatar")
@@ -661,19 +656,11 @@ export const getSinglePost = async (req, res, next) => {
       );
     }
 
-    // Log table blocks for debugging
-    // const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
-    // if (tableBlocks.length > 0) {
-    //   console.log(
-    //     `[getSinglePost] Post ${post._id} table blocks:`,
-    //     tableBlocks.map((b) => ({ id: b.id, data: b.data }))
-    //   );
-    // }
-
-    // console.log("[getSinglePost] Success, returning post:", {
-    //   _id: post._id,
-    //   title: post.title,
-    // });
+    console.log("[getSinglePost] Success, returning post:", {
+      _id: post._id,
+      title: post.title,
+      postType: post.postType,
+    });
 
     res.status(200).json({ success: true, post });
   } catch (error) {
@@ -691,10 +678,10 @@ export const getSinglePost = async (req, res, next) => {
 };
 
 export const trackTimeSpent = async (req, res, next) => {
-  // console.log("[trackTimeSpent] Starting with:", {
-  //   postId: req.params.postId,
-  //   duration: req.body.duration,
-  // });
+  console.log("[trackTimeSpent] Starting with:", {
+    postId: req.params.postId,
+    duration: req.body.duration,
+  });
   try {
     const { postId } = req.params;
     const { duration } = req.body;
@@ -719,7 +706,7 @@ export const trackTimeSpent = async (req, res, next) => {
       PostModel.updateOne({ _id: postId }, { $inc: { timeSpent: duration } }),
     ]);
 
-    // console.log("[trackTimeSpent] Updates:", { interactionUpdate, postUpdate });
+    console.log("[trackTimeSpent] Updates:", { interactionUpdate, postUpdate });
 
     if (!postUpdate.modifiedCount && !interactionUpdate) {
       console.error("[trackTimeSpent] Post not found:", postId);
@@ -737,12 +724,12 @@ export const trackTimeSpent = async (req, res, next) => {
   }
 };
 
-const processBlock = async (block) => {
-  // console.log("[processBlock] Processing block:", {
-  //   id: block.id,
-  //   type: block.type,
-  //   data: block.data,
-  // }); // Enhanced logging
+export const processBlock = async (block) => {
+  console.log("[processBlock] Processing block:", {
+    id: block.id,
+    type: block.type,
+    data: block.data,
+  });
   const processedBlock = { ...block };
 
   if (processedBlock.text) {
@@ -829,7 +816,6 @@ const processBlock = async (block) => {
         "ProcessBlock"
       );
     }
-    // Added: Sanitize table data to ensure strings
     processedBlock.data = processedBlock.data.map((row) =>
       row.map((cell) => (cell == null ? "" : String(cell)))
     );
@@ -839,11 +825,11 @@ const processBlock = async (block) => {
 };
 
 export const updatePostBySlug = async (req, res, next) => {
-  // console.log("[updatePostBySlug] Starting with:", {
-  //   slug: req.params.slug,
-  //   userId: req.user?._id,
-  //   body: req.body,
-  // });
+  console.log("[updatePostBySlug] Starting with:", {
+    slug: req.params.slug,
+    userId: req.user?._id,
+    body: req.body,
+  });
   try {
     const { slug } = req.params;
     const userId = req.user?._id;
@@ -916,10 +902,10 @@ export const updatePostBySlug = async (req, res, next) => {
     }
 
     const { readTime, readingTime } = calculateReadTime(updates.blocks || []);
-    // console.log("[updatePostBySlug] Read time generated:", {
-    //   readTime,
-    //   readingTime,
-    // });
+    console.log("[updatePostBySlug] Read time generated:", {
+      readTime,
+      readingTime,
+    });
     updates.readTime = readTime;
     updates.readingTime = readingTime;
 
@@ -948,7 +934,7 @@ export const updatePostBySlug = async (req, res, next) => {
       { ...updates, isPublished: true, lastEditedAt: new Date() },
       { new: true, runValidators: true }
     ).select(
-      "title slug category excerpt thumbnail blocks author isPublished isPinned createdAt lastEditedAt"
+      "title slug category excerpt thumbnail blocks author isPublished isPinned createdAt lastEditedAt postType"
     );
 
     if (!updatedPost) {
@@ -963,7 +949,9 @@ export const updatePostBySlug = async (req, res, next) => {
       message: `Edited post: ${updatedPost.title}`,
     });
 
-    // console.log("[updatePostBySlug] Success, updated post:", updatedPost._id);
+    console.log("[updatePostBySlug] Success, updated post:", updatedPost._id, {
+      postType: updatedPost.postType,
+    });
     res.status(200).json({
       success: true,
       message: "Post updated successfully",
@@ -984,10 +972,10 @@ export const updatePostBySlug = async (req, res, next) => {
 };
 
 export const deletePost = async (req, res, next) => {
-  // console.log("[deletePost] Starting with:", {
-  //   postId: req.params.postId,
-  //   userId: req.user?._id,
-  // });
+  console.log("[deletePost] Starting with:", {
+    postId: req.params.postId,
+    userId: req.user?._id,
+  });
   try {
     const { postId } = req.params;
     const post = await PostModel.findById(postId);
@@ -1032,7 +1020,7 @@ export const deletePost = async (req, res, next) => {
       followingPostsCount,
     });
 
-    // console.log("[deletePost] Success, deleted post:", postId);
+    console.log("[deletePost] Success, deleted post:", postId);
     res.status(200).json({ success: true, message: "Post deleted", postId });
   } catch (error) {
     console.error("[deletePost] Error:", error.message, error.stack);
@@ -1049,10 +1037,10 @@ export const deletePost = async (req, res, next) => {
 };
 
 export const toggleBlockPost = async (req, res, next) => {
-  // console.log("[toggleBlockPost] Starting with:", {
-  //   postId: req.params.postId,
-  //   userId: req.user?._id,
-  // });
+  console.log("[toggleBlockPost] Starting with:", {
+    postId: req.params.postId,
+    userId: req.user?._id,
+  });
   try {
     const { postId } = req.params;
     if (!mongoose.Types.ObjectId.isValid(postId)) {
@@ -1093,10 +1081,10 @@ export const toggleBlockPost = async (req, res, next) => {
       }`,
     });
 
-    // console.log("[toggleBlockPost] Success, post status:", {
-    //   postId,
-    //   blocked: updatedPost.blocked,
-    // });
+    console.log("[toggleBlockPost] Success, post status:", {
+      postId,
+      blocked: updatedPost.blocked,
+    });
     res.status(200).json({
       success: true,
       message: `Post ${
@@ -1115,7 +1103,7 @@ export const toggleBlockPost = async (req, res, next) => {
 };
 
 export const sendDailyPostEmail = async () => {
-  // console.log("[sendDailyPostEmail] Starting");
+  console.log("[sendDailyPostEmail] Starting");
   try {
     const users = await UserModel.find({
       emailStatus: "sent",
@@ -1129,20 +1117,20 @@ export const sendDailyPostEmail = async () => {
       blocked: false,
       createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
     })
-      .select("title slug excerpt")
+      .select("title slug excerpt postType")
       .sort({ createdAt: -1 })
       .limit(5)
       .lean();
 
     if (!posts.length) {
-      // console.log("[sendDailyPostEmail] No new posts to send");
+      console.log("[sendDailyPostEmail] No new posts to send");
       return;
     }
 
-    // console.log(
-    //   "[sendDailyPostEmail] Posts to send:",
-    //   posts.map((p) => p.title)
-    // );
+    console.log(
+      "[sendDailyPostEmail] Posts to send:",
+      posts.map((p) => p.title)
+    );
 
     const postListHtml = posts
       .map(
@@ -1180,7 +1168,7 @@ export const sendDailyPostEmail = async () => {
     }
 
     await processEmailQueue();
-    // console.log("[sendDailyPostEmail] Emails queued successfully");
+    console.log("[sendDailyPostEmail] Emails queued successfully");
   } catch (error) {
     console.error("[sendDailyPostEmail] Error:", error.message, error.stack);
     throw new AppError(
@@ -1192,10 +1180,10 @@ export const sendDailyPostEmail = async () => {
 };
 
 export const submitAppeal = async (req, res, next) => {
-  // console.log("[submitAppeal] Starting with:", {
-  //   postId: req.params.postId,
-  //   userId: req.user?._id,
-  // });
+  console.log("[submitAppeal] Starting with:", {
+    postId: req.params.postId,
+    userId: req.user?._id,
+  });
   try {
     const { postId } = req.params;
     const { message } = req.body;
@@ -1249,7 +1237,7 @@ export const submitAppeal = async (req, res, next) => {
 
     io.emit("newAppeal", { postId, userId, message, postTitle: post.title });
 
-    // console.log("[submitAppeal] Success, appeal submitted for post:", postId);
+    console.log("[submitAppeal] Success, appeal submitted for post:", postId);
     res
       .status(200)
       .json({ success: true, message: "Appeal submitted successfully" });
@@ -1268,9 +1256,9 @@ export const submitAppeal = async (req, res, next) => {
 };
 
 export const incrementShareCount = async (req, res, next) => {
-  // console.log("[incrementShareCount] Starting with:", {
-  //   postId: req.params.postId,
-  // });
+  console.log("[incrementShareCount] Starting with:", {
+    postId: req.params.postId,
+  });
   try {
     const { postId } = req.params;
 
@@ -1290,10 +1278,10 @@ export const incrementShareCount = async (req, res, next) => {
       throw new AppError("Post not found", 404, "IncrementShareCount");
     }
 
-    // console.log(
-    //   "[incrementShareCount] Success, share count:",
-    //   result.shareCount
-    // );
+    console.log(
+      "[incrementShareCount] Success, share count:",
+      result.shareCount
+    );
     res.status(200).json({
       success: true,
       message: "Share count incremented",
@@ -1314,10 +1302,10 @@ export const incrementShareCount = async (req, res, next) => {
 };
 
 export const getDraftAndPendingPosts = async (req, res, next) => {
-  // console.log("[getDraftAndPendingPosts] Starting with:", {
-  //   userId: req.user?._id,
-  //   query: req.query,
-  // });
+  console.log("[getDraftAndPendingPosts] Starting with:", {
+    userId: req.user?._id,
+    query: req.query,
+  });
   try {
     const userId = req.user?._id;
     if (!userId) {
@@ -1338,7 +1326,7 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
     const [posts, total] = await Promise.all([
       PostModel.find(query)
         .select(
-          "title slug category excerpt thumbnail author createdAt isPublished"
+          "title slug category excerpt thumbnail author createdAt isPublished postType"
         )
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -1348,24 +1336,13 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
       PostModel.countDocuments(query),
     ]);
 
-    // Log table blocks for debugging
-    // posts.forEach((post) => {
-    //   const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
-    //   if (tableBlocks.length > 0) {
-    //     console.log(
-    //       `[getDraftAndPendingPosts] Post ${post._id} table blocks:`,
-    //       tableBlocks.map((b) => ({ id: b.id, data: b.data }))
-    //     );
-    //   }
-    // });
-
-    // console.log(
-    //   "[getDraftAndPendingPosts] Fetched posts:",
-    //   posts.map((p) => ({ _id: p._id, title: p.title }))
-    // );
+    console.log(
+      "[getDraftAndPendingPosts] Fetched posts:",
+      posts.map((p) => ({ _id: p._id, title: p.title, postType: p.postType }))
+    );
 
     if (!posts.length) {
-      // console.log("[getDraftAndPendingPosts] No posts found");
+      console.log("[getDraftAndPendingPosts] No posts found");
       return res.status(200).json({
         success: true,
         message: "No posts found",
@@ -1395,7 +1372,7 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
 };
 
 export const getPublicPost = async (req, res, next) => {
-  // console.log("[getPublicPost] Starting with:", { slug: req.params.slug });
+  console.log("[getPublicPost] Starting with:", { slug: req.params.slug });
   try {
     const { slug } = req.params;
 
@@ -1414,7 +1391,7 @@ export const getPublicPost = async (req, res, next) => {
       .select(
         `
         title slug category excerpt thumbnail author createdAt
-        isPublished readTime readingTime tags language viewsCount shareCount
+        isPublished readTime readingTime tags language viewsCount shareCount postType
       `
       )
       .populate("author", "name avatar")
@@ -1430,19 +1407,11 @@ export const getPublicPost = async (req, res, next) => {
       );
     }
 
-    // Log table blocks for debugging
-    // const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
-    // if (tableBlocks.length > 0) {
-    //   console.log(
-    //     `[getPublicPost] Post ${post._id} table blocks:`,
-    //     tableBlocks.map((b) => ({ id: b.id, data: b.data }))
-    //   );
-    // }
-
-    // console.log("[getPublicPost] Success, returning post:", {
-    //   _id: post._id,
-    //   title: post.title,
-    // });
+    console.log("[getPublicPost] Success, returning post:", {
+      _id: post._id,
+      title: post.title,
+      postType: post.postType,
+    });
     res.status(200).json({ success: true, post });
   } catch (error) {
     console.error("[getPublicPost] Error:", error.message, error.stack);
@@ -1455,10 +1424,10 @@ export const getPublicPost = async (req, res, next) => {
 };
 
 export const getFollowingPosts = async (req, res, next) => {
-  // console.log("[getFollowingPosts] Starting with:", {
-  //   userId: req.user?._id,
-  //   query: req.query,
-  // });
+  console.log("[getFollowingPosts] Starting with:", {
+    userId: req.user?._id,
+    query: req.query,
+  });
   try {
     const userId = req.user?._id;
     const page = parseInt(req.query.page) || 1;
@@ -1485,7 +1454,7 @@ export const getFollowingPosts = async (req, res, next) => {
       .filter((id) => mongoose.Types.ObjectId.isValid(id));
 
     if (!followingIds.length) {
-      // console.log("[getFollowingPosts] No followed users");
+      console.log("[getFollowingPosts] No followed users");
       return res.status(200).json({
         success: true,
         total: 0,
@@ -1501,7 +1470,7 @@ export const getFollowingPosts = async (req, res, next) => {
       blocked: false,
     };
 
-    // console.log("[getFollowingPosts] Query:", query);
+    console.log("[getFollowingPosts] Query:", query);
 
     const [posts, total] = await Promise.all([
       PostModel.find(query)
@@ -1511,7 +1480,7 @@ export const getFollowingPosts = async (req, res, next) => {
           isPublished isPinned isPremium isSubscriberOnly blocked message readTime
           likesCount commentsCount viewsCount bookmarksCount likes
           tags language isFeatured allowComments timeSpent readingTime updatedAt
-          shareCount sharedBy blocks
+          shareCount sharedBy blocks postType
         `
         )
         .sort({ createdAt: -1 })
@@ -1522,16 +1491,10 @@ export const getFollowingPosts = async (req, res, next) => {
       PostModel.countDocuments(query),
     ]);
 
-    // Log table blocks for debugging
-    // posts.forEach((post) => {
-    //   const tableBlocks = post.blocks?.filter((b) => b.type === "table") || [];
-    //   if (tableBlocks.length > 0) {
-    //     console.log(
-    //       `[getFollowingPosts] Post ${post._id} table blocks:`,
-    //       tableBlocks.map((b) => ({ id: b.id, data: b.data }))
-    //     );
-    //   }
-    // });
+    console.log(
+      "[getFollowingPosts] Fetched posts:",
+      posts.map((p) => ({ _id: p._id, title: p.title, postType: p.postType }))
+    );
 
     await recordActivity({
       userId,
@@ -1539,10 +1502,6 @@ export const getFollowingPosts = async (req, res, next) => {
       message: `Viewed posts from followed users`,
     });
 
-    // console.log(
-    //   "[getFollowingPosts] Success, fetched posts:",
-    //   posts.map((p) => ({ _id: p._id, title: p.title }))
-    // );
     res.status(200).json({ success: true, total, page, posts });
   } catch (error) {
     console.error("[getFollowingPosts] Error:", error.message, error.stack);
@@ -1550,7 +1509,7 @@ export const getFollowingPosts = async (req, res, next) => {
       error instanceof AppError
         ? error
         : new AppError(
-            "Failed to fetch following posts",
+            error.message || "Failed to fetch following posts",
             500,
             "GetFollowingPosts"
           )
