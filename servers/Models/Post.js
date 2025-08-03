@@ -210,6 +210,18 @@ postSchema.pre("save", async function (next) {
     this.blocks = [];
   }
 
+  // Ensure postType is set
+  if (!this.postType) {
+    this.postType = "Blog";
+    console.log(
+      `[postSchema] Set default postType to Blog for post: ${this._id}`
+    );
+  }
+
+  console.log(
+    `[postSchema] Saving post: ${this._id}, postType: ${this.postType}`
+  );
+
   next();
 });
 
