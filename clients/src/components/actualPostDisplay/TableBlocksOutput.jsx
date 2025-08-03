@@ -1,5 +1,5 @@
 const TableBlocksOutput = ({ data, caption }) => {
-  console.log("[TableBlocksOutput] Rendering with data:", { data, caption });
+  // console.log("[TableBlocksOutput] Rendering with data:", { data, caption });
 
   if (!Array.isArray(data) || data.length === 0) {
     console.warn("[TableBlocksOutput] Empty or malformed data received");

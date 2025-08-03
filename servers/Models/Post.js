@@ -69,7 +69,7 @@ const blockSchema = new mongoose.Schema(
       validate: {
         validator: function (v) {
           if (this.type === "table") {
-            console.log("[blockSchema] Validating table data:", v);
+            // console.log("[blockSchema] Validating table data:", v);
             return (
               Array.isArray(v) &&
               v.length > 0 &&
@@ -213,14 +213,14 @@ postSchema.pre("save", async function (next) {
   // Ensure postType is set
   if (!this.postType) {
     this.postType = "Blog";
-    console.log(
-      `[postSchema] Set default postType to Blog for post: ${this._id}`
-    );
+    // console.log(
+    //   `[postSchema] Set default postType to Blog for post: ${this._id}`
+    // );
   }
 
-  console.log(
-    `[postSchema] Saving post: ${this._id}, postType: ${this.postType}`
-  );
+  // console.log(
+  //   `[postSchema] Saving post: ${this._id}, postType: ${this.postType}`
+  // );
 
   next();
 });

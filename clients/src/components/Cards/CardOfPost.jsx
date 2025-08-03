@@ -37,7 +37,7 @@ const CardOfPost = ({
   const isPostPremium = isPremium;
   const isSubscribedToAuthor = isSubscribed[authorId];
 
-  console.log("CardOfPost - postType:", postType);
+  // console.log("CardOfPost - postType:", postType);
 
   useEffect(() => {
     if (authorId) dispatch(fetchSubscriptionPlansByAuthor(authorId));

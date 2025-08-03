@@ -7,23 +7,23 @@ async function migratePostType() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log("Connected to MongoDB");
+    // console.log("Connected to MongoDB");
 
     const posts = await PostModel.find({ postType: { $exists: false } });
-    console.log(`Found ${posts.length} posts without postType`);
+    // console.log(`Found ${posts.length} posts without postType`);
 
     for (const post of posts) {
       post.postType = "Blog"; // Set default as per schema
       await post.save();
-      console.log(`Updated post ${post._id} with postType: ${post.postType}`);
+    //   console.log(`Updated post ${post._id} with postType: ${post.postType}`);
     }
 
-    console.log("Migration completed");
+    // console.log("Migration completed");
   } catch (error) {
     console.error("Migration failed:", error);
   } finally {
     await mongoose.disconnect();
-    console.log("Disconnected from MongoDB");
+    // console.log("Disconnected from MongoDB");
   }
 }
 

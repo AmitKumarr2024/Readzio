@@ -14,20 +14,20 @@ import { io } from "../../servers/sockets/socket.js";
 import { calculateReadTime } from "../helpers/postHelper.js";
 
 export const voteOnPoll = async (req, res, next) => {
-  console.log("[voteOnPoll] Request received:", {
-    body: req.body,
-    userId: req.user?._id,
-  });
+  // console.log("[voteOnPoll] Request received:", {
+  //   body: req.body,
+  //   userId: req.user?._id,
+  // });
   try {
     const { postId, blockId, optionIndex } = req.body;
     const userId = req.user?._id;
 
-    console.log("[voteOnPoll] Validating input:", {
-      postId,
-      blockId,
-      optionIndex,
-      userId,
-    });
+    // console.log("[voteOnPoll] Validating input:", {
+    //   postId,
+    //   blockId,
+    //   optionIndex,
+    //   userId,
+    // });
     if (!mongoose.Types.ObjectId.isValid(postId)) {
       console.error("[voteOnPoll] Invalid post ID:", postId);
       throw new AppError("Invalid post ID", 400, "VoteOnPoll");
@@ -49,7 +49,7 @@ export const voteOnPoll = async (req, res, next) => {
       );
     }
 
-    console.log("[voteOnPoll] Fetching post:", postId);
+    // console.log("[voteOnPoll] Fetching post:", postId);
     const post = await PostModel.findOne({
       _id: postId,
       isPublished: true,
@@ -61,7 +61,7 @@ export const voteOnPoll = async (req, res, next) => {
       throw new AppError("Post not found or unavailable", 404, "VoteOnPoll");
     }
 
-    console.log("[voteOnPoll] Searching for poll block:", blockId);
+    // console.log("[voteOnPoll] Searching for poll block:", blockId);
     const pollBlockIndex = post.blocks.findIndex(
       (block) => block.id === blockId && block.type === "poll"
     );
@@ -71,7 +71,7 @@ export const voteOnPoll = async (req, res, next) => {
     }
 
     const pollBlock = post.blocks[pollBlockIndex];
-    console.log("[voteOnPoll] Poll block found:", pollBlock);
+    // console.log("[voteOnPoll] Poll block found:", pollBlock);
     if (
       pollBlock.votedUserIds.some(
         (vote) => vote.userId.toString() === userId.toString()
@@ -81,22 +81,22 @@ export const voteOnPoll = async (req, res, next) => {
       throw new AppError("User already voted", 400, "VoteOnPoll");
     }
 
-    console.log("[voteOnPoll] Incrementing votes for option:", optionIndex);
+    // console.log("[voteOnPoll] Incrementing votes for option:", optionIndex);
     pollBlock.options[optionIndex].votes =
       (pollBlock.options[optionIndex].votes || 0) + 1;
     pollBlock.votedUserIds.push({ userId, votedAt: new Date() });
     post.blocks[pollBlockIndex] = pollBlock;
 
-    console.log("[voteOnPoll] Updated poll block:", pollBlock);
+    // console.log("[voteOnPoll] Updated poll block:", pollBlock);
 
-    console.log("[voteOnPoll] Saving updated post");
+    // console.log("[voteOnPoll] Saving updated post");
     const updatedPost = await PostModel.findByIdAndUpdate(
       postId,
       { $set: { blocks: post.blocks } },
       { new: true, runValidators: true }
     ).select("title slug blocks");
 
-    console.log("[voteOnPoll] Recording activity for user:", userId);
+    // console.log("[voteOnPoll] Recording activity for user:", userId);
     await recordActivity({
       userId,
       action: "POLL_VOTED",
@@ -104,10 +104,10 @@ export const voteOnPoll = async (req, res, next) => {
       message: `Voted on poll in post: ${post.title}`,
     });
 
-    console.log(
-      "[voteOnPoll] Vote successful, returning poll:",
-      updatedPost.blocks[pollBlockIndex]
-    );
+    // console.log(
+    //   "[voteOnPoll] Vote successful, returning poll:",
+    //   updatedPost.blocks[pollBlockIndex]
+    // );
     res.status(200).json({
       success: true,
       message: "Vote recorded",
@@ -124,10 +124,10 @@ export const voteOnPoll = async (req, res, next) => {
 };
 
 export const createPost = async (req, res, next) => {
-  console.log("[createPost] Request received:", {
-    body: req.body,
-    userId: req.user?._id,
-  });
+  // console.log("[createPost] Request received:", {
+  //   body: req.body,
+  //   userId: req.user?._id,
+  // });
   try {
     const {
       title,
@@ -142,7 +142,7 @@ export const createPost = async (req, res, next) => {
       postType = "Blog", // Explicitly set default
     } = req.body;
 
-    console.log("[createPost] Validating user authentication");
+    // console.log("[createPost] Validating user authentication");
     if (!req.user?._id) {
       console.error("[createPost] User not authenticated");
       throw new AppError(
@@ -152,14 +152,14 @@ export const createPost = async (req, res, next) => {
       );
     }
 
-    console.log("[createPost] Parsing tags");
+    // console.log("[createPost] Parsing tags");
     const tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
     if (!Array.isArray(tags)) {
       console.error("[createPost] Invalid tags format:", rawTags);
       throw new AppError("Tags must be an array", 400, "CreatePost");
     }
 
-    console.log("[createPost] Parsing blocks");
+    // console.log("[createPost] Parsing blocks");
     const blocks = Array.isArray(rawBlocks)
       ? rawBlocks
       : JSON.parse(rawBlocks || "[]");
@@ -168,7 +168,7 @@ export const createPost = async (req, res, next) => {
       throw new AppError("Blocks must be an array", 400, "CreatePost");
     }
 
-    console.log("[createPost] Assigning block IDs");
+    // console.log("[createPost] Assigning block IDs");
     const blocksWithIds = blocks.map((block, index) => {
       if (!block || typeof block !== "object" || !block.type) {
         console.error("[createPost] Invalid block at index:", index, block);
@@ -186,13 +186,13 @@ export const createPost = async (req, res, next) => {
       };
     });
 
-    console.log("[createPost] Validating table blocks");
+    // console.log("[createPost] Validating table blocks");
     blocksWithIds.forEach((block, index) => {
       if (block.type === "table") {
-        console.log("[createPost] Validating table block:", {
-          id: block.id,
-          data: block.data,
-        });
+        // console.log("[createPost] Validating table block:", {
+        //   id: block.id,
+        //   data: block.data,
+        // });
         if (
           !block.data ||
           !Array.isArray(block.data) ||
@@ -223,7 +223,7 @@ export const createPost = async (req, res, next) => {
     });
 
     const processImage = async (source, id, folder) => {
-      console.log("[createPost] Processing image:", { id, source });
+      // console.log("[createPost] Processing image:", { id, source });
       try {
         let buffer;
         if (source.startsWith("data:image")) {
@@ -240,7 +240,7 @@ export const createPost = async (req, res, next) => {
           }
           buffer = Buffer.from(base64Data, "base64");
         } else if (source.startsWith("http")) {
-          console.log("[createPost] Fetching image from URL:", source);
+          // console.log("[createPost] Fetching image from URL:", source);
           const response = await axios.get(source, {
             responseType: "arraybuffer",
             timeout: 5000,
@@ -258,7 +258,7 @@ export const createPost = async (req, res, next) => {
 
         const image = sharp(buffer);
         const metadata = await image.metadata();
-        console.log("[createPost] Image metadata:", metadata);
+        // console.log("[createPost] Image metadata:", metadata);
         if (!["jpeg", "png", "webp"].includes(metadata.format)) {
           console.error(
             "[createPost] Unsupported image format:",
@@ -273,10 +273,10 @@ export const createPost = async (req, res, next) => {
         }
 
         if (metadata.width > 1200 || metadata.height > 1200) {
-          console.log("[createPost] Resizing image:", {
-            width: metadata.width,
-            height: metadata.height,
-          });
+          // console.log("[createPost] Resizing image:", {
+          //   width: metadata.width,
+          //   height: metadata.height,
+          // });
           image.resize({
             width: 1200,
             height: 1200,
@@ -285,7 +285,7 @@ export const createPost = async (req, res, next) => {
           });
         }
 
-        console.log("[createPost] Compressing image to webp");
+        // console.log("[createPost] Compressing image to webp");
         const compressedBuffer = await image
           .webp({ quality: 75, effort: 4 })
           .toBuffer();
@@ -303,10 +303,10 @@ export const createPost = async (req, res, next) => {
           );
         }
 
-        console.log(
-          "[createPost] Image uploaded successfully:",
-          result.secure_url
-        );
+        // console.log(
+        //   "[createPost] Image uploaded successfully:",
+        //   result.secure_url
+        // );
         return result.secure_url;
       } catch (err) {
         console.error("[createPost] Image processing error:", err.message);
@@ -319,22 +319,22 @@ export const createPost = async (req, res, next) => {
       }
     };
 
-    console.log("[createPost] Processing blocks");
+    // console.log("[createPost] Processing blocks");
     const processedBlocks = await Promise.all(
       blocksWithIds.map(async (block) => {
         const processed = await processBlock(block);
-        console.log("[createPost] Block processed:", block.id);
+        // console.log("[createPost] Block processed:", block.id);
         return processed;
       })
     );
 
-    console.log("[createPost] Calculating read time");
+    // console.log("[createPost] Calculating read time");
     const { readTime, readingTime } = calculateReadTime(processedBlocks);
-    console.log("[createPost] Read time generated:", { readTime, readingTime });
+    // console.log("[createPost] Read time generated:", { readTime, readingTime });
 
     let processedThumbnail = rawThumbnail;
     if (rawThumbnail) {
-      console.log("[createPost] Processing thumbnail");
+      // console.log("[createPost] Processing thumbnail");
       processedThumbnail = await processImage(
         rawThumbnail,
         "thumbnail",
@@ -342,12 +342,12 @@ export const createPost = async (req, res, next) => {
       );
     }
 
-    console.log("[createPost] Moderating content");
+    // console.log("[createPost] Moderating content");
     const moderateContent = async (text) => {
-      console.log(
-        "[createPost] Moderating content:",
-        text.slice(0, 100) + "..."
-      );
+      // console.log(
+      //   "[createPost] Moderating content:",
+      //   text.slice(0, 100) + "..."
+      // );
       return { isFlagged: false, categories: {} };
     };
 
@@ -373,7 +373,7 @@ export const createPost = async (req, res, next) => {
       );
     }
 
-    console.log("[createPost] Generating slug");
+    // console.log("[createPost] Generating slug");
     let slug = slugify(title, { lower: true, strict: true });
     let finalSlug = slug;
     let counter = 1;
@@ -382,7 +382,7 @@ export const createPost = async (req, res, next) => {
       finalSlug = `${slug}-${counter++}`;
     }
     slug = finalSlug;
-    console.log("[createPost] Generated slug:", slug);
+    // console.log("[createPost] Generated slug:", slug);
 
     const postData = {
       title,
@@ -402,19 +402,19 @@ export const createPost = async (req, res, next) => {
       postType, // Explicitly include postType
     };
 
-    console.log("[createPost] Post data:", postData);
+    // console.log("[createPost] Post data:", postData);
 
-    console.log("[createPost] Starting transaction");
+    // console.log("[createPost] Starting transaction");
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      console.log("[createPost] Creating post in database");
+      // console.log("[createPost] Creating post in database");
       const [newPost] = await PostModel.create([postData], { session });
-      console.log("[createPost] Post created:", newPost._id, {
-        postType: newPost.postType,
-      });
+      // console.log("[createPost] Post created:", newPost._id, {
+      //   postType: newPost.postType,
+      // });
 
-      console.log("[createPost] Recording activity");
+      // console.log("[createPost] Recording activity");
       await recordActivity(
         {
           userId: req.user._id,
@@ -426,10 +426,10 @@ export const createPost = async (req, res, next) => {
       );
       await session.commitTransaction();
 
-      console.log("[createPost] Emitting postCreated event");
+      // console.log("[createPost] Emitting postCreated event");
       io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
 
-      console.log("[createPost] Updating post counts");
+      // console.log("[createPost] Updating post counts");
       const [allPostsCount, myPostsCount, followingPostsCount] =
         await Promise.all([
           PostModel.countDocuments({
@@ -447,18 +447,18 @@ export const createPost = async (req, res, next) => {
             isPublished: true,
           }),
         ]);
-      console.log("[createPost] Post counts:", {
-        allPostsCount,
-        myPostsCount,
-        followingPostsCount,
-      });
+      // console.log("[createPost] Post counts:", {
+      //   allPostsCount,
+      //   myPostsCount,
+      //   followingPostsCount,
+      // });
       io.to(req.user._id).emit("postCountsUpdated", {
         allPostsCount,
         myPostsCount,
         followingPostsCount,
       });
 
-      console.log("[createPost] Success, returning post:", newPost._id);
+      // console.log("[createPost] Success, returning post:", newPost._id);
       res
         .status(201)
         .json({ success: true, message: "Post created", post: newPost });
@@ -468,7 +468,7 @@ export const createPost = async (req, res, next) => {
       throw err;
     } finally {
       session.endSession();
-      console.log("[createPost] Transaction session ended");
+      // console.log("[createPost] Transaction session ended");
     }
   } catch (error) {
     console.error("[createPost] Error:", error.message, error.stack);
@@ -485,10 +485,10 @@ export const createPost = async (req, res, next) => {
 };
 
 export const getAllPosts = async (req, res, next) => {
-  console.log("[getAllPosts] Starting with:", {
-    query: req.query,
-    userId: req.user?._id,
-  });
+  // console.log("[getAllPosts] Starting with:", {
+  //   query: req.query,
+  //   userId: req.user?._id,
+  // });
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 10, 100);
@@ -517,7 +517,7 @@ export const getAllPosts = async (req, res, next) => {
       }
     }
 
-    console.log("[getAllPosts] Query:", query);
+    // console.log("[getAllPosts] Query:", query);
 
     const [posts, total, allPostsCount, myPostsCount, followingPostsCount] =
       await Promise.all([
@@ -555,10 +555,10 @@ export const getAllPosts = async (req, res, next) => {
           : Promise.resolve(0),
       ]);
 
-    console.log(
-      "[getAllPosts] Fetched posts:",
-      posts.map((p) => ({ _id: p._id, title: p.title, postType: p.postType }))
-    );
+    // console.log(
+    //   "[getAllPosts] Fetched posts:",
+    //   posts.map((p) => ({ _id: p._id, title: p.title, postType: p.postType }))
+    // );
 
     if (req.user?._id && !isGuest) {
       await recordActivity({
@@ -589,10 +589,10 @@ export const getAllPosts = async (req, res, next) => {
 };
 
 export const getSinglePost = async (req, res, next) => {
-  console.log("[getSinglePost] Starting with:", {
-    slug: req.params.slug,
-    userId: req.user?._id,
-  });
+  // console.log("[getSinglePost] Starting with:", {
+  //   slug: req.params.slug,
+  //   userId: req.user?._id,
+  // });
   try {
     const { slug } = req.params;
     const userId = req.user?._id;
@@ -618,7 +618,7 @@ export const getSinglePost = async (req, res, next) => {
         : { isPublished: true, blocked: false }),
     };
 
-    console.log("[getSinglePost] Query:", query);
+    // console.log("[getSinglePost] Query:", query);
 
     const post = await PostModel.findOne(query)
       .select(
@@ -656,11 +656,11 @@ export const getSinglePost = async (req, res, next) => {
       );
     }
 
-    console.log("[getSinglePost] Success, returning post:", {
-      _id: post._id,
-      title: post.title,
-      postType: post.postType,
-    });
+    // console.log("[getSinglePost] Success, returning post:", {
+    //   _id: post._id,
+    //   title: post.title,
+    //   postType: post.postType,
+    // });
 
     res.status(200).json({ success: true, post });
   } catch (error) {
@@ -678,10 +678,10 @@ export const getSinglePost = async (req, res, next) => {
 };
 
 export const trackTimeSpent = async (req, res, next) => {
-  console.log("[trackTimeSpent] Starting with:", {
-    postId: req.params.postId,
-    duration: req.body.duration,
-  });
+  // console.log("[trackTimeSpent] Starting with:", {
+  //   postId: req.params.postId,
+  //   duration: req.body.duration,
+  // });
   try {
     const { postId } = req.params;
     const { duration } = req.body;
@@ -706,7 +706,7 @@ export const trackTimeSpent = async (req, res, next) => {
       PostModel.updateOne({ _id: postId }, { $inc: { timeSpent: duration } }),
     ]);
 
-    console.log("[trackTimeSpent] Updates:", { interactionUpdate, postUpdate });
+    // console.log("[trackTimeSpent] Updates:", { interactionUpdate, postUpdate });
 
     if (!postUpdate.modifiedCount && !interactionUpdate) {
       console.error("[trackTimeSpent] Post not found:", postId);
@@ -725,11 +725,11 @@ export const trackTimeSpent = async (req, res, next) => {
 };
 
 export const processBlock = async (block) => {
-  console.log("[processBlock] Processing block:", {
-    id: block.id,
-    type: block.type,
-    data: block.data,
-  });
+  // console.log("[processBlock] Processing block:", {
+  //   id: block.id,
+  //   type: block.type,
+  //   data: block.data,
+  // });
   const processedBlock = { ...block };
 
   if (processedBlock.text) {
@@ -825,11 +825,11 @@ export const processBlock = async (block) => {
 };
 
 export const updatePostBySlug = async (req, res, next) => {
-  console.log("[updatePostBySlug] Starting with:", {
-    slug: req.params.slug,
-    userId: req.user?._id,
-    body: req.body,
-  });
+  // console.log("[updatePostBySlug] Starting with:", {
+  //   slug: req.params.slug,
+  //   userId: req.user?._id,
+  //   body: req.body,
+  // });
   try {
     const { slug } = req.params;
     const userId = req.user?._id;
@@ -902,10 +902,10 @@ export const updatePostBySlug = async (req, res, next) => {
     }
 
     const { readTime, readingTime } = calculateReadTime(updates.blocks || []);
-    console.log("[updatePostBySlug] Read time generated:", {
-      readTime,
-      readingTime,
-    });
+    // console.log("[updatePostBySlug] Read time generated:", {
+    //   readTime,
+    //   readingTime,
+    // });
     updates.readTime = readTime;
     updates.readingTime = readingTime;
 
@@ -949,9 +949,9 @@ export const updatePostBySlug = async (req, res, next) => {
       message: `Edited post: ${updatedPost.title}`,
     });
 
-    console.log("[updatePostBySlug] Success, updated post:", updatedPost._id, {
-      postType: updatedPost.postType,
-    });
+    // console.log("[updatePostBySlug] Success, updated post:", updatedPost._id, {
+    //   postType: updatedPost.postType,
+    // });
     res.status(200).json({
       success: true,
       message: "Post updated successfully",
@@ -972,10 +972,10 @@ export const updatePostBySlug = async (req, res, next) => {
 };
 
 export const deletePost = async (req, res, next) => {
-  console.log("[deletePost] Starting with:", {
-    postId: req.params.postId,
-    userId: req.user?._id,
-  });
+  // console.log("[deletePost] Starting with:", {
+  //   postId: req.params.postId,
+  //   userId: req.user?._id,
+  // });
   try {
     const { postId } = req.params;
     const post = await PostModel.findById(postId);
@@ -1020,7 +1020,7 @@ export const deletePost = async (req, res, next) => {
       followingPostsCount,
     });
 
-    console.log("[deletePost] Success, deleted post:", postId);
+    // console.log("[deletePost] Success, deleted post:", postId);
     res.status(200).json({ success: true, message: "Post deleted", postId });
   } catch (error) {
     console.error("[deletePost] Error:", error.message, error.stack);
@@ -1037,10 +1037,10 @@ export const deletePost = async (req, res, next) => {
 };
 
 export const toggleBlockPost = async (req, res, next) => {
-  console.log("[toggleBlockPost] Starting with:", {
-    postId: req.params.postId,
-    userId: req.user?._id,
-  });
+  // console.log("[toggleBlockPost] Starting with:", {
+  //   postId: req.params.postId,
+  //   userId: req.user?._id,
+  // });
   try {
     const { postId } = req.params;
     if (!mongoose.Types.ObjectId.isValid(postId)) {
@@ -1081,10 +1081,10 @@ export const toggleBlockPost = async (req, res, next) => {
       }`,
     });
 
-    console.log("[toggleBlockPost] Success, post status:", {
-      postId,
-      blocked: updatedPost.blocked,
-    });
+    // console.log("[toggleBlockPost] Success, post status:", {
+    //   postId,
+    //   blocked: updatedPost.blocked,
+    // });
     res.status(200).json({
       success: true,
       message: `Post ${
@@ -1103,7 +1103,7 @@ export const toggleBlockPost = async (req, res, next) => {
 };
 
 export const sendDailyPostEmail = async () => {
-  console.log("[sendDailyPostEmail] Starting");
+  // console.log("[sendDailyPostEmail] Starting");
   try {
     const users = await UserModel.find({
       emailStatus: "sent",
@@ -1123,14 +1123,14 @@ export const sendDailyPostEmail = async () => {
       .lean();
 
     if (!posts.length) {
-      console.log("[sendDailyPostEmail] No new posts to send");
+      // console.log("[sendDailyPostEmail] No new posts to send");
       return;
     }
 
-    console.log(
-      "[sendDailyPostEmail] Posts to send:",
-      posts.map((p) => p.title)
-    );
+    // console.log(
+    //   "[sendDailyPostEmail] Posts to send:",
+    //   posts.map((p) => p.title)
+    // );
 
     const postListHtml = posts
       .map(
@@ -1168,7 +1168,7 @@ export const sendDailyPostEmail = async () => {
     }
 
     await processEmailQueue();
-    console.log("[sendDailyPostEmail] Emails queued successfully");
+    // console.log("[sendDailyPostEmail] Emails queued successfully");
   } catch (error) {
     console.error("[sendDailyPostEmail] Error:", error.message, error.stack);
     throw new AppError(
@@ -1180,10 +1180,10 @@ export const sendDailyPostEmail = async () => {
 };
 
 export const submitAppeal = async (req, res, next) => {
-  console.log("[submitAppeal] Starting with:", {
-    postId: req.params.postId,
-    userId: req.user?._id,
-  });
+  // console.log("[submitAppeal] Starting with:", {
+  //   postId: req.params.postId,
+  //   userId: req.user?._id,
+  // });
   try {
     const { postId } = req.params;
     const { message } = req.body;
@@ -1237,7 +1237,7 @@ export const submitAppeal = async (req, res, next) => {
 
     io.emit("newAppeal", { postId, userId, message, postTitle: post.title });
 
-    console.log("[submitAppeal] Success, appeal submitted for post:", postId);
+    // console.log("[submitAppeal] Success, appeal submitted for post:", postId);
     res
       .status(200)
       .json({ success: true, message: "Appeal submitted successfully" });
@@ -1256,9 +1256,9 @@ export const submitAppeal = async (req, res, next) => {
 };
 
 export const incrementShareCount = async (req, res, next) => {
-  console.log("[incrementShareCount] Starting with:", {
-    postId: req.params.postId,
-  });
+  // console.log("[incrementShareCount] Starting with:", {
+  //   postId: req.params.postId,
+  // });
   try {
     const { postId } = req.params;
 
@@ -1278,10 +1278,10 @@ export const incrementShareCount = async (req, res, next) => {
       throw new AppError("Post not found", 404, "IncrementShareCount");
     }
 
-    console.log(
-      "[incrementShareCount] Success, share count:",
-      result.shareCount
-    );
+    // console.log(
+    //   "[incrementShareCount] Success, share count:",
+    //   result.shareCount
+    // );
     res.status(200).json({
       success: true,
       message: "Share count incremented",
@@ -1302,10 +1302,10 @@ export const incrementShareCount = async (req, res, next) => {
 };
 
 export const getDraftAndPendingPosts = async (req, res, next) => {
-  console.log("[getDraftAndPendingPosts] Starting with:", {
-    userId: req.user?._id,
-    query: req.query,
-  });
+  // console.log("[getDraftAndPendingPosts] Starting with:", {
+  //   userId: req.user?._id,
+  //   query: req.query,
+  // });
   try {
     const userId = req.user?._id;
     if (!userId) {
@@ -1336,13 +1336,13 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
       PostModel.countDocuments(query),
     ]);
 
-    console.log(
-      "[getDraftAndPendingPosts] Fetched posts:",
-      posts.map((p) => ({ _id: p._id, title: p.title, postType: p.postType }))
-    );
+    // console.log(
+    //   "[getDraftAndPendingPosts] Fetched posts:",
+    //   posts.map((p) => ({ _id: p._id, title: p.title, postType: p.postType }))
+    // );
 
     if (!posts.length) {
-      console.log("[getDraftAndPendingPosts] No posts found");
+      // console.log("[getDraftAndPendingPosts] No posts found");
       return res.status(200).json({
         success: true,
         message: "No posts found",
@@ -1372,7 +1372,7 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
 };
 
 export const getPublicPost = async (req, res, next) => {
-  console.log("[getPublicPost] Starting with:", { slug: req.params.slug });
+  // console.log("[getPublicPost] Starting with:", { slug: req.params.slug });
   try {
     const { slug } = req.params;
 
@@ -1407,11 +1407,11 @@ export const getPublicPost = async (req, res, next) => {
       );
     }
 
-    console.log("[getPublicPost] Success, returning post:", {
-      _id: post._id,
-      title: post.title,
-      postType: post.postType,
-    });
+    // console.log("[getPublicPost] Success, returning post:", {
+    //   _id: post._id,
+    //   title: post.title,
+    //   postType: post.postType,
+    // });
     res.status(200).json({ success: true, post });
   } catch (error) {
     console.error("[getPublicPost] Error:", error.message, error.stack);
@@ -1424,10 +1424,10 @@ export const getPublicPost = async (req, res, next) => {
 };
 
 export const getFollowingPosts = async (req, res, next) => {
-  console.log("[getFollowingPosts] Starting with:", {
-    userId: req.user?._id,
-    query: req.query,
-  });
+  // console.log("[getFollowingPosts] Starting with:", {
+  //   userId: req.user?._id,
+  //   query: req.query,
+  // });
   try {
     const userId = req.user?._id;
     const page = parseInt(req.query.page) || 1;
@@ -1454,7 +1454,7 @@ export const getFollowingPosts = async (req, res, next) => {
       .filter((id) => mongoose.Types.ObjectId.isValid(id));
 
     if (!followingIds.length) {
-      console.log("[getFollowingPosts] No followed users");
+      // console.log("[getFollowingPosts] No followed users");
       return res.status(200).json({
         success: true,
         total: 0,
@@ -1470,7 +1470,7 @@ export const getFollowingPosts = async (req, res, next) => {
       blocked: false,
     };
 
-    console.log("[getFollowingPosts] Query:", query);
+    // console.log("[getFollowingPosts] Query:", query);
 
     const [posts, total] = await Promise.all([
       PostModel.find(query)
@@ -1491,10 +1491,10 @@ export const getFollowingPosts = async (req, res, next) => {
       PostModel.countDocuments(query),
     ]);
 
-    console.log(
-      "[getFollowingPosts] Fetched posts:",
-      posts.map((p) => ({ _id: p._id, title: p.title, postType: p.postType }))
-    );
+    // console.log(
+    //   "[getFollowingPosts] Fetched posts:",
+    //   posts.map((p) => ({ _id: p._id, title: p.title, postType: p.postType }))
+    // );
 
     await recordActivity({
       userId,
