@@ -290,7 +290,7 @@ const Postbox = ({
       tags: post?.tags || [],
       readTime: post?.readTime,
     }));
-    console.log("Postbox - selectedPosts:", mappedPosts); // Log selectedPosts
+    // console.log("Postbox - selectedPosts:", mappedPosts); // Log selectedPosts
     return mappedPosts;
   }, [sortedPosts, categoryMap]);
 
