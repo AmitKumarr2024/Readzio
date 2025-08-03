@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-export const PORT = process.env.PORT || 8001;
+export const PORT = process.env.PORT || 8026;
 export const MONGO_URI = process.env.MONGO_URI  ;
 export const JWT_SECRET = process.env.JWT_SECRET || 'default-secret';
 export const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';

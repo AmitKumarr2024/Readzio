@@ -37,7 +37,7 @@ const CardOfPost = ({
   const isPostPremium = isPremium;
   const isSubscribedToAuthor = isSubscribed[authorId];
 
-  // console.log("CardOfPost - postType:", postType);
+  console.log("CardOfPost - postType:", postType);
 
   useEffect(() => {
     if (authorId) dispatch(fetchSubscriptionPlansByAuthor(authorId));
@@ -76,31 +76,11 @@ const CardOfPost = ({
     }
   );
 
-  const displayPostType = postType || "Article";
-
   return (
     <Link
       to={`/post/${slug}`}
       className="group bg-white dark:bg-gray-800 font-Urbanist rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col h-full max-w-full"
     >
-      <style>
-        {`
-          @keyframes slideIn {
-            0% { transform: translateX(-10px); opacity: 0; }
-            100% { transform: translateX(0); opacity: 1; }
-          }
-          @keyframes fadeIn {
-            0% { opacity: 0; }
-            100% { opacity: 1; }
-          }
-          .animate-slide-in {
-            animation: slideIn 0.5s ease-out forwards;
-          }
-          .animate-fade-in {
-            animation: fadeIn 0.5s ease-in forwards;
-          }
-        `}
-      </style>
       <div className="relative w-full aspect-video">
         <img
           src={thumbnail || "https://placehold.co/400x225?text=No+Image"}
@@ -117,15 +97,17 @@ const CardOfPost = ({
             Premium
           </span>
         )}
-        {displayPostType && (
+        {postType && (
           <span
-            className={`absolute bottom-2 left-2 px-2 py-1 text-[10px] sm:text-xs font-semibold rounded-full text-blue-500 dark:text-blue-300 ${
-              displayPostType === "Blog"
-                ? "animate-slide-in"
-                : "animate-fade-in"
+            className={`absolute bottom-2 left-2 px-2 py-1 text-[10px] sm:text-xs font-semibold rounded-full text-white animate-pulse ${
+              postType.toLowerCase() === "blog"
+                ? "bg-indigo-600"
+                : postType.toLowerCase() === "article"
+                ? "bg-emerald-600"
+                : "bg-gray-500"
             }`}
           >
-            {displayPostType}
+            {postType}
           </span>
         )}
       </div>
