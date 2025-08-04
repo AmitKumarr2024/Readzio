@@ -3,6 +3,7 @@ const normalizeOrigin = (url) => url?.replace(/\/+$/, "");
 const allowedOrigins = [
   normalizeOrigin(process.env.CLIENT_URL),
   "http://localhost:5173",
+  "http://127.0.0.1:5173", // Added for local testing
   "http://localhost:8001",
   "https://inksha-uedq.onrender.com",
   "https://www.inksha-uedq.onrender.com",

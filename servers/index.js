@@ -79,27 +79,39 @@ app.use(cookieParser());
 
 // Mount API Routes
 const routes = [
-  ["/api/auth", AuthRoutes],
-  ["/api/user", UserRoutes],
-  ["/api/post", PostRoutes],
-  ["/api/category", CategoryRoutes],
-  ["/api/block", BlockRoutes],
-  ["/api/follow", FollowRoutes],
-  ["/api/notification", NotificationRoutes],
-  ["/api/payment", RazorpayRoutes],
-  ["/api/subscription", SubscriptionRoutes],
-  ["/api/earning", EarningRoutes],
-  ["/api/achievement", AchievementRoutes],
-  ["/api/comment", CommentsRoutes],
-  ["/api/admin", AdminRoutes],
-  ["/api/geojson", GeojsonRoutes],
-  ["/api/dailyMail", PostEmailRoutes],
-  ["/api/bannerNotification", BannerNotificationRoutes],
-  ["/api/public", guestRoutes],
+  ["/api/auth", AuthRoutes, "AuthRoutes"],
+  ["/api/user", UserRoutes, "UserRoutes"],
+  ["/api/post", PostRoutes, "PostRoutes"],
+  ["/api/category", CategoryRoutes, "CategoryRoutes"],
+  ["/api/block", BlockRoutes, "BlockRoutes"],
+  ["/api/follow", FollowRoutes, "FollowRoutes"],
+  ["/api/notification", NotificationRoutes, "NotificationRoutes"],
+  ["/api/payment", RazorpayRoutes, "RazorpayRoutes"],
+  ["/api/subscription", SubscriptionRoutes, "SubscriptionRoutes"],
+  ["/api/earning", EarningRoutes, "EarningRoutes"],
+  ["/api/achievement", AchievementRoutes, "AchievementRoutes"],
+  ["/api/comment", CommentsRoutes, "CommentsRoutes"],
+  ["/api/admin", AdminRoutes, "AdminRoutes"],
+  ["/api/geojson", GeojsonRoutes, "GeojsonRoutes"],
+  ["/api/dailyMail", PostEmailRoutes, "PostEmailRoutes"],
+  [
+    "/api/bannerNotification",
+    BannerNotificationRoutes,
+    "BannerNotificationRoutes",
+  ],
+  ["/api/public", guestRoutes, "guestRoutes"],
 ];
 
-routes.forEach(([path, router]) => {
-  app.use(path, router);
+routes.forEach(([path, router, name]) => {
+  console.log(`[Server:Routes] Mounting ${name} at ${path}`);
+  try {
+    app.use(path, router);
+  } catch (err) {
+    console.error(
+      `[Server:Routes] ❌ Error mounting ${name} at ${path}:`,
+      err.message
+    );
+  }
 });
 
 // Serve static public files
@@ -162,27 +174,27 @@ if (NODE_ENV !== "production") {
         const methods = Object.keys(middleware?.route?.methods || {})
           .join(", ")
           .toUpperCase();
-        console.log(`✔ ${methods} ${middleware.route.path}`);
+        console.log(`[Server:Routes] ✔ ${methods} ${middleware.route.path}`);
       } else if (middleware?.name === "router" && middleware?.handle?.stack) {
         middleware.handle.stack.forEach((handler) => {
           if (handler?.route?.path) {
             const methods = Object.keys(handler?.route?.methods || {})
               .join(", ")
               .toUpperCase();
-            console.log(`✔ ${methods} ${handler.route.path}`);
+            console.log(`[Server:Routes] ✔ ${methods} ${handler.route.path}`);
           }
         });
       }
     });
   } catch (err) {
     console.error(
-      "❌ Route inspection error:",
+      "[Server:Routes] ❌ Route inspection error:",
       err?.message || "Unknown error"
     );
     if (err instanceof Error) {
       console.error(err.stack);
     } else {
-      console.error("Non-Error thrown:", err);
+      console.error("[Server:Routes] Non-Error thrown:", err);
     }
   }
 }
