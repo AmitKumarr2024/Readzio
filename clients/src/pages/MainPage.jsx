@@ -1,39 +1,23 @@
-import React, { useEffect, useLayoutEffect, lazy, Suspense } from "react";
+import React, { useEffect, useLayoutEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import HeroSection from "../components/HeroSection";
+import RightSideBox from "../components/RightSideBar/RightSideBox";
+import TabbedPostSection from "../components/Tabs/TabbedPostSection";
 import { Menu, X } from "lucide-react";
 import { toggleSidebar, setIsMobile } from "../store/Post/postMetaSlice";
 import { fetchPublicPosts } from "../store/guestSlice";
 import { getAllPosts } from "../store/postSlice";
+import GuestPostView from "../components/GuestMainScreen/GuestPostView";
 
-// Lazy-loaded components
-const HeroSection = lazy(() => import("../components/HeroSection"));
-const RightSideBox = lazy(() =>
-  import("../components/RightSideBar/RightSideBox")
-);
-const TabbedPostSection = lazy(() =>
-  import("../components/Tabs/TabbedPostSection")
-);
-const GuestPostView = lazy(() =>
-  import("../components/GuestMainScreen/GuestPostView")
-);
-
+// Displays main page with posts and sidebar
 const MainPage = () => {
   const dispatch = useDispatch();
-  const {
-    isAuthenticated,
-    user,
-    loading: authLoading,
-  } = useSelector((state) => state.auth);
-  const {
-    posts: guestPosts = [],
-    loading: guestLoading,
-    error: guestError,
-  } = useSelector((state) => state.guest || {});
-  const { posts: authPosts = [], loading: authPostLoading } = useSelector(
-    (state) => state.post || {}
-  );
+  const { isAuthenticated, user, loading: authLoading } = useSelector((state) => state.auth);
+  const { posts: guestPosts = [], loading: guestLoading, error: guestError } = useSelector((state) => state.guest || {});
+  const { posts: authPosts = [], loading: authPostLoading } = useSelector((state) => state.post || {});
   const { isSidebarOpen, isMobile } = useSelector((state) => state.postMeta);
 
+  // Fetch posts based on auth status
   useEffect(() => {
     try {
       if (!authLoading) {
@@ -48,6 +32,7 @@ const MainPage = () => {
     }
   }, [dispatch, isAuthenticated, authLoading]);
 
+  // Handle mobile detection
   useLayoutEffect(() => {
     const handleResize = () => {
       dispatch(setIsMobile(window.innerWidth < 1024));
@@ -57,9 +42,9 @@ const MainPage = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, [dispatch]);
 
+  // Control body overflow for mobile sidebar
   useEffect(() => {
-    document.body.style.overflow =
-      isMobile && isSidebarOpen ? "hidden" : "auto";
+    document.body.style.overflow = isMobile && isSidebarOpen ? "hidden" : "auto";
     return () => {
       document.body.style.overflow = "auto";
     };
@@ -67,11 +52,7 @@ const MainPage = () => {
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
-      <Suspense
-        fallback={<div className="text-center py-4">Loading hero...</div>}
-      >
-        <HeroSection />
-      </Suspense>
+      <HeroSection />
       <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-6 py-8">
         <div className="flex justify-end py-4">
           <button
@@ -79,33 +60,17 @@ const MainPage = () => {
             className="p-2 rounded-xl bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark hover:bg-indigo-500 hover:text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-md"
             aria-label="Toggle Sidebar"
           >
-            {isSidebarOpen ? (
-              <X className="w-5 h-5" />
-            ) : (
-              <Menu className="w-5 h-5" />
-            )}
+            {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
         <div className="flex flex-row gap-2">
           <div className="flex-2 w-full">
             {authLoading ? (
               <div className="text-center py-8 text-gray-500">Loading...</div>
+            ) : isAuthenticated ? (
+              <TabbedPostSection user={user} posts={authPosts} loading={authPostLoading} />
             ) : (
-              <Suspense
-                fallback={
-                  <div className="text-center py-4">Loading posts...</div>
-                }
-              >
-                {isAuthenticated ? (
-                  <TabbedPostSection
-                    user={user}
-                    posts={authPosts}
-                    loading={authPostLoading}
-                  />
-                ) : (
-                  <GuestPostView posts={guestPosts} loading={guestLoading} />
-                )}
-              </Suspense>
+              <GuestPostView posts={guestPosts} loading={guestLoading} />
             )}
           </div>
           {isSidebarOpen && (
@@ -114,16 +79,10 @@ const MainPage = () => {
               ${isMobile ? "translate-x-0" : ""}
               lg:static lg:z-auto lg:shadow-none lg:w-96`}
             >
-              <Suspense
-                fallback={
-                  <div className="text-center p-4">Loading sidebar...</div>
-                }
-              >
-                <RightSideBox
-                  user={user}
-                  toggleSidebar={() => dispatch(toggleSidebar())}
-                />
-              </Suspense>
+              <RightSideBox
+                user={user}
+                toggleSidebar={() => dispatch(toggleSidebar())}
+              />
             </aside>
           )}
         </div>
