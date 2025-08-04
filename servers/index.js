@@ -6,14 +6,11 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import http from "http";
 import mongoose from "mongoose";
-import { CLIENT_URL, NODE_ENV, PORT } from "../servers/config/dotenv.js";
-import connectDb from "../servers/config/mongodb.js";
-import initializeSocket from "../servers/sockets/socket.js";
-import { startTempCleanup } from "../servers/Utils/cleanupTemp.js";
-import { handleRazorpayWebhook } from "../servers/Controllers/paymentController.js";
-import { corsOptions } from "../servers/config/cors.config.js";
-import errorHandler from "./Middlewares/errorHandler.js";
-import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
+import { CLIENT_URL, NODE_ENV, PORT } from "./config/dotenv.js";
+import connectDb from "./config/mongodb.js";
+import initializeSocket from "./sockets/socket.js";
+import { startTempCleanup } from "./Utils/cleanupTemp.js";
+import { handleRazorpayWebhook } from "./Controllers/paymentController.js";
 
 // Routes
 import AuthRoutes from "./Routes/authRoutes.js";
@@ -33,6 +30,8 @@ import GeojsonRoutes from "./Routes/geojsonRoutes.js";
 import PostEmailRoutes from "./Routes/postEmailRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
+import errorHandler from "./Middlewares/errorHandler.js";
+import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 
 const app = express();
 app.set("trust proxy", true);
@@ -66,64 +65,66 @@ app.use((req, res, next) => {
 });
 
 // Compression middleware
+app.use(compression());
+
+// CORS config
+const allowedOrigins = [
+  CLIENT_URL?.replace(/\/$/, ""),
+  "http://localhost:5173",
+  "http://localhost:8001",
+  "https://inksha-uedq.onrender.com",
+  "https://www.inksha-uedq.onrender.com",
+].filter(Boolean);
+
 app.use(
-  compression({
-    filter: (req, res) =>
-      req.headers["content-type"]?.includes("text") || false,
+  cors({
+    origin: (origin, callback) => {
+      console.log("[Server:CORS] Request from:", origin);
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      console.error("[Server:CORS] ❌ Blocked:", origin);
+      return callback(new Error("CORS not allowed"));
+    },
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
 );
 
-// CORS config
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
-
 // Request parsing middleware
-app.use(express.json({ limit: "2mb" }));
-app.use(express.urlencoded({ extended: true, limit: "2mb" }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
 // Mount API Routes
 const routes = [
-  ["/api/auth", AuthRoutes, "AuthRoutes"],
-  ["/api/user", UserRoutes, "UserRoutes"],
-  ["/api/post", PostRoutes, "PostRoutes"],
-  ["/api/category", CategoryRoutes, "CategoryRoutes"],
-  ["/api/block", BlockRoutes, "BlockRoutes"],
-  ["/api/follow", FollowRoutes, "FollowRoutes"],
-  ["/api/notification", NotificationRoutes, "NotificationRoutes"],
-  ["/api/payment", RazorpayRoutes, "RazorpayRoutes"],
-  ["/api/subscription", SubscriptionRoutes, "SubscriptionRoutes"],
-  ["/api/earning", EarningRoutes, "EarningRoutes"],
-  ["/api/achievement", AchievementRoutes, "AchievementRoutes"],
-  ["/api/comment", CommentsRoutes, "CommentsRoutes"],
-  ["/api/admin", AdminRoutes, "AdminRoutes"],
-  ["/api/geojson", GeojsonRoutes, "GeojsonRoutes"],
-  ["/api/dailyMail", PostEmailRoutes, "PostEmailRoutes"],
-  [
-    "/api/bannerNotification",
-    BannerNotificationRoutes,
-    "BannerNotificationRoutes",
-  ],
-  ["/api/public", guestRoutes, "guestRoutes"],
+  ["/api/auth", AuthRoutes],
+  ["/api/user", UserRoutes],
+  ["/api/post", PostRoutes],
+  ["/api/category", CategoryRoutes],
+  ["/api/block", BlockRoutes],
+  ["/api/follow", FollowRoutes],
+  ["/api/notification", NotificationRoutes],
+  ["/api/payment", RazorpayRoutes],
+  ["/api/subscription", SubscriptionRoutes],
+  ["/api/earning", EarningRoutes],
+  ["/api/achievement", AchievementRoutes],
+  ["/api/comment", CommentsRoutes],
+  ["/api/admin", AdminRoutes],
+  ["/api/geojson", GeojsonRoutes],
+  ["/api/dailyMail", PostEmailRoutes],
+  ["/api/bannerNotification", BannerNotificationRoutes],
+  ["/api/public", guestRoutes],
 ];
 
-routes.forEach(([path, router, name]) => {
-  console.log(`[Server:Routes] 🧪 Mounting ${name} at ${path}`);
-  try {
-    app.use(path, router);
-    console.log(`[Server:Routes] ✅ Mounted ${name}`);
-  } catch (err) {
-    console.error(
-      `[Server:Routes] ❌ Failed to mount ${name} at ${path}:`,
-      err.message
-    );
-    if (err?.stack) console.error(err.stack);
-  }
+routes.forEach(([path, router]) => {
+  app.use(path, router);
 });
 
 // Serve static public files
 const publicPath = path.join(__dirname, "servers", "public");
-app.use("/public", express.static(publicPath, { maxAge: "1d" }));
+app.use("/public", express.static(publicPath));
 
 // Static ads.txt file
 app.get("/ads.txt", (req, res) => {
@@ -138,7 +139,7 @@ const clientIndexPath = path.join(clientPath, "index.html");
 
 if (NODE_ENV === "production") {
   if (fs.existsSync(clientIndexPath)) {
-    app.use(express.static(clientPath, { maxAge: "1d" }));
+    app.use(express.static(clientPath));
     app.get(/^\/(?!api\/).*/, (req, res) => {
       res.sendFile(clientIndexPath, (err) => {
         if (err) {
@@ -151,11 +152,13 @@ if (NODE_ENV === "production") {
       });
     });
   } else {
-    console.error("[Server:Static] ❌ index.html not found");
+    console.error(
+      "[Server:Static] ❌ Production build missing: index.html not found"
+    );
   }
 }
 
-// Health check route
+// Health check
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
@@ -168,10 +171,10 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Global error handler
+// Custom global error handler
 app.use(errorHandler);
 
-// Log all route paths (dev only)
+// In development, print all route paths
 if (NODE_ENV !== "production") {
   try {
     app._router.stack.forEach((middleware) => {
@@ -179,44 +182,52 @@ if (NODE_ENV !== "production") {
         const methods = Object.keys(middleware?.route?.methods || {})
           .join(", ")
           .toUpperCase();
-        console.log(`[Server:Routes] ✔ ${methods} ${middleware.route.path}`);
+        console.log(`✔ ${methods} ${middleware.route.path}`);
       } else if (middleware?.name === "router" && middleware?.handle?.stack) {
         middleware.handle.stack.forEach((handler) => {
           if (handler?.route?.path) {
             const methods = Object.keys(handler?.route?.methods || {})
               .join(", ")
               .toUpperCase();
-            console.log(`[Server:Routes] ✔ ${methods} ${handler.route.path}`);
+            console.log(`✔ ${methods} ${handler.route.path}`);
           }
         });
       }
     });
   } catch (err) {
-    console.error("[Server:Routes] ❌ Route inspection error:", err?.message);
-    if (err instanceof Error) console.error(err.stack);
+    console.error(
+      "❌ Route inspection error:",
+      err?.message || "Unknown error"
+    );
+    if (err instanceof Error) {
+      console.error(err.stack);
+    } else {
+      console.error("Non-Error thrown:", err);
+    }
   }
 }
 
-// Error logging
-io.on("error", (err) => console.error("[Server:SocketIO] Error:", err.message));
-server.on("error", (err) => console.error("[Server:HTTP] Error:", err.message));
+// Socket and HTTP error listeners
+io.on("error", (err) => {
+  console.error("[Server:SocketIO] Error:", err.message);
+});
 
+server.on("error", (err) => {
+  console.error("[Server:HTTP] Error:", err.message);
+});
+
+// Global error listeners
 process.on("uncaughtException", (err) => {
-  console.error("[UncaughtException] ❌", err.message);
+  console.error("[UncaughtException] ❌", err.message, err.stack);
   process.exit(1);
 });
+
 process.on("unhandledRejection", (err) => {
   console.error("[UnhandledRejection] ❌", err.message);
   process.exit(1);
 });
 
-// Monitor memory usage
-setInterval(() => {
-  const used = process.memoryUsage().heapUsed / 1024 / 1024;
-  console.log(`[Server:Memory] Heap used: ${used.toFixed(2)} MB`);
-}, 60000);
-
-// Boot the app
+// Start server
 const startServer = async () => {
   try {
     console.log("[Server:Startup] Connecting to MongoDB...");
@@ -232,7 +243,11 @@ const startServer = async () => {
       );
     });
   } catch (err) {
-    console.error("[Server:Startup] ❌ Startup failed:", err.message);
+    console.error(
+      "[Server:Startup] ❌ Failed to start:",
+      err.message,
+      err.stack
+    );
     process.exit(1);
   }
 };

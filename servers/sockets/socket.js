@@ -1,24 +1,44 @@
 import { Server } from "socket.io";
-import { corsOptions } from "../../servers/config/cors.config.js";
+import { CLIENT_URL } from "../config/dotenv.js";
 import { verifyToken } from "../../servers/Utils/verifyToken.js";
 import UserModel from "../../servers/Models/User.js";
+import PostModel from "../../servers/Models/Post.js";
 
 const connectedUsers = new Set();
 
 export const io = new Server({
   path: "/socket.io/",
-  cors: corsOptions,
+  cors: {
+    origin: (origin, callback) => {
+      console.log("[Socket:CORS] Request from:", origin); // Log for debugging
+      const allowedOrigins = [
+        CLIENT_URL?.replace(/\/$/, ""),
+        "http://localhost:5173",
+        "http://localhost:8001",
+        "https://inksha-uedq.onrender.com",
+        "https://www.inksha-uedq.onrender.com", // Added www variant
+      ].filter(Boolean);
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.error("[Socket:CORS] ❌ Blocked:", origin);
+      return callback(new Error("CORS not allowed"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  },
   pingInterval: 25000,
   pingTimeout: 60000,
 });
 
-// Middleware: Verify token from auth or cookies
 io.use(async (socket, next) => {
-  let token = socket.handshake.auth?.token;
+  let token = socket.handshake.auth.token;
 
-  if (!token && socket.handshake.headers?.cookie) {
+  if (!token && socket.handshake.headers.cookie) {
     const cookies = socket.handshake.headers.cookie
-      .split("; ")
+      ?.split("; ")
       .reduce((acc, cookie) => {
         const [name, value] = cookie.split("=");
         acc[name] = value;
@@ -39,56 +59,47 @@ io.use(async (socket, next) => {
     socket.isAdmin = decoded.isAdmin;
     next();
   } catch (err) {
-    console.error("[Socket:Auth] ❌ Token error:", err.message);
+    console.error("[Socket:Auth] ❌ Error:", err.message);
     next(new Error("Authentication failed"));
   }
 });
 
-// On connection
 io.on("connection", async (socket) => {
-  const userId = socket.userId;
-
-  if (userId) {
-    connectedUsers.add(userId);
-    socket.join(userId);
-    io.emit("userStatus", { userId, isOnline: true });
+  if (socket.userId) {
+    connectedUsers.add(socket.userId);
+    socket.join(socket.userId);
+    io.emit("userStatus", { userId: socket.userId, isOnline: true });
     io.emit("onlineUsersCount", connectedUsers.size);
 
     try {
-      const user = await UserModel.findById(userId)
-        .select("joiningDate feedbackPrompt")
-        .lean();
+      const user = await UserModel.findById(socket.userId).select(
+        "joiningDate feedbackPrompt"
+      );
 
-      if (user?.joiningDate) {
-        const joinedDaysAgo =
-          (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24);
+      const joinedDaysAgo =
+        (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24);
 
-        const prompt = user.feedbackPrompt || {};
-        if (joinedDaysAgo >= 7 && !prompt.shown && !prompt.responded) {
-          socket.emit("showFeedbackPrompt", {
-            message: "How do you like our app?",
-          });
+      if (
+        joinedDaysAgo >= 7 &&
+        (!user.feedbackPrompt ||
+          (!user.feedbackPrompt.shown && !user.feedbackPrompt.responded))
+      ) {
+        socket.emit("showFeedbackPrompt", {
+          message: "How do you like our app?",
+        });
 
-          await UserModel.updateOne(
-            { _id: userId },
-            {
-              feedbackPrompt: {
-                shown: true,
-                shownAt: new Date(),
-                responded: false,
-              },
-            }
-          );
-        }
-      } else {
-        console.warn(`[Socket] ⚠️ No joiningDate for user ${userId}`);
+        user.feedbackPrompt = {
+          shown: true,
+          shownAt: new Date(),
+          responded: false,
+        };
+        await user.save();
       }
     } catch (err) {
-      console.error("[Socket] ⚠️ Feedback prompt error:", err.message);
+      console.error("[Socket] ⚠️ Feedback check failed:", err.message);
     }
   }
 
-  // Join room
   socket.on("join", (roomId) => {
     if (roomId === "adminRoom") {
       socket.join("adminRoom");
@@ -97,24 +108,22 @@ io.on("connection", async (socket) => {
 
     if (roomId && (!socket.userId || socket.userId === roomId)) {
       socket.userId = roomId;
-      connectedUsers.add(roomId);
       socket.join(roomId);
+      connectedUsers.add(roomId);
       io.emit("userStatus", { userId: roomId, isOnline: true });
       io.emit("onlineUsersCount", connectedUsers.size);
     }
   });
 
-  // Forward user location updates to admin
   socket.on("userLocationUpdate", (data) => {
     io.to("adminRoom").emit("userLocationUpdate", data);
   });
 
-  // Request: Get online users list
   socket.on("getOnlineUsers", () => {
-    socket.emit("onlineUsersList", Array.from(connectedUsers));
+    const list = Array.from(connectedUsers);
+    socket.emit("onlineUsersList", list);
   });
 
-  // Ad impression tracking
   socket.on("adImpression", ({ postId, adIndex, adSlot, timeSpent }) => {
     if (socket.userId) {
       io.to(socket.userId).emit("adImpressionRecorded", {
@@ -127,8 +136,7 @@ io.on("connection", async (socket) => {
     }
   });
 
-  // On disconnect
-  socket.on("disconnect", () => {
+  socket.on("disconnect", (reason) => {
     if (socket.userId) {
       connectedUsers.delete(socket.userId);
       io.emit("userStatus", { userId: socket.userId, isOnline: false });
@@ -137,13 +145,11 @@ io.on("connection", async (socket) => {
   });
 });
 
-// Init socket with HTTP server
 export default function initializeSocket(server) {
   io.attach(server);
   return io;
 }
 
-// Emit helpers
 export const emitPostUpdated = (post) => {
   io.emit("postUpdated", post);
 };
