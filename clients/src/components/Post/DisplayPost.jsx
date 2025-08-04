@@ -428,9 +428,14 @@ const DisplayPost = () => {
           </div>
 
           <div className="w-full min-h-screen bg-gray-100 dark:bg-gray-800 py-16">
-            <Suspense fallback={<Skeleton height="h-32" width="w-full" />}>
-              <SuggestedPosts className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-full" />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<Skeleton height="h-32" width="w-full" />}>
+                <SuggestedPosts
+                  postId={activePost?._id}
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-full"
+                />
+              </Suspense>
+            </ErrorBoundary>
           </div>
 
           <Suspense fallback={null}>
