@@ -12,6 +12,8 @@ import initializeSocket from "../servers/sockets/socket.js";
 import { startTempCleanup } from "../servers/Utils/cleanupTemp.js";
 import { handleRazorpayWebhook } from "../servers/Controllers/paymentController.js";
 import { corsOptions } from "../servers/config/cors.config.js";
+import errorHandler from "./Middlewares/errorHandler.js";
+import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 
 // Routes
 import AuthRoutes from "./Routes/authRoutes.js";
@@ -31,8 +33,6 @@ import GeojsonRoutes from "./Routes/geojsonRoutes.js";
 import PostEmailRoutes from "./Routes/postEmailRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
-import errorHandler from "./Middlewares/errorHandler.js";
-import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 
 const app = express();
 app.set("trust proxy", true);
@@ -68,15 +68,14 @@ app.use((req, res, next) => {
 // Compression middleware
 app.use(
   compression({
-    filter: (req, res) => {
-      return req.headers["content-type"]?.includes("text") || false;
-    },
+    filter: (req, res) =>
+      req.headers["content-type"]?.includes("text") || false,
   })
 );
 
 // CORS config
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // Handle preflight requests
+app.options("*", cors(corsOptions));
 
 // Request parsing middleware
 app.use(express.json({ limit: "2mb" }));
@@ -109,14 +108,16 @@ const routes = [
 ];
 
 routes.forEach(([path, router, name]) => {
-  console.log(`[Server:Routes] Mounting ${name} at ${path}`);
+  console.log(`[Server:Routes] 🧪 Mounting ${name} at ${path}`);
   try {
     app.use(path, router);
+    console.log(`[Server:Routes] ✅ Mounted ${name}`);
   } catch (err) {
     console.error(
-      `[Server:Routes] ❌ Error mounting ${name} at ${path}:`,
+      `[Server:Routes] ❌ Failed to mount ${name} at ${path}:`,
       err.message
     );
+    if (err?.stack) console.error(err.stack);
   }
 });
 
@@ -150,13 +151,11 @@ if (NODE_ENV === "production") {
       });
     });
   } else {
-    console.error(
-      "[Server:Static] ❌ Production build missing: index.html not found"
-    );
+    console.error("[Server:Static] ❌ index.html not found");
   }
 }
 
-// Health check
+// Health check route
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
@@ -169,10 +168,10 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Custom global error handler
+// Global error handler
 app.use(errorHandler);
 
-// In development, print all route paths
+// Log all route paths (dev only)
 if (NODE_ENV !== "production") {
   try {
     app._router.stack.forEach((middleware) => {
@@ -193,45 +192,31 @@ if (NODE_ENV !== "production") {
       }
     });
   } catch (err) {
-    console.error(
-      "[Server:Routes] ❌ Route inspection error:",
-      err?.message || "Unknown error"
-    );
-    if (err instanceof Error) {
-      console.error(err.stack);
-    } else {
-      console.error("[Server:Routes] Non-Error thrown:", err);
-    }
+    console.error("[Server:Routes] ❌ Route inspection error:", err?.message);
+    if (err instanceof Error) console.error(err.stack);
   }
 }
 
-// Socket and HTTP error listeners
-io.on("error", (err) => {
-  console.error("[Server:SocketIO] Error:", err.message);
-});
+// Error logging
+io.on("error", (err) => console.error("[Server:SocketIO] Error:", err.message));
+server.on("error", (err) => console.error("[Server:HTTP] Error:", err.message));
 
-server.on("error", (err) => {
-  console.error("[Server:HTTP] Error:", err.message);
-});
-
-// Global error listeners
 process.on("uncaughtException", (err) => {
-  console.error("[UncaughtException] ❌", err.message, err.stack);
+  console.error("[UncaughtException] ❌", err.message);
   process.exit(1);
 });
-
 process.on("unhandledRejection", (err) => {
   console.error("[UnhandledRejection] ❌", err.message);
   process.exit(1);
 });
 
-// Memory monitoring
+// Monitor memory usage
 setInterval(() => {
   const used = process.memoryUsage().heapUsed / 1024 / 1024;
   console.log(`[Server:Memory] Heap used: ${used.toFixed(2)} MB`);
 }, 60000);
 
-// Start server
+// Boot the app
 const startServer = async () => {
   try {
     console.log("[Server:Startup] Connecting to MongoDB...");
@@ -247,11 +232,7 @@ const startServer = async () => {
       );
     });
   } catch (err) {
-    console.error(
-      "[Server:Startup] ❌ Failed to start:",
-      err.message,
-      err.stack
-    );
+    console.error("[Server:Startup] ❌ Startup failed:", err.message);
     process.exit(1);
   }
 };

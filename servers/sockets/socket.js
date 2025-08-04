@@ -2,7 +2,6 @@ import { Server } from "socket.io";
 import { corsOptions } from "../../servers/config/cors.config.js";
 import { verifyToken } from "../../servers/Utils/verifyToken.js";
 import UserModel from "../../servers/Models/User.js";
-import PostModel from "../../servers/Models/Post.js";
 
 const connectedUsers = new Set();
 
@@ -13,12 +12,13 @@ export const io = new Server({
   pingTimeout: 60000,
 });
 
+// Middleware: Verify token from auth or cookies
 io.use(async (socket, next) => {
-  let token = socket.handshake.auth.token;
+  let token = socket.handshake.auth?.token;
 
-  if (!token && socket.handshake.headers.cookie) {
+  if (!token && socket.handshake.headers?.cookie) {
     const cookies = socket.handshake.headers.cookie
-      ?.split("; ")
+      .split("; ")
       .reduce((acc, cookie) => {
         const [name, value] = cookie.split("=");
         acc[name] = value;
@@ -39,55 +39,56 @@ io.use(async (socket, next) => {
     socket.isAdmin = decoded.isAdmin;
     next();
   } catch (err) {
-    console.error("[Socket:Auth] ❌ Error:", err.message);
+    console.error("[Socket:Auth] ❌ Token error:", err.message);
     next(new Error("Authentication failed"));
   }
 });
 
+// On connection
 io.on("connection", async (socket) => {
-  if (socket.userId) {
-    if (connectedUsers.size > 100) {
-      // Limit to 100 users
-      connectedUsers.clear();
-    }
-    connectedUsers.add(socket.userId);
-    socket.join(socket.userId);
-    io.emit("userStatus", { userId: socket.userId, isOnline: true });
+  const userId = socket.userId;
+
+  if (userId) {
+    connectedUsers.add(userId);
+    socket.join(userId);
+    io.emit("userStatus", { userId, isOnline: true });
     io.emit("onlineUsersCount", connectedUsers.size);
 
     try {
-      const user = await UserModel.findById(socket.userId)
+      const user = await UserModel.findById(userId)
         .select("joiningDate feedbackPrompt")
-        .lean(); // Use lean for lower memory usage
+        .lean();
 
-      const joinedDaysAgo =
-        (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24);
+      if (user?.joiningDate) {
+        const joinedDaysAgo =
+          (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24);
 
-      if (
-        joinedDaysAgo >= 7 &&
-        (!user.feedbackPrompt ||
-          (!user.feedbackPrompt.shown && !user.feedbackPrompt.responded))
-      ) {
-        socket.emit("showFeedbackPrompt", {
-          message: "How do you like our app?",
-        });
+        const prompt = user.feedbackPrompt || {};
+        if (joinedDaysAgo >= 7 && !prompt.shown && !prompt.responded) {
+          socket.emit("showFeedbackPrompt", {
+            message: "How do you like our app?",
+          });
 
-        await UserModel.updateOne(
-          { _id: socket.userId },
-          {
-            feedbackPrompt: {
-              shown: true,
-              shownAt: new Date(),
-              responded: false,
-            },
-          }
-        );
+          await UserModel.updateOne(
+            { _id: userId },
+            {
+              feedbackPrompt: {
+                shown: true,
+                shownAt: new Date(),
+                responded: false,
+              },
+            }
+          );
+        }
+      } else {
+        console.warn(`[Socket] ⚠️ No joiningDate for user ${userId}`);
       }
     } catch (err) {
-      console.error("[Socket] ⚠️ Feedback check failed:", err.message);
+      console.error("[Socket] ⚠️ Feedback prompt error:", err.message);
     }
   }
 
+  // Join room
   socket.on("join", (roomId) => {
     if (roomId === "adminRoom") {
       socket.join("adminRoom");
@@ -95,26 +96,25 @@ io.on("connection", async (socket) => {
     }
 
     if (roomId && (!socket.userId || socket.userId === roomId)) {
-      if (connectedUsers.size > 100) {
-        connectedUsers.clear();
-      }
       socket.userId = roomId;
-      socket.join(roomId);
       connectedUsers.add(roomId);
+      socket.join(roomId);
       io.emit("userStatus", { userId: roomId, isOnline: true });
       io.emit("onlineUsersCount", connectedUsers.size);
     }
   });
 
+  // Forward user location updates to admin
   socket.on("userLocationUpdate", (data) => {
     io.to("adminRoom").emit("userLocationUpdate", data);
   });
 
+  // Request: Get online users list
   socket.on("getOnlineUsers", () => {
-    const list = Array.from(connectedUsers);
-    socket.emit("onlineUsersList", list);
+    socket.emit("onlineUsersList", Array.from(connectedUsers));
   });
 
+  // Ad impression tracking
   socket.on("adImpression", ({ postId, adIndex, adSlot, timeSpent }) => {
     if (socket.userId) {
       io.to(socket.userId).emit("adImpressionRecorded", {
@@ -127,7 +127,8 @@ io.on("connection", async (socket) => {
     }
   });
 
-  socket.on("disconnect", (reason) => {
+  // On disconnect
+  socket.on("disconnect", () => {
     if (socket.userId) {
       connectedUsers.delete(socket.userId);
       io.emit("userStatus", { userId: socket.userId, isOnline: false });
@@ -136,11 +137,13 @@ io.on("connection", async (socket) => {
   });
 });
 
+// Init socket with HTTP server
 export default function initializeSocket(server) {
   io.attach(server);
   return io;
 }
 
+// Emit helpers
 export const emitPostUpdated = (post) => {
   io.emit("postUpdated", post);
 };
