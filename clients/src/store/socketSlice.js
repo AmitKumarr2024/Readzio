@@ -10,7 +10,7 @@ import { checkAuth } from "./authSlice";
 import { addNotification, updateUnreadCount } from "./notificationSlice";
 import { debounce } from "lodash";
 import { fetchBannerNotifications } from "./adminSlice";
-import {toast} from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 const isDev = import.meta.env.MODE === "development";
 const MAX_USER_LOCATIONS = 500;
@@ -25,10 +25,6 @@ const log = (...args) => {
     console.error(...args);
   }
 };
-
-const debouncedLocationHandler = debounce((dispatch, location) => {
-  dispatch(addUserLocation(location));
-}, 1000);
 
 export const fetchActiveNotifications = createAsyncThunk(
   "socket/fetchActiveNotifications",
@@ -99,11 +95,9 @@ export const initializeSocket = createAsyncThunk(
     const { user, isGuest } = getState().auth;
     let token = getToken();
 
-    // Skip auth and post counts for guests
     if (!token && !user?._id && isGuest) {
       log("[socketSlice] Guest user, skipping join/postCounts");
     } else if (!token) {
-      // fallback: try checking auth
       try {
         await dispatch(checkAuth()).unwrap();
         token = getToken();
@@ -112,21 +106,28 @@ export const initializeSocket = createAsyncThunk(
       }
     }
 
+    const userId = user?._id?.toString();
+    if (!isGuest && !userId) {
+      log("[socketSlice] ⏳ Waiting for userId...");
+      return Promise.reject("User not ready");
+    }
+
     const socket = io(import.meta.env.VITE_API_URL || "http://localhost:8001", {
       auth: { token: token || null },
-      transports: ["websocket"],
-      path: "/socket.io",
+      transports: ["websocket", "polling"], // Added polling fallback
+      path: "/socket.io/",
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
     });
+
+    const debouncedLocationHandler = debounce((dispatch, location) => {
+      dispatch(addUserLocation(location));
+    }, 1000);
 
     return new Promise((resolve, reject) => {
       socket.removeAllListeners();
 
       socket.on("connect", () => {
-        const userId = getState().auth.user?._id?.toString();
-        const isGuest = getState().auth?.isGuest;
-
         if (!isGuest && userId) {
           socket.emit("join", userId);
           socket.emit("join", "adminRoom");
@@ -137,11 +138,20 @@ export const initializeSocket = createAsyncThunk(
         resolve(socket);
       });
 
+      let lastToast = 0;
       socket.on("connect_error", (err) => {
+        const now = Date.now();
+        if (now - lastToast > 10000) {
+          toast.error("🚨 Can't connect to server. Please try again.");
+          lastToast = now;
+        }
         dispatch(setError(err.message));
         console.error("Socket Connect Error:", err.message);
-        toast.error("🚨 Can't connect to server. Please try again.");
         reject(err);
+      });
+
+      socket.io.on("reconnect_attempt", () => {
+        log("🌀 Trying to reconnect...");
       });
 
       socket.on("disconnect", (reason) => {
@@ -153,7 +163,6 @@ export const initializeSocket = createAsyncThunk(
       });
 
       socket.off("newNotification").on("newNotification", (notification) => {
-        const userId = getState().auth.user?._id?.toString();
         if (notification?.user?.toString() === userId) {
           dispatch(addNotification(notification));
           dispatch(newNotificationReceived(notification));
@@ -211,7 +220,16 @@ export const initializeSocket = createAsyncThunk(
                 }
               })
               .catch((err) => {
-                console.error("Error checking dismissed status:", err.message);
+                if (err.response?.status === 403) {
+                  console.warn(
+                    "⚠️ Admin not allowed to fetch banner dismissal status"
+                  );
+                } else {
+                  console.error(
+                    "Error checking dismissed status:",
+                    err.message
+                  );
+                }
               });
           }
         });
@@ -306,6 +324,23 @@ export const disconnectSocket = createAsyncThunk(
   async (_, { dispatch, getState }) => {
     const socket = getState().socket.socketInstance;
     if (socket) {
+      const events = [
+        "onlineUsersCount",
+        "newNotification",
+        "updateUnreadCount",
+        "userStatus",
+        "userLocationUpdate",
+        "newAppeal",
+        "newBroadcastNotification",
+        "postCountsUpdated",
+        "broadcastNotificationDismissed",
+        "broadcastNotificationDeactivated",
+        "broadcastNotificationDeletedAll",
+        "postBlockToggled",
+        "guestVisitUpdate",
+        "showFeedbackPrompt",
+      ];
+      events.forEach((event) => socket.off(event));
       socket.removeAllListeners();
       socket.disconnect();
       dispatch(setDisconnected());
@@ -332,7 +367,6 @@ const socketSlice = createSlice({
     setFeedbackPrompt(state, action) {
       state.feedbackPrompt = action.payload;
     },
-
     setSocketInstance(state, action) {
       state.socketInstance = action.payload;
       state.status = action.payload?.connected ? "connected" : "disconnected";
@@ -370,6 +404,7 @@ const socketSlice = createSlice({
         return;
       }
       if (state.userLocations.length >= MAX_USER_LOCATIONS) {
+        console.warn("⚠️ Max user locations reached. Trimming oldest entries.");
         state.userLocations.shift();
       }
       state.userLocations = [
@@ -445,9 +480,7 @@ const socketSlice = createSlice({
         });
         state.guestVisits.unshift(newGuest);
         if (state.guestVisits.length > MAX_GUEST_VISITS) {
-          log(
-            `[addGuestVisit] Trimming guestVisits to ${MAX_GUEST_VISITS}, removing oldest entry`
-          );
+          console.warn("⚠️ Max guest visits reached. Trimming oldest entries.");
           state.guestVisits = state.guestVisits.slice(0, MAX_GUEST_VISITS);
         }
       }

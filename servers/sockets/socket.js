@@ -7,18 +7,21 @@ import PostModel from "../../servers/Models/Post.js";
 const connectedUsers = new Set();
 
 export const io = new Server({
-  path: "/socket.io",
+  path: "/socket.io/",
   cors: {
     origin: (origin, callback) => {
+      console.log("[Socket:CORS] Request from:", origin); // Log for debugging
       const allowedOrigins = [
         CLIENT_URL?.replace(/\/$/, ""),
         "http://localhost:5173",
         "http://localhost:8001",
         "https://inksha-uedq.onrender.com",
+        "https://www.inksha-uedq.onrender.com", // Added www variant
       ].filter(Boolean);
 
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
 
       console.error("[Socket:CORS] ❌ Blocked:", origin);
       return callback(new Error("CORS not allowed"));
@@ -30,28 +33,30 @@ export const io = new Server({
   pingTimeout: 60000,
 });
 
-// Authentication middleware
 io.use(async (socket, next) => {
   let token = socket.handshake.auth.token;
 
   if (!token && socket.handshake.headers.cookie) {
     const cookies = socket.handshake.headers.cookie
-      .split("; ")
+      ?.split("; ")
       .reduce((acc, cookie) => {
         const [name, value] = cookie.split("=");
         acc[name] = value;
         return acc;
       }, {});
-    token = cookies.jwt;
+    token = cookies?.jwt;
+  }
+
+  if (!token) {
+    console.error("[Socket:Auth] ❌ No token provided");
+    return next(new Error("Authentication failed"));
   }
 
   try {
-    if (token) {
-      const decoded = verifyToken(token);
-      socket.userId = decoded.userId?.toString();
-      socket.role = decoded.role;
-      socket.isAdmin = decoded.isAdmin;
-    }
+    const decoded = verifyToken(token);
+    socket.userId = decoded.userId?.toString();
+    socket.role = decoded.role;
+    socket.isAdmin = decoded.isAdmin;
     next();
   } catch (err) {
     console.error("[Socket:Auth] ❌ Error:", err.message);
@@ -59,7 +64,6 @@ io.use(async (socket, next) => {
   }
 });
 
-// Main socket connection
 io.on("connection", async (socket) => {
   if (socket.userId) {
     connectedUsers.add(socket.userId);
@@ -141,13 +145,11 @@ io.on("connection", async (socket) => {
   });
 });
 
-// Attach to server
 export default function initializeSocket(server) {
   io.attach(server);
   return io;
 }
 
-// Emit helpers for posts
 export const emitPostUpdated = (post) => {
   io.emit("postUpdated", post);
 };

@@ -33,8 +33,6 @@ import guestRoutes from "./Routes/guestRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 
-// console.log("[Server:Startup] Initializing Express server");
-
 const app = express();
 app.set("trust proxy", true);
 const server = http.createServer(app);
@@ -42,7 +40,7 @@ const io = initializeSocket(server);
 
 const __dirname = path.resolve();
 
-// 🔐 Razorpay webhook (raw body needed)
+// Razorpay webhook
 app.post(
   "/api/razorpay/webhook",
   express.json({
@@ -50,7 +48,14 @@ app.post(
       req.rawBody = buf.toString();
     },
   }),
-  handleRazorpayWebhook
+  (req, res, next) => {
+    try {
+      handleRazorpayWebhook(req, res, next);
+    } catch (err) {
+      console.error("[Server:Razorpay] ❌ Webhook error:", err.message);
+      next(err);
+    }
+  }
 );
 
 // Attach socket to every request
@@ -61,7 +66,6 @@ app.use((req, res, next) => {
 
 // Compression middleware
 app.use(compression());
-// console.log("[Server:Middleware] Compression applied");
 
 // CORS config
 const allowedOrigins = [
@@ -69,15 +73,14 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:8001",
   "https://inksha-uedq.onrender.com",
+  "https://www.inksha-uedq.onrender.com",
 ].filter(Boolean);
-
-// console.log("[Server:CORS] Allowed origins:", allowedOrigins);
 
 app.use(
   cors({
     origin: (origin, callback) => {
+      console.log("[Server:CORS] Request from:", origin);
       if (!origin || allowedOrigins.includes(origin)) {
-        // console.log("[Server:CORS] ✅ Allowed:", origin);
         return callback(null, true);
       }
       console.error("[Server:CORS] ❌ Blocked:", origin);
@@ -93,9 +96,8 @@ app.use(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
-// console.log("[Server:Middleware] JSON, URL-encoded, cookie-parser applied");
 
-// 🔌 Mount API Routes
+// Mount API Routes
 const routes = [
   ["/api/auth", AuthRoutes],
   ["/api/user", UserRoutes],
@@ -117,20 +119,11 @@ const routes = [
 ];
 
 routes.forEach(([path, router]) => {
-  // console.log(`🔌 Mounting route: ${path}`);
   app.use(path, router);
 });
 
-// ✅ Serve static frontend in production
-const clientPath = path.join(__dirname, "clients", "dist");
-const clientIndexPath = path.join(clientPath, "index.html");
-
-// ✅ Serve static public files (logo.png, robots.txt, etc.)
-// Log all requests to /public
-// Now correctly targets servers/public
+// Serve static public files
 const publicPath = path.join(__dirname, "servers", "public");
-// console.log("✅ Public folder served at:", publicPath);
-
 app.use("/public", express.static(publicPath));
 
 // Static ads.txt file
@@ -140,17 +133,28 @@ app.get("/ads.txt", (req, res) => {
     .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
 });
 
-// ✅ Serve frontend in production
+// Serve frontend in production
+const clientPath = path.join(__dirname, "clients", "dist");
+const clientIndexPath = path.join(clientPath, "index.html");
+
 if (NODE_ENV === "production") {
   if (fs.existsSync(clientIndexPath)) {
     app.use(express.static(clientPath));
-
-    // ⚠️ This must come LAST
     app.get(/^\/(?!api\/).*/, (req, res) => {
-      res.sendFile(clientIndexPath);
+      res.sendFile(clientIndexPath, (err) => {
+        if (err) {
+          console.error(
+            "[Server:Static] ❌ Failed to serve index.html:",
+            err.message
+          );
+          res.status(500).send("Internal Server Error");
+        }
+      });
     });
   } else {
-    console.warn("⚠️ Production build missing: index.html not found");
+    console.error(
+      "[Server:Static] ❌ Production build missing: index.html not found"
+    );
   }
 }
 
@@ -162,13 +166,13 @@ app.get("/health", (req, res) => {
     uptime: process.uptime(),
     database:
       mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    socket: io.engine.clientsCount > 0 ? "active" : "inactive",
     timestamp: new Date().toISOString(),
   });
 });
 
 // Custom global error handler
 app.use(errorHandler);
-// console.log("[Server:Middleware] Error handler applied");
 
 // In development, print all route paths
 if (NODE_ENV !== "production") {
@@ -178,14 +182,14 @@ if (NODE_ENV !== "production") {
         const methods = Object.keys(middleware?.route?.methods || {})
           .join(", ")
           .toUpperCase();
-        // console.log(`✔ ${methods} ${middleware.route.path}`);
+        console.log(`✔ ${methods} ${middleware.route.path}`);
       } else if (middleware?.name === "router" && middleware?.handle?.stack) {
         middleware.handle.stack.forEach((handler) => {
           if (handler?.route?.path) {
             const methods = Object.keys(handler?.route?.methods || {})
               .join(", ")
               .toUpperCase();
-            // console.log(`✔ ${methods} ${handler.route.path}`);
+            console.log(`✔ ${methods} ${handler.route.path}`);
           }
         });
       }
@@ -226,9 +230,9 @@ process.on("unhandledRejection", (err) => {
 // Start server
 const startServer = async () => {
   try {
-    // console.log("[Server:Startup] Connecting to MongoDB...");
+    console.log("[Server:Startup] Connecting to MongoDB...");
     await connectDb();
-    // console.log("[Server:Startup] ✅ Database connected");
+    console.log("[Server:Startup] ✅ Database connected");
 
     startTempCleanup();
     startDailyDigestJob();
@@ -239,7 +243,11 @@ const startServer = async () => {
       );
     });
   } catch (err) {
-    console.error("[Server:Startup] ❌ Failed to start:", err.message);
+    console.error(
+      "[Server:Startup] ❌ Failed to start:",
+      err.message,
+      err.stack
+    );
     process.exit(1);
   }
 };
