@@ -39,6 +39,23 @@ const formatLabel = (str) =>
     ? str.trim().charAt(0).toUpperCase() + str.trim().slice(1).toLowerCase()
     : "Unknown";
 
+// Validate GeoJSON
+const isValidGeoJson = (data) => {
+  return (
+    data &&
+    typeof data === "object" &&
+    data.type === "FeatureCollection" &&
+    Array.isArray(data.features) &&
+    data.features.every(
+      (feature) =>
+        feature.type === "Feature" &&
+        feature.geometry &&
+        ["Polygon", "MultiPolygon"].includes(feature.geometry.type) &&
+        Array.isArray(feature.geometry.coordinates)
+    )
+  );
+};
+
 // Map zoom handler
 const ZoomHandler = ({
   selectedCountry,
@@ -100,11 +117,7 @@ const ZoomHandler = ({
           loc.coordinates?.lon
       );
 
-      if (
-        selectedCountry === "India" &&
-        geoJson?.data &&
-        geoJson.data.type === "FeatureCollection"
-      ) {
+      if (selectedCountry === "India" && isValidGeoJson(geoJson?.data)) {
         const indiaLayer = L.geoJSON(geoJson.data);
         const indiaBounds = indiaLayer.getBounds();
         map.fitBounds(indiaBounds, { padding: [50, 50] });
@@ -177,14 +190,23 @@ const LocationDashboard = () => {
       if (geoJson.loading || geoJson.data) return;
       try {
         const cached = await getCachedGeoJson();
-        if (cached) {
+        if (cached && isValidGeoJson(cached)) {
           dispatch(setGeoJsonFromCache(cached));
         } else {
           const res = await dispatch(fetchIndiaGeoJson()).unwrap();
-          await cacheGeoJson(res);
+          if (isValidGeoJson(res)) {
+            await cacheGeoJson(res);
+            dispatch(setGeoJsonFromCache(res));
+          } else {
+            throw new Error("Invalid GeoJSON data received");
+          }
         }
       } catch (err) {
         console.error("[GeoJSON] load error", err.message);
+        dispatch({
+          type: "user/fetchIndiaGeoJson/rejected",
+          payload: err.message || "Failed to load GeoJSON",
+        });
       }
     };
     if (userId) loadIndiaGeoJson();
@@ -282,6 +304,27 @@ const LocationDashboard = () => {
   }, []);
 
   const mapCenter = [20.5937, 78.9629];
+
+  // Filter valid GeoJSON for India
+  const indiaGeoJson = useMemo(() => {
+    if (!isValidGeoJson(geoJson.data)) return null;
+    const features = geoJson.data.features.filter(
+      (f) =>
+        (f.geometry?.type === "Polygon" ||
+          f.geometry?.type === "MultiPolygon") &&
+        ["india", "in"].includes(
+          (
+            f.properties?.NAME_0 ||
+            f.properties?.name ||
+            f.properties?.admin ||
+            f.properties?.iso ||
+            f.properties?.country ||
+            ""
+          ).toLowerCase()
+        )
+    );
+    return { type: "FeatureCollection", features };
+  }, [geoJson.data]);
 
   if (userError)
     return (
@@ -411,9 +454,9 @@ const LocationDashboard = () => {
                 selectedUserLocation={selectedUserLocation}
                 geoJson={geoJson}
               />
-              {selectedCountry === "India" && geoJson.data && (
+              {selectedCountry === "India" && indiaGeoJson && (
                 <GeoJSON
-                  data={geoJson.data}
+                  data={indiaGeoJson}
                   style={() => ({
                     color: "#f63e02",
                     weight: 1,
@@ -421,6 +464,13 @@ const LocationDashboard = () => {
                     fillOpacity: 0.4,
                   })}
                   zIndex={1000}
+                  onEachFeature={(feature, layer) => {
+                    layer.bindPopup(
+                      `<strong>${
+                        feature.properties?.NAME_0 || "India"
+                      }</strong>`
+                    );
+                  }}
                 />
               )}
               {geoJson.loading && (

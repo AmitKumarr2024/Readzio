@@ -24,11 +24,18 @@ import { ErrorBoundary } from "react-error-boundary";
 import LoadingBar from "../../Utils/LoadingBar";
 import { cacheGeoJson, getCachedGeoJson } from "../../Utils/geojsonUtils";
 
-// Custom marker icon
+// Custom marker icons
 const customIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
+
+const selfIcon = new L.Icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png", // Different icon for self
+  iconSize: [35, 51], // Slightly larger for visibility
+  iconAnchor: [17, 51],
   popupAnchor: [1, -34],
 });
 
@@ -38,6 +45,23 @@ const formatLabel = (str) =>
     ? str.trim().charAt(0).toUpperCase() + str.trim().slice(1).toLowerCase()
     : "Unknown";
 
+// Validate GeoJSON
+const isValidGeoJson = (data) => {
+  return (
+    data &&
+    typeof data === "object" &&
+    data.type === "FeatureCollection" &&
+    Array.isArray(data.features) &&
+    data.features.every(
+      (feature) =>
+        feature.type === "Feature" &&
+        feature.geometry &&
+        ["Polygon", "MultiPolygon"].includes(feature.geometry.type) &&
+        Array.isArray(feature.geometry.coordinates)
+    )
+  );
+};
+
 // Map zoom handler
 const ZoomHandler = ({
   selectedCountry,
@@ -45,6 +69,7 @@ const ZoomHandler = ({
   locations,
   selectedUserLocation,
   geoJson,
+  userId,
 }) => {
   const map = useMap();
 
@@ -99,11 +124,7 @@ const ZoomHandler = ({
           loc.coordinates?.lon
       );
 
-      if (
-        selectedCountry === "India" &&
-        geoJson?.data &&
-        geoJson.data.type === "FeatureCollection"
-      ) {
+      if (selectedCountry === "India" && isValidGeoJson(geoJson?.data)) {
         const indiaLayer = L.geoJSON(geoJson.data);
         const indiaBounds = indiaLayer.getBounds();
         map.fitBounds(indiaBounds, { padding: [50, 50] });
@@ -124,7 +145,19 @@ const ZoomHandler = ({
       return;
     }
 
-    map.setView(defaultIndiaCenter, defaultZoom);
+    // Auto-zoom to self-location if available
+    const selfLocation = locations.list.find(
+      (loc) =>
+        loc.userId === userId && loc.coordinates?.lat && loc.coordinates?.lon
+    );
+    if (selfLocation) {
+      map.setView(
+        [selfLocation.coordinates.lat, selfLocation.coordinates.lon],
+        cappedZoom
+      );
+    } else {
+      map.setView(defaultIndiaCenter, defaultZoom);
+    }
   }, [
     selectedCountry,
     selectedState,
@@ -132,6 +165,7 @@ const ZoomHandler = ({
     selectedUserLocation,
     geoJson,
     map,
+    userId,
   ]);
 
   return null;
@@ -162,14 +196,23 @@ const AdminLocationDashboard = () => {
 
       try {
         const cached = await getCachedGeoJson();
-        if (cached) {
+        if (cached && isValidGeoJson(cached)) {
           dispatch(setGeoJsonFromCache(cached));
         } else {
           const res = await dispatch(fetchIndiaGeoJson()).unwrap();
-          await cacheGeoJson(res);
+          if (isValidGeoJson(res)) {
+            await cacheGeoJson(res);
+            dispatch(setGeoJsonFromCache(res));
+          } else {
+            throw new Error("Invalid GeoJSON data received");
+          }
         }
       } catch (err) {
         console.error("[GeoJSON] load error", err.message);
+        dispatch({
+          type: "user/fetchIndiaGeoJson/rejected",
+          payload: err.message || "Failed to load GeoJSON",
+        });
       }
     };
 
@@ -212,6 +255,7 @@ const AdminLocationDashboard = () => {
   }, [socket, dispatch]);
 
   const indiaGeoJson = useMemo(() => {
+    if (!isValidGeoJson(geoJson.data)) return null;
     const features =
       geoJson.data?.features?.filter(
         (f) =>
@@ -232,6 +276,7 @@ const AdminLocationDashboard = () => {
   }, [geoJson.data]);
 
   const limitedGeoJson = useMemo(() => {
+    if (!isValidGeoJson(geoJson.data)) return null;
     const features =
       geoJson.data?.features
         ?.filter(
@@ -295,6 +340,7 @@ const AdminLocationDashboard = () => {
       status: userStatus[loc.userId]?.isOnline ? "Online" : "Offline",
       coordinates: loc.coordinates,
       timestamp: loc.timestamp,
+      isSelf: loc.userId === userId, // Flag for self-location
     }));
   }, [
     selectedCountry,
@@ -302,6 +348,7 @@ const AdminLocationDashboard = () => {
     groupedLocations,
     locations.list,
     userStatus,
+    userId,
   ]);
 
   const stateCounts = useMemo(() => {
@@ -329,6 +376,10 @@ const AdminLocationDashboard = () => {
   const offlineUsers = tableData.filter(
     (loc) => loc.status === "Offline"
   ).length;
+
+  const selfLocation = useMemo(() => {
+    return tableData.find((loc) => loc.isSelf);
+  }, [tableData]);
 
   const handleRowClick = useCallback((loc) => {
     if (loc.coordinates?.lat && loc.coordinates?.lon) {
@@ -360,6 +411,15 @@ const AdminLocationDashboard = () => {
             <p>No location data</p>
           ) : (
             <div className="space-y-2">
+              {selfLocation && (
+                <button
+                  onClick={() => handleRowClick(selfLocation)}
+                  className="w-full text-left p-2 rounded bg-blue-200 dark:bg-blue-700 text-sm font-semibold"
+                >
+                  My Location ({formatLabel(selfLocation.state)},{" "}
+                  {formatLabel(selfLocation.country)})
+                </button>
+              )}
               {Object.keys(groupedLocations)
                 .filter((country) => country !== "Unknown")
                 .map((country) => (
@@ -440,6 +500,7 @@ const AdminLocationDashboard = () => {
                   locations={locations}
                   selectedUserLocation={selectedUserLocation}
                   geoJson={geoJson}
+                  userId={userId}
                 />
                 {geoJson.loading && (
                   <div className="text-center p-2 z-10">Loading GeoJSON...</div>
@@ -449,18 +510,22 @@ const AdminLocationDashboard = () => {
                     Error: {geoJson.error}
                   </div>
                 )}
-                {indiaGeoJson.features?.length > 0 && (
+                {indiaGeoJson?.features?.length > 0 && (
                   <GeoJSON
                     data={indiaGeoJson}
                     style={geoJsonStyle}
                     zIndexOffset={1000}
                     onEachFeature={(feature, layer) => {
-                      layer.bindPopup("<strong>India</strong>");
+                      layer.bindPopup(
+                        `<strong>${
+                          feature.properties?.NAME_0 || "India"
+                        }</strong>`
+                      );
                     }}
                   />
                 )}
                 {selectedCountry === "India" &&
-                  limitedGeoJson.features.length > 0 && (
+                  limitedGeoJson?.features.length > 0 && (
                     <GeoJSON
                       data={limitedGeoJson}
                       style={() => ({
@@ -481,12 +546,13 @@ const AdminLocationDashboard = () => {
                       <Marker
                         key={`${loc.userId}-${loc.timestamp || index}`}
                         position={[loc.coordinates.lat, loc.coordinates.lon]}
-                        icon={customIcon}
+                        icon={loc.isSelf ? selfIcon : customIcon} // Use selfIcon for self-location
                       >
                         <Popup>
                           <div className="text-sm">
                             <p>
                               <strong>Name:</strong> {loc?.name || "Unknown"}
+                              {loc.isSelf && " (You)"}
                             </p>
                             <p>
                               <strong>State:</strong> {formatLabel(loc?.state)}
@@ -561,11 +627,14 @@ const AdminLocationDashboard = () => {
                     ),
                     TableRow: ({ item: loc }) => (
                       <tr
-                        className="hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+                        className={`hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer ${
+                          loc.isSelf ? "bg-blue-100 dark:bg-blue-900" : ""
+                        }`}
                         onClick={() => handleRowClick(loc)}
                       >
                         <td className="p-2 border-b border-gray-300 dark:border-gray-600">
                           {loc?.name || "Unknown"}
+                          {loc.isSelf && " (You)"}
                         </td>
                         <td className="p-2 border-b border-gray-300 dark:border-gray-600">
                           {loc?.state}
