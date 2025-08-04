@@ -64,19 +64,16 @@ export const fetchFollowerLocations = createAsyncThunk(
 
 export const fetchIndiaGeoJson = createAsyncThunk(
   "user/fetchIndiaGeoJson",
-  async (_, { rejectWithValue }) => {
+  async (_, thunkAPI) => {
     try {
-      const url = "/geojson/india-border";
-      const res = await axiosInstance.get(url);
-      // console.log("fetchIndiaGeoJsonnnnnnn", res);
-
-      if (!res.data?.type || res.data.type !== "FeatureCollection") {
-        throw new Error("Invalid GeoJSON format");
-      }
+      const res = await axiosInstance.get("/geojson/india-border", {
+        timeout: 30000,
+      });
       return res.data;
     } catch (err) {
-      console.error("[UserSlice] fetchIndiaGeoJson: Error", err.message);
-      return rejectWithValue(err.message || "Failed to fetch GeoJSON");
+      return thunkAPI.rejectWithValue(
+        err?.response?.data?.message || err.message || "GeoJSON fetch failed"
+      );
     }
   }
 );
@@ -677,6 +674,13 @@ const userSlice = createSlice({
         tracked: false,
       };
     },
+    setGeoJsonFromCache: (state, action) => {
+      state.geoJson = {
+        data: action.payload,
+        loading: false,
+        error: null,
+      };
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -1051,6 +1055,7 @@ export const {
   resetUpdateStatus,
   clearIPLocation,
   resetFeedbackState,
+  setGeoJsonFromCache,
 } = userSlice.actions;
 
 export default userSlice.reducer;
