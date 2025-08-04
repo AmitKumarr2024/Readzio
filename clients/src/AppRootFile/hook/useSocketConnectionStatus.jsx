@@ -6,28 +6,37 @@ import { toast } from "react-hot-toast";
 export function useSocketConnectionStatus() {
   const { status, error } = useSelector((state) => state.socket);
   const prevStatusRef = useRef(null);
+  const lastToastTimeRef = useRef(0);
 
   // Handle browser online/offline events
   useEffect(() => {
     const handleOffline = () => toast.error("Offline. Check your connection.");
-    const handleOnline = () => {
-      toast.success("Back to online.");
-    };
+    const handleOnline = () => toast.success("Back online.");
 
     window.addEventListener("offline", handleOffline);
     window.addEventListener("online", handleOnline);
+
     return () => {
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
     };
   }, []);
 
-  // Handle socket connection changes
+  // Handle socket connection status changes
   useEffect(() => {
     const prevStatus = prevStatusRef.current;
 
-    if (status === "disconnected" && error && navigator.onLine) {
+    const now = Date.now();
+    const toastCooldown = 10000; // 10 seconds
+
+    if (
+      status === "disconnected" &&
+      error &&
+      navigator.onLine &&
+      now - lastToastTimeRef.current > toastCooldown
+    ) {
       toast.error("Socket lost. Retrying...");
+      lastToastTimeRef.current = now;
     }
 
     if (status === "connected" && prevStatus === "disconnected") {
@@ -35,5 +44,5 @@ export function useSocketConnectionStatus() {
     }
 
     prevStatusRef.current = status;
-  }, [status, error]); // Run on status or error change
+  }, [status, error]);
 }
