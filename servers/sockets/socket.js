@@ -1,5 +1,5 @@
 import { Server } from "socket.io";
-import { CLIENT_URL } from "../config/dotenv.js";
+import { corsOptions } from "../../servers/config/cors.config.js";
 import { verifyToken } from "../../servers/Utils/verifyToken.js";
 import UserModel from "../../servers/Models/User.js";
 import PostModel from "../../servers/Models/Post.js";
@@ -8,27 +8,7 @@ const connectedUsers = new Set();
 
 export const io = new Server({
   path: "/socket.io/",
-  cors: {
-    origin: (origin, callback) => {
-      console.log("[Socket:CORS] Request from:", origin); // Log for debugging
-      const allowedOrigins = [
-        CLIENT_URL?.replace(/\/$/, ""),
-        "http://localhost:5173",
-        "http://localhost:8001",
-        "https://inksha-uedq.onrender.com",
-        "https://www.inksha-uedq.onrender.com", // Added www variant
-      ].filter(Boolean);
-
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      console.error("[Socket:CORS] ❌ Blocked:", origin);
-      return callback(new Error("CORS not allowed"));
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  },
+  cors: corsOptions,
   pingInterval: 25000,
   pingTimeout: 60000,
 });

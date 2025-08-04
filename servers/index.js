@@ -6,11 +6,12 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import http from "http";
 import mongoose from "mongoose";
-import { CLIENT_URL, NODE_ENV, PORT } from "./config/dotenv.js";
-import connectDb from "./config/mongodb.js";
-import initializeSocket from "./sockets/socket.js";
-import { startTempCleanup } from "./Utils/cleanupTemp.js";
-import { handleRazorpayWebhook } from "./Controllers/paymentController.js";
+import { CLIENT_URL, NODE_ENV, PORT } from "../servers/config/dotenv.js";
+import connectDb from "../servers/config/mongodb.js";
+import initializeSocket from "../servers/sockets/socket.js";
+import { startTempCleanup } from "../servers/Utils/cleanupTemp.js";
+import { handleRazorpayWebhook } from "../servers/Controllers/paymentController.js";
+import { corsOptions } from "../servers/config/cors.config.js";
 
 // Routes
 import AuthRoutes from "./Routes/authRoutes.js";
@@ -68,29 +69,8 @@ app.use((req, res, next) => {
 app.use(compression());
 
 // CORS config
-const allowedOrigins = [
-  CLIENT_URL?.replace(/\/$/, ""),
-  "http://localhost:5173",
-  "http://localhost:8001",
-  "https://inksha-uedq.onrender.com",
-  "https://www.inksha-uedq.onrender.com",
-].filter(Boolean);
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      console.log("[Server:CORS] Request from:", origin);
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      console.error("[Server:CORS] ❌ Blocked:", origin);
-      return callback(new Error("CORS not allowed"));
-    },
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  })
-);
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // Handle preflight requests
 
 // Request parsing middleware
 app.use(express.json({ limit: "10mb" }));
