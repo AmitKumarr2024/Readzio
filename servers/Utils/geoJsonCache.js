@@ -1,4 +1,4 @@
-import axiosInstance from "./axiosInstance";
+import axiosInstance from "../../servers/Utils/axiosInstance.js";
 
 const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
 
