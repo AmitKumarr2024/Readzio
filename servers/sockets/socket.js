@@ -1,33 +1,29 @@
 import { Server } from "socket.io";
-import { CLIENT_URL, ALLOWED_ORIGINS } from "../config/dotenv.js";
+import { CLIENT_URL } from "../config/dotenv.js";
 import { verifyToken } from "../../servers/Utils/verifyToken.js";
 import UserModel from "../../servers/Models/User.js";
-import throttle from "lodash.throttle";
+import PostModel from "../../servers/Models/Post.js";
 
-// Constants
-const isDev = process.env.NODE_ENV === "development";
-const EVENTS = {
-  userStatus: "userStatus",
-  onlineUsersCount: "onlineUsersCount",
-  userLocationUpdate: "userLocationUpdate",
-  showFeedbackPrompt: "showFeedbackPrompt",
-  adImpression: "adImpression",
-  adImpressionRecorded: "adImpressionRecorded",
-  getOnlineUsers: "getOnlineUsers",
-  onlineUsersList: "onlineUsersList",
-  postUpdated: "postUpdated",
-  postDeleted: "postDeleted",
-};
-
-// Socket Setup
 const connectedUsers = new Set();
-const io = new Server({
+
+export const io = new Server({
   path: "/socket.io/",
   cors: {
     origin: (origin, callback) => {
-      const allowed = ALLOWED_ORIGINS.split(",").filter(Boolean);
-      if (!origin || allowed.includes(origin)) return callback(null, true);
-      if (isDev) console.error("[Socket:CORS] Blocked:", origin);
+      console.log("[Socket:CORS] Request from:", origin); // Log for debugging
+      const allowedOrigins = [
+        CLIENT_URL?.replace(/\/$/, ""),
+        "http://localhost:5173",
+        "http://localhost:8001",
+        "https://inksha-uedq.onrender.com",
+        "https://www.inksha-uedq.onrender.com", // Added www variant
+      ].filter(Boolean);
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.error("[Socket:CORS] ❌ Blocked:", origin);
       return callback(new Error("CORS not allowed"));
     },
     credentials: true,
@@ -37,9 +33,9 @@ const io = new Server({
   pingTimeout: 60000,
 });
 
-// Middleware
 io.use(async (socket, next) => {
   let token = socket.handshake.auth.token;
+
   if (!token && socket.handshake.headers.cookie) {
     const cookies = socket.handshake.headers.cookie
       ?.split("; ")
@@ -50,10 +46,12 @@ io.use(async (socket, next) => {
       }, {});
     token = cookies?.jwt;
   }
+
   if (!token) {
-    if (isDev) console.error("[Socket:Auth] No token provided");
+    console.error("[Socket:Auth] ❌ No token provided");
     return next(new Error("Authentication failed"));
   }
+
   try {
     const decoded = verifyToken(token);
     socket.userId = decoded.userId?.toString();
@@ -61,104 +59,101 @@ io.use(async (socket, next) => {
     socket.isAdmin = decoded.isAdmin;
     next();
   } catch (err) {
-    if (isDev) console.error("[Socket:Auth] Error:", err.message);
+    console.error("[Socket:Auth] ❌ Error:", err.message);
     next(new Error("Authentication failed"));
   }
 });
 
-// Event Handlers
-const setupSocketEvents = (socket) => {
-  const emitToUser = (userId, event, payload) =>
-    userId && io.to(userId).emit(event, payload);
-  const emitToAdminRoom = (event, payload) =>
-    io.to("adminRoom").emit(event, payload);
-
+io.on("connection", async (socket) => {
   if (socket.userId) {
     connectedUsers.add(socket.userId);
     socket.join(socket.userId);
-    io.emit(EVENTS.userStatus, { userId: socket.userId, isOnline: true });
-    io.emit(EVENTS.onlineUsersCount, connectedUsers.size);
+    io.emit("userStatus", { userId: socket.userId, isOnline: true });
+    io.emit("onlineUsersCount", connectedUsers.size);
 
-    UserModel.findById(socket.userId)
-      .select("joiningDate feedbackPrompt")
-      .then((user) => {
-        const joinedDaysAgo =
-          (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24);
-        if (
-          joinedDaysAgo >= 7 &&
-          (!user.feedbackPrompt ||
-            (!user.feedbackPrompt.shown && !user.feedbackPrompt.responded))
-        ) {
-          socket.emit(EVENTS.showFeedbackPrompt, {
-            message: "How do you like our app?",
-          });
-          user.feedbackPrompt = {
-            shown: true,
-            shownAt: new Date(),
-            responded: false,
-          };
-          return user.save();
-        }
-      })
-      .catch(
-        (err) =>
-          isDev && console.error("[Socket] Feedback check failed:", err.message)
+    try {
+      const user = await UserModel.findById(socket.userId).select(
+        "joiningDate feedbackPrompt"
       );
+
+      const joinedDaysAgo =
+        (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24);
+
+      if (
+        joinedDaysAgo >= 7 &&
+        (!user.feedbackPrompt ||
+          (!user.feedbackPrompt.shown && !user.feedbackPrompt.responded))
+      ) {
+        socket.emit("showFeedbackPrompt", {
+          message: "How do you like our app?",
+        });
+
+        user.feedbackPrompt = {
+          shown: true,
+          shownAt: new Date(),
+          responded: false,
+        };
+        await user.save();
+      }
+    } catch (err) {
+      console.error("[Socket] ⚠️ Feedback check failed:", err.message);
+    }
   }
 
   socket.on("join", (roomId) => {
-    if (roomId === "adminRoom" && socket.isAdmin) {
+    if (roomId === "adminRoom") {
       socket.join("adminRoom");
-    } else if (roomId && (!socket.userId || socket.userId === roomId)) {
+      return;
+    }
+
+    if (roomId && (!socket.userId || socket.userId === roomId)) {
       socket.userId = roomId;
       socket.join(roomId);
       connectedUsers.add(roomId);
-      io.emit(EVENTS.userStatus, { userId: roomId, isOnline: true });
-      io.emit(EVENTS.onlineUsersCount, connectedUsers.size);
+      io.emit("userStatus", { userId: roomId, isOnline: true });
+      io.emit("onlineUsersCount", connectedUsers.size);
     }
   });
 
-  socket.on(
-    EVENTS.userLocationUpdate,
-    throttle((data) => {
-      emitToAdminRoom(EVENTS.userLocationUpdate, data);
-    }, 1000)
-  );
-
-  socket.on(EVENTS.getOnlineUsers, () => {
-    socket.emit(EVENTS.onlineUsersList, Array.from(connectedUsers));
+  socket.on("userLocationUpdate", (data) => {
+    io.to("adminRoom").emit("userLocationUpdate", data);
   });
 
-  socket.on(EVENTS.adImpression, ({ postId, adIndex, adSlot, timeSpent }) => {
-    emitToUser(socket.userId, EVENTS.adImpressionRecorded, {
-      postId,
-      adIndex,
-      adSlot,
-      timeSpent,
-      timestamp: Date.now(),
-    });
+  socket.on("getOnlineUsers", () => {
+    const list = Array.from(connectedUsers);
+    socket.emit("onlineUsersList", list);
+  });
+
+  socket.on("adImpression", ({ postId, adIndex, adSlot, timeSpent }) => {
+    if (socket.userId) {
+      io.to(socket.userId).emit("adImpressionRecorded", {
+        postId,
+        adIndex,
+        adSlot,
+        timeSpent,
+        timestamp: Date.now(),
+      });
+    }
   });
 
   socket.on("disconnect", (reason) => {
     if (socket.userId) {
       connectedUsers.delete(socket.userId);
-      io.emit(EVENTS.userStatus, { userId: socket.userId, isOnline: false });
-      io.emit(EVENTS.onlineUsersCount, connectedUsers.size);
-      emitToAdminRoom("userDisconnected", { userId: socket.userId, reason });
+      io.emit("userStatus", { userId: socket.userId, isOnline: false });
+      io.emit("onlineUsersCount", connectedUsers.size);
     }
   });
-};
+});
 
-// Connection Handler
-io.on("connection", (socket) => setupSocketEvents(socket));
-
-// Exports
 export default function initializeSocket(server) {
   io.attach(server);
   return io;
 }
 
-export const emitPostUpdated = (post) => io.emit(EVENTS.postUpdated, post);
-export const emitPostDeleted = (postId) => io.emit(EVENTS.postDeleted, postId);
-export const emitToUser = (userId, event, payload) =>
-  userId && io.to(userId).emit(event, payload);
+export const emitPostUpdated = (post) => {
+  io.emit("postUpdated", post);
+};
+
+export const emitPostDeleted = (postId) => {
+  io.emit("postDeleted", postId);
+};

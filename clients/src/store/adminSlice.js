@@ -1,11 +1,10 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../connection/axiosInstance";
 
-// Constants
-const isDev = process.env.NODE_ENV === "development";
-axiosInstance.defaults.timeout = 10000;
+// Configure axiosInstance with timeout
+axiosInstance.defaults.timeout = 10000; // 10-second timeout
 
-// Retry Utility
+// Retry utility for handling transient errors
 const retryRequest = async (fn, retries = 2, delay = 1000) => {
   for (let i = 0; i < retries; i++) {
     try {
@@ -17,18 +16,7 @@ const retryRequest = async (fn, retries = 2, delay = 1000) => {
   }
 };
 
-// Error Handler
-const handleError = (err, fallbackMessage, extra = {}) => {
-  if (isDev)
-    console.error(`[adminSlice] Error:`, {
-      message: err.response?.data?.message || err.message,
-      ...extra,
-      timestamp: new Date().toISOString(),
-    });
-  return err.response?.data?.message || fallbackMessage;
-};
-
-// Thunks
+// Fetch all users
 export const getAllUsers = createAsyncThunk(
   "admin/getAllUsers",
   async ({ page, limit, mode = "paged" }, { rejectWithValue }) => {
@@ -46,13 +34,21 @@ export const getAllUsers = createAsyncThunk(
         mode,
       };
     } catch (err) {
+      console.error("[getAllUsers] Error:", {
+        message: err.response?.data?.message || err.message,
+        status: err.response?.status,
+        page,
+        limit,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to fetch users", { page, limit })
+        err.response?.data?.message || "Failed to fetch users"
       );
     }
   }
 );
 
+// Toggle block user
 export const toggleBlockUser = createAsyncThunk(
   "admin/toggleBlockUser",
   async (userId, { rejectWithValue }) => {
@@ -63,14 +59,20 @@ export const toggleBlockUser = createAsyncThunk(
         { withCredentials: true }
       );
       return { userId, blocked: response.data.message.includes("blocked") };
-    } catch (err) {
+    } catch (error) {
+      console.error("[toggleBlockUser] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to toggle block user", { userId })
+        error.response?.data?.message || "Failed to toggle block user"
       );
     }
   }
 );
 
+// Toggle user role
 export const toggleUserRole = createAsyncThunk(
   "admin/toggleUserRole",
   async (userId, { rejectWithValue }) => {
@@ -84,14 +86,20 @@ export const toggleUserRole = createAsyncThunk(
         userId,
         role: response.data.message.includes("admin") ? "admin" : "user",
       };
-    } catch (err) {
+    } catch (error) {
+      console.error("[toggleUserRole] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to toggle user role", { userId })
+        error.response?.data?.message || "Failed to toggle user role"
       );
     }
   }
 );
 
+// Delete user
 export const deleteUser = createAsyncThunk(
   "admin/deleteUser",
   async (userId, { rejectWithValue }) => {
@@ -100,14 +108,20 @@ export const deleteUser = createAsyncThunk(
         withCredentials: true,
       });
       return { userId };
-    } catch (err) {
+    } catch (error) {
+      console.error("[deleteUser] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to delete user", { userId })
+        error.response?.data?.message || "Failed to delete user"
       );
     }
   }
 );
 
+// Fetch all posts with retry and fallback
 export const getAllPosts = createAsyncThunk(
   "admin/getAllPosts",
   async (
@@ -135,8 +149,21 @@ export const getAllPosts = createAsyncThunk(
         currentPage: page,
         totalPages: Math.ceil(response.data.totalCount / limit) || 1,
       };
-    } catch (err) {
-      if (err.response?.status === 502)
+    } catch (error) {
+      console.error("[getAllPosts] Error:", {
+        message: error.response?.data?.message || error.message,
+        status: error.response?.status,
+        page,
+        limit,
+        search,
+        sortField,
+        sortOrder,
+        timestamp: new Date().toISOString(),
+      });
+      if (error.response?.status === 502) {
+        console.warn(
+          "[getAllPosts] 502 Bad Gateway detected, returning fallback data"
+        );
         return {
           posts: [],
           totalPosts: 0,
@@ -144,19 +171,15 @@ export const getAllPosts = createAsyncThunk(
           totalPages: 1,
           error: "Server unavailable, please try again later",
         };
+      }
       return rejectWithValue(
-        handleError(err, "Failed to fetch posts", {
-          page,
-          limit,
-          search,
-          sortField,
-          sortOrder,
-        })
+        error.response?.data?.message || "Failed to fetch posts"
       );
     }
   }
 );
 
+// Toggle block post
 export const toggleBlockPost = createAsyncThunk(
   "admin/toggleBlockPost",
   async (postId, { rejectWithValue }) => {
@@ -167,14 +190,20 @@ export const toggleBlockPost = createAsyncThunk(
         { withCredentials: true }
       );
       return { postId, blocked: response.data.message.includes("blocked") };
-    } catch (err) {
+    } catch (error) {
+      console.error("[toggleBlockPost] Error:", {
+        message: error.response?.data?.message || error.message,
+        postId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to toggle block post", { postId })
+        error.response?.data?.message || "Failed to toggle block post"
       );
     }
   }
 );
 
+// Delete post
 export const deletePost = createAsyncThunk(
   "admin/deletePost",
   async (postId, { rejectWithValue }) => {
@@ -183,14 +212,20 @@ export const deletePost = createAsyncThunk(
         withCredentials: true,
       });
       return { postId };
-    } catch (err) {
+    } catch (error) {
+      console.error("[deletePost] Error:", {
+        message: error.response?.data?.message || error.message,
+        postId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to delete post", { postId })
+        error.response?.data?.message || "Failed to delete post"
       );
     }
   }
 );
 
+// Create contact message
 export const createContactMessage = createAsyncThunk(
   "admin/createContactMessage",
   async ({ name, email, subject, message }, { rejectWithValue }) => {
@@ -201,14 +236,19 @@ export const createContactMessage = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[createContactMessage] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to create contact message")
+        error.response?.data?.message || "Failed to create contact message"
       );
     }
   }
 );
 
+// Fetch contact messages
 export const fetchContactMessages = createAsyncThunk(
   "admin/fetchContactMessages",
   async ({ page = 1, limit = 10 }, { rejectWithValue }) => {
@@ -223,14 +263,21 @@ export const fetchContactMessages = createAsyncThunk(
         currentPage: page,
         totalPages: Math.ceil(response.data.totalMessages / limit) || 1,
       };
-    } catch (err) {
+    } catch (error) {
+      console.error("[fetchContactMessages] Error:", {
+        message: error.response?.data?.message || error.message,
+        page,
+        limit,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to fetch contact messages", { page, limit })
+        error.response?.data?.message || "Failed to fetch contact messages"
       );
     }
   }
 );
 
+// Toggle contact message handled status
 export const toggleContactMessageHandled = createAsyncThunk(
   "admin/toggleContactMessageHandled",
   async (messageId, { rejectWithValue }) => {
@@ -241,14 +288,20 @@ export const toggleContactMessageHandled = createAsyncThunk(
         { withCredentials: true }
       );
       return { messageId, isHandled: response.data.isHandled };
-    } catch (err) {
+    } catch (error) {
+      console.error("[toggleContactMessageHandled] Error:", {
+        message: error.response?.data?.message || error.message,
+        messageId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to toggle message status", { messageId })
+        error.response?.data?.message || "Failed to toggle message status"
       );
     }
   }
 );
 
+// Reply to contact message
 export const replyContactMessage = createAsyncThunk(
   "admin/replyContactMessage",
   async ({ messageId, subject, message }, { rejectWithValue }) => {
@@ -259,14 +312,20 @@ export const replyContactMessage = createAsyncThunk(
         { withCredentials: true }
       );
       return { messageId, isHandled: true };
-    } catch (err) {
+    } catch (error) {
+      console.error("[replyContactMessage] Error:", {
+        message: error.response?.data?.message || error.message,
+        messageId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to reply to contact message", { messageId })
+        error.response?.data?.message || "Failed to reply to contact message"
       );
     }
   }
 );
 
+// Create report
 export const createReport = createAsyncThunk(
   "admin/createReport",
   async ({ postId, reason, details }, { rejectWithValue }) => {
@@ -277,14 +336,20 @@ export const createReport = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[createReport] Error:", {
+        message: error.response?.data?.message || error.message,
+        postId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to create report", { postId })
+        error.response?.data?.message || "Failed to create report"
       );
     }
   }
 );
 
+// Fetch reported posts
 export const fetchReportedPosts = createAsyncThunk(
   "admin/fetchReportedPosts",
   async ({ page = 1, limit = 10 }, { rejectWithValue }) => {
@@ -299,14 +364,21 @@ export const fetchReportedPosts = createAsyncThunk(
         currentPage: page,
         totalPages: Math.ceil(response.data.reports?.length / limit) || 1,
       };
-    } catch (err) {
+    } catch (error) {
+      console.error("[fetchReportedPosts] Error:", {
+        message: error.response?.data?.message || error.message,
+        page,
+        limit,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to fetch reported posts", { page, limit })
+        error.response?.data?.message || "Failed to fetch reported posts"
       );
     }
   }
 );
 
+// Review report
 export const reviewReport = createAsyncThunk(
   "admin/reviewReport",
   async ({ reportId, forwardToAuthor }, { rejectWithValue }) => {
@@ -317,14 +389,20 @@ export const reviewReport = createAsyncThunk(
         { withCredentials: true }
       );
       return { reportId, forwardToAuthor, isReviewed: true };
-    } catch (err) {
+    } catch (error) {
+      console.error("[reviewReport] Error:", {
+        message: error.response?.data?.message || error.message,
+        reportId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to review report", { reportId })
+        error.response?.data?.message || "Failed to review report"
       );
     }
   }
 );
 
+// Send report notification
 export const sendReportNotification = createAsyncThunk(
   "admin/sendReportNotification",
   async ({ reportId, subject, message }, { rejectWithValue }) => {
@@ -335,14 +413,20 @@ export const sendReportNotification = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[sendReportNotification] Error:", {
+        message: error.response?.data?.message || error.message,
+        reportId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to send notification", { reportId })
+        error.response?.data?.message || "Failed to send notification"
       );
     }
   }
 );
 
+// Acknowledge report
 export const acknowledgeReport = createAsyncThunk(
   "admin/acknowledgeReport",
   async ({ reportId }, { rejectWithValue }) => {
@@ -353,14 +437,20 @@ export const acknowledgeReport = createAsyncThunk(
         { withCredentials: true }
       );
       return { reportId, isAcknowledged: true };
-    } catch (err) {
+    } catch (error) {
+      console.error("[acknowledgeReport] Error:", {
+        message: error.response?.data?.message || error.message,
+        reportId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to acknowledge report", { reportId })
+        error.response?.data?.message || "Failed to acknowledge report"
       );
     }
   }
 );
 
+// Fetch all users' earnings
 export const getAllUsersEarnings = createAsyncThunk(
   "admin/getAllUsersEarnings",
   async (_, { rejectWithValue }) => {
@@ -369,14 +459,19 @@ export const getAllUsersEarnings = createAsyncThunk(
         withCredentials: true,
       });
       return response.data || [];
-    } catch (err) {
+    } catch (error) {
+      console.error("[getAllUsersEarnings] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to fetch users' earnings")
+        error.response?.data?.message || "Failed to fetch users' earnings"
       );
     }
   }
 );
 
+// Process bulk payouts
 export const processBulkPayouts = createAsyncThunk(
   "admin/processBulkPayouts",
   async ({ users }, { rejectWithValue }) => {
@@ -387,14 +482,19 @@ export const processBulkPayouts = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[processBulkPayouts] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to process bulk payouts")
+        error.response?.data?.message || "Failed to process bulk payouts"
       );
     }
   }
 );
 
+// Fetch site analytics
 export const fetchSiteAnalytics = createAsyncThunk(
   "admin/fetchSiteAnalytics",
   async ({ startDate, endDate }, { rejectWithValue }) => {
@@ -404,22 +504,26 @@ export const fetchSiteAnalytics = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data.data || {};
-    } catch (err) {
+    } catch (error) {
+      console.error("[fetchSiteAnalytics] Error:", {
+        message: error.response?.data?.message || error.message,
+        startDate,
+        endDate,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to fetch site analytics", {
-          startDate,
-          endDate,
-        })
+        error.response?.data?.message || "Failed to fetch site analytics"
       );
     }
   }
 );
 
-export const clearError = createAsyncThunk(
-  "admin/clearError",
-  async () => null
-);
+// Clear error
+export const clearError = createAsyncThunk("admin/clearError", async () => {
+  return null;
+});
 
+// Check email status
 export const checkEmailStatus = createAsyncThunk(
   "admin/checkEmailStatus",
   async ({ email, type }, { rejectWithValue }) => {
@@ -431,14 +535,21 @@ export const checkEmailStatus = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[checkEmailStatus] Error:", {
+        message: error.response?.data?.message || error.message,
+        email,
+        type,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to fetch email status", { email, type })
+        error.response?.data?.message || "Failed to fetch email status"
       );
     }
   }
 );
 
+// Fetch all email statuses
 export const getAllEmailStatuses = createAsyncThunk(
   "admin/getAllEmailStatuses",
   async ({ page = 1, limit = 10, type }, { rejectWithValue }) => {
@@ -456,18 +567,22 @@ export const getAllEmailStatuses = createAsyncThunk(
         currentPage: page,
         totalPages: Math.ceil(response.data.total / limit) || 1,
       };
-    } catch (err) {
+    } catch (error) {
+      console.error("[getAllEmailStatuses] Error:", {
+        message: error.response?.data?.message || error.message,
+        page,
+        limit,
+        type,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to fetch email statuses", {
-          page,
-          limit,
-          type,
-        })
+        error.response?.data?.message || "Failed to fetch email statuses"
       );
     }
   }
 );
 
+// Retry failed emails
 export const retryFailedEmails = createAsyncThunk(
   "admin/retryFailedEmails",
   async ({ type }, { rejectWithValue }) => {
@@ -478,14 +593,20 @@ export const retryFailedEmails = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data.results || [];
-    } catch (err) {
+    } catch (error) {
+      console.error("[retryFailedEmails] Error:", {
+        message: error.response?.data?.message || error.message,
+        type,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to retry failed emails", { type })
+        error.response?.data?.message || "Failed to retry failed emails"
       );
     }
   }
 );
 
+// Record reading time
 export const recordReadingTime = createAsyncThunk(
   "admin/recordReadingTime",
   async ({ postId, timeSpent }, { rejectWithValue }) => {
@@ -496,14 +617,20 @@ export const recordReadingTime = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[recordReadingTime] Error:", {
+        message: error.response?.data?.message || error.message,
+        postId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to record reading time", { postId })
+        error.response?.data?.message || "Failed to record reading time"
       );
     }
   }
 );
 
+// Get reading details by post
 export const getReadingDetailsByPost = createAsyncThunk(
   "admin/getReadingDetailsByPost",
   async (postId, { rejectWithValue }) => {
@@ -513,14 +640,20 @@ export const getReadingDetailsByPost = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[getReadingDetailsByPost] Error:", {
+        message: error.response?.data?.message || error.message,
+        postId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to fetch reading details", { postId })
+        error.response?.data?.message || "Failed to fetch reading details"
       );
     }
   }
 );
 
+// Fetch daily post email report
 export const getDailyPostEmailReport = createAsyncThunk(
   "admin/getDailyPostEmailReport",
   async ({ page = 1, limit = 10, date }, { rejectWithValue }) => {
@@ -538,18 +671,23 @@ export const getDailyPostEmailReport = createAsyncThunk(
         currentPage: page,
         totalPages: Math.ceil(response.data.total / limit) || 1,
       };
-    } catch (err) {
+    } catch (error) {
+      console.error("[getDailyPostEmailReport] Error:", {
+        message: error.response?.data?.message || error.message,
+        page,
+        limit,
+        date,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to fetch daily post email report", {
-          page,
-          limit,
-          date,
-        })
+        error.response?.data?.message ||
+          "Failed to fetch daily post email report"
       );
     }
   }
 );
 
+// Fetch all banner notifications
 export const fetchBannerNotifications = createAsyncThunk(
   "admin/fetchBannerNotifications",
   async (_, { rejectWithValue }) => {
@@ -559,14 +697,19 @@ export const fetchBannerNotifications = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data.notifications || [];
-    } catch (err) {
+    } catch (error) {
+      console.error("[fetchBannerNotifications] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to fetch banner notifications")
+        error.response?.data?.message || "Failed to fetch banner notifications"
       );
     }
   }
 );
 
+// Create a new banner notification
 export const createBannerNotification = createAsyncThunk(
   "admin/createBannerNotification",
   async ({ title, message, region }, { rejectWithValue }) => {
@@ -577,14 +720,19 @@ export const createBannerNotification = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data.notification;
-    } catch (err) {
+    } catch (error) {
+      console.error("[createBannerNotification] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to create banner notification")
+        error.response?.data?.message || "Failed to create banner notification"
       );
     }
   }
 );
 
+// Dismiss a banner notification
 export const dismissBannerNotification = createAsyncThunk(
   "admin/dismissBannerNotification",
   async (notificationId, { rejectWithValue }) => {
@@ -595,14 +743,20 @@ export const dismissBannerNotification = createAsyncThunk(
         { withCredentials: true }
       );
       return notificationId;
-    } catch (err) {
+    } catch (error) {
+      console.error("[dismissBannerNotification] Error:", {
+        message: error.response?.data?.message || error.message,
+        notificationId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to dismiss notification", { notificationId })
+        error.response?.data?.message || "Failed to dismiss notification"
       );
     }
   }
 );
 
+// Deactivate a banner notification
 export const deactivateBannerNotification = createAsyncThunk(
   "admin/deactivateBannerNotification",
   async (id, { rejectWithValue }) => {
@@ -613,14 +767,20 @@ export const deactivateBannerNotification = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[deactivateBannerNotification] Error:", {
+        message: error.response?.data?.message || error.message,
+        id,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to deactivate notification", { id })
+        error.response?.data?.message || "Failed to deactivate notification"
       );
     }
   }
 );
 
+// Delete all banner notifications
 export const deleteAllBannerNotifications = createAsyncThunk(
   "admin/deleteAllBannerNotifications",
   async (_, { rejectWithValue }) => {
@@ -630,14 +790,19 @@ export const deleteAllBannerNotifications = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[deleteAllBannerNotifications] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to delete all notifications")
+        error.response?.data?.message || "Failed to delete all notifications"
       );
     }
   }
 );
 
+// Download all data as Excel
 export const downloadAllDataCsv = createAsyncThunk(
   "admin/downloadAllDataCsv",
   async (_, { rejectWithValue }) => {
@@ -654,12 +819,19 @@ export const downloadAllDataCsv = createAsyncThunk(
       link.click();
       document.body.removeChild(link);
       return { success: true };
-    } catch (err) {
-      return rejectWithValue(handleError(err, "Failed to download Excel"));
+    } catch (error) {
+      console.error("[downloadAllDataCsv] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to download Excel"
+      );
     }
   }
 );
 
+// Fetch all subscription plans
 export const getAllSubscriptionPlans = createAsyncThunk(
   "admin/getAllSubscriptionPlans",
   async (_, { rejectWithValue }) => {
@@ -668,14 +840,19 @@ export const getAllSubscriptionPlans = createAsyncThunk(
         withCredentials: true,
       });
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[getAllSubscriptionPlans] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to fetch subscription plans")
+        error.response?.data?.message || "Failed to fetch subscription plans"
       );
     }
   }
 );
 
+// Toggle user eligibility for subscription creation
 export const toggleUserEligibility = createAsyncThunk(
   "admin/toggleUserEligibility",
   async ({ userId, enable }, { rejectWithValue }) => {
@@ -686,17 +863,21 @@ export const toggleUserEligibility = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[toggleUserEligibility] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        enable,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to toggle user eligibility", {
-          userId,
-          enable,
-        })
+        error.response?.data?.message || "Failed to toggle user eligibility"
       );
     }
   }
 );
 
+// Update global eligibility criteria
 export const updateGlobalEligibilityCriteria = createAsyncThunk(
   "admin/updateGlobalEligibilityCriteria",
   async (
@@ -726,14 +907,19 @@ export const updateGlobalEligibilityCriteria = createAsyncThunk(
           minAccountAgeDays,
         }
       );
-    } catch (err) {
+    } catch (error) {
+      console.error("[updateGlobalEligibilityCriteria] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to update eligibility criteria")
+        error.response?.data?.message || "Failed to update eligibility criteria"
       );
     }
   }
 );
 
+// Check user eligibility status
 export const checkUserEligibility = createAsyncThunk(
   "admin/checkUserEligibility",
   async (userId, { rejectWithValue }) => {
@@ -751,9 +937,14 @@ export const checkUserEligibility = createAsyncThunk(
           minAccountAgeDays: 30,
         },
       };
-    } catch (err) {
+    } catch (error) {
+      console.error("[checkUserEligibility] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       if (
-        err.response?.data?.message === "Subscription configuration not found"
+        error.response?.data?.message === "Subscription configuration not found"
       ) {
         return {
           isEligible: false,
@@ -772,33 +963,39 @@ export const checkUserEligibility = createAsyncThunk(
         };
       }
       return rejectWithValue(
-        handleError(err, "Failed to check user eligibility", { userId })
+        error.response?.data?.message || "Failed to check user eligibility"
       );
     }
   }
 );
 
+// Toggle subscription plan status
 export const toggleSubscriptionPlanStatus = createAsyncThunk(
   "admin/toggleSubscriptionPlanStatus",
   async ({ planId, status }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.patch(
-        "/admin/subscriptions/plan/status",
+        `/admin/subscriptions/plan/status`,
         { planId, status },
         { withCredentials: true }
       );
       return response.data.plan;
-    } catch (err) {
+    } catch (error) {
+      console.error("[toggleSubscriptionPlanStatus] Error:", {
+        message: error.response?.data?.message || error.message,
+        planId,
+        status,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to toggle subscription plan status", {
-          planId,
-          status,
-        })
+        error.response?.data?.message ||
+          "Failed to toggle subscription plan status"
       );
     }
   }
 );
 
+// Grant/revoke subscription creation access
 export const grantSubscriptionAccess = createAsyncThunk(
   "admin/grantSubscriptionAccess",
   async ({ userId, grant }, { rejectWithValue }) => {
@@ -809,17 +1006,21 @@ export const grantSubscriptionAccess = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[grantSubscriptionAccess] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        grant,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to grant subscription access", {
-          userId,
-          grant,
-        })
+        error.response?.data?.message || "Failed to grant subscription access"
       );
     }
   }
 );
 
+// Set per-user subscription eligibility override
 export const setUserEligibilityOverride = createAsyncThunk(
   "admin/setUserEligibilityOverride",
   async (
@@ -833,16 +1034,21 @@ export const setUserEligibilityOverride = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[setUserEligibilityOverride] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to update user eligibility override", {
-          userId,
-        })
+        error.response?.data?.message ||
+          "Failed to update user eligibility override"
       );
     }
   }
 );
 
+// Override user milestone
 export const overrideUserMilestones = createAsyncThunk(
   "adminOverride/overrideUserMilestones",
   async ({ userId, overrideData }, { rejectWithValue }) => {
@@ -853,14 +1059,20 @@ export const overrideUserMilestones = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[overrideUserMilestones] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to override user milestones", { userId })
+        error.response?.data?.message || "Failed to override user milestones"
       );
     }
   }
 );
 
+// Reset user milestone
 export const resetUserMilestones = createAsyncThunk(
   "adminOverride/resetUserMilestones",
   async (userId, { rejectWithValue }) => {
@@ -871,15 +1083,19 @@ export const resetUserMilestones = createAsyncThunk(
         { withCredentials: true }
       );
       return response.data;
-    } catch (err) {
+    } catch (error) {
+      console.error("[resetUserMilestones] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        handleError(err, "Failed to reset user milestones", { userId })
+        error.response?.data?.message || "Failed to reset user milestones"
       );
     }
   }
 );
 
-// Slice
 const adminSlice = createSlice({
   name: "admin",
   initialState: {
@@ -944,7 +1160,8 @@ const adminSlice = createSlice({
       state.notificationStatus = null;
     },
     socketNewContactMessage: (state, action) => {
-      state.contactMessages = [action.payload, ...state.contactMessages].slice(
+      const newMessage = action.payload;
+      state.contactMessages = [newMessage, ...state.contactMessages].slice(
         0,
         10
       );
@@ -952,7 +1169,8 @@ const adminSlice = createSlice({
       state.totalPagesMessages = Math.ceil(state.totalMessages / 10);
     },
     socketNewReport: (state, action) => {
-      state.reports = [action.payload, ...state.reports].slice(0, 10);
+      const newReport = action.payload;
+      state.reports = [newReport, ...state.reports].slice(0, 10);
       state.totalReports += 1;
       state.totalPagesReports = Math.ceil(state.totalReports / 10);
     },
@@ -965,15 +1183,15 @@ const adminSlice = createSlice({
       );
     },
     socketReportAcknowledged: (state, action) => {
+      const { reportId } = action.payload;
       state.reports = state.reports.map((report) =>
-        report._id === action.payload.reportId
-          ? { ...report, isAcknowledged: true }
-          : report
+        report._id === reportId ? { ...report, isAcknowledged: true } : report
       );
     },
     socketContactMessageReplied: (state, action) => {
+      const { messageId } = action.payload;
       state.contactMessages = state.contactMessages.map((msg) =>
-        msg._id === action.payload.messageId ? { ...msg, isHandled: true } : msg
+        msg._id === messageId ? { ...msg, isHandled: true } : msg
       );
     },
     setNotificationStatus: (state, action) => {
@@ -985,19 +1203,22 @@ const adminSlice = createSlice({
     updatePostBlockStatus: (state, action) => {
       const { postId, blocked } = action.payload;
       const index = state.posts.findIndex((post) => post._id === postId);
-      if (index !== -1) state.posts[index].blocked = blocked;
+      if (index !== -1) {
+        state.posts[index].blocked = blocked;
+      }
     },
     updateSubscriptionPlanStatus: (state, action) => {
       const { planId, status } = action.payload;
       const plan = state.plans.find((p) => p._id === planId);
-      if (plan) plan.status = status;
+      if (plan) {
+        plan.status = status;
+      }
     },
     logSubscriptionCriteria: (state) => {
-      if (isDev)
-        console.log(
-          "[logSubscriptionCriteria] Current:",
-          state.subscriptionCriteria
-        );
+      console.log(
+        "[logSubscriptionCriteria] Current subscriptionCriteria:",
+        state.subscriptionCriteria
+      );
     },
     clearOverrideStatus: (state) => {
       state.loading = false;
@@ -1007,174 +1228,303 @@ const adminSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    const handleAsync = (thunk, onFulfilled) => {
-      builder
-        .addCase(thunk.pending, (state) => {
-          state.loading = true;
-          state.error = null;
-        })
-        .addCase(thunk.fulfilled, (state, action) => {
-          state.loading = false;
-          if (onFulfilled) onFulfilled(state, action);
-        })
-        .addCase(thunk.rejected, (state, action) => {
-          state.loading = false;
-          state.error = action.payload;
-        });
-    };
-    handleAsync(getAllUsers, (state, action) => {
-      const { users, totalUsers, currentPage, totalPages, mode } =
-        action.payload;
-      if (mode === "full") state.allUsers = users;
-      else {
-        state.users = users;
-        state.totalUsers = totalUsers;
-        state.currentPageUsers = currentPage;
-        state.totalPagesUsers = totalPages;
-      }
-    });
-    handleAsync(toggleBlockUser, (state, action) => {
-      state.users = state.users.map((user) =>
-        user._id === action.payload.userId
-          ? { ...user, blocked: action.payload.blocked }
-          : user
-      );
-    });
-    handleAsync(toggleUserRole, (state, action) => {
-      state.users = state.users.map((user) =>
-        user._id === action.payload.userId
-          ? { ...user, role: action.payload.role }
-          : user
-      );
-    });
-    handleAsync(deleteUser, (state, action) => {
-      state.users = state.users.filter(
-        (user) => user._id !== action.payload.userId
-      );
-      state.totalUsers -= 1;
-      state.totalPagesUsers = Math.ceil(state.totalUsers / 10);
-    });
-    handleAsync(getAllPosts, (state, action) => {
-      state.posts = action.payload.posts;
-      state.totalPosts = action.payload.totalPosts;
-      state.currentPagePosts = action.payload.currentPage;
-      state.totalPagesPosts = action.payload.totalPages;
-      state.error = action.payload.error || null;
-    });
-    handleAsync(toggleBlockPost, (state, action) => {
-      state.posts = state.posts.map((post) =>
-        post._id === action.payload.postId
-          ? { ...post, blocked: action.payload.blocked }
-          : post
-      );
-    });
-    handleAsync(deletePost, (state, action) => {
-      state.posts = state.posts.filter(
-        (post) => post._id !== action.payload.postId
-      );
-      state.totalPosts -= 1;
-      state.totalPagesPosts = Math.ceil(state.totalPosts / 10);
-    });
-    handleAsync(createContactMessage, (state) => {
-      state.notificationStatus = "Contact message created successfully";
-    });
-    handleAsync(fetchContactMessages, (state, action) => {
-      state.contactMessages = action.payload.messages;
-      state.totalMessages = action.payload.totalMessages;
-      state.currentPageMessages = action.payload.currentPage;
-      state.totalPagesMessages = action.payload.totalPages;
-    });
-    handleAsync(toggleContactMessageHandled, (state, action) => {
-      state.contactMessages = state.contactMessages.map((msg) =>
-        msg._id === action.payload.messageId
-          ? { ...msg, isHandled: action.payload.isHandled }
-          : msg
-      );
-    });
-    handleAsync(replyContactMessage, (state, action) => {
-      state.contactMessages = state.contactMessages.map((msg) =>
-        msg._id === action.payload.messageId ? { ...msg, isHandled: true } : msg
-      );
-      state.notificationStatus = "Reply sent successfully";
-    });
-    handleAsync(createReport, (state) => {
-      state.notificationStatus = "Report submitted successfully";
-    });
-    handleAsync(fetchReportedPosts, (state, action) => {
-      state.reports = action.payload.reports;
-      state.totalReports = action.payload.totalReports;
-      state.currentPageReports = action.payload.currentPage;
-      state.totalPagesReports = action.payload.totalPages;
-    });
-    handleAsync(reviewReport, (state, action) => {
-      state.reports = state.reports.map((report) =>
-        report._id === action.payload.reportId
-          ? {
-              ...report,
-              isReviewed: true,
-              forwardedToAuthor: action.payload.forwardToAuthor,
-            }
-          : report
-      );
-    });
-    handleAsync(sendReportNotification, (state) => {
-      state.notificationStatus = "Notification sent successfully";
-    });
-    handleAsync(acknowledgeReport, (state, action) => {
-      state.reports = state.reports.map((report) =>
-        report._id === action.payload.reportId
-          ? { ...report, isAcknowledged: true }
-          : report
-      );
-    });
-    handleAsync(getAllUsersEarnings, (state, action) => {
-      state.userEarnings = action.payload;
-    });
-    handleAsync(processBulkPayouts, (state) => {
-      state.notificationStatus = "Bulk payouts processed successfully";
-    });
-    handleAsync(
-      fetchSiteAnalytics,
-      (state, action) => {
-        state.analytics = action.payload;
-        state.analyticsLoading = false;
+    builder
+      // getAllUsers
+      .addCase(getAllUsers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getAllUsers.fulfilled, (state, action) => {
+        const { users, totalUsers, currentPage, totalPages, mode } =
+          action.payload;
+        if (mode === "full") {
+          state.allUsers = users;
+        } else {
+          state.users = users;
+          state.totalUsers = totalUsers;
+          state.currentPageUsers = currentPage;
+          state.totalPagesUsers = totalPages;
+        }
+        state.loading = false;
+      })
+      .addCase(getAllUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // toggleBlockUser
+      .addCase(toggleBlockUser.fulfilled, (state, action) => {
+        state.users = state.users.map((user) =>
+          user._id === action.payload.userId
+            ? { ...user, blocked: action.payload.blocked }
+            : user
+        );
+      })
+      .addCase(toggleBlockUser.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // toggleUserRole
+      .addCase(toggleUserRole.fulfilled, (state, action) => {
+        state.users = state.users.map((user) =>
+          user._id === action.payload.userId
+            ? { ...user, role: action.payload.role }
+            : user
+        );
+      })
+      .addCase(toggleUserRole.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // deleteUser
+      .addCase(deleteUser.fulfilled, (state, action) => {
+        state.users = state.users.filter(
+          (user) => user._id !== action.payload.userId
+        );
+        state.totalUsers -= 1;
+        state.totalPagesUsers = Math.ceil(state.totalUsers / 10);
+      })
+      .addCase(deleteUser.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // getAllPosts
+      .addCase(getAllPosts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getAllPosts.fulfilled, (state, action) => {
+        state.loading = false;
+        state.posts = action.payload.posts;
+        state.totalPosts = action.payload.totalPosts;
+        state.currentPagePosts = action.payload.currentPage;
+        state.totalPagesPosts = action.payload.totalPages;
+        state.error = action.payload.error || null; // Handle 502 fallback
+      })
+      .addCase(getAllPosts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // toggleBlockPost
+      .addCase(toggleBlockPost.fulfilled, (state, action) => {
+        state.posts = state.posts.map((post) =>
+          post._id === action.payload.postId
+            ? { ...post, blocked: action.payload.blocked }
+            : post
+        );
+      })
+      .addCase(toggleBlockPost.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // deletePost
+      .addCase(deletePost.fulfilled, (state, action) => {
+        state.posts = state.posts.filter(
+          (post) => post._id !== action.payload.postId
+        );
+        state.totalPosts -= 1;
+        state.totalPagesPosts = Math.ceil(state.totalPosts / 10);
+      })
+      .addCase(deletePost.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // createContactMessage
+      .addCase(createContactMessage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createContactMessage.fulfilled, (state) => {
+        state.loading = false;
+        state.notificationStatus = "Contact message created successfully";
+      })
+      .addCase(createContactMessage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // fetchContactMessages
+      .addCase(fetchContactMessages.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchContactMessages.fulfilled, (state, action) => {
+        state.loading = false;
+        state.contactMessages = action.payload.messages;
+        state.totalMessages = action.payload.totalMessages;
+        state.currentPageMessages = action.payload.currentPage;
+        state.totalPagesMessages = action.payload.totalPages;
+      })
+      .addCase(fetchContactMessages.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // toggleContactMessageHandled
+      .addCase(toggleContactMessageHandled.fulfilled, (state, action) => {
+        state.contactMessages = state.contactMessages.map((msg) =>
+          msg._id === action.payload.messageId
+            ? { ...msg, isHandled: action.payload.isHandled }
+            : msg
+        );
+      })
+      .addCase(toggleContactMessageHandled.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // replyContactMessage
+      .addCase(replyContactMessage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(replyContactMessage.fulfilled, (state, action) => {
+        state.loading = false;
+        state.contactMessages = state.contactMessages.map((msg) =>
+          msg._id === action.payload.messageId
+            ? { ...msg, isHandled: true }
+            : msg
+        );
+        state.notificationStatus = "Reply sent successfully";
+      })
+      .addCase(replyContactMessage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // createReport
+      .addCase(createReport.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createReport.fulfilled, (state) => {
+        state.loading = false;
+        state.notificationStatus = "Report submitted successfully";
+      })
+      .addCase(createReport.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // fetchReportedPosts
+      .addCase(fetchReportedPosts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchReportedPosts.fulfilled, (state, action) => {
+        state.loading = false;
+        state.reports = action.payload.reports;
+        state.totalReports = action.payload.totalReports;
+        state.currentPageReports = action.payload.currentPage;
+        state.totalPagesReports = action.payload.totalPages;
+      })
+      .addCase(fetchReportedPosts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // reviewReport
+      .addCase(reviewReport.fulfilled, (state, action) => {
+        state.reports = state.reports.map((report) =>
+          report._id === action.payload.reportId
+            ? {
+                ...report,
+                isReviewed: true,
+                forwardedToAuthor: action.payload.forwardToAuthor,
+              }
+            : report
+        );
+      })
+      .addCase(reviewReport.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // sendReportNotification
+      .addCase(sendReportNotification.fulfilled, (state) => {
+        state.notificationStatus = "Notification sent successfully";
+      })
+      .addCase(sendReportNotification.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // acknowledgeReport
+      .addCase(acknowledgeReport.fulfilled, (state, action) => {
+        state.reports = state.reports.map((report) =>
+          report._id === action.payload.reportId
+            ? { ...report, isAcknowledged: true }
+            : report
+        );
+      })
+      .addCase(acknowledgeReport.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // getAllUsersEarnings
+      .addCase(getAllUsersEarnings.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getAllUsersEarnings.fulfilled, (state, action) => {
+        state.loading = false;
+        state.userEarnings = action.payload;
+      })
+      .addCase(getAllUsersEarnings.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // processBulkPayouts
+      .addCase(processBulkPayouts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(processBulkPayouts.fulfilled, (state) => {
+        state.loading = false;
+        state.notificationStatus = "Bulk payouts processed successfully";
+      })
+      .addCase(processBulkPayouts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // fetchSiteAnalytics
+      .addCase(fetchSiteAnalytics.pending, (state) => {
+        state.analyticsLoading = true;
         state.analyticsError = null;
-      },
-      "analyticsLoading",
-      "analyticsError"
-    );
-    handleAsync(clearError, (state) => {
-      state.error = null;
-      state.analyticsError = null;
-      state.emailError = null;
-      state.subscriptionError = null;
-    });
-    handleAsync(
-      checkEmailStatus,
-      (state, action) => {
-        state.currentEmailStatus = action.payload;
-        state.emailLoading = false;
+      })
+      .addCase(fetchSiteAnalytics.fulfilled, (state, action) => {
+        state.analyticsLoading = false;
+        state.analytics = action.payload;
+      })
+      .addCase(fetchSiteAnalytics.rejected, (state, action) => {
+        state.analyticsLoading = false;
+        state.analyticsError = action.payload;
+      })
+      // clearError
+      .addCase(clearError.fulfilled, (state) => {
+        state.error = null;
+        state.analyticsError = null;
         state.emailError = null;
-      },
-      "emailLoading",
-      "emailError"
-    );
-    handleAsync(
-      getAllEmailStatuses,
-      (state, action) => {
+        state.subscriptionError = null;
+      })
+      // checkEmailStatus
+      .addCase(checkEmailStatus.pending, (state) => {
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(checkEmailStatus.fulfilled, (state, action) => {
+        state.emailLoading = false;
+        state.currentEmailStatus = action.payload;
+      })
+      .addCase(checkEmailStatus.rejected, (state, action) => {
+        state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+      // getAllEmailStatuses
+      .addCase(getAllEmailStatuses.pending, (state) => {
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(getAllEmailStatuses.fulfilled, (state, action) => {
+        state.emailLoading = false;
         state.emailStatuses = action.payload.emailStatuses;
         state.totalEmails = action.payload.totalEmails;
         state.currentPageEmails = action.payload.currentPage;
         state.totalPagesEmails = action.payload.totalPages;
+      })
+      .addCase(getAllEmailStatuses.rejected, (state, action) => {
         state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+      // retryFailedEmails
+      .addCase(retryFailedEmails.pending, (state) => {
+        state.emailLoading = true;
         state.emailError = null;
-      },
-      "emailLoading",
-      "emailError"
-    );
-    handleAsync(
-      retryFailedEmails,
-      (state, action) => {
+      })
+      .addCase(retryFailedEmails.fulfilled, (state, action) => {
+        state.emailLoading = false;
         state.notificationStatus = "Failed emails retried successfully";
         state.emailStatuses = state.emailStatuses.map((status) => {
           const updated = action.payload.find(
@@ -1185,58 +1535,123 @@ const adminSlice = createSlice({
             ? { ...status, ...updated, stopEmailAttempts: !updated.success }
             : status;
         });
+      })
+      .addCase(retryFailedEmails.rejected, (state, action) => {
         state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+      // recordReadingTime
+      .addCase(recordReadingTime.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(recordReadingTime.fulfilled, (state) => {
+        state.loading = false;
+        state.notificationStatus = "Reading time recorded successfully";
+      })
+      .addCase(recordReadingTime.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // getReadingDetailsByPost
+      .addCase(getReadingDetailsByPost.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getReadingDetailsByPost.fulfilled, (state) => {
+        state.loading = false;
+        state.notificationStatus = "Reading details fetched successfully";
+      })
+      .addCase(getReadingDetailsByPost.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // getDailyPostEmailReport
+      .addCase(getDailyPostEmailReport.pending, (state) => {
+        state.emailLoading = true;
         state.emailError = null;
-      },
-      "emailLoading",
-      "emailError"
-    );
-    handleAsync(recordReadingTime, (state) => {
-      state.notificationStatus = "Reading time recorded successfully";
-    });
-    handleAsync(getReadingDetailsByPost, (state) => {
-      state.notificationStatus = "Reading details fetched successfully";
-    });
-    handleAsync(
-      getDailyPostEmailReport,
-      (state, action) => {
+      })
+      .addCase(getDailyPostEmailReport.fulfilled, (state, action) => {
+        state.emailLoading = false;
         state.emailReports = action.payload.emailReports;
         state.totalEmailReports = action.payload.totalEmails;
         state.currentPageEmailReports = action.payload.currentPage;
         state.totalPagesEmailReports = action.payload.totalPages;
+      })
+      .addCase(getDailyPostEmailReport.rejected, (state, action) => {
         state.emailLoading = false;
-        state.emailError = null;
-      },
-      "emailLoading",
-      "emailError"
-    );
-    handleAsync(fetchBannerNotifications, (state, action) => {
-      state.bannerNotifications = action.payload;
-    });
-    handleAsync(createBannerNotification, (state, action) => {
-      state.bannerNotifications = [
-        action.payload,
-        ...state.bannerNotifications,
-      ];
-      state.notificationStatus = "Banner notification created";
-    });
-    handleAsync(dismissBannerNotification, (state, action) => {
-      state.bannerNotifications = state.bannerNotifications.filter(
-        (notification) => notification._id !== action.payload
-      );
-    });
-    handleAsync(deactivateBannerNotification, (state, action) => {
-      state.bannerNotifications = state.bannerNotifications.filter(
-        (n) => n._id !== action.payload.id
-      );
-    });
-    handleAsync(deleteAllBannerNotifications, (state) => {
-      state.bannerNotifications = [];
-      state.notificationStatus = "All banner notifications deleted";
-    });
-    handleAsync(
-      getAllSubscriptionPlans,
-      (state, action) => {
+        state.emailError = action.payload;
+      })
+      // fetchBannerNotifications
+      .addCase(fetchBannerNotifications.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchBannerNotifications.fulfilled, (state, action) => {
+        state.loading = false;
+        state.bannerNotifications = action.payload;
+      })
+      .addCase(fetchBannerNotifications.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // createBannerNotification
+      .addCase(createBannerNotification.fulfilled, (state, action) => {
+        state.bannerNotifications = [
+          action.payload,
+          ...state.bannerNotifications,
+        ];
+        state.notificationStatus = "Banner notification created";
+      })
+      .addCase(createBannerNotification.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // dismissBannerNotification
+      .addCase(dismissBannerNotification.fulfilled, (state, action) => {
+        state.bannerNotifications = state.bannerNotifications.filter(
+          (notification) => notification._id !== action.payload
+        );
+      })
+      .addCase(dismissBannerNotification.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // deactivateBannerNotification
+      .addCase(deactivateBannerNotification.fulfilled, (state, action) => {
+        state.bannerNotifications = state.bannerNotifications.filter(
+          (n) => n._id !== action.payload.id
+        );
+      })
+      .addCase(deactivateBannerNotification.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // deleteAllBannerNotifications
+      .addCase(deleteAllBannerNotifications.fulfilled, (state) => {
+        state.bannerNotifications = [];
+        state.notificationStatus = "All banner notifications deleted";
+      })
+      .addCase(deleteAllBannerNotifications.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      // downloadAllDataCsv
+      .addCase(downloadAllDataCsv.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(downloadAllDataCsv.fulfilled, (state) => {
+        state.loading = false;
+        state.notificationStatus = "Excel downloaded successfully";
+      })
+      .addCase(downloadAllDataCsv.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // getAllSubscriptionPlans
+      .addCase(getAllSubscriptionPlans.pending, (state) => {
+        state.subscriptionLoading = true;
+        state.subscriptionError = null;
+      })
+      .addCase(getAllSubscriptionPlans.fulfilled, (state, action) => {
+        state.subscriptionLoading = false;
         state.plans =
           action.payload.currentPage === 1
             ? action.payload.plans
@@ -1246,15 +1661,18 @@ const adminSlice = createSlice({
         state.totalPagesPlans = action.payload.totalPages || 1;
         state.hasMorePlans =
           action.payload.currentPage < action.payload.totalPages;
+      })
+      .addCase(getAllSubscriptionPlans.rejected, (state, action) => {
         state.subscriptionLoading = false;
+        state.subscriptionError = action.payload;
+      })
+      // toggleUserEligibility
+      .addCase(toggleUserEligibility.pending, (state) => {
+        state.subscriptionLoading = true;
         state.subscriptionError = null;
-      },
-      "subscriptionLoading",
-      "subscriptionError"
-    );
-    handleAsync(
-      toggleUserEligibility,
-      (state, action) => {
+      })
+      .addCase(toggleUserEligibility.fulfilled, (state, action) => {
+        state.subscriptionLoading = false;
         state.users = state.users.map((user) =>
           user._id === action.payload.user.id
             ? {
@@ -1265,26 +1683,32 @@ const adminSlice = createSlice({
             : user
         );
         state.notificationStatus = action.payload.message;
+      })
+      .addCase(toggleUserEligibility.rejected, (state, action) => {
         state.subscriptionLoading = false;
+        state.subscriptionError = action.payload;
+      })
+      // updateGlobalEligibilityCriteria
+      .addCase(updateGlobalEligibilityCriteria.pending, (state) => {
+        state.subscriptionLoading = true;
         state.subscriptionError = null;
-      },
-      "subscriptionLoading",
-      "subscriptionError"
-    );
-    handleAsync(
-      updateGlobalEligibilityCriteria,
-      (state, action) => {
+      })
+      .addCase(updateGlobalEligibilityCriteria.fulfilled, (state, action) => {
+        state.subscriptionLoading = false;
         state.subscriptionCriteria = action.payload;
         state.notificationStatus = "Eligibility criteria updated successfully";
+      })
+      .addCase(updateGlobalEligibilityCriteria.rejected, (state, action) => {
         state.subscriptionLoading = false;
+        state.subscriptionError = action.payload;
+      })
+      // checkUserEligibility
+      .addCase(checkUserEligibility.pending, (state) => {
+        state.subscriptionLoading = true;
         state.subscriptionError = null;
-      },
-      "subscriptionLoading",
-      "subscriptionError"
-    );
-    handleAsync(
-      checkUserEligibility,
-      (state, action) => {
+      })
+      .addCase(checkUserEligibility.fulfilled, (state, action) => {
+        state.subscriptionLoading = false;
         state.userEligibility = action.payload;
         state.subscriptionCriteria = action.payload.criteria || {
           minFollowers: 10000,
@@ -1295,30 +1719,47 @@ const adminSlice = createSlice({
         state.error = action.payload.message
           ? { message: action.payload.message }
           : null;
+      })
+      .addCase(checkUserEligibility.rejected, (state, action) => {
         state.subscriptionLoading = false;
+        state.subscriptionError =
+          action.payload.message || "Failed to check user eligibility";
+        if (action.payload.criteria) {
+          state.subscriptionCriteria = action.payload.criteria;
+          state.userEligibility = {
+            isEligible: action.payload.isEligible || false,
+            followerCount: action.payload.followerCount || 0,
+            postCount: action.payload.postCount || 0,
+            engagementRate: action.payload.engagementRate || 0,
+            accountAgeDays: action.payload.accountAgeDays || 0,
+          };
+        }
+      })
+      // toggleSubscriptionPlanStatus
+      .addCase(toggleSubscriptionPlanStatus.pending, (state) => {
+        state.subscriptionLoading = true;
         state.subscriptionError = null;
-      },
-      "subscriptionLoading",
-      "subscriptionError"
-    );
-    handleAsync(
-      toggleSubscriptionPlanStatus,
-      (state, action) => {
+      })
+      .addCase(toggleSubscriptionPlanStatus.fulfilled, (state, action) => {
+        state.subscriptionLoading = false;
         state.plans = state.plans.map((plan) =>
           plan.id === action.payload.id
             ? { ...plan, status: action.payload.status }
             : plan
         );
         state.notificationStatus = `Plan ${action.payload.status} successfully`;
+      })
+      .addCase(toggleSubscriptionPlanStatus.rejected, (state, action) => {
         state.subscriptionLoading = false;
+        state.subscriptionError = action.payload;
+      })
+      // grantSubscriptionAccess
+      .addCase(grantSubscriptionAccess.pending, (state) => {
+        state.subscriptionLoading = true;
         state.subscriptionError = null;
-      },
-      "subscriptionLoading",
-      "subscriptionError"
-    );
-    handleAsync(
-      grantSubscriptionAccess,
-      (state, action) => {
+      })
+      .addCase(grantSubscriptionAccess.fulfilled, (state, action) => {
+        state.subscriptionLoading = false;
         state.users = state.users.map((user) =>
           user._id === action.payload.user.id
             ? {
@@ -1329,15 +1770,18 @@ const adminSlice = createSlice({
             : user
         );
         state.notificationStatus = action.payload.message;
+      })
+      .addCase(grantSubscriptionAccess.rejected, (state, action) => {
         state.subscriptionLoading = false;
+        state.subscriptionError = action.payload;
+      })
+      // setUserEligibilityOverride
+      .addCase(setUserEligibilityOverride.pending, (state) => {
+        state.subscriptionLoading = true;
         state.subscriptionError = null;
-      },
-      "subscriptionLoading",
-      "subscriptionError"
-    );
-    handleAsync(
-      setUserEligibilityOverride,
-      (state, action) => {
+      })
+      .addCase(setUserEligibilityOverride.fulfilled, (state, action) => {
+        state.subscriptionLoading = false;
         state.users = state.users.map((user) =>
           user._id === action.payload.userId
             ? {
@@ -1351,38 +1795,63 @@ const adminSlice = createSlice({
         );
         state.notificationStatus =
           "User eligibility override updated successfully";
+      })
+      .addCase(setUserEligibilityOverride.rejected, (state, action) => {
         state.subscriptionLoading = false;
-        state.subscriptionError = null;
-      },
-      "subscriptionLoading",
-      "subscriptionError"
-    );
-    handleAsync(overrideUserMilestones, (state, action) => {
-      const idx = state.users.findIndex((u) => u._id === action.payload.userId);
-      if (idx !== -1)
-        state.users[idx] = {
-          ...state.users[idx],
-          milestoneOverride: action.payload.milestoneOverride,
-          isEligibleForSubscription: action.payload.isEligibleForSubscription,
-        };
-      state.success = true;
-      state.overrideInfo = action.payload;
-    });
-    handleAsync(resetUserMilestones, (state, action) => {
-      const idx = state.users.findIndex((u) => u._id === action.meta.arg);
-      if (idx !== -1)
-        state.users[idx] = {
-          ...state.users[idx],
-          milestoneOverride: {
-            followerCount: null,
-            postCount: null,
-            engagementRate: null,
-            accountAgeDays: null,
-          },
-        };
-      state.success = true;
-      state.overrideInfo = action.payload;
-    });
+        state.subscriptionError = action.payload;
+      })
+      // overrideUserMilestones
+      .addCase(overrideUserMilestones.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.success = false;
+      })
+      .addCase(overrideUserMilestones.fulfilled, (state, action) => {
+        state.loading = false;
+        state.success = true;
+        state.overrideInfo = action.payload;
+        const idx = state.users.findIndex(
+          (u) => u._id === action.payload.userId
+        );
+        if (idx !== -1) {
+          state.users[idx] = {
+            ...state.users[idx],
+            milestoneOverride: action.payload.milestoneOverride,
+            isEligibleForSubscription: action.payload.isEligibleForSubscription,
+          };
+        }
+      })
+      .addCase(overrideUserMilestones.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // resetUserMilestones
+      .addCase(resetUserMilestones.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.success = false;
+      })
+      .addCase(resetUserMilestones.fulfilled, (state, action) => {
+        state.loading = false;
+        state.success = true;
+        state.overrideInfo = action.payload;
+        const idx = state.users.findIndex((u) => u._id === action.meta.arg);
+        if (idx !== -1) {
+          state.users[idx] = {
+            ...state.users[idx],
+            milestoneOverride: {
+              followerCount: null,
+              postCount: null,
+              engagementRate: null,
+              accountAgeDays: null,
+            },
+          };
+        }
+      })
+      .addCase(resetUserMilestones.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
   },
 });
 
