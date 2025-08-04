@@ -12,30 +12,72 @@ import MarkerClusterGroup from "react-leaflet-cluster";
 import {
   fetchAllUserLocations,
   fetchIndiaGeoJson,
-  setGeoJsonFromCache,
 } from "../../store/userSlice";
 import { selectSocketState } from "../../store/socketSlice";
 import Pagination from "../../Utils/Pagination";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { TableVirtuoso } from "react-virtuoso";
-import { throttle } from "lodash";
+import { throttle, debounce } from "lodash";
+import { openDB } from "idb";
 import { ErrorBoundary } from "react-error-boundary";
+import LZString from "lz-string";
 import LoadingBar from "../../Utils/LoadingBar";
-import { cacheGeoJson, getCachedGeoJson } from "../../Utils/geojsonUtils";
 
-// Custom marker icons
+// Cache GeoJSON in IndexedDB
+const GEOJSON_CACHE_KEY = "india_geojson";
+const DB_NAME = "GeoJSONCache";
+const STORE_NAME = "geojson";
+
+const initDB = async () => {
+  return openDB(DB_NAME, 1, {
+    upgrade(db) {
+      db.createObjectStore(STORE_NAME);
+    },
+  });
+};
+
+const cacheGeoJson = debounce(async (data) => {
+  try {
+    const compressed = LZString.compressToUTF16(JSON.stringify(data));
+    if (compressed.length / 1024 > 5000) {
+      console.warn(
+        "Compressed GeoJSON too large:",
+        compressed.length / 1024,
+        "KB"
+      );
+      return;
+    }
+    const db = await initDB();
+    await db.put(STORE_NAME, compressed, GEOJSON_CACHE_KEY);
+    // console.log("[GeoJSON] Cached successfully");
+  } catch (e) {
+    console.warn("Failed to cache GeoJSON:", e);
+  }
+}, 1000);
+
+const getCachedGeoJson = async () => {
+  try {
+    const db = await initDB();
+    const compressed = await db.get(STORE_NAME, GEOJSON_CACHE_KEY);
+    if (!compressed) return null;
+    const decompressed = LZString.decompressFromUTF16(compressed);
+    // console.log(
+    //   "[GeoJSON] Decompressed size (KB):",
+    //   (decompressed.length / 1024).toFixed(2)
+    // );
+    return JSON.parse(decompressed);
+  } catch (e) {
+    console.warn("Failed to retrieve cached GeoJSON:", e);
+    return null;
+  }
+};
+
+// Custom marker icon
 const customIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-});
-
-const selfIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png", // Different icon for self
-  iconSize: [35, 51], // Slightly larger for visibility
-  iconAnchor: [17, 51],
   popupAnchor: [1, -34],
 });
 
@@ -45,23 +87,6 @@ const formatLabel = (str) =>
     ? str.trim().charAt(0).toUpperCase() + str.trim().slice(1).toLowerCase()
     : "Unknown";
 
-// Validate GeoJSON
-const isValidGeoJson = (data) => {
-  return (
-    data &&
-    typeof data === "object" &&
-    data.type === "FeatureCollection" &&
-    Array.isArray(data.features) &&
-    data.features.every(
-      (feature) =>
-        feature.type === "Feature" &&
-        feature.geometry &&
-        ["Polygon", "MultiPolygon"].includes(feature.geometry.type) &&
-        Array.isArray(feature.geometry.coordinates)
-    )
-  );
-};
-
 // Map zoom handler
 const ZoomHandler = ({
   selectedCountry,
@@ -69,12 +94,11 @@ const ZoomHandler = ({
   locations,
   selectedUserLocation,
   geoJson,
-  userId,
 }) => {
   const map = useMap();
 
   useEffect(() => {
-    const cappedZoom = 10;
+    const cappedZoom = 18;
     map.options.maxZoom = cappedZoom;
 
     const defaultIndiaCenter = [20.5937, 78.9629];
@@ -124,7 +148,11 @@ const ZoomHandler = ({
           loc.coordinates?.lon
       );
 
-      if (selectedCountry === "India" && isValidGeoJson(geoJson?.data)) {
+      if (
+        selectedCountry === "India" &&
+        geoJson?.data &&
+        geoJson.data.type === "FeatureCollection"
+      ) {
         const indiaLayer = L.geoJSON(geoJson.data);
         const indiaBounds = indiaLayer.getBounds();
         map.fitBounds(indiaBounds, { padding: [50, 50] });
@@ -145,19 +173,7 @@ const ZoomHandler = ({
       return;
     }
 
-    // Auto-zoom to self-location if available
-    const selfLocation = locations.list.find(
-      (loc) =>
-        loc.userId === userId && loc.coordinates?.lat && loc.coordinates?.lon
-    );
-    if (selfLocation) {
-      map.setView(
-        [selfLocation.coordinates.lat, selfLocation.coordinates.lon],
-        cappedZoom
-      );
-    } else {
-      map.setView(defaultIndiaCenter, defaultZoom);
-    }
+    map.setView(defaultIndiaCenter, defaultZoom);
   }, [
     selectedCountry,
     selectedState,
@@ -165,7 +181,6 @@ const ZoomHandler = ({
     selectedUserLocation,
     geoJson,
     map,
-    userId,
   ]);
 
   return null;
@@ -191,33 +206,10 @@ const AdminLocationDashboard = () => {
   const isLoading = userLocations.loading || geoJson.loading;
 
   useEffect(() => {
-    const loadIndiaGeoJson = async () => {
-      if (geoJson.loading || geoJson.data) return;
-
-      try {
-        const cached = await getCachedGeoJson();
-        if (cached && isValidGeoJson(cached)) {
-          dispatch(setGeoJsonFromCache(cached));
-        } else {
-          const res = await dispatch(fetchIndiaGeoJson()).unwrap();
-          if (isValidGeoJson(res)) {
-            await cacheGeoJson(res);
-            dispatch(setGeoJsonFromCache(res));
-          } else {
-            throw new Error("Invalid GeoJSON data received");
-          }
-        }
-      } catch (err) {
-        console.error("[GeoJSON] load error", err.message);
-        dispatch({
-          type: "user/fetchIndiaGeoJson/rejected",
-          payload: err.message || "Failed to load GeoJSON",
-        });
-      }
-    };
-
-    loadIndiaGeoJson();
-  }, [dispatch, geoJson.loading, geoJson.data]);
+    if (userId && !geoJson.loading && !geoJson.data) {
+      dispatch(fetchIndiaGeoJson());
+    }
+  }, [dispatch, userId, geoJson.data, geoJson.loading]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -254,29 +246,55 @@ const AdminLocationDashboard = () => {
     return () => socket.off("userLocationUpdate", throttledHandler);
   }, [socket, dispatch]);
 
+  // useEffect(() => {
+  //   console.log("[AdminLocationDashboard] GeoJSON:", {
+  //     loading: geoJson.loading,
+  //     error: geoJson.error,
+  //     features: geoJson.data?.features?.length,
+  //   });
+  //   console.log("[AdminLocationDashboard] Locations:", {
+  //     loading: userLocations.loading,
+  //     error: userLocations.error,
+  //     count: userLocations.list?.length,
+  //   });
+  // }, [geoJson, userLocations]);
+
   const indiaGeoJson = useMemo(() => {
-    if (!isValidGeoJson(geoJson.data)) return null;
-    const features =
-      geoJson.data?.features?.filter(
-        (f) =>
-          (f.geometry?.type === "Polygon" ||
-            f.geometry?.type === "MultiPolygon") &&
-          ["india", "in"].includes(
-            (
-              f.properties?.NAME_0 ||
-              f.properties?.name ||
-              f.properties?.admin ||
-              f.properties?.iso ||
-              f.properties?.country ||
-              ""
-            ).toLowerCase()
-          )
-      ) || [];
-    return { type: "FeatureCollection", features };
+    const boundaryFeatures =
+      geoJson.data?.features?.filter((f) => {
+        const props = f.properties || {};
+        const isIndia =
+          ["india"].includes((props.NAME_0 || "").toLowerCase()) ||
+          ["india"].includes((props.name || "").toLowerCase()) ||
+          ["india"].includes((props.admin || "").toLowerCase()) ||
+          ["in"].includes((props.iso || "").toLowerCase()) ||
+          ["india"].includes((props.country || "").toLowerCase());
+        const isValidGeometry =
+          f.geometry?.type === "Polygon" || f.geometry?.type === "MultiPolygon";
+        // console.log("[indiaGeoJson] Feature check:", {
+        //   props,
+        //   isIndia,
+        //   isValidGeometry,
+        // });
+        return isIndia && isValidGeometry;
+      }) || [];
+    // console.log(
+    //   "[indiaGeoJson] Filtered features:",
+    //   boundaryFeatures.length,
+    //   boundaryFeatures.map((f) => f.properties)
+    // );
+    return {
+      type: "FeatureCollection",
+      features: boundaryFeatures,
+    };
   }, [geoJson.data]);
 
+  // console.log(
+  //   "[indiaGeoJson] Features types:",
+  //   indiaGeoJson.features?.map((f) => f.geometry?.type)
+  // );
+
   const limitedGeoJson = useMemo(() => {
-    if (!isValidGeoJson(geoJson.data)) return null;
     const features =
       geoJson.data?.features
         ?.filter(
@@ -332,6 +350,12 @@ const AdminLocationDashboard = () => {
           (loc) => loc.state && formatLabel(loc.state) === selectedState
         )
       : data;
+    // console.log("[AdminLocationDashboard] Table Data:", filteredData.length);
+    // console.log(
+    //   "[AdminLocationDashboard] Map Markers:",
+    //   filteredData.filter((loc) => loc.coordinates?.lat && loc.coordinates?.lon)
+    //     .length
+    // );
     return filteredData.map((loc) => ({
       userId: loc.userId,
       name: loc?.name || "Unknown",
@@ -340,7 +364,6 @@ const AdminLocationDashboard = () => {
       status: userStatus[loc.userId]?.isOnline ? "Online" : "Offline",
       coordinates: loc.coordinates,
       timestamp: loc.timestamp,
-      isSelf: loc.userId === userId, // Flag for self-location
     }));
   }, [
     selectedCountry,
@@ -348,7 +371,6 @@ const AdminLocationDashboard = () => {
     groupedLocations,
     locations.list,
     userStatus,
-    userId,
   ]);
 
   const stateCounts = useMemo(() => {
@@ -377,10 +399,6 @@ const AdminLocationDashboard = () => {
     (loc) => loc.status === "Offline"
   ).length;
 
-  const selfLocation = useMemo(() => {
-    return tableData.find((loc) => loc.isSelf);
-  }, [tableData]);
-
   const handleRowClick = useCallback((loc) => {
     if (loc.coordinates?.lat && loc.coordinates?.lon) {
       setSelectedUserLocation(loc.coordinates);
@@ -401,25 +419,13 @@ const AdminLocationDashboard = () => {
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="lg:w-1/4 bg-gray-100 dark:bg-gray-800 rounded-lg p-4 shadow max-h-[60vh] overflow-y-auto relative">
           <h2 className="text-lg font-semibold mb-4">Locations</h2>
-          <LoadingBar
-            loading={userLocations.loading}
-            text="Loading user locations..."
-          />
+          <LoadingBar loading={userLocations.loading} text="Loading user locations..." />
           {locations.error ? (
             <p className="text-red-500">{locations.error}</p>
           ) : !Object.keys(groupedLocations).length ? (
             <p>No location data</p>
           ) : (
             <div className="space-y-2">
-              {selfLocation && (
-                <button
-                  onClick={() => handleRowClick(selfLocation)}
-                  className="w-full text-left p-2 rounded bg-blue-200 dark:bg-blue-700 text-sm font-semibold"
-                >
-                  My Location ({formatLabel(selfLocation.state)},{" "}
-                  {formatLabel(selfLocation.country)})
-                </button>
-              )}
               {Object.keys(groupedLocations)
                 .filter((country) => country !== "Unknown")
                 .map((country) => (
@@ -484,14 +490,14 @@ const AdminLocationDashboard = () => {
                   backgroundColor: "transparent",
                 }}
                 className="rounded-lg z-0"
-                maxZoom={10}
+                maxZoom={Math.floor(18 * 0.6)}
               >
                 <TileLayer
                   url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                   attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   className="dark:filter dark:brightness-75 dark:contrast-125"
                   tileSize={256}
-                  maxZoom={10}
+                  maxZoom={18}
                   keepBuffer={4}
                 />
                 <ZoomHandler
@@ -500,7 +506,6 @@ const AdminLocationDashboard = () => {
                   locations={locations}
                   selectedUserLocation={selectedUserLocation}
                   geoJson={geoJson}
-                  userId={userId}
                 />
                 {geoJson.loading && (
                   <div className="text-center p-2 z-10">Loading GeoJSON...</div>
@@ -510,33 +515,32 @@ const AdminLocationDashboard = () => {
                     Error: {geoJson.error}
                   </div>
                 )}
-                {indiaGeoJson?.features?.length > 0 && (
+                {indiaGeoJson.features?.length > 0 && (
                   <GeoJSON
                     data={indiaGeoJson}
                     style={geoJsonStyle}
                     zIndexOffset={1000}
                     onEachFeature={(feature, layer) => {
-                      layer.bindPopup(
-                        `<strong>${
-                          feature.properties?.NAME_0 || "India"
-                        }</strong>`
-                      );
+                      // console.log(
+                      //   "[GeoJSON Render] Feature:",
+                      //   feature.properties
+                      // );
+                      layer.bindPopup("<strong>India</strong>");
                     }}
                   />
                 )}
-                {selectedCountry === "India" &&
-                  limitedGeoJson?.features.length > 0 && (
-                    <GeoJSON
-                      data={limitedGeoJson}
-                      style={() => ({
-                        color: "#f63e02",
-                        weight: 1,
-                        opacity: 0.1,
-                        fillOpacity: 0.1,
-                      })}
-                      zIndex={1000}
-                    />
-                  )}
+                {selectedCountry === "India" && geoJson.data && (
+                  <GeoJSON
+                    data={geoJson.data}
+                    style={() => ({
+                      color: "#f63e02",
+                      weight: 1,
+                      opacity: 0.1,
+                      fillOpacity: 0.1,
+                    })}
+                    zIndex={1000}
+                  />
+                )}
                 <MarkerClusterGroup maxClusterRadius={20}>
                   {tableData
                     .filter(
@@ -546,13 +550,12 @@ const AdminLocationDashboard = () => {
                       <Marker
                         key={`${loc.userId}-${loc.timestamp || index}`}
                         position={[loc.coordinates.lat, loc.coordinates.lon]}
-                        icon={loc.isSelf ? selfIcon : customIcon} // Use selfIcon for self-location
+                        icon={customIcon}
                       >
                         <Popup>
                           <div className="text-sm">
                             <p>
                               <strong>Name:</strong> {loc?.name || "Unknown"}
-                              {loc.isSelf && " (You)"}
                             </p>
                             <p>
                               <strong>State:</strong> {formatLabel(loc?.state)}
@@ -627,14 +630,11 @@ const AdminLocationDashboard = () => {
                     ),
                     TableRow: ({ item: loc }) => (
                       <tr
-                        className={`hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer ${
-                          loc.isSelf ? "bg-blue-100 dark:bg-blue-900" : ""
-                        }`}
+                        className="hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
                         onClick={() => handleRowClick(loc)}
                       >
                         <td className="p-2 border-b border-gray-300 dark:border-gray-600">
                           {loc?.name || "Unknown"}
-                          {loc.isSelf && " (You)"}
                         </td>
                         <td className="p-2 border-b border-gray-300 dark:border-gray-600">
                           {loc?.state}
