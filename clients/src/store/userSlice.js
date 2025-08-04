@@ -64,20 +64,19 @@ export const fetchFollowerLocations = createAsyncThunk(
 
 export const fetchIndiaGeoJson = createAsyncThunk(
   "user/fetchIndiaGeoJson",
-  async (_, thunkAPI) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get("/geojson/india-border", {
-        timeout: 30000,
-      });
+      const url = "/geojson/india-border";
+      const res = await axiosInstance.get(url);
+      // console.log("fetchIndiaGeoJsonnnnnnn", res);
 
       if (!res.data?.type || res.data.type !== "FeatureCollection") {
         throw new Error("Invalid GeoJSON format");
       }
       return res.data;
     } catch (err) {
-      return thunkAPI.rejectWithValue(
-        err?.response?.data?.message || err.message || "GeoJSON fetch failed"
-      );
+      console.error("[UserSlice] fetchIndiaGeoJson: Error", err.message);
+      return rejectWithValue(err.message || "Failed to fetch GeoJSON");
     }
   }
 );

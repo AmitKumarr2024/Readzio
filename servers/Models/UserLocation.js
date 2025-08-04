@@ -1,8 +1,27 @@
 import mongoose from "mongoose";
+import axios from "axios";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { point } from "@turf/helpers";
-import { loadIndiaGeoJSON } from "../../servers/Utils/geoJsonCache.js";
 
+const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
+
+let indiaGeoJSON = null;
+
+// Load GeoJSON from Firebase once at startup
+(async () => {
+  try {
+    const response = await axios.get(INDIA_GEOJSON_URL);
+    indiaGeoJSON = response.data;
+    console.log("✅ India GeoJSON loaded from Firebase.");
+  } catch (error) {
+    console.error(
+      "❌ Failed to fetch India GeoJSON from Firebase:",
+      error.message
+    );
+  }
+})();
+
+// Defines schema for user location data
 const userLocationSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -17,34 +36,29 @@ const userLocationSchema = new mongoose.Schema({
       required: true,
     },
     coordinates: {
-      type: [Number], // [lng, lat]
+      type: [Number], // [longitude, latitude]
       required: true,
     },
   },
   city: { type: String, default: "Unknown" },
-  state: { type: String, default: "Unknown" },
   country: { type: String, default: "Unknown" },
+  state: { type: String, default: "Unknown" },
   pincode: { type: String, default: "Unknown" },
   ip: { type: String, default: "" },
   timestamp: { type: Date, default: Date.now },
 });
 
+// Creates geospatial index
 userLocationSchema.index({ coordinates: "2dsphere" });
 
-// Static method to resolve country/state/pincode from coordinates
-userLocationSchema.statics.resolveGeoLocation = async function (
-  longitude,
-  latitude
-) {
-  const geoJSON = await loadIndiaGeoJSON();
-
-  if (!geoJSON?.features) {
+// Resolves GeoJSON data
+userLocationSchema.statics.resolveGeoLocation = function (longitude, latitude) {
+  if (!indiaGeoJSON || !indiaGeoJSON.features) {
     return { country: "Unknown", state: "Unknown", pincode: "Unknown" };
   }
 
   const userPoint = point([longitude, latitude]);
-
-  for (const feature of geoJSON.features) {
+  for (const feature of indiaGeoJSON.features) {
     if (
       feature.geometry &&
       booleanPointInPolygon(userPoint, feature.geometry)
@@ -61,38 +75,28 @@ userLocationSchema.statics.resolveGeoLocation = async function (
   return { country: "Unknown", state: "Unknown", pincode: "Unknown" };
 };
 
-// Pre-save hook to resolve geolocation
-userLocationSchema.pre("save", async function (next) {
-  if (
-    this.coordinates &&
-    Array.isArray(this.coordinates.coordinates) &&
-    this.coordinates.coordinates.length === 2
-  ) {
-    const [lng, lat] = this.coordinates.coordinates;
-
-    if (isNaN(lng) || isNaN(lat)) {
+// Pre-save hook
+userLocationSchema.pre("save", function (next) {
+  if (this.coordinates?.coordinates) {
+    const [lon, lat] = this.coordinates.coordinates;
+    if (isNaN(lon) || isNaN(lat)) {
       this.country = "Unknown";
       this.state = "Unknown";
       this.pincode = "Unknown";
-      return next();
-    }
-
-    try {
-      const geo = await this.constructor.resolveGeoLocation(lng, lat);
-      this.country = geo.country;
-      this.state = geo.state;
-      this.pincode = geo.pincode;
-    } catch (err) {
-      console.error("[GeoResolve Error]", err.message);
+    } else {
+      const geoData = this.constructor.resolveGeoLocation(lon, lat);
+      this.country = geoData.country || "Unknown";
+      this.state = geoData.state || "Unknown";
+      this.pincode = geoData.pincode || "Unknown";
     }
   } else {
     this.country = "Unknown";
     this.state = "Unknown";
     this.pincode = "Unknown";
   }
-
   next();
 });
 
+// Export model
 export default mongoose.models.UserLocation ||
   mongoose.model("UserLocation", userLocationSchema);
