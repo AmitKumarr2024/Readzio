@@ -16,7 +16,7 @@
   "main": "index.js",
   "scripts": {
     "start": "cross-env NODE_OPTIONS=--max-old-space-size=2048 node servers/index.js",
-    "build": "npm install --legacy-peer-deps && npm install --prefix clients --legacy-peer-deps && npm run build --prefix clients"
+    "build": "bash render-build.sh"
   },
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",
