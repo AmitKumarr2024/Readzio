@@ -1,23 +1,71 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../connection/axiosInstance";
 
+// Error Helper
+const extractError = (err, fallback = "Request failed") =>
+  err?.response?.data?.message || err.message || fallback;
+
+// Location Merge Helper
+const mergeLocation = (list, newLoc) => [
+  newLoc,
+  ...list.filter((loc) => loc.userId !== newLoc.userId),
+];
+
+// Common State Handlers
+const handlePending = (state, key) => {
+  state[key].loading = true;
+  state[key].error = null;
+};
+const handleFulfilled = (state, key, action) => {
+  state[key].loading = false;
+  state[key].data = action.payload;
+};
+const handleRejected = (state, key, action) => {
+  state[key].loading = false;
+  state[key].error = action.payload;
+};
+const setLoading = (state) => {
+  state.loading = true;
+  state.error = null;
+};
+
+// Toggle Thunk Factory
+const createToggleThunk = (name, endpoint) =>
+  createAsyncThunk(
+    `user/${name}`,
+    async (userId, { rejectWithValue, getState }) => {
+      try {
+        const res = await axiosInstance.patch(
+          `/user/${endpoint}/${userId}`,
+          {},
+          { withCredentials: true }
+        );
+        const updated = res.data.data || res.data;
+        if (name === "toggleBlockUser" && updated.blocked === undefined) {
+          const currentUser = getState().user.users.find(
+            (u) => u._id === userId
+          );
+          return { _id: userId, blocked: !currentUser?.blocked };
+        }
+        return updated;
+      } catch (err) {
+        return rejectWithValue(extractError(err, `Failed to ${name}`));
+      }
+    }
+  );
+
+// Thunks
 export const getUser = createAsyncThunk(
   "user/getUser",
   async (_, { rejectWithValue }) => {
-    // console.log("[UserSlice] getUser: Starting request");
     try {
       const res = await axiosInstance.get("/user/get-user", {
         withCredentials: true,
       });
-      // console.log("[UserSlice] getUser: Response received", res.data);
       if (!res.data?.data) throw new Error("Invalid user data");
-      // console.log("[UserSlice] getUser: Returning user data", res.data.data);
       return res.data.data;
     } catch (err) {
-      console.error("[UserSlice] getUser: Error", err.message);
-      return rejectWithValue(
-        err.response?.data?.message || err.message || "Failed to fetch user"
-      );
+      return rejectWithValue(extractError(err, "Failed to fetch user"));
     }
   }
 );
@@ -28,35 +76,21 @@ export const fetchFollowerLocations = createAsyncThunk(
     { page = 1, limit = 12, includeOffline = true },
     { rejectWithValue }
   ) => {
-    // console.log("[UserSlice] fetchFollowerLocations: Starting request", {
-    //   page,
-    //   limit,
-    //   includeOffline,
-    // });
     try {
-      const response = await axiosInstance.get(
+      const res = await axiosInstance.get(
         `/follow/follower-locations?page=${page}&limit=${limit}&includeOffline=${includeOffline}`,
         { withCredentials: true }
       );
-      // console.log(
-      //   "[UserSlice] fetchFollowerLocations: Response received",
-      //   response.data
-      // );
-      if (!response.data) throw new Error("Invalid response");
-      const result = {
-        locations: response.data.list || [],
+      if (!res.data) throw new Error("Invalid response");
+      return {
+        locations: res.data.list || [],
         page,
-        total: response.data.total || 0,
-        totalPages: response.data.totalPages || 1,
+        total: res.data.total || 0,
+        totalPages: res.data.totalPages || 1,
       };
-      // console.log("[UserSlice] fetchFollowerLocations: Returning data", result);
-      return result;
     } catch (err) {
-      console.error("[UserSlice] fetchFollowerLocations: Error", err.message);
       return rejectWithValue(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to fetch follower locations"
+        extractError(err, "Failed to fetch follower locations")
       );
     }
   }
@@ -64,20 +98,16 @@ export const fetchFollowerLocations = createAsyncThunk(
 
 export const fetchIndiaGeoJson = createAsyncThunk(
   "user/fetchIndiaGeoJson",
-  async (_, thunkAPI) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get("/geojson/india-border", {
+      const res = await axiosInstance.get("/geojson/india-border", {
         timeout: 30000,
       });
-
-      if (!res.data?.type || res.data.type !== "FeatureCollection") {
+      if (!res.data?.type || res.data.type !== "FeatureCollection")
         throw new Error("Invalid GeoJSON format");
-      }
       return res.data;
     } catch (err) {
-      return thunkAPI.rejectWithValue(
-        err?.response?.data?.message || err.message || "GeoJSON fetch failed"
-      );
+      return rejectWithValue(extractError(err, "GeoJSON fetch failed"));
     }
   }
 );
@@ -94,25 +124,14 @@ export const getAllUsers = createAsyncThunk(
     },
     { rejectWithValue }
   ) => {
-    // console.log("[UserSlice] getAllUsers: Starting request", {
-    //   page,
-    //   limit,
-    //   search,
-    //   sortField,
-    //   sortOrder,
-    // });
     try {
-      const response = await axiosInstance.get("/user/get-all-user", {
+      const res = await axiosInstance.get("/user/get-all-user", {
         params: { page, limit, search, sortField, sortOrder },
         withCredentials: true,
       });
-      // console.log("[UserSlice] getAllUsers: Response received", response.data);
-      return response.data;
+      return res.data;
     } catch (err) {
-      console.error("[UserSlice] getAllUsers: Error", err.message);
-      return rejectWithValue(
-        err.response?.data?.message || err.message || "Failed to fetch users"
-      );
+      return rejectWithValue(extractError(err, "Failed to fetch users"));
     }
   }
 );
@@ -120,18 +139,13 @@ export const getAllUsers = createAsyncThunk(
 export const updateUser = createAsyncThunk(
   "user/updateUser",
   async (formData, { rejectWithValue }) => {
-    // console.log("[UserSlice] updateUser: Starting request", formData);
     try {
       const res = await axiosInstance.patch("/user/update-user", formData, {
         withCredentials: true,
       });
-      // console.log("[UserSlice] updateUser: Response received", res.data);
       return res.data.data;
     } catch (err) {
-      console.error("[UserSlice] updateUser: Error", err.message);
-      return rejectWithValue(
-        err.response?.data?.message || err.message || "Failed to update user"
-      );
+      return rejectWithValue(extractError(err, "Failed to update user"));
     }
   }
 );
@@ -139,104 +153,37 @@ export const updateUser = createAsyncThunk(
 export const deleteUser = createAsyncThunk(
   "user/deleteUser",
   async (userId, { rejectWithValue }) => {
-    // console.log("[UserSlice] deleteUser: Starting request", { userId });
     try {
       await axiosInstance.delete("/user/delete-user", {
         data: { userId },
         withCredentials: true,
       });
-      // console.log("[UserSlice] deleteUser: User deleted", { userId });
       return userId;
     } catch (err) {
-      console.error("[UserSlice] deleteUser: Error", err.message);
-      return rejectWithValue(
-        err.response?.data?.message || err.message || "Failed to delete user"
-      );
+      return rejectWithValue(extractError(err, "Failed to delete user"));
     }
   }
 );
 
-export const toggleBlockUser = createAsyncThunk(
-  "user/toggleBlockUser",
-  async (userId, { rejectWithValue, getState }) => {
-    // console.log("[UserSlice] toggleBlockUser: Starting request", { userId });
-    try {
-      const response = await axiosInstance.patch(
-        `/user/toggle-block/${userId}`,
-        {},
-        { withCredentials: true }
-      );
-      // console.log(
-      //   "[UserSlice] toggleBlockUser: Response received",
-      //   response.data
-      // );
-      const updatedUser = response.data.data || response.data;
-      if (updatedUser.blocked === undefined) {
-        const currentUser = getState().user.users.find((u) => u._id === userId);
-        // console.log("[UserSlice] toggleBlockUser: Fallback to state", {
-        //   currentUser,
-        // });
-        return { _id: userId, blocked: !currentUser?.blocked };
-      }
-      // console.log(
-      //   "[UserSlice] toggleBlockUser: Returning updated user",
-      //   updatedUser
-      // );
-      return updatedUser;
-    } catch (err) {
-      console.error("[UserSlice] toggleBlockUser: Error", err.message);
-      return rejectWithValue(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to toggle block status"
-      );
-    }
-  }
+export const toggleBlockUser = createToggleThunk(
+  "toggleBlockUser",
+  "toggle-block"
 );
-
-export const toggleUserRole = createAsyncThunk(
-  "user/toggleUserRole",
-  async (userId, { rejectWithValue }) => {
-    // console.log("[UserSlice] toggleUserRole: Starting request", { userId });
-    try {
-      const response = await axiosInstance.patch(
-        `/user/toggle-role/${userId}`,
-        {},
-        { withCredentials: true }
-      );
-      // console.log(
-      //   "[UserSlice] toggleUserRole: Response received",
-      //   response.data
-      // );
-      return response.data.data || response.data;
-    } catch (err) {
-      console.error("[UserSlice] toggleUserRole: Error", err.message);
-      return rejectWithValue(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to toggle user role"
-      );
-    }
-  }
+export const toggleUserRole = createToggleThunk(
+  "toggleUserRole",
+  "toggle-role"
 );
 
 export const getUserById = createAsyncThunk(
   "user/getUserById",
   async (userId, { rejectWithValue }) => {
-    // console.log("[UserSlice] getUserById: Starting request", { userId });
     try {
       const res = await axiosInstance.get(`/user/get-single-user/${userId}`, {
         withCredentials: true,
       });
-      // console.log("[UserSlice] getUserById: Response received", res.data);
       return res.data.data;
     } catch (err) {
-      console.error("[UserSlice] getUserById: Error", err.message);
-      return rejectWithValue(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to fetch user by ID"
-      );
+      return rejectWithValue(extractError(err, "Failed to fetch user by ID"));
     }
   }
 );
@@ -244,21 +191,13 @@ export const getUserById = createAsyncThunk(
 export const fetchUserActivity = createAsyncThunk(
   "user/fetchUserActivity",
   async (userId, { rejectWithValue }) => {
-    // console.log("[UserSlice] fetchUserActivity: Starting request", { userId });
     try {
-      const response = await axiosInstance.get(`/user/activity/${userId}`, {
+      const res = await axiosInstance.get(`/user/activity/${userId}`, {
         withCredentials: true,
       });
-      // console.log(
-      //   "[UserSlice] fetchUserActivity: Response received",
-      //   response.data
-      // );
-      return response.data.activity || [];
+      return res.data.activity || [];
     } catch (err) {
-      console.error("[UserSlice] fetchUserActivity: Error", err.message);
-      return rejectWithValue(
-        err.response?.data?.message || err.message || "Failed to fetch activity"
-      );
+      return rejectWithValue(extractError(err, "Failed to fetch activity"));
     }
   }
 );
@@ -266,18 +205,13 @@ export const fetchUserActivity = createAsyncThunk(
 export const clearUserActivity = createAsyncThunk(
   "user/clearUserActivity",
   async (_, { rejectWithValue }) => {
-    // console.log("[UserSlice] clearUserActivity: Starting request");
     try {
       const res = await axiosInstance.delete("/user/activity/clear", {
         withCredentials: true,
       });
-      // console.log("[UserSlice] clearUserActivity: Response received", res.data);
       return res.data;
     } catch (err) {
-      console.error("[UserSlice] clearUserActivity: Error", err.message);
-      return rejectWithValue(
-        err.response?.data?.message || err.message || "Failed to clear activity"
-      );
+      return rejectWithValue(extractError(err, "Failed to clear activity"));
     }
   }
 );
@@ -285,20 +219,13 @@ export const clearUserActivity = createAsyncThunk(
 export const clearOldActivity = createAsyncThunk(
   "user/clearOldActivity",
   async (_, { rejectWithValue }) => {
-    // console.log("[UserSlice] clearOldActivity: Starting request");
     try {
       const res = await axiosInstance.delete("/user/activity/clear-old", {
         withCredentials: true,
       });
-      // console.log("[UserSlice] clearOldActivity: Response received", res.data);
       return res.data;
     } catch (err) {
-      console.error("[UserSlice] clearOldActivity: Error", err.message);
-      return rejectWithValue(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to clear old activity"
-      );
+      return rejectWithValue(extractError(err, "Failed to clear old activity"));
     }
   }
 );
@@ -306,42 +233,22 @@ export const clearOldActivity = createAsyncThunk(
 export const fetchAllUserLocations = createAsyncThunk(
   "user/fetchAllUserLocations",
   async ({ page = 1, limit = 12 }, { rejectWithValue, getState }) => {
-    // console.log("[UserSlice] fetchAllUserLocations: Starting request", {
-    //   page,
-    //   limit,
-    // });
     try {
-      const state = getState();
-      if (state.auth?.role !== "admin") {
-        console.error(
-          "[UserSlice] fetchAllUserLocations: Admin access required"
-        );
+      if (getState().auth?.role !== "admin")
         throw new Error("Admin access required");
-      }
-      const response = await axiosInstance.get(
+      const res = await axiosInstance.get(
         `/user/locations?page=${page}&limit=${limit}`,
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
-      // console.log(
-      //   "[UserSlice] fetchAllUserLocations: Response received",
-      //   response.data
-      // );
-      const result = {
-        locations: response.data.list || response.data.locations || [],
+      return {
+        locations: res.data.list || res.data.locations || [],
         page,
-        total: response.data.total || 0,
-        totalPages: response.data.totalPages || 1,
+        total: res.data.total || 0,
+        totalPages: res.data.totalPages || 1,
       };
-      // console.log("[UserSlice] fetchAllUserLocations: Returning data", result);
-      return result;
     } catch (err) {
-      console.error("[UserSlice] fetchAllUserLocations: Error", err.message);
       return rejectWithValue(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to fetch user locations"
+        extractError(err, "Failed to fetch user locations")
       );
     }
   }
@@ -350,28 +257,15 @@ export const fetchAllUserLocations = createAsyncThunk(
 export const saveUserLocation = createAsyncThunk(
   "user/saveUserLocation",
   async ({ latitude, longitude, city, country }, { rejectWithValue }) => {
-    // console.log("[UserSlice] saveUserLocation: Starting request", {
-    //   latitude,
-    //   longitude,
-    //   city,
-    //   country,
-    // });
     try {
-      const response = await axiosInstance.post(
+      const res = await axiosInstance.post(
         "/user/save-location",
         { coordinates: { lat: latitude, lon: longitude }, city, country },
         { withCredentials: true }
       );
-      // console.log(
-      //   "[UserSlice] saveUserLocation: Response received",
-      //   response.data
-      // );
-      return response.data;
+      return res.data;
     } catch (err) {
-      console.error("[UserSlice] saveUserLocation: Error", err.message);
-      return rejectWithValue(
-        err.response?.data?.message || err.message || "Failed to save location"
-      );
+      return rejectWithValue(extractError(err, "Failed to save location"));
     }
   }
 );
@@ -383,9 +277,7 @@ export const searchUsers = createAsyncThunk(
       const res = await axiosInstance.get(`/post/search-users?query=${query}`);
       return res.data.users || [];
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || "User search failed"
-      );
+      return rejectWithValue(extractError(err, "User search failed"));
     }
   }
 );
@@ -394,21 +286,18 @@ export const saveUserConsent = createAsyncThunk(
   "user/saveUserConsent",
   async (consent, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.post(
+      await axiosInstance.post(
         "/user/consent",
         { consent },
         { withCredentials: true }
       );
-      return consent; // just return what was sent
+      return consent;
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || err.message || "Failed to save consent"
-      );
+      return rejectWithValue(extractError(err, "Failed to save consent"));
     }
   }
 );
 
-// Fetches IP-based location (GET /user/ip-location)
 export const getUserIPLocation = createAsyncThunk(
   "user/getUserIPLocation",
   async (_, { rejectWithValue }) => {
@@ -418,14 +307,11 @@ export const getUserIPLocation = createAsyncThunk(
       });
       return res.data.location;
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to get IP location"
-      );
+      return rejectWithValue(extractError(err, "Failed to get IP location"));
     }
   }
 );
 
-// Tracks IP-based location (POST /user/track-ip-location)
 export const trackUserIPLocation = createAsyncThunk(
   "user/trackUserIPLocation",
   async (_, { rejectWithValue }) => {
@@ -433,20 +319,15 @@ export const trackUserIPLocation = createAsyncThunk(
       await axiosInstance.post(
         "/user/track-ip-location",
         {},
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
       return true;
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to track IP location"
-      );
+      return rejectWithValue(extractError(err, "Failed to track IP location"));
     }
   }
 );
 
-// Check if user should see feedback prompt
 export const shouldShowFeedbackPrompt = createAsyncThunk(
   "user/shouldShowFeedbackPrompt",
   async (_, { rejectWithValue }) => {
@@ -457,13 +338,12 @@ export const shouldShowFeedbackPrompt = createAsyncThunk(
       return res.data.shouldPrompt;
     } catch (err) {
       return rejectWithValue(
-        err.response?.data?.message || "Failed to check feedback prompt"
+        extractError(err, "Failed to check feedback prompt")
       );
     }
   }
 );
 
-// Submit feedback
 export const submitUserFeedback = createAsyncThunk(
   "user/submitUserFeedback",
   async ({ rating, message }, { rejectWithValue }) => {
@@ -475,14 +355,11 @@ export const submitUserFeedback = createAsyncThunk(
       );
       return res.data.success;
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to submit feedback"
-      );
+      return rejectWithValue(extractError(err, "Failed to submit feedback"));
     }
   }
 );
 
-// Admin: Fetch all feedbacks
 export const fetchAllUserFeedback = createAsyncThunk(
   "user/fetchAllUserFeedback",
   async (_, { rejectWithValue }) => {
@@ -492,14 +369,11 @@ export const fetchAllUserFeedback = createAsyncThunk(
       });
       return res.data.feedbacks || [];
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to fetch feedbacks"
-      );
+      return rejectWithValue(extractError(err, "Failed to fetch feedbacks"));
     }
   }
 );
 
-// Admin: Manually trigger feedback prompt to user
 export const sendManualFeedbackPrompt = createAsyncThunk(
   "user/sendManualFeedbackPrompt",
   async ({ userId, message }, { rejectWithValue }) => {
@@ -512,16 +386,15 @@ export const sendManualFeedbackPrompt = createAsyncThunk(
       return res.data;
     } catch (err) {
       return rejectWithValue(
-        err.response?.data?.message || "Failed to send feedback prompt"
+        extractError(err, "Failed to send feedback prompt")
       );
     }
   }
 );
 
-export const clearSearchedUsers = () => ({
-  type: "user/clearSearchedUsers",
-});
+export const clearSearchedUsers = () => ({ type: "user/clearSearchedUsers" });
 
+// Initial State
 const initialState = {
   user: null,
   userId: null,
@@ -540,18 +413,15 @@ const initialState = {
   activity: [],
   activityLoading: false,
   activityError: null,
-  feedback: {
-    shouldPrompt: false,
-    submitting: false,
-    submitted: false,
-    error: null,
-    list: [],
-    loadingList: false,
-    errorList: null,
-    prompting: false,
-    promptError: null,
-  },
-
+  feedbackList: [],
+  feedbackListLoading: false,
+  feedbackListError: null,
+  feedbackSubmitting: false,
+  feedbackSubmitted: false,
+  feedbackError: null,
+  feedbackPrompt: false,
+  feedbackPrompting: false,
+  feedbackPromptError: null,
   userLocations: {
     list: [],
     count: 0,
@@ -568,49 +438,32 @@ const initialState = {
     loading: false,
     error: null,
   },
-  geoJson: {
-    data: null,
-    loading: false,
-    error: null,
-  },
-  ipLocation: {
-    data: null,
-    loading: false,
-    error: null,
-    tracked: false,
-  },
+  geoJson: { data: null, loading: false, error: null },
+  ipLocation: { data: null, loading: false, error: null, tracked: false },
   cookieConsent: localStorage.getItem("userCookieConsent") || null,
 };
 
+// Slice
 const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
     resetFeedbackState: (state) => {
-      state.feedback = {
-        shouldPrompt: false,
-        submitting: false,
-        submitted: false,
-        error: null,
-        list: [],
-        loadingList: false,
-        errorList: null,
-      };
+      state.feedbackList = [];
+      state.feedbackListLoading = false;
+      state.feedbackListError = null;
+      state.feedbackSubmitting = false;
+      state.feedbackSubmitted = false;
+      state.feedbackError = null;
+      state.feedbackPrompt = false;
     },
-
     clearGeoJson: (state) => {
-      // console.log("[UserSlice] clearGeoJson: Clearing GeoJSON state");
       state.geoJson = { data: null, loading: false, error: null };
     },
     setUserId: (state, action) => {
-      // console.log("[UserSlice] setUserId: Setting userId", action.payload);
       state.userId = action.payload;
     },
     addUserLocation: (state, action) => {
-      // console.log(
-      //   "[UserSlice] addUserLocation: Adding location",
-      //   action.payload
-      // );
       const location = {
         userId: action.payload.userId,
         coordinates: {
@@ -623,50 +476,34 @@ const userSlice = createSlice({
         pincode: action.payload.pincode || "Unknown",
         timestamp: action.payload.timestamp || Date.now(),
       };
-      state.userLocations.list = [
-        location,
-        ...state.userLocations.list.filter(
-          (loc) => loc.userId !== location.userId
-        ),
-      ];
-      state.followerLocations.list = [
-        location,
-        ...state.followerLocations.list.filter(
-          (loc) => loc.userId !== location.userId
-        ),
-      ];
-      // console.log("[UserSlice] addUserLocation: Updated locations", {
-      //   userLocations: state.userLocations.list.length,
-      //   followerLocations: state.followerLocations.list.length,
-      // });
+      state.userLocations.list = mergeLocation(
+        state.userLocations.list,
+        location
+      );
+      state.followerLocations.list = mergeLocation(
+        state.followerLocations.list,
+        location
+      );
     },
     clearUserError: (state) => {
-      // console.log("[UserSlice] clearUserError: Clearing errors");
       state.error = null;
       state.updateError = null;
       state.activityError = null;
       state.userLocations.error = null;
       state.followerLocations.error = null;
     },
-
-    clearUser: (state) => {
-      // console.log("[UserSlice] clearUser: Resetting user state");
-      return { ...initialState };
-    },
+    clearUser: (state) => ({ ...initialState }),
     clearSelectedUser: (state) => {
-      // console.log("[UserSlice] clearSelectedUser: Clearing selected user");
       state.selectedUser = null;
       state.selectedUserLoading = false;
       state.selectedUserError = null;
     },
     clearSearchedUsers: (state) => {
-      // console.log("[UserSlice] clearSearchedUsers: Clearing search users");
       state.searchedUsers = [];
       state.searchedUsersLoading = false;
       state.searchedUsersError = null;
     },
     resetUpdateStatus: (state) => {
-      // console.log("[UserSlice] resetUpdateStatus: Resetting update status");
       state.updateSuccess = false;
       state.updateError = null;
     },
@@ -681,66 +518,45 @@ const userSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(getUser.pending, (state) => {
-        // console.log("[UserSlice] getUser: Pending");
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(getUser.pending, setLoading)
       .addCase(getUser.fulfilled, (state, action) => {
-        // console.log("[UserSlice] getUser: Fulfilled", action.payload);
         state.loading = false;
         state.user = action.payload;
         state.userId = action.payload?._id || null;
       })
       .addCase(getUser.rejected, (state, action) => {
-        // console.log("[UserSlice] getUser: Rejected", action.payload);
         state.loading = false;
         state.error = action.payload;
       })
-      .addCase(getAllUsers.pending, (state) => {
-        // console.log("[UserSlice] getAllUsers: Pending");
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(getAllUsers.pending, setLoading)
       .addCase(getAllUsers.fulfilled, (state, action) => {
-        // console.log("[UserSlice] getAllUsers: Fulfilled", action.payload);
         state.loading = false;
         state.users = action.payload.users || [];
       })
       .addCase(getAllUsers.rejected, (state, action) => {
-        // console.log("[UserSlice] getAllUsers: Rejected", action.payload);
         state.loading = false;
         state.error = action.payload;
       })
       .addCase(updateUser.pending, (state) => {
-        // console.log("[UserSlice] updateUser: Pending");
         state.updateLoading = true;
         state.updateSuccess = false;
         state.updateError = null;
       })
       .addCase(updateUser.fulfilled, (state, action) => {
-        // console.log("[UserSlice] updateUser: Fulfilled", action.payload);
         state.updateLoading = false;
         state.updateSuccess = true;
         state.users = state.users.map((u) =>
           u._id === action.payload._id ? { ...u, ...action.payload } : u
         );
-        if (state.user?._id === action.payload._id) {
+        if (state.user?._id === action.payload._id)
           state.user = { ...state.user, ...action.payload };
-        }
       })
       .addCase(updateUser.rejected, (state, action) => {
-        // console.log("[UserSlice] updateUser: Rejected", action.payload);
         state.updateLoading = false;
         state.updateError = action.payload;
       })
-      .addCase(deleteUser.pending, (state) => {
-        // console.log("[UserSlice] deleteUser: Pending");
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(deleteUser.pending, setLoading)
       .addCase(deleteUser.fulfilled, (state, action) => {
-        // console.log("[UserSlice] deleteUser: Fulfilled", action.payload);
         state.loading = false;
         state.users = state.users.filter((u) => u._id !== action.payload);
         if (state.user?._id === action.payload) {
@@ -749,89 +565,66 @@ const userSlice = createSlice({
         }
       })
       .addCase(deleteUser.rejected, (state, action) => {
-        // console.log("[UserSlice] deleteUser: Rejected", action.payload);
         state.loading = false;
         state.error = action.payload;
       })
-      .addCase(toggleBlockUser.pending, (state) => {
-        // console.log("[UserSlice] toggleBlockUser: Pending");
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(toggleBlockUser.pending, setLoading)
       .addCase(toggleBlockUser.fulfilled, (state, action) => {
-        // console.log("[UserSlice] toggleBlockUser: Fulfilled", action.payload);
         state.loading = false;
         state.users = state.users.map((u) =>
           u._id === action.payload._id
             ? { ...u, blocked: action.payload.blocked }
             : u
         );
-        if (state.user?._id === action.payload._id) {
+        if (state.user?._id === action.payload._id)
           state.user = { ...state.user, blocked: action.payload.blocked };
-        }
       })
       .addCase(toggleBlockUser.rejected, (state, action) => {
-        // console.log("[UserSlice] toggleBlockUser: Rejected", action.payload);
         state.loading = false;
         state.error = action.payload;
       })
-      .addCase(toggleUserRole.pending, (state) => {
-        // console.log("[UserSlice] toggleUserRole: Pending");
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(toggleUserRole.pending, setLoading)
       .addCase(toggleUserRole.fulfilled, (state, action) => {
-        // console.log("[UserSlice] toggleUserRole: Fulfilled", action.payload);
         state.loading = false;
         state.users = state.users.map((u) =>
           u._id === action.payload._id ? { ...u, role: action.payload.role } : u
         );
-        if (state.user?._id === action.payload._id) {
+        if (state.user?._id === action.payload._id)
           state.user = { ...state.user, role: action.payload.role };
-        }
       })
       .addCase(toggleUserRole.rejected, (state, action) => {
-        // console.log("[UserSlice] toggleUserRole: Rejected", action.payload);
         state.loading = false;
         state.error = action.payload;
       })
       .addCase(getUserById.pending, (state) => {
-        // console.log("[UserSlice] getUserById: Pending");
         state.selectedUserLoading = true;
         state.selectedUserError = null;
       })
       .addCase(getUserById.fulfilled, (state, action) => {
-        // console.log("[UserSlice] getUserById: Fulfilled", action.payload);
         state.selectedUserLoading = false;
         state.selectedUser = action.payload;
       })
       .addCase(getUserById.rejected, (state, action) => {
-        // console.log("[UserSlice] getUserById: Rejected", action.payload);
         state.selectedUserLoading = false;
         state.selectedUserError = action.payload;
       })
       .addCase(fetchUserActivity.pending, (state) => {
-        // console.log("[UserSlice] fetchUserActivity: Pending");
         state.activityLoading = true;
         state.activityError = null;
       })
       .addCase(fetchUserActivity.fulfilled, (state, action) => {
-        // console.log("[UserSlice] fetchUserActivity: Fulfilled", action.payload);
         state.activityLoading = false;
         state.activity = action.payload;
       })
       .addCase(fetchUserActivity.rejected, (state, action) => {
-        // console.log("[UserSlice] fetchUserActivity: Rejected", action.payload);
         state.activityLoading = false;
         state.activityError = action.payload;
       })
       .addCase(clearUserActivity.fulfilled, (state) => {
-        // console.log("[UserSlice] clearUserActivity: Fulfilled");
         state.activity = [];
         state.activityLoading = false;
       })
       .addCase(clearOldActivity.fulfilled, (state) => {
-        // console.log("[UserSlice] clearOldActivity: Fulfilled");
         state.activity = state.activity.filter(
           (item) =>
             new Date(item.createdAt) >=
@@ -839,13 +632,10 @@ const userSlice = createSlice({
         );
         state.activityLoading = false;
       })
-      .addCase(fetchAllUserLocations.pending, (state) => {
-        // console.log("[UserSlice] fetchAllUserLocations: Pending");
-        state.userLocations.loading = true;
-        state.userLocations.error = null;
-      })
+      .addCase(fetchAllUserLocations.pending, (state) =>
+        handlePending(state, "userLocations")
+      )
       .addCase(fetchAllUserLocations.fulfilled, (state, { payload }) => {
-        // console.log("[UserSlice] fetchAllUserLocations: Fulfilled", payload);
         state.userLocations.loading = false;
         state.userLocations.list = payload.locations || [];
         state.userLocations.count =
@@ -853,43 +643,25 @@ const userSlice = createSlice({
         state.userLocations.page = payload.page;
         state.userLocations.totalPages = payload.totalPages;
       })
-      .addCase(fetchAllUserLocations.rejected, (state, { payload }) => {
-        // console.log("[UserSlice] fetchAllUserLocations: Rejected", payload);
-        state.userLocations.loading = false;
-        state.userLocations.error = payload;
-      })
-      .addCase(fetchFollowerLocations.pending, (state) => {
-        // console.log("[UserSlice] fetchFollowerLocations: Pending");
-        state.followerLocations.loading = true;
-        state.followerLocations.error = null;
-      })
-      .addCase(fetchFollowerLocations.fulfilled, (state, action) => {
-        // console.log(
-        //   "[UserSlice] fetchFollowerLocations: Fulfilled",
-        //   action.payload
-        // );
+      .addCase(fetchAllUserLocations.rejected, (state, { payload }) =>
+        handleRejected(state, "userLocations", { payload })
+      )
+      .addCase(fetchFollowerLocations.pending, (state) =>
+        handlePending(state, "followerLocations")
+      )
+      .addCase(fetchFollowerLocations.fulfilled, (state, { payload }) => {
         state.followerLocations.loading = false;
-        state.followerLocations.list = action.payload.locations;
+        state.followerLocations.list = payload.locations;
         state.followerLocations.count =
-          action.payload.total ?? action.payload.locations?.length ?? 0;
-        state.followerLocations.page = action.payload.page;
-        state.followerLocations.totalPages = action.payload.totalPages;
+          payload.total ?? payload.locations?.length ?? 0;
+        state.followerLocations.page = payload.page;
+        state.followerLocations.totalPages = payload.totalPages;
       })
-      .addCase(fetchFollowerLocations.rejected, (state, action) => {
-        // console.log(
-        //   "[UserSlice] fetchFollowerLocations: Rejected",
-        //   action.payload
-        // );
-        state.followerLocations.loading = false;
-        state.followerLocations.error = action.payload;
-      })
-      .addCase(saveUserLocation.pending, (state) => {
-        // console.log("[UserSlice] saveUserLocation: Pending");
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(fetchFollowerLocations.rejected, (state, { payload }) =>
+        handleRejected(state, "followerLocations", { payload })
+      )
+      .addCase(saveUserLocation.pending, setLoading)
       .addCase(saveUserLocation.fulfilled, (state, { payload }) => {
-        // console.log("[UserSlice] saveUserLocation: Fulfilled", payload);
         state.loading = false;
         const location = {
           userId: payload.location.userId,
@@ -900,86 +672,58 @@ const userSlice = createSlice({
           pincode: payload.location.pincode,
           timestamp: payload.location.timestamp,
         };
-        state.userLocations.list = [
-          location,
-          ...state.userLocations.list.filter(
-            (loc) => loc.userId !== location.userId
-          ),
-        ];
-        state.followerLocations.list = [
-          location,
-          ...state.followerLocations.list.filter(
-            (loc) => loc.userId !== location.userId
-          ),
-        ];
-        // console.log("[UserSlice] saveUserLocation: Updated locations", {
-        //   userLocations: state.userLocations.list.length,
-        //   followerLocations: state.followerLocations.list.length,
-        // });
+        state.userLocations.list = mergeLocation(
+          state.userLocations.list,
+          location
+        );
+        state.followerLocations.list = mergeLocation(
+          state.followerLocations.list,
+          location
+        );
       })
       .addCase(saveUserLocation.rejected, (state, { payload }) => {
-        // console.log("[UserSlice] saveUserLocation: Rejected", payload);
         state.loading = false;
         state.error = payload;
       })
-      .addCase(fetchIndiaGeoJson.pending, (state) => {
-        // console.log("[UserSlice] fetchIndiaGeoJson: Pending");
-        state.geoJson.loading = true;
-        state.geoJson.error = null;
-      })
+      .addCase(fetchIndiaGeoJson.pending, (state) =>
+        handlePending(state, "geoJson")
+      )
       .addCase(fetchIndiaGeoJson.fulfilled, (state, { payload }) => {
-        // console.log("[UserSlice] fetchIndiaGeoJson: Fulfilled", payload);
         state.geoJson.loading = false;
-        if (!payload?.features?.length) {
-          // console.log("[UserSlice] fetchIndiaGeoJson: No features found");
+        state.geoJson.data = payload?.features?.length ? payload : null;
+        if (!payload?.features?.length)
           state.geoJson.error = "No features found";
-          state.geoJson.data = null;
-        } else {
-          state.geoJson.data = payload;
-        }
       })
-      .addCase(fetchIndiaGeoJson.rejected, (state, { payload }) => {
-        // console.log("[UserSlice] fetchIndiaGeoJson: Rejected", payload);
-        state.geoJson.loading = false;
-        state.geoJson.error = payload;
-      })
+      .addCase(fetchIndiaGeoJson.rejected, (state, { payload }) =>
+        handleRejected(state, "geoJson", { payload })
+      )
       .addCase(searchUsers.pending, (state) => {
-        // console.log("[UserSlice] searchUsers: Pending");
         state.searchedUsersLoading = true;
         state.searchedUsersError = null;
       })
       .addCase(searchUsers.fulfilled, (state, action) => {
-        // console.log("[UserSlice] searchUsers: Fulfilled", action.payload);
-        state.searchedUsers = action.payload;
         state.searchedUsersLoading = false;
+        state.searchedUsers = action.payload;
       })
       .addCase(searchUsers.rejected, (state, action) => {
-        // console.log("[UserSlice] searchUsers: Rejected", action.payload);
         state.searchedUsersLoading = false;
         state.searchedUsersError = action.payload;
       })
       .addCase(saveUserConsent.fulfilled, (state, action) => {
-        // console.log("[UserSlice] saveUserConsent: Fulfilled", action.payload);
         state.cookieConsent = action.payload;
       })
       .addCase(saveUserConsent.rejected, (state, action) => {
         console.error("[UserSlice] saveUserConsent: Error", action.payload);
       })
-      // getUserIPLocation
-      .addCase(getUserIPLocation.pending, (state) => {
-        state.ipLocation.loading = true;
-        state.ipLocation.error = null;
-      })
-      .addCase(getUserIPLocation.fulfilled, (state, action) => {
-        state.ipLocation.loading = false;
-        state.ipLocation.data = action.payload;
-      })
-      .addCase(getUserIPLocation.rejected, (state, action) => {
-        state.ipLocation.loading = false;
-        state.ipLocation.error = action.payload;
-      })
-
-      // trackUserIPLocation
+      .addCase(getUserIPLocation.pending, (state) =>
+        handlePending(state, "ipLocation")
+      )
+      .addCase(getUserIPLocation.fulfilled, (state, action) =>
+        handleFulfilled(state, "ipLocation", action)
+      )
+      .addCase(getUserIPLocation.rejected, (state, action) =>
+        handleRejected(state, "ipLocation", action)
+      )
       .addCase(trackUserIPLocation.pending, (state) => {
         state.ipLocation.tracked = false;
       })
@@ -989,55 +733,49 @@ const userSlice = createSlice({
       .addCase(trackUserIPLocation.rejected, (state) => {
         state.ipLocation.tracked = false;
       })
-      // Check feedback prompt
       .addCase(shouldShowFeedbackPrompt.pending, (state) => {
-        state.feedback.shouldPrompt = false;
+        state.feedbackPrompt = false;
       })
       .addCase(shouldShowFeedbackPrompt.fulfilled, (state, action) => {
-        state.feedback.shouldPrompt = action.payload;
+        state.feedbackPrompt = action.payload;
       })
       .addCase(shouldShowFeedbackPrompt.rejected, (state) => {
-        state.feedback.shouldPrompt = false;
+        state.feedbackPrompt = false;
       })
-
-      // Submit feedback
       .addCase(submitUserFeedback.pending, (state) => {
-        state.feedback.submitting = true;
-        state.feedback.error = null;
+        state.feedbackSubmitting = true;
+        state.feedbackError = null;
       })
       .addCase(submitUserFeedback.fulfilled, (state) => {
-        state.feedback.submitting = false;
-        state.feedback.submitted = true;
+        state.feedbackSubmitting = false;
+        state.feedbackSubmitted = true;
       })
       .addCase(submitUserFeedback.rejected, (state, action) => {
-        state.feedback.submitting = false;
-        state.feedback.error = action.payload;
+        state.feedbackSubmitting = false;
+        state.feedbackError = action.payload;
       })
-
-      // Admin: Get all feedback
       .addCase(fetchAllUserFeedback.pending, (state) => {
-        state.feedback.loadingList = true;
-        state.feedback.errorList = null;
+        state.feedbackListLoading = true;
+        state.feedbackListError = null;
       })
       .addCase(fetchAllUserFeedback.fulfilled, (state, action) => {
-        state.feedback.loadingList = false;
-        state.feedback.list = action.payload;
+        state.feedbackListLoading = false;
+        state.feedbackList = action.payload;
       })
       .addCase(fetchAllUserFeedback.rejected, (state, action) => {
-        state.feedback.loadingList = false;
-        state.feedback.errorList = action.payload;
+        state.feedbackListLoading = false;
+        state.feedbackListError = action.payload;
       })
-      // Admin: Manually send feedback prompt
       .addCase(sendManualFeedbackPrompt.pending, (state) => {
-        state.feedback.prompting = true;
-        state.feedback.promptError = null;
+        state.feedbackPrompting = true;
+        state.feedbackPromptError = null;
       })
       .addCase(sendManualFeedbackPrompt.fulfilled, (state) => {
-        state.feedback.prompting = false;
+        state.feedbackPrompting = false;
       })
       .addCase(sendManualFeedbackPrompt.rejected, (state, action) => {
-        state.feedback.prompting = false;
-        state.feedback.promptError = action.payload;
+        state.feedbackPrompting = false;
+        state.feedbackPromptError = action.payload;
       });
   },
 });
