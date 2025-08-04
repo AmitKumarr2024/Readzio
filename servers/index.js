@@ -66,15 +66,21 @@ app.use((req, res, next) => {
 });
 
 // Compression middleware
-app.use(compression());
+app.use(
+  compression({
+    filter: (req, res) => {
+      return req.headers["content-type"]?.includes("text") || false;
+    },
+  })
+);
 
 // CORS config
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions)); // Handle preflight requests
 
 // Request parsing middleware
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 app.use(cookieParser());
 
 // Mount API Routes
@@ -116,7 +122,7 @@ routes.forEach(([path, router, name]) => {
 
 // Serve static public files
 const publicPath = path.join(__dirname, "servers", "public");
-app.use("/public", express.static(publicPath));
+app.use("/public", express.static(publicPath, { maxAge: "1d" }));
 
 // Static ads.txt file
 app.get("/ads.txt", (req, res) => {
@@ -131,7 +137,7 @@ const clientIndexPath = path.join(clientPath, "index.html");
 
 if (NODE_ENV === "production") {
   if (fs.existsSync(clientIndexPath)) {
-    app.use(express.static(clientPath));
+    app.use(express.static(clientPath, { maxAge: "1d" }));
     app.get(/^\/(?!api\/).*/, (req, res) => {
       res.sendFile(clientIndexPath, (err) => {
         if (err) {
@@ -218,6 +224,12 @@ process.on("unhandledRejection", (err) => {
   console.error("[UnhandledRejection] ❌", err.message);
   process.exit(1);
 });
+
+// Memory monitoring
+setInterval(() => {
+  const used = process.memoryUsage().heapUsed / 1024 / 1024;
+  console.log(`[Server:Memory] Heap used: ${used.toFixed(2)} MB`);
+}, 60000);
 
 // Start server
 const startServer = async () => {

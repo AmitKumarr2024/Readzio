@@ -46,15 +46,19 @@ io.use(async (socket, next) => {
 
 io.on("connection", async (socket) => {
   if (socket.userId) {
+    if (connectedUsers.size > 100) {
+      // Limit to 100 users
+      connectedUsers.clear();
+    }
     connectedUsers.add(socket.userId);
     socket.join(socket.userId);
     io.emit("userStatus", { userId: socket.userId, isOnline: true });
     io.emit("onlineUsersCount", connectedUsers.size);
 
     try {
-      const user = await UserModel.findById(socket.userId).select(
-        "joiningDate feedbackPrompt"
-      );
+      const user = await UserModel.findById(socket.userId)
+        .select("joiningDate feedbackPrompt")
+        .lean(); // Use lean for lower memory usage
 
       const joinedDaysAgo =
         (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24);
@@ -68,12 +72,16 @@ io.on("connection", async (socket) => {
           message: "How do you like our app?",
         });
 
-        user.feedbackPrompt = {
-          shown: true,
-          shownAt: new Date(),
-          responded: false,
-        };
-        await user.save();
+        await UserModel.updateOne(
+          { _id: socket.userId },
+          {
+            feedbackPrompt: {
+              shown: true,
+              shownAt: new Date(),
+              responded: false,
+            },
+          }
+        );
       }
     } catch (err) {
       console.error("[Socket] ⚠️ Feedback check failed:", err.message);
@@ -87,6 +95,9 @@ io.on("connection", async (socket) => {
     }
 
     if (roomId && (!socket.userId || socket.userId === roomId)) {
+      if (connectedUsers.size > 100) {
+        connectedUsers.clear();
+      }
       socket.userId = roomId;
       socket.join(roomId);
       connectedUsers.add(roomId);
