@@ -233,8 +233,10 @@ const startServer = async () => {
     startTempCleanup();
     startDailyDigestJob();
 
-    server.listen(PORT, () => {
-      // console.log(`[Server:Startup] ✅ Inksha API is running on port ${PORT}`);
+    server.listen(PORT, "0.0.0.0", function () {
+      console.log(
+        `[Server:Startup] ✅ Inksha API running on port ${this.address().port}`
+      );
     });
   } catch (err) {
     console.error("[Server:Startup] ❌ Failed to start:", err.message);
