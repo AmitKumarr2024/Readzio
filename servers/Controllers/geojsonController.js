@@ -1,34 +1,40 @@
 import axios from "axios";
 import { AppError } from "../../servers/Utils/AppError.js";
 
-// Hosted on Firebase (public)
 const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
 
-// Controller: Serve GeoJSON without memory caching
 export const getIndiaBoundaryOnly = async (req, res, next) => {
   try {
-    const response = await axios({
-      method: "get",
-      url: INDIA_GEOJSON_URL,
-      responseType: "stream", // ✅ Stream large data
+    const response = await axios.get(INDIA_GEOJSON_URL, {
+      responseType: "stream",
+      timeout: 25000,
+      headers: { Accept: "application/json" },
     });
 
-    // Set content type
-    res.setHeader("Content-Type", "application/json");
+    if (!response.data) {
+      throw new Error("No GeoJSON data received");
+    }
 
-    // Pipe stream directly to response
+    res.setHeader("Content-Type", "application/json");
     response.data.pipe(res);
   } catch (error) {
-    console.error("[GeoJSON Fetch Error]", error.message);
+    const message =
+      error.code === "ECONNABORTED" ? "GeoJSON fetch timed out" : error.message;
+
+    console.error("[GeoJSON Controller Error]", {
+      message,
+      status: error.response?.status,
+      data: error.response?.data,
+      stack: error.stack,
+    });
+
     next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message,
-            502,
-            "GetIndiaBoundaryOnly",
-            "Failed to stream India GeoJSON"
-          )
+      new AppError(
+        message,
+        error.response?.status || 502,
+        "GetIndiaBoundaryOnly",
+        "Failed to fetch India GeoJSON"
+      )
     );
   }
 };
