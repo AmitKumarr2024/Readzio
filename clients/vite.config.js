@@ -10,14 +10,14 @@ const __dirname = path.dirname(__filename);
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
 
+  console.log("[Vite] API base URL:", env.VITE_API_BASE_URL);
+
   return {
     plugins: [
       react(),
       tailwindcss({
-        // Add safelist to prevent purging of list-related classes
         safelist: ["list-disc", "list-decimal", "list-inside"],
       }),
-      
     ],
     resolve: {
       alias: {
@@ -35,7 +35,6 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_BASE_URL || "http://localhost:8001",
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path,
           configure: (proxy) => {
             proxy.on("error", (err) => {
               console.error("[ViteConfig:Proxy] /api error:", err.message);
@@ -48,10 +47,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           configure: (proxy) => {
             proxy.on("error", (err) => {
-              console.error(
-                "[ViteConfig:Proxy] /socket.io error:",
-                err.message
-              );
+              console.error("[ViteConfig:Proxy] /socket.io error:", err.message);
             });
           },
         },
@@ -59,6 +55,15 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       chunkSizeWarningLimit: 2500,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            react: ["react", "react-dom"],
+            redux: ["@reduxjs/toolkit", "react-redux"],
+            axios: ["axios"],
+          },
+        },
+      },
     },
   };
 });
