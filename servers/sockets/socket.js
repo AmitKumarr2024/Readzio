@@ -17,11 +17,7 @@ export const io = new Server({
         "https://inksha-uedq.onrender.com",
       ].filter(Boolean);
 
-      if (
-        !origin ||
-        allowedOrigins.includes(origin) ||
-        origin.endsWith(".onrender.com")
-      ) {
+      if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".onrender.com")) {
         return callback(null, true);
       }
 
@@ -67,10 +63,7 @@ io.use(async (socket, next) => {
     }
     next();
   } catch (err) {
-    console.warn(
-      "[Socket:Auth] Invalid token, continuing as guest:",
-      err.message
-    );
+    console.warn("[Socket:Auth] Invalid token, continuing as guest:", err.message);
     next(); // Allow guest connections
   }
 });
@@ -154,10 +147,7 @@ io.on("connection", async (socket) => {
         timestamp: Date.now(),
       });
     } else {
-      console.warn("[Socket:AdImpression] Missing userId or postId:", {
-        userId: socket.userId,
-        postId,
-      });
+      console.warn("[Socket:AdImpression] Missing userId or postId:", { userId: socket.userId, postId });
     }
   });
 
