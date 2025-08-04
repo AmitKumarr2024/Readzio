@@ -1,14 +1,30 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../connection/axiosInstance";
 
+// Configure axiosInstance with timeout
+axiosInstance.defaults.timeout = 10000; // 10-second timeout
+
+// Retry utility for handling transient errors
+const retryRequest = async (fn, retries = 2, delay = 1000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+};
+
 // Fetch all users
 export const getAllUsers = createAsyncThunk(
   "admin/getAllUsers",
   async ({ page, limit, mode = "paged" }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get(
-        `/admin/users?page=${page}&limit=${limit}`,
-        { withCredentials: true }
+      const response = await retryRequest(() =>
+        axiosInstance.get(`/admin/users?page=${page}&limit=${limit}`, {
+          withCredentials: true,
+        })
       );
       return {
         users: response.data.users || [],
@@ -18,6 +34,13 @@ export const getAllUsers = createAsyncThunk(
         mode,
       };
     } catch (err) {
+      console.error("[getAllUsers] Error:", {
+        message: err.response?.data?.message || err.message,
+        status: err.response?.status,
+        page,
+        limit,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         err.response?.data?.message || "Failed to fetch users"
       );
@@ -37,6 +60,11 @@ export const toggleBlockUser = createAsyncThunk(
       );
       return { userId, blocked: response.data.message.includes("blocked") };
     } catch (error) {
+      console.error("[toggleBlockUser] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to toggle block user"
       );
@@ -59,6 +87,11 @@ export const toggleUserRole = createAsyncThunk(
         role: response.data.message.includes("admin") ? "admin" : "user",
       };
     } catch (error) {
+      console.error("[toggleUserRole] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to toggle user role"
       );
@@ -76,6 +109,11 @@ export const deleteUser = createAsyncThunk(
       });
       return { userId };
     } catch (error) {
+      console.error("[deleteUser] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to delete user"
       );
@@ -83,7 +121,7 @@ export const deleteUser = createAsyncThunk(
   }
 );
 
-// Fetch all posts
+// Fetch all posts with retry and fallback
 export const getAllPosts = createAsyncThunk(
   "admin/getAllPosts",
   async (
@@ -97,25 +135,43 @@ export const getAllPosts = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await axiosInstance.get(
-        `/admin/posts?page=${page}&limit=${limit}&search=${search}&sortField=${sortField}&sortOrder=${sortOrder}`,
-        { withCredentials: true }
+      const response = await retryRequest(() =>
+        axiosInstance.get(
+          `/admin/posts?page=${page}&limit=${limit}&search=${encodeURIComponent(
+            search
+          )}&sortField=${sortField}&sortOrder=${sortOrder}`,
+          { withCredentials: true }
+        )
       );
-
       return {
-        posts: response.data.posts,
-        totalPosts: response.data.totalCount, // ✅ backend should return totalCount
+        posts: response.data.posts || [],
+        totalPosts: response.data.totalCount || 0,
         currentPage: page,
-        totalPages: Math.ceil(response.data.totalCount / limit), // ✅ correct pagination
+        totalPages: Math.ceil(response.data.totalCount / limit) || 1,
       };
     } catch (error) {
-      console.error("[adminSlice:getAllPosts] Error fetching posts:", {
-        error: error.response?.data?.message || error.message,
+      console.error("[getAllPosts] Error:", {
+        message: error.response?.data?.message || error.message,
         status: error.response?.status,
         page,
         limit,
+        search,
+        sortField,
+        sortOrder,
         timestamp: new Date().toISOString(),
       });
+      if (error.response?.status === 502) {
+        console.warn(
+          "[getAllPosts] 502 Bad Gateway detected, returning fallback data"
+        );
+        return {
+          posts: [],
+          totalPosts: 0,
+          currentPage: page,
+          totalPages: 1,
+          error: "Server unavailable, please try again later",
+        };
+      }
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch posts"
       );
@@ -135,6 +191,11 @@ export const toggleBlockPost = createAsyncThunk(
       );
       return { postId, blocked: response.data.message.includes("blocked") };
     } catch (error) {
+      console.error("[toggleBlockPost] Error:", {
+        message: error.response?.data?.message || error.message,
+        postId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to toggle block post"
       );
@@ -152,6 +213,11 @@ export const deletePost = createAsyncThunk(
       });
       return { postId };
     } catch (error) {
+      console.error("[deletePost] Error:", {
+        message: error.response?.data?.message || error.message,
+        postId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to delete post"
       );
@@ -171,6 +237,10 @@ export const createContactMessage = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
+      console.error("[createContactMessage] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to create contact message"
       );
@@ -188,12 +258,18 @@ export const fetchContactMessages = createAsyncThunk(
         { withCredentials: true }
       );
       return {
-        messages: response.data.messages,
-        totalMessages: response.data.totalMessages,
+        messages: response.data.messages || [],
+        totalMessages: response.data.totalMessages || 0,
         currentPage: page,
-        totalPages: Math.ceil(response.data.totalMessages / limit),
+        totalPages: Math.ceil(response.data.totalMessages / limit) || 1,
       };
     } catch (error) {
+      console.error("[fetchContactMessages] Error:", {
+        message: error.response?.data?.message || error.message,
+        page,
+        limit,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch contact messages"
       );
@@ -213,6 +289,11 @@ export const toggleContactMessageHandled = createAsyncThunk(
       );
       return { messageId, isHandled: response.data.isHandled };
     } catch (error) {
+      console.error("[toggleContactMessageHandled] Error:", {
+        message: error.response?.data?.message || error.message,
+        messageId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to toggle message status"
       );
@@ -232,6 +313,11 @@ export const replyContactMessage = createAsyncThunk(
       );
       return { messageId, isHandled: true };
     } catch (error) {
+      console.error("[replyContactMessage] Error:", {
+        message: error.response?.data?.message || error.message,
+        messageId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to reply to contact message"
       );
@@ -251,6 +337,11 @@ export const createReport = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
+      console.error("[createReport] Error:", {
+        message: error.response?.data?.message || error.message,
+        postId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to create report"
       );
@@ -268,12 +359,18 @@ export const fetchReportedPosts = createAsyncThunk(
         { withCredentials: true }
       );
       return {
-        reports: response.data.reports,
-        totalReports: response.data.reports.length,
+        reports: response.data.reports || [],
+        totalReports: response.data.reports?.length || 0,
         currentPage: page,
-        totalPages: Math.ceil(response.data.reports.length / limit),
+        totalPages: Math.ceil(response.data.reports?.length / limit) || 1,
       };
     } catch (error) {
+      console.error("[fetchReportedPosts] Error:", {
+        message: error.response?.data?.message || error.message,
+        page,
+        limit,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch reported posts"
       );
@@ -291,10 +388,13 @@ export const reviewReport = createAsyncThunk(
         { forwardToAuthor },
         { withCredentials: true }
       );
-      // console.log("[reviewReport] response", response);
-
       return { reportId, forwardToAuthor, isReviewed: true };
     } catch (error) {
+      console.error("[reviewReport] Error:", {
+        message: error.response?.data?.message || error.message,
+        reportId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to review report"
       );
@@ -314,6 +414,11 @@ export const sendReportNotification = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
+      console.error("[sendReportNotification] Error:", {
+        message: error.response?.data?.message || error.message,
+        reportId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to send notification"
       );
@@ -333,6 +438,11 @@ export const acknowledgeReport = createAsyncThunk(
       );
       return { reportId, isAcknowledged: true };
     } catch (error) {
+      console.error("[acknowledgeReport] Error:", {
+        message: error.response?.data?.message || error.message,
+        reportId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to acknowledge report"
       );
@@ -345,19 +455,15 @@ export const getAllUsersEarnings = createAsyncThunk(
   "admin/getAllUsersEarnings",
   async (_, { rejectWithValue }) => {
     try {
-      // console.log("[adminSlice:getAllUsersEarnings] 🚀 Fetching earnings");
       const response = await axiosInstance.get("/earning/admin/earnings", {
         withCredentials: true,
       });
-      // console.log("[adminSlice:getAllUsersEarnings] ✅ Success:", {
-      //   dataLength: response.data?.length,
-      // });
       return response.data || [];
     } catch (error) {
-      console.error(
-        "[adminSlice:getAllUsersEarnings] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[getAllUsersEarnings] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch users' earnings"
       );
@@ -370,21 +476,17 @@ export const processBulkPayouts = createAsyncThunk(
   "admin/processBulkPayouts",
   async ({ users }, { rejectWithValue }) => {
     try {
-      // console.log("[adminSlice:processBulkPayouts] 🚀 Processing payouts:", {
-      //   users,
-      // });
       const response = await axiosInstance.post(
         "/earning/admin/payouts",
         { users },
         { withCredentials: true }
       );
-      // console.log("[adminSlice:processBulkPayouts] ✅ Success:", response.data);
       return response.data;
     } catch (error) {
-      console.error(
-        "[adminSlice:processBulkPayouts] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[processBulkPayouts] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to process bulk payouts"
       );
@@ -397,18 +499,18 @@ export const fetchSiteAnalytics = createAsyncThunk(
   "admin/fetchSiteAnalytics",
   async ({ startDate, endDate }, { rejectWithValue }) => {
     try {
-      // console.log("[adminSlice:fetchSiteAnalytics] ⏳ Pending");
       const response = await axiosInstance.get(
         `/admin/analytics?startDate=${startDate}&endDate=${endDate}`,
         { withCredentials: true }
       );
-      // console.log("[adminSlice:fetchSiteAnalytics] ✅ Success:", response.data);
-      return response.data.data;
+      return response.data.data || {};
     } catch (error) {
-      console.error(
-        "[adminSlice:fetchSiteAnalytics] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[fetchSiteAnalytics] Error:", {
+        message: error.response?.data?.message || error.message,
+        startDate,
+        endDate,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch site analytics"
       );
@@ -426,23 +528,20 @@ export const checkEmailStatus = createAsyncThunk(
   "admin/checkEmailStatus",
   async ({ email, type }, { rejectWithValue }) => {
     try {
-      // console.log("[adminSlice:checkEmailStatus] 🚀 Fetching email status:", {
-      //   email,
-      //   type,
-      // });
       const response = await axiosInstance.get(
         `/admin/email-status?email=${encodeURIComponent(
           email
         )}&type=${encodeURIComponent(type)}`,
         { withCredentials: true }
       );
-      // console.log("[adminSlice:checkEmailStatus] ✅ Success:", response.data);
       return response.data;
     } catch (error) {
-      console.error(
-        "[adminSlice:checkEmailStatus] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[checkEmailStatus] Error:", {
+        message: error.response?.data?.message || error.message,
+        email,
+        type,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch email status"
       );
@@ -455,10 +554,6 @@ export const getAllEmailStatuses = createAsyncThunk(
   "admin/getAllEmailStatuses",
   async ({ page = 1, limit = 10, type }, { rejectWithValue }) => {
     try {
-      // console.log(
-      //   "[adminSlice:getAllEmailStatuses] 🚀 Fetching all email statuses:",
-      //   { page, limit, type }
-      // );
       const query = type
         ? `page=${page}&limit=${limit}&type=${encodeURIComponent(type)}`
         : `page=${page}&limit=${limit}`;
@@ -466,21 +561,20 @@ export const getAllEmailStatuses = createAsyncThunk(
         `/admin/all-email-statuses?${query}`,
         { withCredentials: true }
       );
-      // console.log("[adminSlice:getAllEmailStatuses] ✅ Success:", {
-      //   logsLength: response.data.logs.length,
-      //   total: response.data.total,
-      // });
       return {
-        emailStatuses: response.data.logs,
-        totalEmails: response.data.total,
+        emailStatuses: response.data.logs || [],
+        totalEmails: response.data.total || 0,
         currentPage: page,
-        totalPages: Math.ceil(response.data.total / limit),
+        totalPages: Math.ceil(response.data.total / limit) || 1,
       };
     } catch (error) {
-      console.error(
-        "[adminSlice:getAllEmailStatuses] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[getAllEmailStatuses] Error:", {
+        message: error.response?.data?.message || error.message,
+        page,
+        limit,
+        type,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch email statuses"
       );
@@ -493,21 +587,18 @@ export const retryFailedEmails = createAsyncThunk(
   "admin/retryFailedEmails",
   async ({ type }, { rejectWithValue }) => {
     try {
-      // console.log("[adminSlice:retryFailedEmails] 🚀 Retrying failed emails:", {
-      //   type,
-      // });
       const response = await axiosInstance.post(
         "/admin/retry-failed-emails",
         { type },
         { withCredentials: true }
       );
-      // console.log("[adminSlice:retryFailedEmails] ✅ Success:", response.data);
-      return response.data.results;
+      return response.data.results || [];
     } catch (error) {
-      console.error(
-        "[adminSlice:retryFailedEmails] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[retryFailedEmails] Error:", {
+        message: error.response?.data?.message || error.message,
+        type,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to retry failed emails"
       );
@@ -527,6 +618,11 @@ export const recordReadingTime = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
+      console.error("[recordReadingTime] Error:", {
+        message: error.response?.data?.message || error.message,
+        postId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to record reading time"
       );
@@ -545,6 +641,11 @@ export const getReadingDetailsByPost = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
+      console.error("[getReadingDetailsByPost] Error:", {
+        message: error.response?.data?.message || error.message,
+        postId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch reading details"
       );
@@ -557,10 +658,6 @@ export const getDailyPostEmailReport = createAsyncThunk(
   "admin/getDailyPostEmailReport",
   async ({ page = 1, limit = 10, date }, { rejectWithValue }) => {
     try {
-      // console.log(
-      //   "[adminSlice:getDailyPostEmailReport] 🚀 Fetching daily post email report:",
-      //   { page, limit, date }
-      // );
       const query = date
         ? `page=${page}&limit=${limit}&date=${encodeURIComponent(date)}`
         : `page=${page}&limit=${limit}`;
@@ -568,21 +665,20 @@ export const getDailyPostEmailReport = createAsyncThunk(
         `/dailyMail/daily-post-report?${query}`,
         { withCredentials: true }
       );
-      // console.log("[adminSlice:getDailyPostEmailReport] ✅ Success:", {
-      //   logsLength: response.data.logs.length,
-      //   total: response.data.total,
-      // });
       return {
-        emailReports: response.data.logs,
-        totalEmails: response.data.total,
+        emailReports: response.data.logs || [],
+        totalEmails: response.data.total || 0,
         currentPage: page,
-        totalPages: Math.ceil(response.data.total / limit),
+        totalPages: Math.ceil(response.data.total / limit) || 1,
       };
     } catch (error) {
-      console.error(
-        "[adminSlice:getDailyPostEmailReport] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[getDailyPostEmailReport] Error:", {
+        message: error.response?.data?.message || error.message,
+        page,
+        limit,
+        date,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message ||
           "Failed to fetch daily post email report"
@@ -600,8 +696,12 @@ export const fetchBannerNotifications = createAsyncThunk(
         "/bannerNotification/get-Notification",
         { withCredentials: true }
       );
-      return response.data.notifications;
+      return response.data.notifications || [];
     } catch (error) {
+      console.error("[fetchBannerNotifications] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch banner notifications"
       );
@@ -621,6 +721,10 @@ export const createBannerNotification = createAsyncThunk(
       );
       return response.data.notification;
     } catch (error) {
+      console.error("[createBannerNotification] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to create banner notification"
       );
@@ -640,6 +744,11 @@ export const dismissBannerNotification = createAsyncThunk(
       );
       return notificationId;
     } catch (error) {
+      console.error("[dismissBannerNotification] Error:", {
+        message: error.response?.data?.message || error.message,
+        notificationId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to dismiss notification"
       );
@@ -652,15 +761,20 @@ export const deactivateBannerNotification = createAsyncThunk(
   "admin/deactivateBannerNotification",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.patch(
+      const response = await axiosInstance.patch(
         `/bannerNotification/deactivate/${id}`,
         {},
         { withCredentials: true }
       );
-      return res.data.data;
-    } catch (err) {
+      return response.data.data;
+    } catch (error) {
+      console.error("[deactivateBannerNotification] Error:", {
+        message: error.response?.data?.message || error.message,
+        id,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        err.response?.data?.message || "Failed to deactivate notification"
+        error.response?.data?.message || "Failed to deactivate notification"
       );
     }
   }
@@ -671,13 +785,18 @@ export const deleteAllBannerNotifications = createAsyncThunk(
   "admin/deleteAllBannerNotifications",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.delete("/bannerNotification/delete-all", {
-        withCredentials: true,
+      const response = await axiosInstance.delete(
+        "/bannerNotification/delete-all",
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("[deleteAllBannerNotifications] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
       });
-      return res.data;
-    } catch (err) {
       return rejectWithValue(
-        err.response?.data?.message || "Failed to delete all notifications"
+        error.response?.data?.message || "Failed to delete all notifications"
       );
     }
   }
@@ -701,6 +820,10 @@ export const downloadAllDataCsv = createAsyncThunk(
       document.body.removeChild(link);
       return { success: true };
     } catch (error) {
+      console.error("[downloadAllDataCsv] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to download Excel"
       );
@@ -713,21 +836,15 @@ export const getAllSubscriptionPlans = createAsyncThunk(
   "admin/getAllSubscriptionPlans",
   async (_, { rejectWithValue }) => {
     try {
-      // console.log(
-      //   "[adminSlice:getAllSubscriptionPlans] 🚀 Fetching subscription plans"
-      // );
       const response = await axiosInstance.get("/admin/subscriptions/plans", {
         withCredentials: true,
       });
-      // console.log("[adminSlice:getAllSubscriptionPlans] ✅ Success:", {
-      //   count: response.data.count,
-      // });
       return response.data;
     } catch (error) {
-      console.error(
-        "[adminSlice:getAllSubscriptionPlans] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[getAllSubscriptionPlans] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch subscription plans"
       );
@@ -740,25 +857,19 @@ export const toggleUserEligibility = createAsyncThunk(
   "admin/toggleUserEligibility",
   async ({ userId, enable }, { rejectWithValue }) => {
     try {
-      // console.log(
-      //   "[adminSlice:toggleUserEligibility] 🚀 Toggling eligibility:",
-      //   { userId, enable }
-      // );
       const response = await axiosInstance.post(
         "/admin/subscriptions/eligibility/toggle",
         { userId, enable },
         { withCredentials: true }
       );
-      // console.log(
-      //   "[adminSlice:toggleUserEligibility] ✅ Success:",
-      //   response.data
-      // );
       return response.data;
     } catch (error) {
-      console.error(
-        "[adminSlice:toggleUserEligibility] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[toggleUserEligibility] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        enable,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to toggle user eligibility"
       );
@@ -774,25 +885,11 @@ export const updateGlobalEligibilityCriteria = createAsyncThunk(
     { rejectWithValue, dispatch }
   ) => {
     try {
-      // console.log(
-      //   "[adminSlice:updateGlobalEligibilityCriteria] 🚀 Updating criteria:",
-      //   {
-      //     minFollowers,
-      //     minPosts,
-      //     minEngagementRate,
-      //     minAccountAgeDays,
-      //   }
-      // );
       const response = await axiosInstance.patch(
         "/admin/subscriptions/criteria",
         { minFollowers, minPosts, minEngagementRate, minAccountAgeDays },
         { withCredentials: true }
       );
-      // console.log(
-      //   "[adminSlice:updateGlobalEligibilityCriteria] ✅ Success:",
-      //   response.data
-      // );
-      // Dispatch sync action to subscriptionSlice
       dispatch({
         type: "subscription/syncSubscriptionCriteria",
         payload: response.data.criteria || {
@@ -811,33 +908,26 @@ export const updateGlobalEligibilityCriteria = createAsyncThunk(
         }
       );
     } catch (error) {
-      console.error(
-        "[adminSlice:updateGlobalEligibilityCriteria] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[updateGlobalEligibilityCriteria] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to update eligibility criteria"
       );
     }
   }
 );
+
 // Check user eligibility status
 export const checkUserEligibility = createAsyncThunk(
   "admin/checkUserEligibility",
   async (userId, { rejectWithValue }) => {
     try {
-      // console.log(
-      //   "[adminSlice:checkUserEligibility] 🚀 Checking eligibility:",
-      //   { userId }
-      // );
       const response = await axiosInstance.get(
         `/admin/subscriptions/eligibility/${userId}`,
         { withCredentials: true }
       );
-      // console.log(
-      //   "[adminSlice:checkUserEligibility] ✅ Success:",
-      //   response.data
-      // );
       return {
         ...response.data,
         criteria: response.data.criteria || {
@@ -848,10 +938,11 @@ export const checkUserEligibility = createAsyncThunk(
         },
       };
     } catch (error) {
-      console.error(
-        "[adminSlice:checkUserEligibility] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[checkUserEligibility] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       if (
         error.response?.data?.message === "Subscription configuration not found"
       ) {
@@ -890,8 +981,15 @@ export const toggleSubscriptionPlanStatus = createAsyncThunk(
       );
       return response.data.plan;
     } catch (error) {
+      console.error("[toggleSubscriptionPlanStatus] Error:", {
+        message: error.response?.data?.message || error.message,
+        planId,
+        status,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
-        error.response?.data || { message: error.message }
+        error.response?.data?.message ||
+          "Failed to toggle subscription plan status"
       );
     }
   }
@@ -902,25 +1000,19 @@ export const grantSubscriptionAccess = createAsyncThunk(
   "admin/grantSubscriptionAccess",
   async ({ userId, grant }, { rejectWithValue }) => {
     try {
-      // console.log("[adminSlice:grantSubscriptionAccess] 🚀 Granting access:", {
-      //   userId,
-      //   grant,
-      // });
       const response = await axiosInstance.post(
         "/admin/subscriptions/grant",
         { userId, grant },
         { withCredentials: true }
       );
-      // console.log(
-      //   "[adminSlice:grantSubscriptionAccess] ✅ Success:",
-      //   response.data
-      // );
       return response.data;
     } catch (error) {
-      console.error(
-        "[adminSlice:grantSubscriptionAccess] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[grantSubscriptionAccess] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        grant,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message || "Failed to grant subscription access"
       );
@@ -943,10 +1035,11 @@ export const setUserEligibilityOverride = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
-      console.error(
-        "[adminSlice:setUserEligibilityOverride] 🔥 Error:",
-        error.response?.data?.message || error.message
-      );
+      console.error("[setUserEligibilityOverride] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       return rejectWithValue(
         error.response?.data?.message ||
           "Failed to update user eligibility override"
@@ -955,35 +1048,48 @@ export const setUserEligibilityOverride = createAsyncThunk(
   }
 );
 
-// Async thunk: Override user milestone
+// Override user milestone
 export const overrideUserMilestones = createAsyncThunk(
   "adminOverride/overrideUserMilestones",
-  async ({ userId, overrideData }, thunkAPI) => {
+  async ({ userId, overrideData }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.patch(
         `/admin/subscriptions/user-milestone/${userId}`,
-        overrideData
+        overrideData,
+        { withCredentials: true }
       );
       return response.data;
     } catch (error) {
-      return thunkAPI.rejectWithValue(
+      console.error("[overrideUserMilestones] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
         error.response?.data?.message || "Failed to override user milestones"
       );
     }
   }
 );
 
-// Async thunk: Reset user milestone
+// Reset user milestone
 export const resetUserMilestones = createAsyncThunk(
   "adminOverride/resetUserMilestones",
-  async (userId, thunkAPI) => {
+  async (userId, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.patch(
-        `/admin/subscriptions/user-milestone-reset/${userId}`
+        `/admin/subscriptions/user-milestone-reset/${userId}`,
+        {},
+        { withCredentials: true }
       );
       return response.data;
     } catch (error) {
-      return thunkAPI.rejectWithValue(
+      console.error("[resetUserMilestones] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
         error.response?.data?.message || "Failed to reset user milestones"
       );
     }
@@ -1003,10 +1109,10 @@ const adminSlice = createSlice({
     contactMessages: [],
     totalMessages: 0,
     reports: [],
-    totalPlans: 0, // Add totalPlans
-    currentPagePlans: 1, // Add currentPagePlans
-    totalPagesPlans: 1, // Add totalPagesPlans
-    hasMorePlans: true, // Add hasMorePlans
+    totalPlans: 0,
+    currentPagePlans: 1,
+    totalPagesPlans: 1,
+    hasMorePlans: true,
     totalReports: 0,
     userEarnings: [],
     emailStatuses: [],
@@ -1051,16 +1157,9 @@ const adminSlice = createSlice({
   },
   reducers: {
     clearNotificationStatus: (state) => {
-      // console.log(
-      //   "[adminSlice:clearNotificationStatus] 🗑️ Clearing notification status"
-      // );
       state.notificationStatus = null;
     },
     socketNewContactMessage: (state, action) => {
-      // console.log(
-      //   "[adminSlice:socketNewContactMessage] 📬 New contact message:",
-      //   action.payload
-      // );
       const newMessage = action.payload;
       state.contactMessages = [newMessage, ...state.contactMessages].slice(
         0,
@@ -1070,20 +1169,12 @@ const adminSlice = createSlice({
       state.totalPagesMessages = Math.ceil(state.totalMessages / 10);
     },
     socketNewReport: (state, action) => {
-      // console.log(
-      //   "[adminSlice:socketNewReport] 🚨 New report:",
-      //   action.payload
-      // );
       const newReport = action.payload;
       state.reports = [newReport, ...state.reports].slice(0, 10);
       state.totalReports += 1;
       state.totalPagesReports = Math.ceil(state.totalReports / 10);
     },
     socketReportReviewed: (state, action) => {
-      // console.log(
-      //   "[adminSlice:socketReportReviewed] ✅ Report reviewed:",
-      //   action.payload
-      // );
       const { reportId, forwardToAuthor } = action.payload;
       state.reports = state.reports.map((report) =>
         report._id === reportId
@@ -1092,37 +1183,21 @@ const adminSlice = createSlice({
       );
     },
     socketReportAcknowledged: (state, action) => {
-      // console.log(
-      //   "[adminSlice:socketReportAcknowledged] ✅ Report acknowledged:",
-      //   action.payload
-      // );
       const { reportId } = action.payload;
       state.reports = state.reports.map((report) =>
         report._id === reportId ? { ...report, isAcknowledged: true } : report
       );
     },
     socketContactMessageReplied: (state, action) => {
-      // console.log(
-      //   "[adminSlice:socketContactMessageReplied] ✅ Message replied:",
-      //   action.payload
-      // );
       const { messageId } = action.payload;
       state.contactMessages = state.contactMessages.map((msg) =>
         msg._id === messageId ? { ...msg, isHandled: true } : msg
       );
     },
     setNotificationStatus: (state, action) => {
-      // console.log(
-      //   "[adminSlice:setNotificationStatus] 📢 Setting notification status:",
-      //   action.payload
-      // );
       state.notificationStatus = action.payload;
     },
     setEmailError: (state, action) => {
-      // console.log(
-      //   "[adminSlice:setEmailError] 🔥 Setting email error:",
-      //   action.payload
-      // );
       state.emailError = action.payload;
     },
     updatePostBlockStatus: (state, action) => {
@@ -1140,10 +1215,10 @@ const adminSlice = createSlice({
       }
     },
     logSubscriptionCriteria: (state) => {
-      // console.log(
-      //   "[adminSlice:logSubscriptionCriteria] 📋 Current subscriptionCriteria state:",
-      //   state.subscriptionCriteria
-      // );
+      console.log(
+        "[logSubscriptionCriteria] Current subscriptionCriteria:",
+        state.subscriptionCriteria
+      );
     },
     clearOverrideStatus: (state) => {
       state.loading = false;
@@ -1156,12 +1231,10 @@ const adminSlice = createSlice({
     builder
       // getAllUsers
       .addCase(getAllUsers.pending, (state) => {
-        // console.log("[adminSlice:getAllUsers] ⏳ Pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(getAllUsers.fulfilled, (state, action) => {
-        // console.log("[adminSlice:getAllUsers] ✅ Fulfilled:", action.payload);
         const { users, totalUsers, currentPage, totalPages, mode } =
           action.payload;
         if (mode === "full") {
@@ -1175,7 +1248,6 @@ const adminSlice = createSlice({
         state.loading = false;
       })
       .addCase(getAllUsers.rejected, (state, action) => {
-        // console.log("[adminSlice:getAllUsers] 🔥 Rejected:", action.payload);
         state.loading = false;
         state.error = action.payload;
       })
@@ -1223,6 +1295,7 @@ const adminSlice = createSlice({
         state.totalPosts = action.payload.totalPosts;
         state.currentPagePosts = action.payload.currentPage;
         state.totalPagesPosts = action.payload.totalPages;
+        state.error = action.payload.error || null; // Handle 502 fallback
       })
       .addCase(getAllPosts.rejected, (state, action) => {
         state.loading = false;
@@ -1372,73 +1445,45 @@ const adminSlice = createSlice({
       })
       // getAllUsersEarnings
       .addCase(getAllUsersEarnings.pending, (state) => {
-        // console.log("[adminSlice:getAllUsersEarnings] ⏳ Pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(getAllUsersEarnings.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:getAllUsersEarnings] ✅ Fulfilled:",
-        //   action.payload
-        // );
         state.loading = false;
-        state.userEarnings = action.payload || [];
+        state.userEarnings = action.payload;
       })
       .addCase(getAllUsersEarnings.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:getAllUsersEarnings] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.loading = false;
         state.error = action.payload;
       })
       // processBulkPayouts
       .addCase(processBulkPayouts.pending, (state) => {
-        // console.log("[adminSlice:processBulkPayouts] ⏳ Pending");
         state.loading = true;
         state.error = null;
       })
-      .addCase(processBulkPayouts.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:processBulkPayouts] ✅ Fulfilled:",
-        //   action.payload
-        // );
+      .addCase(processBulkPayouts.fulfilled, (state) => {
         state.loading = false;
         state.notificationStatus = "Bulk payouts processed successfully";
       })
       .addCase(processBulkPayouts.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:processBulkPayouts] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.loading = false;
         state.error = action.payload;
       })
       // fetchSiteAnalytics
       .addCase(fetchSiteAnalytics.pending, (state) => {
-        // console.log("[adminSlice:fetchSiteAnalytics] ⏳ Pending");
         state.analyticsLoading = true;
         state.analyticsError = null;
       })
       .addCase(fetchSiteAnalytics.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:fetchSiteAnalytics] ✅ Fulfilled:",
-        //   action.payload
-        // );
         state.analyticsLoading = false;
         state.analytics = action.payload;
       })
       .addCase(fetchSiteAnalytics.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:fetchSiteAnalytics] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.analyticsLoading = false;
         state.analyticsError = action.payload;
       })
       // clearError
       .addCase(clearError.fulfilled, (state) => {
-        // console.log("[adminSlice:clearError] ✅ Fulfilled");
         state.error = null;
         state.analyticsError = null;
         state.emailError = null;
@@ -1446,37 +1491,23 @@ const adminSlice = createSlice({
       })
       // checkEmailStatus
       .addCase(checkEmailStatus.pending, (state) => {
-        // console.log("[adminSlice:checkEmailStatus] ⏳ Pending");
         state.emailLoading = true;
         state.emailError = null;
       })
       .addCase(checkEmailStatus.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:checkEmailStatus] ✅ Fulfilled:",
-        //   action.payload
-        // );
         state.emailLoading = false;
         state.currentEmailStatus = action.payload;
       })
       .addCase(checkEmailStatus.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:checkEmailStatus] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.emailLoading = false;
         state.emailError = action.payload;
       })
       // getAllEmailStatuses
       .addCase(getAllEmailStatuses.pending, (state) => {
-        // console.log("[adminSlice:getAllEmailStatuses] ⏳ Pending");
         state.emailLoading = true;
         state.emailError = null;
       })
       .addCase(getAllEmailStatuses.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:getAllEmailStatuses] ✅ Fulfilled:",
-        //   action.payload
-        // );
         state.emailLoading = false;
         state.emailStatuses = action.payload.emailStatuses;
         state.totalEmails = action.payload.totalEmails;
@@ -1484,24 +1515,15 @@ const adminSlice = createSlice({
         state.totalPagesEmails = action.payload.totalPages;
       })
       .addCase(getAllEmailStatuses.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:getAllEmailStatuses] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.emailLoading = false;
         state.emailError = action.payload;
       })
       // retryFailedEmails
       .addCase(retryFailedEmails.pending, (state) => {
-        // console.log("[adminSlice:retryFailedEmails] ⏳ Pending");
         state.emailLoading = true;
         state.emailError = null;
       })
       .addCase(retryFailedEmails.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:retryFailedEmails] ✅ Fulfilled:",
-        //   action.payload
-        // );
         state.emailLoading = false;
         state.notificationStatus = "Failed emails retried successfully";
         state.emailStatuses = state.emailStatuses.map((status) => {
@@ -1515,10 +1537,6 @@ const adminSlice = createSlice({
         });
       })
       .addCase(retryFailedEmails.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:retryFailedEmails] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.emailLoading = false;
         state.emailError = action.payload;
       })
@@ -1550,15 +1568,10 @@ const adminSlice = createSlice({
       })
       // getDailyPostEmailReport
       .addCase(getDailyPostEmailReport.pending, (state) => {
-        // console.log("[adminSlice:getDailyPostEmailReport] ⏳ Pending");
         state.emailLoading = true;
         state.emailError = null;
       })
       .addCase(getDailyPostEmailReport.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:getDailyPostEmailReport] ✅ Fulfilled:",
-        //   action.payload
-        // );
         state.emailLoading = false;
         state.emailReports = action.payload.emailReports;
         state.totalEmailReports = action.payload.totalEmails;
@@ -1566,10 +1579,6 @@ const adminSlice = createSlice({
         state.totalPagesEmailReports = action.payload.totalPages;
       })
       .addCase(getDailyPostEmailReport.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:getDailyPostEmailReport] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.emailLoading = false;
         state.emailError = action.payload;
       })
@@ -1638,16 +1647,10 @@ const adminSlice = createSlice({
       })
       // getAllSubscriptionPlans
       .addCase(getAllSubscriptionPlans.pending, (state) => {
-        // console.log("[adminSlice:getAllSubscriptionPlans] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
-      // In adminSlice.js, update the getAllSubscriptionPlans case
       .addCase(getAllSubscriptionPlans.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:getAllSubscriptionPlans] ✅ Fulfilled:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.plans =
           action.payload.currentPage === 1
@@ -1660,24 +1663,15 @@ const adminSlice = createSlice({
           action.payload.currentPage < action.payload.totalPages;
       })
       .addCase(getAllSubscriptionPlans.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:getAllSubscriptionPlans] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
       })
       // toggleUserEligibility
       .addCase(toggleUserEligibility.pending, (state) => {
-        // console.log("[adminSlice:toggleUserEligibility] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       .addCase(toggleUserEligibility.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:toggleUserEligibility] ✅ Fulfilled:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.users = state.users.map((user) =>
           user._id === action.payload.user.id
@@ -1691,47 +1685,29 @@ const adminSlice = createSlice({
         state.notificationStatus = action.payload.message;
       })
       .addCase(toggleUserEligibility.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:toggleUserEligibility] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
       })
       // updateGlobalEligibilityCriteria
       .addCase(updateGlobalEligibilityCriteria.pending, (state) => {
-        // console.log("[adminSlice:updateGlobalEligibilityCriteria] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       .addCase(updateGlobalEligibilityCriteria.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:updateGlobalEligibilityCriteria] ✅ Fulfilled, updating state with:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.subscriptionCriteria = action.payload;
         state.notificationStatus = "Eligibility criteria updated successfully";
       })
       .addCase(updateGlobalEligibilityCriteria.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:updateGlobalEligibilityCriteria] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
       })
       // checkUserEligibility
       .addCase(checkUserEligibility.pending, (state) => {
-        // console.log("[adminSlice:checkUserEligibility] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       .addCase(checkUserEligibility.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:checkUserEligibility] ✅ Fulfilled, updating userEligibility with:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.userEligibility = action.payload;
         state.subscriptionCriteria = action.payload.criteria || {
@@ -1740,19 +1716,11 @@ const adminSlice = createSlice({
           minEngagementRate: 0.05,
           minAccountAgeDays: 30,
         };
-        // console.log(
-        //   "[adminSlice:checkUserEligibility] 📋 Updated subscriptionCriteria state:",
-        //   state.subscriptionCriteria
-        // );
         state.error = action.payload.message
           ? { message: action.payload.message }
           : null;
       })
       .addCase(checkUserEligibility.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:checkUserEligibility] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.subscriptionError =
           action.payload.message || "Failed to check user eligibility";
@@ -1769,15 +1737,10 @@ const adminSlice = createSlice({
       })
       // toggleSubscriptionPlanStatus
       .addCase(toggleSubscriptionPlanStatus.pending, (state) => {
-        // console.log("[adminSlice:toggleSubscriptionPlanStatus] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       .addCase(toggleSubscriptionPlanStatus.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:toggleSubscriptionPlanStatus] ✅ Fulfilled:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.plans = state.plans.map((plan) =>
           plan.id === action.payload.id
@@ -1787,24 +1750,15 @@ const adminSlice = createSlice({
         state.notificationStatus = `Plan ${action.payload.status} successfully`;
       })
       .addCase(toggleSubscriptionPlanStatus.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:toggleSubscriptionPlanStatus] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
       })
       // grantSubscriptionAccess
       .addCase(grantSubscriptionAccess.pending, (state) => {
-        // console.log("[adminSlice:grantSubscriptionAccess] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       .addCase(grantSubscriptionAccess.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:grantSubscriptionAccess] ✅ Fulfilled:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.users = state.users.map((user) =>
           user._id === action.payload.user.id
@@ -1818,24 +1772,15 @@ const adminSlice = createSlice({
         state.notificationStatus = action.payload.message;
       })
       .addCase(grantSubscriptionAccess.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:grantSubscriptionAccess] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
       })
       // setUserEligibilityOverride
       .addCase(setUserEligibilityOverride.pending, (state) => {
-        // console.log("[adminSlice:setUserEligibilityOverride] ⏳ Pending");
         state.subscriptionLoading = true;
         state.subscriptionError = null;
       })
       .addCase(setUserEligibilityOverride.fulfilled, (state, action) => {
-        // console.log(
-        //   "[adminSlice:setUserEligibilityOverride] ✅ Fulfilled:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.users = state.users.map((user) =>
           user._id === action.payload.userId
@@ -1852,13 +1797,10 @@ const adminSlice = createSlice({
           "User eligibility override updated successfully";
       })
       .addCase(setUserEligibilityOverride.rejected, (state, action) => {
-        // console.log(
-        //   "[adminSlice:setUserEligibilityOverride] 🔥 Rejected:",
-        //   action.payload
-        // );
         state.subscriptionLoading = false;
         state.subscriptionError = action.payload;
       })
+      // overrideUserMilestones
       .addCase(overrideUserMilestones.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -1868,8 +1810,6 @@ const adminSlice = createSlice({
         state.loading = false;
         state.success = true;
         state.overrideInfo = action.payload;
-
-        // ✅ Update user in users array
         const idx = state.users.findIndex(
           (u) => u._id === action.payload.userId
         );
@@ -1885,6 +1825,7 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // resetUserMilestones
       .addCase(resetUserMilestones.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -1894,8 +1835,6 @@ const adminSlice = createSlice({
         state.loading = false;
         state.success = true;
         state.overrideInfo = action.payload;
-
-        // ✅ Reset milestone override in user
         const idx = state.users.findIndex((u) => u._id === action.meta.arg);
         if (idx !== -1) {
           state.users[idx] = {
