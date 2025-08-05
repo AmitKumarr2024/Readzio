@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import http from "http";
 import mongoose from "mongoose";
+import listEndpoints from "express-list-endpoints"; // ✅ added
 import { CLIENT_URL, NODE_ENV, PORT } from "./config/dotenv.js";
 import connectDb from "./config/mongodb.js";
 import initializeSocket from "./sockets/socket.js";
@@ -120,6 +121,19 @@ routes.forEach(([path, router]) => {
   app.use(path, router);
 });
 
+// Route listing in dev
+if (NODE_ENV !== "production") {
+  try {
+    const endpoints = listEndpoints(app);
+    console.log("📋 All registered routes:");
+    endpoints.forEach((route) => {
+      console.log(`${route.methods.join(", ")} ${route.path}`);
+    });
+  } catch (err) {
+    console.error("❌ Route inspection failed:", err.message);
+  }
+}
+
 // Public/static
 const publicPath = path.join(__dirname, "servers", "public");
 app.use("/public", express.static(publicPath));
@@ -164,35 +178,6 @@ app.get("/health", (req, res) => {
 
 // Error handler
 app.use(errorHandler);
-
-// Safe route inspection (DEV only)
-if (NODE_ENV !== "production") {
-  try {
-    logMemory("🛤️ Inspecting routes");
-    app._router.stack.forEach((layer) => {
-      if (layer.route && layer.route.path) {
-        const methods = Object.keys(layer.route.methods || {})
-          .map((m) => m.toUpperCase())
-          .join(", ");
-        console.log(`✔ ${methods} ${layer.route.path}`);
-      } else if (layer.name === "router" && layer.handle?.stack) {
-        layer.handle.stack.forEach((sub) => {
-          if (sub.route?.path) {
-            const methods = Object.keys(sub.route.methods || {})
-              .map((m) => m.toUpperCase())
-              .join(", ");
-            console.log(`✔ ${methods} ${sub.route.path}`);
-          }
-        });
-      }
-    });
-  } catch (err) {
-    console.error(
-      "❌ Route inspection error:",
-      err?.message || "Unknown error"
-    );
-  }
-}
 
 // Global error logs
 io.on("error", (err) => console.error("[Socket.IO] Error:", err.message));
