@@ -9,7 +9,7 @@ import { io } from "../sockets/socket.js";
 import UserLocation from "../Models/UserLocation.js";
 import pLimit from "p-limit";
 import NodeCache from "node-cache";
-import { logMemory } from "../../Utils/memoryLogger.js"; // Import logMemory
+import { logMemory } from "../../servers/Utils/memoryLogger.js";
 
 // Initialize cache
 const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
