@@ -7,30 +7,10 @@ import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import ActivityModel from "../Models/ActivityModel.js";
 import { io } from "../sockets/socket.js";
 import UserLocation from "../Models/UserLocation.js";
-import pLimit from "p-limit";
-import NodeCache from "node-cache";
-import { logMemory } from "../../servers/Utils/memoryLogger.js";
-
-// Initialize cache
-const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
-
-// Validates ObjectId
-const validateObjectId = (id, type = "ID") => {
-  logMemory(`🔍 Validating ${type}`);
-  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-    throw new AppError(
-      `Invalid ${type}`,
-      400,
-      "ValidateObjectId",
-      `Invalid ${type} provided`
-    );
-  }
-};
 
 // GET /api/user/ip-location
 export const getIPLocation = async (req, res, next) => {
   try {
-    logMemory("🌍 Start getIPLocation");
     if (!req.geoLocation) {
       throw new AppError(
         "Geolocation not available",
@@ -40,13 +20,11 @@ export const getIPLocation = async (req, res, next) => {
       );
     }
 
-    logMemory("🌍 End getIPLocation");
     res.status(200).json({
       success: true,
       location: req.geoLocation,
     });
   } catch (error) {
-    logMemory("❌ Error in getIPLocation");
     next(
       error instanceof AppError
         ? error
@@ -63,7 +41,6 @@ export const getIPLocation = async (req, res, next) => {
 // POST /api/user/track-ip-location
 export const trackIPLocation = async (req, res, next) => {
   try {
-    logMemory("📍 Start trackIPLocation");
     if (!req.geoLocation || !req.geoLocation.userId) {
       throw new AppError(
         "No authenticated user for tracking IP location",
@@ -73,14 +50,10 @@ export const trackIPLocation = async (req, res, next) => {
       );
     }
 
-    logMemory("💾 Before saving IP location");
     await UserLocation.create(req.geoLocation);
-    logMemory("💾 After saving IP location");
 
-    logMemory("📍 End trackIPLocation");
-    res.status(204).end();
+    res.status(204).end(); // No content needed
   } catch (error) {
-    logMemory("❌ Error in trackIPLocation");
     next(
       error instanceof AppError
         ? error
@@ -97,11 +70,11 @@ export const trackIPLocation = async (req, res, next) => {
 // Saves user location with validation and emits updates
 export const saveUserLocation = async (req, res, next) => {
   try {
-    logMemory("📍 Start saveUserLocation");
     const { coordinates, city, country } = req.body;
     const latitude = coordinates?.lat;
     const longitude = coordinates?.lon;
 
+    // Validates coordinates
     if (
       !latitude ||
       !longitude ||
@@ -118,11 +91,8 @@ export const saveUserLocation = async (req, res, next) => {
       );
     }
 
-    logMemory("📖 Before fetching user");
-    const user = await UserModel.findById(req.user._id)
-      .select("followers")
-      .lean();
-    logMemory("📖 After fetching user");
+    // Validates user
+    const user = await UserModel.findById(req.user._id).select("followers");
     if (!user) {
       throw new AppError(
         "User not found",
@@ -135,6 +105,7 @@ export const saveUserLocation = async (req, res, next) => {
     const ip = req.geoLocation?.ip || req.ip || "";
     const geoData = UserLocation.resolveGeoLocation(longitude, latitude);
 
+    // Prepares location data
     const locationData = {
       userId: req.user._id,
       coordinates: { type: "Point", coordinates: [longitude, latitude] },
@@ -146,13 +117,11 @@ export const saveUserLocation = async (req, res, next) => {
       timestamp: new Date(),
     };
 
-    logMemory("💾 Before deleting old locations");
+    // Replaces existing location for the user
     await UserLocation.deleteMany({ userId: req.user._id });
-    logMemory("💾 Before saving new location");
     const location = await UserLocation.create(locationData);
-    logMemory("💾 After saving new location");
 
-    logMemory("📝 Before recording activity");
+    // Logs activity
     await recordActivity({
       userId: req.user._id,
       action: "SAVED_USER_LOCATION",
@@ -164,8 +133,8 @@ export const saveUserLocation = async (req, res, next) => {
           : "unknown location"
       }`,
     });
-    logMemory("📝 After recording activity");
 
+    // Emits location update to admin and followers
     const socketLocationData = {
       userId: req.user._id.toString(),
       coordinates: { lat: latitude, lon: longitude },
@@ -176,7 +145,6 @@ export const saveUserLocation = async (req, res, next) => {
       timestamp: location.timestamp.getTime(),
     };
 
-    logMemory("📡 Before emitting location update");
     io.to("adminRoom").emit("userLocationUpdate", socketLocationData);
     user.followers.forEach((followerId) => {
       io.to(followerId.toString()).emit(
@@ -184,16 +152,14 @@ export const saveUserLocation = async (req, res, next) => {
         socketLocationData
       );
     });
-    logMemory("📡 After emitting location update");
 
-    logMemory("📍 End saveUserLocation");
     res.status(201).json({
       success: true,
       message: "Location saved successfully",
       location: socketLocationData,
     });
   } catch (error) {
-    logMemory("❌ Error in saveUserLocation");
+    // AppError with context for saving user location
     next(
       error instanceof AppError
         ? error
@@ -210,25 +176,12 @@ export const saveUserLocation = async (req, res, next) => {
 // Retrieves paginated user locations with user details
 export const getAllUserLocations = async (req, res, next) => {
   try {
-    logMemory("📍 Start getAllUserLocations");
     const { page = 1, limit = 12 } = req.query;
     const pageNum = Math.max(parseInt(page), 1);
     const limitNum = Math.max(parseInt(limit), 1);
-    const skip = (pageNum - 1) * limitNum;
 
-    const cacheKey = "userLocations:total";
-    let totalCount = cache.get(cacheKey);
-
-    logMemory("📊 Before checking cache for total locations");
-    if (!totalCount) {
-      totalCount = (await UserLocation.distinct("userId")).length;
-      cache.set(cacheKey, totalCount);
-    }
-    logMemory("📊 After checking cache for total locations");
-
-    const locations = [];
-    logMemory("📖 Before fetching user locations");
-    const cursor = UserLocation.aggregate([
+    // Aggregates latest locations per user
+    const locations = await UserLocation.aggregate([
       {
         $lookup: {
           from: "users",
@@ -237,8 +190,15 @@ export const getAllUserLocations = async (req, res, next) => {
           as: "user",
         },
       },
-      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-      { $sort: { timestamp: -1 } },
+      {
+        $unwind: {
+          path: "$user",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $sort: { timestamp: -1 },
+      },
       {
         $group: {
           _id: "$userId",
@@ -252,8 +212,6 @@ export const getAllUserLocations = async (req, res, next) => {
           name: { $first: "$user.name" },
         },
       },
-      { $skip: skip },
-      { $limit: limitNum },
       {
         $project: {
           userId: 1,
@@ -266,41 +224,64 @@ export const getAllUserLocations = async (req, res, next) => {
           name: 1,
         },
       },
-    ]).cursor();
+      {
+        $skip: (pageNum - 1) * limitNum,
+      },
+      {
+        $limit: limitNum,
+      },
+    ]);
 
-    for await (const loc of cursor) {
-      logMemory(`📄 Processing location for user ${loc.userId}`);
-      locations.push({
+    // Counts total unique user locations
+    const total = await UserLocation.aggregate([
+      { $group: { _id: "$userId" } },
+      { $count: "total" },
+    ]);
+
+    const totalCount = total.length > 0 ? total[0].total : 0;
+
+    // Formats location data, handling invalid coordinates
+    const validLocations = locations.map((loc) => {
+      if (
+        !loc.coordinates ||
+        !Array.isArray(loc.coordinates.coordinates) ||
+        loc.coordinates.coordinates.length < 2
+      ) {
+        return {
+          userId: loc.userId.toString(),
+          coordinates: null,
+          city: loc.city || "Unknown",
+          country: loc.country || "Unknown",
+          state: loc.state || "Unknown",
+          pincode: loc.pincode || "Unknown",
+          timestamp: loc.timestamp,
+          name: loc.name || "Unknown",
+        };
+      }
+      return {
         userId: loc.userId.toString(),
-        coordinates:
-          !loc.coordinates ||
-          !Array.isArray(loc.coordinates.coordinates) ||
-          loc.coordinates.coordinates.length < 2
-            ? null
-            : {
-                lat: loc.coordinates.coordinates[1],
-                lon: loc.coordinates.coordinates[0],
-              },
+        coordinates: {
+          lat: loc.coordinates.coordinates[1],
+          lon: loc.coordinates.coordinates[0],
+        },
         city: loc.city || "Unknown",
         country: loc.country || "Unknown",
         state: loc.state || "Unknown",
         pincode: loc.pincode || "Unknown",
         timestamp: loc.timestamp,
         name: loc.name || "Unknown",
-      });
-    }
-    logMemory("📖 After fetching user locations");
+      };
+    });
 
-    logMemory("📍 End getAllUserLocations");
     res.status(200).json({
       success: true,
-      locations,
+      locations: validLocations,
       page: pageNum,
       total: totalCount,
       totalPages: Math.ceil(totalCount / limitNum),
     });
   } catch (error) {
-    logMemory("❌ Error in getAllUserLocations");
+    // AppError with context for fetching user locations
     next(
       error instanceof AppError
         ? error
@@ -317,7 +298,7 @@ export const getAllUserLocations = async (req, res, next) => {
 // Retrieves authenticated user's profile
 export const getProfile = async (req, res, next) => {
   try {
-    logMemory("👤 Start getProfile");
+    // Validates authentication
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized - No user found",
@@ -327,11 +308,8 @@ export const getProfile = async (req, res, next) => {
       );
     }
 
-    logMemory("📖 Before fetching profile");
-    const profile = await UserModel.findById(req.user._id)
-      .select("-password")
-      .lean();
-    logMemory("📖 After fetching profile");
+    // Fetches user profile
+    const profile = await UserModel.findById(req.user._id).select("-password");
     if (!profile) {
       throw new AppError(
         "User not found",
@@ -341,18 +319,16 @@ export const getProfile = async (req, res, next) => {
       );
     }
 
-    logMemory("📝 Before recording activity");
+    // Logs activity
     await recordActivity({
       userId: req.user._id,
       action: "LOGGED_IN",
       message: "Viewed own profile",
     });
-    logMemory("📝 After recording activity");
 
-    logMemory("👤 End getProfile");
     res.status(200).json({ success: true, data: profile });
   } catch (error) {
-    logMemory("❌ Error in getProfile");
+    // AppError with context for fetching profile
     next(
       error instanceof AppError
         ? error
@@ -369,7 +345,6 @@ export const getProfile = async (req, res, next) => {
 // Retrieves paginated list of all users
 export const getAllUser = async (req, res, next) => {
   try {
-    logMemory("👥 Start getAllUser");
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 100, 1000);
     const skip = (page - 1) * limit;
@@ -377,32 +352,12 @@ export const getAllUser = async (req, res, next) => {
     const projection =
       "name email gender avatar banner bio profession location createdAt role blocked bookmarks following followers blockedUsers subscribedCategories subscribedAuthors subscribers hasSubscriptionPlan subscriptionPlan subscriptionDate";
 
-    const cacheKey = "users:total";
-    let totalUsers = cache.get(cacheKey);
+    // Fetches users and total count
+    const [users, totalUsers] = await Promise.all([
+      UserModel.find().select(projection).skip(skip).limit(limit).lean(),
+      UserModel.countDocuments(),
+    ]);
 
-    logMemory("📊 Before checking cache for total users");
-    if (!totalUsers) {
-      totalUsers = await UserModel.countDocuments().lean();
-      cache.set(cacheKey, totalUsers);
-    }
-    logMemory("📊 After checking cache for total users");
-
-    const users = [];
-    logMemory("📖 Before fetching users");
-    const cursor = UserModel.find()
-      .select(projection)
-      .skip(skip)
-      .limit(limit)
-      .lean()
-      .cursor();
-
-    for await (const user of cursor) {
-      logMemory(`📄 Processing user ${user._id}`);
-      users.push(user);
-    }
-    logMemory("📖 After fetching users");
-
-    logMemory("👥 End getAllUser");
     res.status(200).json({
       success: true,
       users,
@@ -411,7 +366,7 @@ export const getAllUser = async (req, res, next) => {
       currentPage: page,
     });
   } catch (error) {
-    logMemory("❌ Error in getAllUser");
+    // AppError with context for fetching all users
     next(
       error instanceof AppError
         ? error
@@ -428,7 +383,7 @@ export const getAllUser = async (req, res, next) => {
 // Updates user profile with avatar and banner compression
 export const updateProfile = async (req, res, next) => {
   try {
-    logMemory("✏️ Start updateProfile");
+    // Validates authentication
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized - No user found",
@@ -438,13 +393,8 @@ export const updateProfile = async (req, res, next) => {
       );
     }
 
-    logMemory("📖 Before fetching user");
-    const user = await UserModel.findById(req.user._id)
-      .select(
-        "name email avatar banner bio gender location profession role blocked followers googleId createdAt updatedAt joiningDate bookmarks blockedUsers"
-      )
-      .lean();
-    logMemory("📖 After fetching user");
+    // Fetches user
+    const user = await UserModel.findById(req.user._id);
     if (!user) {
       throw new AppError(
         "User not found",
@@ -454,6 +404,7 @@ export const updateProfile = async (req, res, next) => {
       );
     }
 
+    // Updates allowed fields
     const updatableFields = [
       "name",
       "bio",
@@ -465,99 +416,114 @@ export const updateProfile = async (req, res, next) => {
       "banner",
       "blocked",
     ];
-    const updates = {};
 
     updatableFields.forEach((field) => {
       if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
+        user[field] = req.body[field];
       }
     });
 
+    // Handles avatar and banner uploads with compression
     if (req.files) {
-      const limit = pLimit(1); // Process one file at a time
       if (req.files.avatar?.[0]) {
-        logMemory("📤 Before uploading avatar");
-        const uploadedAvatar = await limit(() =>
-          uploadToCloudinary({
+        try {
+          const uploadedAvatar = await uploadToCloudinary({
             buffer: req.files.avatar[0].buffer,
             folder: "blog/users/avatar",
             transformation: [
               { width: 800, height: 800, crop: "limit" },
-              { quality: "auto:good", fetch_format: "auto" },
+              { quality: "auto:good", fetch_format: "auto" }, // Compresses image while maintaining good quality
             ],
-          })
-        );
-        updates.avatar = uploadedAvatar.secure_url;
-        logMemory("📤 After uploading avatar");
+          });
+          user.avatar = uploadedAvatar.secure_url;
+        } catch (err) {
+          throw new AppError(
+            "Failed to upload avatar",
+            500,
+            "UpdateProfile",
+            "Error uploading avatar to Cloudinary"
+          );
+        }
       }
 
       if (req.files.banner?.[0]) {
-        logMemory("📤 Before uploading banner");
-        const uploadedBanner = await limit(() =>
-          uploadToCloudinary({
+        try {
+          const uploadedBanner = await uploadToCloudinary({
             buffer: req.files.banner[0].buffer,
             folder: "blog/users/banner",
             transformation: [
               { width: 1200, height: 400, crop: "limit" },
-              { quality: "auto:good", fetch_format: "auto" },
+              { quality: "auto:good", fetch_format: "auto" }, // Compresses image while maintaining good quality
             ],
-          })
-        );
-        updates.banner = uploadedBanner.secure_url;
-        logMemory("📤 After uploading banner");
+          });
+          user.banner = uploadedBanner.secure_url;
+        } catch (err) {
+          throw new AppError(
+            "Failed to upload banner",
+            500,
+            "UpdateProfile",
+            "Error uploading banner to Cloudinary"
+          );
+        }
       }
     }
 
-    logMemory("💾 Before updating profile");
-    const updatedUser = await UserModel.findByIdAndUpdate(
-      req.user._id,
-      updates,
-      {
-        new: true,
-        select:
-          updatableFields.join(" ") +
-          " followers googleId createdAt updatedAt joiningDate bookmarks blockedUsers",
-      }
-    ).lean();
-    logMemory("💾 After updating profile");
+    await user.save();
 
-    logMemory("📝 Before recording activity");
+    // Logs activity
     await recordActivity({
       userId: req.user._id,
       action: "UPDATED_PROFILE",
       message: "Updated their profile",
     });
-    logMemory("📝 After recording activity");
 
+    // Emits profile update to admin and followers
     const profileUpdateData = {
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      avatar: updatedUser.avatar,
-      banner: updatedUser.banner,
-      bio: updatedUser.bio,
-      gender: updatedUser.gender,
-      location: updatedUser.location,
-      profession: updatedUser.profession,
-      role: updatedUser.role,
-      blocked: updatedUser.blocked,
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      banner: user.banner,
+      bio: user.bio,
+      gender: user.gender,
+      location: user.location,
+      profession: user.profession,
+      role: user.role,
+      blocked: user.blocked,
     };
 
-    logMemory("📡 Before emitting profile update");
     io.to("adminRoom").emit("userProfileUpdate", profileUpdateData);
-    updatedUser.followers.forEach((followerId) => {
+    user.followers.forEach((followerId) => {
       io.to(followerId.toString()).emit("userProfileUpdate", profileUpdateData);
     });
-    logMemory("📡 After emitting profile update");
 
-    logMemory("✏️ End updateProfile");
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      data: updatedUser,
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        banner: user.banner,
+        bio: user.bio,
+        gender: user.gender,
+        location: user.location,
+        profession: user.profession,
+        role: user.role,
+        blocked: user.blocked,
+        googleId: user.googleId,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        joiningDate: user.joiningDate,
+        bookmarks: user.bookmarks,
+        followers: user.followers,
+        following: user.following,
+        blockedUsers: user.blockedUsers,
+      },
     });
   } catch (error) {
-    logMemory("❌ Error in updateProfile");
+    // AppError with context for updating profile
     next(
       error instanceof AppError
         ? error
@@ -574,7 +540,6 @@ export const updateProfile = async (req, res, next) => {
 // Deletes authenticated user's account
 export const deleteUser = async (req, res, next) => {
   try {
-    logMemory("🗑️ Start deleteUser");
     const userId = req.user?._id;
     if (!userId) {
       throw new AppError(
@@ -585,9 +550,8 @@ export const deleteUser = async (req, res, next) => {
       );
     }
 
-    logMemory("💾 Before deleting user");
-    const deleted = await UserModel.findByIdAndDelete(userId).lean();
-    logMemory("💾 After deleting user");
+    // Deletes user
+    const deleted = await UserModel.findByIdAndDelete(userId);
     if (!deleted) {
       throw new AppError(
         "User not found",
@@ -597,24 +561,21 @@ export const deleteUser = async (req, res, next) => {
       );
     }
 
-    logMemory("📝 Before recording activity");
+    // Logs activity
     await recordActivity({
       userId,
       action: "DELETED_ACCOUNT",
       message: "Deleted their account",
     });
-    logMemory("📝 After recording activity");
 
-    logMemory("📡 Before emitting user deleted");
+    // Emits deletion event to admin
     io.to("adminRoom").emit("userDeleted", { userId });
-    logMemory("📡 After emitting user deleted");
 
-    logMemory("🗑️ End deleteUser");
     res
       .status(200)
       .json({ success: true, message: "User deleted successfully" });
   } catch (error) {
-    logMemory("❌ Error in deleteUser");
+    // AppError with context for deleting user
     next(
       error instanceof AppError
         ? error
@@ -631,16 +592,23 @@ export const deleteUser = async (req, res, next) => {
 // Retrieves a single user by ID
 export const getSingleUserById = async (req, res, next) => {
   try {
-    logMemory("👤 Start getSingleUserById");
     const { id } = req.params;
-    validateObjectId(id, "User ID");
 
-    logMemory("📖 Before fetching user");
+    // Validates user ID
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError(
+        "Invalid user ID",
+        400,
+        "GetSingleUserById",
+        "Invalid MongoDB ObjectId"
+      );
+    }
+
+    // Fetches user
     const user = await UserModel.findById(id)
       .select("-password -googleId")
       .populate("subscribedAuthors", "name email avatar")
       .lean();
-    logMemory("📖 After fetching user");
 
     if (!user) {
       throw new AppError(
@@ -651,20 +619,18 @@ export const getSingleUserById = async (req, res, next) => {
       );
     }
 
+    // Logs activity for authenticated users
     if (req.user && req.user._id) {
-      logMemory("📝 Before recording activity");
       await recordActivity({
         userId: req.user._id,
         action: "VIEWED_PROFILE",
         message: `Viewed profile of user ${id}`,
       });
-      logMemory("📝 After recording activity");
     }
 
-    logMemory("👤 End getSingleUserById");
     res.status(200).json({ success: true, data: user });
   } catch (error) {
-    logMemory("❌ Error in getSingleUserById");
+    // AppError with context for fetching single user
     next(
       error instanceof AppError
         ? error
@@ -681,13 +647,20 @@ export const getSingleUserById = async (req, res, next) => {
 // Retrieves user activity history
 export const getUserActivity = async (req, res, next) => {
   try {
-    logMemory("📜 Start getUserActivity");
     const userId = req.params.id;
-    validateObjectId(userId, "User ID");
 
-    logMemory("📖 Before fetching user");
+    // Validates user ID
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      throw new AppError(
+        "Invalid user ID",
+        400,
+        "GetUserActivity",
+        "Invalid MongoDB ObjectId"
+      );
+    }
+
+    // Fetches user
     const user = await UserModel.findById(userId).select("name").lean();
-    logMemory("📖 After fetching user");
     if (!user) {
       throw new AppError(
         "User not found",
@@ -697,39 +670,29 @@ export const getUserActivity = async (req, res, next) => {
       );
     }
 
-    const activityList = [];
-    logMemory("📖 Before fetching activities");
-    const cursor = ActivityModel.find({ user: userId })
+    // Fetches activity history
+    const activityList = await ActivityModel.find({ user: userId })
       .sort({ createdAt: -1 })
       .populate("targetPost", "title slug")
       .populate("targetComment", "text")
-      .lean()
-      .cursor();
+      .lean();
 
-    for await (const activity of cursor) {
-      logMemory(`📄 Processing activity ${activity._id}`);
-      activityList.push(activity);
-    }
-    logMemory("📖 After fetching activities");
-
+    // Logs activity for authenticated users
     if (req.user && req.user._id) {
       const targetUserName = user.name || userId;
-      logMemory("📝 Before recording activity");
       await recordActivity({
         userId: req.user._id,
         action: "VIEWED_ACTIVITY",
         message: `Viewed activity of user ${targetUserName}`,
       });
-      logMemory("📝 After recording activity");
     }
 
-    logMemory("📜 End getUserActivity");
     res.status(200).json({
       success: true,
       activity: activityList,
     });
   } catch (error) {
-    logMemory("❌ Error in getUserActivity");
+    // AppError with context for fetching user activity
     next(
       error instanceof AppError
         ? error
@@ -746,20 +709,17 @@ export const getUserActivity = async (req, res, next) => {
 // Clears activity history for the authenticated user
 export const clearUserActivity = async (req, res, next) => {
   try {
-    logMemory("🗑️ Start clearUserActivity");
     const userId = req.user._id;
 
-    logMemory("💾 Before clearing activities");
-    await ActivityModel.deleteMany({ user: userId }).lean();
-    logMemory("💾 After clearing activities");
+    // Deletes user activity
+    await ActivityModel.deleteMany({ user: userId });
 
-    logMemory("🗑️ End clearUserActivity");
     res.status(200).json({
       success: true,
       message: "Activity history cleared",
     });
   } catch (error) {
-    logMemory("❌ Error in clearUserActivity");
+    // AppError with context for clearing user activity
     next(
       error instanceof AppError
         ? error
@@ -776,46 +736,24 @@ export const clearUserActivity = async (req, res, next) => {
 // Clears old activity records older than one day
 export const clearOldActivity = async (req, res, next) => {
   try {
-    logMemory("🧹 Start clearOldActivity");
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
-    const batchSize = 1000;
-    let deletedCount = 0;
+    // Deletes old activity records
+    const result = await ActivityModel.deleteMany({
+      createdAt: { $lt: oneDayAgo },
+    });
 
-    logMemory("📖 Before fetching old activities");
-    const cursor = ActivityModel.find({ createdAt: { $lt: oneDayAgo } })
-      .lean()
-      .cursor();
+    const message = `Cleared ${result.deletedCount} old activity records`;
 
-    let batch = [];
-    for await (const doc of cursor) {
-      logMemory(`📄 Processing activity ${doc._id} for deletion`);
-      batch.push(doc._id);
-      if (batch.length >= batchSize) {
-        logMemory("💾 Before batch deletion");
-        await ActivityModel.deleteMany({ _id: { $in: batch } }).lean();
-        deletedCount += batch.length;
-        batch = [];
-        logMemory("💾 After batch deletion");
-      }
-    }
-
-    if (batch.length > 0) {
-      logMemory("💾 Before final batch deletion");
-      await ActivityModel.deleteMany({ _id: { $in: batch } }).lean();
-      deletedCount += batch.length;
-      logMemory("💾 After final batch deletion");
-    }
-
-    const message = `Cleared ${deletedCount} old activity records`;
-
-    logMemory("🧹 End clearOldActivity");
     if (res) {
-      res.status(200).json({ success: true, message });
+      res.status(200).json({
+        success: true,
+        message,
+      });
     }
   } catch (error) {
-    logMemory("❌ Error in clearOldActivity");
+    // AppError with context for clearing old activity
     if (next) {
       next(
         error instanceof AppError
@@ -834,10 +772,10 @@ export const clearOldActivity = async (req, res, next) => {
 // Saves user cookie consent
 export const saveUserCookieConsent = async (req, res, next) => {
   try {
-    logMemory("🍪 Start saveUserCookieConsent");
     const { consent } = req.body;
     const userId = req.user?._id;
 
+    // Validates consent value
     if (typeof consent !== "boolean") {
       throw new AppError(
         "Invalid consent value",
@@ -847,32 +785,25 @@ export const saveUserCookieConsent = async (req, res, next) => {
       );
     }
 
+    // Updates user consent in database if authenticated
     if (userId) {
-      logMemory("💾 Before updating cookie consent");
-      await UserModel.findByIdAndUpdate(
-        userId,
-        { cookieConsent: consent },
-        { lean: true }
-      );
-      logMemory("💾 After updating cookie consent");
+      await UserModel.findByIdAndUpdate(userId, { cookieConsent: consent });
     }
 
-    logMemory("🍪 Before setting cookie");
+    // Sets consent cookie
     res.cookie("user_cookie_consent", String(consent), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "Lax",
-      maxAge: 365 * 24 * 60 * 60 * 1000,
+      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
     });
-    logMemory("🍪 After setting cookie");
 
-    logMemory("🍪 End saveUserCookieConsent");
     res.status(200).json({
       success: true,
       message: `Consent ${consent ? "accepted" : "declined"}`,
     });
   } catch (error) {
-    logMemory("❌ Error in saveUserCookieConsent");
+    // AppError with context for saving cookie consent
     next(
       error instanceof AppError
         ? error
@@ -887,216 +818,143 @@ export const saveUserCookieConsent = async (req, res, next) => {
 };
 
 // POST /api/user/feedback/trigger/:userId (Admin only)
+// POST /api/user/feedback/manual/:userId (admin only)
 export const adminSendFeedbackPrompt = async (req, res, next) => {
   try {
-    logMemory("📬 Start adminSendFeedbackPrompt");
     if (!req.user?.isAdmin) {
-      throw new AppError(
-        "Only admins can trigger feedback prompts",
-        403,
-        "AdminSendFeedbackPrompt"
+      return next(
+        new AppError("Only admins can trigger feedback prompts", 403)
       );
     }
 
     const { userId } = req.params;
-    validateObjectId(userId, "User ID");
-
-    logMemory("📖 Before fetching user");
-    const user = await UserModel.findById(userId)
-      .select("name feedbackPrompt")
-      .lean();
-    logMemory("📖 After fetching user");
+    const user = await UserModel.findById(userId);
     if (!user) {
-      throw new AppError("User not found", 404, "AdminSendFeedbackPrompt");
+      return next(new AppError("User not found", 404));
     }
 
-    logMemory("💾 Before updating feedback prompt");
-    const updatedUser = await UserModel.findByIdAndUpdate(
-      userId,
-      {
-        feedbackPrompt: { shown: true, shownAt: new Date(), responded: false },
-      },
-      { new: true, select: "name feedbackPrompt" }
-    ).lean();
-    logMemory("💾 After updating feedback prompt");
+    // Update user's feedbackPrompt status in DB
+    user.feedbackPrompt = {
+      shown: true,
+      shownAt: new Date(),
+      responded: false,
+    };
+    await user.save();
 
-    logMemory("📡 Before emitting feedback prompt");
+    // 🔴 Emit socket to that user's room
     io.to(userId).emit("showFeedbackPrompt", {
       message: "📬 We'd love your feedback. How are we doing?",
       fromAdmin: true,
     });
-    logMemory("📡 After emitting feedback prompt");
 
-    logMemory("📬 End adminSendFeedbackPrompt");
     res.status(200).json({
       success: true,
-      message: `Feedback prompt sent to ${updatedUser.name}`,
+      message: `Feedback prompt sent to ${user.name}`,
     });
   } catch (error) {
-    logMemory("❌ Error in adminSendFeedbackPrompt");
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to send feedback prompt",
-            500,
-            "AdminSendFeedbackPrompt"
-          )
-    );
+    next(error);
   }
 };
 
-// Checks if feedback prompt should be shown
 export const shouldShowFeedbackPrompt = async (req, res, next) => {
   try {
-    logMemory("📬 Start shouldShowFeedbackPrompt");
-    logMemory("📖 Before fetching user");
-    const user = await UserModel.findById(req.user._id)
-      .select("joiningDate feedbackPrompt")
-      .lean();
-    logMemory("📖 After fetching user");
+    const user = await UserModel.findById(req.user._id).select(
+      "joiningDate feedbackPrompt"
+    );
+
     if (!user) {
-      throw new AppError("User not found", 404, "ShouldShowFeedbackPrompt");
+      return next(new AppError("User not found", 404));
     }
 
     const accountAgeInDays = Math.floor(
       (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24)
     );
+
     const shouldShow =
       accountAgeInDays >= 7 &&
       (!user.feedbackPrompt ||
         (!user.feedbackPrompt.shown && !user.feedbackPrompt.responded));
 
     if (shouldShow) {
-      logMemory("💾 Before updating feedback prompt");
-      await UserModel.findByIdAndUpdate(
-        req.user._id,
-        {
-          feedbackPrompt: {
-            shown: true,
-            shownAt: new Date(),
-            responded: false,
-          },
-        },
-        { lean: true }
-      );
-      logMemory("💾 After updating feedback prompt");
+      user.feedbackPrompt = {
+        shown: true,
+        shownAt: new Date(),
+        responded: false,
+      };
+      await user.save();
     }
 
-    logMemory("📬 End shouldShowFeedbackPrompt");
     res.status(200).json({
       success: true,
       showFeedback: shouldShow,
     });
-  } catch (error) {
-    logMemory("❌ Error in shouldShowFeedbackPrompt");
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to check feedback prompt",
-            500,
-            "ShouldShowFeedbackPrompt"
-          )
-    );
+  } catch (err) {
+    next(err);
   }
 };
-
-// Submits user feedback
 export const submitFeedback = async (req, res, next) => {
   try {
-    logMemory("📬 Start submitFeedback");
     const { rating, message } = req.body;
+
     if (!rating || rating < 1 || rating > 5) {
-      throw new AppError(
-        "Invalid rating (1-5 required)",
-        400,
-        "SubmitFeedback"
-      );
+      throw new AppError("Invalid rating (1-5 required)", 400);
     }
 
-    logMemory("📖 Before fetching user");
-    const user = await UserModel.findById(req.user._id)
-      .select("feedbackPrompt")
-      .lean();
-    logMemory("📖 After fetching user");
+    const user = await UserModel.findById(req.user._id);
+
     if (!user) {
-      throw new AppError("User not found", 404, "SubmitFeedback");
+      return next(new AppError("User not found", 404));
     }
 
-    logMemory("💾 Before updating feedback");
-    await UserModel.findByIdAndUpdate(
-      req.user._id,
-      {
-        feedbackPrompt: {
-          ...user.feedbackPrompt,
-          responded: true,
-          rating,
-          message,
-        },
-      },
-      { lean: true }
-    );
-    logMemory("💾 After updating feedback");
+    user.feedbackPrompt = {
+      ...user.feedbackPrompt,
+      responded: true,
+      rating,
+      message,
+    };
 
-    logMemory("📬 End submitFeedback");
+    await user.save();
+
     res.status(200).json({ success: true, message: "Feedback submitted" });
-  } catch (error) {
-    logMemory("❌ Error in submitFeedback");
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to submit feedback",
-            500,
-            "SubmitFeedback"
-          )
-    );
+  } catch (err) {
+    next(err);
   }
 };
 
 // GET /api/user/feedback/all (Admin only)
 export const getAllFeedbacks = async (req, res, next) => {
   try {
-    logMemory("📬 Start getAllFeedbacks");
     if (!req.user?.isAdmin) {
-      throw new AppError("Access denied: Admins only", 403, "GetAllFeedbacks");
+      return next(new AppError("Access denied: Admins only", 403));
     }
 
-    const feedbacks = [];
-    logMemory("📖 Before fetching feedbacks");
-    const cursor = UserModel.find({ "feedbackPrompt.responded": true })
+    const feedbackUsers = await UserModel.find({
+      "feedbackPrompt.responded": true,
+    })
       .select(
         "name email avatar feedbackPrompt.createdAt feedbackPrompt.rating feedbackPrompt.message feedbackPrompt.shown feedbackPrompt.shownAt feedbackPrompt.responded"
       )
       .sort({ "feedbackPrompt.shownAt": -1 })
-      .lean()
-      .cursor();
+      .lean();
 
-    for await (const user of cursor) {
-      logMemory(`📄 Processing feedback for user ${user._id}`);
-      feedbacks.push({
-        userId: user._id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        rating: user.feedbackPrompt?.rating,
-        message: user.feedbackPrompt?.message,
-        shown: user.feedbackPrompt?.shown,
-        responded: user.feedbackPrompt?.responded,
-        submittedAt: user.feedbackPrompt?.shownAt,
-      });
-    }
-    logMemory("📖 After fetching feedbacks");
+    const feedbacks = feedbackUsers.map((user) => ({
+      userId: user._id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      rating: user.feedbackPrompt?.rating,
+      message: user.feedbackPrompt?.message,
+      shown: user.feedbackPrompt?.shown,
+      responded: user.feedbackPrompt?.responded,
+      submittedAt: user.feedbackPrompt?.shownAt,
+    }));
 
-    logMemory("📬 End getAllFeedbacks");
     res.status(200).json({
       success: true,
       total: feedbacks.length,
       feedbacks,
     });
   } catch (error) {
-    logMemory("❌ Error in getAllFeedbacks");
     next(
       error instanceof AppError
         ? error
@@ -1111,14 +969,7 @@ export const getAllFeedbacks = async (req, res, next) => {
 };
 
 // Schedules daily cleanup of old activity records
-cron.schedule(
-  "0 0 * * *",
-  () => {
-    logMemory("🧹 Scheduled clearOldActivity");
-    clearOldActivity(null, null, null);
-  },
-  {
-    scheduled: true,
-    timezone: "Asia/Kolkata",
-  }
-);
+cron.schedule("0 0 * * *", clearOldActivity, {
+  scheduled: true,
+  timezone: "Asia/Kolkata",
+});
