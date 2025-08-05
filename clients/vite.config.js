@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
 
   return {
-    base: "/", // required for correct routing
+    base: "/", // ✅ ensures correct relative paths
     plugins: [
       react(),
       tailwindcss({
@@ -24,13 +24,20 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      outDir: "dist", // served by Express
+      outDir: "dist", // ✅ used by Express
       chunkSizeWarningLimit: 1500,
+      sourcemap: false, // optional: disable maps for smaller build
       rollupOptions: {
         output: {
-          manualChunks: {
-            react: ["react", "react-dom"],
-            redux: ["@reduxjs/toolkit", "react-redux"],
+          // ✅ Dynamically split chunks only by package name
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              const segments = id
+                .toString()
+                .split("node_modules/")[1]
+                .split("/");
+              return segments[0];
+            }
           },
         },
       },
