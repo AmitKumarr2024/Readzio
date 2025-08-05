@@ -7,5 +7,14 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: CLIENT_URL
+        value: https://inksha-uedq.onrender.com
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        value: your-mongo-url
+      - key: JWT_SECRET
+        value: your-secret
+      # Add other keys like SMTP_PASS, RAZORPAY_KEY, etc. as needed
     plan: free
     autoDeploy: true

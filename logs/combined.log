@@ -1154,3 +1154,11 @@
 {"key":"follow:6837510a68907d1f54db9b7f:6837510a68907d1f54db9b7f","level":"info","message":"[Cache:Set] Successfully set","timestamp":"2025-07-21T11:45:06.359Z"}
 {"key":"follow:6837510a68907d1f54db9b7f:6837510a68907d1f54db9b7f","level":"info","message":"[Cache:Get] Cache miss","timestamp":"2025-07-21T11:49:32.856Z"}
 {"key":"follow:6837510a68907d1f54db9b7f:6837510a68907d1f54db9b7f","level":"info","message":"[Cache:Set] Successfully set","timestamp":"2025-07-21T11:49:32.942Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-08-05T16:59:11.164Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-08-05T17:03:19.268Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-08-05T17:03:23.240Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-08-05T17:05:50.469Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-08-05T17:05:56.063Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-08-05T17:09:38.113Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-08-05T17:09:43.855Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-08-05T17:13:12.548Z"}

@@ -205,39 +205,7 @@ app.use((err, req, res, next) => {
 });
 
 // In development, print all route paths
-if (NODE_ENV !== "production") {
-  try {
-    logMemory("🛤️ Inspecting routes");
-    app._router.stack.forEach((middleware) => {
-      if (middleware?.route?.path) {
-        const methods = Object.keys(middleware?.route?.methods || {})
-          .join(", ")
-          .toUpperCase();
-        console.log(`✔ ${methods} ${middleware.route.path}`);
-      } else if (middleware?.name === "router" && middleware?.handle?.stack) {
-        middleware.handle.stack.forEach((handler) => {
-          if (handler?.route?.path) {
-            const methods = Object.keys(handler?.route?.methods || {})
-              .join(", ")
-              .toUpperCase();
-            console.log(`✔ ${methods} ${handler.route.path}`);
-          }
-        });
-      }
-    });
-    logMemory("🛤️ Route inspection complete");
-  } catch (err) {
-    console.error(
-      "❌ Route inspection error:",
-      err?.message || "Unknown error"
-    );
-    if (err instanceof Error) {
-      console.error(err.stack);
-    } else {
-      console.error("Non-Error thrown:", err);
-    }
-  }
-}
+
 
 // Socket and HTTP error listeners
 io.on("error", (err) => {
