@@ -11,10 +11,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
 
   return {
-    base: "/", // ✅ ensures correct relative paths
     plugins: [
       react(),
       tailwindcss({
+        // Add safelist to prevent purging of list-related classes
         safelist: ["list-disc", "list-decimal", "list-inside"],
       }),
     ],
@@ -22,25 +22,42 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },
+      extensions: [".js", ".jsx", ".ts", ".tsx"],
     },
-    build: {
-      outDir: "dist", // ✅ used by Express
-      chunkSizeWarningLimit: 1500,
-      sourcemap: false, // optional: disable maps for smaller build
-      rollupOptions: {
-        output: {
-          // ✅ Dynamically split chunks only by package name
-          manualChunks(id) {
-            if (id.includes("node_modules")) {
-              const segments = id
-                .toString()
-                .split("node_modules/")[1]
-                .split("/");
-              return segments[0];
-            }
+    define: {
+      __APP_VERSION__: JSON.stringify(env.npm_package_version || "v1.0.0"),
+    },
+    server: {
+      port: 5173,
+      proxy: {
+        "/api": {
+          target: env.VITE_API_BASE_URL || "http://localhost:8001",
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path,
+          configure: (proxy) => {
+            proxy.on("error", (err) => {
+              console.error("[ViteConfig:Proxy] /api error:", err.message);
+            });
+          },
+        },
+        "/socket.io": {
+          target: env.VITE_API_BASE_URL || "http://localhost:8001",
+          ws: true,
+          changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on("error", (err) => {
+              console.error(
+                "[ViteConfig:Proxy] /socket.io error:",
+                err.message
+              );
+            });
           },
         },
       },
+    },
+    build: {
+      chunkSizeWarningLimit: 2500,
     },
   };
 });
