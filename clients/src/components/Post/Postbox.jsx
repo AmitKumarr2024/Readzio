@@ -8,7 +8,11 @@ import React, {
 import { useSelector, useDispatch } from "react-redux";
 import { debounce } from "lodash";
 import CardOfPost from "../Cards/CardOfPost";
-import { getAllPosts, fetchFollowingPosts } from "../../store/postSlice";
+import {
+  getAllPosts,
+  fetchFollowingPosts,
+  getSinglePost,
+} from "../../store/postSlice";
 import { fetchCommentCount } from "../../store/commentSlice";
 import { fetchCategories } from "../../store/categorySlice";
 import { fetchFollowers } from "../../store/followSlice";
@@ -16,6 +20,7 @@ import {
   selectSocketState,
   fetchInitialPostCounts,
 } from "../../store/socketSlice";
+import { fetchPostsSequentially } from "../../Utils/fetchPostsSequentially";
 import Sorted from "../Tabs/Sorted";
 import ErrorBoundary from "./ErrorBoundary";
 import Skeleton from "@/components/Ui/Skeleton";
@@ -86,17 +91,37 @@ const Postbox = ({
   useEffect(() => {
     if (customPosts.length) return;
     const options = { page: 1, limit: postsPerPage };
-    if (filterType === "Following") {
-      dispatch(fetchFollowingPosts(options));
-    } else if (filterType === "Followers" && followers.list.length) {
-      dispatch(
-        getAllPosts({ authorIds: followers.list.map((u) => u._id), ...options })
-      );
-    } else if (filterType === "My Posts" && user?._id) {
-      dispatch(getAllPosts({ userId: user._id, ...options }));
-    } else {
-      dispatch(getAllPosts(options));
-    }
+    const loadInitialPosts = async () => {
+      try {
+        let metaPosts;
+        if (filterType === "Following") {
+          metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+        } else if (filterType === "Followers" && followers.list.length) {
+          metaPosts = await dispatch(
+            getAllPosts({
+              authorIds: followers.list.map((u) => u._id),
+              ...options,
+            })
+          ).unwrap();
+        } else if (filterType === "My Posts" && user?._id) {
+          metaPosts = await dispatch(
+            getAllPosts({ userId: user._id, ...options })
+          ).unwrap();
+        } else {
+          metaPosts = await dispatch(getAllPosts(options)).unwrap();
+        }
+
+        // Fetch posts one-by-one
+        await fetchPostsSequentially({
+          dispatch,
+          posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
+          getThunk: ({ slug }) => getSinglePost({ slug }),
+        });
+      } catch (e) {
+        console.error("❌ Failed to load initial posts:", e);
+      }
+    };
+    loadInitialPosts();
   }, [dispatch, filterType, user?._id, customPosts.length, followers.list]);
 
   useEffect(() => {
@@ -120,25 +145,55 @@ const Postbox = ({
         },
       });
       const options = { page: 1, limit: postsPerPage };
-      if (filterType === "Following") {
-        dispatch(fetchFollowingPosts(options));
-      } else if (filterType === "My Posts" && user?._id) {
-        dispatch(getAllPosts({ userId: user._id, ...options }));
-      } else {
-        dispatch(getAllPosts(options));
-      }
+      const reloadPosts = async () => {
+        try {
+          let metaPosts;
+          if (filterType === "Following") {
+            metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+          } else if (filterType === "My Posts" && user?._id) {
+            metaPosts = await dispatch(
+              getAllPosts({ userId: user._id, ...options })
+            ).unwrap();
+          } else {
+            metaPosts = await dispatch(getAllPosts(options)).unwrap();
+          }
+          await fetchPostsSequentially({
+            dispatch,
+            posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
+            getThunk: ({ slug }) => getSinglePost({ slug }),
+          });
+        } catch (e) {
+          console.error("❌ Failed to reload posts:", e);
+        }
+      };
+      reloadPosts();
     }, 300);
 
     const handlePostUpdated = debounce(() => {
       if (customPosts.length) return;
       const options = { page: 1, limit: postsPerPage };
-      if (filterType === "Following") {
-        dispatch(fetchFollowingPosts(options));
-      } else if (filterType === "My Posts" && user?._id) {
-        dispatch(getAllPosts({ userId: user._id, ...options }));
-      } else {
-        dispatch(getAllPosts(options));
-      }
+      const reloadPosts = async () => {
+        try {
+          let metaPosts;
+          if (filterType === "Following") {
+            metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+          } else if (filterType === "My Posts" && user?._id) {
+            metaPosts = await dispatch(
+              getAllPosts({ userId: user._id, ...options })
+            ).unwrap();
+          } else {
+            metaPosts = await dispatch(getAllPosts(options)).unwrap();
+          }
+          await fetchPostsSequentially({
+            dispatch,
+            posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
+            getThunk: ({ slug }) => getSinglePost({ slug }),
+          });
+        } catch (e) {
+          console.error("❌ Failed to reload posts:", e);
+        }
+      };
+      reloadPosts();
     }, 300);
 
     const handlePostDeleted = debounce((data) => {
@@ -159,13 +214,28 @@ const Postbox = ({
         },
       });
       const options = { page: 1, limit: postsPerPage };
-      if (filterType === "Following") {
-        dispatch(fetchFollowingPosts(options));
-      } else if (filterType === "My Posts" && user?._id) {
-        dispatch(getAllPosts({ userId: user._id, ...options }));
-      } else {
-        dispatch(getAllPosts(options));
-      }
+      const reloadPosts = async () => {
+        try {
+          let metaPosts;
+          if (filterType === "Following") {
+            metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+          } else if (filterType === "My Posts" && user?._id) {
+            metaPosts = await dispatch(
+              getAllPosts({ userId: user._id, ...options })
+            ).unwrap();
+          } else {
+            metaPosts = await dispatch(getAllPosts(options)).unwrap();
+          }
+          await fetchPostsSequentially({
+            dispatch,
+            posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
+            getThunk: ({ slug }) => getSinglePost({ slug }),
+          });
+        } catch (e) {
+          console.error("❌ Failed to reload posts:", e);
+        }
+      };
+      reloadPosts();
     }, 300);
 
     socket.on("postCreated", handlePostCreated);
@@ -285,12 +355,11 @@ const Postbox = ({
       bookmarksCount: post?.bookmarksCount ?? 0,
       shareCount: post?.shareCount ?? 0,
       isSubscriberOnly: post?.isSubscriberOnly ?? false,
-      postType: post?.postType, // Fallback to "Article" if undefined
+      postType: post?.postType || "Article",
       isPremium: post?.isPremium ?? false,
       tags: post?.tags || [],
       readTime: post?.readTime,
     }));
-    // console.log("Postbox - selectedPosts:", mappedPosts); // Log selectedPosts
     return mappedPosts;
   }, [sortedPosts, categoryMap]);
 
@@ -307,7 +376,6 @@ const Postbox = ({
     const result = [...posts];
     const items = [];
 
-    // Dynamically calculate ad frequency based on current screen width
     let adFrequency = 9;
     if (screenWidth < 1024 && screenWidth >= 768) {
       adFrequency = 8;
@@ -341,27 +409,39 @@ const Postbox = ({
     [selectedPosts, screenWidth]
   );
 
-  const loadMorePosts = useCallback(() => {
+  const loadMorePosts = useCallback(async () => {
     if (!postLoading && hasMore) {
       const nextPage = currentPage + 1;
       setCurrentPage(nextPage);
 
-      if (filterType === "Following") {
-        dispatch(fetchFollowingPosts({ page: nextPage, limit: postsPerPage }));
-      } else if (filterType === "Followers") {
-        dispatch(
-          getAllPosts({
-            authorIds: followers.list.map((user) => user._id),
-            page: nextPage,
-            limit: postsPerPage,
-          })
-        );
-      } else if (filterType === "My Posts" && user?._id) {
-        dispatch(
-          getAllPosts({ userId: user._id, page: nextPage, limit: postsPerPage })
-        );
-      } else {
-        dispatch(getAllPosts({ page: nextPage, limit: postsPerPage }));
+      const options = { page: nextPage, limit: postsPerPage };
+      try {
+        let metaPosts;
+        if (filterType === "Following") {
+          metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+        } else if (filterType === "Followers" && followers.list.length) {
+          metaPosts = await dispatch(
+            getAllPosts({
+              authorIds: followers.list.map((user) => user._id),
+              ...options,
+            })
+          ).unwrap();
+        } else if (filterType === "My Posts" && user?._id) {
+          metaPosts = await dispatch(
+            getAllPosts({ userId: user._id, ...options })
+          ).unwrap();
+        } else {
+          metaPosts = await dispatch(getAllPosts(options)).unwrap();
+        }
+
+        // Fetch posts one-by-one
+        await fetchPostsSequentially({
+          dispatch,
+          posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
+          getThunk: ({ slug }) => getSinglePost({ slug }),
+        });
+      } catch (e) {
+        console.error("❌ Failed to load posts:", e);
       }
     }
   }, [

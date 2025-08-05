@@ -1,19 +1,27 @@
 import mongoose from "mongoose";
 import PostModel from "../../servers/Models/Post.js";
 import { AppError } from "../../servers/Utils/AppError.js";
-import logger from "../../servers/Utils/Logger.js"; // Adjusted path to match your setup
+import logger from "../../servers/Utils/Logger.js";
 import { NODE_ENV } from "../../servers/config/dotenv.js";
+import pLimit from "p-limit";
+import NodeCache from "node-cache";
+import { logMemory } from "../../servers/Utils/memoryLogger.js"; // Added import
+
+// Initialize cache
+const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
 
 /**
  * @desc Get total views and likes of a post
  */
 export const getPostStats = async (req, res, next) => {
   try {
+    logMemory("Before getPostStats start");
     const { postId } = req.params;
     if (!postId || postId.trim() === "") {
       throw new AppError("Post ID is required", 400, "getPostStats Controller");
     }
 
+    logMemory("Before processing postIds");
     const postIds = postId
       .split(",")
       .map((id) => id.trim())
@@ -25,28 +33,60 @@ export const getPostStats = async (req, res, next) => {
       throw new AppError("Invalid Post IDs", 400, "getPostStats Controller");
     }
 
-    const posts = await PostModel.find({ _id: { $in: validIds } }).lean();
+    const cacheKey = `postStats:${validIds.join(",")}`;
+    logMemory(`Before checking cache: ${cacheKey}`);
+    const cachedStats = cache.get(cacheKey);
+    if (cachedStats) {
+      logMemory(`Cache hit: ${cacheKey}`);
+      return res.status(200).json({
+        success: true,
+        stats: cachedStats,
+      });
+    }
 
-    if (posts.length === 0) {
+    logMemory("Before PostModel.findOne queries");
+    const limit = pLimit(3); // Limit concurrent queries
+    const posts = await Promise.all(
+      validIds.map((id) =>
+        limit(() =>
+          PostModel.findOne({
+            _id: id,
+            isPublished: true,
+            blocked: false,
+          }).lean()
+        )
+      )
+    );
+
+    logMemory("Before filtering posts");
+    const filteredPosts = posts.filter((post) => post); // Remove null results
+    if (filteredPosts.length === 0) {
       throw new AppError("No posts found", 404, "getPostStats Controller");
     }
 
-    const stats = posts.map((post) => ({
+    logMemory("Before mapping stats");
+    const stats = filteredPosts.map((post) => ({
       postId: post._id,
       views: post.views || 0,
       likes: post.likes ? post.likes.length : 0,
       commentsCount: post.comments ? post.comments.length : 0,
     }));
 
+    logMemory(`Before setting cache: ${cacheKey}`);
+    cache.set(cacheKey, stats);
+
     if (NODE_ENV !== "production") {
+      logMemory("Before logger.info");
       logger.info("[getPostStats] Fetched stats", { postIds: validIds, stats });
     }
 
+    logMemory("After getPostStats complete");
     res.status(200).json({
       success: true,
       stats,
     });
   } catch (error) {
+    logMemory("Before logger.error");
     logger.error("[getPostStats] Error", {
       message: error.message,
       stack: error.stack,
@@ -67,6 +107,7 @@ export const getPostStats = async (req, res, next) => {
  */
 export const getUserEngagementStats = async (req, res, next) => {
   try {
+    logMemory("Before getUserEngagementStats start");
     if (!req.user?._id || !mongoose.Types.ObjectId.isValid(req.user._id)) {
       throw new AppError(
         "Invalid user ID",
@@ -76,7 +117,19 @@ export const getUserEngagementStats = async (req, res, next) => {
     }
 
     const userId = req.user._id;
+    const cacheKey = `userEngagementStats:${userId}`;
 
+    logMemory(`Before checking cache: ${cacheKey}`);
+    const cachedStats = cache.get(cacheKey);
+    if (cachedStats) {
+      logMemory(`Cache hit: ${cacheKey}`);
+      return res.status(200).json({
+        success: true,
+        data: cachedStats,
+      });
+    }
+
+    logMemory("Before PostModel.aggregate");
     const [stats] = await PostModel.aggregate([
       {
         $match: {
@@ -104,8 +157,9 @@ export const getUserEngagementStats = async (req, res, next) => {
           totalComments: 1,
         },
       },
-    ]);
+    ]).exec();
 
+    logMemory("Before processing stats");
     const result = stats || {
       totalPosts: 0,
       totalLikes: 0,
@@ -114,18 +168,24 @@ export const getUserEngagementStats = async (req, res, next) => {
       totalComments: 0,
     };
 
+    logMemory(`Before setting cache: ${cacheKey}`);
+    cache.set(cacheKey, result);
+
     if (NODE_ENV !== "production") {
+      logMemory("Before logger.info");
       logger.info("[getUserEngagementStats] Fetched stats", {
         userId,
         stats: result,
       });
     }
 
+    logMemory("After getUserEngagementStats complete");
     res.status(200).json({
       success: true,
       data: result,
     });
   } catch (error) {
+    logMemory("Before logger.error");
     logger.error("[getUserEngagementStats] Error", {
       message: error.message,
       stack: error.stack,

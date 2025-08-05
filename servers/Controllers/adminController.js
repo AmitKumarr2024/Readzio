@@ -16,12 +16,14 @@ import UserSubscription from "../../servers/Models/UserSubscription.js";
 import UserSubscriptionPlan from "../../servers/Models/UserSubscriptionModel.js";
 import pLimit from "p-limit";
 import NodeCache from "node-cache";
+import { logMemory } from "../../servers/Utils/memoryLogger.js"; // Import logMemory
 
 // Initialize cache
 const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
 
 // Validates ObjectId and throws AppError with context for invalid IDs
 const validateObjectId = (id, type = "ID") => {
+  logMemory(`🔍 Validating ${type}`);
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError(
       `Invalid ${type}`,
@@ -35,6 +37,7 @@ const validateObjectId = (id, type = "ID") => {
 // Fetches all users with pagination
 export const getAllUsers = async (req, res, next) => {
   try {
+    logMemory("👥 Start getAllUsers");
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 100, 1000);
     const skip = (page - 1) * limit;
@@ -42,15 +45,18 @@ export const getAllUsers = async (req, res, next) => {
     const projection =
       "name email gender avatar banner bio profession location createdAt role blocked bookmarks following followers blockedUsers subscribedCategories subscribedAuthors subscribers hasSubscriptionPlan subscriptionPlan subscriptionDate isEligibleForSubscription";
 
-    const users = [];
     const cacheKey = `userCounts:total`;
     let totalUsers = cache.get(cacheKey);
 
+    logMemory("📊 Before checking cache for total users");
     if (!totalUsers) {
       totalUsers = await UserModel.countDocuments().lean();
       cache.set(cacheKey, totalUsers);
     }
+    logMemory("📊 After checking cache for total users");
 
+    const users = [];
+    logMemory("📖 Before fetching users");
     const cursor = UserModel.find({})
       .select(projection)
       .skip(skip)
@@ -61,9 +67,11 @@ export const getAllUsers = async (req, res, next) => {
     for await (const user of cursor) {
       users.push(user);
     }
+    logMemory("📖 After fetching users");
 
     const totalPages = Math.ceil(totalUsers / limit);
 
+    logMemory("👥 End getAllUsers");
     res.status(200).json({
       success: true,
       users,
@@ -72,6 +80,7 @@ export const getAllUsers = async (req, res, next) => {
       currentPage: page,
     });
   } catch (error) {
+    logMemory("❌ Error in getAllUsers");
     next(
       new AppError(error.message, 500, "GetAllUsers", "Failed to fetch users")
     );
@@ -81,10 +90,13 @@ export const getAllUsers = async (req, res, next) => {
 // Toggles user block status
 export const toggleBlockUser = async (req, res, next) => {
   try {
+    logMemory("🚫 Start toggleBlockUser");
     const { userId } = req.params;
     validateObjectId(userId, "User ID");
 
+    logMemory("📖 Before fetching user");
     const user = await UserModel.findById(userId).lean();
+    logMemory("📖 After fetching user");
     if (!user) {
       throw new AppError(
         "User not found",
@@ -94,12 +106,15 @@ export const toggleBlockUser = async (req, res, next) => {
       );
     }
 
+    logMemory("💾 Before updating user");
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
       { blocked: !user.blocked },
       { new: true, select: "blocked" }
     ).lean();
+    logMemory("💾 After updating user");
 
+    logMemory("🚫 End toggleBlockUser");
     res.status(200).json({
       success: true,
       message: `User ${
@@ -107,6 +122,7 @@ export const toggleBlockUser = async (req, res, next) => {
       } successfully`,
     });
   } catch (error) {
+    logMemory("❌ Error in toggleBlockUser");
     next(
       new AppError(
         error.message,
@@ -121,10 +137,13 @@ export const toggleBlockUser = async (req, res, next) => {
 // Toggles user role between admin and user
 export const toggleUserRole = async (req, res, next) => {
   try {
+    logMemory("👑 Start toggleUserRole");
     const { userId } = req.params;
     validateObjectId(userId, "User ID");
 
+    logMemory("📖 Before fetching user");
     const user = await UserModel.findById(userId).lean();
+    logMemory("📖 After fetching user");
     if (!user) {
       throw new AppError(
         "User not found",
@@ -134,6 +153,7 @@ export const toggleUserRole = async (req, res, next) => {
       );
     }
 
+    logMemory("📊 Before checking admin count");
     if (user.role === "admin") {
       const adminCount = await UserModel.countDocuments({
         role: "admin",
@@ -147,19 +167,24 @@ export const toggleUserRole = async (req, res, next) => {
         );
       }
     }
+    logMemory("📊 After checking admin count");
 
     const newRole = user.role === "admin" ? "user" : "admin";
+    logMemory("💾 Before updating user role");
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
       { role: newRole, isAdmin: newRole === "admin" },
       { new: true, select: "role isAdmin" }
     ).lean();
+    logMemory("💾 After updating user role");
 
+    logMemory("👑 End toggleUserRole");
     res.status(200).json({
       success: true,
       message: `User role changed to ${updatedUser.role}`,
     });
   } catch (error) {
+    logMemory("❌ Error in toggleUserRole");
     next(
       new AppError(
         error.message,
@@ -174,10 +199,13 @@ export const toggleUserRole = async (req, res, next) => {
 // Deletes a user by ID
 export const deleteUser = async (req, res, next) => {
   try {
+    logMemory("🗑️ Start deleteUser");
     const { userId } = req.params;
     validateObjectId(userId, "User ID");
 
+    logMemory("💾 Before deleting user");
     const deletedUser = await UserModel.findByIdAndDelete(userId).lean();
+    logMemory("💾 After deleting user");
     if (!deletedUser) {
       throw new AppError(
         "User not found",
@@ -187,10 +215,12 @@ export const deleteUser = async (req, res, next) => {
       );
     }
 
+    logMemory("🗑️ End deleteUser");
     res
       .status(200)
       .json({ success: true, message: "User deleted successfully" });
   } catch (error) {
+    logMemory("❌ Error in deleteUser");
     next(
       new AppError(error.message, 500, "DeleteUser", "Failed to delete user")
     );
@@ -200,7 +230,9 @@ export const deleteUser = async (req, res, next) => {
 // Fetches all posts with size calculations
 export const getAllPosts = async (req, res, next) => {
   try {
+    logMemory("📋 Start getAllPosts");
     const postsWithSize = [];
+    logMemory("📖 Before fetching posts");
     const cursor = PostModel.find()
       .select("title blocks author createdAt blocked")
       .populate("author", "name email")
@@ -208,6 +240,7 @@ export const getAllPosts = async (req, res, next) => {
       .cursor();
 
     for await (const post of cursor) {
+      logMemory(`📄 Processing post ${post._id}`);
       const blocksText =
         post.blocks
           ?.map((b) => b.text || b.value || b.code || b.caption || "")
@@ -221,9 +254,12 @@ export const getAllPosts = async (req, res, next) => {
         sizeInKB: Number(sizeInKB.toFixed(2)),
       });
     }
+    logMemory("📖 After fetching posts");
 
+    logMemory("📋 End getAllPosts");
     res.status(200).json({ success: true, posts: postsWithSize });
   } catch (error) {
+    logMemory("❌ Error in getAllPosts");
     next(
       new AppError(error.message, 500, "GetAllPosts", "Failed to fetch posts")
     );
@@ -233,10 +269,13 @@ export const getAllPosts = async (req, res, next) => {
 // Toggles post block status
 export const toggleBlockPost = async (req, res, next) => {
   try {
+    logMemory("🚫 Start toggleBlockPost");
     const { postId } = req.params;
     validateObjectId(postId, "Post ID");
 
+    logMemory("📖 Before fetching post");
     const post = await PostModel.findById(postId).lean();
+    logMemory("📖 After fetching post");
     if (!post) {
       throw new AppError(
         "Post not found",
@@ -246,6 +285,7 @@ export const toggleBlockPost = async (req, res, next) => {
       );
     }
 
+    logMemory("💾 Before updating post");
     const updatedPost = await PostModel.findByIdAndUpdate(
       postId,
       {
@@ -254,8 +294,11 @@ export const toggleBlockPost = async (req, res, next) => {
       },
       { new: true, select: "blocked likes" }
     ).lean();
+    logMemory("💾 After updating post");
 
     emitPostUpdated(updatedPost);
+
+    logMemory("🚫 End toggleBlockPost");
     res.status(200).json({
       success: true,
       message: `Post ${
@@ -263,6 +306,7 @@ export const toggleBlockPost = async (req, res, next) => {
       } successfully`,
     });
   } catch (error) {
+    logMemory("❌ Error in toggleBlockPost");
     next(
       new AppError(
         error.message,
@@ -277,10 +321,13 @@ export const toggleBlockPost = async (req, res, next) => {
 // Deletes a post by ID
 export const deletePost = async (req, res, next) => {
   try {
+    logMemory("🗑️ Start deletePost");
     const { postId } = req.params;
     validateObjectId(postId, "Post ID");
 
+    logMemory("💾 Before deleting post");
     const deletedPost = await PostModel.findByIdAndDelete(postId).lean();
+    logMemory("💾 After deleting post");
     if (!deletedPost) {
       throw new AppError(
         "Post not found",
@@ -291,10 +338,13 @@ export const deletePost = async (req, res, next) => {
     }
 
     emitPostDeleted(postId);
+
+    logMemory("🗑️ End deletePost");
     res
       .status(200)
       .json({ success: true, message: "Post deleted successfully" });
   } catch (error) {
+    logMemory("❌ Error in deletePost");
     next(
       new AppError(error.message, 500, "DeletePost", "Failed to delete post")
     );
@@ -304,6 +354,7 @@ export const deletePost = async (req, res, next) => {
 // Records reading time for a post
 export const recordReadingTime = async (req, res, next) => {
   try {
+    logMemory("⏱️ Start recordReadingTime");
     const { postId, timeSpent } = req.body;
     const userId = req.user?._id || null;
 
@@ -317,7 +368,9 @@ export const recordReadingTime = async (req, res, next) => {
       );
     }
 
+    logMemory("📖 Before fetching post");
     const post = await PostModel.findById(postId).lean();
+    logMemory("📖 After fetching post");
     if (!post) {
       throw new AppError(
         "Post not found",
@@ -327,6 +380,7 @@ export const recordReadingTime = async (req, res, next) => {
       );
     }
 
+    logMemory("💾 Before updating traffic and post");
     await Promise.all([
       TrafficModel.create({
         postId,
@@ -339,9 +393,12 @@ export const recordReadingTime = async (req, res, next) => {
       }),
       PostModel.updateOne({ _id: postId }, { $inc: { timeSpent } }).lean(),
     ]);
+    logMemory("💾 After updating traffic and post");
 
+    logMemory("⏱️ End recordReadingTime");
     res.status(200).json({ success: true, message: "Reading time recorded" });
   } catch (error) {
+    logMemory("❌ Error in recordReadingTime");
     next(
       new AppError(
         error.message || "Unknown error",
@@ -356,12 +413,14 @@ export const recordReadingTime = async (req, res, next) => {
 // Fetches reading details for a post
 export const getReadingDetailsByPost = async (req, res, next) => {
   try {
+    logMemory("📊 Start getReadingDetailsByPost");
     const { postId } = req.params;
     validateObjectId(postId, "Post ID");
 
     const logs = [];
     let totalTime = 0;
 
+    logMemory("📖 Before fetching traffic logs");
     const cursor = TrafficModel.find({ postId })
       .select("userId timeSpent timestamp")
       .populate("userId", "name email")
@@ -369,6 +428,7 @@ export const getReadingDetailsByPost = async (req, res, next) => {
       .cursor();
 
     for await (const log of cursor) {
+      logMemory(`📄 Processing traffic log ${log._id}`);
       totalTime += log.timeSpent || 0;
       logs.push({
         user: log.userId,
@@ -376,13 +436,16 @@ export const getReadingDetailsByPost = async (req, res, next) => {
         at: log.timestamp,
       });
     }
+    logMemory("📖 After fetching traffic logs");
 
+    logMemory("📊 End getReadingDetailsByPost");
     res.status(200).json({
       success: true,
       totalTimeSpent: totalTime,
       logs,
     });
   } catch (error) {
+    logMemory("❌ Error in getReadingDetailsByPost");
     next(
       new AppError(
         error.message || "Failed to get reading details",
@@ -397,6 +460,7 @@ export const getReadingDetailsByPost = async (req, res, next) => {
 // Fetches site analytics
 export const getSiteAnalytics = async (req, res, next) => {
   try {
+    logMemory("📈 Start getSiteAnalytics");
     const { startDate, endDate } = req.query;
     const start = startDate ? new Date(startDate) : new Date(0);
     const end = endDate ? new Date(endDate) : new Date();
@@ -414,6 +478,7 @@ export const getSiteAnalytics = async (req, res, next) => {
     let cachedData = cache.get(cacheKey);
 
     if (!cachedData) {
+      logMemory("📊 Before fetching traffic stats");
       const trafficStats = await TrafficModel.aggregate([
         { $match: { timestamp: { $gte: start, $lte: end } } },
         {
@@ -435,8 +500,10 @@ export const getSiteAnalytics = async (req, res, next) => {
           },
         },
       ]).exec();
+      logMemory("📊 After fetching traffic stats");
 
       const topPosts = [];
+      logMemory("📖 Before fetching top posts");
       const topPostsCursor = TrafficModel.aggregate([
         { $match: { timestamp: { $gte: start, $lte: end } } },
         {
@@ -469,10 +536,13 @@ export const getSiteAnalytics = async (req, res, next) => {
       ]).cursor();
 
       for await (const post of topPostsCursor) {
+        logMemory(`📄 Processing top post ${post.postId}`);
         topPosts.push(post);
       }
+      logMemory("📖 After fetching top posts");
 
       const userStats = [];
+      logMemory("📖 Before fetching user stats");
       const userStatsCursor = UserModel.aggregate([
         {
           $lookup: {
@@ -495,8 +565,10 @@ export const getSiteAnalytics = async (req, res, next) => {
       ]).cursor();
 
       for await (const user of userStatsCursor) {
+        logMemory(`📄 Processing user stat ${user._id}`);
         userStats.push(user);
       }
+      logMemory("📖 After fetching user stats");
 
       cachedData = {
         traffic: trafficStats[0] || {
@@ -511,8 +583,10 @@ export const getSiteAnalytics = async (req, res, next) => {
       cache.set(cacheKey, cachedData);
     }
 
+    logMemory("📈 End getSiteAnalytics");
     res.status(200).json({ success: true, data: cachedData });
   } catch (error) {
+    logMemory("❌ Error in getSiteAnalytics");
     next(
       new AppError(
         error.message || "Failed to fetch site analytics",
@@ -527,6 +601,7 @@ export const getSiteAnalytics = async (req, res, next) => {
 // Exports all data as Excel
 export const downloadAllDataCsv = async (req, res, next) => {
   try {
+    logMemory("📑 Start downloadAllDataCsv");
     if (!req.user?.isAdmin) {
       throw new AppError(
         "Admin access required",
@@ -541,6 +616,7 @@ export const downloadAllDataCsv = async (req, res, next) => {
 
     // Users Sheet
     const userData = [];
+    logMemory("📖 Before fetching users for Excel");
     const usersCursor = UserModel.find()
       .select(
         "name email gender role blocked createdAt bio profession location isEligibleForSubscription"
@@ -549,6 +625,7 @@ export const downloadAllDataCsv = async (req, res, next) => {
       .cursor();
 
     for await (const user of usersCursor) {
+      logMemory(`📄 Processing user ${user._id} for Excel`);
       userData.push({
         Name: user.name || "",
         Email: user.email || "",
@@ -569,9 +646,11 @@ export const downloadAllDataCsv = async (req, res, next) => {
       XLSX.utils.json_to_sheet(userData),
       "Users"
     );
+    logMemory("📖 After fetching users for Excel");
 
     // Posts Sheet
     const postData = [];
+    logMemory("📖 Before fetching posts for Excel");
     const postsCursor = PostModel.find()
       .select("title author createdAt blocked blocks")
       .populate("author", "name email")
@@ -579,6 +658,7 @@ export const downloadAllDataCsv = async (req, res, next) => {
       .cursor();
 
     for await (const post of postsCursor) {
+      logMemory(`📄 Processing post ${post._id} for Excel`);
       const blocksText =
         post.blocks
           ?.map((b) => b.text || b.value || b.code || b.caption || "")
@@ -599,9 +679,11 @@ export const downloadAllDataCsv = async (req, res, next) => {
       XLSX.utils.json_to_sheet(postData),
       "Posts"
     );
+    logMemory("📖 After fetching posts for Excel");
 
     // Traffic Sheet
     const trafficData = [];
+    logMemory("📖 Before fetching traffic for Excel");
     const trafficCursor = TrafficModel.find()
       .select("postId userId timeSpent timestamp route ip userAgent")
       .populate("userId", "name email")
@@ -609,6 +691,7 @@ export const downloadAllDataCsv = async (req, res, next) => {
       .cursor();
 
     for await (const record of trafficCursor) {
+      logMemory(`📄 Processing traffic record ${record._id} for Excel`);
       trafficData.push({
         PostID: record.postId ? record.postId.toString() : "",
         UserName: record.userId?.name || "Unknown",
@@ -627,9 +710,11 @@ export const downloadAllDataCsv = async (req, res, next) => {
       XLSX.utils.json_to_sheet(trafficData),
       "Traffic"
     );
+    logMemory("📖 After fetching traffic for Excel");
 
     // Plans Sheet
     const planData = [];
+    logMemory("📖 Before fetching plans for Excel");
     const plansCursor = UserSubscriptionPlan.find({
       $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
     })
@@ -639,6 +724,7 @@ export const downloadAllDataCsv = async (req, res, next) => {
       .cursor();
 
     for await (const plan of plansCursor) {
+      logMemory(`📄 Processing plan ${plan._id} for Excel`);
       const [subscriberCount, activeSubs] = await Promise.all([
         UserSubscription.countDocuments({
           planId: plan._id,
@@ -671,9 +757,11 @@ export const downloadAllDataCsv = async (req, res, next) => {
       XLSX.utils.json_to_sheet(planData),
       "Plans"
     );
+    logMemory("📖 After fetching plans for Excel");
 
     // Subscriptions Sheet
     const subscriptionData = [];
+    logMemory("📖 Before fetching subscriptions for Excel");
     const subscriptionsCursor = UserSubscription.find()
       .select("userId planId paymentId status expiryDate createdAt amountPaid")
       .populate("userId", "name email")
@@ -682,6 +770,7 @@ export const downloadAllDataCsv = async (req, res, next) => {
       .cursor();
 
     for await (const sub of subscriptionsCursor) {
+      logMemory(`📄 Processing subscription ${sub._id} for Excel`);
       subscriptionData.push({
         SubscriptionID: sub._id.toString(),
         UserID: sub.userId?._id?.toString() || "N/A",
@@ -703,15 +792,18 @@ export const downloadAllDataCsv = async (req, res, next) => {
       XLSX.utils.json_to_sheet(subscriptionData),
       "Subscriptions"
     );
+    logMemory("📖 After fetching subscriptions for Excel");
 
     // Payments Sheet
     const paymentData = [];
+    logMemory("📖 Before fetching payments for Excel");
     const paymentsCursor = PaymentModel.find()
       .select("paymentId orderId userId amount currency status createdAt")
       .lean()
       .cursor();
 
     for await (const payment of paymentsCursor) {
+      logMemory(`📄 Processing payment ${payment._id} for Excel`);
       paymentData.push({
         PaymentID: payment.paymentId || "",
         OrderID: payment.orderId || "",
@@ -729,9 +821,11 @@ export const downloadAllDataCsv = async (req, res, next) => {
       XLSX.utils.json_to_sheet(paymentData),
       "Payments"
     );
+    logMemory("📖 After fetching payments for Excel");
 
     // Feedback Sheet
     const feedbackData = [];
+    logMemory("📖 Before fetching feedback for Excel");
     const feedbackCursor = UserModel.find({ "feedbackPrompt.responded": true })
       .select(
         "name email avatar feedbackPrompt.rating feedbackPrompt.message feedbackPrompt.shownAt"
@@ -740,6 +834,7 @@ export const downloadAllDataCsv = async (req, res, next) => {
       .cursor();
 
     for await (const user of feedbackCursor) {
+      logMemory(`📄 Processing feedback for user ${user._id} for Excel`);
       feedbackData.push({
         UserID: user._id.toString(),
         Name: user.name || "",
@@ -757,8 +852,12 @@ export const downloadAllDataCsv = async (req, res, next) => {
       XLSX.utils.json_to_sheet(feedbackData),
       "Feedback"
     );
+    logMemory("📖 After fetching feedback for Excel");
 
+    logMemory("📑 Before generating Excel buffer");
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
+    logMemory("📑 After generating Excel buffer");
+
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -767,8 +866,11 @@ export const downloadAllDataCsv = async (req, res, next) => {
       "Content-Disposition",
       'attachment; filename="Inksha_official_details_data.xlsx"'
     );
+
+    logMemory("📑 End downloadAllDataCsv");
     res.status(200).send(excelBuffer);
   } catch (error) {
+    logMemory("❌ Error in downloadAllDataCsv");
     next(
       new AppError(
         error.message || "Failed to generate Excel file",
@@ -783,6 +885,7 @@ export const downloadAllDataCsv = async (req, res, next) => {
 // Fetches all subscription plans with pagination
 export const getAllSubscriptionPlans = async (req, res, next) => {
   try {
+    logMemory("📋 Start getAllSubscriptionPlans");
     if (!req.user?.isAdmin) {
       throw new AppError(
         "Admin access required",
@@ -799,14 +902,17 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
     const cacheKey = `subscriptionPlans:total`;
     let totalPlans = cache.get(cacheKey);
 
+    logMemory("📊 Before checking cache for total plans");
     if (!totalPlans) {
       totalPlans = await UserSubscriptionPlan.countDocuments({
         $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
       }).lean();
       cache.set(cacheKey, totalPlans);
     }
+    logMemory("📊 After checking cache for total plans");
 
     const plans = [];
+    logMemory("📖 Before fetching plans");
     const plansCursor = UserSubscriptionPlan.find({
       $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
     })
@@ -819,7 +925,9 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
 
     const limitFn = pLimit(3); // Process 3 plans at a time
     for await (const plan of plansCursor) {
+      logMemory(`📄 Processing plan ${plan._id}`);
       const enrichedPlan = await limitFn(async () => {
+        logMemory(`💾 Before fetching subscriptions for plan ${plan._id}`);
         const [subscriptions, activeSubscribers] = await Promise.all([
           UserSubscription.find({ planId: plan._id }).lean(),
           UserSubscription.countDocuments({
@@ -827,6 +935,7 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
             status: "active",
           }).lean(),
         ]);
+        logMemory(`💾 After fetching subscriptions for plan ${plan._id}`);
         const totalRevenue = subscriptions.reduce(
           (sum, sub) =>
             sub.status === "active"
@@ -843,7 +952,9 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
       });
       plans.push(enrichedPlan);
     }
+    logMemory("📖 After fetching plans");
 
+    logMemory("📋 End getAllSubscriptionPlans");
     res.status(200).json({
       success: true,
       count: plans.length,
@@ -853,6 +964,7 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
       totalPlans,
     });
   } catch (error) {
+    logMemory("❌ Error in getAllSubscriptionPlans");
     next(
       new AppError(
         error.message || "Internal Server Error",
@@ -867,6 +979,7 @@ export const getAllSubscriptionPlans = async (req, res, next) => {
 // Toggles user eligibility for subscription creation
 export const toggleUserEligibility = async (req, res, next) => {
   try {
+    logMemory("🔐 Start toggleUserEligibility");
     if (!req.user?.isAdmin) {
       throw new AppError(
         "Admin access required",
@@ -879,11 +992,13 @@ export const toggleUserEligibility = async (req, res, next) => {
     const { userId, enable } = req.body;
     validateObjectId(userId, "User ID");
 
+    logMemory("💾 Before updating user eligibility");
     const user = await UserModel.findByIdAndUpdate(
       userId,
       { isEligibleForSubscription: enable },
       { new: true, select: "isEligibleForSubscription" }
     ).lean();
+    logMemory("💾 After updating user eligibility");
 
     if (!user) {
       throw new AppError(
@@ -894,6 +1009,7 @@ export const toggleUserEligibility = async (req, res, next) => {
       );
     }
 
+    logMemory("📝 Before recording activity");
     await recordActivity({
       userId: req.user._id.toString(),
       action: "TOGGLED_SUBSCRIPTION_ELIGIBILITY",
@@ -902,7 +1018,9 @@ export const toggleUserEligibility = async (req, res, next) => {
       } subscription eligibility for user ${userId}`,
       targetUserId: userId,
     });
+    logMemory("📝 After recording activity");
 
+    logMemory("🔐 End toggleUserEligibility");
     res.status(200).json({
       success: true,
       message: `Subscription eligibility ${
@@ -914,6 +1032,7 @@ export const toggleUserEligibility = async (req, res, next) => {
       },
     });
   } catch (error) {
+    logMemory("❌ Error in toggleUserEligibility");
     next(
       new AppError(
         error.message,
@@ -928,6 +1047,7 @@ export const toggleUserEligibility = async (req, res, next) => {
 // Updates global subscription eligibility criteria
 export const updateGlobalEligibilityCriteria = async (req, res, next) => {
   try {
+    logMemory("⚙️ Start updateGlobalEligibilityCriteria");
     if (!req.user?.isAdmin) {
       throw new AppError(
         "Admin access required",
@@ -961,12 +1081,15 @@ export const updateGlobalEligibilityCriteria = async (req, res, next) => {
       );
     }
 
+    logMemory("💾 Before updating subscription config");
     const config = await SubscriptionConfig.findOneAndUpdate(
       { key: "subscriptionEligibility" },
       { minFollowers, minPosts, minEngagementRate, minAccountAgeDays },
       { upsert: true, new: true }
     ).lean();
+    logMemory("💾 After updating subscription config");
 
+    logMemory("📝 Before recording activity");
     await recordActivity({
       userId: req.user._id.toString(),
       action: "UPDATED_SUBSCRIPTION_CRITERIA",
@@ -974,9 +1097,12 @@ export const updateGlobalEligibilityCriteria = async (req, res, next) => {
         minEngagementRate * 100
       ).toFixed(2)}% engagement rate, ${minAccountAgeDays} days account age`,
     });
+    logMemory("📝 After recording activity");
 
+    logMemory("⚙️ End updateGlobalEligibilityCriteria");
     res.status(200).json({ success: true, criteria: config });
   } catch (error) {
+    logMemory("❌ Error in updateGlobalEligibilityCriteria");
     next(
       new AppError(
         error.message,
@@ -991,6 +1117,7 @@ export const updateGlobalEligibilityCriteria = async (req, res, next) => {
 // Sets user-specific eligibility overrides
 export const setUserEligibilityOverride = async (req, res, next) => {
   try {
+    logMemory("🔐 Start setUserEligibilityOverride");
     if (!req.user?.isAdmin) {
       throw new AppError(
         "Admin access required",
@@ -1004,6 +1131,7 @@ export const setUserEligibilityOverride = async (req, res, next) => {
     const { isEligibleForSubscription, bypassSubscriptionCriteria } = req.body;
     validateObjectId(userId, "User ID");
 
+    logMemory("💾 Before updating user eligibility override");
     const user = await UserModel.findByIdAndUpdate(
       userId,
       {
@@ -1019,6 +1147,7 @@ export const setUserEligibilityOverride = async (req, res, next) => {
         select: "isEligibleForSubscription bypassSubscriptionCriteria",
       }
     ).lean();
+    logMemory("💾 After updating user eligibility override");
 
     if (!user) {
       throw new AppError(
@@ -1029,13 +1158,16 @@ export const setUserEligibilityOverride = async (req, res, next) => {
       );
     }
 
+    logMemory("📝 Before recording activity");
     await recordActivity({
       userId: req.user._id.toString(),
       action: "SET_USER_ELIGIBILITY_OVERRIDE",
       message: `Set eligibility override for user ${userId}`,
       userTarget: userId,
     });
+    logMemory("📝 After recording activity");
 
+    logMemory("🔐 End setUserEligibilityOverride");
     res.status(200).json({
       success: true,
       userId,
@@ -1043,6 +1175,7 @@ export const setUserEligibilityOverride = async (req, res, next) => {
       bypassSubscriptionCriteria: user.bypassSubscriptionCriteria,
     });
   } catch (error) {
+    logMemory("❌ Error in setUserEligibilityOverride");
     next(
       new AppError(
         error.message,
@@ -1057,12 +1190,15 @@ export const setUserEligibilityOverride = async (req, res, next) => {
 // Checks user eligibility for subscription
 export const checkUserEligibility = async (req, res, next) => {
   try {
+    logMemory("🔍 Start checkUserEligibility");
     const { userId } = req.params;
     validateObjectId(userId, "User ID");
 
+    logMemory("📖 Before fetching user");
     const user = await UserModel.findById(userId)
       .select("createdAt followers milestoneOverride isEligibleForSubscription")
       .lean();
+    logMemory("📖 After fetching user");
 
     if (!user) {
       throw new AppError("User not found", 404, "CheckUserEligibility");
@@ -1071,19 +1207,22 @@ export const checkUserEligibility = async (req, res, next) => {
     const followerCount =
       user.milestoneOverride?.followerCount ?? (user.followers?.length || 0);
     const posts = [];
+    let postCount = 0;
+    let totalEngagement = 0;
+
+    logMemory("📖 Before fetching posts");
     const postsCursor = PostModel.find({ author: userId, isPublished: true })
       .select("likes comments")
       .lean()
       .cursor();
 
-    let postCount = 0;
-    let totalEngagement = 0;
-
     for await (const post of postsCursor) {
+      logMemory(`📄 Processing post ${post._id}`);
       postCount++;
       totalEngagement +=
         (post.likes?.length || 0) + (post.comments?.length || 0);
     }
+    logMemory("📖 After fetching posts");
 
     const engagementRate =
       user.milestoneOverride?.engagementRate ??
@@ -1092,6 +1231,7 @@ export const checkUserEligibility = async (req, res, next) => {
       user.milestoneOverride?.accountAgeDays ??
       (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
 
+    logMemory("📊 Before fetching subscription config");
     let config = await SubscriptionConfig.findOne({
       key: "subscriptionEligibility",
     }).lean();
@@ -1107,6 +1247,7 @@ export const checkUserEligibility = async (req, res, next) => {
         { upsert: true, new: true }
       ).lean();
     }
+    logMemory("📊 After fetching subscription config");
 
     const isEligible =
       user.isEligibleForSubscription ||
@@ -1115,6 +1256,7 @@ export const checkUserEligibility = async (req, res, next) => {
         engagementRate >= config.minEngagementRate &&
         accountAgeDays >= config.minAccountAgeDays);
 
+    logMemory("🔍 End checkUserEligibility");
     res.status(200).json({
       success: true,
       userId,
@@ -1133,6 +1275,7 @@ export const checkUserEligibility = async (req, res, next) => {
       usedOverrides: !!user.milestoneOverride,
     });
   } catch (error) {
+    logMemory("❌ Error in checkUserEligibility");
     next(
       new AppError(
         error.message,
@@ -1147,6 +1290,7 @@ export const checkUserEligibility = async (req, res, next) => {
 // Toggles subscription plan status
 export const toggleSubscriptionPlanStatus = async (req, res, next) => {
   try {
+    logMemory("📋 Start toggleSubscriptionPlanStatus");
     if (!req.user?.isAdmin) {
       throw new AppError(
         "Admin access required",
@@ -1168,11 +1312,13 @@ export const toggleSubscriptionPlanStatus = async (req, res, next) => {
       );
     }
 
+    logMemory("💾 Before updating plan status");
     const plan = await SubscriptionPlan.findByIdAndUpdate(
       planId,
       { status },
       { new: true, select: "name status" }
     ).lean();
+    logMemory("💾 After updating plan status");
 
     if (!plan) {
       throw new AppError(
@@ -1183,18 +1329,22 @@ export const toggleSubscriptionPlanStatus = async (req, res, next) => {
       );
     }
 
+    logMemory("📝 Before recording activity");
     await recordActivity({
       userId: req.user._id.toString(),
       action: "TOGGLED_SUBSCRIPTION_PLAN_STATUS",
       message: `Admin set plan ${planId} to ${status}`,
       plan: { planId, name: plan.name, status },
     });
+    logMemory("📝 After recording activity");
 
+    logMemory("📋 End toggleSubscriptionPlanStatus");
     res.status(200).json({
       success: true,
       plan: { id: planId, name: plan.name, status },
     });
   } catch (error) {
+    logMemory("❌ Error in toggleSubscriptionPlanStatus");
     next(
       new AppError(
         error.message,
@@ -1209,6 +1359,7 @@ export const toggleSubscriptionPlanStatus = async (req, res, next) => {
 // Grants or revokes subscription creation access
 export const grantSubscriptionAccess = async (req, res, next) => {
   try {
+    logMemory("🔐 Start grantSubscriptionAccess");
     if (!req.user?.isAdmin) {
       throw new AppError(
         "Admin access required",
@@ -1221,11 +1372,13 @@ export const grantSubscriptionAccess = async (req, res, next) => {
     const { userId, grant } = req.body;
     validateObjectId(userId, "User ID");
 
+    logMemory("💾 Before updating subscription access");
     const user = await UserModel.findByIdAndUpdate(
       userId,
       { isEligibleForSubscription: grant },
       { new: true, select: "isEligibleForSubscription" }
     ).lean();
+    logMemory("💾 After updating subscription access");
 
     if (!user) {
       throw new AppError(
@@ -1236,6 +1389,7 @@ export const grantSubscriptionAccess = async (req, res, next) => {
       );
     }
 
+    logMemory("📝 Before recording activity");
     await recordActivity({
       userId: req.user._id.toString(),
       action: "GRANTED_SUBSCRIPTION_ACCESS",
@@ -1244,7 +1398,9 @@ export const grantSubscriptionAccess = async (req, res, next) => {
       } subscription creation access for user ${userId}`,
       targetUserId: userId,
     });
+    logMemory("📝 After recording activity");
 
+    logMemory("🔐 End grantSubscriptionAccess");
     res.status(200).json({
       success: true,
       message: `Subscription creation access ${
@@ -1256,6 +1412,7 @@ export const grantSubscriptionAccess = async (req, res, next) => {
       },
     });
   } catch (error) {
+    logMemory("❌ Error in grantSubscriptionAccess");
     next(
       new AppError(
         error.message,
@@ -1270,6 +1427,7 @@ export const grantSubscriptionAccess = async (req, res, next) => {
 // Overrides user milestones
 export const overrideUserMilestones = async (req, res, next) => {
   try {
+    logMemory("🔧 Start overrideUserMilestones");
     if (!req.user?.isAdmin) {
       throw new AppError(
         "Admin access required",
@@ -1288,11 +1446,14 @@ export const overrideUserMilestones = async (req, res, next) => {
     } = req.body;
     validateObjectId(userId, "User ID");
 
+    logMemory("📖 Before fetching user");
     const user = await UserModel.findById(userId).lean();
+    logMemory("📖 After fetching user");
     if (!user) {
       throw new AppError("User not found", 404, "OverrideUserMilestones");
     }
 
+    logMemory("💾 Before updating user milestones");
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
       {
@@ -1311,14 +1472,18 @@ export const overrideUserMilestones = async (req, res, next) => {
       },
       { new: true, select: "milestoneOverride isEligibleForSubscription" }
     ).lean();
+    logMemory("💾 After updating user milestones");
 
+    logMemory("📝 Before recording activity");
     await recordActivity({
       userId: req.user._id.toString(),
       action: "OVERRIDDEN_USER_MILESTONES",
       message: `Admin overrode milestone for user ${userId}`,
       targetUserId: userId,
     });
+    logMemory("📝 After recording activity");
 
+    logMemory("🔧 End overrideUserMilestones");
     res.status(200).json({
       success: true,
       message: "User milestone overridden successfully",
@@ -1327,6 +1492,7 @@ export const overrideUserMilestones = async (req, res, next) => {
       isEligibleForSubscription: updatedUser.isEligibleForSubscription,
     });
   } catch (error) {
+    logMemory("❌ Error in overrideUserMilestones");
     next(
       new AppError(
         error.message,
@@ -1341,6 +1507,7 @@ export const overrideUserMilestones = async (req, res, next) => {
 // Resets user milestones
 export const resetUserMilestones = async (req, res, next) => {
   try {
+    logMemory("🔄 Start resetUserMilestones");
     if (!req.user?.isAdmin) {
       throw new AppError("Admin access required", 403, "ResetUserMilestones");
     }
@@ -1348,6 +1515,7 @@ export const resetUserMilestones = async (req, res, next) => {
     const { userId } = req.params;
     validateObjectId(userId, "User ID");
 
+    logMemory("💾 Before resetting user milestones");
     const user = await UserModel.findByIdAndUpdate(
       userId,
       {
@@ -1360,23 +1528,28 @@ export const resetUserMilestones = async (req, res, next) => {
       },
       { new: true, select: "milestoneOverride" }
     ).lean();
+    logMemory("💾 After resetting user milestones");
 
     if (!user) {
       throw new AppError("User not found", 404, "ResetUserMilestones");
     }
 
+    logMemory("📝 Before recording activity");
     await recordActivity({
       userId: req.user._id.toString(),
       action: "RESET_USER_MILESTONES",
       message: `Admin reset milestone override for user ${userId}`,
       targetUserId: userId,
     });
+    logMemory("📝 After recording activity");
 
+    logMemory("🔄 End resetUserMilestones");
     res.status(200).json({
       success: true,
       message: "Milestone override reset to default",
     });
   } catch (error) {
+    logMemory("❌ Error in resetUserMilestones");
     next(
       new AppError(
         error.message,

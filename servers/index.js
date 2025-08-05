@@ -11,6 +11,7 @@ import connectDb from "./config/mongodb.js";
 import initializeSocket from "./sockets/socket.js";
 import { startTempCleanup } from "./Utils/cleanupTemp.js";
 import { handleRazorpayWebhook } from "./Controllers/paymentController.js";
+import { logMemory } from "./Utils/memoryLogger.js"; // Import logMemory
 
 // Routes
 import AuthRoutes from "./Routes/authRoutes.js";
@@ -49,8 +50,10 @@ app.post(
     },
   }),
   (req, res, next) => {
+    logMemory("💸 Razorpay webhook start");
     try {
       handleRazorpayWebhook(req, res, next);
+      logMemory("💸 Razorpay webhook end");
     } catch (err) {
       console.error("[Server:Razorpay] ❌ Webhook error:", err.message);
       next(err);
@@ -60,12 +63,16 @@ app.post(
 
 // Attach socket to every request
 app.use((req, res, next) => {
+  logMemory("🔌 Attaching socket to request");
   req.io = io;
   next();
 });
 
 // Compression middleware
-app.use(compression());
+app.use((req, res, next) => {
+  logMemory("🗜️ Compression middleware");
+  compression()(req, res, next);
+});
 
 // CORS config
 const allowedOrigins = [
@@ -79,6 +86,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
+      logMemory("🌐 CORS check");
       console.log("[Server:CORS] Request from:", origin);
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
@@ -93,9 +101,18 @@ app.use(
 );
 
 // Request parsing middleware
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use(cookieParser());
+app.use((req, res, next) => {
+  logMemory("📝 JSON parsing middleware");
+  express.json({ limit: "10mb" })(req, res, next);
+});
+app.use((req, res, next) => {
+  logMemory("📝 URL-encoded parsing middleware");
+  express.urlencoded({ extended: true, limit: "10mb" })(req, res, next);
+});
+app.use((req, res, next) => {
+  logMemory("🍪 Cookie parsing middleware");
+  cookieParser()(req, res, next);
+});
 
 // Mount API Routes
 const routes = [
@@ -106,7 +123,7 @@ const routes = [
   ["/api/block", BlockRoutes],
   ["/api/follow", FollowRoutes],
   ["/api/notification", NotificationRoutes],
-  ["/api/payment", RazorpayRoutes],
+  ["/api/payment", RazorpaymentRoutes],
   ["/api/subscription", SubscriptionRoutes],
   ["/api/earning", EarningRoutes],
   ["/api/achievement", AchievementRoutes],
@@ -119,15 +136,20 @@ const routes = [
 ];
 
 routes.forEach(([path, router]) => {
+  logMemory(`🛤️ Mounting route: ${path}`);
   app.use(path, router);
 });
 
 // Serve static public files
 const publicPath = path.join(__dirname, "servers", "public");
-app.use("/public", express.static(publicPath));
+app.use("/public", (req, res, next) => {
+  logMemory("📂 Serving static public files");
+  express.static(publicPath)(req, res, next);
+});
 
 // Static ads.txt file
 app.get("/ads.txt", (req, res) => {
+  logMemory("📜 Serving ads.txt");
   res
     .type("text/plain")
     .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
@@ -139,8 +161,12 @@ const clientIndexPath = path.join(clientPath, "index.html");
 
 if (NODE_ENV === "production") {
   if (fs.existsSync(clientIndexPath)) {
-    app.use(express.static(clientPath));
+    app.use((req, res, next) => {
+      logMemory("📄 Serving static client files");
+      express.static(clientPath)(req, res, next);
+    });
     app.get(/^\/(?!api\/).*/, (req, res) => {
+      logMemory("📄 Serving index.html");
       res.sendFile(clientIndexPath, (err) => {
         if (err) {
           console.error(
@@ -160,6 +186,7 @@ if (NODE_ENV === "production") {
 
 // Health check
 app.get("/health", (req, res) => {
+  logMemory("🩺 Health check");
   res.status(200).json({
     status: "OK",
     message: "Inksha API is running",
@@ -172,11 +199,15 @@ app.get("/health", (req, res) => {
 });
 
 // Custom global error handler
-app.use(errorHandler);
+app.use((err, req, res, next) => {
+  logMemory("❌ Error handler");
+  errorHandler(err, req, res, next);
+});
 
 // In development, print all route paths
 if (NODE_ENV !== "production") {
   try {
+    logMemory("🛤️ Inspecting routes");
     app._router.stack.forEach((middleware) => {
       if (middleware?.route?.path) {
         const methods = Object.keys(middleware?.route?.methods || {})
@@ -194,6 +225,7 @@ if (NODE_ENV !== "production") {
         });
       }
     });
+    logMemory("🛤️ Route inspection complete");
   } catch (err) {
     console.error(
       "❌ Route inspection error:",
@@ -209,20 +241,24 @@ if (NODE_ENV !== "production") {
 
 // Socket and HTTP error listeners
 io.on("error", (err) => {
+  logMemory("🔌 SocketIO error");
   console.error("[Server:SocketIO] Error:", err.message);
 });
 
 server.on("error", (err) => {
+  logMemory("🌐 HTTP server error");
   console.error("[Server:HTTP] Error:", err.message);
 });
 
 // Global error listeners
 process.on("uncaughtException", (err) => {
+  logMemory("❌ Uncaught exception");
   console.error("[UncaughtException] ❌", err.message, err.stack);
   process.exit(1);
 });
 
 process.on("unhandledRejection", (err) => {
+  logMemory("❌ Unhandled rejection");
   console.error("[UnhandledRejection] ❌", err.message);
   process.exit(1);
 });
@@ -230,19 +266,27 @@ process.on("unhandledRejection", (err) => {
 // Start server
 const startServer = async () => {
   try {
+    logMemory("🚀 Server startup begin");
     console.log("[Server:Startup] Connecting to MongoDB...");
+    logMemory("📚 Before MongoDB connection");
     await connectDb();
+    logMemory("📚 After MongoDB connection");
     console.log("[Server:Startup] ✅ Database connected");
 
+    logMemory("🧹 Starting temp cleanup");
     startTempCleanup();
+    logMemory("📧 Starting daily digest job");
     startDailyDigestJob();
 
     server.listen(PORT, "0.0.0.0", function () {
+      logMemory(`🌐 Server listening on port ${this.address().port}`);
       console.log(
         `[Server:Startup] ✅ Inksha API running on port ${this.address().port}`
       );
     });
+    logMemory("🚀 Server startup complete");
   } catch (err) {
+    logMemory("❌ Server startup failed");
     console.error(
       "[Server:Startup] ❌ Failed to start:",
       err.message,

@@ -9,12 +9,14 @@ import { io } from "../sockets/socket.js";
 import UserLocation from "../Models/UserLocation.js";
 import pLimit from "p-limit";
 import NodeCache from "node-cache";
+import { logMemory } from "../../Utils/memoryLogger.js"; // Import logMemory
 
 // Initialize cache
 const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
 
 // Validates ObjectId
 const validateObjectId = (id, type = "ID") => {
+  logMemory(`🔍 Validating ${type}`);
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError(
       `Invalid ${type}`,
@@ -28,6 +30,7 @@ const validateObjectId = (id, type = "ID") => {
 // GET /api/user/ip-location
 export const getIPLocation = async (req, res, next) => {
   try {
+    logMemory("🌍 Start getIPLocation");
     if (!req.geoLocation) {
       throw new AppError(
         "Geolocation not available",
@@ -37,11 +40,13 @@ export const getIPLocation = async (req, res, next) => {
       );
     }
 
+    logMemory("🌍 End getIPLocation");
     res.status(200).json({
       success: true,
       location: req.geoLocation,
     });
   } catch (error) {
+    logMemory("❌ Error in getIPLocation");
     next(
       error instanceof AppError
         ? error
@@ -58,6 +63,7 @@ export const getIPLocation = async (req, res, next) => {
 // POST /api/user/track-ip-location
 export const trackIPLocation = async (req, res, next) => {
   try {
+    logMemory("📍 Start trackIPLocation");
     if (!req.geoLocation || !req.geoLocation.userId) {
       throw new AppError(
         "No authenticated user for tracking IP location",
@@ -67,10 +73,14 @@ export const trackIPLocation = async (req, res, next) => {
       );
     }
 
+    logMemory("💾 Before saving IP location");
     await UserLocation.create(req.geoLocation);
+    logMemory("💾 After saving IP location");
 
+    logMemory("📍 End trackIPLocation");
     res.status(204).end();
   } catch (error) {
+    logMemory("❌ Error in trackIPLocation");
     next(
       error instanceof AppError
         ? error
@@ -87,6 +97,7 @@ export const trackIPLocation = async (req, res, next) => {
 // Saves user location with validation and emits updates
 export const saveUserLocation = async (req, res, next) => {
   try {
+    logMemory("📍 Start saveUserLocation");
     const { coordinates, city, country } = req.body;
     const latitude = coordinates?.lat;
     const longitude = coordinates?.lon;
@@ -107,9 +118,11 @@ export const saveUserLocation = async (req, res, next) => {
       );
     }
 
+    logMemory("📖 Before fetching user");
     const user = await UserModel.findById(req.user._id)
       .select("followers")
       .lean();
+    logMemory("📖 After fetching user");
     if (!user) {
       throw new AppError(
         "User not found",
@@ -133,9 +146,13 @@ export const saveUserLocation = async (req, res, next) => {
       timestamp: new Date(),
     };
 
+    logMemory("💾 Before deleting old locations");
     await UserLocation.deleteMany({ userId: req.user._id });
+    logMemory("💾 Before saving new location");
     const location = await UserLocation.create(locationData);
+    logMemory("💾 After saving new location");
 
+    logMemory("📝 Before recording activity");
     await recordActivity({
       userId: req.user._id,
       action: "SAVED_USER_LOCATION",
@@ -147,6 +164,7 @@ export const saveUserLocation = async (req, res, next) => {
           : "unknown location"
       }`,
     });
+    logMemory("📝 After recording activity");
 
     const socketLocationData = {
       userId: req.user._id.toString(),
@@ -158,6 +176,7 @@ export const saveUserLocation = async (req, res, next) => {
       timestamp: location.timestamp.getTime(),
     };
 
+    logMemory("📡 Before emitting location update");
     io.to("adminRoom").emit("userLocationUpdate", socketLocationData);
     user.followers.forEach((followerId) => {
       io.to(followerId.toString()).emit(
@@ -165,13 +184,16 @@ export const saveUserLocation = async (req, res, next) => {
         socketLocationData
       );
     });
+    logMemory("📡 After emitting location update");
 
+    logMemory("📍 End saveUserLocation");
     res.status(201).json({
       success: true,
       message: "Location saved successfully",
       location: socketLocationData,
     });
   } catch (error) {
+    logMemory("❌ Error in saveUserLocation");
     next(
       error instanceof AppError
         ? error
@@ -188,6 +210,7 @@ export const saveUserLocation = async (req, res, next) => {
 // Retrieves paginated user locations with user details
 export const getAllUserLocations = async (req, res, next) => {
   try {
+    logMemory("📍 Start getAllUserLocations");
     const { page = 1, limit = 12 } = req.query;
     const pageNum = Math.max(parseInt(page), 1);
     const limitNum = Math.max(parseInt(limit), 1);
@@ -196,12 +219,15 @@ export const getAllUserLocations = async (req, res, next) => {
     const cacheKey = "userLocations:total";
     let totalCount = cache.get(cacheKey);
 
+    logMemory("📊 Before checking cache for total locations");
     if (!totalCount) {
       totalCount = (await UserLocation.distinct("userId")).length;
       cache.set(cacheKey, totalCount);
     }
+    logMemory("📊 After checking cache for total locations");
 
     const locations = [];
+    logMemory("📖 Before fetching user locations");
     const cursor = UserLocation.aggregate([
       {
         $lookup: {
@@ -243,6 +269,7 @@ export const getAllUserLocations = async (req, res, next) => {
     ]).cursor();
 
     for await (const loc of cursor) {
+      logMemory(`📄 Processing location for user ${loc.userId}`);
       locations.push({
         userId: loc.userId.toString(),
         coordinates:
@@ -262,7 +289,9 @@ export const getAllUserLocations = async (req, res, next) => {
         name: loc.name || "Unknown",
       });
     }
+    logMemory("📖 After fetching user locations");
 
+    logMemory("📍 End getAllUserLocations");
     res.status(200).json({
       success: true,
       locations,
@@ -271,6 +300,7 @@ export const getAllUserLocations = async (req, res, next) => {
       totalPages: Math.ceil(totalCount / limitNum),
     });
   } catch (error) {
+    logMemory("❌ Error in getAllUserLocations");
     next(
       error instanceof AppError
         ? error
@@ -287,6 +317,7 @@ export const getAllUserLocations = async (req, res, next) => {
 // Retrieves authenticated user's profile
 export const getProfile = async (req, res, next) => {
   try {
+    logMemory("👤 Start getProfile");
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized - No user found",
@@ -296,9 +327,11 @@ export const getProfile = async (req, res, next) => {
       );
     }
 
+    logMemory("📖 Before fetching profile");
     const profile = await UserModel.findById(req.user._id)
       .select("-password")
       .lean();
+    logMemory("📖 After fetching profile");
     if (!profile) {
       throw new AppError(
         "User not found",
@@ -308,14 +341,18 @@ export const getProfile = async (req, res, next) => {
       );
     }
 
+    logMemory("📝 Before recording activity");
     await recordActivity({
       userId: req.user._id,
       action: "LOGGED_IN",
       message: "Viewed own profile",
     });
+    logMemory("📝 After recording activity");
 
+    logMemory("👤 End getProfile");
     res.status(200).json({ success: true, data: profile });
   } catch (error) {
+    logMemory("❌ Error in getProfile");
     next(
       error instanceof AppError
         ? error
@@ -332,6 +369,7 @@ export const getProfile = async (req, res, next) => {
 // Retrieves paginated list of all users
 export const getAllUser = async (req, res, next) => {
   try {
+    logMemory("👥 Start getAllUser");
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 100, 1000);
     const skip = (page - 1) * limit;
@@ -342,12 +380,15 @@ export const getAllUser = async (req, res, next) => {
     const cacheKey = "users:total";
     let totalUsers = cache.get(cacheKey);
 
+    logMemory("📊 Before checking cache for total users");
     if (!totalUsers) {
       totalUsers = await UserModel.countDocuments().lean();
       cache.set(cacheKey, totalUsers);
     }
+    logMemory("📊 After checking cache for total users");
 
     const users = [];
+    logMemory("📖 Before fetching users");
     const cursor = UserModel.find()
       .select(projection)
       .skip(skip)
@@ -356,9 +397,12 @@ export const getAllUser = async (req, res, next) => {
       .cursor();
 
     for await (const user of cursor) {
+      logMemory(`📄 Processing user ${user._id}`);
       users.push(user);
     }
+    logMemory("📖 After fetching users");
 
+    logMemory("👥 End getAllUser");
     res.status(200).json({
       success: true,
       users,
@@ -367,6 +411,7 @@ export const getAllUser = async (req, res, next) => {
       currentPage: page,
     });
   } catch (error) {
+    logMemory("❌ Error in getAllUser");
     next(
       error instanceof AppError
         ? error
@@ -383,6 +428,7 @@ export const getAllUser = async (req, res, next) => {
 // Updates user profile with avatar and banner compression
 export const updateProfile = async (req, res, next) => {
   try {
+    logMemory("✏️ Start updateProfile");
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized - No user found",
@@ -392,11 +438,13 @@ export const updateProfile = async (req, res, next) => {
       );
     }
 
+    logMemory("📖 Before fetching user");
     const user = await UserModel.findById(req.user._id)
       .select(
         "name email avatar banner bio gender location profession role blocked followers googleId createdAt updatedAt joiningDate bookmarks blockedUsers"
       )
       .lean();
+    logMemory("📖 After fetching user");
     if (!user) {
       throw new AppError(
         "User not found",
@@ -428,6 +476,7 @@ export const updateProfile = async (req, res, next) => {
     if (req.files) {
       const limit = pLimit(1); // Process one file at a time
       if (req.files.avatar?.[0]) {
+        logMemory("📤 Before uploading avatar");
         const uploadedAvatar = await limit(() =>
           uploadToCloudinary({
             buffer: req.files.avatar[0].buffer,
@@ -439,9 +488,11 @@ export const updateProfile = async (req, res, next) => {
           })
         );
         updates.avatar = uploadedAvatar.secure_url;
+        logMemory("📤 After uploading avatar");
       }
 
       if (req.files.banner?.[0]) {
+        logMemory("📤 Before uploading banner");
         const uploadedBanner = await limit(() =>
           uploadToCloudinary({
             buffer: req.files.banner[0].buffer,
@@ -453,9 +504,11 @@ export const updateProfile = async (req, res, next) => {
           })
         );
         updates.banner = uploadedBanner.secure_url;
+        logMemory("📤 After uploading banner");
       }
     }
 
+    logMemory("💾 Before updating profile");
     const updatedUser = await UserModel.findByIdAndUpdate(
       req.user._id,
       updates,
@@ -466,12 +519,15 @@ export const updateProfile = async (req, res, next) => {
           " followers googleId createdAt updatedAt joiningDate bookmarks blockedUsers",
       }
     ).lean();
+    logMemory("💾 After updating profile");
 
+    logMemory("📝 Before recording activity");
     await recordActivity({
       userId: req.user._id,
       action: "UPDATED_PROFILE",
       message: "Updated their profile",
     });
+    logMemory("📝 After recording activity");
 
     const profileUpdateData = {
       _id: updatedUser._id,
@@ -487,17 +543,21 @@ export const updateProfile = async (req, res, next) => {
       blocked: updatedUser.blocked,
     };
 
+    logMemory("📡 Before emitting profile update");
     io.to("adminRoom").emit("userProfileUpdate", profileUpdateData);
     updatedUser.followers.forEach((followerId) => {
       io.to(followerId.toString()).emit("userProfileUpdate", profileUpdateData);
     });
+    logMemory("📡 After emitting profile update");
 
+    logMemory("✏️ End updateProfile");
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
       data: updatedUser,
     });
   } catch (error) {
+    logMemory("❌ Error in updateProfile");
     next(
       error instanceof AppError
         ? error
@@ -514,6 +574,7 @@ export const updateProfile = async (req, res, next) => {
 // Deletes authenticated user's account
 export const deleteUser = async (req, res, next) => {
   try {
+    logMemory("🗑️ Start deleteUser");
     const userId = req.user?._id;
     if (!userId) {
       throw new AppError(
@@ -524,7 +585,9 @@ export const deleteUser = async (req, res, next) => {
       );
     }
 
+    logMemory("💾 Before deleting user");
     const deleted = await UserModel.findByIdAndDelete(userId).lean();
+    logMemory("💾 After deleting user");
     if (!deleted) {
       throw new AppError(
         "User not found",
@@ -534,18 +597,24 @@ export const deleteUser = async (req, res, next) => {
       );
     }
 
+    logMemory("📝 Before recording activity");
     await recordActivity({
       userId,
       action: "DELETED_ACCOUNT",
       message: "Deleted their account",
     });
+    logMemory("📝 After recording activity");
 
+    logMemory("📡 Before emitting user deleted");
     io.to("adminRoom").emit("userDeleted", { userId });
+    logMemory("📡 After emitting user deleted");
 
+    logMemory("🗑️ End deleteUser");
     res
       .status(200)
       .json({ success: true, message: "User deleted successfully" });
   } catch (error) {
+    logMemory("❌ Error in deleteUser");
     next(
       error instanceof AppError
         ? error
@@ -562,13 +631,16 @@ export const deleteUser = async (req, res, next) => {
 // Retrieves a single user by ID
 export const getSingleUserById = async (req, res, next) => {
   try {
+    logMemory("👤 Start getSingleUserById");
     const { id } = req.params;
     validateObjectId(id, "User ID");
 
+    logMemory("📖 Before fetching user");
     const user = await UserModel.findById(id)
       .select("-password -googleId")
       .populate("subscribedAuthors", "name email avatar")
       .lean();
+    logMemory("📖 After fetching user");
 
     if (!user) {
       throw new AppError(
@@ -580,15 +652,19 @@ export const getSingleUserById = async (req, res, next) => {
     }
 
     if (req.user && req.user._id) {
+      logMemory("📝 Before recording activity");
       await recordActivity({
         userId: req.user._id,
         action: "VIEWED_PROFILE",
         message: `Viewed profile of user ${id}`,
       });
+      logMemory("📝 After recording activity");
     }
 
+    logMemory("👤 End getSingleUserById");
     res.status(200).json({ success: true, data: user });
   } catch (error) {
+    logMemory("❌ Error in getSingleUserById");
     next(
       error instanceof AppError
         ? error
@@ -605,10 +681,13 @@ export const getSingleUserById = async (req, res, next) => {
 // Retrieves user activity history
 export const getUserActivity = async (req, res, next) => {
   try {
+    logMemory("📜 Start getUserActivity");
     const userId = req.params.id;
     validateObjectId(userId, "User ID");
 
+    logMemory("📖 Before fetching user");
     const user = await UserModel.findById(userId).select("name").lean();
+    logMemory("📖 After fetching user");
     if (!user) {
       throw new AppError(
         "User not found",
@@ -619,6 +698,7 @@ export const getUserActivity = async (req, res, next) => {
     }
 
     const activityList = [];
+    logMemory("📖 Before fetching activities");
     const cursor = ActivityModel.find({ user: userId })
       .sort({ createdAt: -1 })
       .populate("targetPost", "title slug")
@@ -627,23 +707,29 @@ export const getUserActivity = async (req, res, next) => {
       .cursor();
 
     for await (const activity of cursor) {
+      logMemory(`📄 Processing activity ${activity._id}`);
       activityList.push(activity);
     }
+    logMemory("📖 After fetching activities");
 
     if (req.user && req.user._id) {
       const targetUserName = user.name || userId;
+      logMemory("📝 Before recording activity");
       await recordActivity({
         userId: req.user._id,
         action: "VIEWED_ACTIVITY",
         message: `Viewed activity of user ${targetUserName}`,
       });
+      logMemory("📝 After recording activity");
     }
 
+    logMemory("📜 End getUserActivity");
     res.status(200).json({
       success: true,
       activity: activityList,
     });
   } catch (error) {
+    logMemory("❌ Error in getUserActivity");
     next(
       error instanceof AppError
         ? error
@@ -660,14 +746,20 @@ export const getUserActivity = async (req, res, next) => {
 // Clears activity history for the authenticated user
 export const clearUserActivity = async (req, res, next) => {
   try {
+    logMemory("🗑️ Start clearUserActivity");
     const userId = req.user._id;
-    await ActivityModel.deleteMany({ user: userId }).lean();
 
+    logMemory("💾 Before clearing activities");
+    await ActivityModel.deleteMany({ user: userId }).lean();
+    logMemory("💾 After clearing activities");
+
+    logMemory("🗑️ End clearUserActivity");
     res.status(200).json({
       success: true,
       message: "Activity history cleared",
     });
   } catch (error) {
+    logMemory("❌ Error in clearUserActivity");
     next(
       error instanceof AppError
         ? error
@@ -684,37 +776,46 @@ export const clearUserActivity = async (req, res, next) => {
 // Clears old activity records older than one day
 export const clearOldActivity = async (req, res, next) => {
   try {
+    logMemory("🧹 Start clearOldActivity");
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
     const batchSize = 1000;
     let deletedCount = 0;
 
+    logMemory("📖 Before fetching old activities");
     const cursor = ActivityModel.find({ createdAt: { $lt: oneDayAgo } })
       .lean()
       .cursor();
 
     let batch = [];
     for await (const doc of cursor) {
+      logMemory(`📄 Processing activity ${doc._id} for deletion`);
       batch.push(doc._id);
       if (batch.length >= batchSize) {
+        logMemory("💾 Before batch deletion");
         await ActivityModel.deleteMany({ _id: { $in: batch } }).lean();
         deletedCount += batch.length;
         batch = [];
+        logMemory("💾 After batch deletion");
       }
     }
 
     if (batch.length > 0) {
+      logMemory("💾 Before final batch deletion");
       await ActivityModel.deleteMany({ _id: { $in: batch } }).lean();
       deletedCount += batch.length;
+      logMemory("💾 After final batch deletion");
     }
 
     const message = `Cleared ${deletedCount} old activity records`;
 
+    logMemory("🧹 End clearOldActivity");
     if (res) {
       res.status(200).json({ success: true, message });
     }
   } catch (error) {
+    logMemory("❌ Error in clearOldActivity");
     if (next) {
       next(
         error instanceof AppError
@@ -733,6 +834,7 @@ export const clearOldActivity = async (req, res, next) => {
 // Saves user cookie consent
 export const saveUserCookieConsent = async (req, res, next) => {
   try {
+    logMemory("🍪 Start saveUserCookieConsent");
     const { consent } = req.body;
     const userId = req.user?._id;
 
@@ -746,25 +848,31 @@ export const saveUserCookieConsent = async (req, res, next) => {
     }
 
     if (userId) {
+      logMemory("💾 Before updating cookie consent");
       await UserModel.findByIdAndUpdate(
         userId,
         { cookieConsent: consent },
         { lean: true }
       );
+      logMemory("💾 After updating cookie consent");
     }
 
+    logMemory("🍪 Before setting cookie");
     res.cookie("user_cookie_consent", String(consent), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "Lax",
       maxAge: 365 * 24 * 60 * 60 * 1000,
     });
+    logMemory("🍪 After setting cookie");
 
+    logMemory("🍪 End saveUserCookieConsent");
     res.status(200).json({
       success: true,
       message: `Consent ${consent ? "accepted" : "declined"}`,
     });
   } catch (error) {
+    logMemory("❌ Error in saveUserCookieConsent");
     next(
       error instanceof AppError
         ? error
@@ -781,6 +889,7 @@ export const saveUserCookieConsent = async (req, res, next) => {
 // POST /api/user/feedback/trigger/:userId (Admin only)
 export const adminSendFeedbackPrompt = async (req, res, next) => {
   try {
+    logMemory("📬 Start adminSendFeedbackPrompt");
     if (!req.user?.isAdmin) {
       throw new AppError(
         "Only admins can trigger feedback prompts",
@@ -792,13 +901,16 @@ export const adminSendFeedbackPrompt = async (req, res, next) => {
     const { userId } = req.params;
     validateObjectId(userId, "User ID");
 
+    logMemory("📖 Before fetching user");
     const user = await UserModel.findById(userId)
       .select("name feedbackPrompt")
       .lean();
+    logMemory("📖 After fetching user");
     if (!user) {
       throw new AppError("User not found", 404, "AdminSendFeedbackPrompt");
     }
 
+    logMemory("💾 Before updating feedback prompt");
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
       {
@@ -806,17 +918,22 @@ export const adminSendFeedbackPrompt = async (req, res, next) => {
       },
       { new: true, select: "name feedbackPrompt" }
     ).lean();
+    logMemory("💾 After updating feedback prompt");
 
+    logMemory("📡 Before emitting feedback prompt");
     io.to(userId).emit("showFeedbackPrompt", {
       message: "📬 We'd love your feedback. How are we doing?",
       fromAdmin: true,
     });
+    logMemory("📡 After emitting feedback prompt");
 
+    logMemory("📬 End adminSendFeedbackPrompt");
     res.status(200).json({
       success: true,
       message: `Feedback prompt sent to ${updatedUser.name}`,
     });
   } catch (error) {
+    logMemory("❌ Error in adminSendFeedbackPrompt");
     next(
       error instanceof AppError
         ? error
@@ -832,9 +949,12 @@ export const adminSendFeedbackPrompt = async (req, res, next) => {
 // Checks if feedback prompt should be shown
 export const shouldShowFeedbackPrompt = async (req, res, next) => {
   try {
+    logMemory("📬 Start shouldShowFeedbackPrompt");
+    logMemory("📖 Before fetching user");
     const user = await UserModel.findById(req.user._id)
       .select("joiningDate feedbackPrompt")
       .lean();
+    logMemory("📖 After fetching user");
     if (!user) {
       throw new AppError("User not found", 404, "ShouldShowFeedbackPrompt");
     }
@@ -848,6 +968,7 @@ export const shouldShowFeedbackPrompt = async (req, res, next) => {
         (!user.feedbackPrompt.shown && !user.feedbackPrompt.responded));
 
     if (shouldShow) {
+      logMemory("💾 Before updating feedback prompt");
       await UserModel.findByIdAndUpdate(
         req.user._id,
         {
@@ -859,13 +980,16 @@ export const shouldShowFeedbackPrompt = async (req, res, next) => {
         },
         { lean: true }
       );
+      logMemory("💾 After updating feedback prompt");
     }
 
+    logMemory("📬 End shouldShowFeedbackPrompt");
     res.status(200).json({
       success: true,
       showFeedback: shouldShow,
     });
   } catch (error) {
+    logMemory("❌ Error in shouldShowFeedbackPrompt");
     next(
       error instanceof AppError
         ? error
@@ -881,6 +1005,7 @@ export const shouldShowFeedbackPrompt = async (req, res, next) => {
 // Submits user feedback
 export const submitFeedback = async (req, res, next) => {
   try {
+    logMemory("📬 Start submitFeedback");
     const { rating, message } = req.body;
     if (!rating || rating < 1 || rating > 5) {
       throw new AppError(
@@ -890,13 +1015,16 @@ export const submitFeedback = async (req, res, next) => {
       );
     }
 
+    logMemory("📖 Before fetching user");
     const user = await UserModel.findById(req.user._id)
       .select("feedbackPrompt")
       .lean();
+    logMemory("📖 After fetching user");
     if (!user) {
       throw new AppError("User not found", 404, "SubmitFeedback");
     }
 
+    logMemory("💾 Before updating feedback");
     await UserModel.findByIdAndUpdate(
       req.user._id,
       {
@@ -909,9 +1037,12 @@ export const submitFeedback = async (req, res, next) => {
       },
       { lean: true }
     );
+    logMemory("💾 After updating feedback");
 
+    logMemory("📬 End submitFeedback");
     res.status(200).json({ success: true, message: "Feedback submitted" });
   } catch (error) {
+    logMemory("❌ Error in submitFeedback");
     next(
       error instanceof AppError
         ? error
@@ -927,11 +1058,13 @@ export const submitFeedback = async (req, res, next) => {
 // GET /api/user/feedback/all (Admin only)
 export const getAllFeedbacks = async (req, res, next) => {
   try {
+    logMemory("📬 Start getAllFeedbacks");
     if (!req.user?.isAdmin) {
       throw new AppError("Access denied: Admins only", 403, "GetAllFeedbacks");
     }
 
     const feedbacks = [];
+    logMemory("📖 Before fetching feedbacks");
     const cursor = UserModel.find({ "feedbackPrompt.responded": true })
       .select(
         "name email avatar feedbackPrompt.createdAt feedbackPrompt.rating feedbackPrompt.message feedbackPrompt.shown feedbackPrompt.shownAt feedbackPrompt.responded"
@@ -941,6 +1074,7 @@ export const getAllFeedbacks = async (req, res, next) => {
       .cursor();
 
     for await (const user of cursor) {
+      logMemory(`📄 Processing feedback for user ${user._id}`);
       feedbacks.push({
         userId: user._id,
         name: user.name,
@@ -953,13 +1087,16 @@ export const getAllFeedbacks = async (req, res, next) => {
         submittedAt: user.feedbackPrompt?.shownAt,
       });
     }
+    logMemory("📖 After fetching feedbacks");
 
+    logMemory("📬 End getAllFeedbacks");
     res.status(200).json({
       success: true,
       total: feedbacks.length,
       feedbacks,
     });
   } catch (error) {
+    logMemory("❌ Error in getAllFeedbacks");
     next(
       error instanceof AppError
         ? error
@@ -974,7 +1111,14 @@ export const getAllFeedbacks = async (req, res, next) => {
 };
 
 // Schedules daily cleanup of old activity records
-cron.schedule("0 0 * * *", () => clearOldActivity(null, null, null), {
-  scheduled: true,
-  timezone: "Asia/Kolkata",
-});
+cron.schedule(
+  "0 0 * * *",
+  () => {
+    logMemory("🧹 Scheduled clearOldActivity");
+    clearOldActivity(null, null, null);
+  },
+  {
+    scheduled: true,
+    timezone: "Asia/Kolkata",
+  }
+);

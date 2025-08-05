@@ -13,12 +13,14 @@ import pLimit from "p-limit";
 import NodeCache from "node-cache";
 import PostInteraction from "../../servers/Models/PostInteraction.js";
 import UserModel from "../../servers/Models/User.js";
+import { logMemory } from "../../servers/Utils/memoryLogger.js"; // Import logMemory
 
 // Initialize cache
 const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
 
 // Validates ObjectId
 const validateObjectId = (id, type = "ID") => {
+  logMemory(`🔍 Validating ${type}`);
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError(
       `Invalid ${type}`,
@@ -32,6 +34,7 @@ const validateObjectId = (id, type = "ID") => {
 // POST /api/post/polls/vote
 export const voteOnPoll = async (req, res, next) => {
   try {
+    logMemory("🗳️ Start voteOnPoll");
     const { postId, blockId, optionIndex } = req.body;
     const userId = req.user?._id;
 
@@ -47,6 +50,7 @@ export const voteOnPoll = async (req, res, next) => {
       );
     }
 
+    logMemory("📖 Before fetching post");
     const post = await PostModel.findOne({
       _id: postId,
       isPublished: true,
@@ -54,6 +58,7 @@ export const voteOnPoll = async (req, res, next) => {
     })
       .select("title blocks")
       .lean();
+    logMemory("📖 After fetching post");
 
     if (!post) {
       throw new AppError("Post not found or unavailable", 404, "VoteOnPoll");
@@ -80,11 +85,13 @@ export const voteOnPoll = async (req, res, next) => {
     pollBlock.votedUserIds.push({ userId, votedAt: new Date() });
     post.blocks[pollBlockIndex] = pollBlock;
 
+    logMemory("💾 Before updating post");
     const updatedPost = await PostModel.findByIdAndUpdate(
       postId,
       { $set: { blocks: post.blocks } },
       { new: true, select: "title slug blocks" }
     ).lean();
+    logMemory("💾 After updating post");
 
     await recordActivity({
       userId,
@@ -93,6 +100,7 @@ export const voteOnPoll = async (req, res, next) => {
       message: `Voted on poll in post: ${post.title}`,
     });
 
+    logMemory("🗳️ End voteOnPoll");
     res.status(200).json({
       success: true,
       message: "Vote recorded",
@@ -113,6 +121,7 @@ export const voteOnPoll = async (req, res, next) => {
 
 export const createPost = async (req, res, next) => {
   try {
+    logMemory("📝 Start createPost");
     const {
       title,
       category,
@@ -145,6 +154,8 @@ export const createPost = async (req, res, next) => {
     if (!Array.isArray(blocks)) {
       throw new AppError("Blocks must be an array", 400, "CreatePost");
     }
+
+    logMemory("📦 After parsing input");
 
     const blocksWithIds = blocks.map((block, index) => {
       if (!block || typeof block !== "object" || !block.type) {
@@ -268,6 +279,7 @@ export const createPost = async (req, res, next) => {
     const processBlock = async (block) => {
       const processedBlock = { ...block };
       if (block.type === "image" && block.src) {
+        logMemory(`🖼️ Processing image block ${block.id}`);
         processedBlock.src = await imageLimit(() =>
           processImage(block.src, block.id, "blogs/post/images/")
         );
@@ -354,17 +366,21 @@ export const createPost = async (req, res, next) => {
       return processedBlock;
     };
 
+    logMemory("🖼️ Before processing blocks");
     const processedBlocks = await Promise.all(
       blocksWithIds.map((block) => blockLimit(() => processBlock(block)))
     );
+    logMemory("🖼️ After processing blocks");
 
     const { readTime, readingTime } = calculateReadTime(processedBlocks);
 
     let processedThumbnail = rawThumbnail;
     if (rawThumbnail) {
+      logMemory("🖼️ Before processing thumbnail");
       processedThumbnail = await imageLimit(() =>
         processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
       );
+      logMemory("🖼️ After processing thumbnail");
     }
 
     const moderateContent = async (text) => {
@@ -378,9 +394,10 @@ export const createPost = async (req, res, next) => {
           .filter(Boolean)
       )
       .join("\n");
-
     const fullText = `${title}\n${excerpt || ""}\n${blockTextContent}`;
+    logMemory("🔍 Before content moderation");
     const moderation = await moderateContent(fullText);
+    logMemory("🔍 After content moderation");
     if (moderation.isFlagged) {
       const reasons = Object.entries(moderation.categories)
         .filter(([_, flagged]) => flagged)
@@ -396,10 +413,12 @@ export const createPost = async (req, res, next) => {
     let finalSlug = slug;
     let counter = 1;
 
+    logMemory("🔎 Before slug check");
     while (await PostModel.exists({ slug: finalSlug }).lean()) {
       finalSlug = `${slug}-${counter++}`;
     }
     slug = finalSlug;
+    logMemory("🔎 After slug check");
 
     const postData = {
       title,
@@ -422,6 +441,7 @@ export const createPost = async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
+      logMemory("💾 Before DB insert");
       const [newPost] = await PostModel.create([postData], { session });
       await recordActivity(
         {
@@ -432,6 +452,7 @@ export const createPost = async (req, res, next) => {
         },
         { session }
       );
+      logMemory("💾 After DB insert");
       await session.commitTransaction();
 
       io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
@@ -439,6 +460,7 @@ export const createPost = async (req, res, next) => {
       const cacheKey = `postCounts:${req.user._id}`;
       let counts = cache.get(cacheKey);
       if (!counts) {
+        logMemory("📊 Before cache update");
         const [allPostsCount, myPostsCount, followingPostsCount] =
           await Promise.all([
             PostModel.countDocuments({
@@ -458,12 +480,14 @@ export const createPost = async (req, res, next) => {
           ]);
         counts = { allPostsCount, myPostsCount, followingPostsCount };
         cache.set(cacheKey, counts);
+        logMemory("📊 After cache update");
       }
 
       setTimeout(() => {
         io.to(req.user._id).emit("postCountsUpdated", counts);
       }, 1000);
 
+      logMemory("🎉 End createPost");
       res
         .status(201)
         .json({ success: true, message: "Post created", post: newPost });
@@ -488,6 +512,7 @@ export const createPost = async (req, res, next) => {
 
 export const getAllPosts = async (req, res, next) => {
   try {
+    logMemory("📋 Start getAllPosts");
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 10, 100);
     const skip = (page - 1) * limit;
@@ -514,6 +539,7 @@ export const getAllPosts = async (req, res, next) => {
       }
     }
 
+    logMemory("📖 Before fetching posts");
     const posts = [];
     const cursor = PostModel.find(query)
       .select(
@@ -536,12 +562,14 @@ export const getAllPosts = async (req, res, next) => {
     for await (const post of cursor) {
       posts.push(post);
     }
+    logMemory("📖 After fetching posts");
 
     const total = await PostModel.countDocuments(query).lean();
 
     const cacheKey = `postCounts:${req.user?._id || "guest"}`;
     let counts = cache.get(cacheKey);
     if (!counts) {
+      logMemory("📊 Before cache update");
       const [allPostsCount, myPostsCount, followingPostsCount] =
         await Promise.all([
           PostModel.countDocuments({
@@ -565,6 +593,7 @@ export const getAllPosts = async (req, res, next) => {
         ]);
       counts = { allPostsCount, myPostsCount, followingPostsCount };
       cache.set(cacheKey, counts);
+      logMemory("📊 After cache update");
     }
 
     if (req.user?._id && !isGuest) {
@@ -578,6 +607,7 @@ export const getAllPosts = async (req, res, next) => {
       }, 1000);
     }
 
+    logMemory("📋 End getAllPosts");
     res.status(200).json({ success: true, total, page, posts });
   } catch (error) {
     next(
@@ -594,6 +624,7 @@ export const getAllPosts = async (req, res, next) => {
 
 export const getSinglePost = async (req, res, next) => {
   try {
+    logMemory("📄 Start getSinglePost");
     const { slug } = req.params;
     const userId = req.user?._id;
     const userRole = req.user?.role;
@@ -617,6 +648,7 @@ export const getSinglePost = async (req, res, next) => {
         : { isPublished: true, blocked: false }),
     };
 
+    logMemory("📖 Before fetching post");
     const post = await PostModel.findOne(query)
       .select(
         `
@@ -630,6 +662,7 @@ export const getSinglePost = async (req, res, next) => {
       .populate("author", "name email avatar")
       .populate("category")
       .lean();
+    logMemory("📖 After fetching post");
 
     if (!post) {
       throw new AppError(
@@ -651,6 +684,7 @@ export const getSinglePost = async (req, res, next) => {
       );
     }
 
+    logMemory("📄 End getSinglePost");
     res.status(200).json({ success: true, post });
   } catch (error) {
     next(
@@ -667,6 +701,7 @@ export const getSinglePost = async (req, res, next) => {
 
 export const trackTimeSpent = async (req, res, next) => {
   try {
+    logMemory("⏱️ Start trackTimeSpent");
     const { postId } = req.params;
     const { duration } = req.body;
     const userId = req.user?._id;
@@ -679,6 +714,7 @@ export const trackTimeSpent = async (req, res, next) => {
       throw new AppError("Invalid duration", 400, "trackTimeSpent");
     }
 
+    logMemory("💾 Before updating interaction");
     const [interactionUpdate, postUpdate] = await Promise.all([
       PostInteraction.findOneAndUpdate(
         { postId, userId },
@@ -687,11 +723,13 @@ export const trackTimeSpent = async (req, res, next) => {
       ),
       PostModel.updateOne({ _id: postId }, { $inc: { timeSpent: duration } }),
     ]);
+    logMemory("💾 After updating interaction");
 
     if (!postUpdate.modifiedCount && !interactionUpdate) {
       throw new AppError("Post not found", 404, "trackTimeSpent");
     }
 
+    logMemory("⏱️ End trackTimeSpent");
     res.status(200).json({ success: true, message: "Time spent recorded" });
   } catch (error) {
     next(
@@ -707,6 +745,7 @@ export const trackTimeSpent = async (req, res, next) => {
 };
 
 export const processBlock = async (block) => {
+  logMemory(`🛠️ Start processBlock ${block.id || "unknown"}`);
   const processedBlock = { ...block };
 
   if (processedBlock.text) {
@@ -789,11 +828,13 @@ export const processBlock = async (block) => {
     );
   }
 
+  logMemory(`🛠️ End processBlock ${block.id || "unknown"}`);
   return processedBlock;
 };
 
 export const updatePostBySlug = async (req, res, next) => {
   try {
+    logMemory("✏️ Start updatePostBySlug");
     const { slug } = req.params;
     const userId = req.user?._id;
     const userRole = req.user?.role;
@@ -814,6 +855,7 @@ export const updatePostBySlug = async (req, res, next) => {
 
     const blockLimit = pLimit(3);
     if (updates.blocks) {
+      logMemory("🖼️ Before processing blocks");
       updates.blocks = await Promise.all(
         updates.blocks.map((block, i) =>
           blockLimit(async () => {
@@ -863,6 +905,7 @@ export const updatePostBySlug = async (req, res, next) => {
           })
         )
       );
+      logMemory("🖼️ After processing blocks");
     }
 
     const { readTime, readingTime } = calculateReadTime(updates.blocks || []);
@@ -874,7 +917,9 @@ export const updatePostBySlug = async (req, res, next) => {
         ? { slug: { $regex: new RegExp(`^${slug}$`, "i") } }
         : { slug: { $regex: new RegExp(`^${slug}$`, "i") }, author: userId };
 
+    logMemory("📖 Before fetching post");
     const post = await PostModel.findOne(query).lean();
+    logMemory("📖 After fetching post");
     if (!post) {
       throw new AppError(
         "Post not found or unauthorized",
@@ -887,6 +932,7 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError("Post is blocked", 403, "UpdatePostBySlug");
     }
 
+    logMemory("💾 Before updating post");
     const updatedPost = await PostModel.findOneAndUpdate(
       query,
       { ...updates, isPublished: true, lastEditedAt: new Date() },
@@ -894,6 +940,7 @@ export const updatePostBySlug = async (req, res, next) => {
     ).select(
       "title slug category excerpt thumbnail blocks author isPublished isPinned createdAt lastEditedAt postType"
     );
+    logMemory("💾 After updating post");
 
     if (!updatedPost) {
       throw new AppError("Failed to update post", 500, "UpdatePostBySlug");
@@ -906,6 +953,7 @@ export const updatePostBySlug = async (req, res, next) => {
       message: `Edited post: ${updatedPost.title}`,
     });
 
+    logMemory("✏️ End updatePostBySlug");
     res.status(200).json({
       success: true,
       message: "Post updated successfully",
@@ -926,15 +974,20 @@ export const updatePostBySlug = async (req, res, next) => {
 
 export const deletePost = async (req, res, next) => {
   try {
+    logMemory("🗑️ Start deletePost");
     const { postId } = req.params;
+    logMemory("📖 Before fetching post");
     const post = await PostModel.findById(postId).lean();
+    logMemory("📖 After fetching post");
     if (!post) {
       throw new AppError("Post not found", 404, "DeletePost");
     }
     if (post.author.toString() !== req.user._id.toString()) {
       throw new AppError("Unauthorized to delete this post", 403, "DeletePost");
     }
+    logMemory("💾 Before deleting post");
     await PostModel.deleteOne({ _id: postId });
+    logMemory("💾 After deleting post");
     await recordActivity({
       userId: req.user._id,
       action: "POST_DELETED",
@@ -947,6 +1000,7 @@ export const deletePost = async (req, res, next) => {
     const cacheKey = `postCounts:${req.user._id}`;
     let counts = cache.get(cacheKey);
     if (!counts) {
+      logMemory("📊 Before cache update");
       const [allPostsCount, myPostsCount, followingPostsCount] =
         await Promise.all([
           PostModel.countDocuments({
@@ -966,12 +1020,14 @@ export const deletePost = async (req, res, next) => {
         ]);
       counts = { allPostsCount, myPostsCount, followingPostsCount };
       cache.set(cacheKey, counts);
+      logMemory("📊 After cache update");
     }
 
     setTimeout(() => {
       io.to(req.user._id).emit("postCountsUpdated", counts);
     }, 1000);
 
+    logMemory("🗑️ End deletePost");
     res.status(200).json({ success: true, message: "Post deleted", postId });
   } catch (error) {
     next(
@@ -988,6 +1044,7 @@ export const deletePost = async (req, res, next) => {
 
 export const toggleBlockPost = async (req, res, next) => {
   try {
+    logMemory("🚫 Start toggleBlockPost");
     const { postId } = req.params;
     if (!mongoose.Types.ObjectId.isValid(postId)) {
       throw new AppError("Invalid post ID", 400, "ToggleBlockPost");
@@ -997,16 +1054,20 @@ export const toggleBlockPost = async (req, res, next) => {
       throw new AppError("Admin access required", 401, "ToggleBlockPost");
     }
 
+    logMemory("📖 Before fetching post");
     const post = await PostModel.findById(postId).lean();
+    logMemory("📖 After fetching post");
     if (!post) {
       throw new AppError("Post not found", 404, "ToggleBlockPost");
     }
 
+    logMemory("💾 Before updating post");
     const updatedPost = await PostModel.findByIdAndUpdate(
       postId,
       { $set: { blocked: !post.blocked } },
       { new: true, runValidators: true }
     ).select("title slug blocked");
+    logMemory("💾 After updating post");
 
     io.emit("postBlockToggled", {
       postId: post._id,
@@ -1021,6 +1082,7 @@ export const toggleBlockPost = async (req, res, next) => {
       }`,
     });
 
+    logMemory("🚫 End toggleBlockPost");
     res.status(200).json({
       success: true,
       message: `Post ${
@@ -1039,13 +1101,17 @@ export const toggleBlockPost = async (req, res, next) => {
 
 export const sendDailyPostEmail = async () => {
   try {
+    logMemory("📧 Start sendDailyPostEmail");
+    logMemory("📖 Before fetching users");
     const users = await UserModel.find({
       emailStatus: "sent",
       stopEmailAttempts: false,
     })
       .select("name email")
       .lean();
+    logMemory("📖 After fetching users");
 
+    logMemory("📖 Before fetching posts");
     const cursor = PostModel.find({
       isPublished: true,
       blocked: false,
@@ -1061,8 +1127,10 @@ export const sendDailyPostEmail = async () => {
     for await (const post of cursor) {
       posts.push(post);
     }
+    logMemory("📖 After fetching posts");
 
     if (!posts.length) {
+      logMemory("📧 End sendDailyPostEmail - No posts");
       return;
     }
 
@@ -1101,7 +1169,11 @@ export const sendDailyPostEmail = async () => {
       emailQueue.push({ mailOption, userId: user._id });
     }
 
+    logMemory("📧 Before processing email queue");
     await processEmailQueue();
+    logMemory("📧 After processing email queue");
+
+    logMemory("📧 End sendDailyPostEmail");
   } catch (error) {
     throw new AppError(
       "Failed to send daily post emails",
@@ -1113,6 +1185,7 @@ export const sendDailyPostEmail = async () => {
 
 export const submitAppeal = async (req, res, next) => {
   try {
+    logMemory("📜 Start submitAppeal");
     const { postId } = req.params;
     const { message } = req.body;
     const userId = req.user?._id;
@@ -1133,7 +1206,9 @@ export const submitAppeal = async (req, res, next) => {
       throw new AppError("Appeal message is required", 400, "SubmitAppeal");
     }
 
+    logMemory("📖 Before fetching post");
     const post = await PostModel.findById(postId).lean();
+    logMemory("📖 After fetching post");
     if (!post) {
       throw new AppError("Post not found", 404, "SubmitAppeal");
     }
@@ -1159,6 +1234,7 @@ export const submitAppeal = async (req, res, next) => {
 
     io.emit("newAppeal", { postId, userId, message, postTitle: post.title });
 
+    logMemory("📜 End submitAppeal");
     res
       .status(200)
       .json({ success: true, message: "Appeal submitted successfully" });
@@ -1177,22 +1253,26 @@ export const submitAppeal = async (req, res, next) => {
 
 export const incrementShareCount = async (req, res, next) => {
   try {
+    logMemory("📈 Start incrementShareCount");
     const { postId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(postId)) {
       throw new AppError("Invalid post ID", 400, "IncrementShareCount");
     }
 
+    logMemory("💾 Before updating share count");
     const result = await PostModel.findByIdAndUpdate(
       postId,
       { $inc: { shareCount: 1 } },
       { new: true, select: "shareCount" }
     ).lean();
+    logMemory("💾 After updating share count");
 
     if (!result) {
       throw new AppError("Post not found", 404, "IncrementShareCount");
     }
 
+    logMemory("📈 End incrementShareCount");
     res.status(200).json({
       success: true,
       message: "Share count incremented",
@@ -1213,6 +1293,7 @@ export const incrementShareCount = async (req, res, next) => {
 
 export const getDraftAndPendingPosts = async (req, res, next) => {
   try {
+    logMemory("📋 Start getDraftAndPendingPosts");
     const userId = req.user?._id;
     if (!userId) {
       throw new AppError(
@@ -1228,6 +1309,7 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
 
     const query = { author: userId, blocked: { $ne: true } };
 
+    logMemory("📖 Before fetching posts");
     const [posts, total] = await Promise.all([
       PostModel.find(query)
         .select(
@@ -1240,8 +1322,10 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
         .lean(),
       PostModel.countDocuments(query).lean(),
     ]);
+    logMemory("📖 After fetching posts");
 
     if (!posts.length) {
+      logMemory("📋 End getDraftAndPendingPosts - No posts");
       return res.status(200).json({
         success: true,
         message: "No posts found",
@@ -1251,6 +1335,7 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
       });
     }
 
+    logMemory("📋 End getDraftAndPendingPosts");
     res.status(200).json({ success: true, total, page, posts });
   } catch (error) {
     next(
@@ -1267,6 +1352,7 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
 
 export const getPublicPost = async (req, res, next) => {
   try {
+    logMemory("📄 Start getPublicPost");
     const { slug } = req.params;
 
     if (!slug || typeof slug !== "string" || slug.trim() === "") {
@@ -1275,6 +1361,7 @@ export const getPublicPost = async (req, res, next) => {
 
     const sanitizedSlug = slug.trim().toLowerCase();
 
+    logMemory("📖 Before fetching post");
     const post = await PostModel.findOne({
       slug: sanitizedSlug,
       isPublished: true,
@@ -1289,6 +1376,7 @@ export const getPublicPost = async (req, res, next) => {
       .populate("author", "name avatar")
       .populate("category", "name slug")
       .lean();
+    logMemory("📖 After fetching post");
 
     if (!post) {
       throw new AppError(
@@ -1298,6 +1386,7 @@ export const getPublicPost = async (req, res, next) => {
       );
     }
 
+    logMemory("📄 End getPublicPost");
     res.status(200).json({ success: true, post });
   } catch (error) {
     next(
@@ -1314,6 +1403,7 @@ export const getPublicPost = async (req, res, next) => {
 
 export const getFollowingPosts = async (req, res, next) => {
   try {
+    logMemory("📋 Start getFollowingPosts");
     const userId = req.user?._id;
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
@@ -1327,7 +1417,9 @@ export const getFollowingPosts = async (req, res, next) => {
       );
     }
 
+    logMemory("📖 Before fetching user");
     const user = await UserModel.findById(userId).select("following").lean();
+    logMemory("📖 After fetching user");
     if (!user) {
       throw new AppError("User not found", 404, "GetFollowingPosts");
     }
@@ -1337,6 +1429,7 @@ export const getFollowingPosts = async (req, res, next) => {
       .filter((id) => mongoose.Types.ObjectId.isValid(id));
 
     if (!followingIds.length) {
+      logMemory("📋 End getFollowingPosts - No following");
       return res.status(200).json({
         success: true,
         total: 0,
@@ -1352,6 +1445,7 @@ export const getFollowingPosts = async (req, res, next) => {
       blocked: false,
     };
 
+    logMemory("📖 Before fetching posts");
     const posts = [];
     const cursor = PostModel.find(query)
       .select(
@@ -1373,6 +1467,7 @@ export const getFollowingPosts = async (req, res, next) => {
     for await (const post of cursor) {
       posts.push(post);
     }
+    logMemory("📖 After fetching posts");
 
     const total = await PostModel.countDocuments(query).lean();
 
@@ -1382,6 +1477,7 @@ export const getFollowingPosts = async (req, res, next) => {
       message: `Viewed posts from followed users`,
     });
 
+    logMemory("📋 End getFollowingPosts");
     res.status(200).json({ success: true, total, page, posts });
   } catch (error) {
     next(
