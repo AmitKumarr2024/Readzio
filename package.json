@@ -15,10 +15,17 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "server": "node servers/index.js",
-    "start": "NODE_OPTIONS='--max-old-space-size=500' node servers/index.js",
-    "build": "npm install --legacy-peer-deps && npm install --prefix clients --legacy-peer-deps && npm run build --prefix clients"
-  },
+  "server": "node servers/index.js",
+  "start": "NODE_OPTIONS='--max-old-space-size=450' node servers/index.js",
+
+  
+  "install-client": "cd clients && npm install --legacy-peer-deps",
+  "build-client": "cd clients && npm run build",
+
+  
+  "setup-client": "npm run install-client && npm run build-client"
+}
+,
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",
     "@tanstack/react-query": "^5.81.5",
