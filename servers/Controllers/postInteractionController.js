@@ -3,7 +3,7 @@ import UserModel from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import { createNotification } from "../../servers/Utils/createNotification.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
-import { logMemory } from "../../Utils/memoryLogger.js"; // Import logMemory
+import { logMemory } from "../../servers/Utils/memoryLogger.js"; // Import logMemory
 
 // Toggle Like
 export const toggleLike = async (req, res, next) => {

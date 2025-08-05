@@ -8,7 +8,7 @@ import { io } from "../../servers/sockets/socket.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import pLimit from "p-limit";
 import NodeCache from "node-cache";
-import { logMemory } from "../Utils/memoryLogger.js"; // Added import
+import { logMemory } from "../../servers/Utils/memoryLogger.js"; // Added import
 
 // Initialize cache
 const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes

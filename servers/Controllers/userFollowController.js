@@ -9,7 +9,7 @@ import { AppError } from "../../servers/Utils/AppError.js";
 import UserLocation from "../Models/UserLocation.js";
 import UserModel from "../../servers/Models/User.js";
 import mongoose from "mongoose";
-import { logMemory } from "../../Utils/memoryLogger.js"; // Import logMemory
+import { logMemory } from "../../servers/Utils/memoryLogger.js"; // Import logMemory
 
 // Allows a user to follow another user
 export const followUser = async (req, res, next) => {
