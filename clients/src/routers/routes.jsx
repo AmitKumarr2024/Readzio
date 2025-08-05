@@ -4,6 +4,7 @@ import React, { lazy } from "react";
 import App from "../App";
 import PublicOnlyRoute from "../connection/PublicOnlyRoute";
 import withSuspense from "../Utils/withSuspense";
+import ErrorFallback from "../components/ErrorFallback";
 
 // Lazy imports wrapped with withSuspense
 const LoginPage = withSuspense(lazy(() => import("../pages/LoginPage")));
@@ -71,6 +72,7 @@ const routes = createBrowserRouter([
   {
     path: "/",
     element: <App />,
+    errorElement: <ErrorFallback />,
     children: [
       { index: true, element: <MainPage /> },
       { path: "createPost", element: <CreatePost /> },
