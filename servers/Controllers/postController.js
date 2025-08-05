@@ -11,9 +11,105 @@ import { io } from "../../servers/sockets/socket.js";
 import { calculateReadTime } from "../helpers/postHelper.js";
 import pLimit from "p-limit";
 import NodeCache from "node-cache";
+import PostInteraction from "../../servers/Models/PostInteraction.js";
+import UserModel from "../../servers/Models/User.js";
 
 // Initialize cache
 const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
+
+// Validates ObjectId
+const validateObjectId = (id, type = "ID") => {
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    throw new AppError(
+      `Invalid ${type}`,
+      400,
+      "ValidateObjectId",
+      `Invalid ${type} provided`
+    );
+  }
+};
+
+// POST /api/post/polls/vote
+export const voteOnPoll = async (req, res, next) => {
+  try {
+    const { postId, blockId, optionIndex } = req.body;
+    const userId = req.user?._id;
+
+    validateObjectId(postId, "Post ID");
+    if (!userId) {
+      throw new AppError("You must be signed in to vote", 401, "VoteOnPoll");
+    }
+    if (!blockId || optionIndex == null) {
+      throw new AppError(
+        "Block ID and option index required",
+        400,
+        "VoteOnPoll"
+      );
+    }
+
+    const post = await PostModel.findOne({
+      _id: postId,
+      isPublished: true,
+      blocked: false,
+    })
+      .select("title blocks")
+      .lean();
+
+    if (!post) {
+      throw new AppError("Post not found or unavailable", 404, "VoteOnPoll");
+    }
+
+    const pollBlockIndex = post.blocks.findIndex(
+      (block) => block.id === blockId && block.type === "poll"
+    );
+    if (pollBlockIndex === -1) {
+      throw new AppError("Poll block not found", 404, "VoteOnPoll");
+    }
+
+    const pollBlock = post.blocks[pollBlockIndex];
+    if (
+      pollBlock.votedUserIds.some(
+        (vote) => vote.userId.toString() === userId.toString()
+      )
+    ) {
+      throw new AppError("User already voted", 400, "VoteOnPoll");
+    }
+
+    pollBlock.options[optionIndex].votes =
+      (pollBlock.options[optionIndex].votes || 0) + 1;
+    pollBlock.votedUserIds.push({ userId, votedAt: new Date() });
+    post.blocks[pollBlockIndex] = pollBlock;
+
+    const updatedPost = await PostModel.findByIdAndUpdate(
+      postId,
+      { $set: { blocks: post.blocks } },
+      { new: true, select: "title slug blocks" }
+    ).lean();
+
+    await recordActivity({
+      userId,
+      action: "POLL_VOTED",
+      targetPost: postId,
+      message: `Voted on poll in post: ${post.title}`,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Vote recorded",
+      poll: updatedPost.blocks[pollBlockIndex],
+    });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to record vote",
+            500,
+            "VoteOnPoll"
+          )
+    );
+  }
+};
 
 export const createPost = async (req, res, next) => {
   try {
@@ -166,8 +262,8 @@ export const createPost = async (req, res, next) => {
       }
     };
 
-    const blockLimit = pLimit(3); // Process 3 blocks at a time
-    const imageLimit = pLimit(2); // Process 2 images at a time
+    const blockLimit = pLimit(3);
+    const imageLimit = pLimit(2);
 
     const processBlock = async (block) => {
       const processedBlock = { ...block };
@@ -340,7 +436,6 @@ export const createPost = async (req, res, next) => {
 
       io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
 
-      // Cache counts or fetch from DB if not cached
       const cacheKey = `postCounts:${req.user._id}`;
       let counts = cache.get(cacheKey);
       if (!counts) {
@@ -420,9 +515,6 @@ export const getAllPosts = async (req, res, next) => {
     }
 
     const posts = [];
-    let total = 0;
-
-    // Use cursor for sequential processing
     const cursor = PostModel.find(query)
       .select(
         `
@@ -445,9 +537,8 @@ export const getAllPosts = async (req, res, next) => {
       posts.push(post);
     }
 
-    total = await PostModel.countDocuments(query).lean();
+    const total = await PostModel.countDocuments(query).lean();
 
-    // Cache counts or fetch from DB if not cached
     const cacheKey = `postCounts:${req.user?._id || "guest"}`;
     let counts = cache.get(cacheKey);
     if (!counts) {
@@ -501,7 +592,6 @@ export const getAllPosts = async (req, res, next) => {
   }
 };
 
-// Other functions (unchanged but with .lean() and .select() optimizations where applicable)
 export const getSinglePost = async (req, res, next) => {
   try {
     const { slug } = req.params;
@@ -607,7 +697,11 @@ export const trackTimeSpent = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError("Failed to track time", 500, "trackTimeSpent")
+        : new AppError(
+            error.message || "Failed to track time",
+            500,
+            "trackTimeSpent"
+          )
     );
   }
 };
@@ -718,7 +812,7 @@ export const updatePostBySlug = async (req, res, next) => {
 
     const updates = { ...req.body };
 
-    const blockLimit = pLimit(3); // Process 3 blocks at a time
+    const blockLimit = pLimit(3);
     if (updates.blocks) {
       updates.blocks = await Promise.all(
         updates.blocks.map((block, i) =>
