@@ -7,6 +7,23 @@ import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import ActivityModel from "../Models/ActivityModel.js";
 import { io } from "../sockets/socket.js";
 import UserLocation from "../Models/UserLocation.js";
+import pLimit from "p-limit";
+import NodeCache from "node-cache";
+
+// Initialize cache
+const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
+
+// Validates ObjectId
+const validateObjectId = (id, type = "ID") => {
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    throw new AppError(
+      `Invalid ${type}`,
+      400,
+      "ValidateObjectId",
+      `Invalid ${type} provided`
+    );
+  }
+};
 
 // GET /api/user/ip-location
 export const getIPLocation = async (req, res, next) => {
@@ -52,7 +69,7 @@ export const trackIPLocation = async (req, res, next) => {
 
     await UserLocation.create(req.geoLocation);
 
-    res.status(204).end(); // No content needed
+    res.status(204).end();
   } catch (error) {
     next(
       error instanceof AppError
@@ -74,7 +91,6 @@ export const saveUserLocation = async (req, res, next) => {
     const latitude = coordinates?.lat;
     const longitude = coordinates?.lon;
 
-    // Validates coordinates
     if (
       !latitude ||
       !longitude ||
@@ -91,8 +107,9 @@ export const saveUserLocation = async (req, res, next) => {
       );
     }
 
-    // Validates user
-    const user = await UserModel.findById(req.user._id).select("followers");
+    const user = await UserModel.findById(req.user._id)
+      .select("followers")
+      .lean();
     if (!user) {
       throw new AppError(
         "User not found",
@@ -105,7 +122,6 @@ export const saveUserLocation = async (req, res, next) => {
     const ip = req.geoLocation?.ip || req.ip || "";
     const geoData = UserLocation.resolveGeoLocation(longitude, latitude);
 
-    // Prepares location data
     const locationData = {
       userId: req.user._id,
       coordinates: { type: "Point", coordinates: [longitude, latitude] },
@@ -117,11 +133,9 @@ export const saveUserLocation = async (req, res, next) => {
       timestamp: new Date(),
     };
 
-    // Replaces existing location for the user
     await UserLocation.deleteMany({ userId: req.user._id });
     const location = await UserLocation.create(locationData);
 
-    // Logs activity
     await recordActivity({
       userId: req.user._id,
       action: "SAVED_USER_LOCATION",
@@ -134,7 +148,6 @@ export const saveUserLocation = async (req, res, next) => {
       }`,
     });
 
-    // Emits location update to admin and followers
     const socketLocationData = {
       userId: req.user._id.toString(),
       coordinates: { lat: latitude, lon: longitude },
@@ -159,7 +172,6 @@ export const saveUserLocation = async (req, res, next) => {
       location: socketLocationData,
     });
   } catch (error) {
-    // AppError with context for saving user location
     next(
       error instanceof AppError
         ? error
@@ -179,9 +191,18 @@ export const getAllUserLocations = async (req, res, next) => {
     const { page = 1, limit = 12 } = req.query;
     const pageNum = Math.max(parseInt(page), 1);
     const limitNum = Math.max(parseInt(limit), 1);
+    const skip = (pageNum - 1) * limitNum;
 
-    // Aggregates latest locations per user
-    const locations = await UserLocation.aggregate([
+    const cacheKey = "userLocations:total";
+    let totalCount = cache.get(cacheKey);
+
+    if (!totalCount) {
+      totalCount = (await UserLocation.distinct("userId")).length;
+      cache.set(cacheKey, totalCount);
+    }
+
+    const locations = [];
+    const cursor = UserLocation.aggregate([
       {
         $lookup: {
           from: "users",
@@ -190,15 +211,8 @@ export const getAllUserLocations = async (req, res, next) => {
           as: "user",
         },
       },
-      {
-        $unwind: {
-          path: "$user",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $sort: { timestamp: -1 },
-      },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+      { $sort: { timestamp: -1 } },
       {
         $group: {
           _id: "$userId",
@@ -212,6 +226,8 @@ export const getAllUserLocations = async (req, res, next) => {
           name: { $first: "$user.name" },
         },
       },
+      { $skip: skip },
+      { $limit: limitNum },
       {
         $project: {
           userId: 1,
@@ -224,64 +240,37 @@ export const getAllUserLocations = async (req, res, next) => {
           name: 1,
         },
       },
-      {
-        $skip: (pageNum - 1) * limitNum,
-      },
-      {
-        $limit: limitNum,
-      },
-    ]);
+    ]).cursor();
 
-    // Counts total unique user locations
-    const total = await UserLocation.aggregate([
-      { $group: { _id: "$userId" } },
-      { $count: "total" },
-    ]);
-
-    const totalCount = total.length > 0 ? total[0].total : 0;
-
-    // Formats location data, handling invalid coordinates
-    const validLocations = locations.map((loc) => {
-      if (
-        !loc.coordinates ||
-        !Array.isArray(loc.coordinates.coordinates) ||
-        loc.coordinates.coordinates.length < 2
-      ) {
-        return {
-          userId: loc.userId.toString(),
-          coordinates: null,
-          city: loc.city || "Unknown",
-          country: loc.country || "Unknown",
-          state: loc.state || "Unknown",
-          pincode: loc.pincode || "Unknown",
-          timestamp: loc.timestamp,
-          name: loc.name || "Unknown",
-        };
-      }
-      return {
+    for await (const loc of cursor) {
+      locations.push({
         userId: loc.userId.toString(),
-        coordinates: {
-          lat: loc.coordinates.coordinates[1],
-          lon: loc.coordinates.coordinates[0],
-        },
+        coordinates:
+          !loc.coordinates ||
+          !Array.isArray(loc.coordinates.coordinates) ||
+          loc.coordinates.coordinates.length < 2
+            ? null
+            : {
+                lat: loc.coordinates.coordinates[1],
+                lon: loc.coordinates.coordinates[0],
+              },
         city: loc.city || "Unknown",
         country: loc.country || "Unknown",
         state: loc.state || "Unknown",
         pincode: loc.pincode || "Unknown",
         timestamp: loc.timestamp,
         name: loc.name || "Unknown",
-      };
-    });
+      });
+    }
 
     res.status(200).json({
       success: true,
-      locations: validLocations,
+      locations,
       page: pageNum,
       total: totalCount,
       totalPages: Math.ceil(totalCount / limitNum),
     });
   } catch (error) {
-    // AppError with context for fetching user locations
     next(
       error instanceof AppError
         ? error
@@ -298,7 +287,6 @@ export const getAllUserLocations = async (req, res, next) => {
 // Retrieves authenticated user's profile
 export const getProfile = async (req, res, next) => {
   try {
-    // Validates authentication
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized - No user found",
@@ -308,8 +296,9 @@ export const getProfile = async (req, res, next) => {
       );
     }
 
-    // Fetches user profile
-    const profile = await UserModel.findById(req.user._id).select("-password");
+    const profile = await UserModel.findById(req.user._id)
+      .select("-password")
+      .lean();
     if (!profile) {
       throw new AppError(
         "User not found",
@@ -319,7 +308,6 @@ export const getProfile = async (req, res, next) => {
       );
     }
 
-    // Logs activity
     await recordActivity({
       userId: req.user._id,
       action: "LOGGED_IN",
@@ -328,7 +316,6 @@ export const getProfile = async (req, res, next) => {
 
     res.status(200).json({ success: true, data: profile });
   } catch (error) {
-    // AppError with context for fetching profile
     next(
       error instanceof AppError
         ? error
@@ -352,11 +339,25 @@ export const getAllUser = async (req, res, next) => {
     const projection =
       "name email gender avatar banner bio profession location createdAt role blocked bookmarks following followers blockedUsers subscribedCategories subscribedAuthors subscribers hasSubscriptionPlan subscriptionPlan subscriptionDate";
 
-    // Fetches users and total count
-    const [users, totalUsers] = await Promise.all([
-      UserModel.find().select(projection).skip(skip).limit(limit).lean(),
-      UserModel.countDocuments(),
-    ]);
+    const cacheKey = "users:total";
+    let totalUsers = cache.get(cacheKey);
+
+    if (!totalUsers) {
+      totalUsers = await UserModel.countDocuments().lean();
+      cache.set(cacheKey, totalUsers);
+    }
+
+    const users = [];
+    const cursor = UserModel.find()
+      .select(projection)
+      .skip(skip)
+      .limit(limit)
+      .lean()
+      .cursor();
+
+    for await (const user of cursor) {
+      users.push(user);
+    }
 
     res.status(200).json({
       success: true,
@@ -366,7 +367,6 @@ export const getAllUser = async (req, res, next) => {
       currentPage: page,
     });
   } catch (error) {
-    // AppError with context for fetching all users
     next(
       error instanceof AppError
         ? error
@@ -383,7 +383,6 @@ export const getAllUser = async (req, res, next) => {
 // Updates user profile with avatar and banner compression
 export const updateProfile = async (req, res, next) => {
   try {
-    // Validates authentication
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized - No user found",
@@ -393,8 +392,11 @@ export const updateProfile = async (req, res, next) => {
       );
     }
 
-    // Fetches user
-    const user = await UserModel.findById(req.user._id);
+    const user = await UserModel.findById(req.user._id)
+      .select(
+        "name email avatar banner bio gender location profession role blocked followers googleId createdAt updatedAt joiningDate bookmarks blockedUsers"
+      )
+      .lean();
     if (!user) {
       throw new AppError(
         "User not found",
@@ -404,7 +406,6 @@ export const updateProfile = async (req, res, next) => {
       );
     }
 
-    // Updates allowed fields
     const updatableFields = [
       "name",
       "bio",
@@ -416,114 +417,87 @@ export const updateProfile = async (req, res, next) => {
       "banner",
       "blocked",
     ];
+    const updates = {};
 
     updatableFields.forEach((field) => {
       if (req.body[field] !== undefined) {
-        user[field] = req.body[field];
+        updates[field] = req.body[field];
       }
     });
 
-    // Handles avatar and banner uploads with compression
     if (req.files) {
+      const limit = pLimit(1); // Process one file at a time
       if (req.files.avatar?.[0]) {
-        try {
-          const uploadedAvatar = await uploadToCloudinary({
+        const uploadedAvatar = await limit(() =>
+          uploadToCloudinary({
             buffer: req.files.avatar[0].buffer,
             folder: "blog/users/avatar",
             transformation: [
               { width: 800, height: 800, crop: "limit" },
-              { quality: "auto:good", fetch_format: "auto" }, // Compresses image while maintaining good quality
+              { quality: "auto:good", fetch_format: "auto" },
             ],
-          });
-          user.avatar = uploadedAvatar.secure_url;
-        } catch (err) {
-          throw new AppError(
-            "Failed to upload avatar",
-            500,
-            "UpdateProfile",
-            "Error uploading avatar to Cloudinary"
-          );
-        }
+          })
+        );
+        updates.avatar = uploadedAvatar.secure_url;
       }
 
       if (req.files.banner?.[0]) {
-        try {
-          const uploadedBanner = await uploadToCloudinary({
+        const uploadedBanner = await limit(() =>
+          uploadToCloudinary({
             buffer: req.files.banner[0].buffer,
             folder: "blog/users/banner",
             transformation: [
               { width: 1200, height: 400, crop: "limit" },
-              { quality: "auto:good", fetch_format: "auto" }, // Compresses image while maintaining good quality
+              { quality: "auto:good", fetch_format: "auto" },
             ],
-          });
-          user.banner = uploadedBanner.secure_url;
-        } catch (err) {
-          throw new AppError(
-            "Failed to upload banner",
-            500,
-            "UpdateProfile",
-            "Error uploading banner to Cloudinary"
-          );
-        }
+          })
+        );
+        updates.banner = uploadedBanner.secure_url;
       }
     }
 
-    await user.save();
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      req.user._id,
+      updates,
+      {
+        new: true,
+        select:
+          updatableFields.join(" ") +
+          " followers googleId createdAt updatedAt joiningDate bookmarks blockedUsers",
+      }
+    ).lean();
 
-    // Logs activity
     await recordActivity({
       userId: req.user._id,
       action: "UPDATED_PROFILE",
       message: "Updated their profile",
     });
 
-    // Emits profile update to admin and followers
     const profileUpdateData = {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      banner: user.banner,
-      bio: user.bio,
-      gender: user.gender,
-      location: user.location,
-      profession: user.profession,
-      role: user.role,
-      blocked: user.blocked,
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      avatar: updatedUser.avatar,
+      banner: updatedUser.banner,
+      bio: updatedUser.bio,
+      gender: updatedUser.gender,
+      location: updatedUser.location,
+      profession: updatedUser.profession,
+      role: updatedUser.role,
+      blocked: updatedUser.blocked,
     };
 
     io.to("adminRoom").emit("userProfileUpdate", profileUpdateData);
-    user.followers.forEach((followerId) => {
+    updatedUser.followers.forEach((followerId) => {
       io.to(followerId.toString()).emit("userProfileUpdate", profileUpdateData);
     });
 
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      data: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        banner: user.banner,
-        bio: user.bio,
-        gender: user.gender,
-        location: user.location,
-        profession: user.profession,
-        role: user.role,
-        blocked: user.blocked,
-        googleId: user.googleId,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        joiningDate: user.joiningDate,
-        bookmarks: user.bookmarks,
-        followers: user.followers,
-        following: user.following,
-        blockedUsers: user.blockedUsers,
-      },
+      data: updatedUser,
     });
   } catch (error) {
-    // AppError with context for updating profile
     next(
       error instanceof AppError
         ? error
@@ -550,8 +524,7 @@ export const deleteUser = async (req, res, next) => {
       );
     }
 
-    // Deletes user
-    const deleted = await UserModel.findByIdAndDelete(userId);
+    const deleted = await UserModel.findByIdAndDelete(userId).lean();
     if (!deleted) {
       throw new AppError(
         "User not found",
@@ -561,21 +534,18 @@ export const deleteUser = async (req, res, next) => {
       );
     }
 
-    // Logs activity
     await recordActivity({
       userId,
       action: "DELETED_ACCOUNT",
       message: "Deleted their account",
     });
 
-    // Emits deletion event to admin
     io.to("adminRoom").emit("userDeleted", { userId });
 
     res
       .status(200)
       .json({ success: true, message: "User deleted successfully" });
   } catch (error) {
-    // AppError with context for deleting user
     next(
       error instanceof AppError
         ? error
@@ -593,18 +563,8 @@ export const deleteUser = async (req, res, next) => {
 export const getSingleUserById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    validateObjectId(id, "User ID");
 
-    // Validates user ID
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw new AppError(
-        "Invalid user ID",
-        400,
-        "GetSingleUserById",
-        "Invalid MongoDB ObjectId"
-      );
-    }
-
-    // Fetches user
     const user = await UserModel.findById(id)
       .select("-password -googleId")
       .populate("subscribedAuthors", "name email avatar")
@@ -619,7 +579,6 @@ export const getSingleUserById = async (req, res, next) => {
       );
     }
 
-    // Logs activity for authenticated users
     if (req.user && req.user._id) {
       await recordActivity({
         userId: req.user._id,
@@ -630,7 +589,6 @@ export const getSingleUserById = async (req, res, next) => {
 
     res.status(200).json({ success: true, data: user });
   } catch (error) {
-    // AppError with context for fetching single user
     next(
       error instanceof AppError
         ? error
@@ -648,18 +606,8 @@ export const getSingleUserById = async (req, res, next) => {
 export const getUserActivity = async (req, res, next) => {
   try {
     const userId = req.params.id;
+    validateObjectId(userId, "User ID");
 
-    // Validates user ID
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      throw new AppError(
-        "Invalid user ID",
-        400,
-        "GetUserActivity",
-        "Invalid MongoDB ObjectId"
-      );
-    }
-
-    // Fetches user
     const user = await UserModel.findById(userId).select("name").lean();
     if (!user) {
       throw new AppError(
@@ -670,14 +618,18 @@ export const getUserActivity = async (req, res, next) => {
       );
     }
 
-    // Fetches activity history
-    const activityList = await ActivityModel.find({ user: userId })
+    const activityList = [];
+    const cursor = ActivityModel.find({ user: userId })
       .sort({ createdAt: -1 })
       .populate("targetPost", "title slug")
       .populate("targetComment", "text")
-      .lean();
+      .lean()
+      .cursor();
 
-    // Logs activity for authenticated users
+    for await (const activity of cursor) {
+      activityList.push(activity);
+    }
+
     if (req.user && req.user._id) {
       const targetUserName = user.name || userId;
       await recordActivity({
@@ -692,7 +644,6 @@ export const getUserActivity = async (req, res, next) => {
       activity: activityList,
     });
   } catch (error) {
-    // AppError with context for fetching user activity
     next(
       error instanceof AppError
         ? error
@@ -710,16 +661,13 @@ export const getUserActivity = async (req, res, next) => {
 export const clearUserActivity = async (req, res, next) => {
   try {
     const userId = req.user._id;
-
-    // Deletes user activity
-    await ActivityModel.deleteMany({ user: userId });
+    await ActivityModel.deleteMany({ user: userId }).lean();
 
     res.status(200).json({
       success: true,
       message: "Activity history cleared",
     });
   } catch (error) {
-    // AppError with context for clearing user activity
     next(
       error instanceof AppError
         ? error
@@ -739,21 +687,34 @@ export const clearOldActivity = async (req, res, next) => {
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
-    // Deletes old activity records
-    const result = await ActivityModel.deleteMany({
-      createdAt: { $lt: oneDayAgo },
-    });
+    const batchSize = 1000;
+    let deletedCount = 0;
 
-    const message = `Cleared ${result.deletedCount} old activity records`;
+    const cursor = ActivityModel.find({ createdAt: { $lt: oneDayAgo } })
+      .lean()
+      .cursor();
+
+    let batch = [];
+    for await (const doc of cursor) {
+      batch.push(doc._id);
+      if (batch.length >= batchSize) {
+        await ActivityModel.deleteMany({ _id: { $in: batch } }).lean();
+        deletedCount += batch.length;
+        batch = [];
+      }
+    }
+
+    if (batch.length > 0) {
+      await ActivityModel.deleteMany({ _id: { $in: batch } }).lean();
+      deletedCount += batch.length;
+    }
+
+    const message = `Cleared ${deletedCount} old activity records`;
 
     if (res) {
-      res.status(200).json({
-        success: true,
-        message,
-      });
+      res.status(200).json({ success: true, message });
     }
   } catch (error) {
-    // AppError with context for clearing old activity
     if (next) {
       next(
         error instanceof AppError
@@ -775,7 +736,6 @@ export const saveUserCookieConsent = async (req, res, next) => {
     const { consent } = req.body;
     const userId = req.user?._id;
 
-    // Validates consent value
     if (typeof consent !== "boolean") {
       throw new AppError(
         "Invalid consent value",
@@ -785,17 +745,19 @@ export const saveUserCookieConsent = async (req, res, next) => {
       );
     }
 
-    // Updates user consent in database if authenticated
     if (userId) {
-      await UserModel.findByIdAndUpdate(userId, { cookieConsent: consent });
+      await UserModel.findByIdAndUpdate(
+        userId,
+        { cookieConsent: consent },
+        { lean: true }
+      );
     }
 
-    // Sets consent cookie
     res.cookie("user_cookie_consent", String(consent), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "Lax",
-      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
+      maxAge: 365 * 24 * 60 * 60 * 1000,
     });
 
     res.status(200).json({
@@ -803,7 +765,6 @@ export const saveUserCookieConsent = async (req, res, next) => {
       message: `Consent ${consent ? "accepted" : "declined"}`,
     });
   } catch (error) {
-    // AppError with context for saving cookie consent
     next(
       error instanceof AppError
         ? error
@@ -818,30 +779,34 @@ export const saveUserCookieConsent = async (req, res, next) => {
 };
 
 // POST /api/user/feedback/trigger/:userId (Admin only)
-// POST /api/user/feedback/manual/:userId (admin only)
 export const adminSendFeedbackPrompt = async (req, res, next) => {
   try {
     if (!req.user?.isAdmin) {
-      return next(
-        new AppError("Only admins can trigger feedback prompts", 403)
+      throw new AppError(
+        "Only admins can trigger feedback prompts",
+        403,
+        "AdminSendFeedbackPrompt"
       );
     }
 
     const { userId } = req.params;
-    const user = await UserModel.findById(userId);
+    validateObjectId(userId, "User ID");
+
+    const user = await UserModel.findById(userId)
+      .select("name feedbackPrompt")
+      .lean();
     if (!user) {
-      return next(new AppError("User not found", 404));
+      throw new AppError("User not found", 404, "AdminSendFeedbackPrompt");
     }
 
-    // Update user's feedbackPrompt status in DB
-    user.feedbackPrompt = {
-      shown: true,
-      shownAt: new Date(),
-      responded: false,
-    };
-    await user.save();
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      userId,
+      {
+        feedbackPrompt: { shown: true, shownAt: new Date(), responded: false },
+      },
+      { new: true, select: "name feedbackPrompt" }
+    ).lean();
 
-    // 🔴 Emit socket to that user's room
     io.to(userId).emit("showFeedbackPrompt", {
       message: "📬 We'd love your feedback. How are we doing?",
       fromAdmin: true,
@@ -849,75 +814,113 @@ export const adminSendFeedbackPrompt = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: `Feedback prompt sent to ${user.name}`,
+      message: `Feedback prompt sent to ${updatedUser.name}`,
     });
   } catch (error) {
-    next(error);
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to send feedback prompt",
+            500,
+            "AdminSendFeedbackPrompt"
+          )
+    );
   }
 };
 
+// Checks if feedback prompt should be shown
 export const shouldShowFeedbackPrompt = async (req, res, next) => {
   try {
-    const user = await UserModel.findById(req.user._id).select(
-      "joiningDate feedbackPrompt"
-    );
-
+    const user = await UserModel.findById(req.user._id)
+      .select("joiningDate feedbackPrompt")
+      .lean();
     if (!user) {
-      return next(new AppError("User not found", 404));
+      throw new AppError("User not found", 404, "ShouldShowFeedbackPrompt");
     }
 
     const accountAgeInDays = Math.floor(
       (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24)
     );
-
     const shouldShow =
       accountAgeInDays >= 7 &&
       (!user.feedbackPrompt ||
         (!user.feedbackPrompt.shown && !user.feedbackPrompt.responded));
 
     if (shouldShow) {
-      user.feedbackPrompt = {
-        shown: true,
-        shownAt: new Date(),
-        responded: false,
-      };
-      await user.save();
+      await UserModel.findByIdAndUpdate(
+        req.user._id,
+        {
+          feedbackPrompt: {
+            shown: true,
+            shownAt: new Date(),
+            responded: false,
+          },
+        },
+        { lean: true }
+      );
     }
 
     res.status(200).json({
       success: true,
       showFeedback: shouldShow,
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to check feedback prompt",
+            500,
+            "ShouldShowFeedbackPrompt"
+          )
+    );
   }
 };
+
+// Submits user feedback
 export const submitFeedback = async (req, res, next) => {
   try {
     const { rating, message } = req.body;
-
     if (!rating || rating < 1 || rating > 5) {
-      throw new AppError("Invalid rating (1-5 required)", 400);
+      throw new AppError(
+        "Invalid rating (1-5 required)",
+        400,
+        "SubmitFeedback"
+      );
     }
 
-    const user = await UserModel.findById(req.user._id);
-
+    const user = await UserModel.findById(req.user._id)
+      .select("feedbackPrompt")
+      .lean();
     if (!user) {
-      return next(new AppError("User not found", 404));
+      throw new AppError("User not found", 404, "SubmitFeedback");
     }
 
-    user.feedbackPrompt = {
-      ...user.feedbackPrompt,
-      responded: true,
-      rating,
-      message,
-    };
-
-    await user.save();
+    await UserModel.findByIdAndUpdate(
+      req.user._id,
+      {
+        feedbackPrompt: {
+          ...user.feedbackPrompt,
+          responded: true,
+          rating,
+          message,
+        },
+      },
+      { lean: true }
+    );
 
     res.status(200).json({ success: true, message: "Feedback submitted" });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to submit feedback",
+            500,
+            "SubmitFeedback"
+          )
+    );
   }
 };
 
@@ -925,29 +928,31 @@ export const submitFeedback = async (req, res, next) => {
 export const getAllFeedbacks = async (req, res, next) => {
   try {
     if (!req.user?.isAdmin) {
-      return next(new AppError("Access denied: Admins only", 403));
+      throw new AppError("Access denied: Admins only", 403, "GetAllFeedbacks");
     }
 
-    const feedbackUsers = await UserModel.find({
-      "feedbackPrompt.responded": true,
-    })
+    const feedbacks = [];
+    const cursor = UserModel.find({ "feedbackPrompt.responded": true })
       .select(
         "name email avatar feedbackPrompt.createdAt feedbackPrompt.rating feedbackPrompt.message feedbackPrompt.shown feedbackPrompt.shownAt feedbackPrompt.responded"
       )
       .sort({ "feedbackPrompt.shownAt": -1 })
-      .lean();
+      .lean()
+      .cursor();
 
-    const feedbacks = feedbackUsers.map((user) => ({
-      userId: user._id,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      rating: user.feedbackPrompt?.rating,
-      message: user.feedbackPrompt?.message,
-      shown: user.feedbackPrompt?.shown,
-      responded: user.feedbackPrompt?.responded,
-      submittedAt: user.feedbackPrompt?.shownAt,
-    }));
+    for await (const user of cursor) {
+      feedbacks.push({
+        userId: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        rating: user.feedbackPrompt?.rating,
+        message: user.feedbackPrompt?.message,
+        shown: user.feedbackPrompt?.shown,
+        responded: user.feedbackPrompt?.responded,
+        submittedAt: user.feedbackPrompt?.shownAt,
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -969,7 +974,7 @@ export const getAllFeedbacks = async (req, res, next) => {
 };
 
 // Schedules daily cleanup of old activity records
-cron.schedule("0 0 * * *", clearOldActivity, {
+cron.schedule("0 0 * * *", () => clearOldActivity(null, null, null), {
   scheduled: true,
   timezone: "Asia/Kolkata",
 });
