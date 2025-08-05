@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: inksha
+    env: node
+    buildCommand: npm run setup-client
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+    plan: free
+    autoDeploy: true

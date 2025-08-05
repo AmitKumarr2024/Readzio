@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
   console.log("[Vite] API base URL:", env.VITE_API_BASE_URL);
 
   return {
+    base: "/", // ✅ important for correct asset paths
     plugins: [
       react(),
       tailwindcss({
@@ -47,13 +48,17 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           configure: (proxy) => {
             proxy.on("error", (err) => {
-              console.error("[ViteConfig:Proxy] /socket.io error:", err.message);
+              console.error(
+                "[ViteConfig:Proxy] /socket.io error:",
+                err.message
+              );
             });
           },
         },
       },
     },
     build: {
+      outDir: "dist", // ✅ confirm default, required for Express static serving
       chunkSizeWarningLimit: 1500,
       rollupOptions: {
         output: {
