@@ -123,7 +123,7 @@ const routes = [
   ["/api/block", BlockRoutes],
   ["/api/follow", FollowRoutes],
   ["/api/notification", NotificationRoutes],
-  ["/api/payment", RazorpaymentRoutes],
+  ["/api/payment", RazorpayRoutes],
   ["/api/subscription", SubscriptionRoutes],
   ["/api/earning", EarningRoutes],
   ["/api/achievement", AchievementRoutes],
