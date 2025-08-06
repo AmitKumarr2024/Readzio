@@ -66,7 +66,7 @@ export const fetchIndiaGeoJson = createAsyncThunk(
   "user/fetchIndiaGeoJson",
   async (_, thunkAPI) => {
     try {
-      const res = await axios.get("/geojson/india-border", {
+      const res = await axiosInstance.get("/geojson/india-border", {
         timeout: 30000,
       });
 
