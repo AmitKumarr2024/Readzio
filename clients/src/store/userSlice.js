@@ -429,14 +429,17 @@ export const getUserIPLocation = createAsyncThunk(
 export const trackUserIPLocation = createAsyncThunk(
   "user/trackUserIPLocation",
   async (_, { rejectWithValue }) => {
+    console.log("[UserSlice] trackUserIPLocation: Sending request");
     try {
       const res = await axiosInstance.post(
         "/user/track-ip-location",
         {},
         { withCredentials: true }
       );
+      console.log("[UserSlice] trackUserIPLocation: Response", res.data);
       return res.data.location;
     } catch (err) {
+      console.error("[UserSlice] trackUserIPLocation: Error", err);
       return rejectWithValue(
         err.response?.data?.message || "Failed to track IP location"
       );
@@ -982,7 +985,13 @@ const userSlice = createSlice({
         state.ipLocation.tracked = false;
       })
       .addCase(trackUserIPLocation.fulfilled, (state, { payload }) => {
+        console.log(
+          "[UserSlice] trackUserIPLocation.fulfilled: Payload",
+          payload
+        );
+
         state.ipLocation.tracked = true;
+
         if (payload) {
           const location = {
             userId: payload.userId,
@@ -993,6 +1002,11 @@ const userSlice = createSlice({
             pincode: payload.pincode,
             timestamp: payload.timestamp,
           };
+
+          console.log(
+            "[UserSlice] trackUserIPLocation.fulfilled: Saving location",
+            location
+          );
 
           state.userLocations.list = [
             location,
