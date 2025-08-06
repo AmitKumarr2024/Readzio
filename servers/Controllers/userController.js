@@ -68,14 +68,15 @@ export const trackIPLocation = async (req, res, next) => {
   }
 };
 
+console.log("[geoLocation from middleware]", req.geoLocation);
+
 // Saves user location with validation and emits updates
 export const saveUserLocation = async (req, res, next) => {
   try {
-    const { coordinates, city, country } = req.body;
+    const { coordinates, city: bodyCity, country: bodyCountry } = req.body;
     const latitude = coordinates?.lat;
     const longitude = coordinates?.lon;
 
-    // ✅ Validate coordinates
     if (
       !latitude ||
       !longitude ||
@@ -85,56 +86,53 @@ export const saveUserLocation = async (req, res, next) => {
       isNaN(longitude)
     ) {
       throw new AppError(
-        "Invalid or missing coordinates",
+        "Invalid coordinates",
         400,
         "SaveUserLocation",
-        "Coordinates must be valid non-zero numbers"
+        "Latitude or longitude is missing or invalid"
       );
     }
 
-    // ✅ Validate user
     const user = await UserModel.findById(req.user._id).select("followers");
     if (!user) {
       throw new AppError(
         "User not found",
         404,
         "SaveUserLocation",
-        "Authenticated user does not exist"
+        "User not found in DB"
       );
     }
 
+    // ✅ Pull from geoLocation middleware
     const geo = req.geoLocation || {};
     const ip = geo.ip || req.ip || "";
 
-    // ✅ Construct clean and correct location data
+    // ✅ Clean fallback: prefer geoLocation > body > "Unknown"
     const locationData = {
       userId: req.user._id,
       coordinates: {
         type: "Point",
         coordinates: [longitude, latitude],
       },
-      city: geo.city || city || "Unknown",
-      country: geo.country || country || "Unknown",
+      city: geo.city || bodyCity || "Unknown",
+      country: geo.country || bodyCountry || "Unknown",
       state: geo.state || "Unknown",
       pincode: geo.pincode || "Unknown",
       ip,
       timestamp: new Date(),
     };
 
-    console.log("[saveUserLocation] Final locationData:", locationData);
+    console.log("[saveUserLocation] Saving location:", locationData);
 
-    // Replace existing location for the user
-    await UserLocation.deleteMany({ userId: req.user._id });
+    await UserLocation.deleteMany({ userId: req.user._id }); // overwrite
     const location = await UserLocation.create(locationData);
 
-    // ✅ Log user activity
     await recordActivity({
       userId: req.user._id,
       action: "SAVED_USER_LOCATION",
-      message: `Saved location at ${locationData.city}, ${locationData.country} (State: ${locationData.state}, Pincode: ${locationData.pincode}) from IP ${ip}`,
+      message: `Location saved: ${locationData.city}, ${locationData.state}, ${locationData.country} (Pincode: ${locationData.pincode})`,
     });
 
-    // ✅ Emit to socket rooms (admin + followers)
     const socketLocationData = {
       userId: req.user._id.toString(),
       coordinates: { lat: latitude, lon: longitude },
@@ -146,12 +144,11 @@ export const saveUserLocation = async (req, res, next) => {
     };
 
     io.to("adminRoom").emit("userLocationUpdate", socketLocationData);
-    user.followers.forEach((followerId) => {
-      io.to(followerId.toString()).emit(
-        "userLocationUpdate",
-        socketLocationData
-      );
-    });
+    user.followers.forEach((followerId) =>
+      io
+        .to(followerId.toString())
+        .emit("userLocationUpdate", socketLocationData)
+    );
 
     res.status(201).json({
       success: true,
@@ -166,7 +163,7 @@ export const saveUserLocation = async (req, res, next) => {
             error.message || "Failed to save user location",
             500,
             "SaveUserLocation",
-            "Error in saveUserLocation"
+            "Unhandled error in location save"
           )
     );
   }
