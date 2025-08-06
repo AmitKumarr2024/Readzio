@@ -41,7 +41,7 @@ export const getIPLocation = async (req, res, next) => {
 // POST /api/user/track-ip-location
 export const trackIPLocation = async (req, res, next) => {
   try {
-    if (!req.geoLocation || !req.geoLocation.userId) {
+    if (!req?.geoLocation || !req?.geoLocation?.userId) {
       throw new AppError(
         "No authenticated user for tracking IP location",
         400,
@@ -50,9 +50,10 @@ export const trackIPLocation = async (req, res, next) => {
       );
     }
 
-    await UserLocation.create(req.geoLocation);
+    const savedLocation = await UserLocation.create(req.geoLocation);
 
-    res.status(204).end(); // No content needed
+    // ✅ Return the saved location
+    res.status(200).json({ location: savedLocation });
   } catch (error) {
     next(
       error instanceof AppError
