@@ -7,7 +7,7 @@ import PostModel from "../../servers/Models/Post.js";
 const connectedUsers = new Set();
 
 export const io = new Server({
-  path: "/socket.io/",
+  path: "/socket.io",
   cors: {
     origin: (origin, callback) => {
       console.log("[Socket:CORS] Request from:", origin); // Log for debugging
@@ -17,9 +17,10 @@ export const io = new Server({
         "http://localhost:8001",
         "https://inksha-uedq.onrender.com",
         "https://www.inksha-uedq.onrender.com", // Added www variant
+        "null",
       ].filter(Boolean);
 
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || origin === "null") {
         return callback(null, true);
       }
 
@@ -29,8 +30,8 @@ export const io = new Server({
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   },
-  pingInterval: 25000,
-  pingTimeout: 60000,
+  pingInterval: 20000,
+  pingTimeout: 20000,
 });
 
 io.use(async (socket, next) => {

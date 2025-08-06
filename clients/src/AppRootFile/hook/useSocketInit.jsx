@@ -15,35 +15,28 @@ export const useSocketInit = () => {
     const initSocket = async () => {
       if (!isAuthenticated || !user?._id || socketInitialized.current) return;
 
-      // Log initialization for debugging
-      // console.log("[useSocketInit] Initializing socket for user:", user._id);
-      socketInitialized.current = true;
-
       let token = getToken();
       if (!token) {
-        // Attempt to refresh token if missing
-        // console.log("[useSocketInit] No token, checking auth...");
         try {
           await dispatch(checkAuth()).unwrap();
-          token = getToken();
+          token = getToken(); // ✅ Now token should be valid
         } catch (err) {
-          // Log auth errors
-          console.error("[useSocketInit] checkAuth failed:", err.message);
+          console.error("checkAuth failed:", err.message);
+          return; // Prevent socket init without token
         }
       }
 
-      dispatch(initializeSocket());
+      socketInitialized.current = true;
+      dispatch(initializeSocket()); // ✅ after token is ready
     };
 
     initSocket();
 
-    // Cleanup socket on unmount
     return () => {
       if (socketInitialized.current) {
-        // console.log("[useSocketInit] Cleaning up socket...");
         dispatch(disconnectSocket());
         socketInitialized.current = false;
       }
     };
-  }, [isAuthenticated, user?._id, dispatch]); // Run on auth, user ID, or dispatch change
+  }, [isAuthenticated, user?._id, dispatch]);
 };

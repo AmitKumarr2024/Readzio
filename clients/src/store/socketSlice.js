@@ -95,6 +95,8 @@ export const initializeSocket = createAsyncThunk(
     const { user, isGuest } = getState().auth;
     let token = getToken();
 
+    console.log("[Socket:Auth] token", token);
+
     if (!token && !user?._id && isGuest) {
       log("[socketSlice] Guest user, skipping join/postCounts");
     } else if (!token) {
