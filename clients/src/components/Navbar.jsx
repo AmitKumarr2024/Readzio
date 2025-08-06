@@ -58,6 +58,8 @@ const Navbar = () => {
     [userLocations.list, authUser?._id]
   );
 
+  console.log("Navbar userLocation", userLocation);
+
   const shouldHideCategory = useMemo(
     () =>
       [
