@@ -1,4 +1,3 @@
-// src/routes/routes.jsx
 import { createBrowserRouter } from "react-router-dom";
 import React, { lazy } from "react";
 import App from "../App";
@@ -6,68 +5,62 @@ import PublicOnlyRoute from "../connection/PublicOnlyRoute";
 import withSuspense from "../Utils/withSuspense";
 import ErrorFallback from "../components/ErrorFallback";
 
-// Lazy imports wrapped with withSuspense
-const LoginPage = withSuspense(lazy(() => import("../pages/LoginPage")));
-const SignupPage = withSuspense(lazy(() => import("../pages/SignupPage")));
-const MainPage = withSuspense(lazy(() => import("../pages/MainPage")));
-const CategoryWisePage = withSuspense(
-  lazy(() => import("../pages/CategoryWisePage"))
-);
-const DisplayPost = withSuspense(
-  lazy(() => import("../components/Post/DisplayPost"))
-);
-const CreatePost = withSuspense(lazy(() => import("../pages/CreatePost")));
-const EditPost = withSuspense(
-  lazy(() => import("../components/Post/EditPost"))
-);
-const PageNotFound = withSuspense(lazy(() => import("../pages/PageNotFound")));
-const SearchPage = withSuspense(lazy(() => import("../pages/SearchPage")));
-const AboutPage = withSuspense(lazy(() => import("../pages/AboutPage")));
-const Contact = withSuspense(lazy(() => import("../pages/Contact")));
-const PrivacyPage = withSuspense(lazy(() => import("../pages/PrivacyPage")));
-const TermsAndConditionPage = withSuspense(
-  lazy(() => import("../pages/TermsAndConditionPage"))
-);
-const UserProfilePage = withSuspense(
-  lazy(() => import("../pages/UserProfilePage"))
-);
-const UserSettingsPage = withSuspense(
-  lazy(() => import("../pages/UserSettingPage"))
-);
-const FeatureComingSoon = withSuspense(
-  lazy(() => import("../pages/FeatureComingSoon"))
-);
-const DeleteModal = withSuspense(
-  lazy(() => import("../components/Post/DeleteModal"))
-);
-const AuthorProfilePage = withSuspense(
-  lazy(() => import("../pages/AuthorProfilePage"))
-);
-const UserPlanPage = withSuspense(
-  lazy(() => import("../components/PorductToBuy/UserPlanPage"))
-);
-const CategorySelectPage = withSuspense(
-  lazy(() => import("../pages/CategorySelectPage"))
-);
-const BookmarkComponent = withSuspense(
-  lazy(() => import("../components/Post/BookmarkComponent"))
-);
-const Dashboard = withSuspense(lazy(() => import("../pages/Admin/Dashboard")));
-const AcknowledgeConfirmation = withSuspense(
-  lazy(() => import("../pages/Admin/AcknowledgeConfirmation"))
-);
-const NotificationPage = withSuspense(
-  lazy(() => import("../components/Notification/NotificationPage"))
-);
-const UsersPage = withSuspense(lazy(() => import("../pages/UsersPage")));
-const ResetPassword = withSuspense(
-  lazy(() => import("../pages/ResetPasswordPage"))
-);
-const VerifyEmail = withSuspense(
-  lazy(() => import("../components/resetPassword/VerifyEmail"))
-);
-const TagWisePage = withSuspense(lazy(() => import("../pages/TagWisePage")));
+// 🧠 Utility for safe lazy imports with fallback error handler
+const safeLazy = (importFn) =>
+  withSuspense(
+    lazy(() =>
+      importFn().catch((err) => {
+        console.error("[Lazy Load Error]", err);
+        return { default: () => <div>Error loading component</div> };
+      })
+    )
+  );
 
+// ✅ Lazy-loaded pages/components with safe fallback
+const LoginPage = safeLazy(() => import("../pages/LoginPage"));
+const SignupPage = safeLazy(() => import("../pages/SignupPage"));
+const MainPage = safeLazy(() => import("../pages/MainPage"));
+const CategoryWisePage = safeLazy(() => import("../pages/CategoryWisePage"));
+const DisplayPost = safeLazy(() => import("../components/Post/DisplayPost"));
+const CreatePost = safeLazy(() => import("../pages/CreatePost"));
+const EditPost = safeLazy(() => import("../components/Post/EditPost"));
+const PageNotFound = safeLazy(() => import("../pages/PageNotFound"));
+const SearchPage = safeLazy(() => import("../pages/SearchPage"));
+const AboutPage = safeLazy(() => import("../pages/AboutPage"));
+const Contact = safeLazy(() => import("../pages/Contact"));
+const PrivacyPage = safeLazy(() => import("../pages/PrivacyPage"));
+const TermsAndConditionPage = safeLazy(() =>
+  import("../pages/TermsAndConditionPage")
+);
+const UserProfilePage = safeLazy(() => import("../pages/UserProfilePage"));
+const UserSettingsPage = safeLazy(() => import("../pages/UserSettingPage"));
+const FeatureComingSoon = safeLazy(() => import("../pages/FeatureComingSoon"));
+const DeleteModal = safeLazy(() => import("../components/Post/DeleteModal"));
+const AuthorProfilePage = safeLazy(() => import("../pages/AuthorProfilePage"));
+const UserPlanPage = safeLazy(() =>
+  import("../components/PorductToBuy/UserPlanPage")
+);
+const CategorySelectPage = safeLazy(() =>
+  import("../pages/CategorySelectPage")
+);
+const BookmarkComponent = safeLazy(() =>
+  import("../components/Post/BookmarkComponent")
+);
+const Dashboard = safeLazy(() => import("../pages/Admin/Dashboard"));
+const AcknowledgeConfirmation = safeLazy(() =>
+  import("../pages/Admin/AcknowledgeConfirmation")
+);
+const NotificationPage = safeLazy(() =>
+  import("../components/Notification/NotificationPage")
+);
+const UsersPage = safeLazy(() => import("../pages/UsersPage"));
+const ResetPassword = safeLazy(() => import("../pages/ResetPasswordPage"));
+const VerifyEmail = safeLazy(() =>
+  import("../components/resetPassword/VerifyEmail")
+);
+const TagWisePage = safeLazy(() => import("../pages/TagWisePage"));
+
+// ✅ Route definition
 const routes = createBrowserRouter([
   {
     path: "/",
@@ -88,7 +81,6 @@ const routes = createBrowserRouter([
       { path: "user", element: <UserProfilePage /> },
       { path: "user-setting", element: <UserSettingsPage /> },
       { path: "author-profile/:id", element: <AuthorProfilePage /> },
-      { path: "author-profile/:id", element: <AuthorProfilePage /> },
       { path: "plans/:id", element: <UserPlanPage /> },
       { path: "bookmark", element: <BookmarkComponent /> },
       { path: "acknowledge/:reportId", element: <AcknowledgeConfirmation /> },
@@ -96,7 +88,7 @@ const routes = createBrowserRouter([
       { path: "users", element: <UsersPage /> },
       { path: "verify", element: <VerifyEmail /> },
       { path: "tag/:tag", element: <TagWisePage /> },
-      { path: "Term&Condition", element: <TermsAndConditionPage /> },
+      { path: "terms", element: <TermsAndConditionPage /> },
     ],
   },
   {
