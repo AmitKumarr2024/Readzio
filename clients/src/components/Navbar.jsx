@@ -181,8 +181,11 @@ const Navbar = () => {
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="relative flex flex-col items-center">
               <div className="absolute -top-4 -right-3 text-sm text-gray-600 dark:text-gray-300">
-                {userLocation?.country?.slice(0, 3).toUpperCase()}
+                {userLocation?.country && userLocation.country !== "Unknown"
+                  ? userLocation.country.slice(0, 3).toUpperCase()
+                  : "N/A"}
               </div>
+
               <Logo />
               {userLocation?.countryCode && (
                 <img

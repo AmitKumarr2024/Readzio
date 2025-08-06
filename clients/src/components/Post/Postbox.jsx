@@ -498,7 +498,7 @@ const Postbox = ({
           renderSkeletonGrid()
         ) : postError ? (
           <p className="text-center text-red-500">
-            {postError?.message || "Error loading posts"}
+            {postError?.message || "Feature is available after login"}
           </p>
         ) : (
           <>

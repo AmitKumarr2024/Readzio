@@ -430,14 +430,12 @@ export const trackUserIPLocation = createAsyncThunk(
   "user/trackUserIPLocation",
   async (_, { rejectWithValue }) => {
     try {
-      await axiosInstance.post(
+      const res = await axiosInstance.post(
         "/user/track-ip-location",
         {},
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
-      return true;
+      return res.data.location;
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || "Failed to track IP location"
@@ -983,9 +981,28 @@ const userSlice = createSlice({
       .addCase(trackUserIPLocation.pending, (state) => {
         state.ipLocation.tracked = false;
       })
-      .addCase(trackUserIPLocation.fulfilled, (state) => {
+      .addCase(trackUserIPLocation.fulfilled, (state, { payload }) => {
         state.ipLocation.tracked = true;
+        if (payload) {
+          const location = {
+            userId: payload.userId,
+            coordinates: payload.coordinates,
+            city: payload.city,
+            country: payload.country,
+            state: payload.state,
+            pincode: payload.pincode,
+            timestamp: payload.timestamp,
+          };
+
+          state.userLocations.list = [
+            location,
+            ...state.userLocations.list.filter(
+              (loc) => loc.userId !== location.userId
+            ),
+          ];
+        }
       })
+
       .addCase(trackUserIPLocation.rejected, (state) => {
         state.ipLocation.tracked = false;
       })

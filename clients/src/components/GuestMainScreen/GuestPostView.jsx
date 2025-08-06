@@ -59,7 +59,7 @@ const GuestPostView = () => {
     const items = [<GuestCardOfPost key={post._id} {...post} />];
 
     // Insert In-Feed Ad after every 8 posts
-    if ((index + 1) % 8 === 0) {
+    if ((index + 1) % 5 === 0) {
       items.push(
         <div
           key={`infeed-${index}`}
