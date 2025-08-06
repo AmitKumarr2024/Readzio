@@ -118,6 +118,12 @@ const routes = [
   ["/api/bannerNotification", BannerNotificationRoutes],
   ["/api/public", guestRoutes],
 ];
+
+app.use("/api/post/:slug", (req, res, next) => {
+  console.log("[🛑 Debug] Reached /api/post/:slug with", req.params.slug);
+  next();
+});
+
 routes.forEach(([path, router]) => {
   logMemory(`🛤️ Mounting route: ${path}`);
   app.use(path, router);
