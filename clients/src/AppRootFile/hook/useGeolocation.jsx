@@ -7,12 +7,19 @@ export const useGeolocation = () => {
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const { socket } = useSelector((state) => state.socket);
   const dispatch = useDispatch();
-  const locationSent = useRef(false);
+  const locationSent = useRef(localStorage.getItem("locationSent") === "true");
   const [error, setError] = useState(null);
 
-  // Effect to fetch geolocation once for authenticated user
   useEffect(() => {
-    if (isAuthenticated && user?._id && !locationSent.current) {
+    const run = async () => {
+      if (!isAuthenticated || !user?._id || locationSent.current) return;
+
+      // 1. Track IP location immediately (non-blocking)
+      dispatch(trackUserIPLocation()).catch((err) =>
+        console.error("[useGeolocation] Failed to track IP location:", err)
+      );
+
+      // 2. Then try browser geolocation
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -25,22 +32,25 @@ export const useGeolocation = () => {
             dispatch(saveUserLocation(location));
             socket?.emit("userLocationUpdate", location);
             locationSent.current = true;
+            localStorage.setItem("locationSent", "true");
           },
           (err) => {
             console.error("[useGeolocation] Geolocation error:", err.message);
             setError(err.message);
           },
-          { enableHighAccuracy: true, timeout: 30000 }
+          {
+            enableHighAccuracy: false, // faster and less battery-intensive
+            timeout: 10000, // 10s max
+          }
         );
       } else {
         setError("Geolocation is not supported by this browser.");
       }
+    };
 
-      // ✅ Always track IP location regardless of geolocation success
-      dispatch(trackUserIPLocation()).catch((err) =>
-        console.error("Failed to track IP location:", err)
-      );
-    }
+    // Slight delay to not block UI on page load
+    const timer = setTimeout(run, 100);
+    return () => clearTimeout(timer);
   }, [isAuthenticated, user?._id]);
 
   return error;
