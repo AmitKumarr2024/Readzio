@@ -35,32 +35,34 @@ export const io = new Server({
 });
 
 io.use(async (socket, next) => {
-  let token = socket.handshake.auth.token;
-
-  if (!token && socket.handshake.headers.cookie) {
-    const cookies = socket.handshake.headers.cookie
-      ?.split("; ")
-      .reduce((acc, cookie) => {
-        const [name, value] = cookie.split("=");
-        acc[name] = value;
-        return acc;
-      }, {});
-    token = cookies?.jwt;
-  }
-
-  if (!token) {
-    console.error("[Socket:Auth] ❌ No token provided");
-    return next(new Error("Authentication failed"));
-  }
-
   try {
+    let token = socket.handshake.auth.token;
+
+    if (!token && socket.handshake.headers.cookie) {
+      const cookies = socket.handshake.headers.cookie
+        ?.split("; ")
+        .reduce((acc, cookie) => {
+          const [name, value] = cookie.split("=");
+          acc[name] = value;
+          return acc;
+        }, {});
+      token = cookies?.jwt;
+    }
+
+    if (!token) {
+      console.warn(
+        "[Socket:Auth] No token found, allowing unauthenticated socket"
+      );
+      return next(); // allow connection (optional)
+    }
+
     const decoded = verifyToken(token);
     socket.userId = decoded.userId?.toString();
     socket.role = decoded.role;
     socket.isAdmin = decoded.isAdmin;
     next();
   } catch (err) {
-    console.error("[Socket:Auth] ❌ Error:", err.message);
+    console.error("[Socket:Auth] ❌ Token error:", err.message);
     next(new Error("Authentication failed"));
   }
 });
