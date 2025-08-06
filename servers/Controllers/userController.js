@@ -68,11 +68,13 @@ export const trackIPLocation = async (req, res, next) => {
   }
 };
 
-console.log("[geoLocation from middleware]", req.geoLocation);
+
 
 // Saves user location with validation and emits updates
 export const saveUserLocation = async (req, res, next) => {
   try {
+      // ✅ This is the right place for the log
+    console.log("[geoLocation from middleware]", req.geoLocation);
     const { coordinates, city: bodyCity, country: bodyCountry } = req.body;
     const latitude = coordinates?.lat;
     const longitude = coordinates?.lon;
