@@ -233,8 +233,8 @@ const LocationDashboard = () => {
           type: "user/addUserLocation",
           payload: {
             ...location,
-            name: location.name || userIdToName[location.userId] || "Unknown",
-            country: formatLabel(location.country) || "India",
+            name: location?.name || userIdToName[location.userId] || "Unknown",
+            country: formatLabel(location?.country) || "Unknown",
           },
         });
       },
@@ -470,7 +470,7 @@ const LocationDashboard = () => {
                           <p>
                             <strong>Name:</strong> {loc?.name}
                           </p>
-                          
+
                           <p>
                             <strong>Country:</strong> {loc?.country}
                           </p>
@@ -525,7 +525,7 @@ const LocationDashboard = () => {
                           <th className="p-2 border-b border-gray-300 dark:border-gray-600">
                             Name
                           </th>
-                          
+
                           <th className="p-2 border-b border-gray-300 dark:border-gray-600">
                             Country
                           </th>
@@ -543,7 +543,7 @@ const LocationDashboard = () => {
                         <td className="p-2 border-b border-gray-300 dark:border-gray-600">
                           {loc?.name}
                         </td>
-                      
+
                         <td className="p-2 border-b border-gray-300 dark:border-gray-600">
                           {loc?.country}
                         </td>

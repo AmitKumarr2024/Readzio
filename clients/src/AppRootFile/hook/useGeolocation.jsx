@@ -7,19 +7,12 @@ export const useGeolocation = () => {
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const { socket } = useSelector((state) => state.socket);
   const dispatch = useDispatch();
-  const locationSent = useRef(localStorage.getItem("locationSent") === "true");
+  const locationSent = useRef(false);
   const [error, setError] = useState(null);
 
+  // Effect to fetch geolocation once for authenticated user
   useEffect(() => {
-    const run = async () => {
-      if (!isAuthenticated || !user?._id || locationSent.current) return;
-
-      // 1. Track IP location immediately (non-blocking)
-      dispatch(trackUserIPLocation()).catch((err) =>
-        console.error("[useGeolocation] Failed to track IP location:", err)
-      );
-
-      // 2. Then try browser geolocation
+    if (isAuthenticated && user?._id && !locationSent.current) {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -32,25 +25,22 @@ export const useGeolocation = () => {
             dispatch(saveUserLocation(location));
             socket?.emit("userLocationUpdate", location);
             locationSent.current = true;
-            localStorage.setItem("locationSent", "true");
           },
           (err) => {
             console.error("[useGeolocation] Geolocation error:", err.message);
             setError(err.message);
           },
-          {
-            enableHighAccuracy: false, // faster and less battery-intensive
-            timeout: 10000, // 10s max
-          }
+          { enableHighAccuracy: true, timeout: 30000 }
         );
       } else {
         setError("Geolocation is not supported by this browser.");
       }
-    };
 
-    // Slight delay to not block UI on page load
-    const timer = setTimeout(run, 100);
-    return () => clearTimeout(timer);
+      // ✅ Always track IP location regardless of geolocation success
+      dispatch(trackUserIPLocation()).catch((err) =>
+        console.error("Failed to track IP location:", err)
+      );
+    }
   }, [isAuthenticated, user?._id]);
 
   return error;

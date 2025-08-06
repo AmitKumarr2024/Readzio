@@ -119,11 +119,6 @@ const routes = [
   ["/api/public", guestRoutes],
 ];
 
-app.use("/api/post/:slug", (req, res, next) => {
-  console.log("[🛑 Debug] Reached /api/post/:slug with", req.params.slug);
-  next();
-});
-
 routes.forEach(([path, router]) => {
   logMemory(`🛤️ Mounting route: ${path}`);
   app.use(path, router);
@@ -145,6 +140,10 @@ if (NODE_ENV !== "production") {
 // Public/static
 const publicPath = path.join(__dirname, "servers", "public");
 app.use("/public", express.static(publicPath));
+
+app.get("/sitemap.xml", (req, res) => {
+  res.sendFile(path.join(__dirname, "clients", "dist", "sitemap.xml"));
+});
 
 app.get("/ads.txt", (req, res) => {
   res
@@ -170,6 +169,11 @@ if (NODE_ENV === "production" && fs.existsSync(clientIndexPath)) {
     });
   });
 }
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain").send(`User-agent: *
+Allow: /
+Sitemap: https://inksha-uedq.onrender.com/sitemap.xml`);
+});
 
 // Health check
 app.get("/health", (req, res) => {
