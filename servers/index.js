@@ -6,8 +6,9 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import http from "http";
 import mongoose from "mongoose";
-import listEndpoints from "express-list-endpoints"; // ✅ added
-import { CLIENT_URL, NODE_ENV, PORT } from "./config/dotenv.js";
+import listEndpoints from "express-list-endpoints";
+
+import { CLIENT_URL, NODE_ENV } from "./config/dotenv.js"; // ❌ Removed PORT import
 import connectDb from "./config/mongodb.js";
 import initializeSocket from "./sockets/socket.js";
 import { startTempCleanup } from "./Utils/cleanupTemp.js";
@@ -37,6 +38,7 @@ import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 
 const app = express();
 app.set("trust proxy", true);
+
 const server = http.createServer(app);
 const io = initializeSocket(server);
 const __dirname = path.resolve();
@@ -191,7 +193,7 @@ process.on("unhandledRejection", (err) => {
   process.exit(1);
 });
 
-// Start server
+// ✅ FIXED: Correct port handling for Render
 const startServer = async () => {
   try {
     console.log("[Server:Startup] Connecting to MongoDB...");
@@ -201,7 +203,8 @@ const startServer = async () => {
     startTempCleanup();
     startDailyDigestJob();
 
-    server.listen(PORT, "0.0.0.0", function () {
+    const port = process.env.PORT || 10000;
+    server.listen(port, "0.0.0.0", function () {
       console.log(
         `[Server:Startup] ✅ Inksha API running on port ${this.address().port}`
       );
