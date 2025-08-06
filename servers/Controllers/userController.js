@@ -75,7 +75,7 @@ export const saveUserLocation = async (req, res, next) => {
     const latitude = coordinates?.lat;
     const longitude = coordinates?.lon;
 
-    // Validates coordinates
+    // ✅ Validate coordinates
     if (
       !latitude ||
       !longitude ||
@@ -92,7 +92,7 @@ export const saveUserLocation = async (req, res, next) => {
       );
     }
 
-    // Validates user
+    // ✅ Validate user
     const user = await UserModel.findById(req.user._id).select("followers");
     if (!user) {
       throw new AppError(
@@ -103,39 +103,38 @@ export const saveUserLocation = async (req, res, next) => {
       );
     }
 
-    const ip = req.geoLocation?.ip || req.ip || "";
-    const geoData = UserLocation.resolveGeoLocation(longitude, latitude);
+    const geo = req.geoLocation || {};
+    const ip = geo.ip || req.ip || "";
 
-    // Prepares location data
+    // ✅ Construct clean and correct location data
     const locationData = {
       userId: req.user._id,
-      coordinates: { type: "Point", coordinates: [longitude, latitude] },
-      city: city || "Unknown",
-      country: geoData.country || country || "Unknown",
-      state: geoData.state || "Unknown",
-      pincode: geoData.pincode || "Unknown",
+      coordinates: {
+        type: "Point",
+        coordinates: [longitude, latitude],
+      },
+      city: geo.city || city || "Unknown",
+      country: geo.country || country || "Unknown",
+      state: geo.state || "Unknown",
+      pincode: geo.pincode || "Unknown",
       ip,
       timestamp: new Date(),
     };
 
-    // Replaces existing location for the user
+    console.log("[saveUserLocation] Final locationData:", locationData);
+
+    // Replace existing location for the user
     await UserLocation.deleteMany({ userId: req.user._id });
     const location = await UserLocation.create(locationData);
 
-    // Logs activity
+    // ✅ Log user activity
     await recordActivity({
       userId: req.user._id,
       action: "SAVED_USER_LOCATION",
-      message: `Saved location at ${locationData.city}, ${
-        locationData.country
-      } (State: ${locationData.state}, Pincode: ${locationData.pincode}) from ${
-        req.geoLocation
-          ? `${req.geoLocation.city}, ${req.geoLocation.country}`
-          : "unknown location"
-      }`,
+      message: `Saved location at ${locationData.city}, ${locationData.country} (State: ${locationData.state}, Pincode: ${locationData.pincode}) from IP ${ip}`,
     });
 
-    // Emits location update to admin and followers
+    // ✅ Emit to socket rooms (admin + followers)
     const socketLocationData = {
       userId: req.user._id.toString(),
       coordinates: { lat: latitude, lon: longitude },
@@ -160,7 +159,6 @@ export const saveUserLocation = async (req, res, next) => {
       location: socketLocationData,
     });
   } catch (error) {
-    // AppError with context for saving user location
     next(
       error instanceof AppError
         ? error
