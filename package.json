@@ -15,7 +15,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "generate-sitemap": "node scripts/generateSitemap.js",
+    "generate-sitemap": "node servers/scripts/generateSitemap.js",
     "server": "node servers/index.js",
     "start": "NODE_OPTIONS='--max-old-space-size=2000' node servers/index.js",
     "install-client": "cd clients && npm install --legacy-peer-deps",

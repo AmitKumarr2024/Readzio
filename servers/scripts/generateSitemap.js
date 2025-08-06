@@ -1,11 +1,13 @@
-// scripts/generateSitemap.js
+// servers/scripts/generateSitemap.js
+
 import mongoose from "mongoose";
 import { SitemapStream, streamToPromise } from "sitemap";
-import { createWriteStream } from "fs";
+import { createWriteStream, existsSync, mkdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-import PostModel from "../../servers/Models/Post.js"; // Adjust path if needed
+import PostModel from "../../servers/Models/Post.js";
+import { MONGO_URI } from "../../servers/config/dotenv.js";
 
 dotenv.config();
 
@@ -13,21 +15,30 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // === CONFIG ===
-const BASE_URL = "https://inksha-uedq.onrender.com"; // ✅ Your live site URL
-const MONGO_URI = process.env.MONGO_URI || "your-mongo-uri"; // Use .env or hardcode
-const OUTPUT_PATH = path.resolve(__dirname, "../clients/dist/sitemap.xml");
+const BASE_URL = "https://inksha-uedq.onrender.com";
+const OUTPUT_PATH = path.resolve(__dirname, "../../clients/dist/sitemap.xml");
+
+// === Ensure directory exists ===
+const distDir = path.dirname(OUTPUT_PATH);
+if (!existsSync(distDir)) {
+  mkdirSync(distDir, { recursive: true });
+}
 
 // === Connect to DB ===
-await mongoose.connect(MONGO_URI, {
-  dbName: "InkshaApp", // or process.env.DB_NAME
-});
+try {
+  await mongoose.connect(MONGO_URI, { dbName: "InkshaApp" });
+  console.log("✅ Connected to MongoDB");
+} catch (err) {
+  console.error("❌ Failed to connect to MongoDB:", err.message);
+  process.exit(1);
+}
 
-// === Create sitemap stream ===
+// === Setup sitemap stream ===
 const sitemap = new SitemapStream({ hostname: BASE_URL });
 const writeStream = createWriteStream(OUTPUT_PATH);
 sitemap.pipe(writeStream);
 
-// === Add static pages ===
+// === Static Routes ===
 const staticRoutes = [
   "/",
   "/about",
@@ -36,24 +47,30 @@ const staticRoutes = [
   "/Term&Condition",
   "/login",
   "/signup",
-  "/reset-password",
+  
 ];
 staticRoutes.forEach((url) => sitemap.write({ url }));
 
-// === Add dynamic post URLs ===
-const posts = await PostModel.find({ isPublished: true }, "slug").lean();
-posts.forEach((post) => {
-  sitemap.write({
-    url: `/post/${post.slug}`,
-    changefreq: "weekly",
-    priority: 0.8,
+// === Dynamic Routes ===
+try {
+  const posts = await PostModel.find({ isPublished: true }, "slug").lean();
+  console.log(`ℹ️  Found ${posts.length} published posts`);
+
+  posts.forEach((post) => {
+    sitemap.write({
+      url: `/post/${post.slug}`,
+      changefreq: "weekly",
+      priority: 0.8,
+    });
   });
-});
 
-sitemap.end();
-await streamToPromise(sitemap);
+  const sitemapPromise = streamToPromise(sitemap); // ✅ Do this BEFORE .end()
+  sitemap.end();
+  await sitemapPromise;
 
-console.log(
-  `✅ Sitemap generated with ${posts.length} posts at ${OUTPUT_PATH}`
-);
-process.exit(0);
+  console.log(`✅ Sitemap successfully written to: ${OUTPUT_PATH}`);
+} catch (err) {
+  console.error("❌ Sitemap generation failed:", err.message);
+} finally {
+  mongoose.connection.close();
+}
