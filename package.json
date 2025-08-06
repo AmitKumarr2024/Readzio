@@ -15,14 +15,14 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "generate-sitemap": "node servers/scripts/generateSitemap.js",
-    "server": "node servers/index.js",
-    "start": "NODE_OPTIONS='--max-old-space-size=2000' node servers/index.js",
-    "install-client": "cd clients && npm install --legacy-peer-deps",
-     "build": "npm run build-client && npm run generate-sitemap",
-    "build-client": "cd clients && npm run build",
-    "setup-client": "npm run install-client && npm run build-client"
-  },
+  "generate-sitemap": "node servers/scripts/generateSitemap.js",
+  "server": "node servers/index.js",
+  "start": "NODE_OPTIONS='--max-old-space-size=2000' node servers/index.js",
+  "install-client": "cd clients && npm install --legacy-peer-deps",
+  "build-client": "cd clients && npm run build",
+  "setup-client": "npm run install-client && npm run build-client && npm run generate-sitemap" 
+}
+,
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",
     "@tanstack/react-query": "^5.81.5",
