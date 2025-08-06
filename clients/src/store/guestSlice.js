@@ -230,14 +230,11 @@ const guestSlice = createSlice({
         // console.log("[guestSlice:trackGuestVisit] Pending");
         state.loading = true;
       })
-      .addCase(trackGuestVisit.fulfilled, (state) => {
-        // console.log(
-        //   "[guestSlice:trackGuestVisit] Fulfilled guest:",
-        //   action.payload
-        // );
+      .addCase(trackGuestVisit.fulfilled, (state, action) => {
         state.loading = false;
         state.lastTrackedGuest = action.payload;
       })
+
       .addCase(trackGuestVisit.rejected, (state, action) => {
         console.error("[guestSlice:trackGuestVisit] Rejected:", action.payload);
         state.loading = false;

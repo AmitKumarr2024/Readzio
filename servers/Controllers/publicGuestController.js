@@ -315,6 +315,14 @@ export const trackGuestVisit = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Guest visit tracked",
+      guest: {
+        guestId: updatedGuest.guestId,
+        visitCount: updatedGuest.visitCount,
+        lastVisit: updatedGuest.lastVisit,
+        ip: updatedGuest.ip,
+        userAgent: updatedGuest.userAgent,
+        location: req.headers["cf-ipcountry"] || null,
+      },
     });
   } catch (error) {
     next(
