@@ -31,6 +31,12 @@ const CreatePost = () => {
 
   useEffect(() => {
     // console.log("[CreatePost] Fetching categories");
+    const savedPostType = localStorage.getItem("postType");
+    if (savedPostType) {
+      dispatch(setPostType(savedPostType));
+      setShowPostTypeModal(false);
+      setShowCategoryModal(true);
+    }
     dispatch(fetchCategories()).catch((e) => {
       console.error("[CreatePost] Fetch categories error:", e);
       toast.error("Failed to load categories.");
@@ -72,7 +78,8 @@ const CreatePost = () => {
     // });
     if (!title.trim()) return toast.error("Please enter a title");
     if (!blocks.length) return toast.error("Please add content blocks");
-    if (!postType) return toast.error("Please select a post type");
+    if (!postType && !localStorage.getItem("postType"))
+      return toast.error("Please select a post type");
     if (!selectedCategoryId) return toast.error("Please select a category");
     if (!metaData.tags?.length)
       return toast.error("Please provide at least one tag");
@@ -111,6 +118,7 @@ const CreatePost = () => {
       setTitle("");
       setBlocks([]);
       dispatch(resetPostMeta());
+      localStorage.removeItem("postType");
       navigate(`/post/${resultAction.post.slug}`);
     } catch (err) {
       console.error("[CreatePost] Post creation failed:", err);
@@ -153,6 +161,7 @@ const CreatePost = () => {
             setPostType={(value) => {
               // console.log("[CreatePost] Setting post type:", value);
               dispatch(setPostType(value));
+              localStorage.setItem("postType", value);
             }}
             onContinue={() => {
               // console.log("[CreatePost] PostTypeSelector continue");
@@ -161,6 +170,7 @@ const CreatePost = () => {
             }}
             onClose={() => {
               // console.log("[CreatePost] PostTypeSelector close");
+              localStorage.removeItem("postType");
               navigate("/");
             }}
           />
@@ -177,6 +187,7 @@ const CreatePost = () => {
             onContinue={handleCategoryContinue}
             onClose={() => {
               // console.log("[CreatePost] CategorySelector close");
+              localStorage.removeItem("postType");
               navigate("/");
             }}
           />
@@ -188,6 +199,7 @@ const CreatePost = () => {
             <button
               onClick={() => {
                 // console.log("[CreatePost] Cancel button clicked");
+                localStorage.removeItem("postType");
                 navigate("/");
               }}
               className="font-bold text-red-600 dark:text-red-400 border border-red-500 dark:border-red-400 px-4 py-1.5 rounded-full shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"

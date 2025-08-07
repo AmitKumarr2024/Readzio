@@ -20,7 +20,11 @@ const PostTypeSelector = ({ onContinue, onClose }) => {
       toast.error("Invalid post type selected");
       return;
     }
+
     setHasSelected(true);
+
+    // ✅ Always update Redux state
+    dispatch(setPostType(type));
 
     if (currentPost?.slug) {
       dispatch(
@@ -36,10 +40,9 @@ const PostTypeSelector = ({ onContinue, onClose }) => {
         })
         .catch((error) => {
           toast.error(`Failed to update post type: ${error.message}`);
-          setHasSelected(false); // Allow retry on failure
+          setHasSelected(false); // Allow retry
         });
     } else {
-      dispatch(setPostType(type));
       toast.success(`Post type set to ${type}`);
       onContinue();
     }
