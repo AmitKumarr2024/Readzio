@@ -349,17 +349,27 @@ export const fetchAllUserLocations = createAsyncThunk(
 
 export const saveUserLocation = createAsyncThunk(
   "user/saveUserLocation",
-  async ({ latitude, longitude, city, country }, { rejectWithValue }) => {
-    console.log("[UserSlice] saveUserLocation: Starting request", {
-      latitude,
-      longitude,
-      city,
-      country,
-    });
+  async (_, { rejectWithValue }) => {
+    console.log("[UserSlice] saveUserLocation: Starting request");
     try {
+      // Fetch IP-based location first
+      const ipResponse = await axiosInstance.get("/user/ip-location", {
+        withCredentials: true,
+      });
+      const { location } = ipResponse.data;
+      if (!location || !location.latitude || !location.longitude) {
+        throw new Error("Invalid location data from IP");
+      }
+
       const response = await axiosInstance.post(
         "/user/save-location",
-        { coordinates: { lat: latitude, lon: longitude }, city, country },
+        {
+          coordinates: { lat: location.latitude, lon: location.longitude },
+          city: location.city,
+          country: location.country,
+          state: location.state,
+          pincode: location.pincode,
+        },
         { withCredentials: true }
       );
       console.log(
@@ -375,7 +385,6 @@ export const saveUserLocation = createAsyncThunk(
     }
   }
 );
-
 export const searchUsers = createAsyncThunk(
   "user/searchUsers",
   async (query, { rejectWithValue }) => {
@@ -428,9 +437,17 @@ export const getUserIPLocation = createAsyncThunk(
 // Tracks IP-based location (POST /user/track-ip-location)
 export const trackUserIPLocation = createAsyncThunk(
   "user/trackUserIPLocation",
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, getState }) => {
     console.log("[UserSlice] trackUserIPLocation: Sending request");
     try {
+      const state = getState();
+      if (state.user.ipLocation.tracked) {
+        console.log(
+          "[UserSlice] trackUserIPLocation: Already tracked, skipping"
+        );
+        return state.user.ipLocation.data;
+      }
+
       const res = await axiosInstance.post(
         "/user/track-ip-location",
         {},
@@ -989,28 +1006,33 @@ const userSlice = createSlice({
           "[UserSlice] trackUserIPLocation.fulfilled: Payload",
           payload
         );
-
         state.ipLocation.tracked = true;
-
         if (payload) {
           const location = {
-            userId: payload.userId,
-            coordinates: payload.coordinates,
-            city: payload.city,
-            country: payload.country,
-            state: payload.state,
-            pincode: payload.pincode,
-            timestamp: payload.timestamp,
+            userId: state.userId || payload.userId,
+            coordinates: {
+              lat: payload.latitude || 0,
+              lon: payload.longitude || 0,
+            },
+            city: payload.city || "Unknown",
+            country: payload.country || "Unknown",
+            state: payload.state || "Unknown",
+            pincode: payload.pincode || "Unknown",
+            timestamp: payload.timestamp || Date.now(),
           };
-
           console.log(
             "[UserSlice] trackUserIPLocation.fulfilled: Saving location",
             location
           );
-
           state.userLocations.list = [
             location,
             ...state.userLocations.list.filter(
+              (loc) => loc.userId !== location.userId
+            ),
+          ];
+          state.followerLocations.list = [
+            location,
+            ...state.followerLocations.list.filter(
               (loc) => loc.userId !== location.userId
             ),
           ];
