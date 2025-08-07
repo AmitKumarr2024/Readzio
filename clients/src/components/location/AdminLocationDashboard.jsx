@@ -9,10 +9,10 @@ import {
   useMap,
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
-import {
-  fetchAllUserLocations,
-  fetchIndiaGeoJson,
-} from "../../store/userSlice";
+// import {
+//   fetchAllUserLocations,
+//   fetchIndiaGeoJson,
+// } from "../../store/userSlice";
 import { selectSocketState } from "../../store/socketSlice";
 import Pagination from "../../Utils/Pagination";
 import L from "leaflet";
@@ -205,24 +205,24 @@ const AdminLocationDashboard = () => {
 
   const isLoading = userLocations.loading || geoJson.loading;
 
-  useEffect(() => {
-    if (userId && !geoJson.loading && !geoJson.data) {
-      dispatch(fetchIndiaGeoJson());
-    }
-  }, [dispatch, userId, geoJson.data, geoJson.loading]);
+  // useEffect(() => {
+  //   if (userId && !geoJson.loading && !geoJson.data) {
+  //     dispatch(fetchIndiaGeoJson());
+  //   }
+  // }, [dispatch, userId, geoJson.data, geoJson.loading]);
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      dispatch(
-        fetchAllUserLocations({
-          page: currentPage,
-          limit: pageSize,
-          includeOffline: true,
-        })
-      );
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [dispatch, currentPage, pageSize]);
+  // useEffect(() => {
+  //   const handler = setTimeout(() => {
+  //     dispatch(
+  //       fetchAllUserLocations({
+  //         page: currentPage,
+  //         limit: pageSize,
+  //         includeOffline: true,
+  //       })
+  //     );
+  //   }, 300);
+  //   return () => clearTimeout(handler);
+  // }, [dispatch, currentPage, pageSize]);
 
   useEffect(() => {
     if (!socket) return;

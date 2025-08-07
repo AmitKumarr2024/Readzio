@@ -2,7 +2,7 @@ import axios from "axios";
 import { AppError } from "../../servers/Utils/AppError.js";
 
 // Hosted on Firebase (public)
-const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
+// const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
 
 // Controller: Serve GeoJSON without memory caching
 export const getIndiaBoundaryOnly = async (req, res, next) => {

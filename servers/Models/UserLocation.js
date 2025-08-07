@@ -3,7 +3,7 @@ import axios from "axios";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { point } from "@turf/helpers";
 
-const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
+// const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
 
 let indiaGeoJSON = null;
 
