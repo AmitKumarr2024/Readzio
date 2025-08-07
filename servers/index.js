@@ -29,7 +29,7 @@ import EarningRoutes from "./Routes/earningRoutes.js";
 import AchievementRoutes from "./Routes/AchievementRoutes.js";
 import CommentsRoutes from "./Routes/commentRoutes.js";
 import AdminRoutes from "./Routes/adminRoutes.js";
-import GeojsonRoutes from "./Routes/geojsonRoutes.js";
+// import GeojsonRoutes from "./Routes/geojsonRoutes.js";
 import PostEmailRoutes from "./Routes/postEmailRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
@@ -113,7 +113,7 @@ const routes = [
   ["/api/achievement", AchievementRoutes],
   ["/api/comment", CommentsRoutes],
   ["/api/admin", AdminRoutes],
-  ["/api/geojson", GeojsonRoutes],
+  // ["/api/geojson", GeojsonRoutes],
   ["/api/dailyMail", PostEmailRoutes],
   ["/api/bannerNotification", BannerNotificationRoutes],
   ["/api/public", guestRoutes],
