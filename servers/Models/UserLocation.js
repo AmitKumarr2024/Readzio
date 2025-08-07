@@ -1,14 +1,15 @@
-// Temporarily disabled GeoJSON fetch from Firebase
+// GeoJSON from Firebase temporarily disabled to reduce memory usage
 import mongoose from "mongoose";
-import axios from "axios";
-import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
-import { point } from "@turf/helpers";
+// import axios from "axios";
+// import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+// import { point } from "@turf/helpers";
 
 // const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
 
-// let indiaGeoJSON = null;
+// 🛑 Prevent ReferenceError by declaring indiaGeoJSON, even if unused now
+let indiaGeoJSON = null;
 
-// // Load GeoJSON from Firebase once at startup
+// // 🔄 Load India GeoJSON once at startup (disabled for low-memory environments)
 // (async () => {
 //   try {
 //     const response = await axios.get(INDIA_GEOJSON_URL);
@@ -19,7 +20,7 @@ import { point } from "@turf/helpers";
 //   }
 // })();
 
-// Defines schema for user location data
+// 📍 Defines schema for user location data
 const userLocationSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -46,21 +47,20 @@ const userLocationSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
 });
 
-// Creates geospatial index
+// 🗺️ Create geospatial index
 userLocationSchema.index({ coordinates: "2dsphere" });
 
-// Resolves GeoJSON data
+// 🌐 Resolve location using GeoJSON — currently disabled
 userLocationSchema.statics.resolveGeoLocation = function (longitude, latitude) {
   if (!indiaGeoJSON || !indiaGeoJSON.features) {
     return { country: "Unknown", state: "Unknown", pincode: "Unknown" };
   }
 
+  // Uncomment below if re-enabling GeoJSON logic:
+  /*
   const userPoint = point([longitude, latitude]);
   for (const feature of indiaGeoJSON.features) {
-    if (
-      feature.geometry &&
-      booleanPointInPolygon(userPoint, feature.geometry)
-    ) {
+    if (feature.geometry && booleanPointInPolygon(userPoint, feature.geometry)) {
       const props = feature.properties || {};
       return {
         country: props.Country || "India",
@@ -69,11 +69,12 @@ userLocationSchema.statics.resolveGeoLocation = function (longitude, latitude) {
       };
     }
   }
+  */
 
   return { country: "Unknown", state: "Unknown", pincode: "Unknown" };
 };
 
-// Pre-save hook
+// ✅ Pre-save hook to enrich location (fallback to "Unknown")
 userLocationSchema.pre("save", function (next) {
   if (this.coordinates?.coordinates) {
     const [lon, lat] = this.coordinates.coordinates;
@@ -95,6 +96,6 @@ userLocationSchema.pre("save", function (next) {
   next();
 });
 
-// Export model
+// 📦 Export model
 export default mongoose.models.UserLocation ||
   mongoose.model("UserLocation", userLocationSchema);
