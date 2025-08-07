@@ -15,7 +15,7 @@ import {
   verifyResetOtp,
   resetAccountVerification,
 } from "../Controllers/authController.js";
-import { geoLocationMiddleware } from "../Middlewares/geoLocationMiddleware.js";
+import geoLocationMiddleware from "../Middlewares/geoLocationMiddleware.js";
 
 const routes = express.Router();
 
