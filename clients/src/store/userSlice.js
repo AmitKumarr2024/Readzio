@@ -350,22 +350,22 @@ export const fetchAllUserLocations = createAsyncThunk(
 export const saveUserLocation = createAsyncThunk(
   "user/saveUserLocation",
   async ({ latitude, longitude, city, country }, { rejectWithValue }) => {
-    // console.log("[UserSlice] saveUserLocation: Starting request", {
-    //   latitude,
-    //   longitude,
-    //   city,
-    //   country,
-    // });
+    console.log("[UserSlice] saveUserLocation: Starting request", {
+      latitude,
+      longitude,
+      city,
+      country,
+    });
     try {
       const response = await axiosInstance.post(
         "/user/save-location",
         { coordinates: { lat: latitude, lon: longitude }, city, country },
         { withCredentials: true }
       );
-      // console.log(
-      //   "[UserSlice] saveUserLocation: Response received",
-      //   response.data
-      // );
+      console.log(
+        "[UserSlice] saveUserLocation: Response received",
+        response.data
+      );
       return response.data;
     } catch (err) {
       console.error("[UserSlice] saveUserLocation: Error", err.message);
