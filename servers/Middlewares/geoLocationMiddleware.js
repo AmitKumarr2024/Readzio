@@ -1,84 +1,53 @@
-// middlewares/geoLocationMiddleware.js
 import axios from "axios";
 
 const geoLocationMiddleware = async (req, res, next) => {
   try {
-    let ip =
+    const ip =
       req.headers["x-forwarded-for"]?.split(",")[0] ||
+      req.connection?.remoteAddress ||
       req.socket?.remoteAddress ||
-      req.ip;
+      req.ip ||
+      "0.0.0.0";
 
-    if (ip?.startsWith("::ffff:")) ip = ip.slice(7); // clean IPv4 format
+    const geoAPI = `http://ip-api.com/json/${ip}?fields=status,message,country,regionName,city,zip,lat,lon,query`;
 
-    console.log(`[GeoLocationMiddleware] Detected IP: ${ip}`);
+    const response = await axios.get(geoAPI);
+    const data = response.data;
 
-    let geoRes = await axios.get(
-      `http://ip-api.com/json/${ip}?fields=lat,lon,query,status`
-    );
-    const { lat, lon, status } = geoRes.data;
-
-    if (status !== "success") {
-      console.warn(`[GeoLocationMiddleware] IP lookup failed for ${ip}`);
+    if (data.status === "success") {
+      req.geoLocation = {
+        ip: data.query || ip,
+        country: data.country || "Unknown",
+        state: data.regionName || "Unknown",
+        city: data.city || "Unknown",
+        pincode: data.zip || "Unknown",
+        latitude: data.lat,
+        longitude: data.lon,
+      };
+    } else {
       req.geoLocation = {
         ip,
-        lat: null,
-        lon: null,
-        city: "Unknown",
-        state: "Unknown",
         country: "Unknown",
+        state: "Unknown",
+        city: "Unknown",
         pincode: "Unknown",
+        latitude: null,
+        longitude: null,
       };
-      return next();
     }
 
-    // Reverse geocoding with OpenStreetMap
-    let reverseRes = await axios.get(
-      "https://nominatim.openstreetmap.org/reverse",
-      {
-        params: {
-          lat,
-          lon,
-          format: "json",
-          zoom: 10,
-          addressdetails: 1,
-        },
-        headers: {
-          "User-Agent": "GeoApp",
-        },
-      }
-    );
-
-    const address = reverseRes.data.address || {};
-    const city = address.city || address.town || address.village || "Unknown";
-    const state = address.state || "Unknown";
-    const country = address.country || "Unknown";
-    const pincode = address.postcode || "Unknown";
-
-    req.geoLocation = {
-      ip,
-      lat,
-      lon,
-      city,
-      state,
-      country,
-      pincode,
-    };
-
-    console.log(
-      "[GeoLocationMiddleware] Final location data:",
-      req.geoLocation
-    );
+    console.log("[geoLocationMiddleware] Resolved:", req.geoLocation);
     next();
   } catch (error) {
-    console.error("[GeoLocationMiddleware] Error:", error.message);
+    console.error("[geoLocationMiddleware] Failed:", error.message);
     req.geoLocation = {
-      ip: req.ip || "Unknown",
-      lat: null,
-      lon: null,
-      city: "Unknown",
-      state: "Unknown",
+      ip: "0.0.0.0",
       country: "Unknown",
+      state: "Unknown",
+      city: "Unknown",
       pincode: "Unknown",
+      latitude: null,
+      longitude: null,
     };
     next();
   }

@@ -4,9 +4,9 @@ import UserModel from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import { uploadToCloudinary } from "../../servers/Utils/uploadToCloudinary.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
-import ActivityModel from "../Models/ActivityModel.js";
-import { io } from "../sockets/socket.js";
-import UserLocation from "../Models/UserLocation.js";
+import ActivityModel from "../../servers/Models/ActivityModel.js";
+import { io } from "../../servers/sockets/socket.js";
+import UserLocation from "../../servers/Models/UserLocation.js";
 
 // GET /api/user/ip-location
 export const getIPLocation = async (req, res, next) => {
@@ -43,35 +43,34 @@ export const getIPLocation = async (req, res, next) => {
 // POST /api/user/track-ip-location
 export const trackIPLocation = async (req, res, next) => {
   try {
-    if (!req?.geoLocation || !req?.geoLocation?.userId) {
-      throw new AppError(
-        "No authenticated user for tracking IP location",
-        400,
-        "TrackIPLocation",
-        "Missing geoLocation userId"
-      );
+    const { user } = req;
+    const location = req.geoLocation;
+
+    if (!user || !user._id) {
+      return res.status(401).json({ message: "User not authenticated" });
     }
 
-    console.log("[trackIPLocation] Saving IP-based location:", req.geoLocation);
+    const locationData = {
+      userId: new mongoose.Types.ObjectId(user._id),
+      coordinates: {
+        type: "Point",
+        coordinates: [location.longitude, location.latitude],
+      },
+      city: location.city || "Unknown",
+      country: location.country || "Unknown",
+      state: location.state || "Unknown",
+      pincode: location.pincode || "Unknown",
+      ip: location.ip,
+      timestamp: new Date(),
+    };
 
-    const savedLocation = await UserLocation.create(req.geoLocation);
+    await UserLocationModel.create(locationData);
+    console.log("[saveUserLocation] Final locationData:", locationData);
 
-    res.status(200).json({
-      success: true,
-      message: "IP location tracked successfully",
-      location: savedLocation,
-    });
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to track IP location",
-            500,
-            "TrackIPLocation",
-            "Unhandled error in trackIPLocation"
-          )
-    );
+    return res.status(200).json({ message: "Location tracked successfully" });
+  } catch (err) {
+    console.error("[trackIPLocation] Error:", err);
+    next(err);
   }
 };
 
