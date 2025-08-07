@@ -64,7 +64,7 @@ export const trackIPLocation = async (req, res, next) => {
       timestamp: new Date(),
     };
 
-    await UserLocationModel.create(locationData);
+    await UserLocation.create(locationData);
     console.log("[saveUserLocation] Final locationData:", locationData);
 
     return res.status(200).json({ message: "Location tracked successfully" });
