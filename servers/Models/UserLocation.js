@@ -1,25 +1,23 @@
-import mongoose from "mongoose";
-import axios from "axios";
-import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
-import { point } from "@turf/helpers";
+// Temporarily disabled GeoJSON fetch from Firebase
+// import mongoose from "mongoose";
+// import axios from "axios";
+// import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+// import { point } from "@turf/helpers";
 
 // const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
 
-let indiaGeoJSON = null;
+// let indiaGeoJSON = null;
 
-// Load GeoJSON from Firebase once at startup
-(async () => {
-  try {
-    const response = await axios.get(INDIA_GEOJSON_URL);
-    indiaGeoJSON = response.data;
-    console.log("✅ India GeoJSON loaded from Firebase.");
-  } catch (error) {
-    console.error(
-      "❌ Failed to fetch India GeoJSON from Firebase:",
-      error.message
-    );
-  }
-})();
+// // Load GeoJSON from Firebase once at startup
+// (async () => {
+//   try {
+//     const response = await axios.get(INDIA_GEOJSON_URL);
+//     indiaGeoJSON = response.data;
+//     console.log("✅ India GeoJSON loaded from Firebase.");
+//   } catch (error) {
+//     console.error("❌ Failed to fetch India GeoJSON from Firebase:", error.message);
+//   }
+// })();
 
 // Defines schema for user location data
 const userLocationSchema = new mongoose.Schema({
