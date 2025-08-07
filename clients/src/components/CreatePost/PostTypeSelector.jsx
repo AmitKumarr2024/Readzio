@@ -10,21 +10,23 @@ import { updatePost } from "../../store/postSlice";
 const PostTypeSelector = ({ onContinue, onClose }) => {
   const navigate = useNavigate();
   const [hasSelected, setHasSelected] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const dispatch = useDispatch();
   const { postType } = useSelector((state) => state.postMeta);
   const { currentPost } = useSelector((state) => state.post);
 
   const handleSelect = (type) => {
-    if (hasSelected) return;
+    if (hasSelected || isLoading) return;
     if (!["Article", "Blog"].includes(type)) {
       toast.error("Invalid post type selected");
       return;
     }
 
+    setIsLoading(true);
     setHasSelected(true);
 
-    // ✅ Always update Redux state
     dispatch(setPostType(type));
+    localStorage.setItem("postType", type);
 
     if (currentPost?.slug) {
       dispatch(
@@ -36,19 +38,25 @@ const PostTypeSelector = ({ onContinue, onClose }) => {
         .unwrap()
         .then(() => {
           toast.success(`Post type updated to ${type}`);
+          setIsLoading(false);
           onContinue();
         })
         .catch((error) => {
           toast.error(`Failed to update post type: ${error.message}`);
-          setHasSelected(false); // Allow retry
+          setIsLoading(false);
+          setHasSelected(false);
         });
     } else {
       toast.success(`Post type set to ${type}`);
-      onContinue();
+      setTimeout(() => {
+        setIsLoading(false);
+        onContinue();
+      }, 500);
     }
   };
 
   const handleClose = () => {
+    localStorage.removeItem("postType");
     navigate("/");
   };
 
@@ -74,25 +82,67 @@ const PostTypeSelector = ({ onContinue, onClose }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
           onClick={() => handleSelect("Article")}
+          disabled={isLoading}
           className={`flex items-center justify-center gap-3 py-4 px-6 ${
             postType === "Article"
               ? "bg-blue-500 text-white"
               : "bg-gray-100 dark:bg-gray-800 text-text-main-light dark:text-text-main-dark hover:bg-blue-100 dark:hover:bg-blue-900"
-          } rounded-xl shadow-md transition font-semibold text-base sm:text-lg`}
+          } rounded-xl shadow-md transition font-semibold text-base sm:text-lg ${
+            isLoading ? "opacity-50 cursor-not-allowed" : ""
+          }`}
         >
-          <BookOpenText size={24} />
+          {isLoading && postType === "Article" ? (
+            <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v8z"
+              />
+            </svg>
+          ) : (
+            <BookOpenText size={24} />
+          )}
           Article
         </button>
 
         <button
           onClick={() => handleSelect("Blog")}
+          disabled={isLoading}
           className={`flex items-center justify-center gap-3 py-4 px-6 ${
             postType === "Blog"
               ? "bg-green-500 text-white"
               : "bg-gray-100 dark:bg-gray-800 text-text-main-light dark:text-text-main-dark hover:bg-blue-100 dark:hover:bg-blue-900"
-          } rounded-xl shadow-md transition font-semibold text-base sm:text-lg`}
+          } rounded-xl shadow-md transition font-semibold text-base sm:text-lg ${
+            isLoading ? "opacity-50 cursor-not-allowed" : ""
+          }`}
         >
-          <PenLine size={24} />
+          {isLoading && postType === "Blog" ? (
+            <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v8z"
+              />
+            </svg>
+          ) : (
+            <PenLine size={24} />
+          )}
           Blog
         </button>
       </div>
