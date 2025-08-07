@@ -11,7 +11,7 @@ import UserLocation from "../../servers/Models/UserLocation.js";
 // GET /api/user/ip-location
 export const getIPLocation = async (req, res, next) => {
   try {
-    console.log("[Controller:getIPLocation] Location Data:", req.geoLocation);
+    // console.log("[Controller:getIPLocation] Location Data:", req.geoLocation);
     if (!req.geoLocation) {
       throw new AppError(
         "Geolocation not available",
@@ -65,7 +65,7 @@ export const trackIPLocation = async (req, res, next) => {
     };
 
     await UserLocation.create(locationData);
-    console.log("[saveUserLocation] Final locationData:", locationData);
+    // console.log("[saveUserLocation] Final locationData:", locationData);
 
     return res.status(200).json({ message: "Location tracked successfully" });
   } catch (err) {
@@ -77,7 +77,7 @@ export const trackIPLocation = async (req, res, next) => {
 // Saves user location with validation and emits updates
 export const saveUserLocation = async (req, res, next) => {
   try {
-    console.log("[geoLocation from middleware]", req.geoLocation);
+    // console.log("[geoLocation from middleware]", req.geoLocation);
     const { coordinates, city: bodyCity, country: bodyCountry } = req.body;
     const geo = req.geoLocation || {};
     const latitude = geo.latitude || coordinates?.lat;
@@ -116,7 +116,7 @@ export const saveUserLocation = async (req, res, next) => {
       timestamp: new Date(),
     };
 
-    console.log("[saveUserLocation] Saving location:", locationData);
+    // console.log("[saveUserLocation] Saving location:", locationData);
 
     await UserLocation.deleteMany({ userId: req.user._id });
     const location = await UserLocation.create(locationData);

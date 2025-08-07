@@ -128,7 +128,7 @@ routes.forEach(([path, router]) => {
 if (NODE_ENV !== "production") {
   try {
     const endpoints = listEndpoints(app);
-    console.log("📋 All registered routes:");
+    // console.log("📋 All registered routes:");
     endpoints.forEach((route) => {
       console.log(`${route.methods.join(", ")} ${route.path}`);
     });

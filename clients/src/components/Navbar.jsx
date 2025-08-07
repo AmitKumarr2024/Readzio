@@ -53,19 +53,20 @@ const Navbar = () => {
   const userName = useMemo(() => authUser?.name || "User", [authUser?.name]);
   const userId = useMemo(() => authUser?._id, [authUser?._id]);
 
-  console.log("UserLocation from SLice", userLocations);
+  // console.log("UserLocation from SLice", userLocations);
 
   const userLocation = useMemo(
     () => userLocations.list.find((loc) => loc.userId === authUser?._id),
     [userLocations.list, authUser?._id]
   );
 
-  console.log("[Navbar] Found userLocation:", userLocation);
-  console.log("[Navbar] All locations:", userLocations.list);
-  console.log("[Navbar] authUser._id:", authUser?._id);
+  // console.log("[Navbar] Found userLocation:", userLocation);
+  // console.log("[Navbar] All locations:", userLocations.list);
+  // console.log("[Navbar] authUser._id:", authUser?._id);
 
   const shouldHideCategory = useMemo(
     () =>
+      isAuthenticated &&
       [
         "/user",
         "/user-setting",
@@ -76,7 +77,7 @@ const Navbar = () => {
       ].some((route) =>
         matchPath({ path: route, end: false }, location.pathname)
       ),
-    [location.pathname]
+    [location.pathname, isAuthenticated]
   );
 
   const statusClass = useMemo(

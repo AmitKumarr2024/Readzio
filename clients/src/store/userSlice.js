@@ -350,7 +350,7 @@ export const fetchAllUserLocations = createAsyncThunk(
 export const saveUserLocation = createAsyncThunk(
   "user/saveUserLocation",
   async (_, { rejectWithValue }) => {
-    console.log("[UserSlice] saveUserLocation: Starting request");
+    // console.log("[UserSlice] saveUserLocation: Starting request");
     try {
       // Fetch IP-based location first
       const ipResponse = await axiosInstance.get("/user/ip-location", {
@@ -372,10 +372,10 @@ export const saveUserLocation = createAsyncThunk(
         },
         { withCredentials: true }
       );
-      console.log(
-        "[UserSlice] saveUserLocation: Response received",
-        response.data
-      );
+      // console.log(
+      //   "[UserSlice] saveUserLocation: Response received",
+      //   response.data
+      // );
       return response.data;
     } catch (err) {
       console.error("[UserSlice] saveUserLocation: Error", err.message);
@@ -438,13 +438,13 @@ export const getUserIPLocation = createAsyncThunk(
 export const trackUserIPLocation = createAsyncThunk(
   "user/trackUserIPLocation",
   async (_, { rejectWithValue, getState }) => {
-    console.log("[UserSlice] trackUserIPLocation: Sending request");
+    // console.log("[UserSlice] trackUserIPLocation: Sending request");
     try {
       const state = getState();
       if (state.user.ipLocation.tracked) {
-        console.log(
-          "[UserSlice] trackUserIPLocation: Already tracked, skipping"
-        );
+        // console.log(
+        //   "[UserSlice] trackUserIPLocation: Already tracked, skipping"
+        // );
         return state.user.ipLocation.data;
       }
 
@@ -453,7 +453,7 @@ export const trackUserIPLocation = createAsyncThunk(
         {},
         { withCredentials: true }
       );
-      console.log("[UserSlice] trackUserIPLocation: Response", res.data);
+      // console.log("[UserSlice] trackUserIPLocation: Response", res.data);
       return res.data.location;
     } catch (err) {
       console.error("[UserSlice] trackUserIPLocation: Error", err);
@@ -1002,10 +1002,10 @@ const userSlice = createSlice({
         state.ipLocation.tracked = false;
       })
       .addCase(trackUserIPLocation.fulfilled, (state, { payload }) => {
-        console.log(
-          "[UserSlice] trackUserIPLocation.fulfilled: Payload",
-          payload
-        );
+        // console.log(
+        //   "[UserSlice] trackUserIPLocation.fulfilled: Payload",
+        //   payload
+        // );
         state.ipLocation.tracked = true;
         if (payload) {
           const location = {
@@ -1020,10 +1020,10 @@ const userSlice = createSlice({
             pincode: payload.pincode || "Unknown",
             timestamp: payload.timestamp || Date.now(),
           };
-          console.log(
-            "[UserSlice] trackUserIPLocation.fulfilled: Saving location",
-            location
-          );
+          // console.log(
+          //   "[UserSlice] trackUserIPLocation.fulfilled: Saving location",
+          //   location
+          // );
           state.userLocations.list = [
             location,
             ...state.userLocations.list.filter(
