@@ -128,7 +128,7 @@ const SearchInput = ({ className = "", onClose, ...props }) => {
       </div>
 
       {showDropdown && (
-        <div className="absolute z-50 mt-2 w-5xl max-w-[90vw] sm:max-w-md -right-5 sm:-right-4 md:right-0 max-h-80 overflow-y-auto bg-background-light dark:bg-background-dark border border-indigo-200 dark:border-indigo-700 rounded-xl shadow-lg transition-all duration-200 ease-in-out">
+        <div className="absolute z-50 mt-2 w-full max-w-[190vw] sm:max-w-md -right-5 sm:right-0 md:right-0 max-h-80 overflow-y-auto bg-background-light dark:bg-background-dark border border-indigo-200 dark:border-indigo-700 rounded-xl shadow-lg transition-all duration-200 ease-in-out">
           {searchLoading || userLoading ? (
             <div className="p-4 text-center text-indigo-500 dark:text-indigo-300 animate-pulse text-base sm:text-lg">
               Loading...
