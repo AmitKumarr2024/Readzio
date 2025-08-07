@@ -21,9 +21,9 @@ const SuggestedPosts = () => {
     if (status === "idle" && !hasFetched.current) {
       hasFetched.current = true;
       if (process.env.NODE_ENV === "production") {
-        // console.log("[SuggestedPosts] Fetching suggested posts, limit: 6");
+        // console.log("[SuggestedPosts] Fetching suggested posts, limit: 30");
       }
-      dispatch(fetchSuggestedPosts({ limit: 6 }));
+      dispatch(fetchSuggestedPosts({ limit: 30 }));
     }
   }, [dispatch, status]);
 
@@ -36,9 +36,10 @@ const SuggestedPosts = () => {
     }
   }, [status, error]);
 
-  const displayedPosts = posts.slice(0, 6);
-  const adPositions = displayedPosts.length >= 4 ? [2, 4] : []; // Ads after 2nd and 4th posts
-  const multiplexAdPositions = displayedPosts.length >= 6 ? [6] : []; // Multiplex ad after last post
+  const displayedPosts = posts.slice(0, 30);
+  const adPositions =
+    displayedPosts.length >= 4 ? [2, 4, 8, 12, 16, 20, 24, 28] : [];
+  const multiplexAdPositions = displayedPosts.length >= 30 ? [30] : [];
   const fallbackImage = "https://placehold.co/600x400?text=No+Image";
 
   return (
@@ -49,7 +50,7 @@ const SuggestedPosts = () => {
 
       {status === "loading" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-full mx-auto">
-          {[...Array(6)].map((_, i) => (
+          {[...Array(30)].map((_, i) => (
             <div
               key={i}
               className="bg-white dark:bg-gray-800 rounded-md shadow-md overflow-hidden"
