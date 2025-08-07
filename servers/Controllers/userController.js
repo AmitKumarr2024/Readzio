@@ -11,6 +11,7 @@ import UserLocation from "../Models/UserLocation.js";
 // GET /api/user/ip-location
 export const getIPLocation = async (req, res, next) => {
   try {
+    console.log("[Controller:getIPLocation] Location Data:", req.geoLocation);
     if (!req.geoLocation) {
       throw new AppError(
         "Geolocation not available",
@@ -39,6 +40,7 @@ export const getIPLocation = async (req, res, next) => {
 };
 
 // POST /api/user/track-ip-location
+// POST /api/user/track-ip-location
 export const trackIPLocation = async (req, res, next) => {
   try {
     if (!req?.geoLocation || !req?.geoLocation?.userId) {
@@ -50,10 +52,15 @@ export const trackIPLocation = async (req, res, next) => {
       );
     }
 
+    console.log("[trackIPLocation] Saving IP-based location:", req.geoLocation);
+
     const savedLocation = await UserLocation.create(req.geoLocation);
 
-    // ✅ Return the saved location
-    res.status(200).json({ location: savedLocation });
+    res.status(200).json({
+      success: true,
+      message: "IP location tracked successfully",
+      location: savedLocation,
+    });
   } catch (error) {
     next(
       error instanceof AppError
@@ -62,18 +69,16 @@ export const trackIPLocation = async (req, res, next) => {
             error.message || "Failed to track IP location",
             500,
             "TrackIPLocation",
-            "Error in trackIPLocation"
+            "Unhandled error in trackIPLocation"
           )
     );
   }
 };
 
-
-
 // Saves user location with validation and emits updates
 export const saveUserLocation = async (req, res, next) => {
   try {
-      // ✅ This is the right place for the log
+    // ✅ This is the right place for the log
     console.log("[geoLocation from middleware]", req.geoLocation);
     const { coordinates, city: bodyCity, country: bodyCountry } = req.body;
     const latitude = coordinates?.lat;
