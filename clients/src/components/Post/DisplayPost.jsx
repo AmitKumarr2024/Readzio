@@ -1,11 +1,4 @@
-import React, {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  lazy,
-  Suspense,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 import { useDispatch, useSelector } from "react-redux";
@@ -27,16 +20,15 @@ import PostMetaSection from "../Post/DisplayPost/PostMetaSection";
 import BlockContentRenderer from "../Post/DisplayPost/BlockContentRenderer";
 import EngagementButtons from "../Post/DisplayPost/EngagementButtons";
 import SubscriptionBanner from "../Post/DisplayPost/SubscriptionBanner";
+import SuggestedPosts from "./SuggestedPosts";
+import AuthorSidebar from "../Post/DisplayPost/AuthorSidebar";
+import UserModal from "../Post/DisplayPost/UserModal";
+import CommentBox from "./CommentBox";
+import DeleteModal from "./DeleteModal";
+import MultiplexAd from "../../Ads/MultiplexAd";
+import DisplayAd from "../../Ads/DisplayAd";
 import { toast } from "react-hot-toast";
 import { selectPostViews } from "../../Utils/postSelectors";
-
-const SuggestedPosts = lazy(() => import("./SuggestedPosts"));
-const AuthorSidebar = lazy(() => import("../Post/DisplayPost/AuthorSidebar"));
-const UserModal = lazy(() => import("../Post/DisplayPost/UserModal"));
-const CommentBox = lazy(() => import("./CommentBox"));
-const DeleteModal = lazy(() => import("./DeleteModal"));
-const MultiplexAd = lazy(() => import("../../Ads/MultiplexAd"));
-const DisplayAd = lazy(() => import("../../Ads/DisplayAd"));
 
 const DisplayPost = () => {
   const { slug } = useParams();
@@ -78,6 +70,12 @@ const DisplayPost = () => {
   const activePost = isAuthenticated ? post : guestPost;
   const activeLoading = isAuthenticated ? loading : guestLoading;
   const activeError = isAuthenticated ? error : guestError;
+
+  // Debug logging
+  useEffect(() => {
+    console.log("Current slug:", slug);
+    console.log("Active post:", activePost);
+  }, [slug, activePost]);
 
   const categoryMap = useMemo(() => {
     return categories.reduce((map, cat) => {
@@ -375,18 +373,12 @@ const DisplayPost = () => {
               userId === activePost.author?._id ? activePost.author : null
             }
           />
-          <Suspense fallback={<Skeleton height="h-24" width="w-full" />}>
-            <SubscriptionBanner showSeeMore={showSeeMore} post={activePost} />
-          </Suspense>
-          <Suspense fallback={<Skeleton height="h-24" width="w-full" />}>
-            <EngagementButtons post={activePost} />
-          </Suspense>
-          <Suspense fallback={<Skeleton height="h-24" width="w-full" />}>
-            <CommentBox
-              postId={activePost._id}
-              postAuthorId={activePost.author._id}
-            />
-          </Suspense>
+          <SubscriptionBanner showSeeMore={showSeeMore} post={activePost} />
+          <EngagementButtons post={activePost} />
+          <CommentBox
+            postId={activePost._id}
+            postAuthorId={activePost.author._id}
+          />
         </article>
       </>
     );
@@ -400,32 +392,20 @@ const DisplayPost = () => {
             <div className="lg:grid lg:grid-cols-3 lg:gap-8">
               <div className="lg:col-span-2 space-y-6">
                 {renderPostContent()}
-                <Suspense fallback={<Skeleton height="h-48" width="w-full" />}>
-                  <MultiplexAd postId={activePost?._id} testMode={false} />
-                </Suspense>
+                <MultiplexAd postId={activePost?._id} testMode={false} />
               </div>
               <div className="hidden lg:block lg:col-span-1 space-y-6">
                 <div className="sticky top-6 space-y-6">
                   <div className="author-wrapper transition-all duration-300">
-                    <Suspense
-                      fallback={<Skeleton height="h-48" width="w-full" />}
-                    >
-                      <AuthorSidebar
-                        authorId={activePost?.author?._id || null}
-                        isLoading={
-                          activeLoading ||
-                          subscriptionLoading ||
-                          !fetchAttempted
-                        }
-                        className="h-full rounded-md bg-white dark:bg-gray-800 shadow-md p-6"
-                      />
-                    </Suspense>
+                    <AuthorSidebar
+                      authorId={activePost?.author?._id || null}
+                      isLoading={
+                        activeLoading || subscriptionLoading || !fetchAttempted
+                      }
+                      className="h-full rounded-md bg-white dark:bg-gray-800 shadow-md p-6"
+                    />
                     <div className="ad-wrapper sticky top-36">
-                      <Suspense
-                        fallback={<Skeleton height="h-24" width="w-full" />}
-                      >
-                        <DisplayAd postId={activePost?._id} testMode={false} />
-                      </Suspense>
+                      <DisplayAd postId={activePost?._id} testMode={false} />
                     </div>
                   </div>
                 </div>
@@ -435,32 +415,26 @@ const DisplayPost = () => {
 
           <div className="w-full min-h-screen bg-gray-100 dark:bg-gray-800 py-16">
             <ErrorBoundary>
-              <Suspense fallback={<Skeleton height="h-32" width="w-full" />}>
-                <SuggestedPosts
-                  postId={activePost?._id}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-full"
-                />
-              </Suspense>
+              <SuggestedPosts
+                postId={activePost?._id}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-full"
+              />
             </ErrorBoundary>
           </div>
 
-          <Suspense fallback={null}>
-            <UserModal
-              isOpen={isUserModalOpen}
-              onClose={() => setIsUserModalOpen(false)}
-              authorId={activePost?.author?._id || null}
-            />
-          </Suspense>
+          <UserModal
+            isOpen={isUserModalOpen}
+            onClose={() => setIsUserModalOpen(false)}
+            authorId={activePost?.author?._id || null}
+          />
 
           {isAuthor && (
-            <Suspense fallback={null}>
-              <DeleteModal
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                postId={activePost?._id}
-                slug={activePost?.slug}
-              />
-            </Suspense>
+            <DeleteModal
+              isOpen={isDeleteModalOpen}
+              onClose={() => setIsDeleteModalOpen(false)}
+              postId={activePost?._id}
+              slug={activePost?.slug}
+            />
           )}
 
           <button
