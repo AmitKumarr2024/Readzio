@@ -1,8 +1,8 @@
 // Temporarily disabled GeoJSON fetch from Firebase
-// import mongoose from "mongoose";
-// import axios from "axios";
-// import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
-// import { point } from "@turf/helpers";
+import mongoose from "mongoose";
+import axios from "axios";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import { point } from "@turf/helpers";
 
 // const INDIA_GEOJSON_URL = "https://demoapp-f7d71.web.app/india-accurate.json";
 
