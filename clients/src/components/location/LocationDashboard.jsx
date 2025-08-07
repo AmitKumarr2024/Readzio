@@ -11,7 +11,7 @@ import {
 import MarkerClusterGroup from "react-leaflet-cluster";
 import {
   fetchFollowerLocations,
-  // fetchIndiaGeoJson,
+  fetchIndiaGeoJson,
   getUser,
 } from "../../store/userSlice";
 import { fetchUserEngagementStats } from "../../store/analyticsSlice";
@@ -208,11 +208,11 @@ const LocationDashboard = () => {
     }
   }, [dispatch, user, userId, userLoading]);
 
-  // useEffect(() => {
-  //   if (userId && !geoJson.loading && !geoJson.data) {
-  //     dispatch(fetchIndiaGeoJson());
-  //   }
-  // }, [dispatch, userId, geoJson.data, geoJson.loading]);
+  useEffect(() => {
+    if (userId && !geoJson.loading && !geoJson.data) {
+      dispatch(fetchIndiaGeoJson());
+    }
+  }, [dispatch, userId, geoJson.data, geoJson.loading]);
 
   useEffect(() => {
     if (userId) {

@@ -53,6 +53,8 @@ const Navbar = () => {
   const userName = useMemo(() => authUser?.name || "User", [authUser?.name]);
   const userId = useMemo(() => authUser?._id, [authUser?._id]);
 
+  console.log("UserLocation from SLice", userLocations);
+
   const userLocation = useMemo(
     () => userLocations.list.find((loc) => loc.userId === authUser?._id),
     [userLocations.list, authUser?._id]

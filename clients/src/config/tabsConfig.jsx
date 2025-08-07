@@ -32,6 +32,6 @@ export const tabsConfig = [
   { id: "categories", label: "Categories", icon: <Folder />, roles: ["author"] },
   { id: "BlocksUser", label: "Blocked Users", icon: <User />, roles: ["author"] },
   { id: "comments", label: "Comments", icon: <MessageSquare />, roles: ["author"] },
-  { id: "locations", label: "Follower Locations", icon: <MapPin />, roles: ["author"] },
+  // { id: "locations", label: "Follower Locations", icon: <MapPin />, roles: ["author"] },
   { id: "clearHistory", label: "Clear History", icon: <Trash2 />, roles: ["author"] },
 ];
