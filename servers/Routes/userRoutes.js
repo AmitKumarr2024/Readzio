@@ -1,6 +1,5 @@
 import express from "express";
 import { protectedRoute } from "../Middlewares/authMiddleware.js";
-import { geoLocationMiddleware } from "../Middlewares/geoLocationMiddleware.js";
 import upload from "../Middlewares/uploadImage.js";
 
 import {
@@ -22,6 +21,7 @@ import {
   getAllFeedbacks,
   adminSendFeedbackPrompt,
 } from "../../servers/Controllers/userController.js";
+import geoLocationMiddleware from "../Middlewares/geoLocationMiddleware.js";
 
 const routes = new express.Router();
 
