@@ -30,7 +30,6 @@ import SubscriptionBanner from "../Post/DisplayPost/SubscriptionBanner";
 import { toast } from "react-hot-toast";
 import { selectPostViews } from "../../Utils/postSelectors";
 
-// Lazy-loaded components
 const SuggestedPosts = lazy(() => import("./SuggestedPosts"));
 const AuthorSidebar = lazy(() => import("../Post/DisplayPost/AuthorSidebar"));
 const UserModal = lazy(() => import("../Post/DisplayPost/UserModal"));
@@ -111,6 +110,10 @@ const DisplayPost = () => {
   useEffect(() => {
     if (!slug) return;
 
+    setFetchAttempted(false);
+    setPostReady(false);
+    hasFetchedStatus.current = false;
+
     const fetchData = async () => {
       try {
         if (isAuthenticated) {
@@ -151,7 +154,13 @@ const DisplayPost = () => {
     dispatch(fetchSubscriptionPlansByAuthor(activePost.author._id)).catch(
       (err) => console.error("Subscription fetch error:", err)
     );
-  }, [dispatch, activePost?._id, activePost?.author?._id, isAuthenticated]);
+  }, [
+    dispatch,
+    activePost?._id,
+    activePost?.author?._id,
+    isAuthenticated,
+    slug,
+  ]);
 
   useEffect(() => {
     if (activePost?.slug && !isTracking && !localStartTime) {
@@ -315,10 +324,7 @@ const DisplayPost = () => {
         "@type": "Person",
         name: activePost.author?.fullName || "Inksha Author",
       },
-      publisher: {
-        "@type": "Organization",
-        name: "Inksha",
-      },
+      publisher: { "@type": "Organization", name: "Inksha" },
       url: `${BASE_URL}/post/${activePost.slug}`,
       datePublished: activePost.createdAt,
     };
