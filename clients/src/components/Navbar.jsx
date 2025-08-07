@@ -53,20 +53,14 @@ const Navbar = () => {
   const userName = useMemo(() => authUser?.name || "User", [authUser?.name]);
   const userId = useMemo(() => authUser?._id, [authUser?._id]);
 
-  // console.log("UserLocation from SLice", userLocations);
-
   const userLocation = useMemo(
     () => userLocations.list.find((loc) => loc.userId === authUser?._id),
     [userLocations.list, authUser?._id]
   );
 
-  // console.log("[Navbar] Found userLocation:", userLocation);
-  // console.log("[Navbar] All locations:", userLocations.list);
-  // console.log("[Navbar] authUser._id:", authUser?._id);
-
   const shouldHideCategory = useMemo(
     () =>
-      isAuthenticated &&
+      !isAuthenticated ||
       [
         "/user",
         "/user-setting",
@@ -453,7 +447,7 @@ const Navbar = () => {
                 )}
                 <button
                   onClick={handleLogout}
-                  className="block w790-full text-left py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                  className="block w-full text-left py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
                   Logout
                 </button>

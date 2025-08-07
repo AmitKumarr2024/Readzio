@@ -67,8 +67,8 @@ const MainPage = () => {
     <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
       <HeroSection />
 
-      <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-6 py-8">
-        <div className="flex justify-end py-4">
+      <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-6 py-4">
+        <div className="flex justify-end py-2">
           <button
             onClick={() => dispatch(toggleSidebar())}
             className="p-2 rounded-xl bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark hover:bg-indigo-500 hover:text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-md"

@@ -492,7 +492,7 @@ const Postbox = ({
 
   return (
     <ErrorBoundary>
-      <div className="w-full px-4 py-6">
+      <div className="w-full px-4 py-4">
         <Sorted posts={filteredPosts} onSortChange={() => {}} />
         {propLoading && !selectedPosts.length ? (
           renderSkeletonGrid()
