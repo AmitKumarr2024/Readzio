@@ -15,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // === CONFIG ===
-const BASE_URL = "https://inkshaa-uedq.onrender.com";
+const BASE_URL = "https://inksha-uedq.onrender.com";
 const OUTPUT_PATH = path.resolve(__dirname, "../../clients/dist/sitemap.xml");
 
 // === Ensure directory exists ===

@@ -233,7 +233,7 @@ const DisplayPost = () => {
   ]);
 
   const BASE_URL =
-    import.meta.env.VITE_API_URL || "https://inkshaa-uedq.onrender.com";
+    import.meta.env.VITE_API_URL || "https://inksha-uedq.onrender.com";
 
   const formatTime = (seconds) => {
     const hrs = Math.floor(seconds / 3600);

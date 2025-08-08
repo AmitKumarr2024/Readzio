@@ -88,7 +88,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
         email: user.email,
         hasButton: true,
         buttonText: "Read Posts",
-        buttonUrl: "https://inkshaa-uedq.onrender.com",
+        buttonUrl: "https://inksha-uedq.onrender.com",
         posts,
       });
 

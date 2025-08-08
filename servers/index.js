@@ -82,8 +82,8 @@ app.use(
         CLIENT_URL?.replace(/\/$/, ""),
         "http://localhost:5173",
         "http://localhost:8001",
-        "https://inkshaa-uedq.onrender.com",
-        "https://www.inkshaa-uedq.onrender.com",
+        "https://inksha-uedq.onrender.com",
+        "https://inksha-uedq.onrender.com",
       ].filter(Boolean);
       if (!origin || allowedOrigins.includes(origin))
         return callback(null, true);
@@ -172,7 +172,7 @@ if (NODE_ENV === "production" && fs.existsSync(clientIndexPath)) {
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain").send(`User-agent: *
 Allow: /
-Sitemap: https://inkshaa-uedq.onrender.com/sitemap.xml`);
+Sitemap: https://inksha-uedq.onrender.com/sitemap.xml`);
 });
 
 // Health check

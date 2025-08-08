@@ -33,7 +33,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
                 <table cellpadding="0" cellspacing="0" role="presentation">
                   <tr>
                     <td style="padding-right:10px;">
-                      <img src="https://inkshaa-uedq.onrender.com/public/logo1.png" alt="inkshaa Logo" width="40" height="40" style="border-radius:50%; display:block;">
+                      <img src="https://inksha-uedq.onrender.com/public/logo1.png" alt="inkshaa Logo" width="40" height="40" style="border-radius:50%; display:block;">
                     </td>
                     <td style="font-size:20px; font-weight:bold; color:#111827;">inkshaa</td>
                   </tr>
@@ -64,7 +64,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
                   {{/if}}
                   <tr>
                     <td style="padding:20px;">
-                      <a href="https://inkshaa-uedq.onrender.com/post/{{this.slug}}" style="display:block; font-size:20px; font-weight:700; color:#1d4ed8; text-decoration:none; margin-bottom:10px;">{{this.title}}</a>
+                      <a href="https://inksha-uedq.onrender.com/post/{{this.slug}}" style="display:block; font-size:20px; font-weight:700; color:#1d4ed8; text-decoration:none; margin-bottom:10px;">{{this.title}}</a>
 
                       <!-- Author -->
                       <table cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:10px;">
@@ -89,7 +89,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
                       </table>
 
                       <!-- Read More -->
-                      <a href="https://inkshaa-uedq.onrender.com/post/{{this.slug}}" style="display:inline-block; font-size:14px; font-weight:600; color:#10b981; border:1px solid #10b981; padding:8px 16px; border-radius:6px; text-decoration:none;">Read More</a>
+                      <a href="https://inksha-uedq.onrender.com/post/{{this.slug}}" style="display:inline-block; font-size:14px; font-weight:600; color:#10b981; border:1px solid #10b981; padding:8px 16px; border-radius:6px; text-decoration:none;">Read More</a>
                     </td>
                   </tr>
                 </table>
@@ -101,7 +101,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
             {{#unless posts.length}}
             <tr>
               <td style="padding:30px; font-size:14px; color:#6b7280;">
-                No new posts today — check out more at <a href="https://inkshaa-uedq.onrender.com" style="color:#2563eb; font-weight:600; text-decoration:none;">inkshaa</a>.
+                No new posts today — check out more at <a href="https://inksha-uedq.onrender.com" style="color:#2563eb; font-weight:600; text-decoration:none;">inkshaa</a>.
               </td>
             </tr>
             {{/unless}}
