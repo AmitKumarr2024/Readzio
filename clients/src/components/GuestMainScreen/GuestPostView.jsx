@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
 import GuestCardOfPost from "../Cards/GuestCardOfPost";
@@ -7,6 +7,7 @@ import InFeedAd from "../../Ads/InFeedAd";
 
 const GuestPostView = () => {
   const dispatch = useDispatch();
+  const [initialLoad, setInitialLoad] = useState(true); // 👈 NEW
   const {
     posts = [],
     loading,
@@ -17,21 +18,26 @@ const GuestPostView = () => {
   );
 
   useEffect(() => {
-    dispatch(trackGuestVisit())
-      .unwrap()
-      // .then(() => console.log("✅ Guest visit tracked"))
-      .catch((err) => console.error("❌ Track guest visit failed", err));
+    const loadData = async () => {
+      try {
+        await dispatch(trackGuestVisit()).unwrap();
+      } catch (err) {
+        console.error("❌ Track guest visit failed", err);
+      }
+      await dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
+      setInitialLoad(false); // 👈 only after fetch finishes
+    };
 
-    dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
+    loadData();
   }, [dispatch]);
 
-  if (loading) {
+  if (loading && initialLoad) {
     return (
       <div className="text-center py-8 text-gray-500">Loading posts...</div>
     );
   }
 
-  if (error) {
+  if (error && !initialLoad) {
     return (
       <div className="text-center text-red-500 py-4">
         {error}
@@ -45,7 +51,7 @@ const GuestPostView = () => {
     );
   }
 
-  if (!Array.isArray(posts) || posts.length === 0) {
+  if (!initialLoad && (!Array.isArray(posts) || posts.length === 0)) {
     return (
       <div className="text-center text-gray-400 py-8">
         No posts available for guests.
@@ -54,11 +60,10 @@ const GuestPostView = () => {
   }
 
   const postsWithAds = posts.flatMap((post, index) => {
-    if (!post?._id || !post.slug) return [];
+    if (!post?._id || !post?.slug) return [];
 
     const items = [<GuestCardOfPost key={post._id} {...post} />];
 
-    // Insert In-Feed Ad after every 8 posts
     if ((index + 1) % 5 === 0) {
       items.push(
         <div
@@ -75,7 +80,6 @@ const GuestPostView = () => {
       );
     }
 
-    // Insert Multiplex Ad after every 12 posts
     if ((index + 1) % 12 === 0) {
       items.push(
         <div
