@@ -7,7 +7,6 @@ const VerifyBanner = () => {
   const navigate = useNavigate();
   const { user, loading } = useSelector((state) => state.user);
 
-  console.log("Userxxxx", user);
 
   // Avoid rendering while auth is still loading
   if (loading) return null;

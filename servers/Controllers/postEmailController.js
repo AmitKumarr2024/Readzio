@@ -137,8 +137,9 @@ export const sendDailyPostEmail = async (req, res, next) => {
         subject: "Daily Post Email Report",
         name: admin.name || "Admin",
         email: admin.email,
-        template: DAILY_POST_ADMIN_REPORT_TEMPLATE,
-        data: {
+        customTemplate: DAILY_POST_ADMIN_REPORT_TEMPLATE,
+        customData: {
+          // ✅ pass the data the template needs
           totalUsers: results.length,
           successCount: results.filter((r) => r.success).length,
           failedCount: results.filter((r) => !r.success).length,
@@ -146,6 +147,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
           postCount: posts.length,
         },
       });
+
       await sendEmailWithRetries(adminMailOption, admin._id);
     }
 

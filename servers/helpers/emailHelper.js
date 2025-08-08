@@ -1,5 +1,8 @@
 import Handlebars from "handlebars";
-import { EMAIL_TEMPLATE, WELCOME_EMAIL_TEMPLATE } from "../../servers/config/emailTemplate.js";
+import {
+  EMAIL_TEMPLATE,
+  WELCOME_EMAIL_TEMPLATE,
+} from "../../servers/config/emailTemplate.js";
 import { DAILY_POST_EMAIL_TEMPLATE } from "../../servers/config/dailyPostEmailTemplate.js";
 import { INVOICE_EMAIL_TEMPLATE } from "../../servers/config/emailTemplate.js";
 import { SENDER_EMAIL } from "../../servers/config/dotenv.js";
@@ -22,75 +25,45 @@ export default function createMailOption({
   posts = [],
   supportEmail = "inksha.official@gmail.com",
   invoice = null,
+  customTemplate = null, // ✅ new
+  customData = {}, // ✅ new
 }) {
   try {
     // === Validation ===
-    if (!to || (!message && posts.length === 0 && !otp && !invoice)) {
+    if (
+      !to ||
+      (!message && posts.length === 0 && !otp && !invoice && !customTemplate)
+    ) {
       throw new AppError(
         "Missing required fields",
         400,
         "CreateMailOption",
-        "to, and either message, posts, otp, or invoice are required"
+        "to, and either message, posts, otp, invoice, or customTemplate are required"
       );
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(to)) {
-      throw new AppError(
-        "Invalid recipient email",
-        400,
-        "CreateMailOption",
-        "Recipient email must be a valid email address"
-      );
+      throw new AppError("Invalid recipient email", 400, "CreateMailOption");
     }
-
     if (!emailRegex.test(SENDER_EMAIL)) {
-      throw new AppError(
-        "Invalid sender email",
-        400,
-        "CreateMailOption",
-        "Sender email must be a valid email address"
-      );
+      throw new AppError("Invalid sender email", 400, "CreateMailOption");
     }
-
     if (supportEmail && !emailRegex.test(supportEmail)) {
-      throw new AppError(
-        "Invalid support email",
-        400,
-        "CreateMailOption",
-        "Support email must be a valid email address"
-      );
+      throw new AppError("Invalid support email", 400, "CreateMailOption");
     }
-
     if (hasButton && (!buttonText || !buttonUrl)) {
-      throw new AppError(
-        "Missing button fields",
-        400,
-        "CreateMailOption",
-        "buttonText and buttonUrl are required when hasButton is true"
-      );
+      throw new AppError("Missing button fields", 400, "CreateMailOption");
     }
-
     if (buttonUrl && !/^https?:\/\/[^\s$.?#].[^\s]*$/.test(buttonUrl)) {
-      throw new AppError(
-        "Invalid button URL",
-        400,
-        "CreateMailOption",
-        "Button URL must be a valid HTTP/HTTPS URL"
-      );
+      throw new AppError("Invalid button URL", 400, "CreateMailOption");
     }
-
     if (otp && !/^\d{6}$/.test(otp)) {
-      throw new AppError(
-        "Invalid OTP format",
-        400,
-        "CreateMailOption",
-        "OTP must be a 6-digit number"
-      );
+      throw new AppError("Invalid OTP format", 400, "CreateMailOption");
     }
 
-    // === Dynamic Subject Generation with Brand ===
+    // === Subject fallback ===
     const brand = "Inksha";
     const today = new Date().toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -112,15 +85,16 @@ export default function createMailOption({
       }
     }
 
-    // === Template Selection ===
-    const templateSource =
-      posts.length > 0
-        ? DAILY_POST_EMAIL_TEMPLATE
-        : invoice
-        ? INVOICE_EMAIL_TEMPLATE
-        : otp
-        ? EMAIL_TEMPLATE
-        : WELCOME_EMAIL_TEMPLATE;
+    // === Template selection ===
+    const templateSource = customTemplate
+      ? customTemplate
+      : posts.length > 0
+      ? DAILY_POST_EMAIL_TEMPLATE
+      : invoice
+      ? INVOICE_EMAIL_TEMPLATE
+      : otp
+      ? EMAIL_TEMPLATE
+      : WELCOME_EMAIL_TEMPLATE;
 
     const template = Handlebars.compile(templateSource);
 
@@ -142,7 +116,7 @@ export default function createMailOption({
         thumbnail: post.thumbnail || "",
         author: {
           name: post.author?.name || "Unknown Author",
-          avatar: post.author?.avatar || "", // Add avatar if needed
+          avatar: post.author?.avatar || "",
         },
         readTime: post.readTime || "0 min",
         likesCount: typeof post.likesCount === "number" ? post.likesCount : 0,
@@ -150,6 +124,7 @@ export default function createMailOption({
           typeof post.commentsCount === "number" ? post.commentsCount : 0,
         index: index + 1,
       })),
+      ...customData, // ✅ merge in any custom fields for the template
     });
 
     // === Return Final Email Options ===
@@ -162,11 +137,6 @@ export default function createMailOption({
   } catch (error) {
     throw error instanceof AppError
       ? error
-      : new AppError(
-          error.message || "Failed to create mail options",
-          500,
-          "CreateMailOption",
-          "Error in createMailOption"
-        );
+      : new AppError(error.message || "Failed to create mail options", 500);
   }
 }
