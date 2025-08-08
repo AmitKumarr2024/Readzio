@@ -26,7 +26,7 @@ if (!existsSync(distDir)) {
 
 // === Connect to DB ===
 try {
-  await mongoose.connect(MONGO_URI, { dbName: "inkshaaApp" });
+  await mongoose.connect(MONGO_URI, { dbName: "inkshaapp" });
   console.log("✅ Connected to MongoDB");
 } catch (err) {
   console.error("❌ Failed to connect to MongoDB:", err.message);

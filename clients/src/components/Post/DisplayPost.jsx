@@ -320,9 +320,9 @@ const DisplayPost = () => {
       image: firstImage,
       author: {
         "@type": "Person",
-        name: activePost.author?.fullName || "inkshaaa Author",
+        name: activePost.author?.fullName || "inkshaa Author",
       },
-      publisher: { "@type": "Organization", name: "inkshaaa" },
+      publisher: { "@type": "Organization", name: "inkshaa" },
       url: `${BASE_URL}/post/${activePost.slug}`,
       datePublished: activePost.createdAt,
     };

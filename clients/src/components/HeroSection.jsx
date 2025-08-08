@@ -74,7 +74,7 @@ const HeroSection = () => {
               lang="en"
               aria-label="inkshaa logo"
             >
-              inkshaaa
+              inkshaa
             </span>
           </motion.h1>
           <motion.p
