@@ -95,9 +95,7 @@ const GuestPostView = () => {
         >
           <div className="w-full bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 border border-gray-200 dark:border-gray-700 transition-all duration-300">
             <InFeedAd postId={post._id} testMode={false} />
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
-              Sponsored
-            </p>
+            
           </div>
         </div>
       );
