@@ -5,21 +5,21 @@ import { useNavigate } from "react-router-dom";
 
 const VerifyBanner = () => {
   const navigate = useNavigate();
-  const { user, loading } = useSelector((state) => state.auth);
+  const { user, loading } = useSelector((state) => state.user);
 
-  console.log("Userxxxx",user);
-  
+  console.log("Userxxxx", user);
 
   // Avoid rendering while auth is still loading
   if (loading) return null;
 
   // Only show if user is logged in AND not verified
-  if (!user || user.isAccountVerified) return null;
+  if (!user || user?.isAccountVerified) return null;
 
   return (
     <div className="bg-yellow-500 text-black p-3 flex justify-between items-center">
       <span>
-        Your email is not verified. Please verify your account to continue enjoying all features.
+        Your email is not verified. Please verify your account to continue
+        enjoying all features.
       </span>
       <button
         onClick={() => navigate("/verify")}
