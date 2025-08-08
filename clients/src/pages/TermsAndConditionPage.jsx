@@ -10,26 +10,26 @@ const TermsAndConditionPage = () => {
           <h1 className="text-4xl font-bold mb-6">Terms & Conditions</h1>
 
           <p className="mb-4">
-            Welcome to <strong>Inksha</strong>. By using our website, services, and platform, you agree to the following
+            Welcome to <strong>inkshaa</strong>. By using our website, services, and platform, you agree to the following
             terms and conditions. Please read them carefully.
           </p>
 
           <h2 className="text-2xl font-semibold mt-6 mb-3">1. Using Our Service</h2>
           <p className="mb-4">
-            You agree to use Inksha in ways that are respectful, legal, and constructive. Activities that hinder others’ experiences
+            You agree to use inkshaa in ways that are respectful, legal, and constructive. Activities that hinder others’ experiences
             or violate laws are strictly prohibited.
           </p>
 
           <h2 className="text-2xl font-semibold mt-6 mb-3">2. Your Content</h2>
           <p className="mb-4">
             You are responsible for the content you post. While you retain ownership of your content, by posting it,
-            you grant us a license to display and promote it within Inksha. We may remove content that violates
+            you grant us a license to display and promote it within inkshaa. We may remove content that violates
             our community guidelines or legal obligations.
           </p>
 
           <h2 className="text-2xl font-semibold mt-6 mb-3">3. Content Restrictions</h2>
           <p className="mb-4">
-            To maintain a safe and inclusive environment, Inksha prohibits:
+            To maintain a safe and inclusive environment, inkshaa prohibits:
           </p>
           <ul className="list-disc list-inside mb-4 space-y-2">
             <li>Pornographic, sexually explicit, or suggestive content.</li>
@@ -50,23 +50,23 @@ const TermsAndConditionPage = () => {
           {/* ✅ NEW PAYMENT SECTION */}
           <h2 className="text-2xl font-semibold mt-6 mb-3">4. Payments, Subscriptions & Refunds</h2>
           <p className="mb-4">
-            Inksha uses <strong>Razorpay</strong> as our secure payment gateway. By making any purchase or subscription on our platform,
+            inkshaa uses <strong>Razorpay</strong> as our secure payment gateway. By making any purchase or subscription on our platform,
             you agree to Razorpay's terms and processing policies.
           </p>
           <p className="mb-4">
-            <strong>All payments are final.</strong> Inksha does <strong>not offer refunds</strong> for completed payments, including subscriptions,
+            <strong>All payments are final.</strong> inkshaa does <strong>not offer refunds</strong> for completed payments, including subscriptions,
             tips, or donations, unless required by law.
           </p>
           <p className="mb-4">
             If you experience any issues with payment or billing, you may reach out to us at{" "}
-            <a href="mailto:inksha.official@gmail.com" className="text-blue-600 underline">
-              inksha.official@gmail.com
+            <a href="mailto:inkshaa.official@gmail.com" className="text-blue-600 underline">
+              inkshaa.official@gmail.com
             </a>{" "}for support.
           </p>
 
           <h2 className="text-2xl font-semibold mt-6 mb-3">5. Our Liability</h2>
           <p className="mb-4">
-            While we aim to keep Inksha accessible and secure, we are not responsible for service interruptions,
+            While we aim to keep inkshaa accessible and secure, we are not responsible for service interruptions,
             data loss, or damages caused by third-party services or technical failures.
           </p>
 
@@ -86,20 +86,20 @@ const TermsAndConditionPage = () => {
 
           <h2 className="text-2xl font-semibold mt-6 mb-3">8. Updates to These Terms</h2>
           <p className="mb-4">
-            We may update these Terms & Conditions periodically. Continued use of Inksha after changes means
+            We may update these Terms & Conditions periodically. Continued use of inkshaa after changes means
             you accept the revised terms.
           </p>
 
           <h2 className="text-2xl font-semibold mt-6 mb-3">9. Contact Us</h2>
           <p className="mb-4">
             For questions or feedback about these terms, please contact us at{" "}
-            <a href="mailto:inksha.official@gmail.com" className="text-blue-600 underline">
-              inksha.official@gmail.com
+            <a href="mailto:inkshaa.official@gmail.com" className="text-blue-600 underline">
+              inkshaa.official@gmail.com
             </a>.
           </p>
 
           <p className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
-            © {new Date().getFullYear()} Inksha. All rights reserved.
+            © {new Date().getFullYear()} inkshaa. All rights reserved.
           </p>
         </div>
       </div>

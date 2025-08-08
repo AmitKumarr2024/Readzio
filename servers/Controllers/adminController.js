@@ -864,7 +864,7 @@ export const downloadAllDataCsv = async (req, res, next) => {
     );
     res.setHeader(
       "Content-Disposition",
-      'attachment; filename="Inksha_official_details_data.xlsx"'
+      'attachment; filename="inkshaa_official_details_data.xlsx"'
     );
 
     logMemory("📑 End downloadAllDataCsv");

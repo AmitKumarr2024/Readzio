@@ -23,7 +23,7 @@ export default function createMailOption({
   otp = null,
   isResetOtp = false,
   posts = [],
-  supportEmail = "inksha.official@gmail.com",
+  supportEmail = "inkshaa.official@gmail.com",
   invoice = null,
   customTemplate = null, // ✅ new
   customData = {}, // ✅ new
@@ -64,7 +64,7 @@ export default function createMailOption({
     }
 
     // === Subject fallback ===
-    const brand = "Inksha";
+    const brand = "inkshaa";
     const today = new Date().toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
@@ -129,7 +129,7 @@ export default function createMailOption({
 
     // === Return Final Email Options ===
     return {
-      from: `"Inksha Team" <${SENDER_EMAIL}>`,
+      from: `"inkshaa Team" <${SENDER_EMAIL}>`,
       to,
       subject,
       html: htmlContent,

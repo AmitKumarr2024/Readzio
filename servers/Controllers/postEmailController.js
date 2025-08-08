@@ -83,12 +83,12 @@ export const sendDailyPostEmail = async (req, res, next) => {
     for (const user of users) {
       const mailOption = createMailOption({
         to: user.email,
-        subject: `Your Inksha Daily Brief – Fresh Posts for You (${posts.length} Posts)`,
+        subject: `Your inkshaa Daily Brief – Fresh Posts for You (${posts.length} Posts)`,
         name: user.name || "User",
         email: user.email,
         hasButton: true,
         buttonText: "Read Posts",
-        buttonUrl: "https://inksha-uedq.onrender.com",
+        buttonUrl: "https://inkshaa-uedq.onrender.com",
         posts,
       });
 

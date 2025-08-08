@@ -15,8 +15,8 @@ export const io = new Server({
         CLIENT_URL?.replace(/\/$/, ""),
         "http://localhost:5173",
         "http://localhost:8001",
-        "https://inksha-uedq.onrender.com",
-        "https://www.inksha-uedq.onrender.com", // Added www variant
+        "https://inkshaa-uedq.onrender.com",
+        "https://www.inkshaa-uedq.onrender.com", // Added www variant
         "null",
       ].filter(Boolean);
 

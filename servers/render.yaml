@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: inksha
+    name: inkshaa
     env: node
     buildCommand: npm run setup-client
     startCommand: npm start
@@ -8,7 +8,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: CLIENT_URL
-        value: https://inksha-uedq.onrender.com
+        value: https://inkshaa-uedq.onrender.com
       - key: PORT
         value: 10000
       - key: MONGO_URI

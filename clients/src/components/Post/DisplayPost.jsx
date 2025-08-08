@@ -233,7 +233,7 @@ const DisplayPost = () => {
   ]);
 
   const BASE_URL =
-    import.meta.env.VITE_API_URL || "https://inksha-uedq.onrender.com";
+    import.meta.env.VITE_API_URL || "https://inkshaa-uedq.onrender.com";
 
   const formatTime = (seconds) => {
     const hrs = Math.floor(seconds / 3600);
@@ -320,9 +320,9 @@ const DisplayPost = () => {
       image: firstImage,
       author: {
         "@type": "Person",
-        name: activePost.author?.fullName || "Inksha Author",
+        name: activePost.author?.fullName || "inkshaaa Author",
       },
-      publisher: { "@type": "Organization", name: "Inksha" },
+      publisher: { "@type": "Organization", name: "inkshaaa" },
       url: `${BASE_URL}/post/${activePost.slug}`,
       datePublished: activePost.createdAt,
     };
@@ -330,7 +330,7 @@ const DisplayPost = () => {
     return (
       <>
         <Helmet>
-          <title>{activePost.title || "Loading..."} | Inksha</title>
+          <title>{activePost.title || "Loading..."} | inkshaa</title>
           <meta name="robots" content="index, follow" />
           <meta name="description" content={plainText} />
           <link rel="canonical" href={`${BASE_URL}/post/${activePost?.slug}`} />

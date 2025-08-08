@@ -24,31 +24,31 @@ const HeroSection = () => {
   return (
     <>
       <Helmet>
-        <title>Inksha — A Space to Express</title>
+        <title>inkshaa — A Space to Express</title>
         <meta
           name="description"
-          content="Inksha is a platform for students, writers, and curious minds to explore, share, and grow through meaningful words and ideas."
+          content="inkshaa is a platform for students, writers, and curious minds to explore, share, and grow through meaningful words and ideas."
         />
         <meta
           name="keywords"
-          content="Inksha, blog, student, writer, knowledge, platform, share, learn, express"
+          content="inkshaa, blog, student, writer, knowledge, platform, share, learn, express"
         />
-        <meta name="author" content="Inksha Team" />
-        <meta property="og:title" content="Inksha — A Space to Express" />
+        <meta name="author" content="inkshaa Team" />
+        <meta property="og:title" content="inkshaa — A Space to Express" />
         <meta
           property="og:description"
-          content="Join Inksha to explore, write, and grow. A community of students, writers, and curious minds."
+          content="Join inkshaa to explore, write, and grow. A community of students, writers, and curious minds."
         />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://inksha.in" />
-        <meta property="og:image" content="https://inksha.in/preview.png" />
+        <meta property="og:url" content="https://inkshaa.in" />
+        <meta property="og:image" content="https://inkshaa.in/preview.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Inksha — A Space to Express" />
+        <meta name="twitter:title" content="inkshaa — A Space to Express" />
         <meta
           name="twitter:description"
-          content="Explore. Share. Grow. Join Inksha now."
+          content="Explore. Share. Grow. Join inkshaa now."
         />
-        <meta name="twitter:image" content="https://inksha.in/preview.png" />
+        <meta name="twitter:image" content="https://inkshaa.in/preview.png" />
         <html lang="en" />
       </Helmet>
 
@@ -72,9 +72,9 @@ const HeroSection = () => {
               className="text-yellow-300 underline decoration-yellow-300 decoration-4 underline-offset-4 sm:underline-offset-8 notranslate"
               translate="no"
               lang="en"
-              aria-label="Inksha logo"
+              aria-label="inkshaa logo"
             >
-              inkshaa
+              inkshaaa
             </span>
           </motion.h1>
           <motion.p

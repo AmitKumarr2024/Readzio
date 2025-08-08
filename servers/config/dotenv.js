@@ -5,7 +5,7 @@ export const PORT = process.env.PORT || 10000;
 export const MONGO_URI = process.env.MONGO_URI;
 export const JWT_SECRET = process.env.JWT_SECRET || "default-secret";
 export const CLIENT_URL =
-  process.env.CLIENT_URL || "https://inksha-uedq.onrender.com";
+  process.env.CLIENT_URL || "https://inkshaa-uedq.onrender.com";
 export const NODE_ENV = process.env.NODE_ENV || "development";
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;

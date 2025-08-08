@@ -82,8 +82,8 @@ app.use(
         CLIENT_URL?.replace(/\/$/, ""),
         "http://localhost:5173",
         "http://localhost:8001",
-        "https://inksha-uedq.onrender.com",
-        "https://www.inksha-uedq.onrender.com",
+        "https://inkshaa-uedq.onrender.com",
+        "https://www.inkshaa-uedq.onrender.com",
       ].filter(Boolean);
       if (!origin || allowedOrigins.includes(origin))
         return callback(null, true);
@@ -172,14 +172,14 @@ if (NODE_ENV === "production" && fs.existsSync(clientIndexPath)) {
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain").send(`User-agent: *
 Allow: /
-Sitemap: https://inksha-uedq.onrender.com/sitemap.xml`);
+Sitemap: https://inkshaa-uedq.onrender.com/sitemap.xml`);
 });
 
 // Health check
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
-    message: "Inksha API is running",
+    message: "inkshaa API is running",
     uptime: process.uptime(),
     database:
       mongoose.connection.readyState === 1 ? "connected" : "disconnected",
@@ -216,7 +216,7 @@ const startServer = async () => {
     const port = process.env.PORT || 10000;
     server.listen(port, "0.0.0.0", function () {
       console.log(
-        `[Server:Startup] ✅ Inksha API running on port ${this.address().port}`
+        `[Server:Startup] ✅ inkshaa API running on port ${this.address().port}`
       );
     });
   } catch (err) {
