@@ -16,12 +16,16 @@ import { useClearUserError } from "./AppRootFile/hook/useClearUserError";
 import { useBannerExpiration } from "./AppRootFile/hook/useBannerExpiration";
 import { useSelector, useDispatch } from "react-redux";
 import { dismissBannerNotification } from "./store/adminSlice";
-import { newNotificationReceived, setFeedbackPrompt } from "./store/socketSlice";
+import {
+  newNotificationReceived,
+  setFeedbackPrompt,
+} from "./store/socketSlice";
 import { useSocketConnectionStatus } from "./AppRootFile/hook/useSocketConnectionStatus";
 import useAdBlockDetector from "./Ads/useAdBlockDetector";
 import AdBlockWarning from "./Ads/AdBlockWarning";
 import CookieConsentBanner from "./AppRootFile/components/CookieConsentBanner";
 import FeedbackModal from "./AppRootFile/components/FeedbackModal";
+import VerifyBanner from "./AppRootFile/components/VerifyBanner";
 
 export default function App() {
   const navigation = useNavigation();
@@ -110,7 +114,7 @@ export default function App() {
       {isAdBlocked && <AdBlockWarning />}
       <ScrollToTop />
       <Navbar />
-
+      <VerifyBanner />
       {showGooglePopup && <GoogleLoginPopup />}
       {newNotification && newNotification._id && (
         <BroadcastBanner
