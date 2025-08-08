@@ -29,7 +29,10 @@ const HeroSection = () => {
           name="description"
           content="Inksha is a platform for students, writers, and curious minds to explore, share, and grow through meaningful words and ideas."
         />
-        <meta name="keywords" content="Inksha, blog, student, writer, knowledge, platform, share, learn, express" />
+        <meta
+          name="keywords"
+          content="Inksha, blog, student, writer, knowledge, platform, share, learn, express"
+        />
         <meta name="author" content="Inksha Team" />
         <meta property="og:title" content="Inksha — A Space to Express" />
         <meta
@@ -41,7 +44,10 @@ const HeroSection = () => {
         <meta property="og:image" content="https://inksha.in/preview.png" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Inksha — A Space to Express" />
-        <meta name="twitter:description" content="Explore. Share. Grow. Join Inksha now." />
+        <meta
+          name="twitter:description"
+          content="Explore. Share. Grow. Join Inksha now."
+        />
         <meta name="twitter:image" content="https://inksha.in/preview.png" />
         <html lang="en" />
       </Helmet>
@@ -75,7 +81,8 @@ const HeroSection = () => {
             className="text-base sm:text-lg md:text-2xl max-w-md sm:max-w-xl mx-auto text-center"
             variants={itemVariants}
           >
-            A space for students, writers, and curious minds to share, learn, and grow through words.
+            Born for students, built for curious minds, open to everyone who
+            loves to create through words.
           </motion.p>
         </motion.div>
       </section>
