@@ -81,8 +81,12 @@ const HeroSection = () => {
             className="text-base sm:text-lg md:text-2xl max-w-md sm:max-w-xl mx-auto text-center"
             variants={itemVariants}
           >
-            Born for students, built for curious minds, open to everyone who
-            loves to create through words.
+            A space where students and young minds share, learn, and grow —
+            alongside writers from all walks of life.
+            <br />
+            <span className="font-semibold text-yellow-400">
+              Born in India. Built for the world.
+            </span>
           </motion.p>
         </motion.div>
       </section>
