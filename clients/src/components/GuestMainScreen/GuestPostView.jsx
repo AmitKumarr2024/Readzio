@@ -4,10 +4,11 @@ import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
 import GuestCardOfPost from "../Cards/GuestCardOfPost";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import InFeedAd from "../../Ads/InFeedAd";
+import Skeleton from "../Ui/Skeleton";
 
 const GuestPostView = () => {
   const dispatch = useDispatch();
-  const [initialLoad, setInitialLoad] = useState(true); // 👈 NEW
+  const [initialLoad, setInitialLoad] = useState(true);
   const {
     posts = [],
     loading,
@@ -25,15 +26,37 @@ const GuestPostView = () => {
         console.error("❌ Track guest visit failed", err);
       }
       await dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
-      setInitialLoad(false); // 👈 only after fetch finishes
+      setInitialLoad(false);
     };
-
     loadData();
   }, [dispatch]);
 
+  // 🟢 Show skeleton grid during first load
   if (loading && initialLoad) {
     return (
-      <div className="text-center py-8 text-gray-500">Loading posts...</div>
+      <div
+        className={`grid gap-4 py-6 px-4 w-full
+          grid-cols-1 
+          sm:grid-cols-2 
+          md:grid-cols-3 
+          ${
+            isSidebarOpen
+              ? "lg:grid-cols-3 xl:grid-cols-4"
+              : "lg:grid-cols-3 xl:grid-cols-5"
+          }
+        `}
+      >
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-card-bg-light dark:bg-card-bg-dark rounded-lg p-4 shadow-md"
+          >
+            <Skeleton height="h-40" rounded="rounded-lg" className="mb-3" />
+            <Skeleton height="h-5" width="w-3/4" className="mb-2" />
+            <Skeleton height="h-4" width="w-1/2" />
+          </div>
+        ))}
+      </div>
     );
   }
 
