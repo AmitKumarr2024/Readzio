@@ -6,6 +6,7 @@ import { AppError } from "../../servers/Utils/AppError.js";
 import transporter from "../config/nodeMailer.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
+import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPostEmailReport.js";
 
 // Sends daily post email to verified users with published posts
 export const sendDailyPostEmail = async (req, res, next) => {
@@ -136,12 +137,14 @@ export const sendDailyPostEmail = async (req, res, next) => {
         subject: "Daily Post Email Report",
         name: admin.name || "Admin",
         email: admin.email,
-        message: `Daily post email sent to ${results.length} users. Success: ${
-          results.filter((r) => r.success).length
-        }, Failed: ${
-          results.filter((r) => !r.success).length
-        }, Posts included: ${posts.length}`,
-        hasButton: false,
+        template: DAILY_POST_ADMIN_REPORT_TEMPLATE,
+        data: {
+          totalUsers: results.length,
+          successCount: results.filter((r) => r.success).length,
+          failedCount: results.filter((r) => !r.success).length,
+          failedUsers: results.filter((r) => !r.success),
+          postCount: posts.length,
+        },
       });
       await sendEmailWithRetries(adminMailOption, admin._id);
     }
