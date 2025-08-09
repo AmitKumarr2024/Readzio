@@ -7,7 +7,6 @@ import {
   startReading,
   stopReading,
   submitReadingTime,
-  clearError,
 } from "../../store/postSlice";
 import { fetchPublicPostBySlug } from "../../store/guestSlice";
 import { fetchBookmarkAndLikeStatus } from "../../store/PostInteractions";
@@ -76,8 +75,7 @@ const DisplayPost = () => {
   useEffect(() => {
     console.log("Current slug:", slug);
     console.log("Active post:", activePost);
-    console.log("Loading:", activeLoading, "Error:", activeError);
-  }, [slug, activePost, activeLoading, activeError]);
+  }, [slug, activePost]);
 
   const categoryMap = useMemo(() => {
     return categories.reduce((map, cat) => {
@@ -108,26 +106,19 @@ const DisplayPost = () => {
     activePost?.author?._id && isSubscribed[activePost?.author?._id];
 
   useEffect(() => {
-    if (!slug) {
-      console.error("No slug provided");
-      navigate("/404", { replace: true });
-      return;
-    }
+    if (!slug) return;
 
-    // Clear previous post state to prevent stale data
-    dispatch(clearError());
     setFetchAttempted(false);
     setPostReady(false);
     hasFetchedStatus.current = false;
 
     const fetchData = async () => {
       try {
-        console.log("Fetching post for slug:", slug);
-        const action = isAuthenticated
-          ? getSinglePost({ slug, isGuest: false })
-          : fetchPublicPostBySlug(slug);
-        const result = await dispatch(action).unwrap();
-        console.log("Fetch successful, post:", result);
+        if (isAuthenticated) {
+          await dispatch(getSinglePost({ slug, isGuest: false })).unwrap();
+        } else {
+          await dispatch(fetchPublicPostBySlug(slug)).unwrap();
+        }
         setFetchAttempted(true);
         setPostReady(true);
         if (isAuthenticated) {
@@ -142,19 +133,7 @@ const DisplayPost = () => {
     };
 
     fetchData();
-
-    // Cleanup on unmount or slug change
-    return () => {
-      dispatch(clearError());
-      if (isTracking && activePost?._id && localStartTime) {
-        const timeSpent = Math.floor((Date.now() - localStartTime) / 1000);
-        if (timeSpent > 3) {
-          dispatch(submitReadingTime({ postId: activePost._id, timeSpent }));
-        }
-        dispatch(stopReading());
-      }
-    };
-  }, [dispatch, slug, isAuthenticated, navigate]);
+  }, [dispatch, slug, isAuthenticated]);
 
   useEffect(() => {
     if (
@@ -173,15 +152,37 @@ const DisplayPost = () => {
     dispatch(fetchSubscriptionPlansByAuthor(activePost.author._id)).catch(
       (err) => console.error("Subscription fetch error:", err)
     );
-  }, [dispatch, activePost?._id, activePost?.author?._id, isAuthenticated]);
+  }, [
+    dispatch,
+    activePost?._id,
+    activePost?.author?._id,
+    isAuthenticated,
+    slug,
+  ]);
 
   useEffect(() => {
-    if (activePost?._id && !isTracking && !localStartTime) {
-      console.log("Starting reading tracking for post:", activePost._id);
+    if (activePost?.slug && !isTracking && !localStartTime) {
       dispatch(startReading(activePost._id));
       setLocalStartTime(Date.now());
     }
-  }, [dispatch, activePost?._id, isTracking, localStartTime]);
+
+    return () => {
+      if (isTracking && activePost?.slug && localStartTime) {
+        const timeSpent = Math.floor((Date.now() - localStartTime) / 1000);
+        if (timeSpent > 3) {
+          dispatch(submitReadingTime({ postId: activePost._id, timeSpent }))
+            .unwrap()
+            .catch((error) =>
+              console.error(
+                "[DisplayPost] Failed to record reading time:",
+                error
+              )
+            );
+        }
+        dispatch(stopReading());
+      }
+    };
+  }, [dispatch, activePost?.slug, activePost?._id, isTracking, localStartTime]);
 
   useEffect(() => {
     if (!isTracking || !localStartTime) return;
@@ -201,7 +202,6 @@ const DisplayPost = () => {
     if (!fetchAttempted) return;
 
     if (!postReady && !activeLoading) {
-      console.log("Redirecting to 404 due to no post data");
       navigate("/404", { replace: true });
     }
 
@@ -228,6 +228,7 @@ const DisplayPost = () => {
     isPostRestricted,
     canViewPost,
     isAuthenticated,
+    slug,
     navigate,
   ]);
 
@@ -289,23 +290,17 @@ const DisplayPost = () => {
   );
 
   const renderPostContent = () => {
-    if (!fetchAttempted || activeLoading || subscriptionLoading) {
-      console.log("Rendering skeleton due to loading state");
+    if (!fetchAttempted || activeLoading || subscriptionLoading)
       return renderSkeleton();
-    }
 
     if (
       !postReady ||
       !activePost ||
       !activePost._id ||
-      !Array.isArray(activePost.blocks) ||
-      activePost.slug !== slug
+      !Array.isArray(activePost.blocks)
     ) {
-      console.log("Post not found or slug mismatch", { activePost, slug });
       return <PostNotFound message={activeError || "Post not found"} />;
     }
-
-    console.log("Rendering post content for slug:", activePost.slug);
 
     const firstImage =
       activePost.blocks?.find((b) => b.type === "image")?.src || "";
