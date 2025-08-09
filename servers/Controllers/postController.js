@@ -13,12 +13,10 @@ import pLimit from "p-limit";
 import NodeCache from "node-cache";
 import PostInteraction from "../../servers/Models/PostInteraction.js";
 import UserModel from "../../servers/Models/User.js";
-import { logMemory } from "../../servers/Utils/memoryLogger.js"; // Import logMemory
+import { logMemory } from "../../servers/Utils/memoryLogger.js";
 
-// Initialize cache
-const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
+const cache = new NodeCache({ stdTTL: 600 });
 
-// Validates ObjectId
 const validateObjectId = (id, type = "ID") => {
   logMemory(`🔍 Validating ${type}`);
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
@@ -31,7 +29,6 @@ const validateObjectId = (id, type = "ID") => {
   }
 };
 
-// POST /api/post/polls/vote
 export const voteOnPoll = async (req, res, next) => {
   try {
     logMemory("🗳️ Start voteOnPoll");
@@ -535,7 +532,9 @@ export const getAllPosts = async (req, res, next) => {
       if (authorIdArray.length) {
         query.author = { $in: authorIdArray };
       } else {
-        throw new AppError("Invalid author IDs provided", 400, "GetAllPosts");
+        return res
+          .status(200)
+          .json({ success: true, total: 0, page, posts: [] });
       }
     }
 
@@ -617,6 +616,97 @@ export const getAllPosts = async (req, res, next) => {
             error.message || "Failed to fetch posts",
             500,
             "GetAllPosts"
+          )
+    );
+  }
+};
+
+export const getFollowingPosts = async (req, res, next) => {
+  try {
+    logMemory("📋 Start getFollowingPosts");
+    const userId = req.user?._id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const skip = (page - 1) * limit;
+
+    if (!userId) {
+      throw new AppError(
+        "You must be signed in to access this feature.",
+        401,
+        "GetFollowingPosts"
+      );
+    }
+
+    logMemory("📖 Before fetching user");
+    const user = await UserModel.findById(userId).select("following").lean();
+    logMemory("📖 After fetching user");
+    if (!user) {
+      throw new AppError("User not found", 404, "GetFollowingPosts");
+    }
+
+    const followingIds = user.following
+      .map((id) => id.toString())
+      .filter((id) => mongoose.Types.ObjectId.isValid(id));
+
+    if (!followingIds.length) {
+      logMemory("📋 End getFollowingPosts - No following");
+      return res.status(200).json({
+        success: true,
+        total: 0,
+        page,
+        posts: [],
+        message: "You are not following any users",
+      });
+    }
+
+    const query = {
+      author: { $in: followingIds },
+      isPublished: true,
+      blocked: false,
+    };
+
+    logMemory("📖 Before fetching posts");
+    const posts = [];
+    const cursor = PostModel.find(query)
+      .select(
+        `
+        title slug category excerpt thumbnail author createdAt
+        isPublished isPinned isPremium isSubscriberOnly blocked message readTime
+        likesCount commentsCount viewsCount bookmarksCount likes
+        tags language isFeatured allowComments timeSpent readingTime updatedAt
+        shareCount sharedBy blocks postType
+        `
+      )
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("author", "name avatar")
+      .lean()
+      .cursor();
+
+    for await (const post of cursor) {
+      posts.push(post);
+    }
+    logMemory("📖 After fetching posts");
+
+    const total = await PostModel.countDocuments(query).lean();
+
+    await recordActivity({
+      userId,
+      action: "VIEWED_FOLLOWING_POSTS",
+      message: `Viewed posts from followed users`,
+    });
+
+    logMemory("📋 End getFollowingPosts");
+    res.status(200).json({ success: true, total, page, posts });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch following posts",
+            500,
+            "GetFollowingPosts"
           )
     );
   }
@@ -852,8 +942,9 @@ export const updatePostBySlug = async (req, res, next) => {
     }
 
     const updates = { ...req.body };
-
     const blockLimit = pLimit(3);
+    const imageLimit = pLimit(2);
+
     if (updates.blocks) {
       logMemory("🖼️ Before processing blocks");
       updates.blocks = await Promise.all(
@@ -866,92 +957,142 @@ export const updatePostBySlug = async (req, res, next) => {
                 "UpdatePostBySlug"
               );
             }
-
-            const processedBlock = await processBlock({
-              ...block,
-              id: block.id || uuidv4(),
-              blocked:
-                typeof block.blocked === "boolean" ? block.blocked : false,
-            });
-
-            const allowedFields = [
-              "id",
-              "type",
-              "value",
-              "level",
-              "text",
-              "code",
-              "caption",
-              "src",
-              "href",
-              "url",
-              "name",
-              "size",
-              "ordered",
-              "author",
-              "question",
-              "options",
-              "votedUserIds",
-              "items",
-              "data",
-              "blocked",
-            ];
-
-            return Object.fromEntries(
-              Object.entries(processedBlock).filter(([key]) =>
-                allowedFields.includes(key)
-              )
-            );
+            const processedBlock = await processBlock({ ...block });
+            if (block.type === "image" && block.src) {
+              processedBlock.src = await imageLimit(() =>
+                processImage(block.src, block.id, "blogs/post/images/")
+              );
+            }
+            return processedBlock;
           })
         )
       );
       logMemory("🖼️ After processing blocks");
     }
 
-    const { readTime, readingTime } = calculateReadTime(updates.blocks || []);
-    updates.readTime = readTime;
-    updates.readingTime = readingTime;
+    if (updates.thumbnail) {
+      logMemory("🖼️ Before processing thumbnail");
+      updates.thumbnail = await imageLimit(() =>
+        processImage(updates.thumbnail, "thumbnail", "blogs/post/thumbnails/")
+      );
+      logMemory("🖼️ After processing thumbnail");
+    }
 
-    const query =
-      userRole === "admin"
-        ? { slug: { $regex: new RegExp(`^${slug}$`, "i") } }
-        : { slug: { $regex: new RegExp(`^${slug}$`, "i") }, author: userId };
+    if (updates.title) {
+      let newSlug = slugify(updates.title, { lower: true, strict: true });
+      let finalSlug = newSlug;
+      let counter = 1;
+      logMemory("🔎 Before slug check");
+      while (
+        await PostModel.exists({
+          slug: finalSlug,
+          _id: { $ne: (await PostModel.findOne({ slug }).select("_id"))._id },
+        }).lean()
+      ) {
+        finalSlug = `${newSlug}-${counter++}`;
+      }
+      updates.slug = finalSlug;
+      logMemory("🔎 After slug check");
+    }
 
-    logMemory("📖 Before fetching post");
-    const post = await PostModel.findOne(query).lean();
-    logMemory("📖 After fetching post");
-    if (!post) {
+    if (updates.blocks) {
+      const blockTextContent = updates.blocks
+        .flatMap((block) =>
+          ["text", "value", "code", "caption", "question"]
+            .map((f) => block[f])
+            .filter(Boolean)
+        )
+        .join("\n");
+      const fullText = `${updates.title || ""}\n${
+        updates.excerpt || ""
+      }\n${blockTextContent}`;
+      logMemory("🔍 Before content moderation");
+      const moderation = await moderateContent(fullText);
+      logMemory("🔍 After content moderation");
+      if (moderation.isFlagged) {
+        const reasons = Object.entries(moderation.categories)
+          .filter(([_, flagged]) => flagged)
+          .map(([key]) => key);
+        throw new AppError(
+          `Restricted content: ${reasons.join(", ")}`,
+          400,
+          "UpdatePostBySlug"
+        );
+      }
+
+      const { readTime, readingTime } = calculateReadTime(updates.blocks);
+      updates.readTime = readTime;
+      updates.readingTime = readingTime;
+    }
+
+    const query = userRole === "admin" ? { slug } : { slug, author: userId };
+
+    logMemory("💾 Before updating post");
+    const updatedPost = await PostModel.findOneAndUpdate(
+      query,
+      { $set: updates },
+      {
+        new: true,
+        select: `
+          title slug category excerpt thumbnail author createdAt
+          isPublished isPinned isPremium isSubscriberOnly blocked message readTime
+          likesCount commentsCount viewsCount bookmarksCount likes
+          tags language isFeatured allowComments timeSpent readingTime updatedAt
+          shareCount sharedBy blocks postType
+        `,
+      }
+    )
+      .populate("author", "name avatar")
+      .populate("category", "name slug")
+      .lean();
+    logMemory("💾 After updating post");
+
+    if (!updatedPost) {
       throw new AppError(
-        "Post not found or unauthorized",
+        "Post not found or you don't have permission to update it",
         404,
         "UpdatePostBySlug"
       );
     }
 
-    if (post.blocked) {
-      throw new AppError("Post is blocked", 403, "UpdatePostBySlug");
-    }
-
-    logMemory("💾 Before updating post");
-    const updatedPost = await PostModel.findOneAndUpdate(
-      query,
-      { ...updates, isPublished: true, lastEditedAt: new Date() },
-      { new: true, runValidators: true }
-    ).select(
-      "title slug category excerpt thumbnail blocks author isPublished isPinned createdAt lastEditedAt postType"
-    );
-    logMemory("💾 After updating post");
-
-    if (!updatedPost) {
-      throw new AppError("Failed to update post", 500, "UpdatePostBySlug");
-    }
-
     await recordActivity({
       userId,
-      action: "POST_EDITED",
+      action: "POST_UPDATED",
       targetPost: updatedPost._id,
-      message: `Edited post: ${updatedPost.title}`,
+      message: `Updated post: ${updatedPost.title}`,
     });
+
+    io.emit("postUpdated", { ...updatedPost, authorId: userId });
+
+    const cacheKey = `postCounts:${req.user._id}`;
+    let counts = cache.get(cacheKey);
+    if (!counts) {
+      logMemory("📊 Before cache update");
+      const [allPostsCount, myPostsCount, followingPostsCount] =
+        await Promise.all([
+          PostModel.countDocuments({
+            blocked: { $ne: true },
+            isPublished: true,
+          }).lean(),
+          PostModel.countDocuments({
+            author: req.user._id,
+            blocked: { $ne: true },
+            isPublished: true,
+          }).lean(),
+          PostModel.countDocuments({
+            author: { $in: req.user.following || [] },
+            blocked: { $ne: true },
+            isPublished: true,
+          }).lean(),
+        ]);
+      counts = { allPostsCount, myPostsCount, followingPostsCount };
+      cache.set(cacheKey, counts);
+      logMemory("📊 After cache update");
+    }
+
+    setTimeout(() => {
+      io.to(req.user._id).emit("postCountsUpdated", counts);
+    }, 1000);
 
     logMemory("✏️ End updatePostBySlug");
     res.status(200).json({
@@ -972,30 +1113,102 @@ export const updatePostBySlug = async (req, res, next) => {
   }
 };
 
+export const getPublicPosts = async (req, res, next) => {
+  try {
+    logMemory("📋 Start getPublicPosts");
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+    const skip = (page - 1) * limit;
+    const tag = req.query.tag;
+
+    const query = {
+      blocked: { $ne: true },
+      isPublished: true,
+      ...(tag && { tags: tag }),
+    };
+
+    logMemory("📖 Before fetching posts");
+    const posts = [];
+    const cursor = PostModel.find(query)
+      .select(
+        `
+        title slug category excerpt thumbnail author createdAt
+        isPublished isPinned isPremium isSubscriberOnly blocked message readTime
+        likesCount commentsCount viewsCount bookmarksCount likes
+        tags language isFeatured allowComments timeSpent updatedAt
+        shareCount sharedBy blocks postType
+        `
+      )
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("author", "name avatar")
+      .populate("category", "name slug")
+      .lean()
+      .cursor();
+
+    for await (const post of cursor) {
+      posts.push(post);
+    }
+    logMemory("📖 After fetching posts");
+
+    const total = await PostModel.countDocuments(query).lean();
+
+    logMemory("📋 End getPublicPosts");
+    res.status(200).json({ success: true, total, page, posts });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch public posts",
+            500,
+            "GetPublicPosts"
+          )
+    );
+  }
+};
+
 export const deletePost = async (req, res, next) => {
   try {
     logMemory("🗑️ Start deletePost");
     const { postId } = req.params;
-    logMemory("📖 Before fetching post");
-    const post = await PostModel.findById(postId).lean();
-    logMemory("📖 After fetching post");
-    if (!post) {
-      throw new AppError("Post not found", 404, "DeletePost");
+    const userId = req.user?._id;
+    const userRole = req.user?.role;
+
+    validateObjectId(postId, "Post ID");
+
+    if (!userId) {
+      throw new AppError(
+        "You must be signed in to access this feature.",
+        401,
+        "DeletePost"
+      );
     }
-    if (post.author.toString() !== req.user._id.toString()) {
-      throw new AppError("Unauthorized to delete this post", 403, "DeletePost");
-    }
+
+    const query =
+      userRole === "admin" ? { _id: postId } : { _id: postId, author: userId };
+
     logMemory("💾 Before deleting post");
-    await PostModel.deleteOne({ _id: postId });
+    const post = await PostModel.findOneAndDelete(query).lean();
     logMemory("💾 After deleting post");
+
+    if (!post) {
+      throw new AppError(
+        "Post not found or you don't have permission to delete it",
+        404,
+        "DeletePost"
+      );
+    }
+
     await recordActivity({
-      userId: req.user._id,
+      userId,
       action: "POST_DELETED",
       targetPost: postId,
       message: `Deleted post: ${post.title}`,
     });
 
-    io.emit("postDeleted", { postId, authorId: req.user._id });
+    io.emit("postDeleted", { postId, authorId: userId });
 
     const cacheKey = `postCounts:${req.user._id}`;
     let counts = cache.get(cacheKey);
@@ -1028,7 +1241,9 @@ export const deletePost = async (req, res, next) => {
     }, 1000);
 
     logMemory("🗑️ End deletePost");
-    res.status(200).json({ success: true, message: "Post deleted", postId });
+    res
+      .status(200)
+      .json({ success: true, message: "Post deleted successfully" });
   } catch (error) {
     next(
       error instanceof AppError
@@ -1042,418 +1257,25 @@ export const deletePost = async (req, res, next) => {
   }
 };
 
-export const toggleBlockPost = async (req, res, next) => {
+export const getLatestPosts = async (req, res, next) => {
   try {
-    logMemory("🚫 Start toggleBlockPost");
-    const { postId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(postId)) {
-      throw new AppError("Invalid post ID", 400, "ToggleBlockPost");
-    }
-
-    if (!req.user?._id || req.user.role !== "admin") {
-      throw new AppError("Admin access required", 401, "ToggleBlockPost");
-    }
-
-    logMemory("📖 Before fetching post");
-    const post = await PostModel.findById(postId).lean();
-    logMemory("📖 After fetching post");
-    if (!post) {
-      throw new AppError("Post not found", 404, "ToggleBlockPost");
-    }
-
-    logMemory("💾 Before updating post");
-    const updatedPost = await PostModel.findByIdAndUpdate(
-      postId,
-      { $set: { blocked: !post.blocked } },
-      { new: true, runValidators: true }
-    ).select("title slug blocked");
-    logMemory("💾 After updating post");
-
-    io.emit("postBlockToggled", {
-      postId: post._id,
-      blocked: updatedPost.blocked,
-    });
-    await recordActivity({
-      userId: req.user._id,
-      action: updatedPost.blocked ? "POST_BLOCKED" : "POST_UNBLOCKED",
-      targetPost: postId,
-      message: `${updatedPost.blocked ? "Blocked" : "Unblocked"} post: ${
-        updatedPost.title
-      }`,
-    });
-
-    logMemory("🚫 End toggleBlockPost");
-    res.status(200).json({
-      success: true,
-      message: `Post ${
-        updatedPost.blocked ? "blocked" : "unblocked"
-      } successfully`,
-      post: updatedPost,
-    });
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(error.message, 500, "ToggleBlockPost")
-    );
-  }
-};
-
-export const sendDailyPostEmail = async () => {
-  try {
-    logMemory("📧 Start sendDailyPostEmail");
-    logMemory("📖 Before fetching users");
-    const users = await UserModel.find({
-      emailStatus: "sent",
-      stopEmailAttempts: false,
-    })
-      .select("name email")
-      .lean();
-    logMemory("📖 After fetching users");
-
-    logMemory("📖 Before fetching posts");
-    const cursor = PostModel.find({
-      isPublished: true,
-      blocked: false,
-      createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-    })
-      .select("title slug excerpt postType")
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .lean()
-      .cursor();
-
-    const posts = [];
-    for await (const post of cursor) {
-      posts.push(post);
-    }
-    logMemory("📖 After fetching posts");
-
-    if (!posts.length) {
-      logMemory("📧 End sendDailyPostEmail - No posts");
-      return;
-    }
-
-    const postListHtml = posts
-      .map(
-        (post) => `
-        <div style="margin-bottom: 20px;">
-          <h3 style="margin: 0; font-size: 18px;">
-            <a href="https://yourwebsite.com/post/${post.slug}" style="color: #4F46E5; text-decoration: none;">${post.title}</a>
-          </h3>
-          <p style="font-size: 14px; color: #333333;">${post.excerpt}</p>
-        </div>`
-      )
-      .join("");
-
-    for (const user of users) {
-      const mailOption = createMailOption({
-        to: user.email,
-        subject: "Your Daily Digest from Mount Amit",
-        name: user.name || "User",
-        email: user.email,
-        message: `
-          <p style="font-size: 14px; line-height: 150%;">
-            Here are the latest posts from Mount Amit:
-          </p>
-          ${postListHtml}
-          <p style="font-size: 14px; line-height: 150%;">
-            Enjoy reading, and stay tuned for more updates!
-          </p>`,
-        supportEmail: process.env.SENDER_EMAIL,
-        hasButton: true,
-        buttonText: "Read More",
-        buttonUrl: "https://yourwebsite.com",
-      });
-
-      emailQueue.push({ mailOption, userId: user._id });
-    }
-
-    logMemory("📧 Before processing email queue");
-    await processEmailQueue();
-    logMemory("📧 After processing email queue");
-
-    logMemory("📧 End sendDailyPostEmail");
-  } catch (error) {
-    throw new AppError(
-      "Failed to send daily post emails",
-      500,
-      "SendDailyPostEmail"
-    );
-  }
-};
-
-export const submitAppeal = async (req, res, next) => {
-  try {
-    logMemory("📜 Start submitAppeal");
-    const { postId } = req.params;
-    const { message } = req.body;
-    const userId = req.user?._id;
-
-    if (!mongoose.Types.ObjectId.isValid(postId)) {
-      throw new AppError("Invalid post ID", 400, "SubmitAppeal");
-    }
-
-    if (!userId) {
-      throw new AppError(
-        "You must be signed in to access this feature.",
-        401,
-        "SubmitAppeal"
-      );
-    }
-
-    if (!message || !message.trim()) {
-      throw new AppError("Appeal message is required", 400, "SubmitAppeal");
-    }
-
-    logMemory("📖 Before fetching post");
-    const post = await PostModel.findById(postId).lean();
-    logMemory("📖 After fetching post");
-    if (!post) {
-      throw new AppError("Post not found", 404, "SubmitAppeal");
-    }
-
-    if (post.author.toString() !== userId.toString()) {
-      throw new AppError(
-        "Only the post author can appeal",
-        403,
-        "SubmitAppeal"
-      );
-    }
-
-    if (!post.blocked) {
-      throw new AppError("Post is not blocked", 400, "SubmitAppeal");
-    }
-
-    await recordActivity({
-      userId,
-      action: "POST_APPEAL_SUBMITTED",
-      targetPost: postId,
-      message: `Appeal submitted for post: ${post.title} - ${message}`,
-    });
-
-    io.emit("newAppeal", { postId, userId, message, postTitle: post.title });
-
-    logMemory("📜 End submitAppeal");
-    res
-      .status(200)
-      .json({ success: true, message: "Appeal submitted successfully" });
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to submit appeal",
-            500,
-            "SubmitAppeal"
-          )
-    );
-  }
-};
-
-export const incrementShareCount = async (req, res, next) => {
-  try {
-    logMemory("📈 Start incrementShareCount");
-    const { postId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(postId)) {
-      throw new AppError("Invalid post ID", 400, "IncrementShareCount");
-    }
-
-    logMemory("💾 Before updating share count");
-    const result = await PostModel.findByIdAndUpdate(
-      postId,
-      { $inc: { shareCount: 1 } },
-      { new: true, select: "shareCount" }
-    ).lean();
-    logMemory("💾 After updating share count");
-
-    if (!result) {
-      throw new AppError("Post not found", 404, "IncrementShareCount");
-    }
-
-    logMemory("📈 End incrementShareCount");
-    res.status(200).json({
-      success: true,
-      message: "Share count incremented",
-      shareCount: result.shareCount,
-    });
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to increment share count",
-            500,
-            "IncrementShareCount"
-          )
-    );
-  }
-};
-
-export const getDraftAndPendingPosts = async (req, res, next) => {
-  try {
-    logMemory("📋 Start getDraftAndPendingPosts");
-    const userId = req.user?._id;
-    if (!userId) {
-      throw new AppError(
-        "You must be signed in to access this feature.",
-        401,
-        "GetDraftAndPendingPosts"
-      );
-    }
-
+    logMemory("📅 Start getLatestPosts");
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 10, 100);
     const skip = (page - 1) * limit;
 
-    const query = { author: userId, blocked: { $ne: true } };
-
-    logMemory("📖 Before fetching posts");
-    const [posts, total] = await Promise.all([
-      PostModel.find(query)
-        .select(
-          "title slug category excerpt thumbnail author createdAt isPublished postType"
-        )
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate("author", "name avatar")
-        .lean(),
-      PostModel.countDocuments(query).lean(),
-    ]);
-    logMemory("📖 After fetching posts");
-
-    if (!posts.length) {
-      logMemory("📋 End getDraftAndPendingPosts - No posts");
-      return res.status(200).json({
-        success: true,
-        message: "No posts found",
-        total: 0,
-        page,
-        posts: [],
-      });
-    }
-
-    logMemory("📋 End getDraftAndPendingPosts");
-    res.status(200).json({ success: true, total, page, posts });
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to fetch posts",
-            500,
-            "GetDraftAndPendingPosts"
-          )
-    );
-  }
-};
-
-export const getPublicPost = async (req, res, next) => {
-  try {
-    logMemory("📄 Start getPublicPost");
-    const { slug } = req.params;
-
-    if (!slug || typeof slug !== "string" || slug.trim() === "") {
-      throw new AppError("Invalid post slug", 400, "GetPublicPost");
-    }
-
-    const sanitizedSlug = slug.trim().toLowerCase();
-
-    logMemory("📖 Before fetching post");
-    const post = await PostModel.findOne({
-      slug: sanitizedSlug,
-      isPublished: true,
-      blocked: false,
-    })
-      .select(
-        `
-        title slug category excerpt thumbnail author createdAt
-        isPublished readTime readingTime tags language viewsCount shareCount postType
-        `
-      )
-      .populate("author", "name avatar")
-      .populate("category", "name slug")
-      .lean();
-    logMemory("📖 After fetching post");
-
-    if (!post) {
-      throw new AppError(
-        "Post not found or has been deleted",
-        404,
-        "GetPublicPost"
-      );
-    }
-
-    logMemory("📄 End getPublicPost");
-    res.status(200).json({ success: true, post });
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to fetch public post",
-            500,
-            "GetPublicPost"
-          )
-    );
-  }
-};
-
-export const getFollowingPosts = async (req, res, next) => {
-  try {
-    logMemory("📋 Start getFollowingPosts");
-    const userId = req.user?._id;
-    const page = parseInt(req.query.page) || 1;
-    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
-    const skip = (page - 1) * limit;
-
-    if (!userId) {
-      throw new AppError(
-        "You must be signed in to access this feature.",
-        401,
-        "GetFollowingPosts"
-      );
-    }
-
-    logMemory("📖 Before fetching user");
-    const user = await UserModel.findById(userId).select("following").lean();
-    logMemory("📖 After fetching user");
-    if (!user) {
-      throw new AppError("User not found", 404, "GetFollowingPosts");
-    }
-
-    const followingIds = user.following
-      .map((id) => id.toString())
-      .filter((id) => mongoose.Types.ObjectId.isValid(id));
-
-    if (!followingIds.length) {
-      logMemory("📋 End getFollowingPosts - No following");
-      return res.status(200).json({
-        success: true,
-        total: 0,
-        page,
-        posts: [],
-        message: "You are not following any users",
-      });
-    }
-
-    const query = {
-      author: { $in: followingIds },
-      isPublished: true,
-      blocked: false,
-    };
-
     logMemory("📖 Before fetching posts");
     const posts = [];
-    const cursor = PostModel.find(query)
+    const cursor = PostModel.find({
+      blocked: { $ne: true },
+      isPublished: true,
+    })
       .select(
         `
         title slug category excerpt thumbnail author createdAt
         isPublished isPinned isPremium isSubscriberOnly blocked message readTime
         likesCount commentsCount viewsCount bookmarksCount likes
-        tags language isFeatured allowComments timeSpent readingTime updatedAt
+        tags language isFeatured allowComments timeSpent updatedAt
         shareCount sharedBy blocks postType
         `
       )
@@ -1461,6 +1283,7 @@ export const getFollowingPosts = async (req, res, next) => {
       .skip(skip)
       .limit(limit)
       .populate("author", "name avatar")
+      .populate("category", "name slug")
       .lean()
       .cursor();
 
@@ -1469,24 +1292,201 @@ export const getFollowingPosts = async (req, res, next) => {
     }
     logMemory("📖 After fetching posts");
 
-    const total = await PostModel.countDocuments(query).lean();
+    const total = await PostModel.countDocuments({
+      blocked: { $ne: true },
+      isPublished: true,
+    }).lean();
 
-    await recordActivity({
-      userId,
-      action: "VIEWED_FOLLOWING_POSTS",
-      message: `Viewed posts from followed users`,
-    });
-
-    logMemory("📋 End getFollowingPosts");
+    logMemory("📅 End getLatestPosts");
     res.status(200).json({ success: true, total, page, posts });
   } catch (error) {
     next(
       error instanceof AppError
         ? error
         : new AppError(
-            error.message || "Failed to fetch following posts",
+            error.message || "Failed to fetch latest posts",
             500,
-            "GetFollowingPosts"
+            "GetLatestPosts"
+          )
+    );
+  }
+};
+
+export const getTrendingPosts = async (req, res, next) => {
+  try {
+    logMemory("🔥 Start getTrendingPosts");
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+    const skip = (page - 1) * limit;
+
+    logMemory("📖 Before fetching posts");
+    const posts = [];
+    const cursor = PostModel.find({
+      blocked: { $ne: true },
+      isPublished: true,
+    })
+      .select(
+        `
+        title slug category excerpt thumbnail author createdAt
+        isPublished isPinned isPremium isSubscriberOnly blocked message readTime
+        likesCount commentsCount viewsCount bookmarksCount likes
+        tags language isFeatured allowComments timeSpent updatedAt
+        shareCount sharedBy blocks postType
+        `
+      )
+      .sort({ viewsCount: -1, likesCount: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("author", "name avatar")
+      .populate("category", "name slug")
+      .lean()
+      .cursor();
+
+    for await (const post of cursor) {
+      posts.push(post);
+    }
+    logMemory("📖 After fetching posts");
+
+    const total = await PostModel.countDocuments({
+      blocked: { $ne: true },
+      isPublished: true,
+    }).lean();
+
+    logMemory("🔥 End getTrendingPosts");
+    res.status(200).json({ success: true, total, page, posts });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch trending posts",
+            500,
+            "GetTrendingPosts"
+          )
+    );
+  }
+};
+
+export const searchPosts = async (req, res, next) => {
+  try {
+    logMemory("🔍 Start searchPosts");
+    const { query, authorId } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+    const skip = (page - 1) * limit;
+
+    if (!query || typeof query !== "string" || query.trim() === "") {
+      throw new AppError("Search query is required", 400, "SearchPosts");
+    }
+
+    const searchQuery = {
+      $text: { $search: query.trim() },
+      blocked: { $ne: true },
+      isPublished: true,
+      ...(authorId && mongoose.Types.ObjectId.isValid(authorId)
+        ? { author: authorId }
+        : {}),
+    };
+
+    logMemory("📖 Before fetching posts");
+    const posts = [];
+    const cursor = PostModel.find(searchQuery)
+      .select(
+        `
+        title slug category excerpt thumbnail author createdAt
+        isPublished isPinned isPremium isSubscriberOnly blocked message readTime
+        likesCount commentsCount viewsCount bookmarksCount likes
+        tags language isFeatured allowComments timeSpent updatedAt
+        shareCount sharedBy blocks postType
+        `
+      )
+      .sort({ score: { $meta: "textScore" }, createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("author", "name avatar")
+      .populate("category", "name slug")
+      .lean()
+      .cursor();
+
+    for await (const post of cursor) {
+      posts.push(post);
+    }
+    logMemory("📖 After fetching posts");
+
+    const total = await PostModel.countDocuments(searchQuery).lean();
+
+    logMemory("🔍 End searchPosts");
+    res.status(200).json({ success: true, total, page, posts });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to search posts",
+            500,
+            "SearchPosts"
+          )
+    );
+  }
+};
+
+export const sendAdminAppeal = async (req, res, next) => {
+  try {
+    logMemory("📩 Start sendAdminAppeal");
+    const { postId } = req.params;
+    const { message } = req.body;
+    const userId = req.user?._id;
+
+    validateObjectId(postId, "Post ID");
+
+    if (!userId) {
+      throw new AppError(
+        "You must be signed in to access this feature.",
+        401,
+        "SendAdminAppeal"
+      );
+    }
+
+    if (!message || typeof message !== "string" || message.trim() === "") {
+      throw new AppError("Appeal message is required", 400, "SendAdminAppeal");
+    }
+
+    logMemory("📖 Before fetching post");
+    const post = await PostModel.findOne({
+      _id: postId,
+      author: userId,
+      blocked: true,
+    }).lean();
+    logMemory("📖 After fetching post");
+
+    if (!post) {
+      throw new AppError(
+        "Post not found or you don't have permission to appeal",
+        404,
+        "SendAdminAppeal"
+      );
+    }
+
+    await recordActivity({
+      userId,
+      action: "APPEAL_SUBMITTED",
+      targetPost: postId,
+      message: `Submitted appeal for post: ${post.title}`,
+      metadata: { appealMessage: message.trim() },
+    });
+
+    logMemory("📩 End sendAdminAppeal");
+    res
+      .status(200)
+      .json({ success: true, message: "Appeal sent successfully" });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to send appeal",
+            500,
+            "SendAdminAppeal"
           )
     );
   }

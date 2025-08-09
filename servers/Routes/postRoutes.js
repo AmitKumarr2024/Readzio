@@ -11,19 +11,15 @@ import {
   trackTimeSpent,
   toggleBlockPost,
   updatePostBySlug,
-  submitAppeal,
+  sendAdminAppeal,
   incrementShareCount,
-  getPublicPost,
+  getPublicPosts,
   voteOnPoll,
   getFollowingPosts,
-} from "../Controllers/postController.js";
-import {
-  searchPosts,
-  getTrendingPosts,
   getLatestPosts,
-  suggestPosts,
-  searchUsers,
-} from "../Controllers/postSearchController.js";
+  getTrendingPosts,
+  searchPosts,
+} from "../Controllers/postController.js";
 import {
   incrementView,
   toggleBookmark,
@@ -42,37 +38,59 @@ const router = express.Router();
 const validatePostId = validateObjectId("postId");
 const validateUserId = validateObjectId("userId");
 
-// Middleware to log only errors (not params or queries)
+// Middleware to log errors only
 const logParams = (req, res, next) => {
   try {
-    // No log in normal flow
     next();
   } catch (err) {
-    console.error("[logParams] ❌ Middleware error:", err);
-    next(err); // pass error to error handler
+    console.error("[logParams] ❌ Middleware error:", err.message, err.stack);
+    next(
+      err instanceof AppError
+        ? err
+        : new AppError("Middleware error", 500, "LogParams")
+    );
   }
 };
 
 // Public routes
-// GET /public/posts - Fetches public posts with pagination
+// GET /public/posts - Fetches public posts with pagination and optional tag filtering
 router.get("/public/posts", logParams, async (req, res, next) => {
   try {
-    const { page = 1, limit = 50 } = req.query;
-    const posts = await PostModel.find({
+    const { page = 1, limit = 50, tag } = req.query;
+    const parsedPage = parseInt(page);
+    const parsedLimit = Math.min(parseInt(limit), 100);
+    if (isNaN(parsedPage) || parsedPage < 1) {
+      throw new AppError("Invalid page number", 400, "GetPublicPosts");
+    }
+    if (isNaN(parsedLimit) || parsedLimit < 1) {
+      throw new AppError("Invalid limit value", 400, "GetPublicPosts");
+    }
+    const skip = (parsedPage - 1) * parsedLimit;
+
+    const query = {
       isPublished: true,
       blocked: false,
-    })
-      .skip((page - 1) * limit)
-      .limit(Number(limit))
-      .select("title slug category author createdAt")
+      ...(tag && { tags: tag.trim() }),
+    };
+
+    const posts = await PostModel.find(query)
+      .skip(skip)
+      .limit(parsedLimit)
+      .select(
+        "title slug category author createdAt thumbnail excerpt readTime tags"
+      )
+      .populate("author", "name avatar")
+      .populate("category", "name slug")
       .lean();
-    const total = await PostModel.countDocuments({
-      isPublished: true,
-      blocked: false,
-    });
-    res.json({ posts, total, page: Number(page) });
+    const total = await PostModel.countDocuments(query).lean();
+
+    res.json({ success: true, posts, total, page: parsedPage });
   } catch (error) {
-    next(new AppError("Failed to fetch public posts", 500));
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError("Failed to fetch public posts", 500, "GetPublicPosts")
+    );
   }
 });
 
@@ -80,13 +98,26 @@ router.get("/public/posts", logParams, async (req, res, next) => {
 router.get("/id-by-slug/:slug", logParams, async (req, res, next) => {
   try {
     const { slug } = req.params;
-    const post = await PostModel.findOne({ slug }).select("_id").lean();
+    if (!slug || typeof slug !== "string" || slug.trim() === "") {
+      throw new AppError("Invalid post slug", 400, "GetPostIdBySlug");
+    }
+    const post = await PostModel.findOne({ slug: slug.trim().toLowerCase() })
+      .select("_id")
+      .lean();
     if (!post) {
-      throw new AppError("Post not found", 404);
+      throw new AppError("Post not found", 404, "GetPostIdBySlug");
     }
     res.json({ success: true, postId: post._id });
   } catch (error) {
-    next(error instanceof AppError ? error : new AppError(error.message, 500));
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch post ID",
+            500,
+            "GetPostIdBySlug"
+          )
+    );
   }
 });
 
@@ -96,15 +127,17 @@ router.get("/count/all", logParams, async (req, res, next) => {
     const count = await PostModel.countDocuments({
       blocked: { $ne: true },
       isPublished: true,
-    });
+    }).lean();
     res.status(200).json({ success: true, count });
   } catch (error) {
     next(
-      new AppError(
-        error.message || "Failed to fetch all posts count",
-        500,
-        "CountAllPosts"
-      )
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch all posts count",
+            500,
+            "CountAllPosts"
+          )
     );
   }
 });
@@ -113,19 +146,25 @@ router.get("/count/all", logParams, async (req, res, next) => {
 // GET /count/my - Counts authenticated user's posts
 router.get("/count/my", protectedRoute, logParams, async (req, res, next) => {
   try {
-    if (!req.user?._id) throw new AppError("Invalid user in request", 400);
+    if (!req.user?._id) {
+      throw new AppError("Invalid user in request", 401, "CountMyPosts");
+    }
     const count = await PostModel.countDocuments({
       author: req.user._id,
       blocked: { $ne: true },
       isPublished: true,
-    });
+    }).lean();
     res.status(200).json({ success: true, count });
   } catch (error) {
     console.error("[Post: /count/my] Error:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
-        : new AppError("Failed to fetch post count", 500, "CountMyPosts")
+        : new AppError(
+            error.message || "Failed to fetch post count",
+            500,
+            "CountMyPosts"
+          )
     );
   }
 });
@@ -137,19 +176,33 @@ router.get(
   logParams,
   async (req, res, next) => {
     try {
+      if (!req.user?._id) {
+        throw new AppError(
+          "Invalid user in request",
+          401,
+          "CountFollowingPosts"
+        );
+      }
       const count = await PostModel.countDocuments({
         author: { $in: req.user.following || [] },
         blocked: { $ne: true },
         isPublished: true,
-      });
+      }).lean();
       res.status(200).json({ success: true, count });
     } catch (error) {
+      console.error(
+        "[Post: /count/following] Error:",
+        error.message,
+        error.stack
+      );
       next(
-        new AppError(
-          error.message || "Failed to fetch following posts count",
-          500,
-          "CountFollowingPosts"
-        )
+        error instanceof AppError
+          ? error
+          : new AppError(
+              error.message || "Failed to fetch following posts count",
+              500,
+              "CountFollowingPosts"
+            )
       );
     }
   }
@@ -159,11 +212,8 @@ router.get(
 router.get("/following", protectedRoute, logParams, getFollowingPosts);
 
 // Post CRUD
-// POST /post-create - Creates a new post
 router.post("/post-create", protectedRoute, logParams, createPost);
-// PATCH /update/:slug - Updates a post by slug
 router.patch("/update/:slug", protectedRoute, logParams, updatePostBySlug);
-// DELETE /delete/:postId - Deletes a post
 router.delete(
   "/delete/:postId",
   protectedRoute,
@@ -171,7 +221,6 @@ router.delete(
   validatePostId,
   deletePost
 );
-// PATCH /toggle-block/:postId - Toggles post block status
 router.patch(
   "/toggle-block/:postId",
   protectedRoute,
@@ -179,17 +228,15 @@ router.patch(
   validatePostId,
   toggleBlockPost
 );
-// POST /appeal/:postId - Submits an appeal for a blocked post
 router.post(
   "/appeal/:postId",
   protectedRoute,
   logParams,
   validatePostId,
-  submitAppeal
+  sendAdminAppeal
 );
 
 // Post Interactions
-// POST /like/:postId - Toggles like on a post
 router.post(
   "/like/:postId",
   protectedRoute,
@@ -197,7 +244,6 @@ router.post(
   validatePostId,
   toggleLike
 );
-// POST /bookmark/:postId - Toggles bookmark on a post
 router.post(
   "/bookmark/:postId",
   protectedRoute,
@@ -205,7 +251,6 @@ router.post(
   validatePostId,
   toggleBookmark
 );
-// POST /time-spent/:postId - Tracks time spent on a post
 router.post(
   "/time-spent/:postId",
   protectedRoute,
@@ -213,7 +258,6 @@ router.post(
   validatePostId,
   trackTimeSpent
 );
-// POST /:postId/share - Increments share count for a post
 router.post(
   "/:postId/share",
   protectedRoute,
@@ -221,7 +265,6 @@ router.post(
   validatePostId,
   incrementShareCount
 );
-// GET /bookmark-status/:postId - Checks bookmark status for a post
 router.get(
   "/bookmark-status/:postId",
   protectedRoute,
@@ -229,7 +272,6 @@ router.get(
   validatePostId,
   getBookmarkStatus
 );
-// GET /get-post/bookmarks - Fetches bookmarked posts
 router.get(
   "/get-post/bookmarks",
   protectedRoute,
@@ -238,9 +280,13 @@ router.get(
 );
 
 // Post Analytics
-// GET /analytics/post/:postId - Fetches analytics for a post
-router.get("/analytics/post/:postId", protectedRoute, logParams, getPostStats);
-// GET /analytics/user-engagement - Fetches user engagement stats
+router.get(
+  "/analytics/post/:postId",
+  protectedRoute,
+  logParams,
+  validatePostId,
+  getPostStats
+);
 router.get(
   "/analytics/user-engagement",
   protectedRoute,
@@ -249,25 +295,12 @@ router.get(
 );
 
 // Post Search & Feed
-// GET /all-post - Fetches all posts
 router.get("/all-post", logParams, getAllPosts);
-// GET /search-post/search - Searches posts
 router.get("/search-post/search", logParams, searchPosts);
-// GET /trending-post/trending - Fetches trending posts
 router.get("/trending-post/trending", logParams, getTrendingPosts);
-// GET /latest-post/latest - Fetches latest posts
 router.get("/latest-post/latest", logParams, getLatestPosts);
-// GET /suggested-post/suggested - Fetches suggested posts
-router.get("/suggested-post/suggested", logParams, suggestPosts);
-// GET /search-users - Searches users
-router.get("/search-users", protectedRoute, logParams, searchUsers);
-// GET /public/:slug - Fetches a public post by slug
-router.get("/public/:slug", logParams, getPublicPost);
-// GET /:slug - Fetches a post by slug (authenticated)
-router.get("/:slug", protectedRoute, logParams, getSinglePost);
-// POST /view/:slug - Increments view count for a post
+router.get("/public/:slug", logParams, getSinglePost);
 router.post("/view/:slug", logParams, incrementView);
-// POST /vote - Votes on a poll
 router.post("/vote", protectedRoute, logParams, voteOnPoll);
 
 export default router;
