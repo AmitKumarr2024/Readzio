@@ -12,7 +12,6 @@ import {
   getAllPosts,
   fetchFollowingPosts,
   getSinglePost,
-  clearError,
 } from "../../store/postSlice";
 import { fetchCommentCount } from "../../store/commentSlice";
 import { fetchCategories } from "../../store/categorySlice";
@@ -22,7 +21,7 @@ import {
   fetchInitialPostCounts,
 } from "../../store/socketSlice";
 import { fetchPostsSequentially } from "../../Utils/fetchPostsSequentially";
-import { fetchPublicPosts } from "../../store/guestSlice";
+import { fetchPublicPosts } from "../../store/guestSlice"; // Added guest slice
 import Sorted from "../Tabs/Sorted";
 import ErrorBoundary from "./ErrorBoundary";
 import Skeleton from "@/components/Ui/Skeleton";
@@ -39,14 +38,14 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   } = useSelector((state) => state.post || {});
   const { publicPosts = [], publicLoading = false } = useSelector(
     (state) => state.guest || {}
-  );
+  ); // Added guest selector
   const { commentCounts = {} } = useSelector((state) => state.comment || {});
   const { categories = [] } = useSelector((state) => state.categories || {});
   const isSidebarOpen = useSelector(
     (state) => state.postMeta?.isSidebarOpen ?? false
   );
   const currentUser = useSelector((state) => state.auth?.user ?? { _id: null });
-  const isAuthenticated = !!currentUser._id;
+  const isAuthenticated = !!currentUser._id; // Determine auth status
   const { followers = { list: [] } } = useSelector(
     (state) => state.follow || {}
   );
@@ -91,12 +90,6 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     const options = { page: 1, limit: postsPerPage };
     const loadInitialPosts = async () => {
       try {
-        console.log("Loading initial posts:", {
-          filterType,
-          isAuthenticated,
-          userId: user?._id,
-        });
-        dispatch(clearError()); // Clear previous errors
         let metaPosts;
         if (isAuthenticated) {
           if (filterType === "Following") {
@@ -115,7 +108,6 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
           } else {
             metaPosts = await dispatch(getAllPosts(options)).unwrap();
           }
-          console.log("Fetched posts:", metaPosts);
           await fetchPostsSequentially({
             dispatch,
             posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
@@ -123,10 +115,9 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
           });
         } else {
           metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
-          console.log("Fetched public posts:", metaPosts);
         }
       } catch (e) {
-        console.error("❌ Failed to load initial posts:", e.message, e);
+        console.error("❌ Failed to load initial posts:", e);
       }
     };
     loadInitialPosts();
@@ -142,121 +133,127 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   useEffect(() => {
     if (!socket || customPosts.length) return;
 
-    const handlePostCreated = debounce(async (newPost) => {
+    const handlePostCreated = debounce((newPost) => {
       const options = { page: 1, limit: postsPerPage };
-      try {
-        console.log("Socket: postCreated", { newPost, filterType });
-        let metaPosts;
-        if (isAuthenticated) {
-          if (filterType === "Following") {
-            metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
-          } else if (filterType === "My Posts" && user?._id) {
-            metaPosts = await dispatch(
-              getAllPosts({ userId: user._id, ...options })
-            ).unwrap();
+      const reloadPosts = async () => {
+        try {
+          let metaPosts;
+          if (isAuthenticated) {
+            if (filterType === "Following") {
+              metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+            } else if (filterType === "My Posts" && user?._id) {
+              metaPosts = await dispatch(
+                getAllPosts({ userId: user._id, ...options })
+              ).unwrap();
+            } else {
+              metaPosts = await dispatch(getAllPosts(options)).unwrap();
+            }
+            await fetchPostsSequentially({
+              dispatch,
+              posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
+              getThunk: ({ slug }) => getSinglePost({ slug }),
+            });
           } else {
-            metaPosts = await dispatch(getAllPosts(options)).unwrap();
+            metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
           }
-          await fetchPostsSequentially({
-            dispatch,
-            posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
-            getThunk: ({ slug }) => getSinglePost({ slug }),
-          });
-        } else {
-          metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
+        } catch (e) {
+          console.error("❌ Failed to reload posts:", e);
         }
-        if (isAuthenticated) {
-          dispatch({
-            type: "socket/setPostCounts",
-            payload: {
-              allPostsCount: postCounts.allPostsCount + 1,
-              myPostsCount:
-                newPost.authorId === user?._id
-                  ? postCounts.myPostsCount + 1
-                  : postCounts.myPostsCount,
-              followingPostsCount: followers.list
-                .map((u) => u._id)
-                .includes(newPost.authorId)
-                ? postCounts.followingPostsCount + 1
-                : postCounts.followingPostsCount,
-            },
-          });
-        }
-      } catch (e) {
-        console.error("❌ Failed to reload posts on postCreated:", e.message);
+      };
+      reloadPosts();
+      if (isAuthenticated) {
+        dispatch({
+          type: "socket/setPostCounts",
+          payload: {
+            allPostsCount: postCounts.allPostsCount + 1,
+            myPostsCount:
+              newPost.authorId === user?._id
+                ? postCounts.myPostsCount + 1
+                : postCounts.myPostsCount,
+            followingPostsCount: followers.list
+              .map((u) => u._id)
+              .includes(newPost.authorId)
+              ? postCounts.followingPostsCount + 1
+              : postCounts.followingPostsCount,
+          },
+        });
       }
     }, 300);
 
-    const handlePostUpdated = debounce(async () => {
+    const handlePostUpdated = debounce(() => {
       const options = { page: 1, limit: postsPerPage };
-      try {
-        console.log("Socket: postUpdated", { filterType });
-        let metaPosts;
-        if (isAuthenticated) {
-          if (filterType === "Following") {
-            metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
-          } else if (filterType === "My Posts" && user?._id) {
-            metaPosts = await dispatch(
-              getAllPosts({ userId: user._id, ...options })
-            ).unwrap();
+      const reloadPosts = async () => {
+        try {
+          let metaPosts;
+          if (isAuthenticated) {
+            if (filterType === "Following") {
+              metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+            } else if (filterType === "My Posts" && user?._id) {
+              metaPosts = await dispatch(
+                getAllPosts({ userId: user._id, ...options })
+              ).unwrap();
+            } else {
+              metaPosts = await dispatch(getAllPosts(options)).unwrap();
+            }
+            await fetchPostsSequentially({
+              dispatch,
+              posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
+              getThunk: ({ slug }) => getSinglePost({ slug }),
+            });
           } else {
-            metaPosts = await dispatch(getAllPosts(options)).unwrap();
+            metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
           }
-          await fetchPostsSequentially({
-            dispatch,
-            posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
-            getThunk: ({ slug }) => getSinglePost({ slug }),
-          });
-        } else {
-          metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
+        } catch (e) {
+          console.error("❌ Failed to reload posts:", e);
         }
-      } catch (e) {
-        console.error("❌ Failed to reload posts on postUpdated:", e.message);
-      }
+      };
+      reloadPosts();
     }, 300);
 
-    const handlePostDeleted = debounce(async (data) => {
+    const handlePostDeleted = debounce((data) => {
       const options = { page: 1, limit: postsPerPage };
-      try {
-        console.log("Socket: postDeleted", { data, filterType });
-        let metaPosts;
-        if (isAuthenticated) {
-          if (filterType === "Following") {
-            metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
-          } else if (filterType === "My Posts" && user?._id) {
-            metaPosts = await dispatch(
-              getAllPosts({ userId: user._id, ...options })
-            ).unwrap();
+      const reloadPosts = async () => {
+        try {
+          let metaPosts;
+          if (isAuthenticated) {
+            if (filterType === "Following") {
+              metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+            } else if (filterType === "My Posts" && user?._id) {
+              metaPosts = await dispatch(
+                getAllPosts({ userId: user._id, ...options })
+              ).unwrap();
+            } else {
+              metaPosts = await dispatch(getAllPosts(options)).unwrap();
+            }
+            await fetchPostsSequentially({
+              dispatch,
+              posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
+              getThunk: ({ slug }) => getSinglePost({ slug }),
+            });
           } else {
-            metaPosts = await dispatch(getAllPosts(options)).unwrap();
+            metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
           }
-          await fetchPostsSequentially({
-            dispatch,
-            posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
-            getThunk: ({ slug }) => getSinglePost({ slug }),
-          });
-        } else {
-          metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
+        } catch (e) {
+          console.error("❌ Failed to reload posts:", e);
         }
-        if (isAuthenticated) {
-          dispatch({
-            type: "socket/setPostCounts",
-            payload: {
-              allPostsCount: Math.max(0, postCounts.allPostsCount - 1),
-              myPostsCount:
-                data.authorId === user?._id
-                  ? Math.max(0, postCounts.myPostsCount - 1)
-                  : postCounts.myPostsCount,
-              followingPostsCount: followers.list
-                .map((u) => u._id)
-                .includes(data.authorId)
-                ? Math.max(0, postCounts.followingPostsCount - 1)
-                : postCounts.followingPostsCount,
-            },
-          });
-        }
-      } catch (e) {
-        console.error("❌ Failed to reload posts on postDeleted:", e.message);
+      };
+      reloadPosts();
+      if (isAuthenticated) {
+        dispatch({
+          type: "socket/setPostCounts",
+          payload: {
+            allPostsCount: Math.max(0, postCounts.allPostsCount - 1),
+            myPostsCount:
+              data.authorId === user?._id
+                ? Math.max(0, postCounts.myPostsCount - 1)
+                : postCounts.myPostsCount,
+            followingPostsCount: followers.list
+              .map((u) => u._id)
+              .includes(data.authorId)
+              ? Math.max(0, postCounts.followingPostsCount - 1)
+              : postCounts.followingPostsCount,
+          },
+        });
       }
     }, 300);
 
@@ -335,7 +332,6 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
       );
     }
 
-    console.log("Filtered posts:", validPosts);
     return validPosts;
   }, [
     customPosts,
@@ -445,8 +441,6 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
       setCurrentPage(nextPage);
       const options = { page: nextPage, limit: postsPerPage };
       try {
-        console.log("Loading more posts:", { nextPage, filterType });
-        dispatch(clearError()); // Clear previous errors
         let metaPosts;
         if (isAuthenticated) {
           if (filterType === "Following") {
@@ -473,9 +467,8 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
         } else {
           metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
         }
-        console.log("Fetched more posts:", metaPosts);
       } catch (e) {
-        console.error("❌ Failed to load more posts:", e.message);
+        console.error("❌ Failed to load posts:", e);
       }
     }
   }, [
@@ -529,20 +522,9 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
         <Sorted posts={filteredPosts} onSortChange={() => {}} />
         {(postLoading || publicLoading) && !selectedPosts.length ? (
           renderSkeletonGrid()
-        ) : postError && !selectedPosts.length ? (
+        ) : postError ? (
           <p className="text-center text-red-500">
-            Error loading posts: {postError?.message || "Unknown error"}{" "}
-            (Filter: {filterType})
-          </p>
-        ) : !selectedPosts.length ? (
-          <p className="col-span-full text-center text-gray-500">
-            {filterType === "Following"
-              ? "Follow users to see their posts here."
-              : filterType === "Followers"
-              ? "No posts from your followers yet."
-              : filterType === "My Posts"
-              ? "You haven't posted yet."
-              : "No posts found"}
+            {postError?.message || "Error loading posts"}
           </p>
         ) : (
           <>
@@ -553,51 +535,66 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
                   : "lg:grid-cols-3 xl:grid-cols-5"
               }`}
             >
-              {itemsWithAds.map((item, i) => {
-                if (item.type === "card-ad") {
+              {itemsWithAds.length ? (
+                itemsWithAds.map((item, i) => {
+                  if (item.type === "card-ad") {
+                    return (
+                      <div
+                        key={item.id}
+                        className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden w-full"
+                      >
+                        <SafeInFeedAd postId={item.postId} />
+                      </div>
+                    );
+                  }
+                  if (item.type === "multiplex-ad") {
+                    return (
+                      <div
+                        key={item.id}
+                        className="col-span-full w-full flex justify-center border-t border-b border-gray-300 dark:border-gray-600 my-4"
+                      >
+                        <MultiplexAd postId={item.postId} />
+                      </div>
+                    );
+                  }
                   return (
                     <div
-                      key={item.id}
-                      className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden w-full"
-                    >
-                      <SafeInFeedAd postId={item.postId} />
-                    </div>
-                  );
-                }
-                if (item.type === "multiplex-ad") {
-                  return (
-                    <div
-                      key={item.id}
-                      className="col-span-full w-full flex justify-center border-t border-b border-gray-300 dark:border-gray-600 my-4"
-                    >
-                      <MultiplexAd postId={item.postId} />
-                    </div>
-                  );
-                }
-                return (
-                  <div
-                    key={item._id}
-                    ref={
-                      i === itemsWithAds.length - 1 ? lastPostElementRef : null
-                    }
-                    className="w-full"
-                  >
-                    <CardOfPost
-                      {...item}
-                      commentsCount={commentCounts[item._id] ?? 0}
-                      loading={
-                        (postLoading || publicLoading) && !selectedPosts.length
+                      key={item._id}
+                      ref={
+                        i === itemsWithAds.length - 1
+                          ? lastPostElementRef
+                          : null
                       }
-                      categoryMap={categoryMap}
-                      postType={item?.postType}
-                      isPremium={item?.isPremium}
-                      readTime={item?.readTime}
-                    />
-                  </div>
-                );
-              })}
+                      className="w-full"
+                    >
+                      <CardOfPost
+                        {...item}
+                        commentsCount={commentCounts[item._id] ?? 0}
+                        loading={
+                          (postLoading || publicLoading) &&
+                          !selectedPosts.length
+                        }
+                        categoryMap={categoryMap}
+                        postType={item?.postType}
+                        isPremium={item?.isPremium}
+                        readTime={item?.readTime}
+                      />
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="col-span-full text-center text-gray-500">
+                  {filterType === "Following"
+                    ? "Follow users to see their posts here."
+                    : filterType === "Followers"
+                    ? "No posts from your followers yet."
+                    : filterType === "My Posts"
+                    ? "You haven't posted yet."
+                    : "No posts found"}
+                </p>
+              )}
             </div>
-            {(postLoading || publicLoading) && (
+            {(postLoading || publicLoading) && selectedPosts.length > 0 && (
               <div className="flex justify-center py-4">
                 <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
               </div>
