@@ -5,20 +5,18 @@ import { toggleSidebar, setIsMobile } from "../store/Post/postMetaSlice";
 import { fetchPublicPosts } from "../store/guestSlice";
 import { getAllPosts } from "../store/postSlice";
 
-// Direct imports (instead of lazy)
 import HeroSection from "../components/HeroSection";
 import RightSideBox from "../components/RightSideBar/RightSideBox";
 import TabbedPostSection from "../components/Tabs/TabbedPostSection";
 import GuestPostView from "../components/GuestMainScreen/GuestPostView";
+import Skeleton from "../components/Ui/Skeleton";
 
 const MainPage = () => {
   const dispatch = useDispatch();
 
-  const {
-    isAuthenticated,
-    user,
-    loading: authLoading,
-  } = useSelector((state) => state.auth);
+  const { isAuthenticated, user, loading: authLoading } = useSelector(
+    (state) => state.auth
+  );
 
   const {
     posts: guestPosts = [],
@@ -32,6 +30,7 @@ const MainPage = () => {
 
   const { isSidebarOpen, isMobile } = useSelector((state) => state.postMeta);
 
+  // Progressive fetching on mount
   useEffect(() => {
     try {
       if (!authLoading) {
@@ -46,6 +45,7 @@ const MainPage = () => {
     }
   }, [dispatch, isAuthenticated, authLoading]);
 
+  // Handle mobile resize
   useLayoutEffect(() => {
     const handleResize = () => {
       dispatch(setIsMobile(window.innerWidth < 1024));
@@ -55,6 +55,7 @@ const MainPage = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, [dispatch]);
 
+  // Disable scroll when sidebar is open on mobile
   useEffect(() => {
     document.body.style.overflow =
       isMobile && isSidebarOpen ? "hidden" : "auto";
@@ -85,13 +86,23 @@ const MainPage = () => {
         <div className="flex flex-row gap-2">
           <div className="flex-2 w-full">
             {authLoading ? (
-              <div className="text-center py-8 text-gray-500">Loading...</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} height="h-48" />
+                ))}
+              </div>
             ) : isAuthenticated ? (
               <TabbedPostSection
                 user={user}
                 posts={authPosts}
                 loading={authPostLoading}
               />
+            ) : guestLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} height="h-48" />
+                ))}
+              </div>
             ) : (
               <GuestPostView posts={guestPosts} loading={guestLoading} />
             )}
