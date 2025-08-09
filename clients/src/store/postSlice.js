@@ -278,6 +278,7 @@ export const getSinglePost = createAsyncThunk(
   async ({ slug, isGuest = false }, { rejectWithValue, getState }) => {
     try {
       if (!slug || typeof slug !== "string") {
+        console.error("Invalid slug provided:", slug);
         return rejectWithValue({ message: "Invalid post slug" });
       }
       const { auth } = getState();
@@ -286,13 +287,17 @@ export const getSinglePost = createAsyncThunk(
           ? { Authorization: `Bearer ${auth.token}` }
           : {};
       const endpoint = isGuest ? `/post/public/${slug}` : `/post/${slug}`;
+      console.log("Fetching post with slug:", slug, "Endpoint:", endpoint);
       const response = await axiosInstance.get(endpoint, { headers });
       if (!response.data.post) {
+        console.error("No post found for slug:", slug);
         return rejectWithValue({ message: "Post not found" });
       }
+      console.log("Fetched post:", response.data.post);
       return response.data.post;
     } catch (error) {
       const errMsg = error.response?.data?.message || "Failed to fetch post";
+      console.error("Error fetching post:", errMsg, "Slug:", slug);
       return rejectWithValue({ message: errMsg });
     }
   }
@@ -622,15 +627,18 @@ const postSlice = createSlice({
       .addCase(getSinglePost.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.currentPost = null; // Clear currentPost to avoid stale data
       })
       .addCase(getSinglePost.fulfilled, (state, action) => {
         state.loading = false;
         state.currentPost = action.payload;
+        console.log("Updated currentPost with slug:", action.payload.slug);
       })
       .addCase(getSinglePost.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload.message;
         state.currentPost = null;
+        console.log("Failed to fetch post, error:", action.payload.message);
       })
       .addCase(updatePost.pending, (state) => {
         state.updateLoading = true;
