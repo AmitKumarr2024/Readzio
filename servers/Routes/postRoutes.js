@@ -36,7 +36,6 @@ const router = express.Router();
 
 // Middleware to validate ObjectIds
 const validatePostId = validateObjectId("postId");
-const validateUserId = validateObjectId("userId");
 
 // Middleware to log errors only
 const logParams = (req, res, next) => {
@@ -54,45 +53,7 @@ const logParams = (req, res, next) => {
 
 // Public routes
 // GET /public/posts - Fetches public posts with pagination and optional tag filtering
-router.get("/public/posts", logParams, async (req, res, next) => {
-  try {
-    const { page = 1, limit = 50, tag } = req.query;
-    const parsedPage = parseInt(page);
-    const parsedLimit = Math.min(parseInt(limit), 100);
-    if (isNaN(parsedPage) || parsedPage < 1) {
-      throw new AppError("Invalid page number", 400, "GetPublicPosts");
-    }
-    if (isNaN(parsedLimit) || parsedLimit < 1) {
-      throw new AppError("Invalid limit value", 400, "GetPublicPosts");
-    }
-    const skip = (parsedPage - 1) * parsedLimit;
-
-    const query = {
-      isPublished: true,
-      blocked: false,
-      ...(tag && { tags: tag.trim() }),
-    };
-
-    const posts = await PostModel.find(query)
-      .skip(skip)
-      .limit(parsedLimit)
-      .select(
-        "title slug category author createdAt thumbnail excerpt readTime tags"
-      )
-      .populate("author", "name avatar")
-      .populate("category", "name slug")
-      .lean();
-    const total = await PostModel.countDocuments(query).lean();
-
-    res.json({ success: true, posts, total, page: parsedPage });
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError("Failed to fetch public posts", 500, "GetPublicPosts")
-    );
-  }
-});
+router.get("/public/posts", logParams, getPublicPosts);
 
 // GET /id-by-slug/:slug - Fetches post ID by slug
 router.get("/id-by-slug/:slug", logParams, async (req, res, next) => {

@@ -945,6 +945,83 @@ export const updatePostBySlug = async (req, res, next) => {
     const blockLimit = pLimit(3);
     const imageLimit = pLimit(2);
 
+    const processImage = async (source, id, folder) => {
+      try {
+        let buffer;
+        if (source.startsWith("data:image")) {
+          const [, base64Data] =
+            source.match(/^data:image\/[a-z]+;base64,(.+)$/) || [];
+          if (!base64Data) {
+            throw new AppError(
+              "Invalid base64 image",
+              400,
+              "UpdatePostBySlug",
+              "Invalid image data"
+            );
+          }
+          buffer = Buffer.from(base64Data, "base64");
+        } else if (source.startsWith("http")) {
+          const response = await axios.get(source, {
+            responseType: "arraybuffer",
+            timeout: 5000,
+          });
+          buffer = Buffer.from(response.data, "binary");
+        } else {
+          throw new AppError(
+            "Unsupported image source",
+            400,
+            "UpdatePostBySlug",
+            "Invalid image source"
+          );
+        }
+
+        const image = sharp(buffer);
+        const metadata = await image.metadata();
+        if (!["jpeg", "png", "webp"].includes(metadata.format)) {
+          throw new AppError(
+            "Unsupported image format",
+            400,
+            "UpdatePostBySlug",
+            "Invalid image format"
+          );
+        }
+
+        if (metadata.width > 1200 || metadata.height > 1200) {
+          image.resize({
+            width: 1200,
+            height: 1200,
+            fit: "inside",
+            withoutEnlargement: true,
+          });
+        }
+
+        const compressedBuffer = await image
+          .webp({ quality: 75, effort: 4 })
+          .toBuffer();
+        const result = await uploadToCloudinary({
+          buffer: compressedBuffer,
+          folder,
+        });
+        if (!result?.secure_url) {
+          throw new AppError(
+            "Image upload failed",
+            500,
+            "UpdatePostBySlug",
+            "Cloudinary upload failed"
+          );
+        }
+
+        return result.secure_url;
+      } catch (err) {
+        throw new AppError(
+          err.message || `Image processing failed: ${id}`,
+          400,
+          "UpdatePostBySlug",
+          "Error processing image"
+        );
+      }
+    };
+
     if (updates.blocks) {
       logMemory("🖼️ Before processing blocks");
       updates.blocks = await Promise.all(
@@ -1487,6 +1564,164 @@ export const sendAdminAppeal = async (req, res, next) => {
             error.message || "Failed to send appeal",
             500,
             "SendAdminAppeal"
+          )
+    );
+  }
+};
+
+export const incrementShareCount = async (req, res, next) => {
+  try {
+    logMemory("📤 Start incrementShareCount");
+    const { postId } = req.params;
+    const userId = req.user?._id;
+
+    validateObjectId(postId, "Post ID");
+
+    if (!userId) {
+      throw new AppError(
+        "You must be signed in to share a post",
+        401,
+        "IncrementShareCount"
+      );
+    }
+
+    logMemory("📖 Before fetching post");
+    const post = await PostModel.findOne({
+      _id: postId,
+      isPublished: true,
+      blocked: false,
+    }).lean();
+    logMemory("📖 After fetching post");
+
+    if (!post) {
+      throw new AppError(
+        "Post not found or unavailable",
+        404,
+        "IncrementShareCount"
+      );
+    }
+
+    logMemory("💾 Before updating share count");
+    const updatedPost = await PostModel.findByIdAndUpdate(
+      postId,
+      {
+        $inc: { shareCount: 1 },
+        $addToSet: { sharedBy: userId },
+      },
+      { new: true, select: "title slug shareCount sharedBy" }
+    ).lean();
+    logMemory("💾 After updating share count");
+
+    if (!updatedPost) {
+      throw new AppError(
+        "Failed to update share count",
+        500,
+        "IncrementShareCount"
+      );
+    }
+
+    await recordActivity({
+      userId,
+      action: "POST_SHARED",
+      targetPost: postId,
+      message: `Shared post: ${post.title}`,
+    });
+
+    io.emit("postShared", {
+      postId,
+      shareCount: updatedPost.shareCount,
+      userId,
+    });
+
+    logMemory("📤 End incrementShareCount");
+    res.status(200).json({
+      success: true,
+      message: "Share count incremented",
+      shareCount: updatedPost.shareCount,
+    });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to increment share count",
+            500,
+            "IncrementShareCount"
+          )
+    );
+  }
+};
+
+export const toggleBlockPost = async (req, res, next) => {
+  try {
+    logMemory("🔒 Start toggleBlockPost");
+    const { postId } = req.params;
+    const userId = req.user?._id;
+    const userRole = req.user?.role;
+
+    validateObjectId(postId, "Post ID");
+
+    if (!userId) {
+      throw new AppError(
+        "You must be signed in to access this feature.",
+        401,
+        "ToggleBlockPost"
+      );
+    }
+
+    if (userRole !== "admin") {
+      throw new AppError(
+        "Only admins can toggle block status",
+        403,
+        "ToggleBlockPost"
+      );
+    }
+
+    logMemory("📖 Before fetching post");
+    const post = await PostModel.findById(postId).lean();
+    logMemory("📖 After fetching post");
+
+    if (!post) {
+      throw new AppError("Post not found", 404, "ToggleBlockPost");
+    }
+
+    logMemory("💾 Before updating post");
+    const updatedPost = await PostModel.findByIdAndUpdate(
+      postId,
+      { $set: { blocked: !post.blocked } },
+      { new: true, select: "title slug blocked" }
+    ).lean();
+    logMemory("💾 After updating post");
+
+    await recordActivity({
+      userId,
+      action: post.blocked ? "POST_UNBLOCKED" : "POST_BLOCKED",
+      targetPost: postId,
+      message: `${post.blocked ? "Unblocked" : "Blocked"} post: ${post.title}`,
+    });
+
+    io.emit("postBlockToggled", {
+      postId,
+      blocked: updatedPost.blocked,
+      userId,
+    });
+
+    logMemory("🔒 End toggleBlockPost");
+    res.status(200).json({
+      success: true,
+      message: `Post ${
+        updatedPost.blocked ? "blocked" : "unblocked"
+      } successfully`,
+      blocked: updatedPost.blocked,
+    });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to toggle block status",
+            500,
+            "ToggleBlockPost"
           )
     );
   }
