@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../connection/axiosInstance";
 
-// Add global axios interceptor for better error logging
+// Add global axios interceptor for detailed error logging
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -13,6 +13,12 @@ axiosInstance.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Add request interceptor for debugging
+axiosInstance.interceptors.request.use((config) => {
+  console.log("Request:", config.method, config.url, config.headers);
+  return config;
+});
 
 const initialState = {
   loading: false,
@@ -70,7 +76,7 @@ export const fetchFollowingPosts = createAsyncThunk(
       }
       const params = new URLSearchParams({ page, limit });
       const response = await axiosInstance.get(
-        `/posts/following?${params.toString()}`,
+        `/post/following?${params.toString()}`,
         {
           headers: { Authorization: `Bearer ${auth.token}` },
         }
@@ -98,7 +104,7 @@ export const fetchPublicPosts = createAsyncThunk(
       if (tag) params.append("tag", tag);
       if (after) params.append("after", after);
       const response = await axiosInstance.get(
-        `/posts/public?${params.toString()}`
+        `/post/public?${params.toString()}`
       );
       return {
         posts: response.data.posts || [],
@@ -141,7 +147,7 @@ export const createPosts = createAsyncThunk(
             "Upload failed: Please convert Blob URLs to base64 or upload images properly.",
         });
       }
-      const response = await axiosInstance.post("/posts/create", postData, {
+      const response = await axiosInstance.post("/post/create", postData, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
       return { ...response.data, authorId: auth.user?._id };
@@ -172,9 +178,12 @@ export const getAllPosts = createAsyncThunk(
         const validIds = authorIds.filter(Boolean);
         if (validIds.length) params.append("authorIds", validIds.join(","));
       }
-      const response = await axiosInstance.get(`/posts?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${auth.token}` },
-      });
+      const response = await axiosInstance.get(
+        `/post/all-post?${params.toString()}`,
+        {
+          headers: { Authorization: `Bearer ${auth.token}` },
+        }
+      );
       return {
         posts: response.data.posts || [],
         total: response.data.total || 0,
@@ -197,7 +206,7 @@ export const getLatestPosts = createAsyncThunk(
       const params = new URLSearchParams({ limit: 12 });
       if (after) params.append("after", after);
       const response = await axiosInstance.get(
-        `/posts/latest?${params.toString()}`
+        `/post/latest?${params.toString()}`
       );
       return {
         posts: response.data.posts || [],
@@ -221,7 +230,7 @@ export const getTrendingPosts = createAsyncThunk(
       const params = new URLSearchParams({ limit: 12 });
       if (after) params.append("after", after);
       const response = await axiosInstance.get(
-        `/posts/trending?${params.toString()}`
+        `/post/trending?${params.toString()}`
       );
       return {
         posts: response.data.posts || [],
@@ -247,7 +256,7 @@ export const getSearchPosts = createAsyncThunk(
       if (userId) params.append("authorId", encodeURIComponent(userId));
       if (after) params.append("after", after);
       const response = await axiosInstance.get(
-        `/posts/search?${params.toString()}`
+        `/post/search?${params.toString()}`
       );
       return {
         posts: response.data.posts || [],
@@ -276,7 +285,7 @@ export const getSinglePost = createAsyncThunk(
         auth.isAuthenticated && auth.token
           ? { Authorization: `Bearer ${auth.token}` }
           : {};
-      const endpoint = isGuest ? `/posts/public/${slug}` : `/posts/${slug}`;
+      const endpoint = isGuest ? `/post/public/${slug}` : `/post/${slug}`;
       const response = await axiosInstance.get(endpoint, { headers });
       if (!response.data.post) {
         return rejectWithValue({ message: "Post not found" });
@@ -299,7 +308,7 @@ export const updatePost = createAsyncThunk(
           message: "Authentication required. Please sign in.",
         });
       }
-      const response = await axiosInstance.patch(`/posts/${slug}`, updateData, {
+      const response = await axiosInstance.patch(`/post/${slug}`, updateData, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
       return response.data;
@@ -320,7 +329,7 @@ export const deletePost = createAsyncThunk(
           message: "Authentication required. Please sign in.",
         });
       }
-      const response = await axiosInstance.delete(`/posts/${postId}`, {
+      const response = await axiosInstance.delete(`/post/${postId}`, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
       return { postId, message: response.data.message };
@@ -349,7 +358,7 @@ export const fetchUserPosts = createAsyncThunk(
       if (search) params.append("search", encodeURIComponent(search));
       if (sort) params.append("sort", sort);
       const response = await axiosInstance.get(
-        `/posts/user/${userId}?${params.toString()}`,
+        `/post/user/${userId}?${params.toString()}`,
         {
           headers: { Authorization: `Bearer ${auth.token}` },
         }
@@ -405,7 +414,7 @@ export const submitReadingTime = createAsyncThunk(
         return rejectWithValue({ message: "Invalid postId" });
       }
       const response = await axiosInstance.post(
-        `/posts/time-spent/${postId}`,
+        `/post/time-spent/${postId}`,
         {
           duration: timeSpent,
         },
@@ -433,7 +442,7 @@ export const sendAdminAppeal = createAsyncThunk(
         });
       }
       const response = await axiosInstance.post(
-        `/posts/appeal/${postId}`,
+        `/post/appeal/${postId}`,
         { message },
         {
           headers: { Authorization: `Bearer ${auth.token}` },
