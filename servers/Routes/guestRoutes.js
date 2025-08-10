@@ -33,18 +33,18 @@ const validateSearchQuery = (req, res, next) => {
 };
 
 // GET /public/posts - Fetches public posts
-router.get("/public/posts", getPublicPosts);
+router.get("/posts", getPublicPosts);
 
 // GET /public/post/:slug - Fetches a public post by slug
-router.get("/public/post/:slug", validateSlug, getPublicPostBySlug);
+router.get("/post/:slug", validateSlug, getPublicPostBySlug);
 
 // POST /public/post/:slug/view - Tracks guest view of a post
-router.post("/public/post/:slug/view", validateSlug, trackGuestView);
+router.post("/post/:slug/view", validateSlug, trackGuestView);
 
 // POST /guest/visit - Tracks guest visit
 router.post("/guest/visit", trackGuestVisit);
 
 // GET /public/search-posts - Searches public posts
-router.get("/public/search-posts", validateSearchQuery, searchPublicPosts);
+router.get("/search-posts", validateSearchQuery, searchPublicPosts);
 
 export default router;
