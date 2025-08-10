@@ -1,6 +1,6 @@
 import PostModel from "../../servers/Models/Post.js";
 import GuestModel from "../../servers/Models/GuestModel.js";
-import AnalyticsModel from "../../servers/Models/Analytics.js";
+import AnalyticsModel from "../../servers/Models/AnalyticsModel.js";
 import UserModel from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import { v4 as uuidv4 } from "uuid";
