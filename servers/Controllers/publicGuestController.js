@@ -19,7 +19,6 @@ const GUEST_VISIT_LIMIT = 10; // Max visits per minute per IP
 const GUEST_VISIT_WINDOW = 60 * 1000; // 1 minute
 
 // GET /public/posts
-// GET /public/posts
 export const getPublicPosts = async (req, res, next) => {
   try {
     logMemory("Before getPublicPosts start");
@@ -30,10 +29,16 @@ export const getPublicPosts = async (req, res, next) => {
       after || "none"
     }`;
 
+    console.log(
+      `Request params: page=${pageNum}, limit=${limitNum}, tag=${
+        tag || "none"
+      }, after=${after || "none"}`
+    );
     logMemory(`Before checking cache: ${cacheKey}`);
     const cachedPosts = cache.get(cacheKey);
     if (cachedPosts) {
       logMemory(`Cache hit: ${cacheKey}`);
+      console.log(`Returning cached posts: ${cachedPosts.posts.length} posts`);
       return res.status(200).json({
         success: true,
         posts: cachedPosts.posts,
@@ -79,6 +84,7 @@ export const getPublicPosts = async (req, res, next) => {
 
     logMemory(`Before setting cache: ${cacheKey}`);
     cache.set(cacheKey, { posts: processedPosts, total, lastFetched });
+    console.log(`Cached posts: ${processedPosts.length} posts`);
 
     if (req.user?._id) {
       logMemory("Before recordActivity");
@@ -89,9 +95,11 @@ export const getPublicPosts = async (req, res, next) => {
           tag || "none"
         })`,
       });
+      console.log(`Activity recorded for user: ${req.user._id}`);
     }
 
     logMemory("After getPublicPosts complete");
+    console.log("Returning response with posts:", processedPosts.length);
     res.status(200).json({
       success: true,
       posts: processedPosts,
@@ -120,10 +128,12 @@ export const getPublicPostBySlug = async (req, res, next) => {
     const { slug } = req.params;
     const cacheKey = `publicPost:${slug.toLowerCase()}`;
 
+    console.log(`Requesting post with slug: ${slug}`);
     logMemory(`Before checking cache: ${cacheKey}`);
     const cachedPost = cache.get(cacheKey);
     if (cachedPost) {
       logMemory(`Cache hit: ${cacheKey}`);
+      console.log(`Returning cached post: ${cachedPost.title}`);
       return res.status(200).json({ success: true, post: cachedPost });
     }
 
@@ -157,6 +167,7 @@ export const getPublicPostBySlug = async (req, res, next) => {
 
     logMemory(`Before setting cache: ${cacheKey}`);
     cache.set(cacheKey, post);
+    console.log(`Cached post: ${post.title}`);
 
     if (req.user?._id) {
       logMemory("Before recordActivity");
@@ -166,9 +177,11 @@ export const getPublicPostBySlug = async (req, res, next) => {
         targetPost: post._id,
         message: `Viewed public post: ${post.title}`,
       });
+      console.log(`Activity recorded for user: ${req.user._id}`);
     }
 
     logMemory("After getPublicPostBySlug complete");
+    console.log("Returning response with post:", post.title);
     res.status(200).json({ success: true, post });
   } catch (error) {
     console.error("Error in getPublicPostBySlug:", error.message, error.stack);
@@ -189,6 +202,8 @@ export const trackGuestView = async (req, res, next) => {
   try {
     logMemory("Before trackGuestView start");
     const { slug } = req.params;
+    console.log(`Tracking view for slug: ${slug}`);
+
     logMemory("Before PostModel.findOneAndUpdate");
     const post = await PostModel.findOneAndUpdate(
       {
@@ -203,15 +218,18 @@ export const trackGuestView = async (req, res, next) => {
       .lean();
 
     if (!post) {
+      console.log("Post not found for slug:", slug);
       throw new AppError("Post not found", 404, "TrackGuestView");
     }
 
+    console.log(`Incremented views for post: ${post.title}`);
     logMemory("Before GuestVisitModel.create");
     await GuestVisitModel.create({
       slug,
       ip: req.ip,
       userAgent: req.headers["user-agent"],
     });
+    console.log("Guest visit recorded for IP:", req.ip);
 
     logMemory("Before socket emit");
     io.to("adminRoom").emit("guestViewUpdate", {
@@ -221,8 +239,10 @@ export const trackGuestView = async (req, res, next) => {
       userAgent: req.headers["user-agent"],
       location: req.headers["cf-ipcountry"] || null,
     });
+    console.log("Emitted guestViewUpdate to adminRoom");
 
     logMemory("After trackGuestView complete");
+    console.log("Returning success response for guest view");
     res.status(200).json({ success: true, message: "Guest view recorded" });
   } catch (error) {
     console.error("Error in trackGuestView:", error.message, error.stack);
@@ -249,12 +269,14 @@ export const trackGuestVisit = async (req, res, next) => {
       lastReset: now,
     };
 
+    console.log(`Checking rate limit for IP: ${ip}`);
     if (now - limiterEntry.lastReset > GUEST_VISIT_WINDOW) {
       limiterEntry.count = 0;
       limiterEntry.lastReset = now;
     }
 
     if (limiterEntry.count >= GUEST_VISIT_LIMIT) {
+      console.log(`Rate limit exceeded for IP: ${ip}`);
       return res.status(429).json({
         success: false,
         message: "Too many guest visits, please try again later",
@@ -263,9 +285,13 @@ export const trackGuestVisit = async (req, res, next) => {
 
     limiterEntry.count += 1;
     guestVisitLimiter.set(ip, limiterEntry);
+    console.log(
+      `Updated rate limit: ${limiterEntry.count} visits for IP: ${ip}`
+    );
 
     if (req.user && req.user._id) {
       logMemory("Authenticated user detected");
+      console.log(`Authenticated user detected: ${req.user._id}`);
       return res.status(200).json({
         success: false,
         message: "Authenticated user — guest tracking skipped",
@@ -276,6 +302,7 @@ export const trackGuestVisit = async (req, res, next) => {
     const fingerprint = `${req.ip}-${req.headers["user-agent"]}`;
 
     logMemory("Before checking guestId");
+    console.log(`Guest ID from cookie: ${guestId || "none"}`);
     if (!guestId) {
       guestId = uuidv4();
       res.cookie("guestId", guestId, {
@@ -284,6 +311,7 @@ export const trackGuestVisit = async (req, res, next) => {
         sameSite: "Lax",
         maxAge: 1000 * 60 * 60 * 24 * 30,
       });
+      console.log(`Generated new guestId: ${guestId}`);
     }
 
     const fifteenMinutesAgo = new Date(now - 15 * 60 * 1000);
@@ -297,6 +325,7 @@ export const trackGuestVisit = async (req, res, next) => {
 
     if (existingGuest && existingGuest.lastVisit > fifteenMinutesAgo) {
       logMemory("Recent visit detected");
+      console.log(`Recent visit detected for guestId: ${guestId}`);
       return res.status(200).json({
         success: true,
         message: "Visit already recorded recently",
@@ -328,6 +357,9 @@ export const trackGuestVisit = async (req, res, next) => {
       .maxTimeMS(10000)
       .lean();
 
+    console.log(
+      `Updated guest: ${updatedGuest.guestId}, visitCount: ${updatedGuest.visitCount}`
+    );
     const isNewGuest = !existingGuest;
 
     if (isNewGuest) {
@@ -339,6 +371,7 @@ export const trackGuestVisit = async (req, res, next) => {
       )
         .maxTimeMS(10000)
         .lean();
+      console.log("Incremented guestUsersCount in analytics");
     }
 
     logMemory("Before socket emit");
@@ -350,8 +383,10 @@ export const trackGuestVisit = async (req, res, next) => {
       userAgent: updatedGuest.userAgent,
       location: req.headers["cf-ipcountry"] || null,
     });
+    console.log("Emitted guestVisitUpdate to adminRoom");
 
     logMemory("After trackGuestVisit complete");
+    console.log("Returning response for guest visit");
     res.status(200).json({
       success: true,
       message: "Guest visit tracked",
@@ -383,10 +418,16 @@ export const searchPublicPosts = async (req, res, next) => {
     const limitNum = Math.min(parseInt(limit), 100);
     const cacheKey = `searchPosts:${query.toLowerCase()}:${pageNum}:${limitNum}`;
 
+    console.log(
+      `Search params: query=${query}, page=${pageNum}, limit=${limitNum}`
+    );
     logMemory(`Before checking cache: ${cacheKey}`);
     const cachedPosts = cache.get(cacheKey);
     if (cachedPosts) {
       logMemory(`Cache hit: ${cacheKey}`);
+      console.log(
+        `Returning cached search results: ${cachedPosts.posts.length} posts`
+      );
       return res.status(200).json({
         success: true,
         posts: cachedPosts.posts,
@@ -434,6 +475,7 @@ export const searchPublicPosts = async (req, res, next) => {
 
     logMemory(`Before setting cache: ${cacheKey}`);
     cache.set(cacheKey, { posts: processedPosts, total });
+    console.log(`Cached search results: ${processedPosts.length} posts`);
 
     if (req.user?._id) {
       logMemory("Before recordActivity");
@@ -442,9 +484,14 @@ export const searchPublicPosts = async (req, res, next) => {
         action: "SEARCHED_PUBLIC_POSTS",
         message: `Searched public posts: ${query} (page: ${pageNum})`,
       });
+      console.log(`Activity recorded for user: ${req.user._id}`);
     }
 
     logMemory("After searchPublicPosts complete");
+    console.log(
+      "Returning response with search results:",
+      processedPosts.length
+    );
     res.status(200).json({
       success: true,
       posts: processedPosts,
