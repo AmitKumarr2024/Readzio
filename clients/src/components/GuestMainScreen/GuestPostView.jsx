@@ -29,8 +29,6 @@ const GuestPostView = () => {
     const loadData = async () => {
       try {
         const guestId = localStorage.getItem("guestId");
-
-        // Track guest visit only if not already tracked
         if (!guestId) {
           console.log("[GuestPostView] No guestId found, tracking visit...");
           await dispatch(trackGuestVisit()).unwrap();
@@ -38,7 +36,6 @@ const GuestPostView = () => {
           console.log("[GuestPostView] GuestId already exists:", guestId);
         }
 
-        // Fetch public posts
         await dispatch(
           fetchPublicPosts({ page: 1, limit: 12, blocked: { $ne: true } })
         ).unwrap();
@@ -48,9 +45,7 @@ const GuestPostView = () => {
         setInitialLoad(false);
       }
     };
-
     loadData();
-    // Empty dependency array ensures it runs only once
   }, [dispatch]);
 
   // ✅ Skeleton loading state

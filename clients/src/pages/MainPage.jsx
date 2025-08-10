@@ -14,9 +14,11 @@ import Skeleton from "../components/Ui/Skeleton";
 const MainPage = () => {
   const dispatch = useDispatch();
 
-  const { isAuthenticated, user, loading: authLoading } = useSelector(
-    (state) => state.auth
-  );
+  const {
+    isAuthenticated,
+    user,
+    loading: authLoading,
+  } = useSelector((state) => state.auth);
 
   const {
     posts: guestPosts = [],
@@ -36,9 +38,8 @@ const MainPage = () => {
       if (!authLoading) {
         if (isAuthenticated) {
           dispatch(getAllPosts({ page: 1, limit: 12 }));
-        } else {
-          dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
         }
+        // ❌ Removed fetchPublicPosts from here
       }
     } catch (e) {
       console.error("[MainPage] Fetch error:", e);
