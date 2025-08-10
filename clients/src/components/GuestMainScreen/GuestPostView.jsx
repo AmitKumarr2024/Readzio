@@ -1,4 +1,4 @@
-// GuestPostView.jsx (patched & debugged)
+// GuestPostView.jsx (unchanged)
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
@@ -10,54 +10,31 @@ import Skeleton from "../Ui/Skeleton";
 const GuestPostView = () => {
   const dispatch = useDispatch();
   const [initialLoad, setInitialLoad] = useState(true);
-
   const {
     posts = [],
     loading,
     error,
   } = useSelector((state) => state.guest || {});
-
   const isSidebarOpen = useSelector(
     (state) => state.postMeta?.isSidebarOpen || false
   );
 
   useEffect(() => {
-    console.log("📌 GuestPostView mounted — starting loadData...");
-
     const loadData = async () => {
       try {
-        const trackResult = await dispatch(trackGuestVisit()).unwrap();
-        console.log("✅ Track guest visit result:", trackResult);
+        await dispatch(trackGuestVisit()).unwrap();
       } catch (err) {
         console.error("❌ Track guest visit failed", err);
       }
-
-      try {
-        const postsResult = await dispatch(
-          fetchPublicPosts({ page: 1, limit: 12 })
-        ).unwrap();
-        console.log("✅ fetchPublicPosts result (raw):", postsResult);
-        console.log("🔍 First fetched post sample:", postsResult.posts?.[0]);
-      } catch (err) {
-        console.error("❌ fetchPublicPosts failed", err);
-      }
-
+      await dispatch(
+        fetchPublicPosts({ page: 1, limit: 12, blocked: { $ne: true } })
+      );
       setInitialLoad(false);
-      console.log("⏹ Initial load complete, initialLoad =", false);
     };
-
     loadData();
   }, [dispatch]);
 
-  console.log("🎯 Render — Redux guest state:", { posts, loading, error });
-  console.log(
-    "📦 Posts array length:",
-    Array.isArray(posts) ? posts.length : "Not an array"
-  );
-  console.log("📂 isSidebarOpen:", isSidebarOpen);
-
   if (loading && initialLoad) {
-    console.log("⏳ Showing skeletons while loading...");
     return (
       <div
         className={`grid gap-4 py-6 px-4 w-full
@@ -86,15 +63,11 @@ const GuestPostView = () => {
   }
 
   if (error && !initialLoad) {
-    console.error("🚨 Error state:", error);
     return (
       <div className="text-center text-red-500 py-4">
         {error}
         <button
-          onClick={() => {
-            console.log("🔄 Retrying fetchPublicPosts...");
-            dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
-          }}
+          onClick={() => dispatch(fetchPublicPosts({ page: 1, limit: 12 }))}
           className="ml-2 text-blue-500 underline"
         >
           Retry
@@ -104,7 +77,6 @@ const GuestPostView = () => {
   }
 
   if (!initialLoad && (!Array.isArray(posts) || posts.length === 0)) {
-    console.warn("⚠ No posts available for guests after initial load");
     return (
       <div className="text-center text-gray-400 py-8">
         No posts available for guests.
@@ -113,17 +85,9 @@ const GuestPostView = () => {
   }
 
   const postsWithAds = posts.flatMap((post, index) => {
-    if (!post?._id) {
-      console.warn(`⚠ Skipping post at index ${index} — Missing _id`, post);
-      return [];
-    }
-    if (!post?.slug) {
-      console.warn(`⚠ Post at index ${index} is missing slug`, post);
-    }
+    if (!post?._id || !post?.slug) return [];
 
-    const items = [
-      <GuestCardOfPost key={post._id} {...post} slug={post.slug || ""} />,
-    ];
+    const items = [<GuestCardOfPost key={post._id} {...post} />];
 
     if ((index + 1) % 5 === 0) {
       items.push(
@@ -151,8 +115,6 @@ const GuestPostView = () => {
 
     return items;
   });
-
-  console.log("📝 postsWithAds length:", postsWithAds.length);
 
   return (
     <div

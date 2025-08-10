@@ -19,6 +19,7 @@ const GUEST_VISIT_LIMIT = 10; // Max visits per minute per IP
 const GUEST_VISIT_WINDOW = 60 * 1000; // 1 minute
 
 // GET /public/posts
+// GET /public/posts
 export const getPublicPosts = async (req, res, next) => {
   try {
     logMemory("Before getPublicPosts start");
@@ -44,7 +45,7 @@ export const getPublicPosts = async (req, res, next) => {
 
     const query = {
       isPublished: true,
-      blocked: false,
+      blocked: { $ne: true }, // Changed from blocked: false
       ...(tag ? { tags: { $in: [tag] } } : {}),
       ...(after ? { createdAt: { $lt: new Date(after) } } : {}),
     };
