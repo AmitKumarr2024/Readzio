@@ -7,35 +7,21 @@ import AnalyticsModel from "../../servers/Models/AnalyticsModel.js";
 import mongoose from "mongoose";
 import { io } from "../../servers/sockets/socket.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
-import pLimit from "p-limit";
 import NodeCache from "node-cache";
-import { logMemory } from "../../servers/Utils/memoryLogger.js"; // Added import
+import { logMemory } from "../../servers/Utils/memoryLogger.js";
 
-// Initialize cache
-const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
+const cache = new NodeCache({ stdTTL: 600 });
 
-// Validates ObjectId
-const validateObjectId = (id, type = "ID") => {
-  logMemory(`Before validateObjectId: ${type}`);
-  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-    throw new AppError(
-      `Invalid ${type}`,
-      400,
-      "ValidateObjectId",
-      `Invalid ${type} provided`
-    );
-  }
-  logMemory(`After validateObjectId: ${type}`);
-};
-
-// 🟢 Get all published + unblocked posts with optional tag filtering
+// GET /public/posts
 export const getPublicPosts = async (req, res, next) => {
   try {
     logMemory("Before getPublicPosts start");
-    const { page = 1, limit = 20, tag } = req.query;
+    const { page = 1, limit = 12, tag, after } = req.query;
     const pageNum = parseInt(page);
     const limitNum = Math.min(parseInt(limit), 100);
-    const cacheKey = `publicPosts:${pageNum}:${limitNum}:${tag || "all"}`;
+    const cacheKey = `publicPosts:${pageNum}:${limitNum}:${tag || "all"}:${
+      after || "none"
+    }`;
 
     logMemory(`Before checking cache: ${cacheKey}`);
     const cachedPosts = cache.get(cacheKey);
@@ -46,6 +32,7 @@ export const getPublicPosts = async (req, res, next) => {
         posts: cachedPosts.posts,
         total: cachedPosts.total,
         page: pageNum,
+        lastFetched: cachedPosts.lastFetched,
       });
     }
 
@@ -53,10 +40,13 @@ export const getPublicPosts = async (req, res, next) => {
       isPublished: true,
       blocked: false,
       ...(tag ? { tags: { $in: [tag] } } : {}),
+      ...(after ? { createdAt: { $lt: new Date(after) } } : {}),
     };
 
+    console.log("Query:", JSON.stringify(query));
     logMemory("Before PostModel.find");
     const posts = await PostModel.find(query)
+      .maxTimeMS(10000)
       .sort({ createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
@@ -64,8 +54,10 @@ export const getPublicPosts = async (req, res, next) => {
         "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks"
       )
       .populate("author", "name avatar")
+      .populate("category", "name slug")
       .lean();
 
+    console.log("Posts fetched:", posts.length);
     logMemory("Before processing posts");
     const processedPosts = posts.map((post) => ({
       ...post,
@@ -73,10 +65,13 @@ export const getPublicPosts = async (req, res, next) => {
     }));
 
     logMemory("Before PostModel.countDocuments");
-    const total = await PostModel.countDocuments(query).lean();
+    const total = await PostModel.countDocuments(query).maxTimeMS(5000).lean();
+    console.log("Total posts:", total);
+
+    const lastFetched = posts.length ? posts[posts.length - 1].createdAt : null;
 
     logMemory(`Before setting cache: ${cacheKey}`);
-    cache.set(cacheKey, { posts: processedPosts, total });
+    cache.set(cacheKey, { posts: processedPosts, total, lastFetched });
 
     if (req.user?._id) {
       logMemory("Before recordActivity");
@@ -95,8 +90,10 @@ export const getPublicPosts = async (req, res, next) => {
       posts: processedPosts,
       total,
       page: pageNum,
+      lastFetched,
     });
   } catch (error) {
+    console.error("Error in getPublicPosts:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
@@ -109,13 +106,12 @@ export const getPublicPosts = async (req, res, next) => {
   }
 };
 
-// 🟢 Get single public post by slug
+// GET /public/post/:slug
 export const getPublicPostBySlug = async (req, res, next) => {
   try {
     logMemory("Before getPublicPostBySlug start");
     const { slug } = req.params;
-    const sanitizedSlug = slug.trim().toLowerCase();
-    const cacheKey = `publicPost:${sanitizedSlug}`;
+    const cacheKey = `publicPost:${slug}`;
 
     logMemory(`Before checking cache: ${cacheKey}`);
     const cachedPost = cache.get(cacheKey);
@@ -124,12 +120,14 @@ export const getPublicPostBySlug = async (req, res, next) => {
       return res.status(200).json({ success: true, post: cachedPost });
     }
 
+    console.log("Querying slug:", slug);
     logMemory("Before PostModel.findOne");
     const post = await PostModel.findOne({
-      slug: sanitizedSlug,
+      slug: { $regex: `^${slug}$`, $options: "i" },
       isPublished: true,
       blocked: false,
     })
+      .maxTimeMS(10000)
       .select(
         "title slug category excerpt thumbnail author createdAt isPublished readTime tags language viewsCount shareCount blocks"
       )
@@ -145,6 +143,7 @@ export const getPublicPostBySlug = async (req, res, next) => {
       );
     }
 
+    console.log("Post fetched:", post.title);
     logMemory("Before processing blocks");
     post.blocks = Array.isArray(post.blocks) ? post.blocks : [];
 
@@ -164,6 +163,7 @@ export const getPublicPostBySlug = async (req, res, next) => {
     logMemory("After getPublicPostBySlug complete");
     res.status(200).json({ success: true, post });
   } catch (error) {
+    console.error("Error in getPublicPostBySlug:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
@@ -176,19 +176,23 @@ export const getPublicPostBySlug = async (req, res, next) => {
   }
 };
 
-// 🟢 Track guest view
+// POST /public/post/:slug/view
 export const trackGuestView = async (req, res, next) => {
   try {
     logMemory("Before trackGuestView start");
     const { slug } = req.params;
-    const sanitizedSlug = slug.trim().toLowerCase();
-
     logMemory("Before PostModel.findOneAndUpdate");
     const post = await PostModel.findOneAndUpdate(
-      { slug: sanitizedSlug, isPublished: true, blocked: false },
+      {
+        slug: { $regex: `^${slug}$`, $options: "i" },
+        isPublished: true,
+        blocked: false,
+      },
       { $inc: { viewsCount: 1 } },
       { select: "_id title" }
-    ).lean();
+    )
+      .maxTimeMS(10000)
+      .lean();
 
     if (!post) {
       throw new AppError("Post not found", 404, "TrackGuestView");
@@ -196,7 +200,7 @@ export const trackGuestView = async (req, res, next) => {
 
     logMemory("Before GuestVisitModel.create");
     await GuestVisitModel.create({
-      slug: sanitizedSlug,
+      slug,
       ip: req.ip,
       userAgent: req.headers["user-agent"],
     });
@@ -204,7 +208,7 @@ export const trackGuestView = async (req, res, next) => {
     logMemory("Before socket emit");
     io.to("adminRoom").emit("guestViewUpdate", {
       postId: post._id,
-      slug: sanitizedSlug,
+      slug,
       ip: req.ip,
       userAgent: req.headers["user-agent"],
       location: req.headers["cf-ipcountry"] || null,
@@ -213,6 +217,7 @@ export const trackGuestView = async (req, res, next) => {
     logMemory("After trackGuestView complete");
     res.status(200).json({ success: true, message: "Guest view recorded" });
   } catch (error) {
+    console.error("Error in trackGuestView:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
@@ -225,7 +230,7 @@ export const trackGuestView = async (req, res, next) => {
   }
 };
 
-// 🔹 Track guest visit — with unique guest count tracking
+// POST /guest/visit
 export const trackGuestVisit = async (req, res, next) => {
   try {
     logMemory("Before trackGuestVisit start");
@@ -247,7 +252,7 @@ export const trackGuestVisit = async (req, res, next) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "Lax",
-        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+        maxAge: 1000 * 60 * 60 * 24 * 30,
       });
     }
 
@@ -257,7 +262,9 @@ export const trackGuestVisit = async (req, res, next) => {
     logMemory("Before GuestModel.findOne");
     const existingGuest = await GuestModel.findOne({
       $or: [{ guestId }, { fingerprint }],
-    }).lean();
+    })
+      .maxTimeMS(10000)
+      .lean();
 
     if (existingGuest && existingGuest.lastVisit > fifteenMinutesAgo) {
       logMemory("Recent visit detected");
@@ -288,7 +295,9 @@ export const trackGuestVisit = async (req, res, next) => {
         new: true,
         setDefaultsOnInsert: true,
       }
-    ).lean();
+    )
+      .maxTimeMS(10000)
+      .lean();
 
     const isNewGuest = !existingGuest;
 
@@ -298,7 +307,9 @@ export const trackGuestVisit = async (req, res, next) => {
         { _id: "guest-analytics" },
         { $inc: { "traffic.guestUsersCount": 1 } },
         { upsert: true, new: true, setDefaultsOnInsert: true }
-      ).lean();
+      )
+        .maxTimeMS(10000)
+        .lean();
     }
 
     logMemory("Before socket emit");
@@ -325,10 +336,102 @@ export const trackGuestVisit = async (req, res, next) => {
       },
     });
   } catch (error) {
+    console.error("Error in trackGuestVisit:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
         : new AppError("Failed to track guest visit", 500, "TrackGuestVisit")
+    );
+  }
+};
+
+// GET /public/search-posts
+export const searchPublicPosts = async (req, res, next) => {
+  try {
+    logMemory("Before searchPublicPosts start");
+    const { query, page = 1, limit = 12 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = Math.min(parseInt(limit), 100);
+    const cacheKey = `searchPosts:${query}:${pageNum}:${limitNum}`;
+
+    logMemory(`Before checking cache: ${cacheKey}`);
+    const cachedPosts = cache.get(cacheKey);
+    if (cachedPosts) {
+      logMemory(`Cache hit: ${cacheKey}`);
+      return res.status(200).json({
+        success: true,
+        posts: cachedPosts.posts,
+        total: cachedPosts.total,
+        page: pageNum,
+      });
+    }
+
+    const searchQuery = {
+      isPublished: true,
+      blocked: false,
+      $or: [
+        { title: { $regex: query, $options: "i" } },
+        { excerpt: { $regex: query, $options: "i" } },
+        { tags: { $regex: query, $options: "i" } },
+      ],
+    };
+
+    console.log("Search query:", JSON.stringify(searchQuery));
+    logMemory("Before PostModel.find");
+    const posts = await PostModel.find(searchQuery)
+      .maxTimeMS(10000)
+      .sort({ createdAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .select(
+        "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks"
+      )
+      .populate("author", "name avatar")
+      .populate("category", "name slug")
+      .lean();
+
+    console.log("Posts fetched:", posts.length);
+    logMemory("Before processing posts");
+    const processedPosts = posts.map((post) => ({
+      ...post,
+      blocks: Array.isArray(post.blocks) ? post.blocks : [],
+    }));
+
+    logMemory("Before PostModel.countDocuments");
+    const total = await PostModel.countDocuments(searchQuery)
+      .maxTimeMS(5000)
+      .lean();
+    console.log("Total posts:", total);
+
+    logMemory(`Before setting cache: ${cacheKey}`);
+    cache.set(cacheKey, { posts: processedPosts, total });
+
+    if (req.user?._id) {
+      logMemory("Before recordActivity");
+      await recordActivity({
+        userId: req.user._id,
+        action: "SEARCHED_PUBLIC_POSTS",
+        message: `Searched public posts: ${query} (page: ${pageNum})`,
+      });
+    }
+
+    logMemory("After searchPublicPosts complete");
+    res.status(200).json({
+      success: true,
+      posts: processedPosts,
+      total,
+      page: pageNum,
+    });
+  } catch (error) {
+    console.error("Error in searchPublicPosts:", error.message, error.stack);
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to search public posts",
+            500,
+            "SearchPublicPosts"
+          )
     );
   }
 };

@@ -8,7 +8,7 @@ import http from "http";
 import mongoose from "mongoose";
 import listEndpoints from "express-list-endpoints";
 
-import { CLIENT_URL, NODE_ENV } from "./config/dotenv.js"; // ❌ Removed PORT import
+import { CLIENT_URL, NODE_ENV } from "./config/dotenv.js";
 import connectDb from "./config/mongodb.js";
 import initializeSocket from "./sockets/socket.js";
 import { startTempCleanup } from "./Utils/cleanupTemp.js";
@@ -29,7 +29,6 @@ import EarningRoutes from "./Routes/earningRoutes.js";
 import AchievementRoutes from "./Routes/AchievementRoutes.js";
 import CommentsRoutes from "./Routes/commentRoutes.js";
 import AdminRoutes from "./Routes/adminRoutes.js";
-// import GeojsonRoutes from "./Routes/geojsonRoutes.js";
 import PostEmailRoutes from "./Routes/postEmailRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
@@ -43,9 +42,20 @@ const server = http.createServer(app);
 const io = initializeSocket(server);
 const __dirname = path.resolve();
 
+// Timeout middleware for specific routes
+const setRouteTimeout = (timeoutMs) => (req, res, next) => {
+  req.setTimeout(timeoutMs, () => {
+    const err = new Error("Request Timeout");
+    err.status = 408;
+    next(err);
+  });
+  next();
+};
+
 // Razorpay webhook
 app.post(
   "/api/razorpay/webhook",
+  setRouteTimeout(60000), // 60s timeout
   express.json({
     verify: (req, res, buf) => {
       req.rawBody = buf.toString();
@@ -83,7 +93,6 @@ app.use(
         "http://localhost:5173",
         "http://localhost:8001",
         "https://inksha-uedq.onrender.com",
-        "https://inksha-uedq.onrender.com",
       ].filter(Boolean);
       if (!origin || allowedOrigins.includes(origin))
         return callback(null, true);
@@ -102,7 +111,7 @@ app.use(cookieParser());
 const routes = [
   ["/api/auth", AuthRoutes],
   ["/api/user", UserRoutes],
-  ["/api/post", PostRoutes],
+  ["/api/post", PostRoutes, setRouteTimeout(60000)], // 60s for post routes
   ["/api/category", CategoryRoutes],
   ["/api/block", BlockRoutes],
   ["/api/follow", FollowRoutes],
@@ -113,22 +122,20 @@ const routes = [
   ["/api/achievement", AchievementRoutes],
   ["/api/comment", CommentsRoutes],
   ["/api/admin", AdminRoutes],
-  // ["/api/geojson", GeojsonRoutes],
   ["/api/dailyMail", PostEmailRoutes],
   ["/api/bannerNotification", BannerNotificationRoutes],
-  ["/api/public", guestRoutes],
+  ["/api/public", guestRoutes, setRouteTimeout(60000)], // 60s for public routes
 ];
 
-routes.forEach(([path, router]) => {
+routes.forEach(([path, router, middleware]) => {
   logMemory(`🛤️ Mounting route: ${path}`);
-  app.use(path, router);
+  app.use(path, middleware || [], router);
 });
 
 // Route listing in dev
 if (NODE_ENV !== "production") {
   try {
     const endpoints = listEndpoints(app);
-    // console.log("📋 All registered routes:");
     endpoints.forEach((route) => {
       console.log(`${route.methods.join(", ")} ${route.path}`);
     });
@@ -203,7 +210,6 @@ process.on("unhandledRejection", (err) => {
   process.exit(1);
 });
 
-// ✅ FIXED: Correct port handling for Render
 const startServer = async () => {
   try {
     console.log("[Server:Startup] Connecting to MongoDB...");
@@ -224,5 +230,7 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
+server.setTimeout(60000); // 60s global timeout
 
 startServer();
