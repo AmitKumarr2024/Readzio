@@ -19,7 +19,7 @@ const GuestPostView = () => {
     (state) => state.postMeta?.isSidebarOpen || false
   );
 
-  // Watch for posts update
+  // Watch for posts update - useful for debugging
   useEffect(() => {
     console.log("[GuestPostView] Redux guest.posts updated:", posts);
   }, [posts]);
@@ -37,7 +37,7 @@ const GuestPostView = () => {
         }
 
         await dispatch(
-          fetchPublicPosts({ page: 1, limit: 12, blocked: { $ne: true } })
+          fetchPublicPosts({ page: 1, limit: 12 /* no blocked filter here */ })
         ).unwrap();
       } catch (err) {
         console.error("❌ Error loading guest data", err);
@@ -55,7 +55,7 @@ const GuestPostView = () => {
         className={`grid gap-4 py-6 px-4 w-full
           grid-cols-1 
           sm:grid-cols-2 
-          md:grid-cols-3 
+          md:grid-cols-5 
           ${
             isSidebarOpen
               ? "lg:grid-cols-3 xl:grid-cols-4"
@@ -85,7 +85,10 @@ const GuestPostView = () => {
         <button
           onClick={() =>
             dispatch(
-              fetchPublicPosts({ page: 1, limit: 12, blocked: { $ne: true } })
+              fetchPublicPosts({
+                page: 1,
+                limit: 12 /* no blocked filter here */,
+              })
             )
           }
           className="ml-2 text-blue-500 underline"
@@ -105,10 +108,9 @@ const GuestPostView = () => {
     );
   }
 
-  // Insert ads between posts
+  // Insert ads between posts, render all posts without filtering
   const postsWithAds = posts.flatMap((post, index) => {
-    if (!post?._id || !post?.slug || !post?.isPublished || post?.blocked)
-      return [];
+    if (!post?._id || !post?.slug) return [];
 
     const items = [<GuestCardOfPost key={post._id} {...post} />];
 
@@ -139,13 +141,12 @@ const GuestPostView = () => {
     return items;
   });
 
-  // Final render
   return (
     <div
       className={`grid gap-4 py-6 px-4 w-full
         grid-cols-1 
         sm:grid-cols-2 
-        md:grid-cols-3 
+        md:grid-cols-5 
         ${
           isSidebarOpen
             ? "lg:grid-cols-3 xl:grid-cols-4"
