@@ -1,4 +1,3 @@
-// GuestPostView.jsx (unchanged)
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
@@ -10,6 +9,7 @@ import Skeleton from "../Ui/Skeleton";
 const GuestPostView = () => {
   const dispatch = useDispatch();
   const [initialLoad, setInitialLoad] = useState(true);
+
   const {
     posts = [],
     loading,
@@ -19,21 +19,41 @@ const GuestPostView = () => {
     (state) => state.postMeta?.isSidebarOpen || false
   );
 
+  // ✅ Watch for posts update to confirm slice is providing data
+  useEffect(() => {
+    console.log("[GuestPostView] Redux guest.posts updated:", posts);
+  }, [posts]);
+
+  // ✅ Load guest data once
   useEffect(() => {
     const loadData = async () => {
       try {
-        await dispatch(trackGuestVisit()).unwrap();
+        const guestId = localStorage.getItem("guestId");
+
+        // Track guest visit only if not already tracked
+        if (!guestId) {
+          console.log("[GuestPostView] No guestId found, tracking visit...");
+          await dispatch(trackGuestVisit()).unwrap();
+        } else {
+          console.log("[GuestPostView] GuestId already exists:", guestId);
+        }
+
+        // Fetch public posts
+        await dispatch(
+          fetchPublicPosts({ page: 1, limit: 12, blocked: { $ne: true } })
+        ).unwrap();
       } catch (err) {
-        console.error("❌ Track guest visit failed", err);
+        console.error("❌ Error loading guest data", err);
+      } finally {
+        setInitialLoad(false);
       }
-      await dispatch(
-        fetchPublicPosts({ page: 1, limit: 12, blocked: { $ne: true } })
-      );
-      setInitialLoad(false);
     };
+
     loadData();
+    // Empty dependency array ensures it runs only once
   }, [dispatch]);
 
+  // ✅ Skeleton loading state
   if (loading && initialLoad) {
     return (
       <div
@@ -62,12 +82,17 @@ const GuestPostView = () => {
     );
   }
 
+  // ✅ Error state
   if (error && !initialLoad) {
     return (
       <div className="text-center text-red-500 py-4">
         {error}
         <button
-          onClick={() => dispatch(fetchPublicPosts({ page: 1, limit: 12 }))}
+          onClick={() =>
+            dispatch(
+              fetchPublicPosts({ page: 1, limit: 12, blocked: { $ne: true } })
+            )
+          }
           className="ml-2 text-blue-500 underline"
         >
           Retry
@@ -76,6 +101,7 @@ const GuestPostView = () => {
     );
   }
 
+  // ✅ Empty state
   if (!initialLoad && (!Array.isArray(posts) || posts.length === 0)) {
     return (
       <div className="text-center text-gray-400 py-8">
@@ -84,6 +110,7 @@ const GuestPostView = () => {
     );
   }
 
+  // ✅ Insert ads between posts
   const postsWithAds = posts.flatMap((post, index) => {
     if (!post?._id || !post?.slug) return [];
 
@@ -116,6 +143,7 @@ const GuestPostView = () => {
     return items;
   });
 
+  // ✅ Final render
   return (
     <div
       className={`grid gap-4 py-6 px-4 w-full
