@@ -1,4 +1,4 @@
-// GuestPostView.jsx (with debugging logs)
+// GuestPostView.jsx (patched & debugged)
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
@@ -36,7 +36,8 @@ const GuestPostView = () => {
         const postsResult = await dispatch(
           fetchPublicPosts({ page: 1, limit: 12 })
         ).unwrap();
-        console.log("✅ fetchPublicPosts result:", postsResult);
+        console.log("✅ fetchPublicPosts result (raw):", postsResult);
+        console.log("🔍 First fetched post sample:", postsResult.posts?.[0]);
       } catch (err) {
         console.error("❌ fetchPublicPosts failed", err);
       }
@@ -112,15 +113,17 @@ const GuestPostView = () => {
   }
 
   const postsWithAds = posts.flatMap((post, index) => {
-    if (!post?._id || !post?.slug) {
-      console.warn(
-        `⚠ Skipping post at index ${index} — Missing _id/slug`,
-        post
-      );
+    if (!post?._id) {
+      console.warn(`⚠ Skipping post at index ${index} — Missing _id`, post);
       return [];
     }
+    if (!post?.slug) {
+      console.warn(`⚠ Post at index ${index} is missing slug`, post);
+    }
 
-    const items = [<GuestCardOfPost key={post._id} {...post} />];
+    const items = [
+      <GuestCardOfPost key={post._id} {...post} slug={post.slug || ""} />,
+    ];
 
     if ((index + 1) % 5 === 0) {
       items.push(
