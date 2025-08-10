@@ -1,3 +1,4 @@
+// GuestPostView.jsx (React component, unchanged as fixes were for single post view not shown; use as is)
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
@@ -31,7 +32,6 @@ const GuestPostView = () => {
     loadData();
   }, [dispatch]);
 
-  // 🟢 Show skeleton grid during first load
   if (loading && initialLoad) {
     return (
       <div
@@ -95,7 +95,6 @@ const GuestPostView = () => {
         >
           <div className="w-full bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 border border-gray-200 dark:border-gray-700 transition-all duration-300">
             <InFeedAd postId={post._id} testMode={false} />
-            
           </div>
         </div>
       );

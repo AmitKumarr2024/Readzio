@@ -1,3 +1,4 @@
+// Router file (unchanged, as no fixes needed)
 import express from "express";
 import {
   getPublicPosts,

@@ -1,3 +1,4 @@
+// publicGuestController.js (backend controller with fixes)
 import { v4 as uuidv4 } from "uuid";
 import PostModel from "../../servers/Models/Post.js";
 import { AppError } from "../../servers/Utils/AppError.js";
@@ -120,10 +121,15 @@ export const getPublicPostBySlug = async (req, res, next) => {
       return res.status(200).json({ success: true, post: cachedPost });
     }
 
-    console.log("Querying slug:", slug);
+    console.log(
+      "Queried slug:",
+      slug,
+      "Found post:",
+      post ? post.title : "Not found"
+    );
     logMemory("Before PostModel.findOne");
     const post = await PostModel.findOne({
-      slug: { $regex: `^${slug}$`, $options: "i" },
+      slug: { $regex: slug, $options: "i" },
       isPublished: true,
       blocked: false,
     })
@@ -230,7 +236,7 @@ export const trackGuestView = async (req, res, next) => {
   }
 };
 
-// POST /guest/visit
+// POST /public/guest/visit
 export const trackGuestVisit = async (req, res, next) => {
   try {
     logMemory("Before trackGuestVisit start");
