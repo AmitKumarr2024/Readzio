@@ -1,4 +1,4 @@
-// publicGuestController.js (backend controller with fixes)
+// publicGuestController.js
 import { v4 as uuidv4 } from "uuid";
 import PostModel from "../../servers/Models/Post.js";
 import { AppError } from "../../servers/Utils/AppError.js";
@@ -11,7 +11,12 @@ import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import NodeCache from "node-cache";
 import { logMemory } from "../../servers/Utils/memoryLogger.js";
 
-const cache = new NodeCache({ stdTTL: 600 });
+const cache = new NodeCache({ stdTTL: 3600 }); // Extended TTL to 1 hour
+
+// Rate limiter for guest visits
+const guestVisitLimiter = new Map();
+const GUEST_VISIT_LIMIT = 10; // Max visits per minute per IP
+const GUEST_VISIT_WINDOW = 60 * 1000; // 1 minute
 
 // GET /public/posts
 export const getPublicPosts = async (req, res, next) => {
@@ -112,7 +117,7 @@ export const getPublicPostBySlug = async (req, res, next) => {
   try {
     logMemory("Before getPublicPostBySlug start");
     const { slug } = req.params;
-    const cacheKey = `publicPost:${slug}`;
+    const cacheKey = `publicPost:${slug.toLowerCase()}`;
 
     logMemory(`Before checking cache: ${cacheKey}`);
     const cachedPost = cache.get(cacheKey);
@@ -121,12 +126,7 @@ export const getPublicPostBySlug = async (req, res, next) => {
       return res.status(200).json({ success: true, post: cachedPost });
     }
 
-    console.log(
-      "Queried slug:",
-      slug,
-      "Found post:",
-      post ? post.title : "Not found"
-    );
+    console.log("Queried slug:", slug);
     logMemory("Before PostModel.findOne");
     const post = await PostModel.findOne({
       slug: { $regex: slug, $options: "i" },
@@ -142,6 +142,7 @@ export const getPublicPostBySlug = async (req, res, next) => {
       .lean();
 
     if (!post) {
+      console.log("Post not found for slug:", slug);
       throw new AppError(
         "Post not found or has been deleted",
         404,
@@ -240,6 +241,28 @@ export const trackGuestView = async (req, res, next) => {
 export const trackGuestVisit = async (req, res, next) => {
   try {
     logMemory("Before trackGuestVisit start");
+    const ip = req.ip;
+    const now = Date.now();
+    const limiterEntry = guestVisitLimiter.get(ip) || {
+      count: 0,
+      lastReset: now,
+    };
+
+    if (now - limiterEntry.lastReset > GUEST_VISIT_WINDOW) {
+      limiterEntry.count = 0;
+      limiterEntry.lastReset = now;
+    }
+
+    if (limiterEntry.count >= GUEST_VISIT_LIMIT) {
+      return res.status(429).json({
+        success: false,
+        message: "Too many guest visits, please try again later",
+      });
+    }
+
+    limiterEntry.count += 1;
+    guestVisitLimiter.set(ip, limiterEntry);
+
     if (req.user && req.user._id) {
       logMemory("Authenticated user detected");
       return res.status(200).json({
@@ -262,8 +285,7 @@ export const trackGuestVisit = async (req, res, next) => {
       });
     }
 
-    const now = new Date();
-    const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+    const fifteenMinutesAgo = new Date(now - 15 * 60 * 1000);
 
     logMemory("Before GuestModel.findOne");
     const existingGuest = await GuestModel.findOne({
@@ -285,12 +307,12 @@ export const trackGuestVisit = async (req, res, next) => {
       { $or: [{ guestId }, { fingerprint }] },
       {
         $setOnInsert: {
-          firstVisit: now,
+          firstVisit: new Date(),
           guestId,
           fingerprint,
         },
         $set: {
-          lastVisit: now,
+          lastVisit: new Date(),
           ip: req.ip,
           userAgent: req.headers["user-agent"],
         },
@@ -358,7 +380,7 @@ export const searchPublicPosts = async (req, res, next) => {
     const { query, page = 1, limit = 12 } = req.query;
     const pageNum = parseInt(page);
     const limitNum = Math.min(parseInt(limit), 100);
-    const cacheKey = `searchPosts:${query}:${pageNum}:${limitNum}`;
+    const cacheKey = `searchPosts:${query.toLowerCase()}:${pageNum}:${limitNum}`;
 
     logMemory(`Before checking cache: ${cacheKey}`);
     const cachedPosts = cache.get(cacheKey);

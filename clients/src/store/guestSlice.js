@@ -1,4 +1,4 @@
-// guestSlice.js (Redux slice with fixes)
+// guestSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../connection/axiosInstance";
 

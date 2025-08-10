@@ -1,4 +1,4 @@
-// GuestPostView.jsx (React component, unchanged as fixes were for single post view not shown; use as is)
+// GuestPostView.jsx (unchanged)
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
