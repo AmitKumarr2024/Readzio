@@ -1,5 +1,5 @@
 import PostModel from "../../servers/Models/Post.js";
-import GuestModel from "../../servers/Models/Guest.js";
+import GuestModel from "../../servers/Models/GuestModel.js";
 import AnalyticsModel from "../../servers/Models/Analytics.js";
 import UserModel from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";
