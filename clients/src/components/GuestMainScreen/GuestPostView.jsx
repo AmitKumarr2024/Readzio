@@ -19,12 +19,12 @@ const GuestPostView = () => {
     (state) => state.postMeta?.isSidebarOpen || false
   );
 
-  // ✅ Watch for posts update to confirm slice is providing data
+  // Watch for posts update
   useEffect(() => {
     console.log("[GuestPostView] Redux guest.posts updated:", posts);
   }, [posts]);
 
-  // ✅ Load guest data once
+  // Load guest data once
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -48,7 +48,7 @@ const GuestPostView = () => {
     loadData();
   }, [dispatch]);
 
-  // ✅ Skeleton loading state
+  // Skeleton loading state
   if (loading && initialLoad) {
     return (
       <div
@@ -77,7 +77,7 @@ const GuestPostView = () => {
     );
   }
 
-  // ✅ Error state
+  // Error state
   if (error && !initialLoad) {
     return (
       <div className="text-center text-red-500 py-4">
@@ -96,7 +96,7 @@ const GuestPostView = () => {
     );
   }
 
-  // ✅ Empty state
+  // Empty state
   if (!initialLoad && (!Array.isArray(posts) || posts.length === 0)) {
     return (
       <div className="text-center text-gray-400 py-8">
@@ -105,9 +105,10 @@ const GuestPostView = () => {
     );
   }
 
-  // ✅ Insert ads between posts
+  // Insert ads between posts
   const postsWithAds = posts.flatMap((post, index) => {
-    if (!post?._id || !post?.slug) return [];
+    if (!post?._id || !post?.slug || !post?.isPublished || post?.blocked)
+      return [];
 
     const items = [<GuestCardOfPost key={post._id} {...post} />];
 
@@ -115,9 +116,9 @@ const GuestPostView = () => {
       items.push(
         <div
           key={`infeed-${index}`}
-          className="col-span-1 flex justify-center w-full p-3"
+          className="col-span-1 flex justify-center w-full p-3 min-w-[250px]"
         >
-          <div className="w-full bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 border border-gray-200 dark:border-gray-700 transition-all duration-300">
+          <div className="w-full max-w-[300px] bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 border border-gray-200 dark:border-gray-700 transition-all duration-300">
             <InFeedAd postId={post._id} testMode={false} />
           </div>
         </div>
@@ -138,7 +139,7 @@ const GuestPostView = () => {
     return items;
   });
 
-  // ✅ Final render
+  // Final render
   return (
     <div
       className={`grid gap-4 py-6 px-4 w-full

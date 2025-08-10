@@ -21,7 +21,7 @@ import {
   fetchInitialPostCounts,
 } from "../../store/socketSlice";
 import { fetchPostsSequentially } from "../../Utils/fetchPostsSequentially";
-import { fetchPublicPosts } from "../../store/guestSlice"; // Added guest slice
+import { fetchPublicPosts } from "../../store/guestSlice";
 import Sorted from "../Tabs/Sorted";
 import ErrorBoundary from "./ErrorBoundary";
 import Skeleton from "@/components/Ui/Skeleton";
@@ -38,14 +38,14 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   } = useSelector((state) => state.post || {});
   const { publicPosts = [], publicLoading = false } = useSelector(
     (state) => state.guest || {}
-  ); // Added guest selector
+  );
   const { commentCounts = {} } = useSelector((state) => state.comment || {});
   const { categories = [] } = useSelector((state) => state.categories || {});
   const isSidebarOpen = useSelector(
     (state) => state.postMeta?.isSidebarOpen ?? false
   );
   const currentUser = useSelector((state) => state.auth?.user ?? { _id: null });
-  const isAuthenticated = !!currentUser._id; // Determine auth status
+  const isAuthenticated = !!currentUser._id;
   const { followers = { list: [] } } = useSelector(
     (state) => state.follow || {}
   );
@@ -87,7 +87,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
 
   useEffect(() => {
     if (customPosts.length) return;
-    const options = { page: 1, limit: postsPerPage };
+    const options = { page: 1, limit: postsPerPage, blocked: { $ne: true } };
     const loadInitialPosts = async () => {
       try {
         let metaPosts;
@@ -134,7 +134,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     if (!socket || customPosts.length) return;
 
     const handlePostCreated = debounce((newPost) => {
-      const options = { page: 1, limit: postsPerPage };
+      const options = { page: 1, limit: postsPerPage, blocked: { $ne: true } };
       const reloadPosts = async () => {
         try {
           let metaPosts;
@@ -181,7 +181,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     }, 300);
 
     const handlePostUpdated = debounce(() => {
-      const options = { page: 1, limit: postsPerPage };
+      const options = { page: 1, limit: postsPerPage, blocked: { $ne: true } };
       const reloadPosts = async () => {
         try {
           let metaPosts;
@@ -211,7 +211,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     }, 300);
 
     const handlePostDeleted = debounce((data) => {
-      const options = { page: 1, limit: postsPerPage };
+      const options = { page: 1, limit: postsPerPage, blocked: { $ne: true } };
       const reloadPosts = async () => {
         try {
           let metaPosts;
@@ -439,7 +439,11 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     if (!(postLoading || publicLoading) && hasMore) {
       const nextPage = currentPage + 1;
       setCurrentPage(nextPage);
-      const options = { page: nextPage, limit: postsPerPage };
+      const options = {
+        page: nextPage,
+        limit: postsPerPage,
+        blocked: { $ne: true },
+      };
       try {
         let metaPosts;
         if (isAuthenticated) {
@@ -541,7 +545,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
                     return (
                       <div
                         key={item.id}
-                        className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden w-full"
+                        className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden w-full min-w-[250px]"
                       >
                         <SafeInFeedAd postId={item.postId} />
                       </div>

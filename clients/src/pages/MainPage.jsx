@@ -32,14 +32,17 @@ const MainPage = () => {
 
   const { isSidebarOpen, isMobile } = useSelector((state) => state.postMeta);
 
-  // Progressive fetching on mount
+  // Fetch posts on mount
   useEffect(() => {
     try {
       if (!authLoading) {
         if (isAuthenticated) {
           dispatch(getAllPosts({ page: 1, limit: 12 }));
+        } else {
+          dispatch(
+            fetchPublicPosts({ page: 1, limit: 12, blocked: { $ne: true } })
+          );
         }
-        // ❌ Removed fetchPublicPosts from here
       }
     } catch (e) {
       console.error("[MainPage] Fetch error:", e);
@@ -127,7 +130,15 @@ const MainPage = () => {
           <div className="text-center text-red-500 py-4">
             <p>{guestError}</p>
             <button
-              onClick={() => dispatch(fetchPublicPosts({ page: 1, limit: 12 }))}
+              onClick={() =>
+                dispatch(
+                  fetchPublicPosts({
+                    page: 1,
+                    limit: 12,
+                    blocked: { $ne: true },
+                  })
+                )
+              }
               className="ml-2 text-blue-500 underline"
             >
               Retry
