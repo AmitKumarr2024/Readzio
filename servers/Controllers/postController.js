@@ -1,4 +1,7 @@
 import PostModel from "../../servers/Models/Post.js";
+import GuestModel from "../../servers/Models/Guest.js";
+import AnalyticsModel from "../../servers/Models/Analytics.js";
+import UserModel from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import { v4 as uuidv4 } from "uuid";
 import { uploadToCloudinary } from "../../servers/Utils/uploadToCloudinary.js";
@@ -12,8 +15,7 @@ import { calculateReadTime } from "../helpers/postHelper.js";
 import pLimit from "p-limit";
 import NodeCache from "node-cache";
 import PostInteraction from "../../servers/Models/PostInteraction.js";
-import UserModel from "../../servers/Models/User.js";
-import { logMemory } from "../../servers/Utils/memoryLogger.js"; // Import logMemory
+import { logMemory } from "../../servers/Utils/memoryLogger.js";
 
 const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
 
@@ -31,7 +33,399 @@ const validateObjectId = (id, type = "ID") => {
   logMemory(`After validateObjectId: ${type}`);
 };
 
-// 🟢 Get all published + unblocked posts with pagination
+// Create Post
+export const createPost = async (req, res, next) => {
+  try {
+    logMemory("📝 Start createPost");
+    const {
+      title,
+      category,
+      excerpt,
+      tags: rawTags,
+      blocks: rawBlocks = [],
+      thumbnail: rawThumbnail,
+      isFeatured = false,
+      isPinned = false,
+      language = "en",
+      postType = "Blog",
+    } = req.body;
+
+    if (!req.user?._id) {
+      throw new AppError(
+        "You must be signed in to access this feature.",
+        401,
+        "CreatePost"
+      );
+    }
+
+    const tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
+    if (!Array.isArray(tags)) {
+      throw new AppError("Tags must be an array", 400, "CreatePost");
+    }
+
+    const blocks = Array.isArray(rawBlocks)
+      ? rawBlocks
+      : JSON.parse(rawBlocks || "[]");
+    if (!Array.isArray(blocks)) {
+      throw new AppError("Blocks must be an array", 400, "CreatePost");
+    }
+
+    logMemory("📦 After parsing input");
+
+    const blocksWithIds = blocks.map((block, index) => {
+      if (!block || typeof block !== "object" || !block.type) {
+        throw new AppError(
+          `Invalid block at index ${index}`,
+          400,
+          "CreatePost"
+        );
+      }
+      return {
+        id: block.id || uuidv4(),
+        type: block.type,
+        ...block,
+        blocked: false,
+      };
+    });
+
+    blocksWithIds.forEach((block, index) => {
+      if (block.type === "table") {
+        if (
+          !block.data ||
+          !Array.isArray(block.data) ||
+          block.data.length === 0
+        ) {
+          throw new AppError(
+            `Table block at index ${index} must have non-empty data`,
+            400,
+            "CreatePost"
+          );
+        }
+        if (!block.data.every((row) => Array.isArray(row) && row.length > 0)) {
+          throw new AppError(
+            `Table block at index ${index} has invalid data format`,
+            400,
+            "CreatePost"
+          );
+        }
+      }
+    });
+
+    const processImage = async (source, id, folder) => {
+      try {
+        let buffer;
+        if (source.startsWith("data:image")) {
+          const [, base64Data] =
+            source.match(/^data:image\/[a-z]+;base64,(.+)$/) || [];
+          if (!base64Data) {
+            throw new AppError(
+              "Invalid base64 image",
+              400,
+              "CreatePost",
+              "Invalid image data"
+            );
+          }
+          buffer = Buffer.from(base64Data, "base64");
+        } else if (source.startsWith("http")) {
+          const response = await axios.get(source, {
+            responseType: "arraybuffer",
+            timeout: 5000,
+          });
+          buffer = Buffer.from(response.data, "binary");
+        } else {
+          throw new AppError(
+            "Unsupported image source",
+            400,
+            "CreatePost",
+            "Invalid image source"
+          );
+        }
+
+        const image = sharp(buffer);
+        const metadata = await image.metadata();
+        if (!["jpeg", "png", "webp"].includes(metadata.format)) {
+          throw new AppError(
+            "Unsupported image format",
+            400,
+            "CreatePost",
+            "Invalid image format"
+          );
+        }
+
+        if (metadata.width > 1200 || metadata.height > 1200) {
+          image.resize({
+            width: 1200,
+            height: 1200,
+            fit: "inside",
+            withoutEnlargement: true,
+          });
+        }
+
+        const compressedBuffer = await image
+          .webp({ quality: 75, effort: 4 })
+          .toBuffer();
+        const result = await uploadToCloudinary({
+          buffer: compressedBuffer,
+          folder,
+        });
+        if (!result?.secure_url) {
+          throw new AppError(
+            "Image upload failed",
+            500,
+            "CreatePost",
+            "Cloudinary upload failed"
+          );
+        }
+
+        return result.secure_url;
+      } catch (err) {
+        throw new AppError(
+          err.message || `Image processing failed: ${id}`,
+          400,
+          "CreatePost",
+          "Error processing image"
+        );
+      }
+    };
+
+    const blockLimit = pLimit(3);
+    const imageLimit = pLimit(2);
+
+    const processBlock = async (block) => {
+      const processedBlock = { ...block };
+      if (block.type === "image" && block.src) {
+        logMemory(`🖼️ Processing image block ${block.id}`);
+        processedBlock.src = await imageLimit(() =>
+          processImage(block.src, block.id, "blogs/post/images/")
+        );
+      }
+      if (processedBlock.text) {
+        processedBlock.text = processedBlock.text.replace(
+          /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+          ""
+        );
+      }
+      if (processedBlock.caption) {
+        processedBlock.caption = processedBlock.caption.replace(
+          /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+          ""
+        );
+      }
+      if (block.type === "poll") {
+        processedBlock.question =
+          processedBlock.question?.trim() || "Default Question";
+        processedBlock.options = Array.isArray(processedBlock.options)
+          ? processedBlock.options
+              .map((opt) => {
+                const value =
+                  typeof opt === "string"
+                    ? opt
+                    : typeof opt === "object" && typeof opt.option === "string"
+                    ? opt.option
+                    : "";
+                const trimmed = value.trim();
+                return trimmed &&
+                  trimmed.length >= 2 &&
+                  trimmed.toLowerCase() !== "option"
+                  ? {
+                      option: trimmed,
+                      votes:
+                        typeof opt === "object" && Number.isInteger(opt.votes)
+                          ? opt.votes
+                          : 0,
+                    }
+                  : null;
+              })
+              .filter(Boolean)
+          : [];
+        processedBlock.votedUserIds = Array.isArray(processedBlock.votedUserIds)
+          ? processedBlock.votedUserIds
+              .map((vote) =>
+                mongoose.Types.ObjectId.isValid(vote.userId)
+                  ? {
+                      userId: new mongoose.Types.ObjectId(vote.userId),
+                      votedAt: vote.votedAt || new Date(),
+                    }
+                  : null
+              )
+              .filter(Boolean)
+          : [];
+      }
+      if (block.type === "table") {
+        if (
+          !processedBlock.data ||
+          !Array.isArray(processedBlock.data) ||
+          processedBlock.data.length === 0
+        ) {
+          throw new AppError(
+            "Table block must have non-empty data",
+            400,
+            "ProcessBlock"
+          );
+        }
+        if (
+          !processedBlock.data.every(
+            (row) => Array.isArray(row) && row.length > 0
+          )
+        ) {
+          throw new AppError(
+            "Table block has invalid data format",
+            400,
+            "ProcessBlock"
+          );
+        }
+        processedBlock.data = processedBlock.data.map((row) =>
+          row.map((cell) => (cell == null ? "" : String(cell)))
+        );
+      }
+      return processedBlock;
+    };
+
+    logMemory("🖼️ Before processing blocks");
+    const processedBlocks = await Promise.all(
+      blocksWithIds.map((block) => blockLimit(() => processBlock(block)))
+    );
+    logMemory("🖼️ After processing blocks");
+
+    const { readTime, readingTime } = calculateReadTime(processedBlocks);
+
+    let processedThumbnail = rawThumbnail;
+    if (rawThumbnail) {
+      logMemory("🖼️ Before processing thumbnail");
+      processedThumbnail = await imageLimit(() =>
+        processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
+      );
+      logMemory("🖼️ After processing thumbnail");
+    }
+
+    const moderateContent = async (text) => {
+      return { isFlagged: false, categories: {} };
+    };
+
+    const blockTextContent = processedBlocks
+      .flatMap((block) =>
+        ["text", "value", "code", "caption", "question"]
+          .map((f) => block[f])
+          .filter(Boolean)
+      )
+      .join("\n");
+    const fullText = `${title}\n${excerpt || ""}\n${blockTextContent}`;
+    logMemory("🔍 Before content moderation");
+    const moderation = await moderateContent(fullText);
+    logMemory("🔍 After content moderation");
+    if (moderation.isFlagged) {
+      const reasons = Object.entries(moderation.categories)
+        .filter(([_, flagged]) => flagged)
+        .map(([key]) => key);
+      throw new AppError(
+        `Restricted content: ${reasons.join(", ")}`,
+        400,
+        "CreatePost"
+      );
+    }
+
+    let slug = slugify(title, { lower: true, strict: true });
+    let finalSlug = slug;
+    let counter = 1;
+
+    logMemory("🔎 Before slug check");
+    while (await PostModel.exists({ slug: finalSlug }).lean()) {
+      finalSlug = `${slug}-${counter++}`;
+    }
+    slug = finalSlug;
+    logMemory("🔎 After slug check");
+
+    const postData = {
+      title,
+      slug,
+      category,
+      tags,
+      thumbnail: processedThumbnail,
+      excerpt,
+      blocks: processedBlocks,
+      author: req.user._id,
+      isFeatured,
+      isPinned,
+      isPublished: true,
+      language,
+      readTime,
+      readingTime,
+      postType,
+    };
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      logMemory("💾 Before DB insert");
+      const [newPost] = await PostModel.create([postData], { session });
+      await recordActivity(
+        {
+          userId: req.user._id,
+          action: "POST_CREATED",
+          targetPost: newPost._id,
+          message: `Created post: ${title}`,
+        },
+        { session }
+      );
+      logMemory("💾 After DB insert");
+      await session.commitTransaction();
+
+      io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
+
+      const cacheKey = `postCounts:${req.user._id}`;
+      let counts = cache.get(cacheKey);
+      if (!counts) {
+        logMemory("📊 Before cache update");
+        const [allPostsCount, myPostsCount, followingPostsCount] =
+          await Promise.all([
+            PostModel.countDocuments({
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+            PostModel.countDocuments({
+              author: req.user._id,
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+            PostModel.countDocuments({
+              author: { $in: req.user.following || [] },
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+          ]);
+        counts = { allPostsCount, myPostsCount, followingPostsCount };
+        cache.set(cacheKey, counts);
+        logMemory("📊 After cache update");
+      }
+
+      setTimeout(() => {
+        io.to(req.user._id).emit("postCountsUpdated", counts);
+      }, 1000);
+
+      logMemory("🎉 End createPost");
+      res
+        .status(201)
+        .json({ success: true, message: "Post created", post: newPost });
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    } finally {
+      session.endSession();
+    }
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to create post",
+            500,
+            "CreatePost"
+          )
+    );
+  }
+};
+
+// Get all published + unblocked posts with pagination
 export const getPublicPosts = async (req, res, next) => {
   try {
     logMemory("Before getPublicPosts start");
@@ -61,7 +455,7 @@ export const getPublicPosts = async (req, res, next) => {
     console.log("Query:", JSON.stringify(query));
     logMemory("Before PostModel.find");
     const posts = await PostModel.find(query)
-      .maxTimeMS(10000) // 10s timeout
+      .maxTimeMS(10000)
       .sort({ createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
@@ -80,9 +474,7 @@ export const getPublicPosts = async (req, res, next) => {
     }));
 
     logMemory("Before PostModel.countDocuments");
-    const total = await PostModel.countDocuments(query)
-      .maxTimeMS(5000) // 5s timeout
-      .lean();
+    const total = await PostModel.countDocuments(query).maxTimeMS(5000).lean();
     console.log("Total posts:", total);
 
     logMemory(`Before setting cache: ${cacheKey}`);
@@ -120,7 +512,7 @@ export const getPublicPosts = async (req, res, next) => {
   }
 };
 
-// 🟢 Get post ID by slug
+// Get post ID by slug
 export const getPostIdBySlug = async (req, res, next) => {
   try {
     logMemory("Before getPostIdBySlug start");
@@ -143,7 +535,7 @@ export const getPostIdBySlug = async (req, res, next) => {
     const post = await PostModel.findOne({
       slug: { $regex: `^${sanitizedSlug}$`, $options: "i" },
     })
-      .maxTimeMS(10000) // 10s timeout
+      .maxTimeMS(10000)
       .select("_id")
       .lean();
 
@@ -170,7 +562,7 @@ export const getPostIdBySlug = async (req, res, next) => {
   }
 };
 
-// 🟢 Count all published, non-blocked posts
+// Count all published, non-blocked posts
 export const countAllPosts = async (req, res, next) => {
   try {
     logMemory("Before countAllPosts start");
@@ -188,7 +580,7 @@ export const countAllPosts = async (req, res, next) => {
       blocked: { $ne: true },
       isPublished: true,
     })
-      .maxTimeMS(5000) // 5s timeout
+      .maxTimeMS(5000)
       .lean();
     console.log("Total posts count:", count);
 
@@ -211,7 +603,7 @@ export const countAllPosts = async (req, res, next) => {
   }
 };
 
-// 🟢 Count authenticated user's posts
+// Count authenticated user's posts
 export const countMyPosts = async (req, res, next) => {
   try {
     logMemory("Before countMyPosts start");
@@ -233,7 +625,7 @@ export const countMyPosts = async (req, res, next) => {
       blocked: { $ne: true },
       isPublished: true,
     })
-      .maxTimeMS(5000) // 5s timeout
+      .maxTimeMS(5000)
       .lean();
     console.log("User posts count:", count);
 
@@ -252,7 +644,7 @@ export const countMyPosts = async (req, res, next) => {
   }
 };
 
-// 🟢 Count posts from followed users
+// Count posts from followed users
 export const countFollowingPosts = async (req, res, next) => {
   try {
     logMemory("Before countFollowingPosts start");
@@ -271,7 +663,7 @@ export const countFollowingPosts = async (req, res, next) => {
       blocked: { $ne: true },
       isPublished: true,
     })
-      .maxTimeMS(5000) // 5s timeout
+      .maxTimeMS(5000)
       .lean();
     console.log("Following posts count:", count);
 
@@ -294,81 +686,59 @@ export const countFollowingPosts = async (req, res, next) => {
   }
 };
 
-// 🟢 Get single public post by slug
-export const getPublicPostBySlug = async (req, res, next) => {
+// Get single public post by slug
+export const getPublicPost = async (req, res, next) => {
   try {
-    logMemory("Before getPublicPostBySlug start");
+    logMemory("📄 Start getPublicPost");
     const { slug } = req.params;
+
     if (!slug || typeof slug !== "string" || slug.trim() === "") {
-      throw new AppError("Invalid post slug", 400, "GetPublicPostBySlug");
+      throw new AppError("Invalid post slug", 400, "GetPublicPost");
     }
+
     const sanitizedSlug = slug.trim().toLowerCase();
-    const cacheKey = `publicPost:${sanitizedSlug}`;
-
-    logMemory(`Before checking cache: ${cacheKey}`);
-    const cachedPost = cache.get(cacheKey);
-    if (cachedPost) {
-      logMemory(`Cache hit: ${cacheKey}`);
-      return res.status(200).json({ success: true, post: cachedPost });
-    }
-
     console.log("Querying slug:", sanitizedSlug);
-    logMemory("Before PostModel.findOne");
+
+    logMemory("📖 Before fetching post");
     const post = await PostModel.findOne({
       slug: { $regex: `^${sanitizedSlug}$`, $options: "i" },
       isPublished: true,
       blocked: false,
     })
-      .maxTimeMS(10000)
       .select(
-        "title slug category excerpt thumbnail author createdAt isPublished readTime tags language viewsCount shareCount blocks"
+        "title slug category excerpt thumbnail author createdAt isPublished readTime readingTime tags language viewsCount shareCount postType"
       )
       .populate("author", "name avatar")
       .populate("category", "name slug")
       .lean();
+    logMemory("📖 After fetching post");
 
     if (!post) {
       throw new AppError(
         "Post not found or has been deleted",
         404,
-        "GetPublicPostBySlug"
+        "GetPublicPost"
       );
     }
 
     console.log("Post fetched:", post.title);
-    logMemory("Before processing blocks");
-    post.blocks = Array.isArray(post.blocks) ? post.blocks : [];
-
-    logMemory(`Before setting cache: ${cacheKey}`);
-    cache.set(cacheKey, post);
-
-    if (req.user?._id) {
-      logMemory("Before recordActivity");
-      await recordActivity({
-        userId: req.user._id,
-        action: "VIEWED_PUBLIC_POST",
-        targetPost: post._id,
-        message: `Viewed public post: ${post.title}`,
-      });
-    }
-
-    logMemory("After getPublicPostBySlug complete");
+    logMemory("📄 End getPublicPost");
     res.status(200).json({ success: true, post });
   } catch (error) {
-    console.error("Error in getPublicPostBySlug:", error.message, error.stack);
+    console.error("Error in getPublicPost:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
         : new AppError(
             error.message || "Failed to fetch public post",
             500,
-            "GetPublicPostBySlug"
+            "GetPublicPost"
           )
     );
   }
 };
 
-// 🟢 Track guest view
+// Track guest view
 export const trackGuestView = async (req, res, next) => {
   try {
     logMemory("Before trackGuestView start");
@@ -386,8 +756,8 @@ export const trackGuestView = async (req, res, next) => {
       throw new AppError("Post not found", 404, "TrackGuestView");
     }
 
-    logMemory("Before GuestVisitModel.create");
-    await GuestVisitModel.create({
+    logMemory("Before GuestModel.create");
+    await GuestModel.create({
       slug: sanitizedSlug,
       ip: req.ip,
       userAgent: req.headers["user-agent"],
@@ -418,7 +788,7 @@ export const trackGuestView = async (req, res, next) => {
   }
 };
 
-// 🔹 Track guest visit — with unique guest count tracking
+// Track guest visit
 export const trackGuestVisit = async (req, res, next) => {
   try {
     logMemory("Before trackGuestVisit start");
@@ -527,7 +897,7 @@ export const trackGuestVisit = async (req, res, next) => {
   }
 };
 
-//
+// Get all posts
 export const getAllPosts = async (req, res, next) => {
   try {
     logMemory("📋 Start getAllPosts");
@@ -557,7 +927,7 @@ export const getAllPosts = async (req, res, next) => {
       }
     }
 
-    console.log("Query:", JSON.stringify(query)); // Log query
+    console.log("Query:", JSON.stringify(query));
     logMemory("📖 Before fetching posts");
     const posts = await PostModel.find(query)
       .select(
@@ -571,9 +941,9 @@ export const getAllPosts = async (req, res, next) => {
       .lean();
     logMemory("📖 After fetching posts");
 
-    console.log("Posts fetched:", posts.length); // Log fetched posts
+    console.log("Posts fetched:", posts.length);
     const total = await PostModel.countDocuments(query).lean();
-    console.log("Total posts:", total); // Log total count
+    console.log("Total posts:", total);
 
     const cacheKey = `postCounts:${req.user?._id || "guest"}`;
     let counts = cache.get(cacheKey);
@@ -619,7 +989,7 @@ export const getAllPosts = async (req, res, next) => {
     logMemory("📋 End getAllPosts");
     res.status(200).json({ success: true, total, page, posts });
   } catch (error) {
-    console.error("Error in getAllPosts:", error.message, error.stack); // Detailed error logging
+    console.error("Error in getAllPosts:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
@@ -632,6 +1002,7 @@ export const getAllPosts = async (req, res, next) => {
   }
 };
 
+// Get single post
 export const getSinglePost = async (req, res, next) => {
   try {
     logMemory("📄 Start getSinglePost");
@@ -709,6 +1080,7 @@ export const getSinglePost = async (req, res, next) => {
   }
 };
 
+// Track time spent
 export const trackTimeSpent = async (req, res, next) => {
   try {
     logMemory("⏱️ Start trackTimeSpent");
@@ -754,6 +1126,7 @@ export const trackTimeSpent = async (req, res, next) => {
   }
 };
 
+// Process block
 export const processBlock = async (block) => {
   logMemory(`🛠️ Start processBlock ${block.id || "unknown"}`);
   const processedBlock = { ...block };
@@ -842,6 +1215,7 @@ export const processBlock = async (block) => {
   return processedBlock;
 };
 
+// Update post by slug
 export const updatePostBySlug = async (req, res, next) => {
   try {
     logMemory("✏️ Start updatePostBySlug");
@@ -982,6 +1356,7 @@ export const updatePostBySlug = async (req, res, next) => {
   }
 };
 
+// Delete post
 export const deletePost = async (req, res, next) => {
   try {
     logMemory("🗑️ Start deletePost");
@@ -1052,6 +1427,7 @@ export const deletePost = async (req, res, next) => {
   }
 };
 
+// Toggle block post
 export const toggleBlockPost = async (req, res, next) => {
   try {
     logMemory("🚫 Start toggleBlockPost");
@@ -1109,6 +1485,7 @@ export const toggleBlockPost = async (req, res, next) => {
   }
 };
 
+// Send daily post email
 export const sendDailyPostEmail = async () => {
   try {
     logMemory("📧 Start sendDailyPostEmail");
@@ -1193,6 +1570,7 @@ export const sendDailyPostEmail = async () => {
   }
 };
 
+// Submit appeal
 export const submitAppeal = async (req, res, next) => {
   try {
     logMemory("📜 Start submitAppeal");
@@ -1261,6 +1639,7 @@ export const submitAppeal = async (req, res, next) => {
   }
 };
 
+// Increment share count
 export const incrementShareCount = async (req, res, next) => {
   try {
     logMemory("📈 Start incrementShareCount");
@@ -1301,6 +1680,7 @@ export const incrementShareCount = async (req, res, next) => {
   }
 };
 
+// Get draft and pending posts
 export const getDraftAndPendingPosts = async (req, res, next) => {
   try {
     logMemory("📋 Start getDraftAndPendingPosts");
@@ -1360,57 +1740,7 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
   }
 };
 
-export const getPublicPost = async (req, res, next) => {
-  try {
-    logMemory("📄 Start getPublicPost");
-    const { slug } = req.params;
-
-    if (!slug || typeof slug !== "string" || slug.trim() === "") {
-      throw new AppError("Invalid post slug", 400, "GetPublicPost");
-    }
-
-    const sanitizedSlug = slug.trim().toLowerCase();
-    console.log("Querying slug:", sanitizedSlug); // Log slug
-
-    logMemory("📖 Before fetching post");
-    const post = await PostModel.findOne({
-      slug: { $regex: `^${sanitizedSlug}$`, $options: "i" },
-      isPublished: true,
-      blocked: false,
-    })
-      .select(
-        "title slug category excerpt thumbnail author createdAt isPublished readTime readingTime tags language viewsCount shareCount postType"
-      )
-      .populate("author", "name avatar")
-      .populate("category", "name slug")
-      .lean();
-    logMemory("📖 After fetching post");
-
-    if (!post) {
-      throw new AppError(
-        "Post not found or has been deleted",
-        404,
-        "GetPublicPost"
-      );
-    }
-
-    console.log("Post fetched:", post.title); // Log fetched post
-    logMemory("📄 End getPublicPost");
-    res.status(200).json({ success: true, post });
-  } catch (error) {
-    console.error("Error in getPublicPost:", error.message, error.stack); // Detailed error logging
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to fetch public post",
-            500,
-            "GetPublicPost"
-          )
-    );
-  }
-};
-
+// Get following posts
 export const getFollowingPosts = async (req, res, next) => {
   try {
     logMemory("📋 Start getFollowingPosts");
@@ -1497,6 +1827,132 @@ export const getFollowingPosts = async (req, res, next) => {
             error.message || "Failed to fetch following posts",
             500,
             "GetFollowingPosts"
+          )
+    );
+  }
+};
+
+// Vote on poll
+export const voteOnPoll = async (req, res, next) => {
+  try {
+    logMemory("🗳️ Start voteOnPoll");
+    const { postId, blockId, optionIndex } = req.body;
+    const userId = req.user?._id;
+
+    validateObjectId(postId, "Post ID");
+    if (!userId) {
+      throw new AppError("You must be signed in to vote", 401, "VoteOnPoll");
+    }
+    if (!blockId || optionIndex == null) {
+      throw new AppError(
+        "Block ID and option index required",
+        400,
+        "VoteOnPoll"
+      );
+    }
+
+    logMemory("📖 Before fetching post");
+    const post = await PostModel.findOne({
+      _id: postId,
+      isPublished: true,
+      blocked: false,
+    })
+      .select("title blocks")
+      .lean();
+    logMemory("📖 After fetching post");
+
+    if (!post) {
+      throw new AppError("Post not found or unavailable", 404, "VoteOnPoll");
+    }
+
+    const pollBlockIndex = post.blocks.findIndex(
+      (block) => block.id === blockId && block.type === "poll"
+    );
+    if (pollBlockIndex === -1) {
+      throw new AppError("Poll block not found", 404, "VoteOnPoll");
+    }
+
+    const pollBlock = post.blocks[pollBlockIndex];
+    if (
+      pollBlock.votedUserIds.some(
+        (vote) => vote.userId.toString() === userId.toString()
+      )
+    ) {
+      throw new AppError("User already voted", 400, "VoteOnPoll");
+    }
+
+    pollBlock.options[optionIndex].votes =
+      (pollBlock.options[optionIndex].votes || 0) + 1;
+    pollBlock.votedUserIds.push({ userId, votedAt: new Date() });
+    post.blocks[pollBlockIndex] = pollBlock;
+
+    logMemory("💾 Before updating post");
+    const updatedPost = await PostModel.findByIdAndUpdate(
+      postId,
+      { $set: { blocks: post.blocks } },
+      { new: true, select: "title slug blocks" }
+    ).lean();
+    logMemory("💾 After updating post");
+
+    await recordActivity({
+      userId,
+      action: "POLL_VOTED",
+      targetPost: postId,
+      message: `Voted on poll in post: ${post.title}`,
+    });
+
+    logMemory("🗳️ End voteOnPoll");
+    res.status(200).json({
+      success: true,
+      message: "Vote recorded",
+      poll: updatedPost.blocks[pollBlockIndex],
+    });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to record vote",
+            500,
+            "VoteOnPoll"
+          )
+    );
+  }
+};
+
+// Increment view
+export const incrementView = async (req, res, next) => {
+  try {
+    logMemory("👀 Start incrementView");
+    const { slug } = req.params;
+    const sanitizedSlug = slug.trim().toLowerCase();
+
+    logMemory("Before PostModel.findOneAndUpdate");
+    const post = await PostModel.findOneAndUpdate(
+      { slug: sanitizedSlug, isPublished: true, blocked: false },
+      { $inc: { viewsCount: 1 } },
+      { new: true, select: "viewsCount" }
+    ).lean();
+
+    if (!post) {
+      throw new AppError("Post not found", 404, "IncrementView");
+    }
+
+    logMemory("👀 End incrementView");
+    res.status(200).json({
+      success: true,
+      message: "View count incremented",
+      viewsCount: post.viewsCount,
+    });
+  } catch (error) {
+    console.error("Error in incrementView:", error.message, error.stack);
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to increment view count",
+            500,
+            "IncrementView"
           )
     );
   }

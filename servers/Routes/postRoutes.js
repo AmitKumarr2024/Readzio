@@ -19,6 +19,10 @@ import {
   countAllPosts,
   countMyPosts,
   countFollowingPosts,
+  incrementView,
+  getDraftAndPendingPosts,
+  trackGuestView,
+  trackGuestVisit,
 } from "../Controllers/postController.js";
 import {
   searchPosts,
@@ -28,7 +32,6 @@ import {
   searchUsers,
 } from "../Controllers/postSearchController.js";
 import {
-  incrementView,
   toggleBookmark,
   toggleLike,
   getBookmarkedPosts,
@@ -49,6 +52,8 @@ const validateUserId = validateObjectId("userId");
 router.get("/public/posts", getPublicPosts);
 router.get("/id-by-slug/:slug", getPostIdBySlug);
 router.get("/count/all", countAllPosts);
+router.get("/public/:slug", getPublicPost);
+router.post("/view/:slug", incrementView);
 
 // Protected routes
 router.get("/count/my", protectedRoute, countMyPosts);
@@ -110,9 +115,10 @@ router.get("/trending-post/trending", getTrendingPosts);
 router.get("/latest-post/latest", getLatestPosts);
 router.get("/suggested-post/suggested", suggestPosts);
 router.get("/search-users", protectedRoute, searchUsers);
-router.get("/public/:slug", getPublicPost);
 router.get("/:slug", protectedRoute, getSinglePost);
-router.post("/view/:slug", incrementView);
 router.post("/vote", protectedRoute, voteOnPoll);
+router.get("/drafts", protectedRoute, getDraftAndPendingPosts);
+router.post("/track-guest-view/:slug", trackGuestView);
+router.post("/track-guest-visit", trackGuestVisit);
 
 export default router;
