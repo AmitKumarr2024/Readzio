@@ -42,6 +42,13 @@ const server = http.createServer(app);
 const io = initializeSocket(server);
 const __dirname = path.resolve();
 
+// ✅ Serve robots.txt BEFORE anything else
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain").send(`User-agent: *
+Allow: /
+Sitemap: https://inksha-uedq.onrender.com/sitemap.xml`);
+});
+
 // Timeout middleware for specific routes
 const setRouteTimeout = (timeoutMs) => (req, res, next) => {
   req.setTimeout(timeoutMs, () => {
@@ -55,7 +62,7 @@ const setRouteTimeout = (timeoutMs) => (req, res, next) => {
 // Razorpay webhook
 app.post(
   "/api/razorpay/webhook",
-  setRouteTimeout(60000), // 60s timeout
+  setRouteTimeout(60000),
   express.json({
     verify: (req, res, buf) => {
       req.rawBody = buf.toString();
@@ -111,7 +118,7 @@ app.use(cookieParser());
 const routes = [
   ["/api/auth", AuthRoutes],
   ["/api/user", UserRoutes],
-  ["/api/post", PostRoutes, setRouteTimeout(60000)], // 60s for post routes
+  ["/api/post", PostRoutes, setRouteTimeout(60000)],
   ["/api/category", CategoryRoutes],
   ["/api/block", BlockRoutes],
   ["/api/follow", FollowRoutes],
@@ -124,7 +131,7 @@ const routes = [
   ["/api/admin", AdminRoutes],
   ["/api/dailyMail", PostEmailRoutes],
   ["/api/bannerNotification", BannerNotificationRoutes],
-  ["/api/public", guestRoutes, setRouteTimeout(60000)], // 60s for public routes
+  ["/api/public", guestRoutes, setRouteTimeout(60000)],
 ];
 
 routes.forEach(([path, router, middleware]) => {
@@ -176,11 +183,6 @@ if (NODE_ENV === "production" && fs.existsSync(clientIndexPath)) {
     });
   });
 }
-app.get("/robots.txt", (req, res) => {
-  res.type("text/plain").send(`User-agent: *
-Allow: /
-Sitemap: https://inksha-uedq.onrender.com/sitemap.xml`);
-});
 
 // Health check
 app.get("/health", (req, res) => {
@@ -231,6 +233,6 @@ const startServer = async () => {
   }
 };
 
-server.setTimeout(60000); // 60s global timeout
+server.setTimeout(60000);
 
 startServer();
