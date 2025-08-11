@@ -24,10 +24,11 @@ const GuestPostView = () => {
     console.log("[GuestPostView] Redux guest.posts updated:", posts);
   }, [posts]);
 
-  // Load guest data once
+  // Load guest data and posts
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Track guest visit if no guestId exists
         const guestId = localStorage.getItem("guestId");
         if (!guestId) {
           console.log("[GuestPostView] No guestId found, tracking visit...");
@@ -36,18 +37,29 @@ const GuestPostView = () => {
           console.log("[GuestPostView] GuestId already exists:", guestId);
         }
 
-        await dispatch(fetchPublicPosts({ page: 1, limit: 12 })).unwrap();
+        // Fetch posts only if none exist
+        if (posts.length === 0) {
+          console.log("[GuestPostView] Fetching public posts...");
+          const result = await dispatch(
+            fetchPublicPosts({ page: 1, limit: 12 })
+          ).unwrap();
+          console.log("[GuestPostView] Fetch result:", result);
+        } else {
+          console.log("[GuestPostView] Posts already loaded:", posts.length);
+        }
       } catch (err) {
-        console.error("❌ Error loading guest data", err);
+        console.error("[GuestPostView] Error loading guest data:", err);
       } finally {
+        console.log("[GuestPostView] Setting initialLoad to false");
         setInitialLoad(false);
       }
     };
     loadData();
-  }, [dispatch]);
+  }, [dispatch, posts.length]);
 
   // Skeleton loading state
   if (loading && initialLoad) {
+    console.log("[GuestPostView] Rendering skeleton loading state");
     return (
       <div
         className={`grid gap-4 py-6 px-4 w-full
@@ -77,18 +89,15 @@ const GuestPostView = () => {
 
   // Error state
   if (error && !initialLoad) {
+    console.log("[GuestPostView] Rendering error state:", error);
     return (
       <div className="text-center text-red-500 py-4">
         {error}
         <button
-          onClick={() =>
-            dispatch(
-              fetchPublicPosts({
-                page: 1,
-                limit: 12,
-              })
-            )
-          }
+          onClick={() => {
+            console.log("[GuestPostView] Retrying fetchPublicPosts");
+            dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
+          }}
           className="ml-2 text-blue-500 underline"
         >
           Retry
@@ -99,6 +108,7 @@ const GuestPostView = () => {
 
   // Empty state
   if (!initialLoad && (!Array.isArray(posts) || posts.length === 0)) {
+    console.log("[GuestPostView] Rendering empty state");
     return (
       <div className="text-center text-gray-400 py-8">
         No posts available for guests.
@@ -106,9 +116,16 @@ const GuestPostView = () => {
     );
   }
 
-  // Insert ads between posts, render all posts without filtering
+  // Insert ads between posts
+  console.log(
+    "[GuestPostView] Rendering posts with ads, posts count:",
+    posts.length
+  );
   const postsWithAds = posts.flatMap((post, index) => {
-    if (!post?._id || !post?.slug) return [];
+    if (!post?._id || !post?.slug) {
+      console.warn("[GuestPostView] Invalid post at index", index, post);
+      return [];
+    }
 
     const items = [<GuestCardOfPost key={post._id} {...post} />];
 

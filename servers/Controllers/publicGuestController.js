@@ -22,17 +22,17 @@ const GUEST_VISIT_WINDOW = 60 * 1000; // 1 minute
 export const getPublicPosts = async (req, res, next) => {
   try {
     logMemory("Before getPublicPosts start");
-    const { page = 1, limit = 12, tag, after } = req.query;
+    const { page = 1, limit = 12, tag, after, blocked = false } = req.query;
     const pageNum = parseInt(page);
     const limitNum = Math.min(parseInt(limit), 100);
     const cacheKey = `publicPosts:${pageNum}:${limitNum}:${tag || "all"}:${
       after || "none"
-    }`;
+    }:${blocked}`;
 
     console.log(
       `Request params: page=${pageNum}, limit=${limitNum}, tag=${
         tag || "none"
-      }, after=${after || "none"}`
+      }, after=${after || "none"}, blocked=${blocked}`
     );
     logMemory(`Before checking cache: ${cacheKey}`);
     const cachedPosts = cache.get(cacheKey);
@@ -50,7 +50,7 @@ export const getPublicPosts = async (req, res, next) => {
 
     const query = {
       isPublished: true,
-      blocked: { $ne: true }, // Changed from blocked: false
+      blocked: blocked === "false" ? false : { $ne: true },
       ...(tag ? { tags: { $in: [tag] } } : {}),
       ...(after ? { createdAt: { $lt: new Date(after) } } : {}),
     };
