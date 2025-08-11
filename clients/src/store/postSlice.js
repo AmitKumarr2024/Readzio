@@ -512,6 +512,9 @@ const postSlice = createSlice({
         state.currentPost.blocked = blocked;
       }
     },
+    clearCurrentPost: (state) => {
+      state.currentPost = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -840,6 +843,7 @@ export const {
   resetFetch,
   clearReadingError,
   updateCurrentPostBlockedStatus,
+  clearCurrentPost,
 } = postSlice.actions;
 
 export default postSlice.reducer;

@@ -7,6 +7,7 @@ import {
   startReading,
   stopReading,
   submitReadingTime,
+  clearCurrentPost,
 } from "../../store/postSlice";
 import { fetchPublicPostBySlug } from "../../store/guestSlice";
 import { fetchBookmarkAndLikeStatus } from "../../store/PostInteractions";
@@ -71,12 +72,6 @@ const DisplayPost = () => {
   const activeLoading = isAuthenticated ? loading : guestLoading;
   const activeError = isAuthenticated ? error : guestError;
 
-  // Debug logging
-  useEffect(() => {
-    console.log("Current slug:", slug);
-    console.log("Active post:", activePost);
-  }, [slug, activePost]);
-
   const categoryMap = useMemo(() => {
     return categories.reduce((map, cat) => {
       map[cat._id] = cat.name;
@@ -114,6 +109,7 @@ const DisplayPost = () => {
 
     const fetchData = async () => {
       try {
+        dispatch(clearCurrentPost());
         if (isAuthenticated) {
           await dispatch(getSinglePost({ slug, isGuest: false })).unwrap();
         } else {
@@ -432,7 +428,7 @@ const DisplayPost = () => {
             <DeleteModal
               isOpen={isDeleteModalOpen}
               onClose={() => setIsDeleteModalOpen(false)}
-              postId={activePost?._id}
+              postId={activePost._id}
               slug={activePost?.slug}
             />
           )}
