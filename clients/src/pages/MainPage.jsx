@@ -39,9 +39,7 @@ const MainPage = () => {
         if (isAuthenticated) {
           dispatch(getAllPosts({ page: 1, limit: 12 }));
         } else {
-          dispatch(
-            fetchPublicPosts({ page: 1, limit: 12, blocked: { $ne: true } })
-          );
+          dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
         }
       }
     } catch (e) {
@@ -135,7 +133,6 @@ const MainPage = () => {
                   fetchPublicPosts({
                     page: 1,
                     limit: 12,
-                    blocked: { $ne: true },
                   })
                 )
               }

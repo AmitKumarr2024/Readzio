@@ -13,21 +13,11 @@ const initialState = {
 // 🔹 Fetch Public Posts
 export const fetchPublicPosts = createAsyncThunk(
   "guest/fetchPublicPosts",
-  async (
-    { page = 1, limit = 12, blocked = { $ne: true } },
-    { rejectWithValue }
-  ) => {
-    console.log(
-      "[fetchPublicPosts] Called with page:",
-      page,
-      "limit:",
-      limit,
-      "blocked:",
-      blocked
-    );
+  async ({ page = 1, limit = 12 }, { rejectWithValue }) => {
+    console.log("[fetchPublicPosts] Called with page:", page, "limit:", limit);
     try {
       const res = await axiosInstance.get("/public/posts", {
-        params: { page, limit, blocked },
+        params: { page, limit },
       });
       console.log("[fetchPublicPosts] Raw API response:", res.data);
 

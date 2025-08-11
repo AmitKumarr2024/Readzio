@@ -36,9 +36,7 @@ const GuestPostView = () => {
           console.log("[GuestPostView] GuestId already exists:", guestId);
         }
 
-        await dispatch(
-          fetchPublicPosts({ page: 1, limit: 12 /* no blocked filter here */ })
-        ).unwrap();
+        await dispatch(fetchPublicPosts({ page: 1, limit: 12 })).unwrap();
       } catch (err) {
         console.error("❌ Error loading guest data", err);
       } finally {
@@ -55,7 +53,7 @@ const GuestPostView = () => {
         className={`grid gap-4 py-6 px-4 w-full
           grid-cols-1 
           sm:grid-cols-2 
-          md:grid-cols-5 
+          md:grid-cols-3 
           ${
             isSidebarOpen
               ? "lg:grid-cols-3 xl:grid-cols-4"
@@ -87,7 +85,7 @@ const GuestPostView = () => {
             dispatch(
               fetchPublicPosts({
                 page: 1,
-                limit: 12 /* no blocked filter here */,
+                limit: 12,
               })
             )
           }
@@ -146,7 +144,7 @@ const GuestPostView = () => {
       className={`grid gap-4 py-6 px-4 w-full
         grid-cols-1 
         sm:grid-cols-2 
-        md:grid-cols-5 
+        md:grid-cols-3 
         ${
           isSidebarOpen
             ? "lg:grid-cols-3 xl:grid-cols-4"
