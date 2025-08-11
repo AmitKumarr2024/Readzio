@@ -103,13 +103,19 @@ const DisplayPost = () => {
   useEffect(() => {
     if (!slug) return;
 
+    // CLEAR old data before fetching
+    if (isAuthenticated) {
+      dispatch({ type: "post/clearCurrentPost" });
+    } else {
+      dispatch({ type: "guest/clearSinglePost" });
+    }
+
     setFetchAttempted(false);
     setPostReady(false);
     hasFetchedStatus.current = false;
 
     const fetchData = async () => {
       try {
-        dispatch(clearCurrentPost());
         if (isAuthenticated) {
           await dispatch(getSinglePost({ slug, isGuest: false })).unwrap();
         } else {

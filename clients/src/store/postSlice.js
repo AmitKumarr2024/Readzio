@@ -515,6 +515,7 @@ const postSlice = createSlice({
     clearCurrentPost: (state) => {
       state.currentPost = null;
     },
+    
   },
   extraReducers: (builder) => {
     builder

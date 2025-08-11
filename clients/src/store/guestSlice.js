@@ -163,6 +163,9 @@ const guestSlice = createSlice({
       console.log("[clearGuestError] Clearing guest error:", state.error);
       state.error = null;
     },
+    clearSinglePost: (state) => {
+      state.singlePost = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -263,5 +266,6 @@ const guestSlice = createSlice({
   },
 });
 
-export const { clearGuestState, clearGuestError } = guestSlice.actions;
+export const { clearGuestState, clearGuestError, clearSinglePost } =
+  guestSlice.actions;
 export default guestSlice.reducer;
