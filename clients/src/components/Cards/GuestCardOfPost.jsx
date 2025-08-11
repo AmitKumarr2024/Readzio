@@ -39,9 +39,7 @@ const GuestCardOfPost = ({
           loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-        <span className="absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full bg-black bg-opacity-80 text-white">
-          {readTime || "5 min"}
-        </span>
+
         {isPremium && (
           <span className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500 text-black">
             Premium
@@ -66,7 +64,7 @@ const GuestCardOfPost = ({
           {title || "Untitled"}
         </h3>
         <div className="flex flex-col sm:flex-row sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400 justify-between">
-          <span className="truncate">{category.name || "Uncategorized"}</span>
+          <span className="truncate">{category?.name }</span>
           <span className="truncate font-bold text-gray-700 dark:text-gray-200">
             {author.name || "Anonymous"}
           </span>
