@@ -164,8 +164,8 @@ const GuestPostView = () => {
         md:grid-cols-3 
         ${
           isSidebarOpen
-            ? "lg:grid-cols-3 xl:grid-cols-4"
-            : "lg:grid-cols-3 xl:grid-cols-5"
+            ? "lg:grid-cols-4 xl:grid-cols-4"
+            : "lg:grid-cols-5 xl:grid-cols-5"
         }
       `}
     >
