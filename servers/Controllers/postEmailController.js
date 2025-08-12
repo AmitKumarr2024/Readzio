@@ -81,9 +81,13 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
     // Step 4: Send email to each verified user
     for (const user of users) {
+      const subject =
+        posts.length > 0
+          ? `${posts[0].title} | inkshaa Daily Digest`
+          : `Your inkshaa Daily Brief – Fresh Posts for You (${posts.length} Posts)`;
       const mailOption = createMailOption({
         to: user.email,
-        subject: `Your inkshaa Daily Brief – Fresh Posts for You (${posts.length} Posts)`,
+        subject: subject,
         name: user.name || "User",
         email: user.email,
         hasButton: true,
