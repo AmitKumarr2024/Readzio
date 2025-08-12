@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Joyride from "react-joyride";
 import { useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { updateUser } from "../../store/userSlice"; // adjust path to your slice
+import { updateUser } from "../../store/userSlice"; // adjust path if needed
 
 const STORAGE_KEY = "app_tour_completed";
 
@@ -85,19 +85,22 @@ const createPostSteps = [
 export default function AppTour() {
   const location = useLocation();
   const dispatch = useDispatch();
-  const { user } = useSelector((state) => state.user); // get current user from redux
+  const { isAuthenticated, user } = useSelector((state) => state.auth); // use auth state
   const [run, setRun] = useState(false);
 
+  // Pick steps based on page
   const steps =
-    location.pathname === "/create-post" ? createPostSteps : mainPageSteps;
+    location.pathname === "/createPost" ? createPostSteps : mainPageSteps;
 
-  // Check localStorage & user state on mount
+  // 🚫 Only run if user is logged in
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const completedLocal = localStorage.getItem(STORAGE_KEY);
     if (!completedLocal && !user?.tourCompleted) {
       setRun(true);
     }
-  }, [user]);
+  }, [isAuthenticated, user, location.pathname]);
 
   const handleCallback = (data) => {
     const { status } = data;
@@ -105,44 +108,34 @@ export default function AppTour() {
 
     if (finishedStatuses.includes(status)) {
       setRun(false);
-
-      // Save locally so it doesn't trigger immediately again
       localStorage.setItem(STORAGE_KEY, "true");
 
-      // Save to backend if not already marked
       if (!user?.tourCompleted) {
         dispatch(updateUser({ tourCompleted: true }));
       }
     }
   };
 
-  const resetTour = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    setRun(true);
-  };
+  if (!isAuthenticated) return null;
 
   return (
-    <>
-      <Joyride
-        steps={steps}
-        run={run}
-        continuous={true}
-        scrollToFirstStep={true}
-        showSkipButton={true}
-        showProgress={true}
-        callback={handleCallback}
-        styles={{
-          options: {
-            zIndex: 10000,
-            primaryColor: "#2563eb",
-          },
-          tooltipContainer: {
-            borderRadius: "8px",
-          },
-        }}
-      />
-
-     
-    </>
+    <Joyride
+      steps={steps}
+      run={run}
+      continuous={true}
+      scrollToFirstStep={true}
+      showSkipButton={true}
+      showProgress={true}
+      callback={handleCallback}
+      styles={{
+        options: {
+          zIndex: 10000,
+          primaryColor: "#2563eb",
+        },
+        tooltipContainer: {
+          borderRadius: "8px",
+        },
+      }}
+    />
   );
 }
