@@ -72,15 +72,20 @@ const MainPage = () => {
 
       <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-6 py-4">
         <div className="flex justify-end py-2">
+          {/* Floating Menu Button */}
           <button
             onClick={() => dispatch(toggleSidebar())}
-            className="sidebar-toggle-btn p-2 rounded-xl bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark hover:bg-indigo-500 hover:text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-md"
+            className=" sidebar-toggle-btn fixed bottom-4 right-4 z-50 p-3 rounded-full shadow-lg 
+             bg-background-light dark:bg-background-dark 
+             text-text-main-light dark:text-text-main-dark 
+             hover:bg-indigo-500 hover:text-white 
+             transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             aria-label="Toggle Sidebar"
           >
             {isSidebarOpen ? (
-              <X className="w-5 h-5" />
+              <X className="w-6 h-6" />
             ) : (
-              <Menu className="w-5 h-5" />
+              <Menu className="w-6 h-6" />
             )}
           </button>
         </div>
