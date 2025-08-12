@@ -83,8 +83,11 @@ export const sendDailyPostEmail = async (req, res, next) => {
     for (const user of users) {
       const subject =
         posts.length > 0
-          ? `${posts[0].title} | inkshaa Daily Digest`
+          ? `${
+              posts[Math.floor(Math.random() * posts.length)].title
+            } | inkshaa Daily Digest`
           : `Your inkshaa Daily Brief – Fresh Posts for You (${posts.length} Posts)`;
+
       const mailOption = createMailOption({
         to: user.email,
         subject: subject,
