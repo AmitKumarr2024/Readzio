@@ -43,9 +43,11 @@ class LogoErrorBoundary extends React.Component {
     console.error("[Logo] Rendering error:", { error, errorInfo });
   }
   render() {
-    return this.state.hasError
-      ? <div className="text-red-500">Logo failed to load.</div>
-      : this.props.children;
+    return this.state.hasError ? (
+      <div className="text-red-500">Logo failed to load.</div>
+    ) : (
+      this.props.children
+    );
   }
 }
 
@@ -74,7 +76,7 @@ const Logo = () => {
               initial="initial"
               animate="animate"
               transition={{ delay: index * 0.1 }}
-              className="inline-block text-yellow-400"
+              className="inline-block text-yellow-400 nav-home"
             >
               {letter}
             </motion.span>

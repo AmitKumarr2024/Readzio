@@ -55,7 +55,7 @@ const TabbedPostSection = ({ user, posts = [], loading }) => {
   return (
     <div className="w-full  bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
       {/* Tabs */}
-      <div className="relative  h-16  flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto no-scrollbar px-4 sm:px-6 md:px-8 mb-4 border-b border-gray-300 dark:border-gray-700">
+      <div className="relative  h-16  flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto no-scrollbar px-4 sm:px-6 md:px-8 mb-4 border-b border-gray-300 dark:border-gray-700 tabbed-post-section">
         {tabs.map((tab) => {
           const isActive = activeTab === tab;
           const count = getTabCount(tab);

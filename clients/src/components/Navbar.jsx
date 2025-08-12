@@ -216,7 +216,7 @@ const Navbar = () => {
             </Link>
           </div>
 
-          <div className="hidden md:flex flex-1 max-w-2xl mx-2 sm:mx-4">
+          <div className="hidden md:flex flex-1 max-w-2xl mx-2 sm:mx-4 search-input">
             <SearchInput />
           </div>
 
@@ -271,7 +271,7 @@ const Navbar = () => {
               <>
                 <Link
                   to="/createPost"
-                  className="hidden md:flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm"
+                  className="hidden md:flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm btn-create-post"
                   aria-label="Write a post"
                 >
                   <TfiWrite size={16} />
@@ -288,7 +288,7 @@ const Navbar = () => {
                       <img
                         src={avatarUrl}
                         alt={userName}
-                        className="w-9 h-9 rounded-full object-cover"
+                        className="w-9 h-9 rounded-full object-cover user-profile-link"
                         loading="lazy"
                       />
                     ) : (

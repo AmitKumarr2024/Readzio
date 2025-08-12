@@ -163,6 +163,11 @@ const userSchema = new mongoose.Schema(
         accountAgeDays: null,
       },
     },
+    tourCompleted: {
+      type: Boolean,
+      default: false,
+    },
+
     categories: [
       {
         type: mongoose.SchemaTypes.ObjectId,

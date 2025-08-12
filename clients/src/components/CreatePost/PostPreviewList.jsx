@@ -627,7 +627,7 @@ const PostPreviewList = ({
   );
 
   return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800">
+    <div className=" fixed bottom-6 right-6 mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800">
       <LoadingBar loading={showPublishLoading} text="Publishing..." />{" "}
       {/* Use new LoadingBar */}
       {currentDraftPost && (

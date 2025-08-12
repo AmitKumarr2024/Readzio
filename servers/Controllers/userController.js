@@ -139,7 +139,9 @@ export const saveUserLocation = async (req, res, next) => {
 
     io.to("adminRoom").emit("userLocationUpdate", socketLocationData);
     user.followers.forEach((followerId) =>
-      io.to(followerId.toString()).emit("userLocationUpdate", socketLocationData)
+      io
+        .to(followerId.toString())
+        .emit("userLocationUpdate", socketLocationData)
     );
 
     res.status(201).json({
@@ -160,7 +162,6 @@ export const saveUserLocation = async (req, res, next) => {
     );
   }
 };
-
 
 // export const saveUserLocation = async (req, res, next) => {
 //   try {
@@ -438,9 +439,8 @@ export const getAllUser = async (req, res, next) => {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 100, 1000);
     const skip = (page - 1) * limit;
-
     const projection =
-      "name email gender avatar banner bio profession location createdAt role blocked bookmarks following followers blockedUsers subscribedCategories subscribedAuthors subscribers hasSubscriptionPlan subscriptionPlan subscriptionDate";
+      "name email gender avatar banner bio profession location createdAt role blocked bookmarks following followers blockedUsers subscribedCategories subscribedAuthors subscribers hasSubscriptionPlan subscriptionPlan subscriptionDate tourCompleted";
 
     // Fetches users and total count
     const [users, totalUsers] = await Promise.all([
@@ -473,7 +473,6 @@ export const getAllUser = async (req, res, next) => {
 // Updates user profile with avatar and banner compression
 export const updateProfile = async (req, res, next) => {
   try {
-    // Validates authentication
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized - No user found",
@@ -483,7 +482,6 @@ export const updateProfile = async (req, res, next) => {
       );
     }
 
-    // Fetches user
     const user = await UserModel.findById(req.user._id);
     if (!user) {
       throw new AppError(
@@ -494,7 +492,7 @@ export const updateProfile = async (req, res, next) => {
       );
     }
 
-    // Updates allowed fields
+    // Now also allowing 'tourCompleted' to be updated
     const updatableFields = [
       "name",
       "bio",
@@ -505,6 +503,7 @@ export const updateProfile = async (req, res, next) => {
       "avatar",
       "banner",
       "blocked",
+      "tourCompleted", // 👈 Added here
     ];
 
     updatableFields.forEach((field) => {
@@ -513,7 +512,6 @@ export const updateProfile = async (req, res, next) => {
       }
     });
 
-    // Handles avatar and banner uploads with compression
     if (req.files) {
       if (req.files.avatar?.[0]) {
         try {
@@ -522,7 +520,7 @@ export const updateProfile = async (req, res, next) => {
             folder: "blog/users/avatar",
             transformation: [
               { width: 800, height: 800, crop: "limit" },
-              { quality: "auto:good", fetch_format: "auto" }, // Compresses image while maintaining good quality
+              { quality: "auto:good", fetch_format: "auto" },
             ],
           });
           user.avatar = uploadedAvatar.secure_url;
@@ -543,7 +541,7 @@ export const updateProfile = async (req, res, next) => {
             folder: "blog/users/banner",
             transformation: [
               { width: 1200, height: 400, crop: "limit" },
-              { quality: "auto:good", fetch_format: "auto" }, // Compresses image while maintaining good quality
+              { quality: "auto:good", fetch_format: "auto" },
             ],
           });
           user.banner = uploadedBanner.secure_url;
@@ -560,14 +558,12 @@ export const updateProfile = async (req, res, next) => {
 
     await user.save();
 
-    // Logs activity
     await recordActivity({
       userId: req.user._id,
       action: "UPDATED_PROFILE",
       message: "Updated their profile",
     });
 
-    // Emits profile update to admin and followers
     const profileUpdateData = {
       _id: user._id,
       name: user.name,
@@ -580,6 +576,7 @@ export const updateProfile = async (req, res, next) => {
       profession: user.profession,
       role: user.role,
       blocked: user.blocked,
+      tourCompleted: user.tourCompleted, // 👈 Include in emitted data
     };
 
     io.to("adminRoom").emit("userProfileUpdate", profileUpdateData);
@@ -591,17 +588,7 @@ export const updateProfile = async (req, res, next) => {
       success: true,
       message: "Profile updated successfully",
       data: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        banner: user.banner,
-        bio: user.bio,
-        gender: user.gender,
-        location: user.location,
-        profession: user.profession,
-        role: user.role,
-        blocked: user.blocked,
+        ...profileUpdateData,
         googleId: user.googleId,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -613,7 +600,6 @@ export const updateProfile = async (req, res, next) => {
       },
     });
   } catch (error) {
-    // AppError with context for updating profile
     next(
       error instanceof AppError
         ? error

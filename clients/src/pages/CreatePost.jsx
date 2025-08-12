@@ -155,7 +155,10 @@ const CreatePost = () => {
   return (
     <div className="flex flex-col md:flex-row bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
       {showPostTypeModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
+        <div
+          id="post-type-modal"
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6"
+        >
           <PostTypeSelector
             postType={postType}
             setPostType={(value) => {
@@ -177,7 +180,10 @@ const CreatePost = () => {
         </div>
       )}
       {showCategoryModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
+        <div
+          id="category-modal"
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6"
+        >
           <CategorySelector
             onBack={() => {
               // console.log("[CreatePost] CategorySelector back");
@@ -194,7 +200,10 @@ const CreatePost = () => {
         </div>
       )}
       {!showPostTypeModal && !showCategoryModal && (
-        <div className="min-w-full flex container justify-around items-center flex-col flex-wrap md:flex-row">
+        <div
+          id="create-post-main"
+          className="min-w-full flex container justify-around items-center flex-col flex-wrap md:flex-row"
+        >
           <div className="w-full flex justify-start px-4 pt-10 pl-11">
             <button
               onClick={() => {
@@ -202,12 +211,13 @@ const CreatePost = () => {
                 localStorage.removeItem("postType");
                 navigate("/");
               }}
+              id="cancel-post-button"
               className="font-bold text-red-600 dark:text-red-400 border border-red-500 dark:border-red-400 px-4 py-1.5 rounded-full shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"
             >
               ⬅ Cancel & Go Back
             </button>
           </div>
-          <div className="w-full md:w-3/5 my-4">
+          <div id="post-editor-wrapper" className="w-full md:w-3/5 my-4">
             <PostEditor
               size={55}
               title={title}
@@ -221,7 +231,10 @@ const CreatePost = () => {
               }
             />
           </div>
-          <div className="w-full md:w-2/5 md:pl-1">
+          <div
+            id="post-preview-list-wrapper"
+            className="w-full md:w-2/5 md:pl-1"
+          >
             <PostPreviewList
               currentDraftPost={{ title, blocks }}
               onUpdateDraft={handleUpdateDraft}

@@ -73,7 +73,7 @@ const CategoryBox = () => {
       >
         <button
           onClick={() => setOpen((prev) => !prev)}
-          className="flex text-base sm:text-lg font-semibold items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+          className="flex text-base sm:text-lg font-semibold items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition categories-section"
           aria-expanded={open}
           aria-label="Toggle categories dropdown"
         >
@@ -117,7 +117,7 @@ const CategoryBox = () => {
                     onClick={() => setOpen(false)}
                     className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 rounded-full transition-colors hover:bg-blue-100 hover:text-blue-700 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-blue-800 dark:hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
                   >
-                    <span className="truncate">{category.name}</span>
+                    <span className="truncate ">{category.name}</span>
                     {category.createdBy && (
                       <span
                         className="text-xs text-yellow-400 flex-shrink-0"

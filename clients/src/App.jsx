@@ -26,6 +26,7 @@ import AdBlockWarning from "./Ads/AdBlockWarning";
 import CookieConsentBanner from "./AppRootFile/components/CookieConsentBanner";
 import FeedbackModal from "./AppRootFile/components/FeedbackModal";
 import VerifyBanner from "./AppRootFile/components/VerifyBanner";
+import AppTour from "./AppRootFile/components/AppTour";
 
 export default function App() {
   const navigation = useNavigation();
@@ -113,6 +114,7 @@ export default function App() {
     >
       {isAdBlocked && <AdBlockWarning />}
       <ScrollToTop />
+      <AppTour />
       <Navbar />
       <VerifyBanner />
       {showGooglePopup && <GoogleLoginPopup />}
