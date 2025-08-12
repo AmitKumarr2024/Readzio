@@ -9,6 +9,7 @@ import { PacmanLoader } from "react-spinners";
 import DOMPurify from "dompurify";
 import FileBlock from "../PostFeature/FileBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
+import TableBlock from "../PostFeature/TableBlock";
 import PostView from "./PostView";
 import { getSinglePost, deletePost } from "../../store/postSlice";
 import ConfirmPostModal from "./ConfirmPostModal";
@@ -133,6 +134,14 @@ const PostPreviewList = ({
     //   "[PostPreviewList] Initiating post creation with draft:",
     //   currentDraftPost
     // );
+    if (
+      currentDraftPost.blocks.some(
+        (b) => b.type === "table" && (!b.data || !b.data.length)
+      )
+    ) {
+      return toast.error("Please fill in all table blocks before publishing.");
+    }
+
     if (!currentDraftPost?.title) return toast.error("Please enter a title");
     if (!currentDraftPost?.blocks?.length)
       return toast.error("Please add content blocks");
@@ -184,12 +193,38 @@ const PostPreviewList = ({
     dispatch(setLanguage(language));
   };
 
+  const sanitizeBlocks = (blocks) =>
+    blocks.map((block) => {
+      if (block.type === "table") {
+        if (
+          !Array.isArray(block.data) ||
+          block.data.length === 0 ||
+          !block.data.some((row) => Array.isArray(row) && row.length)
+        ) {
+          return {
+            ...block,
+            data: [
+              ["Header 1", "Header 2"],
+              ["Cell 1", "Cell 2"],
+              ["Cell 3", "Cell 4"],
+            ],
+            caption: block.caption || "",
+          };
+        }
+      }
+      return block;
+    });
+
   const handleConfirmPublish = async () => {
+    const cleanedDraft = {
+      ...currentDraftPost,
+      blocks: sanitizeBlocks(currentDraftPost.blocks),
+    };
     // console.log("[PostPreviewList] Confirming publish with data:", postData);
     setIsPostConfirmed(false);
     setShowPublishLoading(true); // Show loading bar
     try {
-      await onCreatePost(postData);
+      await onCreatePost({ ...postData, draft: cleanedDraft });
       // console.log("[PostPreviewList] Post creation successful");
     } catch (err) {
       console.error("[PostPreviewList] Post creation failed:", err);
