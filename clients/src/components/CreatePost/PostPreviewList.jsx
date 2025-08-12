@@ -9,7 +9,6 @@ import { PacmanLoader } from "react-spinners";
 import DOMPurify from "dompurify";
 import FileBlock from "../PostFeature/FileBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
-import TableBlock from "../PostFeature/TableBlock";
 import PostView from "./PostView";
 import { getSinglePost, deletePost } from "../../store/postSlice";
 import ConfirmPostModal from "./ConfirmPostModal";
@@ -20,6 +19,7 @@ import {
   setLanguage,
 } from "../../store/Post/postMetaSlice";
 import LoadingBar from "../../Utils/LoadingBar"; // Import the new LoadingBar
+import TableBlocksOutput from "../actualPostDisplay/TableBlocksOutput";
 
 const PostPreviewList = ({
   currentDraftPost,
