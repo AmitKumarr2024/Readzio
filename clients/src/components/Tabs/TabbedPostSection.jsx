@@ -1,7 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import PostTabContent from "./PostTabContent";
-import { selectSocketState } from "../../store/socketSlice";
+import {
+  selectSocketState,
+  fetchInitialPostCounts,
+  initializeSocket,
+} from "../../store/socketSlice";
 
 const formatNumber = (num) => {
   if (num < 1000) return num;
@@ -13,21 +17,32 @@ const formatNumber = (num) => {
 
 const TabbedPostSection = ({ user, posts = [], loading }) => {
   const [activeTab, setActiveTab] = useState("All Posts");
-  const { postCounts } = useSelector(selectSocketState);
+  const { postCounts, isConnected } = useSelector(selectSocketState);
+  const dispatch = useDispatch();
   const isAuthenticated = !!user;
 
   const tabs = isAuthenticated
     ? ["All Posts", "Following", "My Posts"]
     : ["All Posts"];
 
+  // Re-fetch post counts on mount or when connection status changes
+  useEffect(() => {
+    if (isAuthenticated && !isConnected) {
+      dispatch(initializeSocket());
+    }
+    if (isAuthenticated) {
+      dispatch(fetchInitialPostCounts());
+    }
+  }, [dispatch, isAuthenticated, isConnected]);
+
   const getTabCount = (tab) => {
     switch (tab) {
       case "All Posts":
-        return formatNumber(postCounts.allPostsCount || 0);
+        return formatNumber(postCounts?.allPostsCount ?? 0);
       case "Following":
-        return formatNumber(postCounts.followingPostsCount || 0);
+        return formatNumber(postCounts?.followingPostsCount ?? 0);
       case "My Posts":
-        return formatNumber(postCounts.myPostsCount || 0);
+        return formatNumber(postCounts?.myPostsCount ?? 0);
       default:
         return "0";
     }
@@ -53,9 +68,9 @@ const TabbedPostSection = ({ user, posts = [], loading }) => {
   }, [activeTab, tabs]);
 
   return (
-    <div className="w-full  bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
+    <div className="w-full bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
       {/* Tabs */}
-      <div className="relative  h-16  flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto no-scrollbar px-4 sm:px-6 md:px-8 mb-4 border-b border-gray-300 dark:border-gray-700 tabbed-post-section">
+      <div className="relative h-16 flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto no-scrollbar px-4 sm:px-6 md:px-8 mb-4 border-b border-gray-300 dark:border-gray-700 tabbed-post-section">
         {tabs.map((tab) => {
           const isActive = activeTab === tab;
           const count = getTabCount(tab);
