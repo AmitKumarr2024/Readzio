@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -19,7 +25,7 @@ import {
   setIsPublished,
   setLanguage,
 } from "../../store/Post/postMetaSlice";
-import LoadingBar from "../../Utils/LoadingBar"; // Import the new LoadingBar
+import LoadingBar from "../../Utils/LoadingBar";
 import TableBlocksOutput from "../actualPostDisplay/TableBlocksOutput";
 
 const PostPreviewList = ({
@@ -44,57 +50,19 @@ const PostPreviewList = ({
   const [isPinned, setIsPinnedLocal] = useState(true);
   const [isPublished, setIsPublishedLocal] = useState(true);
   const [language, setLanguageLocal] = useState("en");
-  const [showPublishLoading, setShowPublishLoading] = useState(false); // New state for publish loading
+  const [showPublishLoading, setShowPublishLoading] = useState(false);
 
   const modalRef = useRef();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { singlePost, singlePostStatus } = useSelector((state) => state.post);
 
-  // console.log("[PostPreviewList] Component render state:", {
-  //   zoomLevel,
-  //   copiedIndex,
-  //   showConfirmModal,
-  //   isPostConfirmed,
-  //   countdown,
-  //   postData,
-  //   isModalOpen,
-  //   isFeatured,
-  //   isPinned,
-  //   isPublished,
-  //   language,
-  //   singlePostStatus,
-  //   showPublishLoading,
-  // });
-
-  // useEffect(() => {
-  //   console.log("[PostPreviewList] Props received:", {
-  //     currentDraftPost,
-  //     postType,
-  //     category,
-  //     categoryName,
-  //     allPosts: allPosts?.length,
-  //     createLoading,
-  //     createError,
-  //   });
-  // }, [
-  //   currentDraftPost,
-  //   postType,
-  //   category,
-  //   categoryName,
-  //   allPosts,
-  //   createLoading,
-  //   createError,
-  // ]);
-
   useEffect(() => {
-    // console.log("[PostPreviewList] Single post changed:", singlePost);
     if (singlePost) setIsModalOpen(true);
   }, [singlePost]);
 
   useEffect(() => {
     if (modalRef.current && isModalOpen) {
-      // console.log("[PostPreviewList] Scrolling modal to bottom");
       requestAnimationFrame(() => {
         modalRef.current.scrollTop = modalRef.current.scrollHeight;
       });
@@ -105,24 +73,20 @@ const PostPreviewList = ({
   useEffect(() => {
     let timer;
     if (isPostConfirmed && countdown > 0 && !createLoading) {
-      // console.log("[PostPreviewList] Countdown tick:", countdown);
       timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
     } else if (isPostConfirmed && countdown === 0 && !createLoading) {
-      // console.log("[PostPreviewList] Countdown finished, triggering publish");
       handleConfirmPublish();
     }
     return () => clearTimeout(timer);
   }, [isPostConfirmed, countdown, createLoading]);
 
   const closeModal = () => {
-    // console.log("[PostPreviewList] Closing modal");
     setIsModalOpen(false);
     setZoomLevel(1);
     dispatch({ type: "post/clearSinglePost" });
   };
 
   const handleCopyCode = (code, i) => {
-    // console.log("[PostPreviewList] Copying code for block index:", i);
     navigator.clipboard.writeText(code);
     setCopiedIndex(i);
     setTimeout(() => setCopiedIndex(null), 2000);
@@ -130,10 +94,6 @@ const PostPreviewList = ({
   };
 
   const createPost = () => {
-    // console.log(
-    //   "[PostPreviewList] Initiating post creation with draft:",
-    //   currentDraftPost
-    // );
     if (
       currentDraftPost.blocks.some(
         (b) => b.type === "table" && (!b.data || !b.data.length)
@@ -157,22 +117,10 @@ const PostPreviewList = ({
       return;
     }
 
-    // console.log("[PostPreviewList] Post creation metadata:", {
-    //   isFeatured,
-    //   isPinned,
-    //   isPublished,
-    //   language,
-    //   category,
-    //   categoryName,
-    // });
     setShowConfirmModal(true);
   };
 
   const handleModalConfirm = async ({ tags, thumbnail }) => {
-    // console.log("[PostPreviewList] Modal confirmed with data:", {
-    //   tags,
-    //   thumbnail,
-    // });
     const newPostData = {
       tags,
       thumbnail,
@@ -186,57 +134,94 @@ const PostPreviewList = ({
     setIsPostConfirmed(true);
     setCountdown(5);
 
-    // console.log("[PostPreviewList] Dispatching metadata updates:", newPostData);
     dispatch(setIsFeatured(isFeatured));
     dispatch(setIsPinned(isPinned));
     dispatch(setIsPublished(isPublished));
     dispatch(setLanguage(language));
   };
 
-  const sanitizeBlocks = (blocks) =>
-    blocks.map((block) => {
-      if (block.type === "table") {
-        if (
-          !Array.isArray(block.data) ||
-          block.data.length === 0 ||
-          !block.data.some((row) => Array.isArray(row) && row.length)
-        ) {
-          return {
-            ...block,
-            data: [
+  const sanitizeBlocks = useCallback(
+    (blocks) =>
+      blocks.map((block) => {
+        if (block.type === "table") {
+          let tableData = block.data;
+          // Handle old headers/rows format
+          if (!tableData && (block.headers || block.rows)) {
+            const headers =
+              Array.isArray(block.headers) && block.headers.length
+                ? block.headers
+                : ["Header 1", "Header 2"];
+            const rows =
+              Array.isArray(block.rows) &&
+              block.rows.some((row) => Array.isArray(row) && row.length)
+                ? block.rows
+                : [
+                    ["Cell 1", "Cell 2"],
+                    ["Cell 3", "Cell 4"],
+                  ];
+            tableData = [headers, ...rows];
+          }
+          // Validate table data
+          const isValidTableData =
+            Array.isArray(tableData) &&
+            tableData.length > 0 &&
+            tableData.some(
+              (row) =>
+                Array.isArray(row) &&
+                row.some((cell) => cell != null && cell !== "")
+            );
+          if (!isValidTableData) {
+            console.warn(
+              "[PostPreviewList] Invalid table data, using default:",
+              JSON.stringify(block, null, 2)
+            );
+            tableData = [
               ["Header 1", "Header 2"],
               ["Cell 1", "Cell 2"],
               ["Cell 3", "Cell 4"],
-            ],
+            ];
+            toast.error("Table block is empty. Using default data.");
+          } else {
+            console.log(
+              "[PostPreviewList] Valid table data:",
+              JSON.stringify(tableData, null, 2)
+            );
+          }
+          return {
+            ...block,
+            data: tableData,
             caption: block.caption || "",
           };
         }
-      }
-      return block;
-    });
+        return block;
+      }),
+    []
+  );
+
+  const sanitizedBlocks = useMemo(
+    () => sanitizeBlocks(currentDraftPost?.blocks || []),
+    [currentDraftPost?.blocks, sanitizeBlocks]
+  );
 
   const handleConfirmPublish = async () => {
     const cleanedDraft = {
       ...currentDraftPost,
-      blocks: sanitizeBlocks(currentDraftPost.blocks),
+      blocks: sanitizedBlocks,
     };
-    // console.log("[PostPreviewList] Confirming publish with data:", postData);
     setIsPostConfirmed(false);
-    setShowPublishLoading(true); // Show loading bar
+    setShowPublishLoading(true);
     try {
       await onCreatePost({ ...postData, draft: cleanedDraft });
-      // console.log("[PostPreviewList] Post creation successful");
     } catch (err) {
       console.error("[PostPreviewList] Post creation failed:", err);
     } finally {
-      setShowPublishLoading(false); // Hide loading bar
+      setShowPublishLoading(false);
       setPostData(null);
       setCountdown(5);
     }
   };
 
   const handleCancelPublish = () => {
-    // console.log("[PostPreviewList] Cancelling publish");
     setShowConfirmModal(false);
     setIsPostConfirmed(false);
     setPostData(null);
@@ -245,12 +230,10 @@ const PostPreviewList = ({
   };
 
   const handleDeletePost = (postId) => {
-    // console.log("[PostPreviewList] Deleting post with id:", postId);
     if (window.confirm("Are you sure you want to delete this post?")) {
       dispatch(deletePost(postId))
         .unwrap()
         .then(() => {
-          // console.log("[PostPreviewList] Post deleted successfully:", postId);
           toast.success("Post deleted successfully");
         })
         .catch((err) => {
@@ -261,7 +244,6 @@ const PostPreviewList = ({
   };
 
   const deleteBlock = (index) => {
-    // console.log("[PostPreviewList] Deleting block at index:", index);
     if (!onUpdateDraft) {
       console.error("[PostPreviewList] No update function provided");
       toast.error("No update function provided");
@@ -275,43 +257,16 @@ const PostPreviewList = ({
   const renderBlock = useCallback(
     (block, i) => {
       if (!block || !block.type) {
-        console.warn(`[PostPreviewList] Invalid block at index ${i}:`, block);
+        console.warn(
+          `[PostPreviewList] Invalid block at index ${i}:`,
+          JSON.stringify(block, null, 2)
+        );
         toast.error("Invalid block detected");
         return (
           <div key={i} className="my-4 text-red-500 italic">
             Invalid block
           </div>
         );
-      }
-
-      // console.log(`[PostPreviewList] Rendering block ${i}:`, block);
-
-      if (block.type === "table") {
-        // console.log(`[PostPreviewList] Table block props:`, {
-        //   headers: block.headers || [],
-        //   rows: block.rows || [[]],
-        //   caption: block.caption || "",
-        // });
-        if (!block.headers?.length && !block.rows?.some((row) => row.length)) {
-          console.warn(
-            `[PostPreviewList] Empty table block at index ${i}:`,
-            block
-          );
-          toast.error("Table block is empty. Using default data.");
-          block = {
-            ...block,
-            headers: block.headers?.length
-              ? block.headers
-              : ["Header 1", "Header 2"],
-            rows: block.rows?.some((row) => row.length)
-              ? block.rows
-              : [
-                  ["Cell 1", "Cell 2"],
-                  ["Cell 3", "Cell 4"],
-                ],
-            caption: block.caption || "",
-          };
-        }
       }
 
       const blockProps = {
@@ -372,15 +327,14 @@ const PostPreviewList = ({
             </div>
           );
         case "list":
-          // console.log("[PostPreviewList] List block data:", {
-          //   block,
-          //   items: block.items,
-          //   ordered: block.ordered,
-          // });
           if (!block.items || !Array.isArray(block.items)) {
             console.warn("[PostPreviewList] Invalid list items:", block.items);
             return (
-              <div key={i} className="my-4 text-red-500 italic">
+              <div
+                key={i}
+                className="my-4 text-red-5
+00 italic"
+              >
                 Invalid list data: {JSON.stringify(block.items)}
                 <button
                   onClick={() => deleteBlock(i)}
@@ -577,32 +531,15 @@ const PostPreviewList = ({
             </div>
           );
         case "table":
-          let tableData = block.data;
-          // Validate table data
-          if (
-            !Array.isArray(tableData) ||
-            tableData.length === 0 ||
-            !tableData.some((row) => Array.isArray(row) && row.length)
-          ) {
-            console.warn(
-              "[PostView] Invalid table data, using default:",
-              block
-            );
-            tableData = [
-              ["Header 1", "Header 2"],
-              ["Cell 1", "Cell 2"],
-              ["Cell 3", "Cell 4"],
-            ];
-            // Optionally show user feedback
-            // toast.error("Table block is empty. Using default data.");
-          }
           return (
-            <div key={i} className="my-6 overflow-x-auto">
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
               <TableBlocksOutput
-                data={tableData}
+                data={block.data}
                 caption={block.caption || ""}
               />
-
               <button
                 onClick={() => deleteBlock(i)}
                 className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
@@ -613,7 +550,6 @@ const PostPreviewList = ({
             </div>
           );
         case "text":
-          // console.log("[PostPreviewList] Text block HTML:", block.value);
           return (
             <div
               key={i}
@@ -658,8 +594,7 @@ const PostPreviewList = ({
 
   return (
     <div className="sticky mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800">
-      <LoadingBar loading={showPublishLoading} text="Publishing..." />{" "}
-      {/* Use new LoadingBar */}
+      <LoadingBar loading={showPublishLoading} text="Publishing..." />
       {currentDraftPost && (
         <>
           <h2 className="text-3xl sm:text-4xl font-bold text-center text-blue-600 dark:text-blue-400 mb-6">
@@ -672,12 +607,12 @@ const PostPreviewList = ({
             Category: {categoryName || "Uncategorized"}
           </p>
           <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 mb-8 border border-gray-200 dark:border-gray-800">
-            {currentDraftPost.blocks?.length === 0 ? (
+            {sanitizedBlocks.length === 0 ? (
               <p className="italic text-center opacity-80">
                 No content blocks added yet.
               </p>
             ) : (
-              currentDraftPost.blocks.map((block, i) => renderBlock(block, i))
+              sanitizedBlocks.map((block, i) => renderBlock(block, i))
             )}
           </div>
 
@@ -686,13 +621,7 @@ const PostPreviewList = ({
               <input
                 type="checkbox"
                 checked={isFeatured}
-                onChange={() => {
-                  // console.log(
-                  //   "[PostPreviewList] Toggling isFeatured:",
-                  //   !isFeatured
-                  // );
-                  setIsFeaturedLocal(!isFeatured);
-                }}
+                onChange={() => setIsFeaturedLocal(!isFeatured)}
                 className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
               />
               Feature Post
@@ -701,13 +630,7 @@ const PostPreviewList = ({
               <input
                 type="checkbox"
                 checked={isPinned}
-                onChange={() => {
-                  // console.log(
-                  //   "[PostPreviewList] Toggling isPinned:",
-                  //   !isPinned
-                  // );
-                  setIsPinnedLocal(!isPinned);
-                }}
+                onChange={() => setIsPinnedLocal(!isPinned)}
                 className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
               />
               Pin Post
@@ -716,13 +639,7 @@ const PostPreviewList = ({
               <input
                 type="checkbox"
                 checked={isPublished}
-                onChange={() => {
-                  // console.log(
-                  //   "[PostPreviewList] Toggling isPublished:",
-                  //   !isPublished
-                  // );
-                  setIsPublishedLocal(!isPublished);
-                }}
+                onChange={() => setIsPublishedLocal(!isPublished)}
                 className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
               />
               Publish Post
@@ -732,13 +649,7 @@ const PostPreviewList = ({
               <input
                 type="text"
                 value={language}
-                onChange={(e) => {
-                  // console.log(
-                  //   "[PostPreviewList] Updating language:",
-                  //   e.target.value
-                  // );
-                  setLanguageLocal(e.target.value);
-                }}
+                onChange={(e) => setLanguageLocal(e.target.value)}
                 placeholder="e.g., en"
                 className="px-3 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
@@ -775,7 +686,6 @@ const PostPreviewList = ({
       ) : (
         <div className="grid gap-6 mt-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {allPosts.map((post) => {
-            // console.log("[PostPreviewList] Rendering post preview:", post._id);
             const firstBlock = post.blocks.find((b) =>
               ["image", "text", "file", "heading"].includes(b.type)
             );
@@ -789,13 +699,7 @@ const PostPreviewList = ({
                 className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-lg transition-all duration-300"
               >
                 <div
-                  onClick={() => {
-                    // console.log(
-                    //   "[PostPreviewList] Fetching single post:",
-                    //   post.slug
-                    // );
-                    dispatch(getSinglePost(post.slug));
-                  }}
+                  onClick={() => dispatch(getSinglePost(post.slug))}
                   className="cursor-pointer"
                 >
                   {firstBlock?.type === "image" ? (
