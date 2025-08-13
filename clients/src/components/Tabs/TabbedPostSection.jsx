@@ -1,11 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import React, { useState, useRef, useEffect } from "react";
+import { useSelector } from "react-redux";
 import PostTabContent from "./PostTabContent";
-import {
-  selectSocketState,
-  fetchInitialPostCounts,
-  initializeSocket,
-} from "../../store/socketSlice";
+import { selectSocketState } from "../../store/socketSlice";
 
 const formatNumber = (num) => {
   if (num < 1000) return num;
@@ -17,37 +13,21 @@ const formatNumber = (num) => {
 
 const TabbedPostSection = ({ user, posts = [], loading }) => {
   const [activeTab, setActiveTab] = useState("All Posts");
-  const { postCounts, isConnected } = useSelector(selectSocketState);
-  const dispatch = useDispatch();
+  const { postCounts } = useSelector(selectSocketState);
   const isAuthenticated = !!user;
 
   const tabs = isAuthenticated
     ? ["All Posts", "Following", "My Posts"]
     : ["All Posts"];
 
-  // Memoized function to initialize socket and fetch counts
-  const initializeAndFetchCounts = useCallback(() => {
-    if (isAuthenticated) {
-      if (!isConnected) {
-        dispatch(initializeSocket());
-      }
-      dispatch(fetchInitialPostCounts());
-    }
-  }, [dispatch, isAuthenticated, isConnected]);
-
-  // Run initialization and fetch only on mount or when auth/connection changes
-  useEffect(() => {
-    initializeAndFetchCounts();
-  }, [initializeAndFetchCounts]);
-
   const getTabCount = (tab) => {
     switch (tab) {
       case "All Posts":
-        return formatNumber(postCounts?.allPostsCount ?? 0);
+        return formatNumber(postCounts?.allPostsCount || 0);
       case "Following":
-        return formatNumber(postCounts?.followingPostsCount ?? 0);
+        return formatNumber(postCounts?.followingPostsCount || 0);
       case "My Posts":
-        return formatNumber(postCounts?.myPostsCount ?? 0);
+        return formatNumber(postCounts?.myPostsCount || 0);
       default:
         return "0";
     }
@@ -73,8 +53,9 @@ const TabbedPostSection = ({ user, posts = [], loading }) => {
   }, [activeTab, tabs]);
 
   return (
-    <div className="w-full bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
-      <div className="relative h-16 flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto no-scrollbar px-4 sm:px-6 md:px-8 mb-4 border-b border-gray-300 dark:border-gray-700 tabbed-post-section">
+    <div className="w-full  bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
+      {/* Tabs */}
+      <div className="relative  h-16  flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto no-scrollbar px-4 sm:px-6 md:px-8 mb-4 border-b border-gray-300 dark:border-gray-700 tabbed-post-section">
         {tabs.map((tab) => {
           const isActive = activeTab === tab;
           const count = getTabCount(tab);
@@ -99,12 +80,15 @@ const TabbedPostSection = ({ user, posts = [], loading }) => {
             </button>
           );
         })}
+        {/* Dynamic underline */}
         <span
           ref={underlineRef}
           className="absolute bottom-0 left-0 h-1 bg-primary-light dark:bg-primary-dark transition-all duration-300 ease-in-out"
           style={{ width: 0 }}
         />
       </div>
+
+      {/* Tab Content */}
       <PostTabContent
         activeTab={activeTab}
         posts={posts}
