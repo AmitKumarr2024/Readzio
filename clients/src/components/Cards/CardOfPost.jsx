@@ -45,7 +45,7 @@ const CardOfPost = ({
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm w-full h-full overflow-hidden">
+      <div className="bg-card-bg-light dark:bg-card-bg-dark rounded-lg shadow-sm w-full h-full overflow-hidden">
         <Skeleton className="w-full aspect-video rounded-t-lg bg-gray-200 dark:bg-gray-700" />
         <div className="p-4 space-y-3">
           <Skeleton className="h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
