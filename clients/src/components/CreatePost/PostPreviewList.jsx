@@ -577,37 +577,32 @@ const PostPreviewList = ({
             </div>
           );
         case "table":
-          const tableData = {
-            data:
-              Array.isArray(block.data) && block.data.length > 0
-                ? block.data
-                : [
-                    ["Header 1", "Header 2"],
-                    ["Cell 1", "Cell 2"],
-                    ["Cell 3", "Cell 4"],
-                  ],
-            caption: block.caption || "",
-          };
+          let tableData = block.data;
+          // Validate table data
           if (
-            !Array.isArray(block.data) ||
-            block.data.length === 0 ||
-            !block.data.some((row) => Array.isArray(row) && row.length)
+            !Array.isArray(tableData) ||
+            tableData.length === 0 ||
+            !tableData.some((row) => Array.isArray(row) && row.length)
           ) {
             console.warn(
-              `[PostPreviewList] Empty table block at index ${i}:`,
+              "[PostView] Invalid table data, using default:",
               block
             );
-            toast.error("Table block is empty. Using default data.");
+            tableData = [
+              ["Header 1", "Header 2"],
+              ["Cell 1", "Cell 2"],
+              ["Cell 3", "Cell 4"],
+            ];
+            // Optionally show user feedback
+            // toast.error("Table block is empty. Using default data.");
           }
           return (
-            <div
-              key={i}
-              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
-            >
-              <TableBlocksOutput // Use TableBlocksOutput to match data structure
-                data={tableData.data}
-                caption={tableData.caption}
+            <div key={i} className="my-6 overflow-x-auto">
+              <TableBlocksOutput
+                data={tableData}
+                caption={block.caption || ""}
               />
+
               <button
                 onClick={() => deleteBlock(i)}
                 className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
