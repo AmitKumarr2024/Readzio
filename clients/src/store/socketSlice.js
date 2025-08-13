@@ -130,13 +130,12 @@ export const initializeSocket = createAsyncThunk(
       socket.removeAllListeners();
 
       socket.on("connect", () => {
-        log("[socketSlice] Socket connected");
         if (!isGuest && userId) {
           socket.emit("join", userId);
-          log("[socketSlice] Joined room:", userId);
           socket.emit("join", "adminRoom");
           dispatch(fetchInitialPostCounts());
         }
+
         dispatch(setSocketInstance(socket));
         resolve(socket);
       });
@@ -242,11 +241,6 @@ export const initializeSocket = createAsyncThunk(
         .on(
           "postCountsUpdated",
           ({ allPostsCount, myPostsCount, followingPostsCount }) => {
-            log("[socketSlice] postCountsUpdated received:", {
-              allPostsCount,
-              myPostsCount,
-              followingPostsCount,
-            });
             dispatch(
               setPostCounts({
                 allPostsCount,

@@ -70,7 +70,6 @@ io.use(async (socket, next) => {
 io.on("connection", async (socket) => {
   if (socket.userId) {
     connectedUsers.add(socket.userId);
-    console.log(`[Socket] User ${socket.userId} joined room`);
     socket.join(socket.userId);
     io.emit("userStatus", { userId: socket.userId, isOnline: true });
     io.emit("onlineUsersCount", connectedUsers.size);

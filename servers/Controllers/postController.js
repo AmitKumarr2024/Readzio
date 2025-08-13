@@ -373,7 +373,6 @@ export const createPost = async (req, res, next) => {
       io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
 
       const cacheKey = `postCounts:${req.user._id}`;
-      cache.del(`postCounts:${req.user._id}`);
       let counts = cache.get(cacheKey);
       if (!counts) {
         logMemory("📊 Before cache update");
@@ -399,7 +398,9 @@ export const createPost = async (req, res, next) => {
         logMemory("📊 After cache update");
       }
 
-      io.to(req.user._id).emit("postCountsUpdated", counts);
+      setTimeout(() => {
+        io.to(req.user._id).emit("postCountsUpdated", counts);
+      }, 1000);
 
       logMemory("🎉 End createPost");
       res
@@ -980,8 +981,9 @@ export const getAllPosts = async (req, res, next) => {
         action: "VIEWED_POSTS",
         message: "Viewed all posts",
       });
-
-      io.to(req.user._id).emit("postCountsUpdated", counts);
+      setTimeout(() => {
+        io.to(req.user._id).emit("postCountsUpdated", counts);
+      }, 1000);
     }
 
     logMemory("📋 End getAllPosts");
@@ -1381,7 +1383,6 @@ export const deletePost = async (req, res, next) => {
     io.emit("postDeleted", { postId, authorId: req.user._id });
 
     const cacheKey = `postCounts:${req.user._id}`;
-    cache.del(`postCounts:${req.user._id}`);
     let counts = cache.get(cacheKey);
     if (!counts) {
       logMemory("📊 Before cache update");
@@ -1407,7 +1408,9 @@ export const deletePost = async (req, res, next) => {
       logMemory("📊 After cache update");
     }
 
-    io.to(req.user._id).emit("postCountsUpdated", counts);
+    setTimeout(() => {
+      io.to(req.user._id).emit("postCountsUpdated", counts);
+    }, 1000);
 
     logMemory("🗑️ End deletePost");
     res.status(200).json({ success: true, message: "Post deleted", postId });
