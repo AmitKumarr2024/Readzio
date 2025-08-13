@@ -171,10 +171,10 @@ const PostPreviewList = ({
               row.some((cell) => cell != null && cell !== "")
           );
         if (!isValidTableData) {
-          console.warn(
-            "[PostPreviewList] Invalid table data, using default:",
-            JSON.stringify(block, null, 2)
-          );
+          // console.warn(
+          //   "[PostPreviewList] Invalid table data, using default:",
+          //   JSON.stringify(block, null, 2)
+          // );
           tableData = [
             ["Header 1", "Header 2"],
             ["Cell 1", "Cell 2"],

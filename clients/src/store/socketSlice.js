@@ -23,6 +23,8 @@ const log = (...args) => {
     (typeof first === "string" && first.toLowerCase().includes("error"))
   ) {
     console.error(...args);
+  } else {
+    console.log(...args);
   }
 };
 
@@ -36,7 +38,9 @@ export const fetchActiveNotifications = createAsyncThunk(
 
       const response = await axiosInstance.get(
         "/bannerNotification/get-Notification",
-        { withCredentials: true }
+        {
+          withCredentials: true,
+        }
       );
 
       const notifications = response.data.notifications || [];
@@ -51,10 +55,7 @@ export const fetchActiveNotifications = createAsyncThunk(
       log("[socketSlice] Active notification:", activeNotification);
       return activeNotification || null;
     } catch (err) {
-      console.error(
-        "[socketSlice] fetchActiveNotifications Error:",
-        err.message
-      );
+      log("[socketSlice] fetchActiveNotifications Error:", err.message);
       return rejectWithValue(err.message || "Failed to fetch notifications");
     }
   }
@@ -65,8 +66,7 @@ export const fetchInitialPostCounts = createAsyncThunk(
   async (_, { rejectWithValue, getState }) => {
     try {
       const { user } = getState().auth;
-      log("[fetchInitialPostCounts] Authenticated user:", user);
-
+      log("[fetchInitialPostCounts] Fetching counts for user:", user?._id);
       if (!user?._id) throw new Error("User not authenticated");
 
       const [allPostsCount, myPostsCount, followingPostsCount] =
@@ -76,13 +76,15 @@ export const fetchInitialPostCounts = createAsyncThunk(
           axiosInstance.get("/post/count/following", { withCredentials: true }),
         ]);
 
-      return {
-        allPostsCount: allPostsCount.data.count || 0,
-        myPostsCount: myPostsCount.data.count || 0,
-        followingPostsCount: followingPostsCount.data.count || 0,
+      const counts = {
+        allPostsCount: Number(allPostsCount.data.count) || 0,
+        myPostsCount: Number(myPostsCount.data.count) || 0,
+        followingPostsCount: Number(followingPostsCount.data.count) || 0,
       };
+      log("[fetchInitialPostCounts] Fetched counts:", counts);
+      return counts;
     } catch (err) {
-      console.error("[socketSlice] fetchInitialPostCounts Error:", err.message);
+      log("[fetchInitialPostCounts] Error:", err.message);
       return rejectWithValue(err.message || "Failed to fetch post counts");
     }
   }
@@ -95,31 +97,32 @@ export const initializeSocket = createAsyncThunk(
     const { user, isGuest } = getState().auth;
     let token = getToken();
 
-    // console.log("[Socket:Auth] token", token);
-
     if (!token && !user?._id && isGuest) {
       log("[socketSlice] Guest user, skipping join/postCounts");
-    } else if (!token) {
+      return Promise.reject("Guest user, no socket initialization");
+    }
+    if (!token) {
       try {
         await dispatch(checkAuth()).unwrap();
         token = getToken();
+        log("[socketSlice] Token refreshed:", !!token);
       } catch (err) {
-        console.warn("[socketSlice] checkAuth failed:", err.message);
+        log("[socketSlice] checkAuth failed:", err.message);
       }
     }
 
     const userId = user?._id?.toString();
     if (!isGuest && !userId) {
-      log("[socketSlice] ⏳ Waiting for userId...");
+      log("[socketSlice] No userId, rejecting...");
       return Promise.reject("User not ready");
     }
 
     const socket = io(import.meta.env.VITE_API_URL || "http://localhost:8001", {
       auth: { token: token || null },
-      transports: ["websocket", "polling"], // Added polling fallback
+      transports: ["websocket", "polling"],
       path: "/socket.io/",
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
     });
 
     const debouncedLocationHandler = debounce((dispatch, location) => {
@@ -130,33 +133,29 @@ export const initializeSocket = createAsyncThunk(
       socket.removeAllListeners();
 
       socket.on("connect", () => {
+        log("[socketSlice] Socket connected");
         if (!isGuest && userId) {
           socket.emit("join", userId);
           socket.emit("join", "adminRoom");
           dispatch(fetchInitialPostCounts());
         }
-
         dispatch(setSocketInstance(socket));
         resolve(socket);
       });
 
-      let lastToast = 0;
       socket.on("connect_error", (err) => {
-        const now = Date.now();
-        if (now - lastToast > 10000) {
-          toast.error("🚨 Can't connect to server. Please try again.");
-          lastToast = now;
-        }
+        log("[socketSlice] Connect error:", err.message);
+        toast.error("Failed to connect to server. Retrying...");
         dispatch(setError(err.message));
-        console.error("Socket Connect Error:", err.message);
         reject(err);
       });
 
-      socket.io.on("reconnect_attempt", () => {
-        log("🌀 Trying to reconnect...");
+      socket.io.on("reconnect_attempt", (attempt) => {
+        log("[socketSlice] Reconnect attempt:", attempt);
       });
 
       socket.on("disconnect", (reason) => {
+        log("[socketSlice] Disconnected:", reason);
         dispatch(setDisconnected());
       });
 
@@ -223,14 +222,9 @@ export const initializeSocket = createAsyncThunk(
               })
               .catch((err) => {
                 if (err.response?.status === 403) {
-                  console.warn(
-                    "⚠️ Admin not allowed to fetch banner dismissal status"
-                  );
+                  log("Admin not allowed to fetch banner dismissal status");
                 } else {
-                  console.error(
-                    "Error checking dismissed status:",
-                    err.message
-                  );
+                  log("Error checking dismissed status:", err.message);
                 }
               });
           }
@@ -241,11 +235,16 @@ export const initializeSocket = createAsyncThunk(
         .on(
           "postCountsUpdated",
           ({ allPostsCount, myPostsCount, followingPostsCount }) => {
+            log("[socketSlice] postCountsUpdated received:", {
+              allPostsCount,
+              myPostsCount,
+              followingPostsCount,
+            });
             dispatch(
               setPostCounts({
-                allPostsCount,
-                myPostsCount,
-                followingPostsCount,
+                allPostsCount: Number(allPostsCount) || 0,
+                myPostsCount: Number(myPostsCount) || 0,
+                followingPostsCount: Number(followingPostsCount) || 0,
               })
             );
           }
@@ -293,7 +292,7 @@ export const initializeSocket = createAsyncThunk(
         });
 
       const debouncedGuestVisit = debounce((guest, dispatch) => {
-        log("[socketSlice] 🔵 [Debounced] Processing guestVisitUpdate:", {
+        log("[socketSlice] Processing guestVisitUpdate:", {
           guestId: guest.guestId,
           visitCount: guest.visitCount,
           lastVisit: guest.lastVisit,
@@ -303,7 +302,7 @@ export const initializeSocket = createAsyncThunk(
       }, 1000);
 
       socket.off("guestVisitUpdate").on("guestVisitUpdate", (guest) => {
-        log("[socketSlice] 🔴 Received guestVisitUpdate:", {
+        log("[socketSlice] Received guestVisitUpdate:", {
           guestId: guest.guestId,
           visitCount: guest.visitCount,
           lastVisit: guest.lastVisit,
@@ -311,8 +310,9 @@ export const initializeSocket = createAsyncThunk(
         });
         debouncedGuestVisit(guest, dispatch);
       });
+
       socket.off("showFeedbackPrompt").on("showFeedbackPrompt", (data) => {
-        log("[socketSlice] 💬 Received showFeedbackPrompt:", data);
+        log("[socketSlice] Received showFeedbackPrompt:", data);
         dispatch(
           setFeedbackPrompt(data?.message || "We'd love your feedback!")
         );
@@ -406,7 +406,7 @@ const socketSlice = createSlice({
         return;
       }
       if (state.userLocations.length >= MAX_USER_LOCATIONS) {
-        console.warn("⚠️ Max user locations reached. Trimming oldest entries.");
+        log("Max user locations reached. Trimming oldest entries.");
         state.userLocations.shift();
       }
       state.userLocations = [
@@ -419,8 +419,9 @@ const socketSlice = createSlice({
     },
     setPostCounts(state, action) {
       state.postCounts = {
-        ...state.postCounts,
-        ...action.payload,
+        allPostsCount: Number(action.payload.allPostsCount) || 0,
+        followingPostsCount: Number(action.payload.followingPostsCount) || 0,
+        myPostsCount: Number(action.payload.myPostsCount) || 0,
       };
     },
     addGuestVisit: (state, action) => {
@@ -457,7 +458,7 @@ const socketSlice = createSlice({
             new Date(existingGuest.lastVisit).getTime();
 
         if (sameVisit) {
-          log("[addGuestVisit] ❌ Duplicate guest visit detected, skipping:", {
+          log("[addGuestVisit] Duplicate guest visit detected, skipping:", {
             guestId: newGuest.guestId,
             visitCount: newGuest.visitCount,
             lastVisit: newGuest.lastVisit,
@@ -465,7 +466,7 @@ const socketSlice = createSlice({
           return;
         }
 
-        log("[addGuestVisit] ✅ Updating existing guest:", {
+        log("[addGuestVisit] Updating existing guest:", {
           guestId: newGuest.guestId,
           visitCount: newGuest.visitCount,
           lastVisit: newGuest.lastVisit,
@@ -474,7 +475,7 @@ const socketSlice = createSlice({
           g.guestId === newGuest.guestId ? newGuest : g
         );
       } else {
-        log("[addGuestVisit] ✅ Adding new guest:", {
+        log("[addGuestVisit] Adding new guest:", {
           guestId: newGuest.guestId,
           visitCount: newGuest.visitCount,
           lastVisit: newGuest.lastVisit,
@@ -482,7 +483,7 @@ const socketSlice = createSlice({
         });
         state.guestVisits.unshift(newGuest);
         if (state.guestVisits.length > MAX_GUEST_VISITS) {
-          console.warn("⚠️ Max guest visits reached. Trimming oldest entries.");
+          log("Max guest visits reached. Trimming oldest entries.");
           state.guestVisits = state.guestVisits.slice(0, MAX_GUEST_VISITS);
         }
       }
