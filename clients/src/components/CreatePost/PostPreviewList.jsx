@@ -140,63 +140,63 @@ const PostPreviewList = ({
     dispatch(setLanguage(language));
   };
 
-  const sanitizeBlocks = useCallback(
-    (blocks) =>
-      blocks.map((block) => {
-        if (block.type === "table") {
-          let tableData = block.data;
-          // Handle old headers/rows format
-          if (!tableData && (block.headers || block.rows)) {
-            const headers =
-              Array.isArray(block.headers) && block.headers.length
-                ? block.headers
-                : ["Header 1", "Header 2"];
-            const rows =
-              Array.isArray(block.rows) &&
-              block.rows.some((row) => Array.isArray(row) && row.length)
-                ? block.rows
-                : [
-                    ["Cell 1", "Cell 2"],
-                    ["Cell 3", "Cell 4"],
-                  ];
-            tableData = [headers, ...rows];
-          }
-          // Validate table data
-          const isValidTableData =
-            Array.isArray(tableData) &&
-            tableData.length > 0 &&
-            tableData.some(
-              (row) =>
-                Array.isArray(row) &&
-                row.some((cell) => cell != null && cell !== "")
-            );
-          if (!isValidTableData) {
-            console.warn(
-              "[PostPreviewList] Invalid table data, using default:",
-              JSON.stringify(block, null, 2)
-            );
-            tableData = [
-              ["Header 1", "Header 2"],
-              ["Cell 1", "Cell 2"],
-              ["Cell 3", "Cell 4"],
-            ];
-            toast.error("Table block is empty. Using default data.");
-          } else {
-            console.log(
-              "[PostPreviewList] Valid table data:",
-              JSON.stringify(tableData, null, 2)
-            );
-          }
-          return {
-            ...block,
-            data: tableData,
-            caption: block.caption || "",
-          };
+  const sanitizeBlocks = useCallback((blocks) => {
+    let lastLoggedData = null; // Track last logged table data to avoid duplicate logs
+    return blocks.map((block) => {
+      if (block.type === "table") {
+        let tableData = block.data;
+        // Handle old headers/rows format
+        if (!tableData && (block.headers || block.rows)) {
+          const headers =
+            Array.isArray(block.headers) && block.headers.length
+              ? block.headers
+              : ["Header 1", "Header 2"];
+          const rows =
+            Array.isArray(block.rows) &&
+            block.rows.some((row) => Array.isArray(row) && row.length)
+              ? block.rows
+              : [
+                  ["Cell 1", "Cell 2"],
+                  ["Cell 3", "Cell 4"],
+                ];
+          tableData = [headers, ...rows];
         }
-        return block;
-      }),
-    []
-  );
+        // Validate table data
+        const isValidTableData =
+          Array.isArray(tableData) &&
+          tableData.length > 0 &&
+          tableData.some(
+            (row) =>
+              Array.isArray(row) &&
+              row.some((cell) => cell != null && cell !== "")
+          );
+        if (!isValidTableData) {
+          console.warn(
+            "[PostPreviewList] Invalid table data, using default:",
+            JSON.stringify(block, null, 2)
+          );
+          tableData = [
+            ["Header 1", "Header 2"],
+            ["Cell 1", "Cell 2"],
+            ["Cell 3", "Cell 4"],
+          ];
+          toast.error("Table block is empty. Using default data.");
+        } else {
+          const tableDataString = JSON.stringify(tableData);
+          if (tableDataString !== lastLoggedData) {
+            // console.log("[PostPreviewList] Valid table data:", tableDataString);
+            lastLoggedData = tableDataString; // Update last logged data
+          }
+        }
+        return {
+          ...block,
+          data: tableData,
+          caption: block.caption || "",
+        };
+      }
+      return block;
+    });
+  }, []);
 
   const sanitizedBlocks = useMemo(
     () => sanitizeBlocks(currentDraftPost?.blocks || []),
@@ -330,11 +330,7 @@ const PostPreviewList = ({
           if (!block.items || !Array.isArray(block.items)) {
             console.warn("[PostPreviewList] Invalid list items:", block.items);
             return (
-              <div
-                key={i}
-                className="my-4 text-red-5
-00 italic"
-              >
+              <div key={i} className="my-4 text-red-500 italic">
                 Invalid list data: {JSON.stringify(block.items)}
                 <button
                   onClick={() => deleteBlock(i)}
