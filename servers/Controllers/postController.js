@@ -425,6 +425,7 @@ export const createPost = async (req, res, next) => {
   }
 };
 
+
 // Get all published + unblocked posts with pagination
 export const getPublicPosts = async (req, res, next) => {
   try {

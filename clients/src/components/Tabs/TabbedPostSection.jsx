@@ -16,6 +16,8 @@ const TabbedPostSection = ({ user, posts = [], loading }) => {
   const { postCounts } = useSelector(selectSocketState);
   const isAuthenticated = !!user;
 
+  console.log("postCounts", postCounts);
+
   const tabs = isAuthenticated
     ? ["All Posts", "Following", "My Posts"]
     : ["All Posts"];
