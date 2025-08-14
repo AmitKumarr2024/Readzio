@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import AuthorSidebar from "./DisplayPost/AuthorSidebar";
+import DisplayAd from "../../Ads/DisplayAd";
 
 const SidebarWithAd = ({ authorId, activeLoading, subscriptionLoading, fetchAttempted, activePost }) => {
   const sidebarRef = useRef(null);
