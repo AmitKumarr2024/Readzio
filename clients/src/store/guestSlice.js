@@ -171,7 +171,7 @@ const guestSlice = createSlice({
     builder
       // fetchPublicPosts
       .addCase(fetchPublicPosts.pending, (state) => {
-        console.log("[fetchPublicPosts.pending]");
+        // console.log("[fetchPublicPosts.pending]");
         state.loading = true;
         state.error = null;
       })
@@ -190,16 +190,16 @@ const guestSlice = createSlice({
 
       // fetchPublicPostBySlug
       .addCase(fetchPublicPostBySlug.pending, (state) => {
-        console.log("[fetchPublicPostBySlug.pending]");
+        // console.log("[fetchPublicPostBySlug.pending]");
         state.loading = true;
         state.error = null;
         state.singlePost = null;
       })
       .addCase(fetchPublicPostBySlug.fulfilled, (state, action) => {
-        console.log(
-          "[fetchPublicPostBySlug.fulfilled] Payload:",
-          action.payload
-        );
+        // console.log(
+        //   "[fetchPublicPostBySlug.fulfilled] Payload:",
+        //   action.payload
+        // );
         state.loading = false;
         state.singlePost = action.payload;
       })
@@ -214,12 +214,12 @@ const guestSlice = createSlice({
 
       // trackGuestView
       .addCase(trackGuestView.pending, (state) => {
-        console.log("[trackGuestView.pending]");
+        // console.log("[trackGuestView.pending]");
         state.loading = true;
         state.error = null;
       })
       .addCase(trackGuestView.fulfilled, (state) => {
-        console.log("[trackGuestView.fulfilled]");
+        // console.log("[trackGuestView.fulfilled]");
         state.loading = false;
         state.viewTracked = true;
       })
@@ -231,12 +231,12 @@ const guestSlice = createSlice({
 
       // searchPublicPosts
       .addCase(searchPublicPosts.pending, (state) => {
-        console.log("[searchPublicPosts.pending]");
+        // console.log("[searchPublicPosts.pending]");
         state.loading = true;
         state.error = null;
       })
       .addCase(searchPublicPosts.fulfilled, (state, action) => {
-        console.log("[searchPublicPosts.fulfilled] Payload:", action.payload);
+        // console.log("[searchPublicPosts.fulfilled] Payload:", action.payload);
         state.loading = false;
         state.posts = action.payload.posts;
         state.total = action.payload.total;
@@ -250,11 +250,11 @@ const guestSlice = createSlice({
 
       // trackGuestVisit
       .addCase(trackGuestVisit.pending, (state) => {
-        console.log("[trackGuestVisit.pending]");
+        // console.log("[trackGuestVisit.pending]");
         state.loading = true;
       })
       .addCase(trackGuestVisit.fulfilled, (state, action) => {
-        console.log("[trackGuestVisit.fulfilled] Payload:", action.payload);
+        // console.log("[trackGuestVisit.fulfilled] Payload:", action.payload);
         state.loading = false;
         state.lastTrackedGuest = action.payload;
       })
