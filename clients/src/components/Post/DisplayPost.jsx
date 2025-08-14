@@ -30,7 +30,6 @@ import MultiplexAd from "../../Ads/MultiplexAd";
 import DisplayAd from "../../Ads/DisplayAd";
 import { toast } from "react-hot-toast";
 import { selectPostViews } from "../../Utils/postSelectors";
-import SidebarWithAd from "./SidebarWithAd";
 
 const DisplayPost = () => {
   const { slug } = useParams();
@@ -397,13 +396,22 @@ const DisplayPost = () => {
                 {renderPostContent()}
                 <MultiplexAd postId={activePost?._id} testMode={false} />
               </div>
-              <SidebarWithAd
-                authorId={activePost?.author?._id || null}
-                activeLoading={activeLoading}
-                subscriptionLoading={subscriptionLoading}
-                fetchAttempted={fetchAttempted}
-                activePost={activePost}
-              />
+              <div className="hidden lg:block lg:col-span-1 space-y-6">
+                <div className="sticky top-6 space-y-6">
+                  <div className="author-wrapper transition-all duration-300">
+                    <AuthorSidebar
+                      authorId={activePost?.author?._id || null}
+                      isLoading={
+                        activeLoading || subscriptionLoading || !fetchAttempted
+                      }
+                      className="h-full rounded-md bg-white dark:bg-gray-800 shadow-md p-6"
+                    />
+                    <div className="ad-wrapper sticky top-11">
+                      <DisplayAd postId={activePost?._id} testMode={false} />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
