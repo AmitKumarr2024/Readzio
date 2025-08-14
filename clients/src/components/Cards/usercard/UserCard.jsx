@@ -105,7 +105,7 @@ const UserCard = ({
           <Skeleton width="w-5/6" height="h-4" />
         </div>
       ) : (
-        <p className="text-lg mt-4 line-clamp-3 relative z-10">
+        <p className="text-sm mt-4 line-clamp-3 relative z-10">
           {user.bio || "No bio available"}
         </p>
       )}
@@ -116,7 +116,7 @@ const UserCard = ({
           <Skeleton width="w-1/3" height="h-10" />
         </div>
       ) : (
-        <div className="flex justify-between mt-4 text-lg">
+        <div className="flex justify-between mt-4 text-sm">
           <p className="flex flex-col items-center">
             <span className="font-bold text-lg">{followers.length}</span>
             Followers
@@ -137,7 +137,7 @@ const UserCard = ({
           <Skeleton width="w-2/3" height="h-4" />
         </div>
       ) : (
-        <div className="mt-6 text-lg space-y-1 relative z-10">
+        <div className="mt-6 text-sm space-y-1 relative z-10">
           {user.location && (
             <p className="flex items-center">
               <span className="font-medium w-28">Location:</span>
