@@ -9,15 +9,18 @@ const InArticleAd = ({ postId }) => {
   const isAdBlocked = useAdBlockDetector();
   const { socketInstance } = useSelector(selectSocketState);
 
+  // Load the ad only once on mount
   useEffect(() => {
     if (typeof window === "undefined" || !adRef.current || isAdBlocked) return;
+
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch (err) {
       console.warn("[InArticleAd] Initial ad push failed", err);
     }
-  }, []);
+  }, [isAdBlocked]);
 
+  // Track impressions via IntersectionObserver
   useEffect(() => {
     if (!adRef.current || isAdBlocked || impressionSent.current) return;
 
@@ -33,12 +36,6 @@ const InArticleAd = ({ postId }) => {
               adIndex: "in-article",
               timeSpent: 30,
             });
-          }
-
-          try {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-          } catch (err) {
-            console.warn("[InArticleAd] View-triggered ad push failed", err);
           }
         }
       },
@@ -68,9 +65,7 @@ const InArticleAd = ({ postId }) => {
                 className="adsbygoogle"
                 style={{
                   display: "block",
-                  position: "static !important",
-                  top: "auto !important",
-                  left: "auto !important",
+                  position: "static",
                   width: "100%",
                   height: "90px",
                   textAlign: "center",

@@ -44,19 +44,19 @@ export const fetchPublicPosts = createAsyncThunk(
 export const fetchPublicPostBySlug = createAsyncThunk(
   "guest/fetchPublicPostBySlug",
   async (slug, { rejectWithValue }) => {
-    console.log("[fetchPublicPostBySlug] Called with slug:", slug);
+    // console.log("[fetchPublicPostBySlug] Called with slug:", slug);
     try {
       const normalizedSlug = slug.toLowerCase();
-      console.log("[fetchPublicPostBySlug] Normalized slug:", normalizedSlug);
+      // console.log("[fetchPublicPostBySlug] Normalized slug:", normalizedSlug);
 
       const res = await axiosInstance.get(`/public/post/${normalizedSlug}`);
-      console.log("[fetchPublicPostBySlug] Raw API response:", res.data);
+      // console.log("[fetchPublicPostBySlug] Raw API response:", res.data);
 
       const post = {
         ...res.data.post,
         blocks: Array.isArray(res.data.post.blocks) ? res.data.post.blocks : [],
       };
-      console.log("[fetchPublicPostBySlug] Final mapped post:", post);
+      // console.log("[fetchPublicPostBySlug] Final mapped post:", post);
 
       return post;
     } catch (err) {
