@@ -11,32 +11,40 @@ export const useSocketInit = () => {
   const socketInitialized = useRef(false);
 
   // Effect to initialize socket for authenticated user
-  useEffect(() => {
-    const initSocket = async () => {
-      if (!isAuthenticated || !user?._id || socketInitialized.current) return;
+ useEffect(() => {
+  let socketDisconnectedHandler;
 
-      let token = getToken();
-      if (!token) {
-        try {
-          await dispatch(checkAuth()).unwrap();
-          token = getToken(); // ✅ Now token should be valid
-        } catch (err) {
-          console.error("checkAuth failed:", err.message);
-          return; // Prevent socket init without token
-        }
+  const initSocket = async () => {
+    if (!isAuthenticated || !user?._id) return;
+
+    let token = getToken();
+    if (!token) {
+      try {
+        await dispatch(checkAuth()).unwrap();
+        token = getToken();
+      } catch (err) {
+        console.error("checkAuth failed:", err.message);
+        return;
       }
+    }
 
-      socketInitialized.current = true;
-      dispatch(initializeSocket()); // ✅ after token is ready
+    dispatch(initializeSocket());
+
+    // Listen for disconnect events and try re-initializing
+    socketDisconnectedHandler = () => {
+      console.warn("Socket disconnected. Retrying in 3s...");
+      setTimeout(initSocket, 3000);
     };
 
-    initSocket();
+    window.socket?.on("disconnect", socketDisconnectedHandler);
+  };
 
-    return () => {
-      if (socketInitialized.current) {
-        dispatch(disconnectSocket());
-        socketInitialized.current = false;
-      }
-    };
-  }, [isAuthenticated, user?._id, dispatch]);
+  initSocket();
+
+  return () => {
+    window.socket?.off("disconnect", socketDisconnectedHandler);
+    dispatch(disconnectSocket());
+  };
+}, [isAuthenticated, user?._id, dispatch]);
+
 };
