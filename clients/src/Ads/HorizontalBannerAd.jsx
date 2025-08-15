@@ -9,24 +9,27 @@ const HorizontalBannerAd = ({ postId }) => {
   const isAdBlocked = useAdBlockDetector();
   const { socketInstance } = useSelector(selectSocketState);
 
-  // Track ad visibility and send impression
+  // Load the ad immediately (like your working HTML version)
   useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      isAdBlocked ||
-      impressionSent.current ||
-      !socketInstance?.connected
-    ) {
-      return;
+    if (typeof window === "undefined" || !adRef.current || isAdBlocked) return;
+
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {
+      console.warn("[HorizontalBannerAd] Ad push error:", e);
     }
+  }, [isAdBlocked]);
+
+  // Track impressions when the ad comes into view
+  useEffect(() => {
+    if (!adRef.current || isAdBlocked || impressionSent.current) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !impressionSent.current) {
           impressionSent.current = true;
 
-          // Emit impression to backend or via socket
-          if (postId) {
+          if (postId && socketInstance?.connected) {
             socketInstance.emit("adImpression", {
               postId,
               adIndex: "horizontal",
@@ -34,18 +37,12 @@ const HorizontalBannerAd = ({ postId }) => {
               timeSpent: 30,
             });
           }
-
-          try {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-          } catch (e) {
-            console.warn("[HorizontalBannerAd] Ad push error:", e);
-          }
         }
       },
       { threshold: 0.1 }
     );
 
-    if (adRef.current) observer.observe(adRef.current);
+    observer.observe(adRef.current);
     return () => observer.disconnect();
   }, [postId, isAdBlocked, socketInstance]);
 
@@ -55,15 +52,25 @@ const HorizontalBannerAd = ({ postId }) => {
         <p className="text-xs text-gray-400 dark:text-gray-500 mb-1 text-center uppercase tracking-wide font-medium">
           Sponsored
         </p>
-        <ins
-          ref={adRef}
-          className="adsbygoogle"
-          style={{ display: "block", width: "100%" }}
-          data-ad-client="ca-pub-8408980890451581"
-          data-ad-slot="2355207118"
-          data-ad-format="auto"
-          data-full-width-responsive="true"
-        />
+        {isAdBlocked ? (
+          <div className="w-full h-[90px] bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded">
+            <img
+              src="https://placehold.co/728x90?text=Ad+Blocked"
+              alt="Ad Blocked"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          <ins
+            ref={adRef}
+            className="adsbygoogle"
+            style={{ display: "block", width: "100%" }}
+            data-ad-client="ca-pub-8408980890451581"
+            data-ad-slot="2355207118"
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          />
+        )}
       </div>
     </div>
   );
