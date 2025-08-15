@@ -101,7 +101,7 @@ app.use(
         "http://localhost:8001",
         "https://inksha-uedq.onrender.com",
       ].filter(Boolean);
-      if (!origin || allowedOrigins.includes(origin))
+      if (!origin || allowedOrigins.some((o) => origin.startsWith(o)))
         return callback(null, true);
       return callback(new Error("CORS not allowed"));
     },
@@ -228,7 +228,7 @@ const startServer = async () => {
       );
     });
   } catch (err) {
-    console.error("[Server:Startup] ❌ Failed to start:", err.message);
+    console.error("[Server:Startup] ❌ Failed to start:", err);
     process.exit(1);
   }
 };
