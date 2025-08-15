@@ -17,6 +17,8 @@ const SuggestedPosts = () => {
     error,
   } = useSelector((state) => state.suggestedPosts || {});
 
+  console.log("postsposts", posts);
+
   useEffect(() => {
     if (status === "idle" && !hasFetched.current) {
       hasFetched.current = true;
