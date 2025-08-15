@@ -45,7 +45,7 @@ const CardOfPost = ({
 
   if (loading) {
     return (
-      <div className="bg-card-bg-light dark:bg-card-bg-dark rounded-lg shadow-sm w-full h-full overflow-hidden">
+      <div className="bg-card-bg-light dark:bg-card-bg-dark rounded-lg shadow-xl w-full h-full overflow-hidden">
         <Skeleton className="w-full aspect-video rounded-t-lg bg-gray-200 dark:bg-gray-700" />
         <div className="p-4 space-y-3">
           <Skeleton className="h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
@@ -79,7 +79,7 @@ const CardOfPost = ({
   return (
     <Link
       to={`/post/${slug}`}
-      className="group bg-white dark:bg-gray-800 font-Urbanist rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col h-full max-w-full"
+      className="group bg-white dark:bg-gray-800 font-Urbanist rounded-lg shadow-xl hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col h-full max-w-full"
     >
       <div className="relative w-full aspect-video">
         <img
