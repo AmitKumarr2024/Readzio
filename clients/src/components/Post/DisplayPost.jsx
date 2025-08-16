@@ -341,13 +341,15 @@ const DisplayPost = () => {
             content={activePost.title || "Loading..."}
           />
           <meta property="og:description" content={plainText} />
-          <meta property="og:image" content={firstImage} />
+          <meta property="og:image" content={activePost.thumbnail} />
           <meta property="og:type" content="article" />
           <meta
             property="og:url"
             content={`${BASE_URL}/post/${activePost?.slug}`}
           />
           <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content={activePost.title} />
+          <meta name="twitter:image" content={activePost.thumbnail} />
         </Helmet>
 
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
