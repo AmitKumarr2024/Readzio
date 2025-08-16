@@ -17,7 +17,6 @@ const SuggestedPosts = () => {
     error,
   } = useSelector((state) => state.suggestedPosts || {});
 
-
   useEffect(() => {
     if (status === "idle" && !hasFetched.current) {
       hasFetched.current = true;
@@ -40,7 +39,7 @@ const SuggestedPosts = () => {
   const displayedPosts = posts.slice(0, 30);
   const adPositions =
     displayedPosts.length >= 4 ? [2, 4, 8, 12, 16, 20, 24, 28] : [];
-  const multiplexAdPositions = displayedPosts.length >= 30 ? [30] : [];
+  const multiplexAdPositions = displayedPosts.length >= 8 ? [8] : [];
   const fallbackImage = "https://placehold.co/600x400?text=No+Image";
 
   return (
