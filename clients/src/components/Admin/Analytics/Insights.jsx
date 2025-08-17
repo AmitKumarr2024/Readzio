@@ -30,7 +30,7 @@ const AdminLocationDashboard = lazy(() =>
 );
 
 const CPM_RATE = 0.7;
-const IMPRESSION_INTERVAL = 30;
+const IMPRESSION_INTERVAL = 15;
 
 const isDev = process.env.NODE_ENV === "development";
 
