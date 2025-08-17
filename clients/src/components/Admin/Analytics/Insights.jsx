@@ -29,7 +29,7 @@ const AdminLocationDashboard = lazy(() =>
   import("../../location/AdminLocationDashboard")
 );
 
-const CPM_RATE = 2.5;
+const CPM_RATE = 0.7;
 const IMPRESSION_INTERVAL = 30;
 
 const isDev = process.env.NODE_ENV === "development";
