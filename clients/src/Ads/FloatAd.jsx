@@ -2,16 +2,28 @@ import React, { useEffect, useState } from "react";
 import SafeInFeedAd from "./SafeInFeedAd";
 
 const FloatAd = () => {
-  const [visible, setVisible] = useState(true); // Show ad immediately
-  const [showClose, setShowClose] = useState(false); // Delay close button
+  const [visible, setVisible] = useState(false); // start hidden
+  const [showClose, setShowClose] = useState(false);
 
-  // Show close button after 10s
+  // Show ad after 3s
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowClose(true);
-    }, 10000);
-    return () => clearTimeout(timer);
+    const showTimer = setTimeout(() => {
+      setVisible(true);
+    }, 3000);
+
+    return () => clearTimeout(showTimer);
   }, []);
+
+  // Show close button after 10s of appearing
+  useEffect(() => {
+    if (!visible) return;
+
+    const closeTimer = setTimeout(() => {
+      setShowClose(true);
+    }, 13000);
+
+    return () => clearTimeout(closeTimer);
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -29,7 +41,7 @@ const FloatAd = () => {
         )}
 
         {/* Ad Component */}
-        <SafeInFeedAd/>
+        <SafeInFeedAd />
       </div>
     </div>
   );
