@@ -555,7 +555,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
                     return (
                       <div
                         key={item.id}
-                        className="col-span-full w-full flex justify-center border-t border-b border-gray-300 dark:border-gray-600 my-4"
+                        className="col-span-full w-full border-t border-b border-gray-300 dark:border-gray-600 my-4"
                       >
                         <MultiplexAd postId={item.postId} testMode={false} />
                       </div>
