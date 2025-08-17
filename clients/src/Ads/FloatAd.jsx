@@ -9,7 +9,7 @@ const FloatAd = () => {
   useEffect(() => {
     const showTimer = setTimeout(() => {
       setVisible(true);
-    }, 3000);
+    }, 5000);
 
     return () => clearTimeout(showTimer);
   }, []);
@@ -20,7 +20,7 @@ const FloatAd = () => {
 
     const closeTimer = setTimeout(() => {
       setShowClose(true);
-    }, 13000);
+    }, 15000);
 
     return () => clearTimeout(closeTimer);
   }, [visible]);

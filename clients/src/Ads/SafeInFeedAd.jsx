@@ -36,7 +36,7 @@ const SafeInFeedAd = ({ postId }) => {
 
   return (
     <div ref={ref} className="min-w-[250px] w-full">
-      {fallback ? <CardAd postId={postId} /> : <InFeedAd postId={postId} />}
+      {fallback ? <CardAd postId={postId}  /> : <InFeedAd postId={postId} />}
     </div>
   );
 };
