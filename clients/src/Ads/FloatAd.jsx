@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import InFeedAd from "./InFeedAd";
-import SafeInFeedAd from "./SafeInFeedAd";
+import CardAd from "./CardAd";
 
 const FloatAd = () => {
   const [visible, setVisible] = useState(true); // Show ad immediately
@@ -30,7 +30,7 @@ const FloatAd = () => {
         )}
 
         {/* Ad Component */}
-        <SafeInFeedAd />
+        <CardAd/>
       </div>
     </div>
   );
