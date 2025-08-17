@@ -17,7 +17,7 @@ const FloatAd = () => {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 max-w-[300px] animate-slide-up">
+    <div className="fixed bottom-2 right-20 z-50 max-w-[300px] animate-slide-up">
       <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-lg p-2">
         {/* Close button after 10s */}
         {showClose && (
