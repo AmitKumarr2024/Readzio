@@ -1,4 +1,3 @@
-// File: src/components/BlockRenderer.js
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -57,7 +56,7 @@ const BlockRenderer = ({
   }, [dispatch, isAuthenticated, user?._id, authorId]);
 
   const getAdBlocks = (blocks) => {
-    if (!Array.isArray(blocks) || blocks.length < 6) return blocks;
+    if (!Array.isArray(blocks)) return blocks;
 
     const adBlocks = [...blocks];
     const validTypes = [
@@ -79,18 +78,11 @@ const BlockRenderer = ({
       }
     }
 
-    if (validIndices.length < 6) return blocks;
-
     const adInsertions = [];
-    const interval = 6;
-    let current = 5;
-    const maxAds = Math.min(5, Math.floor(validIndices.length / interval));
+    const interval = 4;
+    let current = validIndices.length > 0 ? 0 : -1; // Start at first valid block
 
-    for (
-      let adsInserted = 0;
-      adsInserted < maxAds && current < validIndices.length;
-      adsInserted++
-    ) {
+    while (current >= 0 && current < validIndices.length) {
       const adAfterIndex = validIndices[current];
       adInsertions.push(adAfterIndex);
       current += interval;
@@ -117,14 +109,11 @@ const BlockRenderer = ({
       );
     }
 
-    // Normalize table block data
     if (block.type === "table") {
-      // console.log(`[DEBUG] Table block before normalization:`, block);
       const headers = Array.isArray(block.headers) ? block.headers : [];
       const rows = Array.isArray(block.rows) ? block.rows.filter(row => Array.isArray(row) && row.length > 0) : [];
       const data = block.data || (headers.length || rows.length ? [headers, ...rows] : [["Header 1", "Header 2"], ["Cell 1", "Cell 2"]]);
       block = { ...block, data, caption: block.caption || "", headers: undefined, rows: undefined };
-      // console.log(`[DEBUG] Table block after normalization:`, block);
     }
 
     switch (block.type) {
@@ -239,12 +228,12 @@ const BlockRenderer = ({
             options={block.options || []}
             caption={block.caption}
             className="my-6 p-4 bg-background-alt-light dark:bg-background-alt-dark rounded-lg"
-          />
+            />
         );
       case "ad":
         return (
           <div className="my-6 w-full">
-            <InArticleAd key={`ad-${i}`} postId={postId} />
+            <InArticleAd key={`ad-${i}`} postId={postId} adIndex={block.adIndex} />
           </div>
         );
       default:

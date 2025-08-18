@@ -153,7 +153,7 @@ const CardOfPost = ({
         )}
         {tags?.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
-            {tags.slice(0, 4).map((tag) => (
+            {tags.slice(0, 3).map((tag) => (
               <div
                 key={tag}
                 className="text-indigo-500 hover:underline text-xs sm:text-sm font-medium"
@@ -161,7 +161,7 @@ const CardOfPost = ({
                 #{tag}
               </div>
             ))}
-            {tags.length > 4 && (
+            {tags.length > 3 && (
               <div className="text-indigo-500 text-xs sm:text-sm font-medium">
                 ...
               </div>
