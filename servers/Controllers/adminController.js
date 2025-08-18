@@ -1058,9 +1058,9 @@ export const updateGlobalEligibilityCriteria = async (req, res, next) => {
     }
 
     const {
-      minFollowers = 10000,
+      minFollowers = 1000,
       minPosts = 30,
-      minEngagementRate = 0.05,
+      minEngagementRate = 0.02,
       minAccountAgeDays = 30,
     } = req.body;
 
