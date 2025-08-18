@@ -79,7 +79,7 @@ const BlockRenderer = ({
     }
 
     const adInsertions = [];
-    const interval = 4;
+    const interval = 3;
     let current = validIndices.length > 0 ? 0 : -1; // Start at first valid block
 
     while (current >= 0 && current < validIndices.length) {
