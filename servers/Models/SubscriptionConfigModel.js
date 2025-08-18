@@ -11,7 +11,7 @@ const configSchema = new mongoose.Schema({
   // Minimum followers for eligibility
   minFollowers: {
     type: Number,
-    default: 10000,
+    default: 1000,
   },
   // Minimum posts for eligibility
   minPosts: {
@@ -21,7 +21,7 @@ const configSchema = new mongoose.Schema({
   // Minimum engagement rate for eligibility
   minEngagementRate: {
     type: Number,
-    default: 0.05,
+    default: 0.02,
   },
   // Minimum account age in days for eligibility
   minAccountAgeDays: {
