@@ -10,7 +10,7 @@ import RightSideBox from "../components/RightSideBar/RightSideBox";
 import TabbedPostSection from "../components/Tabs/TabbedPostSection";
 import GuestPostView from "../components/GuestMainScreen/GuestPostView";
 import Skeleton from "../components/Ui/Skeleton";
-import FloatAd from "../Ads/FloatAd";
+// import FloatAd from "../Ads/FloatAd";
 
 const MainPage = () => {
   const dispatch = useDispatch();
@@ -157,7 +157,7 @@ const MainPage = () => {
           aria-label="Close Sidebar"
         />
       )}
-      <FloatAd />
+      {/* <FloatAd /> */}
     </div>
   );
 };
