@@ -76,7 +76,7 @@ const PrivacyPage = () => {
 
             <p className="text-lg">
               For more information, please also read our{" "}
-              <Link to="/Term&Condition" className="text-blue-600 underline">
+              <Link to="/terms" className="text-blue-600 underline">
                 Terms & Conditions
               </Link>
               .
