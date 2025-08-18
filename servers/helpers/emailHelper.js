@@ -23,7 +23,7 @@ export default function createMailOption({
   otp = null,
   isResetOtp = false,
   posts = [],
-  supportEmail = "inkshaa.official@gmail.com",
+  supportEmail = "inksha.official@gmail.com",
   invoice = null,
   customTemplate = null, // ✅ new
   customData = {}, // ✅ new

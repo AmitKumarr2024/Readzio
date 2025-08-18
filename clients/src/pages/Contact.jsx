@@ -147,10 +147,10 @@ const Contact = () => {
           <p className="mt-8 text-center text-lg">
             Or email us at{" "}
             <a
-              href="inkshaa.official@gmail.com"
+              href="inksha.official@gmail.com"
               className="text-blue-400 hover:underline text-lg"
             >
-              inkshaa.official@gmail.com
+              inksha.official@gmail.com
             </a>
           </p>
         </div>
