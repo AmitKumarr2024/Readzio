@@ -5,9 +5,9 @@ import { toast } from "react-hot-toast";
 import { FaSpinner } from "react-icons/fa";
 
 const DEFAULT_CRITERIA = {
-  minFollowers: 10000,
+  minFollowers: 1000,
   minPosts: 30,
-  minEngagementRate: 0.05, // stored as 0.05 (5%)
+  minEngagementRate: 0.02, // stored as 0.02 (2%)
   minAccountAgeDays: 30,
 };
 

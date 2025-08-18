@@ -1239,9 +1239,9 @@ export const checkUserEligibility = async (req, res, next) => {
       config = await SubscriptionConfig.findOneAndUpdate(
         { key: "subscriptionEligibility" },
         {
-          minFollowers: 10000,
+          minFollowers: 1000,
           minPosts: 30,
-          minEngagementRate: 0.05,
+          minEngagementRate: 0.02,
           minAccountAgeDays: 30,
         },
         { upsert: true, new: true }

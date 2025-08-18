@@ -357,9 +357,9 @@ export const checkEligibilityForSubscription = createAsyncThunk(
       return {
         ...response.data,
         criteria: response.data.criteria || {
-          minFollowers: 10000,
+          minFollowers: 1000,
           minPosts: 30,
-          minEngagementRate: 0.05,
+          minEngagementRate: 0.02,
           minAccountAgeDays: 180,
         },
       };
@@ -378,9 +378,9 @@ export const checkEligibilityForSubscription = createAsyncThunk(
           engagementRate: 0,
           accountAgeDays: 0,
           criteria: {
-            minFollowers: 10000,
+            minFollowers: 1000,
             minPosts: 30,
-            minEngagementRate: 0.05,
+            minEngagementRate: 0.02,
             minAccountAgeDays: 180,
           },
           message:
@@ -824,9 +824,9 @@ const subscriptionSlice = createSlice({
         state.engagementRate = action.payload.engagementRate || 0;
         state.accountAgeDays = action.payload.accountAgeDays || 0;
         state.criteria = action.payload.criteria || {
-          minFollowers: 10000,
+          minFollowers: 1000,
           minPosts: 30,
-          minEngagementRate: 0.05,
+          minEngagementRate: 0.02,
           minAccountAgeDays: 180,
         };
         state.error = action.payload.message

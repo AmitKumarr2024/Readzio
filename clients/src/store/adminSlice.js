@@ -931,9 +931,9 @@ export const checkUserEligibility = createAsyncThunk(
       return {
         ...response.data,
         criteria: response.data.criteria || {
-          minFollowers: 10000,
+          minFollowers: 1000,
           minPosts: 30,
-          minEngagementRate: 0.05,
+          minEngagementRate: 0.02,
           minAccountAgeDays: 30,
         },
       };
@@ -953,9 +953,9 @@ export const checkUserEligibility = createAsyncThunk(
           engagementRate: 0,
           accountAgeDays: 0,
           criteria: {
-            minFollowers: 10000,
+            minFollowers: 1000,
             minPosts: 30,
-            minEngagementRate: 0.05,
+            minEngagementRate: 0.02,
             minAccountAgeDays: 30,
           },
           message:
@@ -1711,9 +1711,9 @@ const adminSlice = createSlice({
         state.subscriptionLoading = false;
         state.userEligibility = action.payload;
         state.subscriptionCriteria = action.payload.criteria || {
-          minFollowers: 10000,
+          minFollowers: 1000,
           minPosts: 30,
-          minEngagementRate: 0.05,
+          minEngagementRate: 0.02,
           minAccountAgeDays: 30,
         };
         state.error = action.payload.message
