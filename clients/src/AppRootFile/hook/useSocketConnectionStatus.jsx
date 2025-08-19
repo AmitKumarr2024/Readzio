@@ -40,7 +40,7 @@ export function useSocketConnectionStatus() {
     }
 
     if (status === "connected" && prevStatus === "disconnected") {
-      toast.info("Connected to server.");
+      toast.success("Connected to server.");
     }
 
     prevStatusRef.current = status;
