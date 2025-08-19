@@ -425,15 +425,16 @@ export const createPost = async (req, res, next) => {
   }
 };
 
-
 // Get all published + unblocked posts with pagination
 export const getPublicPosts = async (req, res, next) => {
   try {
     logMemory("Before getPublicPosts start");
-    const { page = 1, limit = 20, tag } = req.query;
+    const { page = 1, limit, tag } = req.query;
     const pageNum = parseInt(page);
-    const limitNum = Math.min(parseInt(limit), 100);
-    const cacheKey = `publicPosts:${pageNum}:${limitNum}:${tag || "all"}`;
+    const limitNum = limit ? parseInt(limit) : null; // Allow no limit
+    const cacheKey = `publicPosts:${pageNum}:${limitNum || "none"}:${
+      tag || "all"
+    }`;
 
     logMemory(`Before checking cache: ${cacheKey}`);
     const cachedPosts = cache.get(cacheKey);
@@ -455,17 +456,20 @@ export const getPublicPosts = async (req, res, next) => {
 
     console.log("Query:", JSON.stringify(query));
     logMemory("Before PostModel.find");
-    const posts = await PostModel.find(query)
+    let postQuery = PostModel.find(query)
       .maxTimeMS(10000)
       .sort({ createdAt: -1 })
-      .skip((pageNum - 1) * limitNum)
-      .limit(limitNum)
+      .skip((pageNum - 1) * (limitNum || 20)) // Default to 20 if no limit
       .select(
         "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks"
       )
       .populate("author", "name avatar")
       .populate("category", "name slug")
       .lean();
+
+    if (limitNum) postQuery = postQuery.limit(limitNum); // Apply limit only if provided
+
+    const posts = await postQuery;
 
     console.log("Posts fetched:", posts.length);
     logMemory("Before processing posts");
@@ -903,8 +907,8 @@ export const getAllPosts = async (req, res, next) => {
   try {
     logMemory("📋 Start getAllPosts");
     const page = parseInt(req.query.page) || 1;
-    const limit = Math.min(parseInt(req.query.limit) || 10, 100);
-    const skip = (page - 1) * limit;
+    const limit = req.query.limit ? parseInt(req.query.limit) : null; // Allow no limit
+    const skip = limit ? (page - 1) * limit : 0; // Skip only if limit is provided
     const authorId = req.query.authorId;
     const rawAuthorIds = req.query.authorIds || req.query.followingIds;
     const isGuest = req.query.isGuest === "true";
@@ -930,16 +934,19 @@ export const getAllPosts = async (req, res, next) => {
 
     console.log("Query:", JSON.stringify(query));
     logMemory("📖 Before fetching posts");
-    const posts = await PostModel.find(query)
+    let postQuery = PostModel.find(query)
       .select(
         "title slug category excerpt thumbnail author createdAt isPublished isPinned isPremium isSubscriberOnly blocked message readTime likesCount commentsCount viewsCount bookmarksCount likes tags language isFeatured allowComments timeSpent updatedAt shareCount sharedBy blocks postType"
       )
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit)
       .populate("author", "name avatar")
       .populate("category", "name slug")
       .lean();
+
+    if (limit) postQuery = postQuery.limit(limit); // Apply limit only if provided
+
+    const posts = await postQuery;
     logMemory("📖 After fetching posts");
 
     console.log("Posts fetched:", posts.length);

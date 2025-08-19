@@ -48,25 +48,20 @@ const containsBlobUrl = (data) => {
 
 export const fetchFollowingPosts = createAsyncThunk(
   "post/fetchFollowingPosts",
-  async ({ page = 1, limit = 50 } = {}, { rejectWithValue, getState }) => {
-    // console.log("[fetchFollowingPosts] Starting with params:", { page, limit });
+  async ({ page = 1, limit = null } = {}, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      // console.log("[fetchFollowingPosts] Auth state:", auth);
       if (!auth.isAuthenticated) {
-        // console.log("[fetchFollowingPosts] Not authenticated");
         return rejectWithValue({
           message: "You must be signed in to access this feature.",
         });
       }
       const params = new URLSearchParams();
       params.append("page", page);
-      params.append("limit", limit);
-      // console.log("[fetchFollowingPosts] Query params:", params.toString());
+      if (limit) params.append("limit", limit); // Only add limit if provided
       const response = await axiosInstance.get(
         `/post/following?${params.toString()}`
       );
-      // console.log("[fetchFollowingPosts] Response:", response.data);
       return {
         posts: response.data.posts,
         total: response.data.total,
@@ -85,19 +80,15 @@ export const fetchFollowingPosts = createAsyncThunk(
 
 export const fetchPublicPosts = createAsyncThunk(
   "post/fetchPublicPosts",
-  async ({ tag = null, after = null }, { rejectWithValue }) => {
-    // console.log("[fetchPublicPosts] Starting with params:", { tag, after });
+  async ({ tag = null, after = null, limit = null }, { rejectWithValue }) => {
     try {
-      const params = {
-        limit: 12,
-        ...(tag && { tag }),
-        ...(after && { after }),
-      };
-      // console.log("[fetchPublicPosts] Query params:", params);
+      const params = new URLSearchParams();
+      if (tag) params.append("tag", tag);
+      if (after) params.append("after", after);
+      if (limit) params.append("limit", limit); // Only add limit if provided
       const response = await axiosInstance.get("/post/public/posts", {
         params,
       });
-      // console.log("[fetchPublicPosts] Response:", response.data);
       return {
         posts: response.data.posts,
         total: response.data.total,
@@ -515,7 +506,6 @@ const postSlice = createSlice({
     clearCurrentPost: (state) => {
       state.currentPost = null;
     },
-    
   },
   extraReducers: (builder) => {
     builder
