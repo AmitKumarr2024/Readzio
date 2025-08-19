@@ -349,19 +349,11 @@ export const deletePost = createAsyncThunk(
 export const fetchUserPosts = createAsyncThunk(
   "post/fetchUserPosts",
   async ({ userId, after = null, search, sort }, { rejectWithValue }) => {
-    // console.log("[fetchUserPosts] Starting with params:", {
-    //   userId,
-    //   after,
-    //   search,
-    //   sort,
-    // });
     try {
-      const params = { limit: 12, ...(after && { after }), search, sort };
-      // console.log("[fetchUserPosts] Query params:", params);
+      const params = { ...(after && { after }), search, sort }; // Removed limit: 12
       const response = await axiosInstance.get(`/post/user/${userId}/posts`, {
         params,
       });
-      // console.log("[fetchUserPosts] Response:", response.data);
       return {
         posts: response.data.posts,
         total: response.data.total,
