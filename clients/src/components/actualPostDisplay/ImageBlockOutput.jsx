@@ -11,7 +11,7 @@ const ImageBlockOutput = ({ src, caption }) => {
       <img
         src={src}
         alt={caption || "Image"}
-        className="rounded-lg shadow-md max-h-[600px] aspect-7/4 object-cover w-full"
+        className="rounded-lg shadow-md max-h-[550px] aspect-video object-cover w-full"
       />
       {caption && (
         <figcaption className="text-sm text-start text-text-main-light dark:text-text-main-dark mt-2">

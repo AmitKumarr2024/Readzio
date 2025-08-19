@@ -1,32 +1,30 @@
 import multer from "multer";
+import path from "path";
 import { AppError } from "../../servers/Utils/AppError.js";
 
-// Configures Multer for image uploads with memory storage
-const storage = multer.memoryStorage();
+// Configure disk storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // temp folder, make sure this exists
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
 
 // Filters for image files only
 const fileFilter = (req, file, cb) => {
-  try {
-    if (file.mimetype.startsWith("image/")) {
-      cb(null, true);
-    } else {
-      throw new AppError(
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(
+      new AppError(
         "Invalid file type",
         400,
         "UploadMiddleware",
         "Only image files are allowed"
-      );
-    }
-  } catch (error) {
-    cb(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to validate file",
-            400,
-            "UploadMiddleware",
-            "Error in fileFilter"
-          ),
+      ),
       false
     );
   }
