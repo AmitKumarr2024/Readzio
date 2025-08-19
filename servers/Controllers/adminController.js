@@ -1227,9 +1227,22 @@ export const checkUserEligibility = async (req, res, next) => {
     const engagementRate =
       user.milestoneOverride?.engagementRate ??
       (postCount > 0 ? totalEngagement / postCount : 0);
-    const accountAgeDays =
-      user.milestoneOverride?.accountAgeDays ??
-      (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+
+    // Calculate accountAgeDays with validation
+    let accountAgeDays = user.milestoneOverride?.accountAgeDays;
+    if (!accountAgeDays) {
+      if (!user.createdAt || isNaN(new Date(user.createdAt).getTime())) {
+        throw new AppError(
+          "Invalid user creation date",
+          400,
+          "CheckUserEligibility",
+          "User creation date is invalid or missing"
+        );
+      }
+      accountAgeDays =
+        (Date.now() - new Date(user.createdAt).getTime()) /
+        (1000 * 60 * 60 * 24);
+    }
 
     logMemory("📊 Before fetching subscription config");
     let config = await SubscriptionConfig.findOne({
@@ -1264,7 +1277,7 @@ export const checkUserEligibility = async (req, res, next) => {
       followerCount,
       postCount,
       engagementRate: +(engagementRate * 100).toFixed(2),
-      accountAgeDays: +accountAgeDays.toFixed(2),
+      accountAgeDays: isNaN(accountAgeDays) ? 0 : +accountAgeDays.toFixed(2),
       criteria: {
         minFollowers: config.minFollowers,
         minPosts: config.minPosts,
