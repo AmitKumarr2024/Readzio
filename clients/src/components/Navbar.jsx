@@ -267,20 +267,30 @@ const Navbar = () => {
                 )}
               </Link>
             )}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => {
                 if (isAuthenticated && authUser?._id) {
                   navigate("/createPost");
                 } else {
                   navigate("/login");
                 }
-                toggleMobileMenu(); // close mobile menu
               }}
-              className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+              className="hidden md:flex items-center gap-2 relative px-4 py-2 rounded-full 
+             text-sm font-medium bg-blue-500 text-white overflow-hidden"
+              aria-label="Write a post"
             >
-              Write
-            </button>
-
+              <motion.span
+                initial={{ x: "-100%" }}
+                animate={{ x: "100%" }}
+                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                className="absolute inset-0 rounded-full border-2 border-blue-500 
+               [mask-image:linear-gradient(90deg,transparent,white,transparent)]"
+              />
+              <TfiWrite size={16} />
+              <span>Write</span>
+            </motion.button>
             {isAuthenticated && authUser?._id ? (
               <>
                 <NotificationDropdown />
@@ -414,22 +424,20 @@ const Navbar = () => {
                 } else {
                   navigate("/login");
                 }
-                toggleMobileMenu();
+                toggleMobileMenu(); // ✅ closes menu only on mobile
               }}
-              className="relative px-4 py-2 rounded-full text-sm font-medium border border-blue-500 text-blue-500 
-             dark:border-blue-400 dark:text-blue-400 overflow-hidden"
+              className="block md:hidden relative px-4 py-2 rounded-full text-sm font-medium 
+             bg-blue-500 text-white text-center overflow-hidden"
             >
               <motion.span
                 initial={{ x: "-100%" }}
-                animate={{ x: 0 }}
+                animate={{ x: "100%" }}
                 transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                className="absolute inset-0 rounded-full border-2 border-transparent 
-               [mask-image:linear-gradient(90deg,transparent,white,transparent)] 
-                dark:border-blue-400"
+                className="absolute inset-0 rounded-full border-2 border-blue-500 
+               [mask-image:linear-gradient(90deg,transparent,white,transparent)]"
               />
               Write
             </motion.button>
-
             {isAuthenticated && authUser?._id ? (
               <>
                 <Link
