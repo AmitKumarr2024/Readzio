@@ -13,23 +13,18 @@ const initialState = {
 // 🔹 Fetch Public Posts
 export const fetchPublicPosts = createAsyncThunk(
   "guest/fetchPublicPosts",
-  async ({ page = 1, limit = 12 }, { rejectWithValue }) => {
-    // console.log("[fetchPublicPosts] Called with page:", page, "limit:", limit);
+  async ({ page = 1, limit = 0 }, { rejectWithValue }) => {
     try {
+      // if limit=0 → means fetch all posts
       const res = await axiosInstance.get("/public/posts", {
         params: { page, limit },
       });
-      // console.log("[fetchPublicPosts] Raw API response:", res.data);
 
-      const posts = res.data.posts.map((post, idx) => {
-        // console.log(`[fetchPublicPosts] Mapping post #${idx}:`, post);
-        return {
-          ...post,
-          blocks: Array.isArray(post.blocks) ? post.blocks : [],
-        };
-      });
+      const posts = res.data.posts.map((post) => ({
+        ...post,
+        blocks: Array.isArray(post.blocks) ? post.blocks : [],
+      }));
 
-      // console.log("[fetchPublicPosts] Final mapped posts:", posts);
       return { posts, total: res.data.total, page: res.data.page };
     } catch (err) {
       const errMsg =
