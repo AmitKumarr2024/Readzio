@@ -15,7 +15,7 @@ export const fetchPublicPosts = createAsyncThunk(
   "guest/fetchPublicPosts",
   async ({ page = 1, limit = 0 } = {}, { rejectWithValue }) => {
     try {
-      // 🔹 If limit = 0, tell backend to return all posts
+      // if limit=0 → backend will return ALL posts
       const res = await axiosInstance.get("/public/posts", {
         params: { page, limit },
       });
@@ -29,6 +29,7 @@ export const fetchPublicPosts = createAsyncThunk(
         posts,
         total: res.data?.total ?? posts.length,
         page: res.data?.page ?? 1,
+        lastFetched: res.data?.lastFetched ?? null,
       };
     } catch (err) {
       const errMsg =
