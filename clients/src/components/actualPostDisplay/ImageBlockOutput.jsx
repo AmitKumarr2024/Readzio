@@ -14,7 +14,7 @@ const ImageBlockOutput = ({ src, caption }) => {
         className="rounded-lg shadow-md max-h-[550px] aspect-video object-contain w-full"
       />
       {caption && (
-        <figcaption className="text-sm text-start text-text-main-light dark:text-text-main-dark mt-2">
+        <figcaption className="text-sm text-center text-text-main-light dark:text-text-main-dark mt-2">
           {caption}
         </figcaption>
       )}
