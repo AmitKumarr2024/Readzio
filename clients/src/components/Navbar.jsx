@@ -278,7 +278,7 @@ const Navbar = () => {
                     navigate("/login");
                   }
                 }}
-                className="px-4 py-2 text-sm font-medium text-text-main-dark dark:text-text-main-light flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium flex items-center gap-2"
               >
                 <TfiWrite size={16} />
                 <span>Write</span>
@@ -421,7 +421,7 @@ const Navbar = () => {
                   }
                   toggleMobileMenu();
                 }}
-                className="px-4 py-2 text-sm text-text-main-dark dark:text-text-main-light font-medium flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium flex items-center gap-2"
               >
                 <TfiWrite size={16} />
                 Write

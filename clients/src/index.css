@@ -272,8 +272,8 @@
   position: relative;
   z-index: 1;
   border-radius: 9999px;
-/* Tailwind blue-500 */
-  
+  background-color: #74a8fd; /* Tailwind blue-500 */
+  color: white;
 }
 
 @keyframes spin {
