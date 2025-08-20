@@ -243,3 +243,31 @@
 .animate-slide-up {
   animation: slide-up 0.5s ease-out;
 }
+
+@keyframes rainbow-border {
+  0% {
+    border-image-source: linear-gradient(
+      90deg,
+      #4285f4,
+      /* Google Blue */ #ea4335,
+      /* Google Red */ #fbbc05,
+      /* Google Yellow */ #34a853 /* Google Green */
+    );
+  }
+  100% {
+    border-image-source: linear-gradient(
+      450deg,
+      #4285f4,
+      #ea4335,
+      #fbbc05,
+      #34a853
+    );
+  }
+}
+
+.animate-rainbow-border {
+  border: 2px solid transparent;
+  border-radius: 9999px; /* full round */
+  border-image-slice: 1;
+  animation: rainbow-border 4s linear infinite;
+}

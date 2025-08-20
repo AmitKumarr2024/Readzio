@@ -1,57 +1,46 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+// components/GuestLoginModal.jsx
+import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { trackGuestVisit } from "../../store/guestSlice";
 
-const GuestLoginModal = ({ isOpen, onClose }) => {
-  const navigate = useNavigate();
+const GuestLoginModal = () => {
   const dispatch = useDispatch();
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    let delayTimer;
-    if (isOpen) {
-      dispatch(trackGuestVisit())
-        .unwrap()
-        .catch((err) => {
-          // If backend sends 429 Too Many Requests → show modal after 30s
-          if (err === "Failed to track guest visit" || err.includes("429")) {
-            delayTimer = setTimeout(() => {
-              setShowModal(true);
-            }, 30000);
-          }
-        });
-    }
+    const checkGuestVisit = async () => {
+      try {
+        const action = await dispatch(trackGuestVisit());
 
-    return () => {
-      if (delayTimer) clearTimeout(delayTimer);
+        if (trackGuestVisit.rejected.match(action)) {
+          // Limit exceeded (backend returned 429)
+          console.warn("[GuestLoginModal] Guest limit exceeded");
+          setTimeout(() => setShowModal(true), 30000); // show modal after 30s
+        } else {
+          console.log("[GuestLoginModal] Guest visit OK:", action.payload);
+        }
+      } catch (err) {
+        console.error("[GuestLoginModal] Unexpected error:", err);
+      }
     };
-  }, [isOpen, dispatch]);
 
-  if (!isOpen || !showModal) return null;
+    checkGuestVisit();
+  }, [dispatch]);
+
+  if (!showModal) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50">
-      <div className="bg-white p-6 rounded-lg max-w-md w-full relative">
-        <button
-          className="absolute top-2 right-2 text-2xl font-bold text-gray-600 hover:text-gray-800"
-          onClick={onClose}
-        >
-          ×
-        </button>
-        <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">
-          Login Required
-        </h2>
-        <p className="text-gray-600 mb-6 text-center">
-          Too many guest visits. Please log in to see more content.
-        </p>
-        <button
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
-          onClick={() => navigate("/login")}
-        >
-          Go to Login
-        </button>
-      </div>
+    <div className="fixed top-4 right-4 bg-white shadow-lg rounded-lg p-4 z-50">
+      <h2 className="font-bold text-lg">Login Required</h2>
+      <p className="text-sm text-gray-600">
+        You’ve reached the guest viewing limit. Please log in to continue.
+      </p>
+      <button
+        onClick={() => (window.location.href = "/login")}
+        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded"
+      >
+        Go to Login Page
+      </button>
     </div>
   );
 };
