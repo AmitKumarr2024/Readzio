@@ -13,19 +13,23 @@ const initialState = {
 // 🔹 Fetch Public Posts
 export const fetchPublicPosts = createAsyncThunk(
   "guest/fetchPublicPosts",
-  async ({ page = 1, limit = 0 }, { rejectWithValue }) => {
+  async ({ page = 1, limit = 0 } = {}, { rejectWithValue }) => {
     try {
-      // if limit=0 → means fetch all posts
+      // 🔹 If limit = 0, tell backend to return all posts
       const res = await axiosInstance.get("/public/posts", {
         params: { page, limit },
       });
 
-      const posts = res.data.posts.map((post) => ({
+      const posts = (res.data?.posts || []).map((post) => ({
         ...post,
         blocks: Array.isArray(post.blocks) ? post.blocks : [],
       }));
 
-      return { posts, total: res.data.total, page: res.data.page };
+      return {
+        posts,
+        total: res.data?.total ?? posts.length,
+        page: res.data?.page ?? 1,
+      };
     } catch (err) {
       const errMsg =
         err.response?.data?.message || "Failed to fetch public posts";
