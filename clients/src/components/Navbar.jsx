@@ -278,7 +278,7 @@ const Navbar = () => {
                 }
               }}
               className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg 
-             text-sm font-medium bg-blue-500 text-white animate-rainbow-border"
+             text-sm font-medium  text-text-main-light dark:text-text-main-dark animate-rainbow-border"
             >
               <TfiWrite size={16} />
               <span>Write</span>
@@ -420,7 +420,7 @@ const Navbar = () => {
                 toggleMobileMenu(); // ✅ closes menu only on mobile
               }}
               className="block md:hidden px-4 py-2 rounded-lg text-sm font-medium 
-             bg-blue-500 text-white text-center animate-rainbow-border"
+             text-text-main-light dark:text-text-main-dark text-center animate-rainbow-border"
             >
               <TfiWrite size={16} className="inline-block mr-1" />
               Write
