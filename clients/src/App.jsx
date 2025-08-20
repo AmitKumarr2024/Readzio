@@ -28,6 +28,7 @@ import FeedbackModal from "./AppRootFile/components/FeedbackModal";
 import VerifyBanner from "./AppRootFile/components/VerifyBanner";
 import AppTour from "./AppRootFile/components/AppTour";
 import GuestLoginModal from "./AppRootFile/components/GuestLoginModal";
+import axiosInstance from "./connection/axiosInstance";
 
 export default function App() {
   const navigation = useNavigation();
@@ -45,7 +46,7 @@ export default function App() {
   useEffect(() => {
     const checkGuestLimit = async () => {
       try {
-        const response = await fetch("/public/guest/visit", { method: "POST" });
+        const response =  await axiosInstance.post("/public/guest/visit");
         if (response.status === 429) {
           setShowGuestModal(true);
         }
