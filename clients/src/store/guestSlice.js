@@ -14,22 +14,22 @@ const initialState = {
 export const fetchPublicPosts = createAsyncThunk(
   "guest/fetchPublicPosts",
   async ({ page = 1, limit = 12 }, { rejectWithValue }) => {
-    console.log("[fetchPublicPosts] Called with page:", page, "limit:", limit);
+    // console.log("[fetchPublicPosts] Called with page:", page, "limit:", limit);
     try {
       const res = await axiosInstance.get("/public/posts", {
         params: { page, limit },
       });
-      console.log("[fetchPublicPosts] Raw API response:", res.data);
+      // console.log("[fetchPublicPosts] Raw API response:", res.data);
 
       const posts = res.data.posts.map((post, idx) => {
-        console.log(`[fetchPublicPosts] Mapping post #${idx}:`, post);
+        // console.log(`[fetchPublicPosts] Mapping post #${idx}:`, post);
         return {
           ...post,
           blocks: Array.isArray(post.blocks) ? post.blocks : [],
         };
       });
 
-      console.log("[fetchPublicPosts] Final mapped posts:", posts);
+      // console.log("[fetchPublicPosts] Final mapped posts:", posts);
       return { posts, total: res.data.total, page: res.data.page };
     } catch (err) {
       const errMsg =
@@ -71,10 +71,10 @@ export const fetchPublicPostBySlug = createAsyncThunk(
 export const trackGuestView = createAsyncThunk(
   "guest/trackGuestView",
   async (slug, { rejectWithValue }) => {
-    console.log("[trackGuestView] Called with slug:", slug);
+    // console.log("[trackGuestView] Called with slug:", slug);
     try {
       const res = await axiosInstance.post(`/public/post/${slug}/view`);
-      console.log("[trackGuestView] API Response:", res.data);
+      // console.log("[trackGuestView] API Response:", res.data);
       return res.data.message;
     } catch (err) {
       const errMsg = err.response?.data?.message || "Failed to track view";
