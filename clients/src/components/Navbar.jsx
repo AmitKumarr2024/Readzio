@@ -405,19 +405,30 @@ const Navbar = () => {
             exit={{ opacity: 0, y: -20 }}
             className="md:hidden bg-background-light dark:bg-background-dark px-4 py-4 space-y-2 shadow-xl border-t border-gray-200 dark:border-gray-800"
           >
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => {
                 if (isAuthenticated && authUser?._id) {
                   navigate("/createPost");
                 } else {
                   navigate("/login");
                 }
-                toggleMobileMenu(); // close mobile menu
+                toggleMobileMenu();
               }}
-              className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+              className="relative px-4 py-2 rounded-full text-sm font-medium border border-blue-500 text-blue-500 
+             dark:border-blue-400 dark:text-blue-400 overflow-hidden"
             >
+              <motion.span
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                className="absolute inset-0 rounded-full border-2 border-transparent 
+               [mask-image:linear-gradient(90deg,transparent,white,transparent)] 
+                dark:border-blue-400"
+              />
               Write
-            </button>
+            </motion.button>
 
             {isAuthenticated && authUser?._id ? (
               <>
