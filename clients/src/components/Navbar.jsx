@@ -277,7 +277,7 @@ const Navbar = () => {
                   navigate("/login");
                 }
               }}
-              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full 
+              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg 
              text-sm font-medium bg-blue-500 text-white animate-rainbow-border"
             >
               <TfiWrite size={16} />
@@ -419,7 +419,7 @@ const Navbar = () => {
                 }
                 toggleMobileMenu(); // ✅ closes menu only on mobile
               }}
-              className="block md:hidden px-4 py-2 rounded-full text-sm font-medium 
+              className="block md:hidden px-4 py-2 rounded-lg text-sm font-medium 
              bg-blue-500 text-white text-center animate-rainbow-border"
             >
               <TfiWrite size={16} className="inline-block mr-1" />
