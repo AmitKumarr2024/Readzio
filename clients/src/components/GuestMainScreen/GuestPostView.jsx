@@ -1,4 +1,3 @@
-// components/Guest/GuestPostView.jsx
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
@@ -20,6 +19,7 @@ const GuestPostView = () => {
     (state) => state.postMeta?.isSidebarOpen || false
   );
 
+  // Load guest data and posts
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -29,10 +29,8 @@ const GuestPostView = () => {
           await dispatch(trackGuestVisit()).unwrap();
         }
 
-        // Always fetch posts on first load (limit=0 → fetch ALL posts)
-        if (posts.length === 0) {
-          await dispatch(fetchPublicPosts({ page: 1, limit: 0 })).unwrap();
-        }
+        // Fetch posts without limit
+        await dispatch(fetchPublicPosts({ page: 1 })).unwrap();
       } catch (err) {
         console.error("[GuestPostView] Error loading guest data:", err);
       } finally {
@@ -44,6 +42,8 @@ const GuestPostView = () => {
 
   // Skeleton loading state
   if (loading && initialLoad) {
+    // Use a dynamic number of skeletons based on expected posts or a higher default
+    const skeletonCount = posts.length > 0 ? posts.length : 20; // Adjust based on expected posts
     return (
       <div
         className={`grid gap-4 py-6 px-4 w-full
@@ -53,11 +53,11 @@ const GuestPostView = () => {
           ${
             isSidebarOpen
               ? "lg:grid-cols-3 xl:grid-cols-4"
-              : "lg:grid-cols-3 xl:grid-cols-5"
+              : "lg:grid-cols-4 xl:grid-cols-5"
           }
         `}
       >
-        {Array.from({ length: 12 }).map((_, i) => (
+        {Array.from({ length: skeletonCount }).map((_, i) => (
           <div
             key={i}
             className="bg-card-bg-light dark:bg-card-bg-dark rounded-lg p-4 shadow-md"
@@ -78,7 +78,7 @@ const GuestPostView = () => {
         {error}
         <button
           onClick={() => {
-            dispatch(fetchPublicPosts({ page: 1, limit: 0 }));
+            dispatch(fetchPublicPosts({ page: 1 }));
           }}
           className="ml-2 text-blue-500 underline"
         >
