@@ -88,29 +88,29 @@ export const trackGuestView = createAsyncThunk(
 export const searchPublicPosts = createAsyncThunk(
   "guest/searchPublicPosts",
   async ({ query, page = 1, limit = 12 }, { rejectWithValue }) => {
-    // console.log(
-    //   "[searchPublicPosts] Called with query:",
-    //   query,
-    //   "page:",
-    //   page,
-    //   "limit:",
-    //   limit
-    // );
+    console.log(
+      "[searchPublicPosts] Called with query:",
+      query,
+      "page:",
+      page,
+      "limit:",
+      limit
+    );
     try {
       const res = await axiosInstance.get("/public/search-posts", {
         params: { query, page, limit },
       });
-      // console.log("[searchPublicPosts] Raw API response:", res.data);
+      console.log("[searchPublicPosts] Raw API response:", res.data);
 
       const posts = res.data.posts.map((post, idx) => {
-        // console.log(`[searchPublicPosts] Mapping post #${idx}:`, post);
+        console.log(`[searchPublicPosts] Mapping post #${idx}:`, post);
         return {
           ...post,
           blocks: Array.isArray(post.blocks) ? post.blocks : [],
         };
       });
 
-      // console.log("[searchPublicPosts] Final mapped posts:", posts);
+      console.log("[searchPublicPosts] Final mapped posts:", posts);
       return { posts, total: res.data.total, page: res.data.page };
     } catch (err) {
       const errMsg =
@@ -125,17 +125,17 @@ export const searchPublicPosts = createAsyncThunk(
 export const trackGuestVisit = createAsyncThunk(
   "guest/trackGuestVisit",
   async (_, { rejectWithValue }) => {
-    // console.log("[trackGuestVisit] Called");
+    console.log("[trackGuestVisit] Called");
     try {
       const res = await axiosInstance.post("/public/guest/visit");
-      // console.log("[trackGuestVisit] API Response:", res.data);
+      console.log("[trackGuestVisit] API Response:", res.data);
 
       if (res.data.guest?.guestId) {
         localStorage.setItem("guestId", res.data.guest.guestId);
-        // console.log(
-        //   "[trackGuestVisit] guestId stored in localStorage:",
-        //   res.data.guest.guestId
-        // );
+        console.log(
+          "[trackGuestVisit] guestId stored in localStorage:",
+          res.data.guest.guestId
+        );
       }
       return res.data.guest;
     } catch (err) {
@@ -152,7 +152,7 @@ const guestSlice = createSlice({
   initialState,
   reducers: {
     clearGuestState(state) {
-      // console.log("[clearGuestState] Resetting guest state");
+      console.log("[clearGuestState] Resetting guest state");
       state.posts = [];
       state.singlePost = null;
       state.loading = false;
@@ -160,7 +160,7 @@ const guestSlice = createSlice({
       state.viewTracked = false;
     },
     clearGuestError(state) {
-      // console.log("[clearGuestError] Clearing guest error:", state.error);
+      console.log("[clearGuestError] Clearing guest error:", state.error);
       state.error = null;
     },
     clearSinglePost: (state) => {
@@ -176,7 +176,7 @@ const guestSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchPublicPosts.fulfilled, (state, action) => {
-        // console.log("[fetchPublicPosts.fulfilled] Payload:", action.payload);
+        console.log("[fetchPublicPosts.fulfilled] Payload:", action.payload);
         state.loading = false;
         state.posts = action.payload.posts;
         state.total = action.payload.total;
