@@ -247,7 +247,7 @@
 .rainbow-border {
   position: relative;
   border-radius: 9999px; /* pill */
-  padding: 2px; /* border thickness */
+  padding: 3px; /* border thickness */
   overflow: hidden;
 }
 
@@ -272,8 +272,8 @@
   position: relative;
   z-index: 1;
   border-radius: 9999px;
-  background-color: #3b82f6; /* Tailwind blue-500 */
-  color: white;
+/* Tailwind blue-500 */
+  
 }
 
 @keyframes spin {
