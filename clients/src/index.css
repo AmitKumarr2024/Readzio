@@ -247,7 +247,7 @@
 .rainbow-border {
   position: relative;
   border-radius: 9999px; /* pill */
-  padding: 6px; /* border thickness */
+  padding: 3px; /* border thickness */
   overflow: hidden;
 }
 
