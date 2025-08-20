@@ -267,16 +267,22 @@ const Navbar = () => {
                 )}
               </Link>
             )}
+            <button
+              onClick={() => {
+                if (isAuthenticated && authUser?._id) {
+                  navigate("/createPost");
+                } else {
+                  navigate("/login");
+                }
+                toggleMobileMenu(); // close mobile menu
+              }}
+              className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+            >
+              Write
+            </button>
+
             {isAuthenticated && authUser?._id ? (
               <>
-                <Link
-                  to="/createPost"
-                  className="hidden md:flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm btn-create-post"
-                  aria-label="Write a post"
-                >
-                  <TfiWrite size={16} />
-                  <span>Write</span>
-                </Link>
                 <NotificationDropdown />
                 <div ref={dropdownRef} className="relative hidden md:block">
                   <button
@@ -399,15 +405,22 @@ const Navbar = () => {
             exit={{ opacity: 0, y: -20 }}
             className="md:hidden bg-background-light dark:bg-background-dark px-4 py-4 space-y-2 shadow-xl border-t border-gray-200 dark:border-gray-800"
           >
+            <button
+              onClick={() => {
+                if (isAuthenticated && authUser?._id) {
+                  navigate("/createPost");
+                } else {
+                  navigate("/login");
+                }
+                toggleMobileMenu(); // close mobile menu
+              }}
+              className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+            >
+              Write
+            </button>
+
             {isAuthenticated && authUser?._id ? (
               <>
-                <Link
-                  to="/createPost"
-                  onClick={toggleMobileMenu}
-                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                >
-                  Write
-                </Link>
                 <Link
                   to="/user"
                   onClick={toggleMobileMenu}

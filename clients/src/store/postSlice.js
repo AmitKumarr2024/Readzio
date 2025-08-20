@@ -144,7 +144,7 @@ export const createPosts = createAsyncThunk(
 export const getAllPosts = createAsyncThunk(
   "post/getAllPosts",
   async (
-    { userId, authorIds = [], page = 1, limit = 12, after = null } = {},
+    { userId, authorIds = [], page = 1, limit = null, after = null } = {},
     { rejectWithValue, getState }
   ) => {
     // console.log("[getAllPosts] Starting with params:", {
@@ -165,7 +165,7 @@ export const getAllPosts = createAsyncThunk(
       }
       const params = new URLSearchParams();
       params.append("page", page);
-      params.append("limit", limit);
+      if (limit !== null) params.append("limit", limit); // only if limit is set
       if (after) params.append("after", after);
       if (userId) params.append("authorId", userId);
       if (authorIds.length) {
