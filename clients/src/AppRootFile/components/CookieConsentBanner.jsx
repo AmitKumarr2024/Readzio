@@ -1,6 +1,6 @@
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
-import { useDispatch, useEffect } from "react";
+import { useEffect } from "react";
 import { saveUserConsent } from "../../store/userSlice";
 
 export default function CookieConsentBar() {
