@@ -22,26 +22,18 @@ const GUEST_VISIT_WINDOW = 60 * 1000; // 1 minute
 export const getPublicPosts = async (req, res, next) => {
   try {
     logMemory("Before getPublicPosts start");
-    const { page = 1, limit = 0, tag, after, blocked = false } = req.query;
-
+    const { page = 1, limit = 12, tag, after, blocked = false } = req.query;
     const pageNum = parseInt(page);
-    let limitNum = parseInt(limit);
-
-    // If limit=0 → fetch all posts (no limit)
-    if (limitNum === 0) {
-      limitNum = undefined;
-    }
-
-    const cacheKey = `publicPosts:${pageNum}:${limitNum || "all"}:${
-      tag || "all"
-    }:${after || "none"}:${blocked}`;
+    const limitNum = Math.min(parseInt(limit), 100);
+    const cacheKey = `publicPosts:${pageNum}:${limitNum}:${tag || "all"}:${
+      after || "none"
+    }:${blocked}`;
 
     console.log(
-      `Request params: page=${pageNum}, limit=${limitNum || "all"}, tag=${
+      `Request params: page=${pageNum}, limit=${limitNum}, tag=${
         tag || "none"
       }, after=${after || "none"}, blocked=${blocked}`
     );
-
     logMemory(`Before checking cache: ${cacheKey}`);
     const cachedPosts = cache.get(cacheKey);
     if (cachedPosts) {
@@ -65,11 +57,11 @@ export const getPublicPosts = async (req, res, next) => {
 
     console.log("Query:", JSON.stringify(query));
     logMemory("Before PostModel.find");
-
-    const postsQuery = PostModel.find(query)
+    const posts = await PostModel.find(query)
       .maxTimeMS(10000)
       .sort({ createdAt: -1 })
-      .skip((pageNum - 1) * (limitNum || 0)) // skip works fine even if undefined
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
       .select(
         "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks"
       )
@@ -77,13 +69,8 @@ export const getPublicPosts = async (req, res, next) => {
       .populate("category", "name slug")
       .lean();
 
-    if (limitNum) postsQuery.limit(limitNum);
-
-    const posts = await postsQuery;
-
     console.log("Posts fetched:", posts.length);
     logMemory("Before processing posts");
-
     const processedPosts = posts.map((post) => ({
       ...post,
       blocks: Array.isArray(post.blocks) ? post.blocks : [],
