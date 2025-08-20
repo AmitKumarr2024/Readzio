@@ -11,19 +11,19 @@ const VerifyBanner = () => {
     isAuthenticated,
     user: authUser,
     loading: authLoading,
-  } = useSelector((state) => state.auth);
+  } = useSelector((state) => state.auth || {});
 
   // Avoid rendering while auth is still loading
   if (authLoading) return null;
 
   // Only show if user is logged in AND not verified
-  if (!isAuthenticated || !authUser || authUser.isAccountVerified) return null;
+  if (!isAuthenticated || !authUser?.isAccountVerified === false) return null;
 
   return (
     <div className="bg-yellow-500 text-black p-3 flex justify-between items-center">
       <span>
-        Your email is not verified. Please verify your account to continue
-        enjoying all features.
+        Your email is not verified. Please verify your account to access all
+        features.
       </span>
       <button
         onClick={() => navigate("/verify")}

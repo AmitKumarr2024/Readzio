@@ -10,7 +10,7 @@ const ImageBlockOutput = ({ src, caption }) => {
       <img
         src={src}
         alt={caption || "Image"}
-        className="rounded-lg shadow-md max-h-[550px] aspect-video object-cover w-full"
+        className="rounded-lg shadow-md max-h-[550px] aspect-video object-cover max-w-[500px]"
       />
       {caption && (
         <figcaption className="text-sm text-start text-text-main-light dark:text-text-main-dark mt-2">
@@ -34,7 +34,7 @@ const ImageBlockOutput = ({ src, caption }) => {
           onClick={() => setModalOpen(false)}
         >
           <div
-            className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark p-2 sm:p-4 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex justify-center items-center"
+            className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark p-2 sm:p-4 rounded-lg shadow-xl max-w-[90vw] w-full max-h-[90vh] flex justify-center items-center overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
@@ -50,7 +50,7 @@ const ImageBlockOutput = ({ src, caption }) => {
             <img
               src={src}
               alt="Full"
-              className="object-contain max-h-[80vh] max-w-full select-none"
+              className="object-contain max-h-[90vh] max-w-[90vw] w-auto h-auto select-none"
               draggable={false}
             />
           </div>
