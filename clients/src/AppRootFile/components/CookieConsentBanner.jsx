@@ -1,16 +1,21 @@
-import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
 import { useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { Link } from "react-router-dom";
 import { saveUserConsent } from "../../store/userSlice";
 
 export default function CookieConsentBar() {
   const dispatch = useDispatch();
-  const consent = useSelector((state) => state.user.cookieConsent);
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 
-  // Only show for logged-in users
-  if (!isAuthenticated) return null;
+  // Safe optional chaining to avoid undefined errors
+  const consent = useSelector((state) => state.user?.cookieConsent ?? null);
+  const isAuthenticated = useSelector(
+    (state) => state.auth?.isAuthenticated ?? false
+  );
 
+  // Don't render anything if user is not authenticated or consent already given
+  if (!isAuthenticated || consent !== null) return null;
+
+  // Sync consent with localStorage whenever it changes
   useEffect(() => {
     if (consent !== null) {
       try {
@@ -20,8 +25,6 @@ export default function CookieConsentBar() {
       }
     }
   }, [consent]);
-
-  if (consent !== null) return null;
 
   const handleConsent = (value) => {
     try {
