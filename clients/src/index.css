@@ -267,7 +267,7 @@
 
 .animate-rainbow-border {
   border: 2px solid transparent;
-  border-radius: 9999px; /* full round */
+  border-radius: 9999px; /* full pill */
   border-image-slice: 1;
   animation: rainbow-border 4s linear infinite;
 }
