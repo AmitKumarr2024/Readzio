@@ -247,7 +247,7 @@
 .rainbow-border {
   position: relative;
   border-radius: 9999px; /* pill */
-  padding: 3px; /* border thickness */
+  padding: 6px; /* border thickness */
   overflow: hidden;
 }
 
@@ -272,7 +272,7 @@
   position: relative;
   z-index: 1;
   border-radius: 9999px;
-  background-color: #74a8fd; /* Tailwind blue-500 */
+  background-color: #3381fe; /* Tailwind blue-500 */
   color: white;
 }
 

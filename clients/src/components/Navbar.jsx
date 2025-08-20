@@ -409,7 +409,7 @@ const Navbar = () => {
             exit={{ opacity: 0, y: -20 }}
             className="md:hidden bg-background-light dark:bg-background-dark px-4 py-4 space-y-2 shadow-xl border-t border-gray-200 dark:border-gray-800"
           >
-            <div className="rainbow-border  md:hidden inline-block rounded-full">
+            <div className="rainbow-border  md:hidden block rounded-full">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
