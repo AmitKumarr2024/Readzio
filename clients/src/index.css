@@ -243,35 +243,40 @@
 .animate-slide-up {
   animation: slide-up 0.5s ease-out;
 }
-.rainbow-border {
-  position: relative;
-  border-radius: 9999px; /* full pill */
-  padding: 4px; /* thickness of border */
-  overflow: hidden;
-}
-
-.rainbow-border::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 9999px;
-  padding: 2px;
-  background: conic-gradient(
-    from 0deg,
-    #4285f4,
-    #ea4335,
-    #fbbc05,
-    #34a853,
-    #4285f4
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: spin 4s linear infinite;
-}
-
-@keyframes spin {
-  100% {
-    transform: rotate(360deg);
+@keyframes rainbow-border {
+  0% {
+    border-image-source: linear-gradient(
+      90deg,
+      #4285f4,
+      /* Google Blue */ #ea4335,
+      /* Google Red */ #fbbc05,
+      /* Google Yellow */ #34a853 /* Google Green */
+    );
   }
+  100% {
+    border-image-source: linear-gradient(
+      450deg,
+      #4285f4,
+      #ea4335,
+      #fbbc05,
+      #34a853
+    );
+  }
+}
+
+.animate-rainbow-border {
+  border: 2px solid transparent; /* Essential for border-image to show */
+  border-radius: 9999px; /* full pill */
+  border-image-slice: 1;
+  animation: rainbow-border 4s linear infinite;
+}
+
+/* New class for the transparent version */
+.animate-rainbow-border-transparent {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  border-image-slice: 1;
+  animation: rainbow-border 4s linear infinite;
+  background-color: transparent; /* Make the background transparent */
+  color: inherit; /* Inherit text color, or set a specific color like `text-gray-900` */
 }

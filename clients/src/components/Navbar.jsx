@@ -277,8 +277,8 @@ const Navbar = () => {
                   navigate("/login");
                 }
               }}
-              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg 
-             text-sm font-medium  text-text-main-light dark:text-text-main-dark rainbow-border"
+              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full 
+             text-sm font-medium text-gray-900 animate-rainbow-border-transparent" // Updated class and text color
             >
               <TfiWrite size={16} />
               <span>Write</span>
@@ -419,8 +419,8 @@ const Navbar = () => {
                 }
                 toggleMobileMenu(); // ✅ closes menu only on mobile
               }}
-              className="block md:hidden px-4 py-2 rounded-lg text-sm font-medium 
-             text-text-main-light dark:text-text-main-dark text-center rainbow-border"
+              className="block md:hidden px-4 py-2 rounded-full text-sm font-medium 
+             text-gray-900 text-center animate-rainbow-border-transparent" // Updated class and text color
             >
               <TfiWrite size={16} className="inline-block mr-1" />
               Write
