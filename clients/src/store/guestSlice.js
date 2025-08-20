@@ -123,14 +123,14 @@ export const trackGuestVisit = createAsyncThunk(
     // console.log("[trackGuestVisit] Called");
     try {
       const res = await axiosInstance.post("/public/guest/visit");
-      // console.log("[trackGuestVisit] API Response:", res.data);
+      console.log("[trackGuestVisit] API Response:", res.data);
 
       if (res.data.guest?.guestId) {
-        localStorage.setItem("guestId", res.data.guest.guestId);
-        // console.log(
-        //   "[trackGuestVisit] guestId stored in localStorage:",
-        //   res.data.guest.guestId
-        // );
+        localStorage.setItem("guestId", res.data.guest?.guestId);
+        console.log(
+          "[trackGuestVisit] guestId stored in localStorage:",
+          res.data.guest.guestId
+        );
       }
       return res.data.guest;
     } catch (err) {
