@@ -105,124 +105,46 @@ export const fetchPublicPosts = createAsyncThunk(
   }
 );
 
-// export const createPosts = createAsyncThunk(
-//   "post/createPost",
-//   async (postData, { rejectWithValue, getState }) => {
-//     // console.log("[createPosts] Starting with postData:", postData);
-//     if (
-//       !postData.blocks ||
-//       !Array.isArray(postData.blocks) ||
-//       postData.blocks.length === 0
-//     ) {
-//       // console.log("[createPosts] Invalid blocks");
-//       return rejectWithValue({ message: "Blocks are required" });
-//     }
-//     if (
-//       containsBlobUrl(postData.thumbnail) ||
-//       containsBlobUrl(postData.blocks)
-//     ) {
-//       // console.log("[createPosts] Blob URL detected");
-//       return rejectWithValue({
-//         message:
-//           "Upload failed: Please convert Blob URLs to base64 or upload images properly.",
-//       });
-//     }
-//     try {
-//       const { auth } = getState();
-//       // console.log("[createPosts] Auth state:", auth);
-//       const response = await axiosInstance.post("/post/post-create", postData);
-//       // console.log("[createPosts] Response:", response.data);
-//       return { ...response.data, authorId: auth.user?._id };
-//     } catch (error) {
-//       const errMsg = error.response?.data?.message || "Failed to create post";
-//       console.error("[createPosts] Error:", errMsg);
-//       return rejectWithValue({ message: errMsg });
-//     }
-//   }
-// );
-// 
-
-
-
-// ------------------------------------------------------------------------------
-// new create code
 export const createPosts = createAsyncThunk(
   "post/createPost",
   async (postData, { rejectWithValue, getState }) => {
+    // console.log("[createPosts] Starting with postData:", postData);
     if (
       !postData.blocks ||
       !Array.isArray(postData.blocks) ||
       postData.blocks.length === 0
     ) {
+      // console.log("[createPosts] Invalid blocks");
       return rejectWithValue({ message: "Blocks are required" });
     }
     if (
       containsBlobUrl(postData.thumbnail) ||
       containsBlobUrl(postData.blocks)
     ) {
+      // console.log("[createPosts] Blob URL detected");
       return rejectWithValue({
         message:
           "Upload failed: Please convert Blob URLs to base64 or upload images properly.",
       });
     }
-
-    const { auth } = getState();
-    if (!auth.isAuthenticated || !auth.user?._id) {
-      return rejectWithValue({
-        message: "You must be signed in to create a post.",
-      });
+    try {
+      const { auth } = getState();
+      // console.log("[createPosts] Auth state:", auth);
+      const response = await axiosInstance.post("/post/post-create", postData);
+      // console.log("[createPosts] Response:", response.data);
+      return { ...response.data, authorId: auth.user?._id };
+    } catch (error) {
+      const errMsg = error.response?.data?.message || "Failed to create post";
+      console.error("[createPosts] Error:", errMsg);
+      return rejectWithValue({ message: errMsg });
     }
-
-    const maxRetries = 2;
-    let lastError = null;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const response = await axiosInstance.post("/post/post-create", postData, {
-          timeout: 120000, // Set timeout to 120 seconds to handle slow image uploads
-        });
-        return { ...response.data, authorId: auth.user._id };
-      } catch (error) {
-        lastError = error;
-        const errMsg = error.response?.data?.message || "Failed to create post";
-        console.error(`[createPosts] Attempt ${attempt} failed:`, errMsg);
-
-        // If not the last attempt, wait before retrying
-        if (attempt < maxRetries) {
-          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-          continue;
-        }
-
-        // On final attempt, check if the post was created despite the error
-        try {
-          const checkResponse = await axiosInstance.get(`/post/${postData.slug}`, {
-            timeout: 10000,
-          });
-          if (checkResponse.data.post) {
-            console.log("[createPosts] Post found despite error:", checkResponse.data.post);
-            return { ...checkResponse.data, authorId: auth.user._id };
-          }
-        } catch (checkError) {
-          console.error("[createPosts] Post check failed:", checkError.message);
-        }
-
-        // If post not found, return the error
-        return rejectWithValue({
-          message: errMsg,
-          status: error.response?.status || 500,
-          stack: error.stack,
-        });
-      }
-    }
-
-    // Fallback in case retries are exhausted
-    return rejectWithValue({
-      message: lastError?.response?.data?.message || "Failed to create post after retries",
-      status: lastError?.response?.status || 500,
-      stack: lastError?.stack,
-    });
   }
 );
+
+
+
+
+
 
 export const getAllPosts = createAsyncThunk(
   "post/getAllPosts",

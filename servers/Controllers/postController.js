@@ -34,400 +34,7 @@ const validateObjectId = (id, type = "ID") => {
 };
 
 // Create Post old code
-// export const createPost = async (req, res, next) => {
-//   try {
-//     logMemory("📝 Start createPost");
-//     const {
-//       title,
-//       category,
-//       excerpt,
-//       tags: rawTags,
-//       blocks: rawBlocks = [],
-//       thumbnail: rawThumbnail,
-//       isFeatured = false,
-//       isPinned = false,
-//       language = "en",
-//       postType = "Blog",
-//     } = req.body;
-
-//     if (!req.user?._id) {
-//       throw new AppError(
-//         "You must be signed in to access this feature.",
-//         401,
-//         "CreatePost"
-//       );
-//     }
-
-//     const tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
-//     if (!Array.isArray(tags)) {
-//       throw new AppError("Tags must be an array", 400, "CreatePost");
-//     }
-
-//     const blocks = Array.isArray(rawBlocks)
-//       ? rawBlocks
-//       : JSON.parse(rawBlocks || "[]");
-//     if (!Array.isArray(blocks)) {
-//       throw new AppError("Blocks must be an array", 400, "CreatePost");
-//     }
-
-//     logMemory("📦 After parsing input");
-
-//     const blocksWithIds = blocks.map((block, index) => {
-//       if (!block || typeof block !== "object" || !block.type) {
-//         throw new AppError(
-//           `Invalid block at index ${index}`,
-//           400,
-//           "CreatePost"
-//         );
-//       }
-//       return {
-//         id: block.id || uuidv4(),
-//         type: block.type,
-//         ...block,
-//         blocked: false,
-//       };
-//     });
-
-//     blocksWithIds.forEach((block, index) => {
-//       if (block.type === "table") {
-//         if (
-//           !block.data ||
-//           !Array.isArray(block.data) ||
-//           block.data.length === 0
-//         ) {
-//           throw new AppError(
-//             `Table block at index ${index} must have non-empty data`,
-//             400,
-//             "CreatePost"
-//           );
-//         }
-//         if (!block.data.every((row) => Array.isArray(row) && row.length > 0)) {
-//           throw new AppError(
-//             `Table block at index ${index} has invalid data format`,
-//             400,
-//             "CreatePost"
-//           );
-//         }
-//       }
-//     });
-
-//     const processImage = async (source, id, folder) => {
-//       try {
-//         let buffer;
-//         if (source.startsWith("data:image")) {
-//           const [, base64Data] =
-//             source.match(/^data:image\/[a-z]+;base64,(.+)$/) || [];
-//           if (!base64Data) {
-//             throw new AppError(
-//               "Invalid base64 image",
-//               400,
-//               "CreatePost",
-//               "Invalid image data"
-//             );
-//           }
-//           buffer = Buffer.from(base64Data, "base64");
-//         } else if (source.startsWith("http")) {
-//           const response = await axios.get(source, {
-//             responseType: "arraybuffer",
-//             timeout: 5000,
-//           });
-//           buffer = Buffer.from(response.data, "binary");
-//         } else {
-//           throw new AppError(
-//             "Unsupported image source",
-//             400,
-//             "CreatePost",
-//             "Invalid image source"
-//           );
-//         }
-
-//         const image = sharp(buffer);
-//         const metadata = await image.metadata();
-//         if (!["jpeg", "png", "webp"].includes(metadata.format)) {
-//           throw new AppError(
-//             "Unsupported image format",
-//             400,
-//             "CreatePost",
-//             "Invalid image format"
-//           );
-//         }
-
-//         if (metadata.width > 1200 || metadata.height > 1200) {
-//           image.resize({
-//             width: 1200,
-//             height: 1200,
-//             fit: "inside",
-//             withoutEnlargement: true,
-//           });
-//         }
-
-//         const compressedBuffer = await image
-//           .webp({ quality: 75, effort: 4 })
-//           .toBuffer();
-//         const result = await uploadToCloudinary({
-//           buffer: compressedBuffer,
-//           folder,
-//         });
-//         if (!result?.secure_url) {
-//           throw new AppError(
-//             "Image upload failed",
-//             500,
-//             "CreatePost",
-//             "Cloudinary upload failed"
-//           );
-//         }
-
-//         return result.secure_url;
-//       } catch (err) {
-//         throw new AppError(
-//           err.message || `Image processing failed: ${id}`,
-//           400,
-//           "CreatePost",
-//           "Error processing image"
-//         );
-//       }
-//     };
-
-//     const blockLimit = pLimit(3);
-//     const imageLimit = pLimit(2);
-
-//     const processBlock = async (block) => {
-//       const processedBlock = { ...block };
-//       if (block.type === "image" && block.src) {
-//         logMemory(`🖼️ Processing image block ${block.id}`);
-//         processedBlock.src = await imageLimit(() =>
-//           processImage(block.src, block.id, "blogs/post/images/")
-//         );
-//       }
-//       if (processedBlock.text) {
-//         processedBlock.text = processedBlock.text.replace(
-//           /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-//           ""
-//         );
-//       }
-//       if (processedBlock.caption) {
-//         processedBlock.caption = processedBlock.caption.replace(
-//           /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-//           ""
-//         );
-//       }
-//       if (block.type === "poll") {
-//         processedBlock.question =
-//           processedBlock.question?.trim() || "Default Question";
-//         processedBlock.options = Array.isArray(processedBlock.options)
-//           ? processedBlock.options
-//               .map((opt) => {
-//                 const value =
-//                   typeof opt === "string"
-//                     ? opt
-//                     : typeof opt === "object" && typeof opt.option === "string"
-//                     ? opt.option
-//                     : "";
-//                 const trimmed = value.trim();
-//                 return trimmed &&
-//                   trimmed.length >= 2 &&
-//                   trimmed.toLowerCase() !== "option"
-//                   ? {
-//                       option: trimmed,
-//                       votes:
-//                         typeof opt === "object" && Number.isInteger(opt.votes)
-//                           ? opt.votes
-//                           : 0,
-//                     }
-//                   : null;
-//               })
-//               .filter(Boolean)
-//           : [];
-//         processedBlock.votedUserIds = Array.isArray(processedBlock.votedUserIds)
-//           ? processedBlock.votedUserIds
-//               .map((vote) =>
-//                 mongoose.Types.ObjectId.isValid(vote.userId)
-//                   ? {
-//                       userId: new mongoose.Types.ObjectId(vote.userId),
-//                       votedAt: vote.votedAt || new Date(),
-//                     }
-//                   : null
-//               )
-//               .filter(Boolean)
-//           : [];
-//       }
-//       if (block.type === "table") {
-//         if (
-//           !processedBlock.data ||
-//           !Array.isArray(processedBlock.data) ||
-//           processedBlock.data.length === 0
-//         ) {
-//           throw new AppError(
-//             "Table block must have non-empty data",
-//             400,
-//             "ProcessBlock"
-//           );
-//         }
-//         if (
-//           !processedBlock.data.every(
-//             (row) => Array.isArray(row) && row.length > 0
-//           )
-//         ) {
-//           throw new AppError(
-//             "Table block has invalid data format",
-//             400,
-//             "ProcessBlock"
-//           );
-//         }
-//         processedBlock.data = processedBlock.data.map((row) =>
-//           row.map((cell) => (cell == null ? "" : String(cell)))
-//         );
-//       }
-//       return processedBlock;
-//     };
-
-//     logMemory("🖼️ Before processing blocks");
-//     const processedBlocks = await Promise.all(
-//       blocksWithIds.map((block) => blockLimit(() => processBlock(block)))
-//     );
-//     logMemory("🖼️ After processing blocks");
-
-//     const { readTime, readingTime } = calculateReadTime(processedBlocks);
-
-//     let processedThumbnail = rawThumbnail;
-//     if (rawThumbnail) {
-//       logMemory("🖼️ Before processing thumbnail");
-//       processedThumbnail = await imageLimit(() =>
-//         processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
-//       );
-//       logMemory("🖼️ After processing thumbnail");
-//     }
-
-//     const moderateContent = async (text) => {
-//       return { isFlagged: false, categories: {} };
-//     };
-
-//     const blockTextContent = processedBlocks
-//       .flatMap((block) =>
-//         ["text", "value", "code", "caption", "question"]
-//           .map((f) => block[f])
-//           .filter(Boolean)
-//       )
-//       .join("\n");
-//     const fullText = `${title}\n${excerpt || ""}\n${blockTextContent}`;
-//     logMemory("🔍 Before content moderation");
-//     const moderation = await moderateContent(fullText);
-//     logMemory("🔍 After content moderation");
-//     if (moderation.isFlagged) {
-//       const reasons = Object.entries(moderation.categories)
-//         .filter(([_, flagged]) => flagged)
-//         .map(([key]) => key);
-//       throw new AppError(
-//         `Restricted content: ${reasons.join(", ")}`,
-//         400,
-//         "CreatePost"
-//       );
-//     }
-
-//     let slug = slugify(title, { lower: true, strict: true });
-//     let finalSlug = slug;
-//     let counter = 1;
-
-//     logMemory("🔎 Before slug check");
-//     while (await PostModel.exists({ slug: finalSlug }).lean()) {
-//       finalSlug = `${slug}-${counter++}`;
-//     }
-//     slug = finalSlug;
-//     logMemory("🔎 After slug check");
-
-//     const postData = {
-//       title,
-//       slug,
-//       category,
-//       tags,
-//       thumbnail: processedThumbnail,
-//       excerpt,
-//       blocks: processedBlocks,
-//       author: req.user._id,
-//       isFeatured,
-//       isPinned,
-//       isPublished: true,
-//       language,
-//       readTime,
-//       readingTime,
-//       postType,
-//     };
-
-//     const session = await mongoose.startSession();
-//     session.startTransaction();
-//     try {
-//       logMemory("💾 Before DB insert");
-//       const [newPost] = await PostModel.create([postData], { session });
-//       await recordActivity(
-//         {
-//           userId: req.user._id,
-//           action: "POST_CREATED",
-//           targetPost: newPost._id,
-//           message: `Created post: ${title}`,
-//         },
-//         { session }
-//       );
-//       logMemory("💾 After DB insert");
-//       await session.commitTransaction();
-
-//       io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
-
-//       const cacheKey = `postCounts:${req.user._id}`;
-//       let counts = cache.get(cacheKey);
-//       if (!counts) {
-//         logMemory("📊 Before cache update");
-//         const [allPostsCount, myPostsCount, followingPostsCount] =
-//           await Promise.all([
-//             PostModel.countDocuments({
-//               blocked: { $ne: true },
-//               isPublished: true,
-//             }).lean(),
-//             PostModel.countDocuments({
-//               author: req.user._id,
-//               blocked: { $ne: true },
-//               isPublished: true,
-//             }).lean(),
-//             PostModel.countDocuments({
-//               author: { $in: req.user.following || [] },
-//               blocked: { $ne: true },
-//               isPublished: true,
-//             }).lean(),
-//           ]);
-//         counts = { allPostsCount, myPostsCount, followingPostsCount };
-//         cache.set(cacheKey, counts);
-//         logMemory("📊 After cache update");
-//       }
-
-//       setTimeout(() => {
-//         io.to(req.user._id).emit("postCountsUpdated", counts);
-//       }, 1000);
-
-//       logMemory("🎉 End createPost");
-//       res
-//         .status(201)
-//         .json({ success: true, message: "Post created", post: newPost });
-//     } catch (err) {
-//       await session.abortTransaction();
-//       throw err;
-//     } finally {
-//       session.endSession();
-//     }
-//   } catch (error) {
-//     next(
-//       error instanceof AppError
-//         ? error
-//         : new AppError(
-//             error.message || "Failed to create post",
-//             500,
-//             "CreatePost"
-//           )
-//     );
-//   }
-// };
-// --------------------------------------------------------------------------------
-// create post new code
 export const createPost = async (req, res, next) => {
-  const session = await mongoose.startSession();
   try {
     logMemory("📝 Start createPost");
     const {
@@ -463,6 +70,8 @@ export const createPost = async (req, res, next) => {
       throw new AppError("Blocks must be an array", 400, "CreatePost");
     }
 
+    logMemory("📦 After parsing input");
+
     const blocksWithIds = blocks.map((block, index) => {
       if (!block || typeof block !== "object" || !block.type) {
         throw new AppError(
@@ -479,7 +88,6 @@ export const createPost = async (req, res, next) => {
       };
     });
 
-    // Validate table blocks
     blocksWithIds.forEach((block, index) => {
       if (block.type === "table") {
         if (
@@ -521,8 +129,8 @@ export const createPost = async (req, res, next) => {
         } else if (source.startsWith("http")) {
           const response = await axios.get(source, {
             responseType: "arraybuffer",
-            timeout: 10000,
-          }); // Increased timeout
+            timeout: 5000,
+          });
           buffer = Buffer.from(response.data, "binary");
         } else {
           throw new AppError(
@@ -544,19 +152,18 @@ export const createPost = async (req, res, next) => {
           );
         }
 
-        if (metadata.width > 800 || metadata.height > 800) {
-          // Reduced resolution
+        if (metadata.width > 1200 || metadata.height > 1200) {
           image.resize({
-            width: 800,
-            height: 800,
+            width: 1200,
+            height: 1200,
             fit: "inside",
             withoutEnlargement: true,
           });
         }
 
         const compressedBuffer = await image
-          .webp({ quality: 70, effort: 3 })
-          .toBuffer(); // Optimized quality and effort
+          .webp({ quality: 75, effort: 4 })
+          .toBuffer();
         const result = await uploadToCloudinary({
           buffer: compressedBuffer,
           folder,
@@ -576,13 +183,14 @@ export const createPost = async (req, res, next) => {
           err.message || `Image processing failed: ${id}`,
           400,
           "CreatePost",
-          err.stack
+          "Error processing image"
         );
       }
     };
 
     const blockLimit = pLimit(3);
     const imageLimit = pLimit(2);
+
     const processBlock = async (block) => {
       const processedBlock = { ...block };
       if (block.type === "image" && block.src) {
@@ -673,9 +281,12 @@ export const createPost = async (req, res, next) => {
       return processedBlock;
     };
 
+    logMemory("🖼️ Before processing blocks");
     const processedBlocks = await Promise.all(
       blocksWithIds.map((block) => blockLimit(() => processBlock(block)))
     );
+    logMemory("🖼️ After processing blocks");
+
     const { readTime, readingTime } = calculateReadTime(processedBlocks);
 
     let processedThumbnail = rawThumbnail;
@@ -687,10 +298,10 @@ export const createPost = async (req, res, next) => {
       logMemory("🖼️ After processing thumbnail");
     }
 
-    const moderateContent = async (text) => ({
-      isFlagged: false,
-      categories: {},
-    });
+    const moderateContent = async (text) => {
+      return { isFlagged: false, categories: {} };
+    };
+
     const blockTextContent = processedBlocks
       .flatMap((block) =>
         ["text", "value", "code", "caption", "question"]
@@ -699,7 +310,9 @@ export const createPost = async (req, res, next) => {
       )
       .join("\n");
     const fullText = `${title}\n${excerpt || ""}\n${blockTextContent}`;
+    logMemory("🔍 Before content moderation");
     const moderation = await moderateContent(fullText);
+    logMemory("🔍 After content moderation");
     if (moderation.isFlagged) {
       const reasons = Object.entries(moderation.categories)
         .filter(([_, flagged]) => flagged)
@@ -714,10 +327,13 @@ export const createPost = async (req, res, next) => {
     let slug = slugify(title, { lower: true, strict: true });
     let finalSlug = slug;
     let counter = 1;
+
+    logMemory("🔎 Before slug check");
     while (await PostModel.exists({ slug: finalSlug }).lean()) {
       finalSlug = `${slug}-${counter++}`;
     }
     slug = finalSlug;
+    logMemory("🔎 After slug check");
 
     const postData = {
       title,
@@ -737,74 +353,77 @@ export const createPost = async (req, res, next) => {
       postType,
     };
 
+    const session = await mongoose.startSession();
     session.startTransaction();
-    const [newPost] = await PostModel.create([postData], { session });
-    await recordActivity(
-      {
-        userId: req.user._id,
-        action: "POST_CREATED",
-        targetPost: newPost._id,
-        message: `Created post: ${title}`,
-      },
-      { session }
-    );
-    await session.commitTransaction();
-    session.endSession();
+    try {
+      logMemory("💾 Before DB insert");
+      const [newPost] = await PostModel.create([postData], { session });
+      await recordActivity(
+        {
+          userId: req.user._id,
+          action: "POST_CREATED",
+          targetPost: newPost._id,
+          message: `Created post: ${title}`,
+        },
+        { session }
+      );
+      logMemory("💾 After DB insert");
+      await session.commitTransaction();
 
-    // Non-critical operations in background
-    setTimeout(async () => {
-      try {
-        io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
-        const cacheKey = `postCounts:${req.user._id}`;
-        let counts = cache.get(cacheKey);
-        if (!counts) {
-          const [allPostsCount, myPostsCount, followingPostsCount] =
-            await Promise.all([
-              PostModel.countDocuments({
-                blocked: { $ne: true },
-                isPublished: true,
-              }).lean(),
-              PostModel.countDocuments({
-                author: req.user._id,
-                blocked: { $ne: true },
-                isPublished: true,
-              }).lean(),
-              PostModel.countDocuments({
-                author: { $in: req.user.following || [] },
-                blocked: { $ne: true },
-                isPublished: true,
-              }).lean(),
-            ]);
-          counts = { allPostsCount, myPostsCount, followingPostsCount };
-          cache.set(cacheKey, counts);
-        }
-        io.to(req.user._id).emit("postCountsUpdated", counts);
-      } catch (err) {
-        console.error("[createPost] Background task error:", err.message);
+      io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
+
+      const cacheKey = `postCounts:${req.user._id}`;
+      let counts = cache.get(cacheKey);
+      if (!counts) {
+        logMemory("📊 Before cache update");
+        const [allPostsCount, myPostsCount, followingPostsCount] =
+          await Promise.all([
+            PostModel.countDocuments({
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+            PostModel.countDocuments({
+              author: req.user._id,
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+            PostModel.countDocuments({
+              author: { $in: req.user.following || [] },
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+          ]);
+        counts = { allPostsCount, myPostsCount, followingPostsCount };
+        cache.set(cacheKey, counts);
+        logMemory("📊 After cache update");
       }
-    }, 0);
 
-    res
-      .status(201)
-      .json({ success: true, message: "Post created", post: newPost });
-  } catch (error) {
-    if (session.inTransaction()) {
+      setTimeout(() => {
+        io.to(req.user._id).emit("postCountsUpdated", counts);
+      }, 1000);
+
+      logMemory("🎉 End createPost");
+      res
+        .status(201)
+        .json({ success: true, message: "Post created", post: newPost });
+    } catch (err) {
       await session.abortTransaction();
+      throw err;
+    } finally {
       session.endSession();
     }
+  } catch (error) {
     next(
       error instanceof AppError
         ? error
         : new AppError(
             error.message || "Failed to create post",
             500,
-            "CreatePost",
-            error.stack
+            "CreatePost"
           )
     );
   }
 };
-// ----------------------------------------------------------------------------
 
 // Get all published + unblocked posts with pagination
 export const getPublicPosts = async (req, res, next) => {
