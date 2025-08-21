@@ -1,31 +1,25 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
 import GuestCardOfPost from "../Cards/GuestCardOfPost";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import InFeedAd from "../../Ads/InFeedAd";
 import Skeleton from "../Ui/Skeleton";
-import { fetchPostsSequentially } from "../../Utils/fetchPostsSequentially"; // Adjust path as needed
 
 const GuestPostView = () => {
   const dispatch = useDispatch();
   const [initialLoad, setInitialLoad] = useState(true);
-  const [isFetching, setIsFetching] = useState(false);
-  const observerRef = useRef(null);
-  const sentinelRef = useRef(null);
 
   const {
     posts = [],
     loading,
     error,
-    page,
-    hasMore,
   } = useSelector((state) => state.guest || {});
   const isSidebarOpen = useSelector(
     (state) => state.postMeta?.isSidebarOpen || false
   );
 
-  // Load initial data
+  // Load ALL posts at once
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -34,7 +28,8 @@ const GuestPostView = () => {
           await dispatch(trackGuestVisit()).unwrap();
         }
         if (posts.length === 0) {
-          await dispatch(fetchPublicPosts({ page: 1, limit: 40 })).unwrap(); // Increased initial limit for better UX
+          // limit=0 → backend should return all posts
+          await dispatch(fetchPublicPosts({ page: 1, limit: 0 })).unwrap();
         }
       } catch (err) {
         console.error("[GuestPostView] Error loading guest data:", err);
@@ -44,69 +39,6 @@ const GuestPostView = () => {
     };
     loadData();
   }, [dispatch, posts.length]);
-
-  // Fetch next page using fetchPostsSequentially
-  const fetchNextPage = useCallback(async () => {
-    if (loading || isFetching || !hasMore) return;
-    setIsFetching(true);
-    try {
-      await fetchPostsSequentially({
-        dispatch,
-        posts: [{ page: page + 1, limit: 20 }],
-        getThunk: ({ page, limit }) => fetchPublicPosts({ page, limit }),
-        delayMs: 300, // Slightly increased delay for smoother network handling
-        maxRetries: 2,
-        timeoutMs: 10000,
-      });
-    } catch (err) {
-      console.error("[GuestPostView] Error fetching next page:", err);
-    } finally {
-      setIsFetching(false);
-    }
-  }, [dispatch, loading, isFetching, page, hasMore]);
-
-  // IntersectionObserver for smooth scroll detection
-  useEffect(() => {
-    if (!sentinelRef.current || !hasMore) return;
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !loading && !isFetching) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observerRef.current.observe(sentinelRef.current);
-
-    return () => {
-      if (observerRef.current && sentinelRef.current) {
-        observerRef.current.unobserve(sentinelRef.current);
-      }
-    };
-  }, [fetchNextPage, loading, isFetching, hasMore]);
-
-  // Fallback scroll handler with debounce
-  const handleScroll = useCallback(
-    _.debounce(() => {
-      if (
-        window.innerHeight + window.scrollY >=
-          document.documentElement.scrollHeight - 200 &&
-        !loading &&
-        !isFetching &&
-        hasMore
-      ) {
-        fetchNextPage();
-      }
-    }, 300),
-    [fetchNextPage, loading, isFetching, hasMore]
-  );
-
-  useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
 
   // Skeleton loading state
   if (loading && initialLoad) {
@@ -138,7 +70,7 @@ const GuestPostView = () => {
       <div className="text-center text-red-500 py-4">
         {error}
         <button
-          onClick={() => dispatch(fetchPublicPosts({ page: 1, limit: 40 }))}
+          onClick={() => dispatch(fetchPublicPosts({ page: 1, limit: 0 }))}
           className="ml-2 text-blue-500 underline"
         >
           Retry
@@ -158,10 +90,7 @@ const GuestPostView = () => {
 
   // Insert ads between posts
   const postsWithAds = posts.flatMap((post, index) => {
-    if (!post?._id || !post?.slug) {
-      console.warn("[GuestPostView] Invalid post at index", index, post);
-      return [];
-    }
+    if (!post?._id || !post?.slug) return [];
 
     const items = [<GuestCardOfPost key={post._id} {...post} />];
 
@@ -201,18 +130,6 @@ const GuestPostView = () => {
       }`}
     >
       {postsWithAds}
-      {hasMore && (
-        <div
-          ref={sentinelRef}
-          className="col-span-full h-10"
-          style={{ visibility: "hidden" }}
-        />
-      )}
-      {(loading || isFetching) && !initialLoad && (
-        <div className="col-span-full text-center py-4 animate-fade-in">
-          <Skeleton height="h-10" width="w-1/4" className="mx-auto" />
-        </div>
-      )}
     </div>
   );
 };

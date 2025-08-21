@@ -16,11 +16,7 @@ import {
 import { fetchCommentCount } from "../../store/commentSlice";
 import { fetchCategories } from "../../store/categorySlice";
 import { fetchFollowers } from "../../store/followSlice";
-import {
-  selectSocketState,
-  fetchInitialPostCounts,
-} from "../../store/socketSlice";
-import { fetchPostsSequentially } from "../../Utils/fetchPostsSequentially";
+import { fetchInitialPostCounts } from "../../store/socketSlice";
 import { fetchPublicPosts } from "../../store/guestSlice";
 import Sorted from "../Tabs/Sorted";
 import ErrorBoundary from "./ErrorBoundary";
@@ -49,16 +45,17 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   const { followers = { list: [] } } = useSelector(
     (state) => state.follow || {}
   );
-  const { socket, postCounts } = useSelector(selectSocketState);
+  const { socket, postCounts } = useSelector((state) => state.socket || {});
 
   const postsPerPage = 12;
   const [currentPage, setCurrentPage] = useState(1);
+  const [retryCount, setRetryCount] = useState(0);
   const observer = useRef(null);
   const lastPostElementRef = useRef(null);
 
   const cardsPerRow = useMemo(() => {
-    if (isSidebarOpen) {
-      return window.innerWidth >= 1280
+    return isSidebarOpen
+      ? window.innerWidth >= 1280
         ? 4
         : window.innerWidth >= 1024
         ? 3
@@ -66,9 +63,8 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
         ? 3
         : window.innerWidth >= 640
         ? 2
-        : 1;
-    }
-    return window.innerWidth >= 1280
+        : 1
+      : window.innerWidth >= 1280
       ? 5
       : window.innerWidth >= 1024
       ? 3
@@ -79,12 +75,14 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
       : 1;
   }, [isSidebarOpen]);
 
+  // Fetch initial data
   useEffect(() => {
     dispatch(fetchCategories());
     if (isAuthenticated) dispatch(fetchFollowers());
     dispatch(fetchInitialPostCounts());
   }, [dispatch, isAuthenticated]);
 
+  // Load initial posts
   useEffect(() => {
     if (customPosts.length) return;
     const options = { page: 1, limit: postsPerPage, blocked: { $ne: true } };
@@ -116,8 +114,12 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
         } else {
           metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
         }
+        setRetryCount(0); // Reset retry count on success
       } catch (e) {
         console.error("❌ Failed to load initial posts:", e);
+        if (retryCount < 3) {
+          setTimeout(() => setRetryCount(retryCount + 1), 2000); // Retry after 2s
+        }
       }
     };
     loadInitialPosts();
@@ -128,155 +130,86 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     customPosts.length,
     followers.list,
     isAuthenticated,
+    retryCount,
   ]);
 
+  // Debounced load more posts
+  const loadMorePosts = useCallback(
+    debounce(async () => {
+      if (postLoading || publicLoading || !hasMore) return;
+      const nextPage = currentPage + 1;
+      setCurrentPage(nextPage);
+      const options = {
+        page: nextPage,
+        limit: postsPerPage,
+        blocked: { $ne: true },
+      };
+      try {
+        let metaPosts;
+        if (isAuthenticated) {
+          if (filterType === "Following") {
+            metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+          } else if (filterType === "Followers" && followers.list.length) {
+            metaPosts = await dispatch(
+              getAllPosts({
+                authorIds: followers.list.map((user) => user._id),
+                ...options,
+              })
+            ).unwrap();
+          } else if (filterType === "My Posts" && user?._id) {
+            metaPosts = await dispatch(
+              getAllPosts({ userId: user._id, ...options })
+            ).unwrap();
+          } else {
+            metaPosts = await dispatch(getAllPosts(options)).unwrap();
+          }
+          await fetchPostsSequentially({
+            dispatch,
+            posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
+            getThunk: ({ slug }) => getSinglePost({ slug }),
+          });
+        } else {
+          metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
+        }
+        setRetryCount(0);
+      } catch (e) {
+        console.error("❌ Failed to load more posts:", e);
+        if (retryCount < 3) {
+          setTimeout(() => setRetryCount(retryCount + 1), 2000);
+        }
+      }
+    }, 300),
+    [
+      dispatch,
+      currentPage,
+      postLoading,
+      publicLoading,
+      hasMore,
+      filterType,
+      followers.list,
+      user?._id,
+      isAuthenticated,
+      retryCount,
+    ]
+  );
+
+  // Intersection Observer for infinite scroll
   useEffect(() => {
-    if (!socket || customPosts.length) return;
-
-    const handlePostCreated = debounce((newPost) => {
-      const options = { page: 1, limit: postsPerPage, blocked: { $ne: true } };
-      const reloadPosts = async () => {
-        try {
-          let metaPosts;
-          if (isAuthenticated) {
-            if (filterType === "Following") {
-              metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
-            } else if (filterType === "My Posts" && user?._id) {
-              metaPosts = await dispatch(
-                getAllPosts({ userId: user._id, ...options })
-              ).unwrap();
-            } else {
-              metaPosts = await dispatch(getAllPosts(options)).unwrap();
-            }
-            await fetchPostsSequentially({
-              dispatch,
-              posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
-              getThunk: ({ slug }) => getSinglePost({ slug }),
-            });
-          } else {
-            metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
-          }
-        } catch (e) {
-          console.error("❌ Failed to reload posts:", e);
+    if (!lastPostElementRef.current || !hasMore) return;
+    observer.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !(postLoading || publicLoading)) {
+          loadMorePosts();
         }
-      };
-      reloadPosts();
-      if (isAuthenticated) {
-        dispatch({
-          type: "socket/setPostCounts",
-          payload: {
-            allPostsCount: postCounts.allPostsCount + 1,
-            myPostsCount:
-              newPost.authorId === user?._id
-                ? postCounts.myPostsCount + 1
-                : postCounts.myPostsCount,
-            followingPostsCount: followers.list
-              .map((u) => u._id)
-              .includes(newPost.authorId)
-              ? postCounts.followingPostsCount + 1
-              : postCounts.followingPostsCount,
-          },
-        });
-      }
-    }, 300);
-
-    const handlePostUpdated = debounce(() => {
-      const options = { page: 1, limit: postsPerPage, blocked: { $ne: true } };
-      const reloadPosts = async () => {
-        try {
-          let metaPosts;
-          if (isAuthenticated) {
-            if (filterType === "Following") {
-              metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
-            } else if (filterType === "My Posts" && user?._id) {
-              metaPosts = await dispatch(
-                getAllPosts({ userId: user._id, ...options })
-              ).unwrap();
-            } else {
-              metaPosts = await dispatch(getAllPosts(options)).unwrap();
-            }
-            await fetchPostsSequentially({
-              dispatch,
-              posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
-              getThunk: ({ slug }) => getSinglePost({ slug }),
-            });
-          } else {
-            metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
-          }
-        } catch (e) {
-          console.error("❌ Failed to reload posts:", e);
-        }
-      };
-      reloadPosts();
-    }, 300);
-
-    const handlePostDeleted = debounce((data) => {
-      const options = { page: 1, limit: postsPerPage, blocked: { $ne: true } };
-      const reloadPosts = async () => {
-        try {
-          let metaPosts;
-          if (isAuthenticated) {
-            if (filterType === "Following") {
-              metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
-            } else if (filterType === "My Posts" && user?._id) {
-              metaPosts = await dispatch(
-                getAllPosts({ userId: user._id, ...options })
-              ).unwrap();
-            } else {
-              metaPosts = await dispatch(getAllPosts(options)).unwrap();
-            }
-            await fetchPostsSequentially({
-              dispatch,
-              posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
-              getThunk: ({ slug }) => getSinglePost({ slug }),
-            });
-          } else {
-            metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
-          }
-        } catch (e) {
-          console.error("❌ Failed to reload posts:", e);
-        }
-      };
-      reloadPosts();
-      if (isAuthenticated) {
-        dispatch({
-          type: "socket/setPostCounts",
-          payload: {
-            allPostsCount: Math.max(0, postCounts.allPostsCount - 1),
-            myPostsCount:
-              data.authorId === user?._id
-                ? Math.max(0, postCounts.myPostsCount - 1)
-                : postCounts.myPostsCount,
-            followingPostsCount: followers.list
-              .map((u) => u._id)
-              .includes(data.authorId)
-              ? Math.max(0, postCounts.followingPostsCount - 1)
-              : postCounts.followingPostsCount,
-          },
-        });
-      }
-    }, 300);
-
-    socket.on("postCreated", handlePostCreated);
-    socket.on("postUpdated", handlePostUpdated);
-    socket.on("postDeleted", handlePostDeleted);
-
+      },
+      { threshold: 0.5, rootMargin: "200px" } // Load earlier
+    );
+    observer.current.observe(lastPostElementRef.current);
     return () => {
-      socket.off("postCreated", handlePostCreated);
-      socket.off("postUpdated", handlePostUpdated);
-      socket.off("postDeleted", handlePostDeleted);
+      if (observer.current && lastPostElementRef.current)
+        observer.current.unobserve(lastPostElementRef.current);
     };
-  }, [
-    socket,
-    dispatch,
-    customPosts.length,
-    postsPerPage,
-    filterType,
-    user?._id,
-    postCounts,
-    followers.list,
-    isAuthenticated,
-  ]);
+  }, [loadMorePosts, hasMore, postLoading, publicLoading]);
 
   const categoryMap = useMemo(() => {
     return categories.reduce((map, cat) => {
@@ -299,24 +232,20 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
         post?.author &&
         post?.category
     );
-
     if (category) {
       validPosts = validPosts.filter((post) => {
-        let postCategorySlug = "";
-        if (typeof post.category === "object" && post.category?.slug) {
-          postCategorySlug = post.category.slug.toLowerCase();
-        } else if (typeof post.category === "string") {
-          const matched = categories.find((cat) => cat._id === post.category);
-          if (matched) postCategorySlug = matched.slug?.toLowerCase();
-        }
+        let postCategorySlug =
+          typeof post.category === "object" && post.category?.slug
+            ? post.category.slug.toLowerCase()
+            : categories
+                .find((cat) => cat._id === post.category)
+                ?.slug?.toLowerCase() || "";
         return postCategorySlug === category.toLowerCase();
       });
     }
-
     if (isAuthenticated && filterType === "My Posts") {
       validPosts = validPosts.filter((post) => post.author?._id === user?._id);
     }
-
     if (isAuthenticated && filterType === "Followers") {
       const followersIds = followers.list.map((user) => user._id);
       validPosts = validPosts.filter(
@@ -325,13 +254,11 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
           String(post.author?._id) !== String(currentUser._id)
       );
     }
-
     if (isAuthenticated && filterType === "Following") {
       validPosts = validPosts.filter(
         (post) => String(post.author?._id) !== String(currentUser._id)
       );
     }
-
     return validPosts;
   }, [
     customPosts,
@@ -372,9 +299,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
       },
       categoryName:
         categoryMap[
-          typeof post?.category === "string"
-            ? post.category
-            : post.category?._id
+          typeof post.category === "string" ? post.category : post.category?._id
         ] || "Uncategorized",
       likesCount: post?.likes?.length ?? 0,
       viewsCount: post?.viewsCount ?? 0,
@@ -388,28 +313,12 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     }));
   }, [sortedPosts, categoryMap]);
 
-  useEffect(() => {
-    const postsToFetch = (
-      customPosts.length ? customPosts : isAuthenticated ? posts : publicPosts
-    ).filter((post) => post?._id && commentCounts[post._id] === undefined);
-    postsToFetch.forEach((post) => dispatch(fetchCommentCount(post._id)));
-  }, [
-    dispatch,
-    customPosts,
-    posts,
-    publicPosts,
-    commentCounts,
-    isAuthenticated,
-  ]);
-
   const screenWidth = useWindowWidth();
 
-  const insertAdsIntoPosts = (posts) => {
-    const result = [...posts];
+  const insertAdsIntoPosts = useMemo(() => {
+    const result = [...selectedPosts];
     const items = [];
-    let adFrequency = 9;
-    if (screenWidth < 1024 && screenWidth >= 768) adFrequency = 8;
-
+    let adFrequency = screenWidth < 1024 && screenWidth >= 768 ? 8 : 9;
     for (let i = 0; i < result.length; i++) {
       items.push(result[i]);
       if ((i + 1) % 6 === 0) {
@@ -428,80 +337,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
       }
     }
     return items;
-  };
-
-  const itemsWithAds = useMemo(
-    () => insertAdsIntoPosts(selectedPosts),
-    [selectedPosts, screenWidth]
-  );
-
-  const loadMorePosts = useCallback(async () => {
-    if (!(postLoading || publicLoading) && hasMore) {
-      const nextPage = currentPage + 1;
-      setCurrentPage(nextPage);
-      const options = {
-        page: nextPage,
-        limit: postsPerPage,
-        blocked: { $ne: true },
-      };
-      try {
-        let metaPosts;
-        if (isAuthenticated) {
-          if (filterType === "Following") {
-            metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
-          } else if (filterType === "Followers" && followers.list.length) {
-            metaPosts = await dispatch(
-              getAllPosts({
-                authorIds: followers.list.map((user) => user._id),
-                ...options,
-              })
-            ).unwrap();
-          } else if (filterType === "My Posts" && user?._id) {
-            metaPosts = await dispatch(
-              getAllPosts({ userId: user._id, ...options })
-            ).unwrap();
-          } else {
-            metaPosts = await dispatch(getAllPosts(options)).unwrap();
-          }
-          await fetchPostsSequentially({
-            dispatch,
-            posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
-            getThunk: ({ slug }) => getSinglePost({ slug }),
-          });
-        } else {
-          metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
-        }
-      } catch (e) {
-        console.error("❌ Failed to load posts:", e);
-      }
-    }
-  }, [
-    dispatch,
-    currentPage,
-    postLoading,
-    publicLoading,
-    hasMore,
-    filterType,
-    followers.list,
-    user?._id,
-    isAuthenticated,
-  ]);
-
-  useEffect(() => {
-    if (!lastPostElementRef.current || !hasMore) return;
-    observer.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !(postLoading || publicLoading))
-          loadMorePosts();
-      },
-      { threshold: 0.1 }
-    );
-    observer.current.observe(lastPostElementRef.current);
-    return () => {
-      if (observer.current && lastPostElementRef.current)
-        observer.current.unobserve(lastPostElementRef.current);
-    };
-  }, [loadMorePosts, hasMore, postLoading, publicLoading]);
+  }, [selectedPosts, screenWidth]);
 
   const renderSkeletonGrid = () => (
     <div
@@ -527,9 +363,17 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
         {(postLoading || publicLoading) && !selectedPosts.length ? (
           renderSkeletonGrid()
         ) : postError ? (
-          <p className="text-center text-red-500">
-            {postError?.message || "Error loading posts"}
-          </p>
+          <div className="text-center">
+            <p className="text-red-500">
+              {postError?.message || "Error loading posts"}
+            </p>
+            <button
+              onClick={() => setRetryCount(retryCount + 1)}
+              className="mt-2 text-blue-500"
+            >
+              Retry
+            </button>
+          </div>
         ) : (
           <>
             <div
@@ -539,8 +383,8 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
                   : "lg:grid-cols-3 xl:grid-cols-5"
               }`}
             >
-              {itemsWithAds.length ? (
-                itemsWithAds.map((item, i) => {
+              {insertAdsIntoPosts.length ? (
+                insertAdsIntoPosts.map((item, i) => {
                   if (item.type === "card-ad") {
                     return (
                       <div
@@ -565,7 +409,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
                     <div
                       key={item._id}
                       ref={
-                        i === itemsWithAds.length - 1
+                        i === insertAdsIntoPosts.length - 1
                           ? lastPostElementRef
                           : null
                       }
@@ -589,12 +433,12 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
               ) : (
                 <p className="col-span-full text-center text-gray-500">
                   {filterType === "Following"
-                    ? "Follow users to see their posts here."
+                    ? "Follow users to see their posts here. Try exploring suggested users!"
                     : filterType === "Followers"
                     ? "No posts from your followers yet."
                     : filterType === "My Posts"
-                    ? "You haven't posted yet."
-                    : "No posts found"}
+                    ? "You haven't posted yet. Create your first post!"
+                    : "No posts found. Check back later!"}
                 </p>
               )}
             </div>
