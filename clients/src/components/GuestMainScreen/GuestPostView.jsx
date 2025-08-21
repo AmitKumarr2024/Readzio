@@ -1,103 +1,102 @@
-// GuestPostView.js
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchPublicPosts,
-  trackGuestVisit,
-  clearGuestError,
-} from "../../store/guestSlice";
+import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
 import GuestCardOfPost from "../Cards/GuestCardOfPost";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import InFeedAd from "../../Ads/InFeedAd";
 import Skeleton from "../Ui/Skeleton";
-import GuestLoginModal from "../../AppRootFile/components/GuestLoginModal";
 
 const GuestPostView = () => {
   const dispatch = useDispatch();
+  const [initialLoad, setInitialLoad] = useState(true);
+
   const {
     posts = [],
     loading,
     error,
-    page,
-    total,
-    hasMore,
   } = useSelector((state) => state.guest || {});
   const isSidebarOpen = useSelector(
     (state) => state.postMeta?.isSidebarOpen || false
   );
-  const observerRef = useRef();
-  const [fetchAttempted, setFetchAttempted] = useState(false);
 
+  // Watch for posts update - useful for debugging
+  // useEffect(() => {
+  //   console.log("[GuestPostView] Redux guest.posts updated:", posts);
+  // }, [posts]);
+
+  // Load guest data and posts
   useEffect(() => {
     const loadData = async () => {
-      if (fetchAttempted) return; // Prevent multiple fetch attempts
-      setFetchAttempted(true);
       try {
-        console.log("[GuestPostView] Initializing data load...");
+        // Track guest visit if no guestId exists
         const guestId = localStorage.getItem("guestId");
         if (!guestId) {
-          console.log("[GuestPostView] No guestId, tracking visit...");
+          // console.log("[GuestPostView] No guestId found, tracking visit...");
           await dispatch(trackGuestVisit()).unwrap();
+        } else {
+          console.log("[GuestPostView] GuestId already exists:", guestId);
         }
-        console.log("[GuestPostView] Fetching posts, page: 1, limit: 12");
-        await dispatch(fetchPublicPosts({ page: 1, limit: 12 })).unwrap();
+
+        // Fetch posts only if none exist
+        // if (posts.length === 0) {
+        //   console.log("[GuestPostView] Fetching public posts...");
+        //   const result = await dispatch(
+        //     fetchPublicPosts({ page: 1, limit: 12 })
+        //   ).unwrap();
+        //   console.log("[GuestPostView] Fetch result:", result);
+        // } else {
+        //   console.log("[GuestPostView] Posts already loaded:", posts.length);
+        // }
       } catch (err) {
-        console.error("[GuestPostView] Error loading data:", err);
+        console.error("[GuestPostView] Error loading guest data:", err);
+      } finally {
+        // console.log("[GuestPostView] Setting initialLoad to false");
+        setInitialLoad(false);
       }
     };
     loadData();
-  }, [dispatch, fetchAttempted]);
+  }, [dispatch, posts.length]);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading) {
-          console.log(
-            "[GuestPostView] Scrolled to bottom, fetching page:",
-            page + 1
-          );
-          dispatch(fetchPublicPosts({ page: page + 1, limit: 12 }));
-        }
-      },
-      { threshold: 0.1 }
+  // Skeleton loading state
+  if (loading && initialLoad) {
+    // console.log("[GuestPostView] Rendering skeleton loading state");
+    return (
+      <div
+        className={`grid gap-4 py-6 px-4 w-full
+          grid-cols-1 
+          sm:grid-cols-2 
+          md:grid-cols-3 
+          ${
+            isSidebarOpen
+              ? "lg:grid-cols-3 xl:grid-cols-4"
+              : "lg:grid-cols-3 xl:grid-cols-5"
+          }
+        `}
+      >
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-card-bg-light dark:bg-card-bg-dark rounded-lg p-4 shadow-md"
+          >
+            <Skeleton height="h-40" rounded="rounded-lg" className="mb-3" />
+            <Skeleton height="h-5" width="w-3/4" className="mb-2" />
+            <Skeleton height="h-4" width="w-1/2" />
+          </div>
+        ))}
+      </div>
     );
-
-    if (observerRef.current) {
-      observer.observe(observerRef.current);
-    }
-
-    return () => {
-      if (observerRef.current) {
-        observer.unobserve(observerRef.current);
-      }
-    };
-  }, [dispatch, page, hasMore, loading]);
-
-  // Debug state
-  console.log("[GuestPostView] State:", {
-    posts: posts.length,
-    loading,
-    error,
-    page,
-    total,
-    hasMore,
-    postsSample: posts.slice(0, 2),
-  });
+  }
 
   // Error state
-  if (
-    !loading &&
-    error &&
-    error !== "Too many guest visits, please try again later"
-  ) {
+  if (error && !initialLoad) {
+    // console.log("[GuestPostView] Rendering error state:", error);
     return (
       <div className="text-center text-red-500 py-4">
         {error}
         <button
           onClick={() => {
-            console.log("[GuestPostView] Retrying fetch, page: 1");
-            dispatch(clearGuestError());
-            setFetchAttempted(false); // Allow retry
+            // console.log("[GuestPostView] Retrying fetchPublicPosts");
+            dispatch(fetchPublicPosts({ page: 1, limit: 20 }));
           }}
           className="ml-2 text-blue-500 underline"
         >
@@ -108,7 +107,8 @@ const GuestPostView = () => {
   }
 
   // Empty state
-  if (!loading && posts.length === 0) {
+  if (!initialLoad && (!Array.isArray(posts) || posts.length === 0)) {
+    // console.log("[GuestPostView] Rendering empty state");
     return (
       <div className="text-center text-gray-400 py-8">
         No posts available for guests.
@@ -117,6 +117,10 @@ const GuestPostView = () => {
   }
 
   // Insert ads between posts
+  // console.log(
+  //   "[GuestPostView] Rendering posts with ads, posts count:",
+  //   posts.length
+  // );
   const postsWithAds = posts.flatMap((post, index) => {
     if (!post?._id || !post?.slug) {
       console.warn("[GuestPostView] Invalid post at index", index, post);
@@ -153,47 +157,19 @@ const GuestPostView = () => {
   });
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <GuestLoginModal />
-      <div
-        className={`grid gap-4 py-6 w-full
-          grid-cols-1 
-          sm:grid-cols-2 
-          md:grid-cols-3 
-          ${
-            isSidebarOpen
-              ? "lg:grid-cols-3 xl:grid-cols-4"
-              : "lg:grid-cols-4 xl:grid-cols-5"
-          }
-        `}
-      >
-        {postsWithAds.length > 0
-          ? postsWithAds
-          : !loading && (
-              <div className="col-span-full text-center text-gray-400 py-8">
-                No posts to display.
-              </div>
-            )}
-        {loading &&
-          Array.from({ length: 12 }).map((_, i) => (
-            <div
-              key={`skeleton-${i}`}
-              className="bg-card-bg-light dark:bg-card-bg-dark rounded-lg p-4 shadow-md"
-            >
-              <Skeleton height="h-40" rounded="rounded-lg" className="mb-3" />
-              <Skeleton height="h-5" width="w-3/4" className="mb-2" />
-              <Skeleton height="h-4" width="w-1/2" />
-            </div>
-          ))}
-      </div>
-      {hasMore && posts.length > 0 && (
-        <div ref={observerRef} className="h-10" />
-      )}
-      {!hasMore && posts.length > 0 && (
-        <div className="text-center text-gray-400 py-4">
-          No more posts to load
-        </div>
-      )}
+    <div
+      className={`grid gap-4 py-6 px-4 w-full
+        grid-cols-1 
+        sm:grid-cols-2 
+        md:grid-cols-3 
+        ${
+          isSidebarOpen
+            ? "lg:grid-cols-3 xl:grid-cols-4"
+            : "lg:grid-cols-4 xl:grid-cols-5"
+        }
+      `}
+    >
+      {postsWithAds}
     </div>
   );
 };
