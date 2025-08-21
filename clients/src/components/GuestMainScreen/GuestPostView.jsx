@@ -1,5 +1,5 @@
 // GuestPostView.js
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchPublicPosts,
@@ -26,9 +26,12 @@ const GuestPostView = () => {
     (state) => state.postMeta?.isSidebarOpen || false
   );
   const observerRef = useRef();
+  const [fetchAttempted, setFetchAttempted] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
+      if (fetchAttempted) return; // Prevent multiple fetch attempts
+      setFetchAttempted(true);
       try {
         console.log("[GuestPostView] Initializing data load...");
         const guestId = localStorage.getItem("guestId");
@@ -43,7 +46,7 @@ const GuestPostView = () => {
       }
     };
     loadData();
-  }, [dispatch]);
+  }, [dispatch, fetchAttempted]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -94,7 +97,7 @@ const GuestPostView = () => {
           onClick={() => {
             console.log("[GuestPostView] Retrying fetch, page: 1");
             dispatch(clearGuestError());
-            dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
+            setFetchAttempted(false); // Allow retry
           }}
           className="ml-2 text-blue-500 underline"
         >

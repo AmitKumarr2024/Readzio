@@ -40,6 +40,9 @@ export const fetchPublicPosts = createAsyncThunk(
     } catch (err) {
       if (err.message === "Timeout")
         return rejectWithValue("Request timed out");
+      if (err.response?.status === 401) {
+        return rejectWithValue("Unauthorized access to posts");
+      }
       const errMsg =
         err.response?.data?.message || "Failed to fetch public posts";
       return rejectWithValue(errMsg);
@@ -66,6 +69,9 @@ export const fetchPublicPostBySlug = createAsyncThunk(
     } catch (err) {
       if (err.message === "Timeout")
         return rejectWithValue("Request timed out");
+      if (err.response?.status === 401) {
+        return rejectWithValue("Unauthorized access to post");
+      }
       const errMsg = err.response?.data?.message || "Post not found";
       return rejectWithValue(errMsg);
     }
@@ -86,6 +92,9 @@ export const trackGuestView = createAsyncThunk(
     } catch (err) {
       if (err.message === "Timeout")
         return rejectWithValue("Request timed out");
+      if (err.response?.status === 401) {
+        return rejectWithValue("Unauthorized to track view");
+      }
       const errMsg = err.response?.data?.message || "Failed to track view";
       return rejectWithValue(errMsg);
     }
@@ -112,6 +121,9 @@ export const searchPublicPosts = createAsyncThunk(
     } catch (err) {
       if (err.message === "Timeout")
         return rejectWithValue("Request timed out");
+      if (err.response?.status === 401) {
+        return rejectWithValue("Unauthorized to search posts");
+      }
       const errMsg =
         err.response?.data?.message || "Failed to search public posts";
       return rejectWithValue(errMsg);
@@ -136,6 +148,9 @@ export const trackGuestVisit = createAsyncThunk(
     } catch (err) {
       if (err.message === "Timeout")
         return rejectWithValue("Request timed out");
+      if (err.response?.status === 401) {
+        return rejectWithValue("Unauthorized to track guest visit");
+      }
       const errMsg =
         err.response?.data?.message || "Failed to track guest visit";
       return rejectWithValue(errMsg);
