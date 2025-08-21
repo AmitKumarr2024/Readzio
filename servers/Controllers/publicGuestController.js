@@ -1,4 +1,3 @@
-// publicGuestController.js
 import { v4 as uuidv4 } from "uuid";
 import PostModel from "../../servers/Models/Post.js";
 import { AppError } from "../../servers/Utils/AppError.js";
@@ -22,23 +21,25 @@ const GUEST_VISIT_WINDOW = 60 * 1000; // 1 minute
 export const getPublicPosts = async (req, res, next) => {
   try {
     logMemory("Before getPublicPosts start");
-    const { page = 1, limit = 120, tag, after, blocked = false } = req.query;
+    const { page = 1, limit, tag, after, blocked = false } = req.query;
+
     const pageNum = parseInt(page);
-    const limitNum = Math.min(parseInt(limit), 100);
-    const cacheKey = `publicPosts:${pageNum}:${limitNum}:${tag || "all"}:${
-      after || "none"
-    }:${blocked}`;
+    const limitNum = limit ? parseInt(limit) : 0; // if no limit provided, return all
+
+    const cacheKey = `publicPosts:${pageNum}:${limitNum || "all"}:${
+      tag || "all"
+    }:${after || "none"}:${blocked}`;
 
     console.log(
       `Request params: page=${pageNum}, limit=${limitNum}, tag=${
         tag || "none"
       }, after=${after || "none"}, blocked=${blocked}`
     );
+
     logMemory(`Before checking cache: ${cacheKey}`);
     const cachedPosts = cache.get(cacheKey);
     if (cachedPosts) {
       logMemory(`Cache hit: ${cacheKey}`);
-      console.log(`Returning cached posts: ${cachedPosts.posts.length} posts`);
       return res.status(200).json({
         success: true,
         posts: cachedPosts.posts,
@@ -57,11 +58,10 @@ export const getPublicPosts = async (req, res, next) => {
 
     console.log("Query:", JSON.stringify(query));
     logMemory("Before PostModel.find");
-    const posts = await PostModel.find(query)
+
+    let mongoQuery = PostModel.find(query)
       .maxTimeMS(10000)
       .sort({ createdAt: -1 })
-      .skip((pageNum - 1) * limitNum)
-      .limit(limitNum)
       .select(
         "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks"
       )
@@ -69,8 +69,14 @@ export const getPublicPosts = async (req, res, next) => {
       .populate("category", "name slug")
       .lean();
 
+    // apply pagination only if limit is > 0
+    if (limitNum > 0) {
+      mongoQuery = mongoQuery.skip((pageNum - 1) * limitNum).limit(limitNum);
+    }
+
+    const posts = await mongoQuery;
     console.log("Posts fetched:", posts.length);
-    logMemory("Before processing posts");
+
     const processedPosts = posts.map((post) => ({
       ...post,
       blocks: Array.isArray(post.blocks) ? post.blocks : [],
@@ -84,10 +90,8 @@ export const getPublicPosts = async (req, res, next) => {
 
     logMemory(`Before setting cache: ${cacheKey}`);
     cache.set(cacheKey, { posts: processedPosts, total, lastFetched });
-    console.log(`Cached posts: ${processedPosts.length} posts`);
 
     if (req.user?._id) {
-      logMemory("Before recordActivity");
       await recordActivity({
         userId: req.user._id,
         action: "VIEWED_PUBLIC_POSTS",
@@ -95,11 +99,8 @@ export const getPublicPosts = async (req, res, next) => {
           tag || "none"
         })`,
       });
-      console.log(`Activity recorded for user: ${req.user._id}`);
     }
 
-    logMemory("After getPublicPosts complete");
-    console.log("Returning response with posts:", processedPosts.length);
     res.status(200).json({
       success: true,
       posts: processedPosts,
