@@ -272,7 +272,7 @@
   position: relative;
   z-index: 1;
   border-radius: 9999px;
-  background-color: #3381fe; /* Tailwind blue-500 */
+  background-color: #000000; /* Tailwind blue-500 */
   color: white;
 }
 
