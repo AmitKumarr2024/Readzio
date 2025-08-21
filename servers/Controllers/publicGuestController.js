@@ -15,32 +15,22 @@ const cache = new NodeCache({ stdTTL: 3600 }); // Extended TTL to 1 hour
 
 // Rate limiter for guest visits
 const guestVisitLimiter = new Map();
-const GUEST_VISIT_LIMIT = 10; // Max visits per minute per IP
+const GUEST_VISIT_LIMIT = 100; // Max visits per minute per IP
 const GUEST_VISIT_WINDOW = 60 * 1000; // 1 minute
 
 // GET /public/posts
 export const getPublicPosts = async (req, res, next) => {
   try {
-    logMemory("Before getPublicPosts start");
-    const { page = 1, limit, tag, after, blocked = false } = req.query;
-
+    const { page = 1, limit, tag, after, blocked = "false" } = req.query;
     const pageNum = parseInt(page);
-    const limitNum = limit ? parseInt(limit) : 0; // if no limit provided, return all
+    const limitNum = parseInt(limit) || 0;
+    const isBlocked = blocked === "true";
 
     const cacheKey = `publicPosts:${pageNum}:${limitNum || "all"}:${
       tag || "all"
-    }:${after || "none"}:${blocked}`;
-
-    console.log(
-      `Request params: page=${pageNum}, limit=${limitNum}, tag=${
-        tag || "none"
-      }, after=${after || "none"}, blocked=${blocked}`
-    );
-
-    logMemory(`Before checking cache: ${cacheKey}`);
+    }:${after || "none"}:${isBlocked}`;
     const cachedPosts = cache.get(cacheKey);
     if (cachedPosts) {
-      logMemory(`Cache hit: ${cacheKey}`);
       return res.status(200).json({
         success: true,
         posts: cachedPosts.posts,
@@ -52,13 +42,10 @@ export const getPublicPosts = async (req, res, next) => {
 
     const query = {
       isPublished: true,
-      blocked: blocked === "false" ? false : { $ne: true },
+      blocked: isBlocked ? true : false,
       ...(tag ? { tags: { $in: [tag] } } : {}),
       ...(after ? { createdAt: { $lt: new Date(after) } } : {}),
     };
-
-    console.log("Query:", JSON.stringify(query));
-    logMemory("Before PostModel.find");
 
     let mongoQuery = PostModel.find(query)
       .maxTimeMS(10000)
@@ -70,26 +57,19 @@ export const getPublicPosts = async (req, res, next) => {
       .populate("category", "name slug")
       .lean();
 
-    // apply pagination only if limit is > 0
     if (limitNum > 0) {
       mongoQuery = mongoQuery.skip((pageNum - 1) * limitNum).limit(limitNum);
     }
 
     const posts = await mongoQuery;
-    console.log("Posts fetched:", posts.length);
-
     const processedPosts = posts.map((post) => ({
       ...post,
       blocks: Array.isArray(post.blocks) ? post.blocks : [],
     }));
 
-    logMemory("Before PostModel.countDocuments");
     const total = await PostModel.countDocuments(query).maxTimeMS(5000).lean();
-    console.log("Total posts:", total);
-
     const lastFetched = posts.length ? posts[posts.length - 1].createdAt : null;
 
-    logMemory(`Before setting cache: ${cacheKey}`);
     cache.set(cacheKey, { posts: processedPosts, total, lastFetched });
 
     if (req.user?._id) {
@@ -110,15 +90,12 @@ export const getPublicPosts = async (req, res, next) => {
       lastFetched,
     });
   } catch (error) {
-    console.error("Error in getPublicPosts:", error.message, error.stack);
     next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to fetch public posts",
-            500,
-            "GetPublicPosts"
-          )
+      new AppError(
+        error.message || "Failed to fetch public posts",
+        500,
+        "GetPublicPosts"
+      )
     );
   }
 };
