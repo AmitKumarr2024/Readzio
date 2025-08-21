@@ -21,7 +21,6 @@ export const fetchPublicPosts = createAsyncThunk(
       const res = await axiosInstance.get("/public/posts", {
         params: { page, limit },
       });
-
       const posts = (res.data?.posts || []).map((post) => ({
         ...post,
         blocks: Array.isArray(post.blocks) ? post.blocks : [],
@@ -29,15 +28,14 @@ export const fetchPublicPosts = createAsyncThunk(
 
       return {
         posts,
-        total: res.data?.total ?? posts.length,
-        page: res.data?.page ?? 1,
-        lastFetched: res.data?.lastFetched ?? null,
+        page: res.data?.page ?? page,
+        total: res.data?.total ?? 0,
         limit,
       };
     } catch (err) {
-      const errMsg =
-        err.response?.data?.message || "Failed to fetch public posts";
-      return rejectWithValue(errMsg);
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch public posts"
+      );
     }
   }
 );
@@ -144,21 +142,19 @@ const guestSlice = createSlice({
       })
       .addCase(fetchPublicPosts.fulfilled, (state, action) => {
         state.loading = false;
-        state.total = action.payload.total;
-        state.page = action.payload.page;
+
         const newPosts = action.payload.posts.filter(
-          (newPost) => !state.posts.some((post) => post._id === newPost._id)
+          (p) => !state.posts.some((existing) => existing._id === p._id)
         );
-        if (action.payload.limit === 0) {
+
+        if (action.payload.page === 1) {
           state.posts = newPosts;
-          state.hasMore = false;
         } else {
-          state.posts =
-            action.payload.page === 1
-              ? newPosts
-              : [...state.posts, ...newPosts];
-          state.hasMore = state.posts.length < action.payload.total;
+          state.posts = [...state.posts, ...newPosts];
         }
+
+        state.page = action.payload.page;
+        state.hasMore = newPosts.length > 0; // if no new posts → no more
       })
       .addCase(fetchPublicPosts.rejected, (state, action) => {
         state.loading = false;
