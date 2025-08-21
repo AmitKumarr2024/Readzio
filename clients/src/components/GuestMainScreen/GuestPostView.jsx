@@ -56,15 +56,16 @@ const GuestPostView = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log("[GuestPostView] Loading data...");
         const guestId = localStorage.getItem("guestId");
         if (!guestId) {
+          console.log("[GuestPostView] No guestId, tracking visit...");
           await dispatch(trackGuestVisit()).unwrap();
         }
-        if (posts.length === 0) {
-          await dispatch(fetchPublicPosts({ page: 1, limit: 12 })).unwrap();
-        }
+        console.log("[GuestPostView] Fetching posts, page:", page);
+        await dispatch(fetchPublicPosts({ page: 1, limit: 12 })).unwrap();
       } catch (err) {
-        console.error("[GuestPostView] Error loading guest data:", err);
+        console.error("[GuestPostView] Error loading data:", err);
       }
     };
     loadData();
@@ -74,6 +75,10 @@ const GuestPostView = () => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !loading) {
+          console.log(
+            "[GuestPostView] Scrolled to bottom, fetching page:",
+            page + 1
+          );
           dispatch(fetchPublicPosts({ page: page + 1, limit: 12 }));
         }
       },
@@ -93,10 +98,43 @@ const GuestPostView = () => {
 
   useEffect(() => {
     if (error === "Too many guest visits, please try again later") {
+      console.log("[GuestPostView] Guest limit reached, showing modal in 30s");
       const timer = setTimeout(() => setShowModal(true), 30000);
       return () => clearTimeout(timer);
     }
   }, [error]);
+
+  // Debug state
+  console.log("[GuestPostView] State:", {
+    posts: posts.length,
+    loading,
+    error,
+    page,
+    total,
+    hasMore,
+  });
+
+  // Error state
+  if (
+    error &&
+    error !== "Too many guest visits, please try again later" &&
+    !loading
+  ) {
+    return (
+      <div className="text-center text-red-500 py-4">
+        {error}
+        <button
+          onClick={() => {
+            console.log("[GuestPostView] Retrying fetch, page: 1");
+            dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
+          }}
+          className="ml-2 text-blue-500 underline"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   // Empty state
   if (!loading && (!Array.isArray(posts) || posts.length === 0)) {
@@ -146,17 +184,6 @@ const GuestPostView = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {showModal && <GuestLoginModal onClose={() => setShowModal(false)} />}
-      {error && error !== "Too many guest visits, please try again later" && (
-        <div className="text-center text-red-500 py-4">
-          {error}
-          <button
-            onClick={() => dispatch(fetchPublicPosts({ page: 1, limit: 12 }))}
-            className="ml-2 text-blue-500 underline"
-          >
-            Retry
-          </button>
-        </div>
-      )}
       <div
         className={`grid gap-4 py-6 w-full
           grid-cols-1 
