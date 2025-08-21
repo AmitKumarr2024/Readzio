@@ -1,26 +1,34 @@
-// SinglePostView.jsx (new component for single post rendering)
+// SinglePostView.jsx
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { fetchPublicPostBySlug, trackGuestView } from "../../store/guestSlice";
 import Skeleton from "../Ui/Skeleton";
+import GuestLoginModal from "../components/GuestLoginModal";
 
 const SinglePostView = () => {
   const { slug } = useParams();
   const dispatch = useDispatch();
-  const { singlePost, loading, error } = useSelector((state) => state.guest || {});
+  const { singlePost, loading, error } = useSelector(
+    (state) => state.guest || {}
+  );
 
   useEffect(() => {
     const loadPost = async () => {
       try {
+        console.log("[SinglePostView] Fetching post, slug:", slug);
         await dispatch(fetchPublicPostBySlug(slug)).unwrap();
+        console.log("[SinglePostView] Tracking guest view, slug:", slug);
         await dispatch(trackGuestView(slug)).unwrap();
       } catch (err) {
-        console.error("Failed to fetch post:", err);
+        console.error("[SinglePostView] Error loading post:", err);
       }
     };
     loadPost();
   }, [dispatch, slug]);
+
+  // Debug state
+  console.log("[SinglePostView] State:", { singlePost, loading, error });
 
   if (loading) {
     return (
@@ -35,12 +43,15 @@ const SinglePostView = () => {
     );
   }
 
-  if (error) {
+  if (error && error !== "Too many guest visits, please try again later") {
     return (
       <div className="text-center text-red-500 py-4">
         {error}
         <button
-          onClick={() => dispatch(fetchPublicPostBySlug(slug))}
+          onClick={() => {
+            console.log("[SinglePostView] Retrying fetch, slug:", slug);
+            dispatch(fetchPublicPostBySlug(slug));
+          }}
           className="ml-2 text-blue-500 underline"
         >
           Retry
@@ -50,11 +61,14 @@ const SinglePostView = () => {
   }
 
   if (!singlePost) {
-    return <div className="text-center text-gray-400 py-8">Post not found.</div>;
+    return (
+      <div className="text-center text-gray-400 py-8">Post not found.</div>
+    );
   }
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
+      <GuestLoginModal />
       <h1 className="text-3xl font-bold mb-4">{singlePost.title}</h1>
       <p className="text-gray-600 mb-4">{singlePost.excerpt}</p>
       {singlePost.thumbnail && (
