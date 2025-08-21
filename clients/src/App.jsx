@@ -27,34 +27,17 @@ import CookieConsentBanner from "./AppRootFile/components/CookieConsentBanner";
 import FeedbackModal from "./AppRootFile/components/FeedbackModal";
 import VerifyBanner from "./AppRootFile/components/VerifyBanner";
 import AppTour from "./AppRootFile/components/AppTour";
-import GuestLoginModal from "./AppRootFile/components/GuestLoginModal";
-import axiosInstance from "./connection/axiosInstance";
 
 export default function App() {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const [booting, setBooting] = useState(true);
-  const [showThankYou, setShowThankYou] = useState(false);
-  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false); // Added state
   const isAdBlocked = useAdBlockDetector();
 
   useEffect(() => {
     const timer = setTimeout(() => setBooting(false), 1000);
     return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    const checkGuestLimit = async () => {
-      try {
-        const response =  await axiosInstance.post("/public/guest/visit");
-        if (response.status === 429) {
-          setShowGuestModal(true);
-        }
-      } catch (error) {
-        console.error("Guest visit check failed:", error);
-      }
-    };
-    checkGuestLimit();
   }, []);
 
   useEffect(() => {
@@ -126,7 +109,9 @@ export default function App() {
   if (booting) return <SplashLoader />;
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
+    <div
+      className={`min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark`}
+    >
       {isAdBlocked && <AdBlockWarning />}
       <ScrollToTop />
       <AppTour />
@@ -151,10 +136,6 @@ export default function App() {
           Thank you for your feedback!
         </div>
       )}
-      <GuestLoginModal
-        isOpen={showGuestModal}
-        onClose={() => setShowGuestModal(false)}
-      />
       <PageTransitionLoader isLoading={isTransitionLoading} />
       <Outlet />
       <LocationErrorPopup locationError={locationError} onDismiss={() => {}} />

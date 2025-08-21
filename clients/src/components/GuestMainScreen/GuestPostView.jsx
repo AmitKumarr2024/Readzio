@@ -1,5 +1,5 @@
 // GuestPostView.js
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchPublicPosts,
@@ -10,32 +10,7 @@ import GuestCardOfPost from "../Cards/GuestCardOfPost";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import InFeedAd from "../../Ads/InFeedAd";
 import Skeleton from "../Ui/Skeleton";
-import { Link } from "react-router-dom";
-
-const GuestLoginModal = ({ onClose }) => (
-  <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4 sm:px-6">
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full">
-      <h2 className="text-xl font-semibold mb-4">Guest Limit Reached</h2>
-      <p className="mb-4">
-        You've reached the guest visit limit. Log in to continue exploring!
-      </p>
-      <div className="flex justify-end gap-4">
-        <button
-          onClick={onClose}
-          className="px-4 py-2 text-gray-500 hover:text-gray-700"
-        >
-          Close
-        </button>
-        <Link
-          to="/login"
-          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-        >
-          Log In
-        </Link>
-      </div>
-    </div>
-  </div>
-);
+import GuestLoginModal from "../../AppRootFile/components/GuestLoginModal";
 
 const GuestPostView = () => {
   const dispatch = useDispatch();
@@ -50,19 +25,18 @@ const GuestPostView = () => {
   const isSidebarOpen = useSelector(
     (state) => state.postMeta?.isSidebarOpen || false
   );
-  const [showModal, setShowModal] = useState(false);
   const observerRef = useRef();
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        console.log("[GuestPostView] Loading data...");
+        console.log("[GuestPostView] Initializing data load...");
         const guestId = localStorage.getItem("guestId");
         if (!guestId) {
           console.log("[GuestPostView] No guestId, tracking visit...");
           await dispatch(trackGuestVisit()).unwrap();
         }
-        console.log("[GuestPostView] Fetching posts, page:", page);
+        console.log("[GuestPostView] Fetching posts, page: 1, limit: 12");
         await dispatch(fetchPublicPosts({ page: 1, limit: 12 })).unwrap();
       } catch (err) {
         console.error("[GuestPostView] Error loading data:", err);
@@ -96,14 +70,6 @@ const GuestPostView = () => {
     };
   }, [dispatch, page, hasMore, loading]);
 
-  useEffect(() => {
-    if (error === "Too many guest visits, please try again later") {
-      console.log("[GuestPostView] Guest limit reached, showing modal in 30s");
-      const timer = setTimeout(() => setShowModal(true), 30000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
-
   // Debug state
   console.log("[GuestPostView] State:", {
     posts: posts.length,
@@ -112,13 +78,14 @@ const GuestPostView = () => {
     page,
     total,
     hasMore,
+    postsSample: posts.slice(0, 2),
   });
 
   // Error state
   if (
+    !loading &&
     error &&
-    error !== "Too many guest visits, please try again later" &&
-    !loading
+    error !== "Too many guest visits, please try again later"
   ) {
     return (
       <div className="text-center text-red-500 py-4">
@@ -126,6 +93,7 @@ const GuestPostView = () => {
         <button
           onClick={() => {
             console.log("[GuestPostView] Retrying fetch, page: 1");
+            dispatch(clearGuestError());
             dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
           }}
           className="ml-2 text-blue-500 underline"
@@ -137,7 +105,7 @@ const GuestPostView = () => {
   }
 
   // Empty state
-  if (!loading && (!Array.isArray(posts) || posts.length === 0)) {
+  if (!loading && posts.length === 0) {
     return (
       <div className="text-center text-gray-400 py-8">
         No posts available for guests.
@@ -183,7 +151,7 @@ const GuestPostView = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {showModal && <GuestLoginModal onClose={() => setShowModal(false)} />}
+      <GuestLoginModal />
       <div
         className={`grid gap-4 py-6 w-full
           grid-cols-1 
@@ -196,7 +164,13 @@ const GuestPostView = () => {
           }
         `}
       >
-        {postsWithAds}
+        {postsWithAds.length > 0
+          ? postsWithAds
+          : !loading && (
+              <div className="col-span-full text-center text-gray-400 py-8">
+                No posts to display.
+              </div>
+            )}
         {loading &&
           Array.from({ length: 12 }).map((_, i) => (
             <div
@@ -209,7 +183,9 @@ const GuestPostView = () => {
             </div>
           ))}
       </div>
-      {hasMore && <div ref={observerRef} className="h-10" />}
+      {hasMore && posts.length > 0 && (
+        <div ref={observerRef} className="h-10" />
+      )}
       {!hasMore && posts.length > 0 && (
         <div className="text-center text-gray-400 py-4">
           No more posts to load

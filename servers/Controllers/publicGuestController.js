@@ -19,6 +19,7 @@ const GUEST_VISIT_LIMIT = 100; // Max visits per minute per IP
 const GUEST_VISIT_WINDOW = 60 * 1000; // 1 minute
 
 // GET /public/posts
+// publicGuestController.js (partial update)
 export const getPublicPosts = async (req, res, next) => {
   try {
     const { page = 1, limit, tag, after, blocked = "false" } = req.query;
@@ -26,11 +27,20 @@ export const getPublicPosts = async (req, res, next) => {
     const limitNum = parseInt(limit) || 0;
     const isBlocked = blocked === "true";
 
+    console.log("[getPublicPosts] Query params:", {
+      page,
+      limit,
+      tag,
+      after,
+      blocked,
+    });
+
     const cacheKey = `publicPosts:${pageNum}:${limitNum || "all"}:${
       tag || "all"
     }:${after || "none"}:${isBlocked}`;
     const cachedPosts = cache.get(cacheKey);
     if (cachedPosts) {
+      console.log("[getPublicPosts] Cache hit:", cacheKey);
       return res.status(200).json({
         success: true,
         posts: cachedPosts.posts,
@@ -46,6 +56,8 @@ export const getPublicPosts = async (req, res, next) => {
       ...(tag ? { tags: { $in: [tag] } } : {}),
       ...(after ? { createdAt: { $lt: new Date(after) } } : {}),
     };
+
+    console.log("[getPublicPosts] Mongo query:", JSON.stringify(query));
 
     let mongoQuery = PostModel.find(query)
       .maxTimeMS(10000)
@@ -68,9 +80,13 @@ export const getPublicPosts = async (req, res, next) => {
     }));
 
     const total = await PostModel.countDocuments(query).maxTimeMS(5000).lean();
-    const lastFetched = posts.length ? posts[posts.length - 1].createdAt : null;
+    console.log("[getPublicPosts] Fetched:", { posts: posts.length, total });
 
-    cache.set(cacheKey, { posts: processedPosts, total, lastFetched });
+    cache.set(cacheKey, {
+      posts: processedPosts,
+      total,
+      lastFetched: posts.length ? posts[posts.length - 1].createdAt : null,
+    });
 
     if (req.user?._id) {
       await recordActivity({
@@ -87,9 +103,10 @@ export const getPublicPosts = async (req, res, next) => {
       posts: processedPosts,
       total,
       page: pageNum,
-      lastFetched,
+      lastFetched: posts.length ? posts[posts.length - 1].createdAt : null,
     });
   } catch (error) {
+    console.error("[getPublicPosts] Error:", error.message, error.stack);
     next(
       new AppError(
         error.message || "Failed to fetch public posts",
