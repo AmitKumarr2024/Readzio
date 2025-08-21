@@ -19,7 +19,6 @@ const GUEST_VISIT_LIMIT = 100; // Max visits per minute per IP
 const GUEST_VISIT_WINDOW = 60 * 1000; // 1 minute
 
 // GET /public/posts
-// publicGuestController.js (partial update)
 export const getPublicPosts = async (req, res, next) => {
   try {
     const { page = 1, limit, tag, after, blocked = "false" } = req.query;
@@ -79,7 +78,12 @@ export const getPublicPosts = async (req, res, next) => {
       blocks: Array.isArray(post.blocks) ? post.blocks : [],
     }));
 
-    const total = await PostModel.countDocuments(query).maxTimeMS(5000).lean();
+    let total;
+    if (limitNum === 0) {
+      total = posts.length;
+    } else {
+      total = await PostModel.countDocuments(query).maxTimeMS(5000).lean();
+    }
     console.log("[getPublicPosts] Fetched:", { posts: posts.length, total });
 
     cache.set(cacheKey, {

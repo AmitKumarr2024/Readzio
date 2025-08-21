@@ -1,3 +1,4 @@
+// GuestPostView.js
 import React, { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -18,74 +19,158 @@ const GuestPostView = () => {
     loading,
     error,
     page,
+    total,
     hasMore,
   } = useSelector((state) => state.guest || {});
+  const isSidebarOpen = useSelector(
+    (state) => state.postMeta?.isSidebarOpen || false
+  );
   const observerRef = useRef();
 
-  // Initial load
   useEffect(() => {
-    const init = async () => {
-      const guestId = localStorage.getItem("guestId");
-      if (!guestId) {
-        await dispatch(trackGuestVisit()).unwrap();
+    const loadData = async () => {
+      try {
+        console.log("[GuestPostView] Initializing data load...");
+        const guestId = localStorage.getItem("guestId");
+        if (!guestId) {
+          console.log("[GuestPostView] No guestId, tracking visit...");
+          await dispatch(trackGuestVisit()).unwrap();
+        }
+        console.log("[GuestPostView] Fetching posts, page: 1, limit: 12");
+        await dispatch(fetchPublicPosts({ page: 1, limit: 12 })).unwrap();
+      } catch (err) {
+        console.error("[GuestPostView] Error loading data:", err);
       }
-      await dispatch(fetchPublicPosts({ page: 1, limit: 12 })).unwrap();
     };
-    init();
+    loadData();
   }, [dispatch]);
 
-  // Infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !loading) {
+          console.log(
+            "[GuestPostView] Scrolled to bottom, fetching page:",
+            page + 1
+          );
           dispatch(fetchPublicPosts({ page: page + 1, limit: 12 }));
         }
       },
       { threshold: 0.1 }
     );
 
-    if (observerRef.current) observer.observe(observerRef.current);
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
 
     return () => {
-      if (observerRef.current) observer.unobserve(observerRef.current);
+      if (observerRef.current) {
+        observer.unobserve(observerRef.current);
+      }
     };
   }, [dispatch, page, hasMore, loading]);
+
+  // Debug state
+  console.log("[GuestPostView] State:", {
+    posts: posts.length,
+    loading,
+    error,
+    page,
+    total,
+    hasMore,
+    postsSample: posts.slice(0, 2),
+  });
+
+  // Error state
+  if (
+    !loading &&
+    error &&
+    error !== "Too many guest visits, please try again later"
+  ) {
+    return (
+      <div className="text-center text-red-500 py-4">
+        {error}
+        <button
+          onClick={() => {
+            console.log("[GuestPostView] Retrying fetch, page: 1");
+            dispatch(clearGuestError());
+            dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
+          }}
+          className="ml-2 text-blue-500 underline"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (!loading && posts.length === 0) {
+    return (
+      <div className="text-center text-gray-400 py-8">
+        No posts available for guests.
+      </div>
+    );
+  }
+
+  // Insert ads between posts
+  const postsWithAds = posts.flatMap((post, index) => {
+    if (!post?._id || !post?.slug) {
+      console.warn("[GuestPostView] Invalid post at index", index, post);
+      return [];
+    }
+
+    const items = [<GuestCardOfPost key={post._id} {...post} />];
+
+    if ((index + 1) % 5 === 0) {
+      items.push(
+        <div
+          key={`infeed-${index}`}
+          className="col-span-1 flex justify-center w-full p-3 min-w-[250px]"
+        >
+          <div className="w-full max-w-[300px] bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 border border-gray-200 dark:border-gray-700 transition-all duration-300">
+            <InFeedAd postId={post._id} testMode={false} />
+          </div>
+        </div>
+      );
+    }
+
+    if ((index + 1) % 12 === 0) {
+      items.push(
+        <div
+          key={`multiplex-${index}`}
+          className="col-span-full w-full border-b border-gray-300 dark:border-gray-600 my-2 flex items-center"
+        >
+          <MultiplexAd postId={post._id} testMode={false} />
+        </div>
+      );
+    }
+
+    return items;
+  });
 
   return (
     <div className="container mx-auto px-4 py-8">
       <GuestLoginModal />
-      <div className="grid gap-4 py-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {posts.map((post, index) => {
-          const items = [<GuestCardOfPost key={post._id} {...post} />];
-
-          if ((index + 1) % 5 === 0) {
-            items.push(
-              <div
-                key={`infeed-${index}`}
-                className="col-span-1 flex justify-center w-full p-3 min-w-[250px]"
-              >
-                <div className="w-full max-w-[300px] bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 border border-gray-200 dark:border-gray-700 transition-all duration-300">
-                  <InFeedAd postId={post._id} testMode={false} />
-                </div>
-              </div>
-            );
+      <div
+        className={`grid gap-4 py-6 w-full
+          grid-cols-1 
+          sm:grid-cols-2 
+          md:grid-cols-3 
+          ${
+            isSidebarOpen
+              ? "lg:grid-cols-3 xl:grid-cols-4"
+              : "lg:grid-cols-4 xl:grid-cols-5"
           }
-
-          if ((index + 1) % 12 === 0) {
-            items.push(
-              <div
-                key={`multiplex-${index}`}
-                className="col-span-full w-full border-b border-gray-300 dark:border-gray-600 my-2 flex items-center"
-              >
-                <MultiplexAd postId={post._id} testMode={false} />
+        `}
+      >
+        {postsWithAds.length > 0
+          ? postsWithAds
+          : !loading && (
+              <div className="col-span-full text-center text-gray-400 py-8">
+                No posts to display.
               </div>
-            );
-          }
-
-          return items;
-        })}
-
+            )}
         {loading &&
           Array.from({ length: 12 }).map((_, i) => (
             <div
@@ -97,16 +182,14 @@ const GuestPostView = () => {
               <Skeleton height="h-4" width="w-1/2" />
             </div>
           ))}
-
-        {!loading && posts.length === 0 && (
-          <div className="col-span-full text-center text-gray-400 py-8">
-            No posts available
-          </div>
-        )}
       </div>
-
       {hasMore && posts.length > 0 && (
         <div ref={observerRef} className="h-10" />
+      )}
+      {!hasMore && posts.length > 0 && (
+        <div className="text-center text-gray-400 py-4">
+          No more posts to load
+        </div>
       )}
     </div>
   );
