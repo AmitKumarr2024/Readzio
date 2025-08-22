@@ -550,7 +550,7 @@ const processImage = async (source, id, folder) => {
     if (source.startsWith("data:image")) {
       const [, imgFormat, base64Data] =
         source.match(/^data:image\/([a-z]+);base64,(.+)$/) || [];
-      if (!base64Data || !["jpeg", "png", "webp"].includes(imgFormat)) {
+      if (!base64Data || !["jpeg", "jpg", "png", "webp"].includes(imgFormat)) {
         throw new AppError(
           "Invalid or unsupported image format",
           400,
@@ -558,7 +558,7 @@ const processImage = async (source, id, folder) => {
         );
       }
       buffer = Buffer.from(base64Data, "base64");
-      format = imgFormat;
+      format = imgFormat === "jpg" ? "jpeg" : imgFormat;
     } else if (source.startsWith("http")) {
       try {
         const response = await axios.get(source, {
@@ -584,21 +584,8 @@ const processImage = async (source, id, folder) => {
 
     const image = sharp(buffer);
     const metadata = await image.metadata();
-
     if (!["jpeg", "png", "webp"].includes(metadata.format)) {
       throw new AppError("Unsupported image format", 400, "ProcessImage");
-    }
-
-    if (
-      metadata.format === "webp" &&
-      metadata.width <= 2500 &&
-      metadata.height <= 2500 &&
-      buffer.length <= 2 * 1024 * 1024
-    ) {
-      return await asyncRetry(() => uploadToCloudinary({ buffer, folder }), {
-        retries: 3,
-        minTimeout: 2000,
-      });
     }
 
     const MAX_DIMENSION = 2500;
@@ -611,12 +598,17 @@ const processImage = async (source, id, folder) => {
       });
     }
 
-    const optimizedBuffer = await image
-      .webp({
-        quality: 90,
-        effort: 2,
-      })
-      .toBuffer();
+    // ✅ Keep original format
+    let optimizedBuffer;
+    if (metadata.format === "jpeg") {
+      optimizedBuffer = await image
+        .jpeg({ quality: 95, mozjpeg: true })
+        .toBuffer();
+    } else if (metadata.format === "png") {
+      optimizedBuffer = await image.png({ compressionLevel: 6 }).toBuffer();
+    } else {
+      optimizedBuffer = await image.webp({ quality: 95 }).toBuffer();
+    }
 
     const result = await asyncRetry(
       () => uploadToCloudinary({ buffer: optimizedBuffer, folder }),
