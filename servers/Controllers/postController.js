@@ -448,7 +448,6 @@ const asyncRetry = async (fn, options = {}) => {
   }
   throw lastError;
 };
-
 const processImage = async (source, id, folder) => {
   try {
     // If it's an Instagram embed, return directly
@@ -462,11 +461,7 @@ const processImage = async (source, id, folder) => {
       const [, format, base64Data] =
         source.match(/^data:image\/([a-z]+);base64,(.+)$/) || [];
       if (!base64Data || !["jpeg", "png", "webp"].includes(format)) {
-        throw new AppError(
-          "Invalid or unsupported image format",
-          400,
-          "ProcessImage"
-        );
+        throw new AppError("Invalid or unsupported image format", 400, "ProcessImage");
       }
       buffer = Buffer.from(base64Data, "base64");
     }
@@ -480,11 +475,7 @@ const processImage = async (source, id, folder) => {
         });
         buffer = Buffer.from(response.data, "binary");
       } catch (err) {
-        throw new AppError(
-          "Failed to fetch image from URL",
-          400,
-          "ProcessImage"
-        );
+        throw new AppError("Failed to fetch image from URL", 400, "ProcessImage");
       }
     } else {
       throw new AppError("Unsupported image source", 400, "ProcessImage");
@@ -517,9 +508,9 @@ const processImage = async (source, id, folder) => {
     // ✅ High-quality WebP conversion
     const compressedBuffer = await image
       .webp({
-        quality: 95, // Better quality
-        effort: 4, // Balance speed & compression
-        nearLossless: true, // Keep details
+        quality: 95,          // Better quality
+        effort: 4,            // Balance speed & compression
+        nearLossless: true,   // Keep details
       })
       .toBuffer();
 
@@ -546,7 +537,6 @@ const processImage = async (source, id, folder) => {
     );
   }
 };
-
 export const createPost = async (req, res, next) => {
   let session = null;
   try {
@@ -588,28 +578,9 @@ export const createPost = async (req, res, next) => {
       throw new AppError("Blocks must be an array", 400, "CreatePost");
     }
 
-    // Filter out blocks with empty src
-    const validBlocks = blocks.filter((block) => {
-      if (block.type === "image" && (!block.src || block.src === "")) {
-        console.warn(
-          `[CreatePost] Skipping block with empty src at index ${blocks.indexOf(
-            block
-          )}`
-        );
-        return false;
-      }
-      return true;
-    });
-
-    // Validate block IDs
-    const blockIds = validBlocks.map((block) => block.id).filter(Boolean);
-    if (blockIds.length !== new Set(blockIds).size) {
-      throw new AppError("Duplicate block IDs detected", 400, "CreatePost");
-    }
-
     logMemory("📦 After parsing input");
 
-    const blocksWithIds = validBlocks.map((block, index) => {
+    const blocksWithIds = blocks.map((block, index) => {
       if (!block || typeof block !== "object" || !block.type) {
         throw new AppError(
           `Invalid block at index ${index}`,
@@ -651,7 +622,7 @@ export const createPost = async (req, res, next) => {
     const blockLimit = pLimit(3);
     const imageLimit = pLimit(1);
 
-    const processBlock = async (block, index) => {
+    const processBlock = async (block) => {
       const processedBlock = { ...block };
       if (block.type === "image" && block.src && !block.isEmbed) {
         logMemory(`🖼️ Processing image block ${block.id}`);
@@ -742,14 +713,12 @@ export const createPost = async (req, res, next) => {
     };
 
     logMemory("🖼️ Before processing blocks");
-    const processedBlocks = validBlocks.length
-      ? await Promise.all(
-          validBlocks.map((block, index) =>
-            blockLimit(() => processBlock(block, index))
-          )
-        )
-      : [];
+    const processedBlocks = await Promise.all(
+      blocksWithIds.map((block) => blockLimit(() => processBlock(block)))
+    );
     logMemory("🖼️ After processing blocks");
+
+    const { readTime, readingTime } = calculateReadTime(processedBlocks);
 
     let processedThumbnail = null;
     if (rawThumbnail && !isThumbnailEmbed) {
