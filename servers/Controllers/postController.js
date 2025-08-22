@@ -537,6 +537,7 @@ const processImage = async (source, id, folder) => {
     );
   }
 };
+
 export const createPost = async (req, res, next) => {
   let session = null;
   try {

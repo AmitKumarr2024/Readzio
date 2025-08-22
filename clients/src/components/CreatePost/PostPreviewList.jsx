@@ -27,7 +27,6 @@ import {
 } from "../../store/Post/postMetaSlice";
 import LoadingBar from "../../Utils/LoadingBar";
 import TableBlocksOutput from "../actualPostDisplay/TableBlocksOutput";
-import ImageBlockOutput from "../actualPostDisplay/ImageBlockOutput";
 
 const PostPreviewList = ({
   currentDraftPost,
@@ -57,14 +56,6 @@ const PostPreviewList = ({
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { singlePost, singlePostStatus } = useSelector((state) => state.post);
-
-  const formatFileSize = (sizeInBytes) => {
-    if (!sizeInBytes) return "";
-    if (sizeInBytes >= 1024 * 1024) {
-      return `Size: ${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
-    }
-    return `Size: ${(sizeInBytes / 1024).toFixed(0)} KB`;
-  };
 
   useEffect(() => {
     if (singlePost) setIsModalOpen(true);
@@ -99,7 +90,7 @@ const PostPreviewList = ({
     navigator.clipboard.writeText(code);
     setCopiedIndex(i);
     setTimeout(() => setCopiedIndex(null), 2000);
-    toast.success("Code copied!", { position: "top-right" });
+    toast.success("Code copied!");
   };
 
   const createPost = () => {
@@ -108,32 +99,20 @@ const PostPreviewList = ({
         (b) => b.type === "table" && (!b.data || !b.data.length)
       )
     ) {
-      return toast.error("Please fill in all table blocks before publishing.", {
-        position: "top-right",
-      });
+      return toast.error("Please fill in all table blocks before publishing.");
     }
 
-    if (!currentDraftPost?.title)
-      return toast.error("Please enter a title", { position: "top-right" });
+    if (!currentDraftPost?.title) return toast.error("Please enter a title");
     if (!currentDraftPost?.blocks?.length)
-      return toast.error("Please add content blocks", {
-        position: "top-right",
-      });
-    if (!postType)
-      return toast.error("Please select a post type", {
-        position: "top-right",
-      });
-    if (!category)
-      return toast.error("Please select a category", { position: "top-right" });
+      return toast.error("Please add content blocks");
+    if (!postType) return toast.error("Please select a post type");
+    if (!category) return toast.error("Please select a category");
     if (!language.match(/^[a-z]{2}$/i))
-      return toast.error("Invalid language code (e.g., 'en')", {
-        position: "top-right",
-      });
+      return toast.error("Invalid language code (e.g., 'en')");
 
     if (!isFeatured && !isPinned && !isPublished && language === "en") {
       toast.error(
-        "Set at least one metadata field (feature, pin, publish, or language)",
-        { position: "top-right" }
+        "Set at least one metadata field (feature, pin, publish, or language)"
       );
       return;
     }
@@ -141,17 +120,10 @@ const PostPreviewList = ({
     setShowConfirmModal(true);
   };
 
-  const handleModalConfirm = async ({
-    tags,
-    thumbnail,
-    thumbnailSize,
-    isEmbed,
-  }) => {
+  const handleModalConfirm = async ({ tags, thumbnail }) => {
     const newPostData = {
       tags,
       thumbnail,
-      thumbnailSize,
-      isEmbed, // Include isEmbed for thumbnail
       isFeatured,
       isPinned,
       isPublished,
@@ -169,10 +141,11 @@ const PostPreviewList = ({
   };
 
   const sanitizeBlocks = useCallback((blocks) => {
-    let lastLoggedData = null;
+    let lastLoggedData = null; // Track last logged table data to avoid duplicate logs
     return blocks.map((block) => {
       if (block.type === "table") {
         let tableData = block.data;
+        // Handle old headers/rows format
         if (!tableData && (block.headers || block.rows)) {
           const headers =
             Array.isArray(block.headers) && block.headers.length
@@ -188,6 +161,7 @@ const PostPreviewList = ({
                 ];
           tableData = [headers, ...rows];
         }
+        // Validate table data
         const isValidTableData =
           Array.isArray(tableData) &&
           tableData.length > 0 &&
@@ -197,18 +171,21 @@ const PostPreviewList = ({
               row.some((cell) => cell != null && cell !== "")
           );
         if (!isValidTableData) {
+          // console.warn(
+          //   "[PostPreviewList] Invalid table data, using default:",
+          //   JSON.stringify(block, null, 2)
+          // );
           tableData = [
             ["Header 1", "Header 2"],
             ["Cell 1", "Cell 2"],
             ["Cell 3", "Cell 4"],
           ];
-          toast.error("Table block is empty. Using default data.", {
-            position: "top-right",
-          });
+          toast.error("Table block is empty. Using default data.");
         } else {
           const tableDataString = JSON.stringify(tableData);
           if (tableDataString !== lastLoggedData) {
-            lastLoggedData = tableDataString;
+            // console.log("[PostPreviewList] Valid table data:", tableDataString);
+            lastLoggedData = tableDataString; // Update last logged data
           }
         }
         return {
@@ -237,9 +214,6 @@ const PostPreviewList = ({
       await onCreatePost({ ...postData, draft: cleanedDraft });
     } catch (err) {
       console.error("[PostPreviewList] Post creation failed:", err);
-      toast.error(err.message || "Post creation failed", {
-        position: "top-right",
-      });
     } finally {
       setShowPublishLoading(false);
       setPostData(null);
@@ -252,7 +226,7 @@ const PostPreviewList = ({
     setIsPostConfirmed(false);
     setPostData(null);
     setCountdown(5);
-    toast("Post publishing cancelled.", { position: "top-right" });
+    toast("Post publishing cancelled.");
   };
 
   const handleDeletePost = (postId) => {
@@ -260,13 +234,11 @@ const PostPreviewList = ({
       dispatch(deletePost(postId))
         .unwrap()
         .then(() => {
-          toast.success("Post deleted successfully", { position: "top-right" });
+          toast.success("Post deleted successfully");
         })
         .catch((err) => {
           console.error("[PostPreviewList] Post deletion failed:", err);
-          toast.error(`Failed to delete post: ${err.message || err}`, {
-            position: "top-right",
-          });
+          toast.error(`Failed to delete post: ${err.message || err}`);
         });
     }
   };
@@ -274,12 +246,12 @@ const PostPreviewList = ({
   const deleteBlock = (index) => {
     if (!onUpdateDraft) {
       console.error("[PostPreviewList] No update function provided");
-      toast.error("No update function provided", { position: "top-right" });
+      toast.error("No update function provided");
       return;
     }
     const updatedBlocks = currentDraftPost.blocks.filter((_, i) => i !== index);
     onUpdateDraft({ ...currentDraftPost, blocks: updatedBlocks });
-    toast.success("Block deleted", { position: "top-right" });
+    toast.success("Block deleted");
   };
 
   const renderBlock = useCallback(
@@ -289,7 +261,7 @@ const PostPreviewList = ({
           `[PostPreviewList] Invalid block at index ${i}:`,
           JSON.stringify(block, null, 2)
         );
-        toast.error("Invalid block detected", { position: "top-right" });
+        toast.error("Invalid block detected");
         return (
           <div key={i} className="my-4 text-red-500 italic">
             Invalid block
@@ -425,16 +397,21 @@ const PostPreviewList = ({
               key={i}
               className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
             >
-              {block.size && !block.isEmbed && (
-                <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
-                  {formatFileSize(block.size)}
+              {block.src ? (
+                <img
+                  src={block.src}
+                  alt={block.caption || "Image"}
+                  className="w-full h-auto max-h-96 object-contain rounded-lg"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-48 flex items-center justify-center italic opacity-80">
+                  No image source provided
                 </div>
               )}
-              <ImageBlockOutput
-                src={block.src || ""}
-                caption={block.caption || ""}
-                isEmbed={block.isEmbed || false}
-              />
+              {block.caption && (
+                <p className="mt-2 text-sm italic">{block.caption}</p>
+              )}
               <button
                 onClick={() => deleteBlock(i)}
                 className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
@@ -625,32 +602,6 @@ const PostPreviewList = ({
           <p className="mb-4 opacity-80">
             Category: {categoryName || "Uncategorized"}
           </p>
-          {postData?.thumbnail && (
-            <div className="relative my-4 bg-background-light dark:bg-background-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
-              {postData.thumbnailSize && !postData.isEmbed && (
-                <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
-                  {formatFileSize(postData.thumbnailSize)}
-                </div>
-              )}
-              {postData.isEmbed ? (
-                <iframe
-                  src={postData.thumbnail}
-                  className="w-full h-40 rounded-lg border border-gray-200"
-                  frameBorder="0"
-                  allow="autoplay; encrypted-media"
-                  allowFullScreen
-                  title="Instagram Reel Thumbnail"
-                />
-              ) : (
-                <img
-                  src={postData.thumbnail}
-                  alt="Thumbnail"
-                  className="w-full h-40 object-cover rounded-lg"
-                  loading="lazy"
-                />
-              )}
-            </div>
-          )}
           <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 mb-8 border border-gray-200 dark:border-gray-800">
             {sanitizedBlocks.length === 0 ? (
               <p className="italic text-center opacity-80">
@@ -748,37 +699,19 @@ const PostPreviewList = ({
                   className="cursor-pointer"
                 >
                   {firstBlock?.type === "image" ? (
-                    <div className="relative">
-                      {firstBlock.size && !firstBlock.isEmbed && (
-                        <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
-                          {formatFileSize(firstBlock.size)}
-                        </div>
-                      )}
-                      {firstBlock.isEmbed ? (
-                        <iframe
-                          src={firstBlock.src}
-                          className="w-full h-40 rounded-t-xl border border-gray-200"
-                          frameBorder="0"
-                          allow="autoplay; encrypted-media"
-                          allowFullScreen
-                          title="Instagram Reel"
-                        />
-                      ) : (
-                        <img
-                          src={firstBlock.src}
-                          alt={firstBlock.caption || "Post Image"}
-                          className="w-full h-40 object-cover rounded-t-xl hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            console.error(
-                              "[PostPreviewList] Image load error for post:",
-                              post._id
-                            );
-                            e.target.style.display = "none";
-                          }}
-                          loading="lazy"
-                        />
-                      )}
-                    </div>
+                    <img
+                      src={firstBlock.src}
+                      alt={firstBlock.caption || "Post Image"}
+                      className="w-full h-40 object-cover rounded-t-xl hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        console.error(
+                          "[PostPreviewList] Image load error for post:",
+                          post._id
+                        );
+                        e.target.style.display = "none";
+                      }}
+                      loading="lazy"
+                    />
                   ) : firstBlock?.type === "text" ? (
                     <div
                       className="p-4 line-clamp-3 text-sm list-inside"
