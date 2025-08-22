@@ -13,6 +13,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   const [activeTab, setActiveTab] = useState("upload");
   const [urlInput, setUrlInput] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isEmbed, setIsEmbed] = useState(false);
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   const ALLOWED_FORMATS = ["image/jpeg", "image/png", "image/webp"];
@@ -24,60 +25,15 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
     return `Size: ${(sizeInBytes / 1024).toFixed(0)} KB`;
   };
 
-  const fetchSocialMediaImage = async (url) => {
-    try {
-      // Mock API for X/Instagram (replace with actual API in production)
-      let imageUrl = url;
-      if (url.includes("instagram.com/reel/")) {
-        // For Instagram reels, fetch thumbnail from og:image meta tag
-        const response = await fetch(
-          `/api/fetch-meta?url=${encodeURIComponent(url)}`
-        );
-        if (!response.ok) throw new Error("Failed to fetch reel metadata");
-        const { ogImage } = await response.json();
-        if (!ogImage || !/\.(jpe?g|png|webp)$/i.test(ogImage)) {
-          throw new Error(
-            "Reels/videos are not supported. Please use a post with a JPEG, PNG, or WebP image."
-          );
-        }
-        imageUrl = ogImage;
-      } else if (url.includes("x.com")) {
-        // For X posts, extract image from media (mocked)
-        const response = await fetch(
-          `/api/fetch-x-image?url=${encodeURIComponent(url)}`
-        );
-        if (!response.ok) throw new Error("Failed to fetch X post image");
-        const { image } = await response.json();
-        if (!image || !/\.(jpe?g|png|webp)$/i.test(image)) {
-          throw new Error(
-            "X post has no supported image (JPEG, PNG, or WebP)."
-          );
-        }
-        imageUrl = image;
-      }
-
-      const response = await fetch(imageUrl, { method: "GET" });
-      if (!response.ok) throw new Error("Failed to fetch image");
-      const blob = await response.blob();
-      if (!ALLOWED_FORMATS.includes(blob.type)) {
-        toast.error("Fetched image must be JPEG, PNG, or WebP.", {
-          position: "top-right",
-        });
-        return null;
-      }
-      if (blob.size > MAX_FILE_SIZE) {
-        toast.error("Fetched image exceeds 5MB limit.", {
-          position: "top-right",
-        });
-        return null;
-      }
-      return blob;
-    } catch (err) {
-      toast.error(err.message || "Failed to fetch image.", {
-        position: "top-right",
-      });
-      return null;
+  // Extract clean Instagram reel URL and generate embed URL
+  const getEmbedUrl = (input) => {
+    const instagramRegex =
+      /https:\/\/www\.instagram\.com\/reel\/([A-Za-z0-9_-]+)/;
+    const match = input.match(instagramRegex);
+    if (match && match[1]) {
+      return `https://www.instagram.com/reel/${match[1]}/embed`;
     }
+    return null;
   };
 
   const handleFileUpload = (event) => {
@@ -106,38 +62,71 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
       setFileSize(file.size);
       setFileSizeText(formatFileSize(file.size));
       setUrlInput("");
+      setIsEmbed(false);
     };
     reader.readAsDataURL(file);
   };
 
   const handleUrlSubmit = async () => {
     if (!urlInput) {
-      toast.error("Please enter an image URL.", { position: "top-right" });
+      toast.error("Please enter an image or reel URL.", {
+        position: "top-right",
+      });
       return;
     }
-    const isSocialMediaUrl =
-      urlInput.includes("x.com") || urlInput.includes("instagram.com");
-    if (isSocialMediaUrl) {
-      const file = await fetchSocialMediaImage(urlInput);
-      if (file) {
+
+    const isInstagramReel = urlInput.includes("instagram.com/reel/");
+    if (isInstagramReel) {
+      const embedUrl = getEmbedUrl(urlInput);
+      if (embedUrl) {
+        setSelectedThumbnail(embedUrl);
+        setFileSize(0);
+        setFileSizeText("");
+        setUrlInput("");
+        setIsEmbed(true);
+      } else {
+        toast.error("Invalid Instagram reel URL.", { position: "top-right" });
+      }
+    } else if (/\.(jpe?g|png|webp)$/i.test(urlInput)) {
+      try {
+        const response = await fetch(urlInput, { method: "GET" });
+        if (!response.ok) {
+          throw new Error("Failed to fetch image.");
+        }
+        const blob = await response.blob();
+        if (!ALLOWED_FORMATS.includes(blob.type)) {
+          toast.error("Fetched image must be JPEG, PNG, or WebP.", {
+            position: "top-right",
+          });
+          return;
+        }
+        if (blob.size > MAX_FILE_SIZE) {
+          toast.error("Fetched image exceeds 5MB limit.", {
+            position: "top-right",
+          });
+          return;
+        }
         const reader = new FileReader();
         reader.onloadend = () => {
           setSelectedThumbnail(reader.result);
-          setFileSize(file.size);
-          setFileSizeText(formatFileSize(file.size));
+          setFileSize(blob.size);
+          setFileSizeText(formatFileSize(blob.size));
           setUrlInput("");
+          setIsEmbed(false);
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(blob);
+      } catch (err) {
+        toast.error(err.message || "Failed to fetch image.", {
+          position: "top-right",
+        });
       }
-    } else if (/\.(jpe?g|png|webp)$/i.test(urlInput)) {
-      setSelectedThumbnail(urlInput);
-      setFileSize(0);
-      setFileSizeText("");
-      setUrlInput("");
     } else {
-      toast.error("Please enter a valid image URL (JPEG, PNG, or WebP).", {
-        position: "top-right",
-      });
+      toast.error(
+        "Please enter a valid image URL (JPEG, PNG, or WebP) or Instagram reel URL.",
+        {
+          position: "top-right",
+        }
+      );
     }
   };
 
@@ -160,7 +149,12 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
 
   const handleFinalConfirm = () => {
     setIsConfirming(false);
-    onConfirm({ tags, thumbnail: selectedThumbnail, thumbnailSize: fileSize });
+    onConfirm({
+      tags,
+      thumbnail: selectedThumbnail,
+      thumbnailSize: fileSize,
+      isEmbed,
+    });
   };
 
   const handleCancel = () => {
@@ -169,6 +163,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
     setFileSize(0);
     setFileSizeText("");
     setUrlInput("");
+    setIsEmbed(false);
     onCancel();
   };
 
@@ -223,7 +218,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                         : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                     }`}
                   >
-                    Image URL
+                    Image/Reel URL
                   </button>
                 </div>
                 {activeTab === "upload" ? (
@@ -246,9 +241,9 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                         type="text"
                         value={urlInput}
                         onChange={(e) => setUrlInput(e.target.value)}
-                        placeholder="Enter image or X/Instagram post URL (JPEG, PNG, or WebP)"
+                        placeholder="Enter image or Instagram reel URL"
                         className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        aria-label="Thumbnail image URL"
+                        aria-label="Thumbnail image or reel URL"
                       />
                       <button
                         onClick={handleUrlSubmit}
@@ -258,7 +253,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                       </button>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Supported formats: JPEG, PNG, WebP
+                      Supported formats: JPEG, PNG, WebP or Instagram reel URL
                     </p>
                   </div>
                 )}
@@ -267,17 +262,28 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                     <p className="text-sm font-medium mb-2">
                       Selected Thumbnail:
                     </p>
-                    {fileSizeText && (
+                    {fileSizeText && !isEmbed && (
                       <div className="absolute top-0 right-0 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
                         {fileSizeText}
                       </div>
                     )}
-                    <img
-                      src={selectedThumbnail}
-                      alt="Selected thumbnail"
-                      className="w-full h-40 object-cover rounded-lg"
-                      loading="lazy"
-                    />
+                    {isEmbed ? (
+                      <iframe
+                        src={selectedThumbnail}
+                        className="w-full h-40 rounded-lg border border-gray-200"
+                        frameBorder="0"
+                        allow="autoplay; encrypted-media"
+                        allowFullScreen
+                        title="Instagram Reel Thumbnail"
+                      />
+                    ) : (
+                      <img
+                        src={selectedThumbnail}
+                        alt="Selected thumbnail"
+                        className="w-full h-40 object-cover rounded-lg"
+                        loading="lazy"
+                      />
+                    )}
                   </div>
                 )}
               </div>

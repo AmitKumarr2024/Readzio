@@ -51,84 +51,69 @@ const PostImageBlock = ({
     return `Size: ${(sizeInBytes / 1024).toFixed(0)} KB`;
   };
 
-  const fetchSocialMediaImage = async (url) => {
-    try {
-      // Mock API for X/Instagram (replace with actual API in production)
-      let imageUrl = url;
-      if (url.includes("instagram.com/reel/")) {
-        // For Instagram reels, try to fetch thumbnail from og:image meta tag
-        const response = await fetch(
-          `/api/fetch-meta?url=${encodeURIComponent(url)}`
-        ); // Proxy endpoint
-        if (!response.ok) throw new Error("Failed to fetch reel metadata");
-        const { ogImage } = await response.json();
-        if (!ogImage || !/\.(jpe?g|png|webp)$/i.test(ogImage)) {
-          throw new Error(
-            "Reels/videos are not supported. Please use a post with a JPEG, PNG, or WebP image."
-          );
-        }
-        imageUrl = ogImage;
-      } else if (url.includes("x.com")) {
-        // For X posts, extract image from media (mocked)
-        const response = await fetch(
-          `/api/fetch-x-image?url=${encodeURIComponent(url)}`
-        );
-        if (!response.ok) throw new Error("Failed to fetch X post image");
-        const { image } = await response.json();
-        if (!image || !/\.(jpe?g|png|webp)$/i.test(image)) {
-          throw new Error(
-            "X post has no supported image (JPEG, PNG, or WebP)."
-          );
-        }
-        imageUrl = image;
-      }
-
-      const response = await fetch(imageUrl, { method: "GET" });
-      if (!response.ok) throw new Error("Failed to fetch image");
-      const blob = await response.blob();
-      if (!ALLOWED_FORMATS.includes(blob.type)) {
-        toast.error("Fetched image must be JPEG, PNG, or WebP.", {
-          position: "top-right",
-        });
-        return null;
-      }
-      if (blob.size > MAX_FILE_SIZE) {
-        toast.error("Fetched image exceeds 5MB limit.", {
-          position: "top-right",
-        });
-        return null;
-      }
-      return blob;
-    } catch (err) {
-      toast.error(err.message || "Failed to fetch image.", {
-        position: "top-right",
-      });
-      return null;
+  // Extract clean Instagram reel URL and generate embed URL
+  const getEmbedUrl = (input) => {
+    const instagramRegex =
+      /https:\/\/www\.instagram\.com\/reel\/([A-Za-z0-9_-]+)/;
+    const match = input.match(instagramRegex);
+    if (match && match[1]) {
+      return `https://www.instagram.com/reel/${match[1]}/embed`;
     }
+    return null;
   };
 
   const handleUrlSubmit = async () => {
     if (!urlInput) {
-      toast.error("Please enter an image URL.", { position: "top-right" });
-      return;
-    }
-    const isSocialMediaUrl =
-      urlInput.includes("x.com") || urlInput.includes("instagram.com");
-    if (isSocialMediaUrl) {
-      const file = await fetchSocialMediaImage(urlInput);
-      if (file) {
-        setFileSizeText(formatFileSize(file.size));
-        handleImageUpload(file, index);
-        setUrlInput("");
-      }
-    } else if (/\.(jpe?g|png|webp)$/i.test(urlInput)) {
-      updateBlock(index, { ...block, src: urlInput, size: 0 });
-      setFileSizeText("");
-      setUrlInput("");
-    } else {
-      toast.error("Please enter a valid image URL (JPEG, PNG, or WebP).", {
+      toast.error("Please enter an image or reel URL.", {
         position: "top-right",
       });
+      return;
+    }
+
+    const isInstagramReel = urlInput.includes("instagram.com/reel/");
+    if (isInstagramReel) {
+      const embedUrl = getEmbedUrl(urlInput);
+      if (embedUrl) {
+        updateBlock(index, { ...block, src: embedUrl, size: 0, isEmbed: true });
+        setFileSizeText("");
+        setUrlInput("");
+      } else {
+        toast.error("Invalid Instagram reel URL.", { position: "top-right" });
+      }
+    } else if (/\.(jpe?g|png|webp)$/i.test(urlInput)) {
+      try {
+        const response = await fetch(urlInput, { method: "GET" });
+        if (!response.ok) {
+          throw new Error("Failed to fetch image.");
+        }
+        const blob = await response.blob();
+        if (!ALLOWED_FORMATS.includes(blob.type)) {
+          toast.error("Fetched image must be JPEG, PNG, or WebP.", {
+            position: "top-right",
+          });
+          return;
+        }
+        if (blob.size > MAX_FILE_SIZE) {
+          toast.error("Fetched image exceeds 5MB limit.", {
+            position: "top-right",
+          });
+          return;
+        }
+        setFileSizeText(formatFileSize(blob.size));
+        handleImageUpload(blob, index);
+        setUrlInput("");
+      } catch (err) {
+        toast.error(err.message || "Failed to fetch image.", {
+          position: "top-right",
+        });
+      }
+    } else {
+      toast.error(
+        "Please enter a valid image URL (JPEG, PNG, or WebP) or Instagram reel URL.",
+        {
+          position: "top-right",
+        }
+      );
     }
   };
 
@@ -152,7 +137,7 @@ const PostImageBlock = ({
       exit="exit"
       layout
     >
-      {fileSizeText && block.src && (
+      {fileSizeText && block.src && !block.isEmbed && (
         <div className="absolute top-0 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
           {fileSizeText}
         </div>
@@ -171,7 +156,7 @@ const PostImageBlock = ({
       <div className="flex gap-2 mb-4">
         <input
           type="text"
-          placeholder="Image URL (or X/Instagram post URL)"
+          placeholder="Image URL or Instagram reel URL"
           value={urlInput}
           onChange={(e) => setUrlInput(e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -201,14 +186,24 @@ const PostImageBlock = ({
         }
         className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
-      {block.src && (
-        <img
-          src={block.src}
-          alt={block.caption || "Uploaded"}
-          className="w-full max-h-96 object-contain rounded-lg border border-gray-200"
-          loading="lazy"
-        />
-      )}
+      {block.src &&
+        (block.isEmbed ? (
+          <iframe
+            src={block.src}
+            className="w-full h-96 rounded-lg border border-gray-200"
+            frameBorder="0"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            title="Instagram Reel"
+          />
+        ) : (
+          <img
+            src={block.src}
+            alt={block.caption || "Uploaded"}
+            className="w-full max-h-96 object-contain rounded-lg border border-gray-200"
+            loading="lazy"
+          />
+        ))}
     </motion.div>
   );
 };
