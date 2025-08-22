@@ -38,8 +38,7 @@ const CreatePost = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [recentTitles, setRecentTitles] = useState(new Set()); // Track recent titles
+  const [isSubmitting, setIsSubmitting] = useState(false); // Track submission state
   const { post, createLoading, createError } = useSelector(
     (state) => state.post
   );
@@ -87,20 +86,11 @@ const CreatePost = () => {
     setShowCategoryModal(false);
   };
 
-  // Debounced handleCreatePost with increased delay and early isSubmitting check
+  // Debounced handleCreatePost to prevent multiple submissions
   const handleCreatePost = useCallback(
     debounce(async (metaData) => {
       if (isSubmitting) {
         console.log("[CreatePost] Submission already in progress");
-        return;
-      }
-      if (recentTitles.has(title)) {
-        toast.error(
-          "Please wait before creating another post with the same title.",
-          {
-            position: "top-right",
-          }
-        );
         return;
       }
       setIsSubmitting(true);
@@ -267,7 +257,6 @@ const CreatePost = () => {
 
       try {
         console.log("[CreatePost] Sending postData:", postData);
-        setRecentTitles((prev) => new Set(prev).add(title));
         const resultAction = await dispatch(createPosts(postData)).unwrap();
         console.log("[CreatePost] Server response:", resultAction);
         toast.success("Post created successfully!", { position: "top-right" });
@@ -317,25 +306,9 @@ const CreatePost = () => {
         }
       } finally {
         setIsSubmitting(false);
-        // Clear title from recentTitles after 60 seconds
-        setTimeout(() => {
-          setRecentTitles((prev) => {
-            const newSet = new Set(prev);
-            newSet.delete(title);
-            return newSet;
-          });
-        }, 60000);
       }
-    }, 1500), // Increased debounce delay
-    [
-      dispatch,
-      title,
-      blocks,
-      postType,
-      selectedCategoryId,
-      isSubmitting,
-      recentTitles,
-    ]
+    }, 1000),
+    [dispatch, title, blocks, postType, selectedCategoryId, isSubmitting]
   );
 
   const handleDeletePost = (id) => {
@@ -449,7 +422,7 @@ const CreatePost = () => {
               createLoading={createLoading}
               createError={createError}
               onCreatePost={handleCreatePost}
-              isSubmitting={isSubmitting}
+              isSubmitting={isSubmitting} // Pass isSubmitting to disable button
             />
           </div>
         </div>
