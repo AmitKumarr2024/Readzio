@@ -5,48 +5,69 @@ import { ZoomIn, X } from "lucide-react";
 const ImageBlockOutput = ({ src, caption, isEmbed }) => {
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Debug props
+  // Improved debug logging
   useEffect(() => {
-    console.log("[ImageBlockOutput] Props:", { src, isEmbed, caption });
-    if (
-      isEmbed &&
-      !src.includes("instagram.com/reel/") &&
-      !src.includes("/embed")
-    ) {
-      console.warn("[ImageBlockOutput] Invalid embed URL:", src);
+    console.log(
+      "[ImageBlockOutput] Props:",
+      JSON.stringify({ src, isEmbed, caption }, null, 2)
+    );
+    if (isEmbed) {
+      if (!src) {
+        console.error("[ImageBlockOutput] Missing src for embed");
+      } else if (
+        !src.includes("instagram.com/reel/") ||
+        !src.includes("/embed")
+      ) {
+        console.warn("[ImageBlockOutput] Invalid Instagram embed URL:", src);
+      }
     }
-  }, [src, isEmbed]);
+  }, [src, isEmbed, caption]);
 
   return (
     <figure className="my-6 relative">
       {isEmbed ? (
-        src.includes("instagram.com/reel/") && src.includes("/embed") ? (
-          <iframe
-            src={src}
-            className="rounded-lg shadow-md max-h-[550px] aspect-video w-full"
-            frameBorder="0"
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-            title="Instagram Reel"
-            onError={() =>
-              console.error("[ImageBlockOutput] Iframe failed to load:", src)
-            }
-          />
+        src && src.includes("instagram.com/reel/") && src.includes("/embed") ? (
+          <div className="relative w-full aspect-video max-h-[550px]">
+            <iframe
+              src={src}
+              className="rounded-lg shadow-md w-full h-full"
+              frameBorder="0"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+              title="Instagram Reel"
+              onError={(e) =>
+                console.error(
+                  "[ImageBlockOutput] Iframe failed to load:",
+                  src,
+                  e.message
+                )
+              }
+              style={{ minHeight: "300px" }} // Ensure visibility
+            />
+          </div>
         ) : (
-          <div className="text-red-500 text-center">
-            Invalid Instagram embed URL
+          <div className="text-red-500 text-center p-4 border border-red-500 rounded-lg">
+            {src ? "Invalid Instagram embed URL" : "Missing embed URL"}
           </div>
         )
-      ) : (
+      ) : src ? (
         <img
           src={src}
           alt={caption || "Image"}
           className="rounded-lg shadow-md max-h-[550px] aspect-video object-contain w-full"
           loading="lazy"
-          onError={() =>
-            console.error("[ImageBlockOutput] Image failed to load:", src)
+          onError={(e) =>
+            console.error(
+              "[ImageBlockOutput] Image failed to load:",
+              src,
+              e.message
+            )
           }
         />
+      ) : (
+        <div className="text-red-500 text-center p-4 border border-red-500 rounded-lg">
+          Missing image URL
+        </div>
       )}
       {caption && (
         <figcaption className="text-sm text-center text-text-main-light dark:text-text-main-dark mt-2">
@@ -55,7 +76,7 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
       )}
 
       {/* Zoom Button (only for images, not embeds) */}
-      {!isEmbed && (
+      {!isEmbed && src && (
         <button
           onClick={() => setModalOpen(true)}
           title="Zoom"
@@ -66,7 +87,7 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
       )}
 
       {/* Zoom Modal (only for images) */}
-      {!isEmbed && modalOpen && (
+      {!isEmbed && modalOpen && src && (
         <div
           className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4 sm:px-6"
           onClick={() => setModalOpen(false)}

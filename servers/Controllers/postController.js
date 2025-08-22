@@ -449,6 +449,82 @@ const asyncRetry = async (fn, options = {}) => {
   throw lastError;
 };
 
+const processImage = async (source, id, folder) => {
+  try {
+    // Skip processing for Instagram embed URLs
+    if (source.includes("instagram.com/reel/") && source.includes("/embed")) {
+      return source; // Return embed URL directly
+    }
+
+    let buffer;
+    if (source.startsWith("data:image")) {
+      const [, format, base64Data] =
+        source.match(/^data:image\/([a-z]+);base64,(.+)$/) || [];
+      if (!base64Data || !["jpeg", "png", "webp"].includes(format)) {
+        throw new AppError(
+          "Invalid or unsupported image format",
+          400,
+          "CreatePost"
+        );
+      }
+      buffer = Buffer.from(base64Data, "base64");
+    } else if (source.startsWith("http")) {
+      try {
+        const response = await axios.get(source, {
+          responseType: "arraybuffer",
+          timeout: 10000, // Increased timeout
+        });
+        buffer = Buffer.from(response.data, "binary");
+      } catch (err) {
+        throw new AppError("Failed to fetch image from URL", 400, "CreatePost");
+      }
+    } else {
+      throw new AppError("Unsupported image source", 400, "CreatePost");
+    }
+
+    if (buffer.length > 5 * 1024 * 1024) {
+      throw new AppError("Image size exceeds 5MB limit", 400, "CreatePost");
+    }
+
+    const image = sharp(buffer);
+    const metadata = await image.metadata();
+    if (!["jpeg", "png", "webp"].includes(metadata.format)) {
+      throw new AppError("Unsupported image format", 400, "CreatePost");
+    }
+
+    // Preserve aspect ratio, target larger dimensions for better quality
+    const maxDimension = Math.max(metadata.width, metadata.height);
+    const targetWidth = maxDimension > 1200 ? 1200 : undefined;
+    const targetHeight = maxDimension > 1200 ? 1200 : undefined;
+
+    const compressedBuffer = await image
+      .resize({
+        width: targetWidth,
+        height: targetHeight,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .webp({ quality: 80, effort: 4 }) // Improved quality
+      .toBuffer();
+
+    const result = await uploadToCloudinary({
+      buffer: compressedBuffer,
+      folder,
+    });
+    if (!result?.secure_url) {
+      throw new AppError("Image upload failed", 500, "CreatePost");
+    }
+
+    return result.secure_url;
+  } catch (err) {
+    throw new AppError(
+      err.message || `Image processing failed: ${id}`,
+      400,
+      "CreatePost"
+    );
+  }
+};
+
 export const createPost = async (req, res, next) => {
   let session = null;
   try {
@@ -531,84 +607,6 @@ export const createPost = async (req, res, next) => {
         }
       }
     });
-
-    const processImage = async (source, id, folder) => {
-      try {
-        // Skip processing for Instagram embed URLs
-        if (
-          source.includes("instagram.com/reel/") &&
-          source.includes("/embed")
-        ) {
-          return source; // Return embed URL directly
-        }
-
-        let buffer;
-        if (source.startsWith("data:image")) {
-          const [, format, base64Data] =
-            source.match(/^data:image\/([a-z]+);base64,(.+)$/) || [];
-          if (!base64Data || !["jpeg", "png", "webp"].includes(format)) {
-            throw new AppError(
-              "Invalid or unsupported image format",
-              400,
-              "CreatePost"
-            );
-          }
-          buffer = Buffer.from(base64Data, "base64");
-        } else if (source.startsWith("http")) {
-          try {
-            const response = await axios.get(source, {
-              responseType: "arraybuffer",
-              timeout: 5000,
-            });
-            buffer = Buffer.from(response.data, "binary");
-          } catch (err) {
-            throw new AppError(
-              "Failed to fetch image from URL",
-              400,
-              "CreatePost"
-            );
-          }
-        } else {
-          throw new AppError("Unsupported image source", 400, "CreatePost");
-        }
-
-        if (buffer.length > 5 * 1024 * 1024) {
-          throw new AppError("Image size exceeds 5MB limit", 400, "CreatePost");
-        }
-
-        const image = sharp(buffer);
-        const metadata = await image.metadata();
-        if (!["jpeg", "png", "webp"].includes(metadata.format)) {
-          throw new AppError("Unsupported image format", 400, "CreatePost");
-        }
-
-        const compressedBuffer = await image
-          .resize({
-            width: 600,
-            height: 600,
-            fit: "inside",
-            withoutEnlargement: true,
-          })
-          .webp({ quality: 60, effort: 4 })
-          .toBuffer();
-
-        const result = await uploadToCloudinary({
-          buffer: compressedBuffer,
-          folder,
-        });
-        if (!result?.secure_url) {
-          throw new AppError("Image upload failed", 500, "CreatePost");
-        }
-
-        return result.secure_url;
-      } catch (err) {
-        throw new AppError(
-          err.message || `Image processing failed: ${id}`,
-          400,
-          "CreatePost"
-        );
-      }
-    };
 
     const blockLimit = pLimit(3);
     const imageLimit = pLimit(1);
@@ -801,7 +799,6 @@ export const createPost = async (req, res, next) => {
       logMemory("💾 After DB insert");
       await session.commitTransaction();
 
-      // Socket emission with retry
       await asyncRetry(
         async () => {
           io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
@@ -835,7 +832,6 @@ export const createPost = async (req, res, next) => {
         logMemory("📊 After cache update");
       }
 
-      // Socket emission for post counts
       await asyncRetry(
         async () => {
           io.to(req.user._id).emit("postCountsUpdated", counts);
@@ -1866,96 +1862,6 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError("Blocks must be an array", 400, "UpdatePostBySlug");
     }
 
-    const processImage = async (source, id, folder) => {
-      try {
-        // Skip processing for Instagram embed URLs
-        if (
-          source.includes("instagram.com/reel/") &&
-          source.includes("/embed")
-        ) {
-          return source; // Return embed URL directly
-        }
-
-        let buffer;
-        if (source.startsWith("data:image")) {
-          const [, format, base64Data] =
-            source.match(/^data:image\/([a-z]+);base64,(.+)$/) || [];
-          if (!base64Data || !["jpeg", "png", "webp"].includes(format)) {
-            throw new AppError(
-              "Invalid or unsupported image format",
-              400,
-              "UpdatePostBySlug"
-            );
-          }
-          buffer = Buffer.from(base64Data, "base64");
-        } else if (source.startsWith("http")) {
-          try {
-            const response = await axios.get(source, {
-              responseType: "arraybuffer",
-              timeout: 5000,
-            });
-            buffer = Buffer.from(response.data, "binary");
-          } catch (err) {
-            throw new AppError(
-              "Failed to fetch image from URL",
-              400,
-              "UpdatePostBySlug"
-            );
-          }
-        } else {
-          throw new AppError(
-            "Unsupported image source",
-            400,
-            "UpdatePostBySlug"
-          );
-        }
-
-        if (buffer.length > 5 * 1024 * 1024) {
-          throw new AppError(
-            "Image size exceeds 5MB limit",
-            400,
-            "UpdatePostBySlug"
-          );
-        }
-
-        const image = sharp(buffer);
-        const metadata = await image.metadata();
-        if (!["jpeg", "png", "webp"].includes(metadata.format)) {
-          throw new AppError(
-            "Unsupported image format",
-            400,
-            "UpdatePostBySlug"
-          );
-        }
-
-        const compressedBuffer = await image
-          .resize({
-            width: 600,
-            height: 600,
-            fit: "inside",
-            withoutEnlargement: true,
-          })
-          .webp({ quality: 60, effort: 4 })
-          .toBuffer();
-
-        const result = await uploadToCloudinary({
-          buffer: compressedBuffer,
-          folder,
-        });
-        if (!result?.secure_url) {
-          throw new AppError("Image upload failed", 500, "UpdatePostBySlug");
-        }
-
-        return result.secure_url;
-      } catch (err) {
-        throw new AppError(
-          err.message || `Image processing failed: ${id}`,
-          400,
-          "UpdatePostBySlug"
-        );
-      }
-    };
-
     const blockLimit = pLimit(3);
     const imageLimit = pLimit(1);
 
@@ -2093,7 +1999,7 @@ export const updatePostBySlug = async (req, res, next) => {
       );
       logMemory("🖼️ After processing thumbnail");
     } else if (rawThumbnail && isThumbnailEmbed) {
-      processedThumbnail = rawThumbnail; // Use embed URL directly
+      processedThumbnail = rawThumbnail;
     }
 
     const { readTime, readingTime } = calculateReadTime(processedBlocks || []);
@@ -2218,18 +2124,13 @@ export const updatePostBySlug = async (req, res, next) => {
         { session }
       );
 
-      // Socket emission with retry
       await asyncRetry(
         async () => {
-          io.emit("postUpdated", {
-            ...updatedPost._doc,
-            authorId: userId,
-          });
+          io.emit("postUpdated", { ...updatedPost._doc, authorId: userId });
         },
         { retries: 3, minTimeout: 1000 }
       );
 
-      // Update post counts cache
       const cacheKey = `postCounts:${userId}`;
       let counts = cache.get(cacheKey);
       if (!counts) {
@@ -2256,7 +2157,6 @@ export const updatePostBySlug = async (req, res, next) => {
         logMemory("📊 After cache update");
       }
 
-      // Socket emission for post counts
       await asyncRetry(
         async () => {
           io.to(userId).emit("postCountsUpdated", counts);
