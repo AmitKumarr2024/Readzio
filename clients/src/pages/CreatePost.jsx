@@ -50,8 +50,8 @@ const CreatePost = () => {
       reader.onload = (e) => {
         image.src = e.target.result;
         image.onload = () => {
-          const maxWidth = 300;
-          const maxHeight = 300;
+          const maxWidth = 1600; // ✅ Keep good resolution
+          const maxHeight = 1600; // ✅ Same as backend
           let { width, height } = image;
 
           if (width > maxWidth || height > maxHeight) {
@@ -68,12 +68,12 @@ const CreatePost = () => {
             (blob) => {
               const reader = new FileReader();
               reader.onloadend = () =>
-                resolve({ src: reader.result, size: file.size });
+                resolve({ src: reader.result, size: blob.size });
               reader.onerror = reject;
               reader.readAsDataURL(blob);
             },
             "image/webp",
-            0.15
+            0.8 // ✅ Much better quality (80%)
           );
         };
         image.onerror = reject;
