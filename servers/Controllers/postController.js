@@ -433,15 +433,17 @@ const fallbackSlugify = (title) => {
     .replace(/^-|-$/g, "");
 };
 
+// Async retry with exponential backoff
 const asyncRetry = async (fn, options = {}) => {
-  const { retries = 5, minTimeout = 2000 } = options; // Increased retries and timeout
+  const { retries = 5, minTimeout = 2000, maxTimeout = 10000 } = options;
   let lastError = null;
   for (let i = 0; i < retries; i++) {
     try {
       return await fn();
     } catch (err) {
       lastError = err;
-      await new Promise((resolve) => setTimeout(resolve, minTimeout * (i + 1)));
+      const delay = Math.min(minTimeout * Math.pow(2, i), maxTimeout);
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
   throw lastError;
@@ -535,6 +537,7 @@ const asyncRetry = async (fn, options = {}) => {
 //   }
 // };
 
+// Optimized image processing
 const processImage = async (source, id, folder) => {
   try {
     if (source.includes("instagram.com") && source.includes("/embed")) {
@@ -542,10 +545,12 @@ const processImage = async (source, id, folder) => {
     }
 
     let buffer;
+    let format;
+
     if (source.startsWith("data:image")) {
-      const [, format, base64Data] =
+      const [, imgFormat, base64Data] =
         source.match(/^data:image\/([a-z]+);base64,(.+)$/) || [];
-      if (!base64Data || !["jpeg", "png", "webp"].includes(format)) {
+      if (!base64Data || !["jpeg", "png", "webp"].includes(imgFormat)) {
         throw new AppError(
           "Invalid or unsupported image format",
           400,
@@ -553,11 +558,12 @@ const processImage = async (source, id, folder) => {
         );
       }
       buffer = Buffer.from(base64Data, "base64");
+      format = imgFormat;
     } else if (source.startsWith("http")) {
       try {
         const response = await axios.get(source, {
           responseType: "arraybuffer",
-          timeout: 20000, // Increased timeout
+          timeout: 20000,
           headers: { "User-Agent": "Mozilla/5.0" },
         });
         buffer = Buffer.from(response.data, "binary");
@@ -583,7 +589,19 @@ const processImage = async (source, id, folder) => {
       throw new AppError("Unsupported image format", 400, "ProcessImage");
     }
 
-    const MAX_DIMENSION = 1200; // Reverted to 1200x1200 for performance
+    if (
+      metadata.format === "webp" &&
+      metadata.width <= 2500 &&
+      metadata.height <= 2500 &&
+      buffer.length <= 2 * 1024 * 1024
+    ) {
+      return await asyncRetry(() => uploadToCloudinary({ buffer, folder }), {
+        retries: 3,
+        minTimeout: 2000,
+      });
+    }
+
+    const MAX_DIMENSION = 2500;
     if (metadata.width > MAX_DIMENSION || metadata.height > MAX_DIMENSION) {
       image.resize({
         width: MAX_DIMENSION,
@@ -593,20 +611,15 @@ const processImage = async (source, id, folder) => {
       });
     }
 
-    const compressedBuffer = await image
+    const optimizedBuffer = await image
       .webp({
-        quality: 75, // Reverted to 75% for smaller size
-        effort: 4,
+        quality: 90,
+        effort: 2,
       })
       .toBuffer();
 
     const result = await asyncRetry(
-      () =>
-        uploadToCloudinary({
-          buffer: compressedBuffer,
-          folder,
-          transformation: [{ fetch_format: "webp", quality: "auto:best" }],
-        }),
+      () => uploadToCloudinary({ buffer: optimizedBuffer, folder }),
       { retries: 3, minTimeout: 2000 }
     );
 
@@ -614,7 +627,6 @@ const processImage = async (source, id, folder) => {
       throw new AppError("Image upload failed", 500, "ProcessImage");
     }
 
-    console.log(`[processImage] Uploaded image ${id}: ${result.secure_url}`);
     return result.secure_url;
   } catch (err) {
     console.error(`[processImage] Error for ${id}:`, err.stack);
@@ -744,6 +756,7 @@ const processBlock = async (block, blockLimit, imageLimit) => {
     )
   );
 };
+
 export const createPost = async (req, res, next) => {
   let session = null;
   try {
@@ -941,7 +954,10 @@ export const createPost = async (req, res, next) => {
     try {
       logMemory("💾 Before DB insert");
       console.log("[CreatePost] Saving postData:", postData);
-      const [newPost] = await PostModel.create([postData], { session });
+      const [newPost] = await asyncRetry(
+        () => PostModel.create([postData], { session }),
+        { retries: 3, minTimeout: 2000 }
+      );
       await recordActivity(
         {
           userId: req.user._id,
@@ -955,14 +971,14 @@ export const createPost = async (req, res, next) => {
       await session.commitTransaction();
       console.log("[CreatePost] Transaction committed for slug:", slug);
 
-      // Increase indexing delay to 5s
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      // Reduced indexing delay to 2s
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       await asyncRetry(
         async () => {
           io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
         },
-        { retries: 5, minTimeout: 2000 }
+        { retries: 3, minTimeout: 1000 }
       );
 
       // Invalidate cache
@@ -972,6 +988,7 @@ export const createPost = async (req, res, next) => {
         `countAllPosts`,
         `countMyPosts:${req.user._id}`,
         `countFollowingPosts:${req.user._id}`,
+        `postId:${slug}`,
       ];
       cacheKeys.forEach((key) => cache.del(key));
       console.log("[CreatePost] Cache invalidated:", cacheKeys);
@@ -1000,7 +1017,7 @@ export const createPost = async (req, res, next) => {
         async () => {
           io.to(req.user._id).emit("postCountsUpdated", counts);
         },
-        { retries: 5, minTimeout: 2000 }
+        { retries: 3, minTimeout: 1000 }
       );
 
       logMemory("🎉 End createPost");
@@ -1038,7 +1055,6 @@ export const createPost = async (req, res, next) => {
     }
   }
 };
-
 // Get all published + unblocked posts with pagination
 export const getPublicPosts = async (req, res, next) => {
   try {
@@ -1517,12 +1533,13 @@ export const trackGuestVisit = async (req, res, next) => {
 };
 
 // Get all posts
+
 export const getAllPosts = async (req, res, next) => {
   try {
     logMemory("📋 Start getAllPosts");
     const page = parseInt(req.query.page) || 1;
-    const limit = req.query.limit ? parseInt(req.query.limit) : null; // Allow no limit
-    const skip = limit ? (page - 1) * limit : 0; // Skip only if limit is provided
+    const limit = req.query.limit ? parseInt(req.query.limit) : null;
+    const skip = limit ? (page - 1) * limit : 0;
     const authorId = req.query.authorId;
     const rawAuthorIds = req.query.authorIds || req.query.followingIds;
     const isGuest = req.query.isGuest === "true";
@@ -1549,22 +1566,29 @@ export const getAllPosts = async (req, res, next) => {
     console.log("Query:", JSON.stringify(query));
     logMemory("📖 Before fetching posts");
     let postQuery = PostModel.find(query)
-      .select(
-        "title slug category excerpt thumbnail author createdAt isPublished isPinned isPremium isSubscriberOnly blocked message readTime likesCount commentsCount viewsCount bookmarksCount likes tags language isFeatured allowComments timeSpent updatedAt shareCount sharedBy blocks postType"
-      )
+      .maxTimeMS(15000) // Increased timeout
       .sort({ createdAt: -1 })
       .skip(skip)
       .populate("author", "name avatar")
       .populate("category", "name slug")
       .lean();
 
-    if (limit) postQuery = postQuery.limit(limit); // Apply limit only if provided
+    if (limit) postQuery = postQuery.limit(limit);
 
-    const posts = await postQuery;
+    const posts = await asyncRetry(
+      () =>
+        postQuery.select(
+          "title slug category excerpt thumbnail author createdAt isPublished isPinned isPremium isSubscriberOnly blocked message readTime likesCount commentsCount viewsCount bookmarksCount likes tags language isFeatured allowComments timeSpent updatedAt shareCount sharedBy blocks postType"
+        ),
+      { retries: 3, minTimeout: 2000 }
+    );
     logMemory("📖 After fetching posts");
 
     console.log("Posts fetched:", posts.length);
-    const total = await PostModel.countDocuments(query).lean();
+    const total = await asyncRetry(
+      () => PostModel.countDocuments(query).maxTimeMS(10000).lean(),
+      { retries: 3, minTimeout: 2000 }
+    );
     console.log("Total posts:", total);
 
     const cacheKey = `postCounts:${req.user?._id || "guest"}`;
@@ -1603,9 +1627,12 @@ export const getAllPosts = async (req, res, next) => {
         action: "VIEWED_POSTS",
         message: "Viewed all posts",
       });
-      setTimeout(() => {
-        io.to(req.user._id).emit("postCountsUpdated", counts);
-      }, 1000);
+      await asyncRetry(
+        async () => {
+          io.to(req.user._id).emit("postCountsUpdated", counts);
+        },
+        { retries: 3, minTimeout: 1000 }
+      );
     }
 
     logMemory("📋 End getAllPosts");
@@ -1703,6 +1730,7 @@ export const getAllPosts = async (req, res, next) => {
 //   }
 // };
 // new code
+
 export const getSinglePost = async (req, res, next) => {
   try {
     logMemory("📄 Start getSinglePost");
@@ -1734,6 +1762,7 @@ export const getSinglePost = async (req, res, next) => {
     const post = await asyncRetry(
       async () => {
         const result = await PostModel.findOne(query)
+          .maxTimeMS(15000) // Increased timeout
           .select(
             `
             title slug category excerpt thumbnail author createdAt
@@ -1755,7 +1784,7 @@ export const getSinglePost = async (req, res, next) => {
         }
         return result;
       },
-      { retries: 5, minTimeout: 2000 } // Retry up to 5 times with 2s base delay
+      { retries: 5, minTimeout: 2000 }
     );
     logMemory("📖 After fetching post");
 
@@ -1770,6 +1799,9 @@ export const getSinglePost = async (req, res, next) => {
         "GetSinglePost"
       );
     }
+
+    // Cache post ID for faster lookups
+    cache.set(`postId:${sanitizedSlug}`, post._id, 600);
 
     logMemory("📄 End getSinglePost");
     res.status(200).json({ success: true, post });
