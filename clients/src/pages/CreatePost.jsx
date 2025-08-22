@@ -38,14 +38,13 @@ const CreatePost = () => {
 
     return new Promise((resolve, reject) => {
       if (file.size > 2 * 1024 * 1024) {
-        // Reduced to 2MB per image
         return reject(new Error("Image size exceeds 2MB limit"));
       }
 
       reader.onload = (e) => {
         image.src = e.target.result;
         image.onload = () => {
-          const maxWidth = 400; // Reduced from 600
+          const maxWidth = 400;
           const maxHeight = 400;
           let { width, height } = image;
 
@@ -62,12 +61,13 @@ const CreatePost = () => {
           canvas.toBlob(
             (blob) => {
               const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result);
+              reader.onloadend = () =>
+                resolve({ src: reader.result, size: file.size });
               reader.onerror = reject;
               reader.readAsDataURL(blob);
             },
             "image/webp",
-            0.2 // Reduced to 20% quality
+            0.2
           );
         };
         image.onerror = reject;
@@ -86,7 +86,7 @@ const CreatePost = () => {
     }
     dispatch(fetchCategories()).catch((e) => {
       console.error("[CreatePost] Fetch categories error:", e);
-      toast.error("Failed to load categories.");
+      toast.error("Failed to load categories.", { position: "top-right" });
     });
   }, [dispatch]);
 
@@ -104,26 +104,38 @@ const CreatePost = () => {
     : posts;
 
   const handleCategoryContinue = (selectedCategory) => {
-    if (!selectedCategory?.id) return toast.error("Please select a category");
+    if (!selectedCategory?.id)
+      return toast.error("Please select a category", { position: "top-right" });
     dispatch(setCategory(selectedCategory.id));
     setShowCategoryModal(false);
   };
 
   const handleCreatePost = async (metaData) => {
-    if (!title.trim()) return toast.error("Please enter a title");
-    if (!blocks.length) return toast.error("Please add content blocks");
+    if (!title.trim())
+      return toast.error("Please enter a title", { position: "top-right" });
+    if (!blocks.length)
+      return toast.error("Please add content blocks", {
+        position: "top-right",
+      });
     if (!postType && !localStorage.getItem("postType"))
-      return toast.error("Please select a post type");
-    if (!selectedCategoryId) return toast.error("Please select a category");
+      return toast.error("Please select a post type", {
+        position: "top-right",
+      });
+    if (!selectedCategoryId)
+      return toast.error("Please select a category", { position: "top-right" });
     if (!metaData.tags?.length)
-      return toast.error("Please provide at least one tag");
+      return toast.error("Please provide at least one tag", {
+        position: "top-right",
+      });
     if (!/^[a-z]{2}$/i.test(metaData.language))
-      return toast.error("Invalid language code");
+      return toast.error("Invalid language code", { position: "top-right" });
 
     // Limit number of images
     const imageBlocks = blocks.filter((b) => b.type === "image");
     if (imageBlocks.length > 3) {
-      return toast.error("Maximum 3 images allowed per post");
+      return toast.error("Maximum 3 images allowed per post", {
+        position: "top-right",
+      });
     }
 
     // Compress images in blocks
@@ -136,16 +148,25 @@ const CreatePost = () => {
         ) {
           try {
             const file = await fetch(block.src).then((res) => res.blob());
-            const compressedSrc = await compressImage(file);
-            return { ...block, src: compressedSrc, blocked: false };
+            const compressed = await compressImage(file);
+            return {
+              ...block,
+              src: compressed.src,
+              size: file.size,
+              blocked: false,
+            };
           } catch (err) {
-            toast.error(err.message || "Failed to compress image");
+            toast.error(err.message || "Failed to compress image", {
+              position: "top-right",
+            });
             throw err;
           }
         }
         if (block.type === "table") {
           if (!block.data?.length || !block.data.some((row) => row.length)) {
-            toast.error("Table block must have non-empty data");
+            toast.error("Table block must have non-empty data", {
+              position: "top-right",
+            });
             throw new Error("Invalid table block");
           }
         }
@@ -155,34 +176,42 @@ const CreatePost = () => {
 
     // Compress thumbnail
     let compressedThumbnail = metaData.thumbnail;
+    let thumbnailSize = 0;
     if (compressedThumbnail && compressedThumbnail.startsWith("data:image")) {
       try {
         const file = await fetch(compressedThumbnail).then((res) => res.blob());
-        compressedThumbnail = await compressImage(file);
+        const compressed = await compressImage(file);
+        compressedThumbnail = compressed.src;
+        thumbnailSize = file.size;
       } catch (err) {
-        toast.error(err.message || "Failed to compress thumbnail");
+        toast.error(err.message || "Failed to compress thumbnail", {
+          position: "top-right",
+        });
         throw err;
       }
     }
 
-    // Estimate payload size
+    // Estimate payload size (browser-compatible)
     const postData = {
       postType,
       category: selectedCategoryId,
       title,
       blocks: updatedBlocks,
       thumbnail: compressedThumbnail,
+      thumbnailSize,
       ...metaData,
     };
-    const payloadSize = Buffer.byteLength(JSON.stringify(postData), "utf8");
+    const payloadString = JSON.stringify(postData);
+    const payloadSize = new TextEncoder().encode(payloadString).length;
     if (payloadSize > 6 * 1024 * 1024) {
-      // Warn before sending
-      return toast.error("Post data exceeds 6MB. Reduce images or content.");
+      return toast.error("Post data exceeds 6MB. Reduce images or content.", {
+        position: "top-right",
+      });
     }
 
     try {
       const resultAction = await dispatch(createPosts(postData)).unwrap();
-      toast.success("Post created successfully!");
+      toast.success("Post created successfully!", { position: "top-right" });
       setTitle("");
       setBlocks([]);
       dispatch(resetPostMeta());
@@ -192,10 +221,13 @@ const CreatePost = () => {
       console.error("[CreatePost] Post creation failed:", err);
       if (err.message === "Payload exceeds 8MB limit") {
         toast.error(
-          "Post data too large. Use fewer or smaller images (max 3)."
+          "Post data too large. Use fewer or smaller images (max 3).",
+          { position: "top-right" }
         );
       } else {
-        toast.error(err?.message || "Post creation failed");
+        toast.error(err?.message || "Post creation failed", {
+          position: "top-right",
+        });
       }
       // Check if post was created
       const slug = slugify(title, { lower: true, strict: true });
@@ -205,7 +237,8 @@ const CreatePost = () => {
         ).unwrap();
         if (checkPost) {
           toast.success(
-            "Post was created but response was delayed. Redirecting..."
+            "Post was created but response was delayed. Redirecting...",
+            { position: "top-right" }
           );
           navigate(`/post/${checkPost.slug}`);
         }
@@ -218,10 +251,12 @@ const CreatePost = () => {
   const handleDeletePost = (id) => {
     dispatch(deletePost(id))
       .unwrap()
-      .then(() => toast.success("Post deleted"))
+      .then(() => toast.success("Post deleted", { position: "top-right" }))
       .catch((err) => {
         console.error("[CreatePost] Delete post failed:", err);
-        toast.error(err.message || "Failed to delete post");
+        toast.error(err.message || "Failed to delete post", {
+          position: "top-right",
+        });
       });
   };
 

@@ -8,46 +8,84 @@ import { toast } from "react-hot-toast";
 const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   const tags = useSelector((state) => state.postMeta.tags);
   const [selectedThumbnail, setSelectedThumbnail] = useState(null);
+  const [fileSizeText, setFileSizeText] = useState(""); // State for file size text
   const [activeTab, setActiveTab] = useState("upload");
   const [urlInput, setUrlInput] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
 
+  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+  const ALLOWED_FORMATS = ["image/jpeg", "image/png", "image/webp"];
+
+  const formatFileSize = (sizeInBytes) => {
+    if (sizeInBytes >= 1024 * 1024) {
+      return `Size: ${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+    return `Size: ${(sizeInBytes / 1024).toFixed(0)} KB`;
+  };
+
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
-    if (file && ["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedThumbnail(reader.result);
-        setUrlInput("");
-      };
-      reader.readAsDataURL(file);
-    } else {
-      toast.error("Please select a valid image file (JPEG, PNG, or WebP).");
+    if (!file) {
+      toast.error("No file selected.", { position: "top-right" });
+      return;
     }
+    if (!ALLOWED_FORMATS.includes(file.type)) {
+      toast.error("Invalid image format. Please use JPEG, PNG, or WebP.", {
+        position: "top-right",
+      });
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(
+        "Image size exceeds 2MB limit. Please use an image smaller than 2MB.",
+        {
+          position: "top-right",
+        }
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSelectedThumbnail(reader.result);
+      setFileSizeText(formatFileSize(file.size)); // Set file size text
+      setUrlInput("");
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleUrlSubmit = () => {
-    if (urlInput && /\.(jpe?g|png|webp)$/i.test(urlInput)) {
-      setSelectedThumbnail(urlInput);
-      setUrlInput("");
-    } else {
-      toast.error("Please enter a valid image URL (JPEG, PNG, or WebP).");
+    if (!urlInput) {
+      toast.error("Please enter an image URL.", { position: "top-right" });
+      return;
     }
+    if (!/\.(jpe?g|png|webp)$/i.test(urlInput)) {
+      toast.error("Please enter a valid image URL (JPEG, PNG, or WebP).", {
+        position: "top-right",
+      });
+      return;
+    }
+    setSelectedThumbnail(urlInput);
+    setFileSizeText(""); // Clear file size for URLs
+    setUrlInput("");
   };
 
   const handleConfirm = () => {
     if (!selectedThumbnail) {
       toast.error(
-        "Please select a thumbnail by uploading a file or entering a URL."
+        "Please select a thumbnail by uploading a file or entering a URL.",
+        {
+          position: "top-right",
+        }
       );
       return;
     }
-
     if (tags.length < 1 || tags.length > 10) {
-      toast.error("Please enter between 1 and 10 tags.");
+      toast.error("Please enter between 1 and 10 tags.", {
+        position: "top-right",
+      });
       return;
     }
-
     setIsConfirming(true);
   };
 
@@ -59,6 +97,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   const handleCancel = () => {
     setIsConfirming(false);
     setSelectedThumbnail(null);
+    setFileSizeText(""); // Clear file size on cancel
     setUrlInput("");
     onCancel();
   };
@@ -127,7 +166,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                       aria-label="Upload thumbnail image"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Supported formats: JPEG, PNG, WebP
+                      Supported formats: JPEG, PNG, WebP (max 2MB)
                     </p>
                   </div>
                 ) : (
@@ -154,10 +193,15 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                   </div>
                 )}
                 {selectedThumbnail && (
-                  <div className="mt-4">
+                  <div className="mt-4 relative">
                     <p className="text-sm font-medium mb-2">
                       Selected Thumbnail:
                     </p>
+                    {fileSizeText && (
+                      <div className="absolute top-0 left-0 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+                        {fileSizeText}
+                      </div>
+                    )}
                     <img
                       src={selectedThumbnail}
                       alt="Selected thumbnail"

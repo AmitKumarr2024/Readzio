@@ -57,6 +57,14 @@ const PostPreviewList = ({
   const navigate = useNavigate();
   const { singlePost, singlePostStatus } = useSelector((state) => state.post);
 
+  const formatFileSize = (sizeInBytes) => {
+    if (!sizeInBytes) return "";
+    if (sizeInBytes >= 1024 * 1024) {
+      return `Size: ${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+    return `Size: ${(sizeInBytes / 1024).toFixed(0)} KB`;
+  };
+
   useEffect(() => {
     if (singlePost) setIsModalOpen(true);
   }, [singlePost]);
@@ -90,7 +98,7 @@ const PostPreviewList = ({
     navigator.clipboard.writeText(code);
     setCopiedIndex(i);
     setTimeout(() => setCopiedIndex(null), 2000);
-    toast.success("Code copied!");
+    toast.success("Code copied!", { position: "top-right" });
   };
 
   const createPost = () => {
@@ -99,20 +107,32 @@ const PostPreviewList = ({
         (b) => b.type === "table" && (!b.data || !b.data.length)
       )
     ) {
-      return toast.error("Please fill in all table blocks before publishing.");
+      return toast.error("Please fill in all table blocks before publishing.", {
+        position: "top-right",
+      });
     }
 
-    if (!currentDraftPost?.title) return toast.error("Please enter a title");
+    if (!currentDraftPost?.title)
+      return toast.error("Please enter a title", { position: "top-right" });
     if (!currentDraftPost?.blocks?.length)
-      return toast.error("Please add content blocks");
-    if (!postType) return toast.error("Please select a post type");
-    if (!category) return toast.error("Please select a category");
+      return toast.error("Please add content blocks", {
+        position: "top-right",
+      });
+    if (!postType)
+      return toast.error("Please select a post type", {
+        position: "top-right",
+      });
+    if (!category)
+      return toast.error("Please select a category", { position: "top-right" });
     if (!language.match(/^[a-z]{2}$/i))
-      return toast.error("Invalid language code (e.g., 'en')");
+      return toast.error("Invalid language code (e.g., 'en')", {
+        position: "top-right",
+      });
 
     if (!isFeatured && !isPinned && !isPublished && language === "en") {
       toast.error(
-        "Set at least one metadata field (feature, pin, publish, or language)"
+        "Set at least one metadata field (feature, pin, publish, or language)",
+        { position: "top-right" }
       );
       return;
     }
@@ -120,10 +140,11 @@ const PostPreviewList = ({
     setShowConfirmModal(true);
   };
 
-  const handleModalConfirm = async ({ tags, thumbnail }) => {
+  const handleModalConfirm = async ({ tags, thumbnail, thumbnailSize }) => {
     const newPostData = {
       tags,
       thumbnail,
+      thumbnailSize,
       isFeatured,
       isPinned,
       isPublished,
@@ -141,11 +162,10 @@ const PostPreviewList = ({
   };
 
   const sanitizeBlocks = useCallback((blocks) => {
-    let lastLoggedData = null; // Track last logged table data to avoid duplicate logs
+    let lastLoggedData = null;
     return blocks.map((block) => {
       if (block.type === "table") {
         let tableData = block.data;
-        // Handle old headers/rows format
         if (!tableData && (block.headers || block.rows)) {
           const headers =
             Array.isArray(block.headers) && block.headers.length
@@ -161,7 +181,6 @@ const PostPreviewList = ({
                 ];
           tableData = [headers, ...rows];
         }
-        // Validate table data
         const isValidTableData =
           Array.isArray(tableData) &&
           tableData.length > 0 &&
@@ -171,21 +190,18 @@ const PostPreviewList = ({
               row.some((cell) => cell != null && cell !== "")
           );
         if (!isValidTableData) {
-          // console.warn(
-          //   "[PostPreviewList] Invalid table data, using default:",
-          //   JSON.stringify(block, null, 2)
-          // );
           tableData = [
             ["Header 1", "Header 2"],
             ["Cell 1", "Cell 2"],
             ["Cell 3", "Cell 4"],
           ];
-          toast.error("Table block is empty. Using default data.");
+          toast.error("Table block is empty. Using default data.", {
+            position: "top-right",
+          });
         } else {
           const tableDataString = JSON.stringify(tableData);
           if (tableDataString !== lastLoggedData) {
-            // console.log("[PostPreviewList] Valid table data:", tableDataString);
-            lastLoggedData = tableDataString; // Update last logged data
+            lastLoggedData = tableDataString;
           }
         }
         return {
@@ -214,6 +230,9 @@ const PostPreviewList = ({
       await onCreatePost({ ...postData, draft: cleanedDraft });
     } catch (err) {
       console.error("[PostPreviewList] Post creation failed:", err);
+      toast.error(err.message || "Post creation failed", {
+        position: "top-right",
+      });
     } finally {
       setShowPublishLoading(false);
       setPostData(null);
@@ -226,7 +245,7 @@ const PostPreviewList = ({
     setIsPostConfirmed(false);
     setPostData(null);
     setCountdown(5);
-    toast("Post publishing cancelled.");
+    toast("Post publishing cancelled.", { position: "top-right" });
   };
 
   const handleDeletePost = (postId) => {
@@ -234,11 +253,13 @@ const PostPreviewList = ({
       dispatch(deletePost(postId))
         .unwrap()
         .then(() => {
-          toast.success("Post deleted successfully");
+          toast.success("Post deleted successfully", { position: "top-right" });
         })
         .catch((err) => {
           console.error("[PostPreviewList] Post deletion failed:", err);
-          toast.error(`Failed to delete post: ${err.message || err}`);
+          toast.error(`Failed to delete post: ${err.message || err}`, {
+            position: "top-right",
+          });
         });
     }
   };
@@ -246,12 +267,12 @@ const PostPreviewList = ({
   const deleteBlock = (index) => {
     if (!onUpdateDraft) {
       console.error("[PostPreviewList] No update function provided");
-      toast.error("No update function provided");
+      toast.error("No update function provided", { position: "top-right" });
       return;
     }
     const updatedBlocks = currentDraftPost.blocks.filter((_, i) => i !== index);
     onUpdateDraft({ ...currentDraftPost, blocks: updatedBlocks });
-    toast.success("Block deleted");
+    toast.success("Block deleted", { position: "top-right" });
   };
 
   const renderBlock = useCallback(
@@ -261,7 +282,7 @@ const PostPreviewList = ({
           `[PostPreviewList] Invalid block at index ${i}:`,
           JSON.stringify(block, null, 2)
         );
-        toast.error("Invalid block detected");
+        toast.error("Invalid block detected", { position: "top-right" });
         return (
           <div key={i} className="my-4 text-red-500 italic">
             Invalid block
@@ -397,6 +418,11 @@ const PostPreviewList = ({
               key={i}
               className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
             >
+              {block.size && (
+                <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+                  {formatFileSize(block.size)}
+                </div>
+              )}
               {block.src ? (
                 <img
                   src={block.src}
@@ -602,6 +628,21 @@ const PostPreviewList = ({
           <p className="mb-4 opacity-80">
             Category: {categoryName || "Uncategorized"}
           </p>
+          {postData?.thumbnail && (
+            <div className="relative my-4 bg-background-light dark:bg-background-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
+              {postData.thumbnailSize && (
+                <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+                  {formatFileSize(postData.thumbnailSize)}
+                </div>
+              )}
+              <img
+                src={postData.thumbnail}
+                alt="Thumbnail"
+                className="w-full h-40 object-cover rounded-lg"
+                loading="lazy"
+              />
+            </div>
+          )}
           <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 mb-8 border border-gray-200 dark:border-gray-800">
             {sanitizedBlocks.length === 0 ? (
               <p className="italic text-center opacity-80">
@@ -699,19 +740,26 @@ const PostPreviewList = ({
                   className="cursor-pointer"
                 >
                   {firstBlock?.type === "image" ? (
-                    <img
-                      src={firstBlock.src}
-                      alt={firstBlock.caption || "Post Image"}
-                      className="w-full h-40 object-cover rounded-t-xl hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        console.error(
-                          "[PostPreviewList] Image load error for post:",
-                          post._id
-                        );
-                        e.target.style.display = "none";
-                      }}
-                      loading="lazy"
-                    />
+                    <div className="relative">
+                      {firstBlock.size && (
+                        <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+                          {formatFileSize(firstBlock.size)}
+                        </div>
+                      )}
+                      <img
+                        src={firstBlock.src}
+                        alt={firstBlock.caption || "Post Image"}
+                        className="w-full h-40 object-cover rounded-t-xl hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          console.error(
+                            "[PostPreviewList] Image load error for post:",
+                            post._id
+                          );
+                          e.target.style.display = "none";
+                        }}
+                        loading="lazy"
+                      />
+                    </div>
                   ) : firstBlock?.type === "text" ? (
                     <div
                       className="p-4 line-clamp-3 text-sm list-inside"
