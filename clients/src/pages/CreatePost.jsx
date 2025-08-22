@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import slugify from "slugify"; // Add this import
 import CategorySelector from "../components/CreatePost/CategorySelector";
 import PostTypeSelector from "../components/CreatePost/PostTypeSelector";
 import PostEditor from "../components/CreatePost/PostEditor";
@@ -50,8 +51,8 @@ const CreatePost = () => {
       reader.onload = (e) => {
         image.src = e.target.result;
         image.onload = () => {
-          const maxWidth = 1600; // ✅ Keep good resolution
-          const maxHeight = 1600; // ✅ Same as backend
+          const maxWidth = 1600;
+          const maxHeight = 1600;
           let { width, height } = image;
 
           if (width > maxWidth || height > maxHeight) {
@@ -73,7 +74,7 @@ const CreatePost = () => {
               reader.readAsDataURL(blob);
             },
             "image/webp",
-            0.8 // ✅ Much better quality (80%)
+            0.8
           );
         };
         image.onerror = reject;
