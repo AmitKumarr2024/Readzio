@@ -15,6 +15,21 @@ import {
   resetPostMeta,
 } from "../store/Post/postMetaSlice";
 
+// Async retry utility
+const asyncRetry = async (fn, options = {}) => {
+  const { retries = 3, minTimeout = 1000 } = options;
+  let lastError = null;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      await new Promise((resolve) => setTimeout(resolve, minTimeout * (i + 1)));
+    }
+  }
+  throw lastError;
+};
+
 const CreatePost = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -30,13 +45,12 @@ const CreatePost = () => {
   );
   const { categories } = useSelector((state) => state.categories);
 
-  const MAX_PAYLOAD_SIZE = 8 * 1024 * 1024; // 8MB (matches server limit)
-  const MAX_TEXT_BLOCK_SIZE = 100 * 1024; // 100KB per text block
-  const MAX_TABLE_BLOCK_SIZE = 200 * 1024; // 200KB per table block
-  const MAX_IMAGE_COUNT = 20; // 20 images max
+  const MAX_PAYLOAD_SIZE = 8 * 1024 * 1024; // 8MB
+  const MAX_TEXT_BLOCK_SIZE = 100 * 1024; // 100KB
+  const MAX_TABLE_BLOCK_SIZE = 200 * 1024; // 200KB
+  const MAX_IMAGE_COUNT = 20; // 20 images
   const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
 
-  // Client-side image compression
   const compressImage = async (file) => {
     const image = new Image();
     const canvas = document.createElement("canvas");
@@ -51,7 +65,7 @@ const CreatePost = () => {
       reader.onload = (e) => {
         image.src = e.target.result;
         image.onload = () => {
-          const maxWidth = 2400; // Increased for better quality
+          const maxWidth = 2400;
           const maxHeight = 2400;
           let { width, height } = image;
 
@@ -63,7 +77,7 @@ const CreatePost = () => {
 
           canvas.width = width;
           canvas.height = height;
-          ctx.imageSmoothingQuality = "high"; // Improve rendering quality
+          ctx.imageSmoothingQuality = "high";
           ctx.drawImage(image, 0, 0, width, height);
 
           canvas.toBlob(
@@ -75,7 +89,7 @@ const CreatePost = () => {
               reader.readAsDataURL(blob);
             },
             "image/webp",
-            0.95 // Increased quality to 0.95
+            0.95
           );
         };
         image.onerror = reject;
@@ -138,7 +152,6 @@ const CreatePost = () => {
     if (!/^[a-z]{2}$/i.test(metaData.language))
       return toast.error("Invalid language code", { position: "top-right" });
 
-    // Limit number of images
     const imageBlocks = blocks.filter((b) => b.type === "image");
     if (imageBlocks.length > MAX_IMAGE_COUNT) {
       return toast.error(`Maximum ${MAX_IMAGE_COUNT} images allowed per post`, {
@@ -146,7 +159,6 @@ const CreatePost = () => {
       });
     }
 
-    // Validate text and table block sizes
     for (const [index, block] of blocks.entries()) {
       if (block.type === "text") {
         const textSize = new TextEncoder().encode(block.value || "").length;
@@ -180,7 +192,6 @@ const CreatePost = () => {
       }
     }
 
-    // Compress images in blocks
     const updatedBlocks = await Promise.all(
       blocks.map(async (block, index) => {
         if (
@@ -213,7 +224,6 @@ const CreatePost = () => {
       })
     );
 
-    // Compress thumbnail
     let compressedThumbnail = metaData.thumbnail;
     let thumbnailSize = metaData.thumbnailSize || 0;
     if (
@@ -233,7 +243,6 @@ const CreatePost = () => {
       }
     }
 
-    // Estimate payload size
     const postData = {
       postType,
       category: selectedCategoryId,
@@ -260,7 +269,7 @@ const CreatePost = () => {
     try {
       console.log("[CreatePost] Sending postData:", postData);
       const resultAction = await dispatch(createPosts(postData)).unwrap();
-      console.log("[CreatePost] Post created:", resultAction.post);
+      console.log("[CreatePost] Server response:", resultAction);
       toast.success("Post created successfully!", { position: "top-right" });
       setTitle("");
       setBlocks([]);
@@ -269,23 +278,20 @@ const CreatePost = () => {
       navigate(`/post/${resultAction.post.slug}`);
     } catch (err) {
       console.error("[CreatePost] Post creation failed:", err);
-      if (err.message?.includes("Payload exceeds")) {
-        toast.error(
-          "Post data too large. Use fewer images (max 20) or reduce text/table content.",
-          { position: "top-right" }
-        );
-      } else {
-        toast.error(err?.message || "Post creation failed", {
-          position: "top-right",
-        });
-      }
-      // Check if post was created
+      toast.error(err?.message || "Failed to create post", {
+        position: "top-right",
+      });
+
+      // Retry getSinglePost to handle potential indexing delays
       const slug = slugify(title, { lower: true, strict: true });
       try {
-        const checkPost = await dispatch(
-          getSinglePost({ slug, isGuest: false })
-        ).unwrap();
+        console.log("[CreatePost] Retrying getSinglePost with slug:", slug);
+        const checkPost = await asyncRetry(
+          () => dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
+          { retries: 3, minTimeout: 2000 }
+        );
         if (checkPost) {
+          console.log("[CreatePost] Post found on retry:", checkPost.slug);
           toast.success(
             "Post was created but response was delayed. Redirecting...",
             { position: "top-right" }
@@ -294,6 +300,9 @@ const CreatePost = () => {
         }
       } catch (checkErr) {
         console.error("[CreatePost] Check post failed:", checkErr);
+        toast.error("Failed to verify post creation", {
+          position: "top-right",
+        });
       }
     }
   };

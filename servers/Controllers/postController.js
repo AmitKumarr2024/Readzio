@@ -32,7 +32,6 @@ const validateObjectId = (id, type = "ID") => {
   }
   logMemory(`After validateObjectId: ${type}`);
 };
-
 // Create Post old code
 // export const createPost = async (req, res, next) => {
 //   try {
@@ -434,7 +433,6 @@ const fallbackSlugify = (title) => {
     .replace(/^-|-$/g, "");
 };
 
-// Async retry utility
 const asyncRetry = async (fn, options = {}) => {
   const { retries = 3, minTimeout = 1000 } = options;
   let lastError = null;
@@ -451,13 +449,11 @@ const asyncRetry = async (fn, options = {}) => {
 
 const processImage = async (source, id, folder) => {
   try {
-    // Handle Instagram embed
     if (source.includes("instagram.com") && source.includes("/embed")) {
       return source;
     }
 
     let buffer;
-    // Handle Base64 image
     if (source.startsWith("data:image")) {
       const [, format, base64Data] =
         source.match(/^data:image\/([a-z]+);base64,(.+)$/) || [];
@@ -469,9 +465,7 @@ const processImage = async (source, id, folder) => {
         );
       }
       buffer = Buffer.from(base64Data, "base64");
-    }
-    // Handle remote URL image
-    else if (source.startsWith("http")) {
+    } else if (source.startsWith("http")) {
       try {
         const response = await axios.get(source, {
           responseType: "arraybuffer",
@@ -490,12 +484,10 @@ const processImage = async (source, id, folder) => {
       throw new AppError("Unsupported image source", 400, "ProcessImage");
     }
 
-    // Validate size
     if (buffer.length > 5 * 1024 * 1024) {
       throw new AppError("Image size exceeds 5MB limit", 400, "ProcessImage");
     }
 
-    // Initialize Sharp
     const image = sharp(buffer);
     const metadata = await image.metadata();
 
@@ -503,7 +495,6 @@ const processImage = async (source, id, folder) => {
       throw new AppError("Unsupported image format", 400, "ProcessImage");
     }
 
-    // Resize only if large
     const MAX_DIMENSION = 2400;
     if (metadata.width > MAX_DIMENSION || metadata.height > MAX_DIMENSION) {
       image.resize({
@@ -514,7 +505,6 @@ const processImage = async (source, id, folder) => {
       });
     }
 
-    // High-quality WebP conversion
     const compressedBuffer = await image
       .webp({
         quality: 95,
@@ -523,7 +513,6 @@ const processImage = async (source, id, folder) => {
       })
       .toBuffer();
 
-    // Cloudinary upload
     const result = await uploadToCloudinary({
       buffer: compressedBuffer,
       folder,
@@ -551,13 +540,11 @@ export const createPost = async (req, res, next) => {
   try {
     logMemory("📝 Start createPost");
 
-    // Validate payload size (8MB limit)
     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
     if (payloadSize > 8 * 1024 * 1024) {
       throw new AppError("Payload exceeds 8MB limit", 400, "CreatePost");
     }
 
-    // Destructure with validation
     const {
       title,
       category,
@@ -573,7 +560,6 @@ export const createPost = async (req, res, next) => {
       postType = "Blog",
     } = req.body;
 
-    // Validate required fields
     if (!title?.trim()) {
       throw new AppError("Title is required", 400, "CreatePost");
     }
@@ -587,7 +573,6 @@ export const createPost = async (req, res, next) => {
       throw new AppError("You must be signed in.", 401, "CreatePost");
     }
 
-    // Parse tags
     let tags;
     try {
       tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
@@ -598,7 +583,6 @@ export const createPost = async (req, res, next) => {
       throw new AppError("Tags must be an array", 400, "CreatePost");
     }
 
-    // Parse blocks
     let blocks;
     try {
       blocks = Array.isArray(rawBlocks)
@@ -613,7 +597,6 @@ export const createPost = async (req, res, next) => {
 
     logMemory("📦 After parsing input");
 
-    // Assign IDs and validate blocks
     const blocksWithIds = blocks.map((block, index) => {
       if (!block || typeof block !== "object" || !block.type) {
         throw new AppError(
@@ -630,7 +613,6 @@ export const createPost = async (req, res, next) => {
       };
     });
 
-    // Validate table blocks
     blocksWithIds.forEach((block, index) => {
       if (block.type === "table") {
         if (
@@ -823,6 +805,9 @@ export const createPost = async (req, res, next) => {
       );
       logMemory("💾 After DB insert");
       await session.commitTransaction();
+
+      // Ensure post is indexed before responding
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       await asyncRetry(
         async () => {
@@ -1500,7 +1485,7 @@ export const getSinglePost = async (req, res, next) => {
     const sanitizedSlug = slug.trim().toLowerCase();
 
     const query = {
-      slug: sanitizedSlug,
+      slug: sanitizedSlug, // Remove regex for exact match
       ...(userId
         ? {
             $or: [
@@ -1551,6 +1536,7 @@ export const getSinglePost = async (req, res, next) => {
     logMemory("📄 End getSinglePost");
     res.status(200).json({ success: true, post });
   } catch (error) {
+    console.error("[GetSinglePost] Error:", error);
     next(
       error instanceof AppError
         ? error
