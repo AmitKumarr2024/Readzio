@@ -14,8 +14,8 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
     if (isEmbed) {
       if (!src) {
         console.error("[ImageBlockOutput] Missing src for embed");
-      } else if (!src.includes("instagram.com") || !src.includes("/embed")) {
-        console.warn("[ImageBlockOutput] Invalid Instagram embed URL:", src);
+      } else if (!src.includes("instagram.com")) {
+        console.warn("[ImageBlockOutput] Invalid Instagram URL:", src);
       }
     } else if (
       src &&
@@ -42,13 +42,23 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
     );
   };
 
+  // Ensure Instagram embed URL
+  const getEmbedSrc = (src) => {
+    if (!src) return "";
+    let finalSrc = src;
+    if (!src.includes("/embed")) {
+      finalSrc = src.endsWith("/") ? `${src}embed` : `${src}/embed`;
+    }
+    return finalSrc;
+  };
+
   return (
     <figure className="my-6 relative">
       {isEmbed ? (
-        src && src.includes("instagram.com") && src.includes("/embed") ? (
+        src && src.includes("instagram.com") ? (
           <div className="relative w-full max-w-[600px] mx-auto min-h-[300px] h-[500px] sm:h-[550px]">
             <iframe
-              src={src}
+              src={getEmbedSrc(src)}
               className="rounded-lg shadow-md w-full h-full"
               frameBorder="0"
               sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
@@ -56,16 +66,17 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
               title="Instagram Embed"
               onError={(e) => handleError(e, "Iframe")}
               onLoad={() =>
-                console.log("[ImageBlockOutput] Iframe loaded:", src)
+                console.log(
+                  "[ImageBlockOutput] Iframe loaded:",
+                  getEmbedSrc(src)
+                )
               }
               loading="lazy"
             />
           </div>
         ) : (
           <div className="text-red-500 text-center p-4 border border-red-500 rounded-lg">
-            {src
-              ? "Invalid or unsupported Instagram embed URL"
-              : "Missing embed URL"}
+            {src ? "Invalid Instagram URL" : "Missing embed URL"}
           </div>
         )
       ) : src ? (
@@ -81,6 +92,7 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
           Missing image URL
         </div>
       )}
+
       {caption && (
         <figcaption className="text-sm text-center text-text-main-light dark:text-text-main-dark mt-2">
           {caption}
@@ -99,7 +111,7 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
         </button>
       )}
 
-      {/* Zoom Modal (only for non-embed images) */}
+      {/* Zoom Modal */}
       {!isEmbed && modalOpen && src && !src.includes("instagram.com/reel") && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center px-2 sm:px-4"
