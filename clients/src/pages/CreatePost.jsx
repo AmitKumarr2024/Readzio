@@ -17,7 +17,7 @@ import {
 
 // Async retry utility
 const asyncRetry = async (fn, options = {}) => {
-  const { retries = 3, minTimeout = 1000 } = options;
+  const { retries = 5, minTimeout = 2000 } = options; // Increased retries and timeout
   let lastError = null;
   for (let i = 0; i < retries; i++) {
     try {
@@ -87,6 +87,10 @@ const CreatePost = () => {
   const handleCreatePost = async (metaData) => {
     if (!title.trim())
       return toast.error("Please enter a title", { position: "top-right" });
+    if (title.length < 3)
+      return toast.error("Title must be at least 3 characters long", {
+        position: "top-right",
+      });
     if (!blocks.length)
       return toast.error("Please add content blocks", {
         position: "top-right",
@@ -227,7 +231,7 @@ const CreatePost = () => {
         console.log("[CreatePost] Retrying getSinglePost with slug:", slug);
         const checkPost = await asyncRetry(
           () => dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
-          { retries: 3, minTimeout: 2000 }
+          { retries: 5, minTimeout: 2000 } // Increased retries and timeout
         );
         if (checkPost) {
           console.log("[CreatePost] Post found on retry:", checkPost.slug);
@@ -335,6 +339,10 @@ const CreatePost = () => {
                 categoryMap[selectedCategoryId] || selectedCategoryId
               }
             />
+            <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              Images will be uploaded in their original format and quality (up
+              to 5MB).
+            </div>
           </div>
           <div
             id="post-preview-list-wrapper"

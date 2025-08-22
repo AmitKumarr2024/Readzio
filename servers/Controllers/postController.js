@@ -434,7 +434,7 @@ const fallbackSlugify = (title) => {
 };
 
 const asyncRetry = async (fn, options = {}) => {
-  const { retries = 3, minTimeout = 1000 } = options;
+  const { retries = 5, minTimeout = 2000 } = options; // Increased retries and timeout
   let lastError = null;
   for (let i = 0; i < retries; i++) {
     try {
@@ -446,7 +446,6 @@ const asyncRetry = async (fn, options = {}) => {
   }
   throw lastError;
 };
-
 // old code
 // const processImage = async (source, id, folder) => {
 //   try {
@@ -745,7 +744,6 @@ const processBlock = async (block, blockLimit, imageLimit) => {
     )
   );
 };
-
 export const createPost = async (req, res, next) => {
   let session = null;
   try {
@@ -772,8 +770,12 @@ export const createPost = async (req, res, next) => {
       postType = "Blog",
     } = req.body;
 
-    if (!title?.trim()) {
-      throw new AppError("Title is required", 400, "CreatePost");
+    if (!title?.trim() || title.length < 3) {
+      throw new AppError(
+        "Title must be at least 3 characters long",
+        400,
+        "CreatePost"
+      );
     }
     if (!category?.trim()) {
       throw new AppError("Category is required", 400, "CreatePost");
@@ -951,15 +953,16 @@ export const createPost = async (req, res, next) => {
       );
       logMemory("💾 After DB insert");
       await session.commitTransaction();
+      console.log("[CreatePost] Transaction committed for slug:", slug);
 
-      // Increase indexing delay to 3s
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // Increase indexing delay to 5s
+      await new Promise((resolve) => setTimeout(resolve, 5000));
 
       await asyncRetry(
         async () => {
           io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
         },
-        { retries: 3, minTimeout: 1000 }
+        { retries: 5, minTimeout: 2000 }
       );
 
       // Invalidate cache
@@ -997,7 +1000,7 @@ export const createPost = async (req, res, next) => {
         async () => {
           io.to(req.user._id).emit("postCountsUpdated", counts);
         },
-        { retries: 3, minTimeout: 1000 }
+        { retries: 5, minTimeout: 2000 }
       );
 
       logMemory("🎉 End createPost");
@@ -1715,7 +1718,7 @@ export const getSinglePost = async (req, res, next) => {
     console.log("[GetSinglePost] Querying slug:", sanitizedSlug);
 
     const query = {
-      slug: { $regex: `^${sanitizedSlug}$`, $options: "i" }, // Case-insensitive regex
+      slug: { $regex: `^${sanitizedSlug}$`, $options: "i" },
       ...(userId
         ? {
             $or: [
@@ -1728,29 +1731,33 @@ export const getSinglePost = async (req, res, next) => {
     };
 
     logMemory("📖 Before fetching post");
-    const post = await PostModel.findOne(query)
-      .select(
-        `
-        title slug category excerpt thumbnail author createdAt
-        isPublished isPinned isPremium isSubscriberOnly blocked message readTime
-        likesCount commentsCount viewsCount bookmarksCount likes
-        tags language isFeatured allowComments timeSpent updatedAt
-        shareCount sharedBy blocks postType
-        `
-      )
-      .populate("author", "name email avatar")
-      .populate("category")
-      .lean();
+    const post = await asyncRetry(
+      async () => {
+        const result = await PostModel.findOne(query)
+          .select(
+            `
+            title slug category excerpt thumbnail author createdAt
+            isPublished isPinned isPremium isSubscriberOnly blocked message readTime
+            likesCount commentsCount viewsCount bookmarksCount likes
+            tags language isFeatured allowComments timeSpent updatedAt
+            shareCount sharedBy blocks postType
+            `
+          )
+          .populate("author", "name email avatar")
+          .populate("category")
+          .lean();
+        if (!result) {
+          throw new AppError(
+            "Post not found or has been deleted",
+            404,
+            "GetSinglePost"
+          );
+        }
+        return result;
+      },
+      { retries: 5, minTimeout: 2000 } // Retry up to 5 times with 2s base delay
+    );
     logMemory("📖 After fetching post");
-
-    if (!post) {
-      console.error("[GetSinglePost] Post not found for slug:", sanitizedSlug);
-      throw new AppError(
-        "Post not found or has been deleted",
-        404,
-        "GetSinglePost"
-      );
-    }
 
     if (
       post.blocked &&
