@@ -35,7 +35,11 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
   };
 
   const handleError = (e, type = "Image") => {
-    console.error(`[ImageBlockOutput] ${type} failed to load:`, src, e.message);
+    console.error(
+      `[ImageBlockOutput] ${type} failed to load:`,
+      src,
+      e.type || e.message
+    );
   };
 
   return (
@@ -48,9 +52,12 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
               className="rounded-lg shadow-md w-full h-full"
               frameBorder="0"
               sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-              allow="autoplay; encrypted-media; fullscreen"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
               title="Instagram Embed"
               onError={(e) => handleError(e, "Iframe")}
+              onLoad={() =>
+                console.log("[ImageBlockOutput] Iframe loaded:", src)
+              }
               loading="lazy"
             />
           </div>
@@ -80,8 +87,8 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
         </figcaption>
       )}
 
-      {/* Zoom Button (only for images, not embeds) */}
-      {!isEmbed && src && (
+      {/* Zoom Button (only for non-embed images with valid src) */}
+      {!isEmbed && src && !src.includes("instagram.com/reel") && (
         <button
           onClick={() => setModalOpen(true)}
           title="Zoom"
@@ -92,8 +99,8 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
         </button>
       )}
 
-      {/* Zoom Modal (only for images) */}
-      {!isEmbed && modalOpen && src && (
+      {/* Zoom Modal (only for non-embed images) */}
+      {!isEmbed && modalOpen && src && !src.includes("instagram.com/reel") && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center px-2 sm:px-4"
           onClick={() => setModalOpen(false)}
