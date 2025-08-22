@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import slugify from "slugify";
+import { debounce } from "lodash";
 import CategorySelector from "../components/CreatePost/CategorySelector";
 import PostTypeSelector from "../components/CreatePost/PostTypeSelector";
 import PostEditor from "../components/CreatePost/PostEditor";
@@ -17,7 +18,7 @@ import {
 
 // Async retry utility
 const asyncRetry = async (fn, options = {}) => {
-  const { retries = 5, minTimeout = 2000 } = options; // Increased retries and timeout
+  const { retries = 5, minTimeout = 2000 } = options;
   let lastError = null;
   for (let i = 0; i < retries; i++) {
     try {
@@ -37,6 +38,7 @@ const CreatePost = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Track submission state
   const { post, createLoading, createError } = useSelector(
     (state) => state.post
   );
@@ -84,171 +86,230 @@ const CreatePost = () => {
     setShowCategoryModal(false);
   };
 
-  const handleCreatePost = async (metaData) => {
-    if (!title.trim())
-      return toast.error("Please enter a title", { position: "top-right" });
-    if (title.length < 3)
-      return toast.error("Title must be at least 3 characters long", {
-        position: "top-right",
-      });
-    if (!blocks.length)
-      return toast.error("Please add content blocks", {
-        position: "top-right",
-      });
-    if (!postType && !localStorage.getItem("postType"))
-      return toast.error("Please select a post type", {
-        position: "top-right",
-      });
-    if (!selectedCategoryId)
-      return toast.error("Please select a category", { position: "top-right" });
-    if (!metaData.tags?.length)
-      return toast.error("Please provide at least one tag", {
-        position: "top-right",
-      });
-    if (!/^[a-z]{2}$/i.test(metaData.language))
-      return toast.error("Invalid language code", { position: "top-right" });
-
-    const imageBlocks = blocks.filter((b) => b.type === "image");
-    if (imageBlocks.length > MAX_IMAGE_COUNT) {
-      return toast.error(`Maximum ${MAX_IMAGE_COUNT} images allowed per post`, {
-        position: "top-right",
-      });
-    }
-
-    for (const [index, block] of blocks.entries()) {
-      if (block.type === "text") {
-        const textSize = new TextEncoder().encode(block.value || "").length;
-        if (textSize > MAX_TEXT_BLOCK_SIZE) {
-          return toast.error(
-            `Text block at position ${
-              index + 1
-            } too large (>100KB). Please reduce content.`,
-            { position: "top-right" }
-          );
-        }
+  // Debounced handleCreatePost to prevent multiple submissions
+  const handleCreatePost = useCallback(
+    debounce(async (metaData) => {
+      if (isSubmitting) {
+        console.log("[CreatePost] Submission already in progress");
+        return;
       }
-      if (block.type === "table") {
-        if (!block.data?.length || !block.data.some((row) => row.length)) {
-          return toast.error(
-            `Table block at position ${index + 1} must have non-empty data`,
-            { position: "top-right" }
-          );
-        }
-        const tableSize = new TextEncoder().encode(
-          JSON.stringify(block.data)
-        ).length;
-        if (tableSize > MAX_TABLE_BLOCK_SIZE) {
-          return toast.error(
-            `Table block at position ${
-              index + 1
-            } too large (>200KB). Please reduce table data.`,
-            { position: "top-right" }
-          );
-        }
+      setIsSubmitting(true);
+
+      if (!title.trim()) {
+        toast.error("Please enter a title", { position: "top-right" });
+        setIsSubmitting(false);
+        return;
       }
-      if (block.type === "image" && block.src && !block.isEmbed) {
-        try {
-          const file = await fetch(block.src).then((res) => res.blob());
-          if (file.size > MAX_IMAGE_SIZE) {
-            return toast.error(
-              `Image at position ${index + 1} exceeds 5MB limit`,
-              { position: "top-right" }
-            );
-          }
-        } catch (err) {
-          console.error(
-            `[CreatePost] Image validation failed at index ${index + 1}:`,
-            err
-          );
-          toast.error(`Invalid image at position ${index + 1}`, {
-            position: "top-right",
-          });
-          throw err;
-        }
-      }
-    }
-
-    let thumbnail = metaData.thumbnail;
-    let thumbnailSize = metaData.thumbnailSize || 0;
-    if (thumbnail && thumbnail.startsWith("data:image") && !metaData.isEmbed) {
-      try {
-        const file = await fetch(thumbnail).then((res) => res.blob());
-        if (file.size > MAX_IMAGE_SIZE) {
-          return toast.error("Thumbnail exceeds 5MB limit", {
-            position: "top-right",
-          });
-        }
-        thumbnailSize = file.size;
-      } catch (err) {
-        console.error("[CreatePost] Thumbnail validation failed:", err);
-        toast.error("Invalid thumbnail", { position: "top-right" });
-        throw err;
-      }
-    }
-
-    const postData = {
-      postType,
-      category: selectedCategoryId,
-      title,
-      blocks,
-      thumbnail,
-      thumbnailSize,
-      excerpt: metaData.excerpt || "",
-      tags: metaData.tags,
-      language: metaData.language,
-      isEmbed: metaData.isEmbed || false,
-      isFeatured: metaData.isFeatured || false,
-      isPinned: metaData.isPinned || false,
-    };
-    const payloadString = JSON.stringify(postData);
-    const payloadSize = new TextEncoder().encode(payloadString).length;
-    if (payloadSize > MAX_PAYLOAD_SIZE) {
-      return toast.error(
-        "Post data exceeds 8MB. Reduce images (max 20), text, or table content.",
-        { position: "top-right" }
-      );
-    }
-
-    try {
-      console.log("[CreatePost] Sending postData:", postData);
-      const resultAction = await dispatch(createPosts(postData)).unwrap();
-      console.log("[CreatePost] Server response:", resultAction);
-      toast.success("Post created successfully!", { position: "top-right" });
-      setTitle("");
-      setBlocks([]);
-      dispatch(resetPostMeta());
-      localStorage.removeItem("postType");
-      navigate(`/post/${resultAction.post.slug}`);
-    } catch (err) {
-      console.error("[CreatePost] Post creation failed:", err);
-      toast.error(err?.message || "Failed to create post", {
-        position: "top-right",
-      });
-
-      // Retry getSinglePost to handle potential indexing delays
-      const slug = slugify(title, { lower: true, strict: true });
-      try {
-        console.log("[CreatePost] Retrying getSinglePost with slug:", slug);
-        const checkPost = await asyncRetry(
-          () => dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
-          { retries: 5, minTimeout: 2000 } // Increased retries and timeout
-        );
-        if (checkPost) {
-          console.log("[CreatePost] Post found on retry:", checkPost.slug);
-          toast.success(
-            "Post was created but response was delayed. Redirecting...",
-            { position: "top-right" }
-          );
-          navigate(`/post/${checkPost.slug}`);
-        }
-      } catch (checkErr) {
-        console.error("[CreatePost] Check post failed:", checkErr);
-        toast.error("Failed to verify post creation", {
+      if (title.length < 3) {
+        toast.error("Title must be at least 3 characters long", {
           position: "top-right",
         });
+        setIsSubmitting(false);
+        return;
       }
-    }
-  };
+      if (!blocks.length) {
+        toast.error("Please add content blocks", { position: "top-right" });
+        setIsSubmitting(false);
+        return;
+      }
+      if (!postType && !localStorage.getItem("postType")) {
+        toast.error("Please select a post type", { position: "top-right" });
+        setIsSubmitting(false);
+        return;
+      }
+      if (!selectedCategoryId) {
+        toast.error("Please select a category", { position: "top-right" });
+        setIsSubmitting(false);
+        return;
+      }
+      if (!metaData.tags?.length) {
+        toast.error("Please provide at least one tag", {
+          position: "top-right",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      if (!/^[a-z]{2}$/i.test(metaData.language)) {
+        toast.error("Invalid language code", { position: "top-right" });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const imageBlocks = blocks.filter((b) => b.type === "image");
+      if (imageBlocks.length > MAX_IMAGE_COUNT) {
+        toast.error(`Maximum ${MAX_IMAGE_COUNT} images allowed per post`, {
+          position: "top-right",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      for (const [index, block] of blocks.entries()) {
+        if (block.type === "text") {
+          const textSize = new TextEncoder().encode(block.value || "").length;
+          if (textSize > MAX_TEXT_BLOCK_SIZE) {
+            toast.error(
+              `Text block at position ${
+                index + 1
+              } too large (>100KB). Please reduce content.`,
+              { position: "top-right" }
+            );
+            setIsSubmitting(false);
+            return;
+          }
+        }
+        if (block.type === "table") {
+          if (!block.data?.length || !block.data.some((row) => row.length)) {
+            toast.error(
+              `Table block at position ${index + 1} must have non-empty data`,
+              { position: "top-right" }
+            );
+            setIsSubmitting(false);
+            return;
+          }
+          const tableSize = new TextEncoder().encode(
+            JSON.stringify(block.data)
+          ).length;
+          if (tableSize > MAX_TABLE_BLOCK_SIZE) {
+            toast.error(
+              `Table block at position ${
+                index + 1
+              } too large (>200KB). Please reduce table data.`,
+              { position: "top-right" }
+            );
+            setIsSubmitting(false);
+            return;
+          }
+        }
+        if (block.type === "image" && block.src && !block.isEmbed) {
+          try {
+            const file = await fetch(block.src).then((res) => res.blob());
+            if (file.size > MAX_IMAGE_SIZE) {
+              toast.error(`Image at position ${index + 1} exceeds 5MB limit`, {
+                position: "top-right",
+              });
+              setIsSubmitting(false);
+              return;
+            }
+          } catch (err) {
+            console.error(
+              `[CreatePost] Image validation failed at index ${index + 1}:`,
+              err
+            );
+            toast.error(`Invalid image at position ${index + 1}`, {
+              position: "top-right",
+            });
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      }
+
+      let thumbnail = metaData.thumbnail;
+      let thumbnailSize = metaData.thumbnailSize || 0;
+      if (
+        thumbnail &&
+        thumbnail.startsWith("data:image") &&
+        !metaData.isEmbed
+      ) {
+        try {
+          const file = await fetch(thumbnail).then((res) => res.blob());
+          if (file.size > MAX_IMAGE_SIZE) {
+            toast.error("Thumbnail exceeds 5MB limit", {
+              position: "top-right",
+            });
+            setIsSubmitting(false);
+            return;
+          }
+          thumbnailSize = file.size;
+        } catch (err) {
+          console.error("[CreatePost] Thumbnail validation failed:", err);
+          toast.error("Invalid thumbnail", { position: "top-right" });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      const postData = {
+        postType,
+        category: selectedCategoryId,
+        title,
+        blocks,
+        thumbnail,
+        thumbnailSize,
+        excerpt: metaData.excerpt || "",
+        tags: metaData.tags,
+        language: metaData.language,
+        isEmbed: metaData.isEmbed || false,
+        isFeatured: metaData.isFeatured || false,
+        isPinned: metaData.isPinned || false,
+      };
+      const payloadString = JSON.stringify(postData);
+      const payloadSize = new TextEncoder().encode(payloadString).length;
+      if (payloadSize > MAX_PAYLOAD_SIZE) {
+        toast.error(
+          "Post data exceeds 8MB. Reduce images (max 20), text, or table content.",
+          { position: "top-right" }
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      try {
+        console.log("[CreatePost] Sending postData:", postData);
+        const resultAction = await dispatch(createPosts(postData)).unwrap();
+        console.log("[CreatePost] Server response:", resultAction);
+        toast.success("Post created successfully!", { position: "top-right" });
+        setTitle("");
+        setBlocks([]);
+        dispatch(resetPostMeta());
+        localStorage.removeItem("postType");
+        navigate(`/post/${resultAction.post.slug}`);
+      } catch (err) {
+        console.error("[CreatePost] Post creation failed:", err);
+        if (
+          err?.message?.includes("A post with this title was recently created")
+        ) {
+          toast.error(
+            "Please wait before creating another post with the same title.",
+            {
+              position: "top-right",
+            }
+          );
+        } else {
+          toast.error(err?.message || "Failed to create post", {
+            position: "top-right",
+          });
+        }
+
+        // Retry getSinglePost to handle potential indexing delays
+        const slug = slugify(title, { lower: true, strict: true });
+        try {
+          console.log("[CreatePost] Retrying getSinglePost with slug:", slug);
+          const checkPost = await asyncRetry(
+            () => dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
+            { retries: 5, minTimeout: 2000 }
+          );
+          if (checkPost) {
+            console.log("[CreatePost] Post found on retry:", checkPost.slug);
+            toast.success(
+              "Post was created but response was delayed. Redirecting...",
+              { position: "top-right" }
+            );
+            navigate(`/post/${checkPost.slug}`);
+          }
+        } catch (checkErr) {
+          console.error("[CreatePost] Check post failed:", checkErr);
+          toast.error("Failed to verify post creation", {
+            position: "top-right",
+          });
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
+    }, 1000),
+    [dispatch, title, blocks, postType, selectedCategoryId, isSubmitting]
+  );
 
   const handleDeletePost = (id) => {
     dispatch(deletePost(id))
@@ -361,6 +422,7 @@ const CreatePost = () => {
               createLoading={createLoading}
               createError={createError}
               onCreatePost={handleCreatePost}
+              isSubmitting={isSubmitting} // Pass isSubmitting to disable button
             />
           </div>
         </div>

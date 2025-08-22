@@ -848,6 +848,21 @@ export const createPost = async (req, res, next) => {
       throw new AppError("You must be signed in.", 401, "CreatePost");
     }
 
+    // Deduplicate posts by title, author, and recent creation time
+    const recentPost = await PostModel.findOne({
+      title: title.trim(),
+      author: req.user._id,
+      createdAt: { $gte: new Date(Date.now() - 60 * 1000) }, // Last 60 seconds
+    }).lean();
+    if (recentPost) {
+      console.log("[CreatePost] Duplicate post detected:", recentPost.slug);
+      throw new AppError(
+        "A post with this title was recently created. Please wait before creating another.",
+        429,
+        "CreatePost"
+      );
+    }
+
     let tags;
     try {
       tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");

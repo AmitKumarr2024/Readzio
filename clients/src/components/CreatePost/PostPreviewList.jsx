@@ -12,6 +12,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { PacmanLoader } from "react-spinners";
+import { debounce } from "lodash";
 import DOMPurify from "dompurify";
 import FileBlock from "../PostFeature/FileBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
@@ -38,6 +39,7 @@ const PostPreviewList = ({
   createLoading,
   createError,
   onCreatePost,
+  isSubmitting, // Receive isSubmitting prop
 }) => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -93,32 +95,66 @@ const PostPreviewList = ({
     toast.success("Code copied!");
   };
 
-  const createPost = () => {
-    if (
-      currentDraftPost.blocks.some(
-        (b) => b.type === "table" && (!b.data || !b.data.length)
-      )
-    ) {
-      return toast.error("Please fill in all table blocks before publishing.");
-    }
-
-    if (!currentDraftPost?.title) return toast.error("Please enter a title");
-    if (!currentDraftPost?.blocks?.length)
-      return toast.error("Please add content blocks");
-    if (!postType) return toast.error("Please select a post type");
-    if (!category) return toast.error("Please select a category");
-    if (!language.match(/^[a-z]{2}$/i))
-      return toast.error("Invalid language code (e.g., 'en')");
-
-    if (!isFeatured && !isPinned && !isPublished && language === "en") {
-      toast.error(
-        "Set at least one metadata field (feature, pin, publish, or language)"
-      );
-      return;
-    }
-
-    setShowConfirmModal(true);
-  };
+  // Debounced createPost to prevent multiple rapid clicks
+  const createPost = useCallback(
+    debounce(() => {
+      if (isSubmitting || createLoading) {
+        console.log("[PostPreviewList] Submission already in progress");
+        return;
+      }
+      if (
+        currentDraftPost.blocks.some(
+          (b) => b.type === "table" && (!b.data || !b.data.length)
+        )
+      ) {
+        toast.error("Please fill in all table blocks before publishing.", {
+          position: "top-right",
+        });
+        return;
+      }
+      if (!currentDraftPost?.title) {
+        toast.error("Please enter a title", { position: "top-right" });
+        return;
+      }
+      if (!currentDraftPost?.blocks?.length) {
+        toast.error("Please add content blocks", { position: "top-right" });
+        return;
+      }
+      if (!postType) {
+        toast.error("Please select a post type", { position: "top-right" });
+        return;
+      }
+      if (!category) {
+        toast.error("Please select a category", { position: "top-right" });
+        return;
+      }
+      if (!language.match(/^[a-z]{2}$/i)) {
+        toast.error("Invalid language code (e.g., 'en')", {
+          position: "top-right",
+        });
+        return;
+      }
+      if (!isFeatured && !isPinned && !isPublished && language === "en") {
+        toast.error(
+          "Set at least one metadata field (feature, pin, publish, or language)",
+          { position: "top-right" }
+        );
+        return;
+      }
+      setShowConfirmModal(true);
+    }, 1000),
+    [
+      isSubmitting,
+      createLoading,
+      currentDraftPost,
+      postType,
+      category,
+      language,
+      isFeatured,
+      isPinned,
+      isPublished,
+    ]
+  );
 
   const handleModalConfirm = async ({ tags, thumbnail }) => {
     const newPostData = {
@@ -141,11 +177,10 @@ const PostPreviewList = ({
   };
 
   const sanitizeBlocks = useCallback((blocks) => {
-    let lastLoggedData = null; // Track last logged table data to avoid duplicate logs
+    let lastLoggedData = null;
     return blocks.map((block) => {
       if (block.type === "table") {
         let tableData = block.data;
-        // Handle old headers/rows format
         if (!tableData && (block.headers || block.rows)) {
           const headers =
             Array.isArray(block.headers) && block.headers.length
@@ -161,7 +196,6 @@ const PostPreviewList = ({
                 ];
           tableData = [headers, ...rows];
         }
-        // Validate table data
         const isValidTableData =
           Array.isArray(tableData) &&
           tableData.length > 0 &&
@@ -171,21 +205,18 @@ const PostPreviewList = ({
               row.some((cell) => cell != null && cell !== "")
           );
         if (!isValidTableData) {
-          // console.warn(
-          //   "[PostPreviewList] Invalid table data, using default:",
-          //   JSON.stringify(block, null, 2)
-          // );
           tableData = [
             ["Header 1", "Header 2"],
             ["Cell 1", "Cell 2"],
             ["Cell 3", "Cell 4"],
           ];
-          toast.error("Table block is empty. Using default data.");
+          toast.error("Table block is empty. Using default data.", {
+            position: "top-right",
+          });
         } else {
           const tableDataString = JSON.stringify(tableData);
           if (tableDataString !== lastLoggedData) {
-            // console.log("[PostPreviewList] Valid table data:", tableDataString);
-            lastLoggedData = tableDataString; // Update last logged data
+            lastLoggedData = tableDataString;
           }
         }
         return {
@@ -214,6 +245,18 @@ const PostPreviewList = ({
       await onCreatePost({ ...postData, draft: cleanedDraft });
     } catch (err) {
       console.error("[PostPreviewList] Post creation failed:", err);
+      if (
+        err?.message?.includes("A post with this title was recently created")
+      ) {
+        toast.error(
+          "Please wait before creating another post with the same title.",
+          { position: "top-right" }
+        );
+      } else {
+        toast.error(err?.message || "Failed to create post", {
+          position: "top-right",
+        });
+      }
     } finally {
       setShowPublishLoading(false);
       setPostData(null);
@@ -226,7 +269,7 @@ const PostPreviewList = ({
     setIsPostConfirmed(false);
     setPostData(null);
     setCountdown(5);
-    toast("Post publishing cancelled.");
+    toast("Post publishing cancelled.", { position: "top-right" });
   };
 
   const handleDeletePost = (postId) => {
@@ -234,24 +277,15 @@ const PostPreviewList = ({
       dispatch(deletePost(postId))
         .unwrap()
         .then(() => {
-          toast.success("Post deleted successfully");
+          toast.success("Post deleted successfully", { position: "top-right" });
         })
         .catch((err) => {
           console.error("[PostPreviewList] Post deletion failed:", err);
-          toast.error(`Failed to delete post: ${err.message || err}`);
+          toast.error(`Failed to delete post: ${err.message || err}`, {
+            position: "top-right",
+          });
         });
     }
-  };
-
-  const deleteBlock = (index) => {
-    if (!onUpdateDraft) {
-      console.error("[PostPreviewList] No update function provided");
-      toast.error("No update function provided");
-      return;
-    }
-    const updatedBlocks = currentDraftPost.blocks.filter((_, i) => i !== index);
-    onUpdateDraft({ ...currentDraftPost, blocks: updatedBlocks });
-    toast.success("Block deleted");
   };
 
   const renderBlock = useCallback(
@@ -261,7 +295,7 @@ const PostPreviewList = ({
           `[PostPreviewList] Invalid block at index ${i}:`,
           JSON.stringify(block, null, 2)
         );
-        toast.error("Invalid block detected");
+        toast.error("Invalid block detected", { position: "top-right" });
         return (
           <div key={i} className="my-4 text-red-500 italic">
             Invalid block
@@ -654,14 +688,14 @@ const PostPreviewList = ({
 
           <button
             onClick={createPost}
-            disabled={createLoading}
+            disabled={isSubmitting || createLoading}
             className={`w-full flex items-center justify-center text-lg font-semibold py-3 rounded-lg shadow-sm transition duration-300 ${
-              createLoading
+              isSubmitting || createLoading
                 ? "bg-blue-400 cursor-not-allowed"
                 : "bg-blue-500 hover:bg-blue-600 text-white"
             }`}
           >
-            {createLoading ? (
+            {isSubmitting || createLoading ? (
               <>
                 Creating...{" "}
                 <PacmanLoader size={12} color="#ffffff" className="ml-2" />
@@ -672,7 +706,8 @@ const PostPreviewList = ({
           </button>
           {createError && (
             <p className="mt-2 text-red-500 text-sm text-center">
-              {createError}
+              {createError.message ||
+                "Failed to create post. Please try again."}
             </p>
           )}
         </>
