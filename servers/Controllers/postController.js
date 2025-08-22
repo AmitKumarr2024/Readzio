@@ -448,13 +448,16 @@ const asyncRetry = async (fn, options = {}) => {
   }
   throw lastError;
 };
+
 const processImage = async (source, id, folder) => {
   try {
+    // If it's an Instagram embed, return directly
     if (source.includes("instagram.com") && source.includes("/embed")) {
       return source;
     }
 
     let buffer;
+    // Handle Base64 image
     if (source.startsWith("data:image")) {
       const [, format, base64Data] =
         source.match(/^data:image\/([a-z]+);base64,(.+)$/) || [];
@@ -466,11 +469,13 @@ const processImage = async (source, id, folder) => {
         );
       }
       buffer = Buffer.from(base64Data, "base64");
-    } else if (source.startsWith("http")) {
+    }
+    // Handle remote URL image
+    else if (source.startsWith("http")) {
       try {
         const response = await axios.get(source, {
           responseType: "arraybuffer",
-          timeout: 10000,
+          timeout: 15000,
           headers: { "User-Agent": "Mozilla/5.0" },
         });
         buffer = Buffer.from(response.data, "binary");
@@ -485,34 +490,48 @@ const processImage = async (source, id, folder) => {
       throw new AppError("Unsupported image source", 400, "ProcessImage");
     }
 
+    // Validate size
     if (buffer.length > 5 * 1024 * 1024) {
       throw new AppError("Image size exceeds 5MB limit", 400, "ProcessImage");
     }
 
+    // Initialize Sharp
     const image = sharp(buffer);
     const metadata = await image.metadata();
+
     if (!["jpeg", "png", "webp"].includes(metadata.format)) {
       throw new AppError("Unsupported image format", 400, "ProcessImage");
     }
 
-    // Resize only if necessary, preserve aspect ratio
-    if (metadata.width > 1600 || metadata.height > 1600) {
+    // ✅ Resize only if extremely large (better quality balance)
+    const MAX_DIMENSION = 2400; // Increased from 1600 for better clarity
+    if (metadata.width > MAX_DIMENSION || metadata.height > MAX_DIMENSION) {
       image.resize({
-        width: 1600,
-        height: 1600,
+        width: MAX_DIMENSION,
+        height: MAX_DIMENSION,
         fit: "inside",
         withoutEnlargement: true,
       });
     }
 
+    // ✅ High-quality WebP conversion
     const compressedBuffer = await image
-      .webp({ quality: 85, effort: 4, nearLossless: true })
+      .webp({
+        quality: 95, // Better quality
+        effort: 4, // Balance speed & compression
+        nearLossless: true, // Keep details
+      })
       .toBuffer();
+
+    // ✅ Cloudinary upload without heavy recompression
     const result = await uploadToCloudinary({
       buffer: compressedBuffer,
       folder,
-      transformation: [{ quality: "auto:good", fetch_format: "webp" }],
+      transformation: [
+        { fetch_format: "webp", quality: "auto:best" }, // Best quality
+      ],
     });
+
     if (!result?.secure_url) {
       throw new AppError("Image upload failed", 500, "ProcessImage");
     }
@@ -527,6 +546,7 @@ const processImage = async (source, id, folder) => {
     );
   }
 };
+
 export const createPost = async (req, res, next) => {
   let session = null;
   try {
@@ -1154,59 +1174,7 @@ export const countFollowingPosts = async (req, res, next) => {
   }
 };
 
-// Get single public post by slug old code
-// export const getPublicPost = async (req, res, next) => {
-//   try {
-//     logMemory("📄 Start getPublicPost");
-//     const { slug } = req.params;
-
-//     if (!slug || typeof slug !== "string" || slug.trim() === "") {
-//       throw new AppError("Invalid post slug", 400, "GetPublicPost");
-//     }
-
-//     const sanitizedSlug = slug.trim().toLowerCase();
-//     console.log("Querying slug:", sanitizedSlug);
-
-//     logMemory("📖 Before fetching post");
-//     const post = await PostModel.findOne({
-//       slug: { $regex: `^${sanitizedSlug}$`, $options: "i" },
-//       isPublished: true,
-//       blocked: false,
-//     })
-//       .select(
-//         "title slug category excerpt thumbnail author createdAt isPublished readTime readingTime tags language viewsCount shareCount postType"
-//       )
-//       .populate("author", "name avatar")
-//       .populate("category", "name slug")
-//       .lean();
-//     logMemory("📖 After fetching post");
-
-//     if (!post) {
-//       throw new AppError(
-//         "Post not found or has been deleted",
-//         404,
-//         "GetPublicPost"
-//       );
-//     }
-
-//     console.log("Post fetched:", post.title);
-//     logMemory("📄 End getPublicPost");
-//     res.status(200).json({ success: true, post });
-//   } catch (error) {
-//     console.error("Error in getPublicPost:", error.message, error.stack);
-//     next(
-//       error instanceof AppError
-//         ? error
-//         : new AppError(
-//             error.message || "Failed to fetch public post",
-//             500,
-//             "GetPublicPost"
-//           )
-//     );
-//   }
-// };
-
-// new code
+// Get single public post by slug
 export const getPublicPost = async (req, res, next) => {
   try {
     logMemory("📄 Start getPublicPost");
@@ -1226,7 +1194,7 @@ export const getPublicPost = async (req, res, next) => {
       blocked: false,
     })
       .select(
-        "title slug category excerpt thumbnail blocks author createdAt isPublished readTime readingTime tags language viewsCount shareCount postType"
+        "title slug category excerpt thumbnail author createdAt isPublished readTime readingTime tags language viewsCount shareCount postType"
       )
       .populate("author", "name avatar")
       .populate("category", "name slug")
@@ -1234,19 +1202,12 @@ export const getPublicPost = async (req, res, next) => {
     logMemory("📖 After fetching post");
 
     if (!post) {
-      throw new AppError("Post not found or has been deleted", 404, "GetPublicPost");
+      throw new AppError(
+        "Post not found or has been deleted",
+        404,
+        "GetPublicPost"
+      );
     }
-
-    // Ensure blocks is an array and filter out invalid image blocks
-    post.blocks = Array.isArray(post.blocks)
-      ? post.blocks.filter((block) => {
-          if (block.type === "image" && (!block.src || block.src === "")) {
-            console.warn(`[GetPublicPost] Skipping invalid image block: ${block.id}`);
-            return false;
-          }
-          return true;
-        })
-      : [];
 
     console.log("Post fetched:", post.title);
     logMemory("📄 End getPublicPost");
@@ -1256,11 +1217,14 @@ export const getPublicPost = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message || "Failed to fetch public post", 500, "GetPublicPost")
+        : new AppError(
+            error.message || "Failed to fetch public post",
+            500,
+            "GetPublicPost"
+          )
     );
   }
 };
-
 
 // Track guest view
 export const trackGuestView = async (req, res, next) => {
@@ -1529,85 +1493,7 @@ export const getAllPosts = async (req, res, next) => {
   }
 };
 
-// Get single post old code
-// export const getSinglePost = async (req, res, next) => {
-//   try {
-//     logMemory("📄 Start getSinglePost");
-//     const { slug } = req.params;
-//     const userId = req.user?._id;
-//     const userRole = req.user?.role;
-
-//     if (!slug || typeof slug !== "string" || slug.trim() === "") {
-//       throw new AppError("Invalid post slug", 400, "GetSinglePost");
-//     }
-
-//     const sanitizedSlug = slug.trim().toLowerCase();
-
-//     const query = {
-//       slug: sanitizedSlug,
-//       ...(userId
-//         ? {
-//             $or: [
-//               { isPublished: true, blocked: false },
-//               { author: userId },
-//               ...(userRole === "admin" ? [{}] : []),
-//             ],
-//           }
-//         : { isPublished: true, blocked: false }),
-//     };
-
-//     logMemory("📖 Before fetching post");
-//     const post = await PostModel.findOne(query)
-//       .select(
-//         `
-//         title slug category excerpt thumbnail author createdAt
-//         isPublished isPinned isPremium isSubscriberOnly blocked message readTime
-//         likesCount commentsCount viewsCount bookmarksCount likes
-//         tags language isFeatured allowComments timeSpent updatedAt
-//         shareCount sharedBy blocks postType
-//         `
-//       )
-//       .populate("author", "name email avatar")
-//       .populate("category")
-//       .lean();
-//     logMemory("📖 After fetching post");
-
-//     if (!post) {
-//       throw new AppError(
-//         "Post not found or has been deleted",
-//         404,
-//         "GetSinglePost"
-//       );
-//     }
-
-//     if (
-//       post.blocked &&
-//       (!userId ||
-//         (post.author.toString() !== userId.toString() && userRole !== "admin"))
-//     ) {
-//       throw new AppError(
-//         "Post is not available (blocked)",
-//         403,
-//         "GetSinglePost"
-//       );
-//     }
-
-//     logMemory("📄 End getSinglePost");
-//     res.status(200).json({ success: true, post });
-//   } catch (error) {
-//     next(
-//       error instanceof AppError
-//         ? error
-//         : new AppError(
-//             error.message || "Failed to fetch post",
-//             500,
-//             "GetSinglePost"
-//           )
-//     );
-//   }
-// };
-
-// new code
+// Get single post
 export const getSinglePost = async (req, res, next) => {
   try {
     logMemory("📄 Start getSinglePost");
@@ -1638,11 +1524,11 @@ export const getSinglePost = async (req, res, next) => {
     const post = await PostModel.findOne(query)
       .select(
         `
-        title slug category excerpt thumbnail blocks author createdAt
+        title slug category excerpt thumbnail author createdAt
         isPublished isPinned isPremium isSubscriberOnly blocked message readTime
         likesCount commentsCount viewsCount bookmarksCount likes
         tags language isFeatured allowComments timeSpent updatedAt
-        shareCount sharedBy postType
+        shareCount sharedBy blocks postType
         `
       )
       .populate("author", "name email avatar")
@@ -1651,7 +1537,11 @@ export const getSinglePost = async (req, res, next) => {
     logMemory("📖 After fetching post");
 
     if (!post) {
-      throw new AppError("Post not found or has been deleted", 404, "GetSinglePost");
+      throw new AppError(
+        "Post not found or has been deleted",
+        404,
+        "GetSinglePost"
+      );
     }
 
     if (
@@ -1659,19 +1549,12 @@ export const getSinglePost = async (req, res, next) => {
       (!userId ||
         (post.author.toString() !== userId.toString() && userRole !== "admin"))
     ) {
-      throw new AppError("Post is not available (blocked)", 403, "GetSinglePost");
+      throw new AppError(
+        "Post is not available (blocked)",
+        403,
+        "GetSinglePost"
+      );
     }
-
-    // Ensure blocks is an array and filter out invalid image blocks
-    post.blocks = Array.isArray(post.blocks)
-      ? post.blocks.filter((block) => {
-          if (block.type === "image" && (!block.src || block.src === "")) {
-            console.warn(`[GetSinglePost] Skipping invalid image block: ${block.id}`);
-            return false;
-          }
-          return true;
-        })
-      : [];
 
     logMemory("📄 End getSinglePost");
     res.status(200).json({ success: true, post });
@@ -1679,7 +1562,11 @@ export const getSinglePost = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message || "Failed to fetch post", 500, "GetSinglePost")
+        : new AppError(
+            error.message || "Failed to fetch post",
+            500,
+            "GetSinglePost"
+          )
     );
   }
 };
