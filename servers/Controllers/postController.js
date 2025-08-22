@@ -430,6 +430,13 @@ const validateObjectId = (id, type = "ID") => {
 export const createPost = async (req, res, next) => {
   try {
     logMemory("📝 Start createPost");
+
+    // Validate payload size (8MB limit)
+    const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
+    if (payloadSize > 8 * 1024 * 1024) {
+      throw new AppError("Payload exceeds 8MB limit", 400, "CreatePost");
+    }
+
     const {
       title,
       category,
@@ -463,11 +470,7 @@ export const createPost = async (req, res, next) => {
 
     const blocksWithIds = blocks.map((block, index) => {
       if (!block || typeof block !== "object" || !block.type) {
-        throw new AppError(
-          `Invalid block at index ${index}`,
-          400,
-          "CreatePost"
-        );
+        throw new AppError(`Invalid block at index ${index}`, 400, "CreatePost");
       }
       return {
         id: block.id || uuidv4(),
@@ -559,7 +562,7 @@ export const createPost = async (req, res, next) => {
     };
 
     const blockLimit = pLimit(3);
-    const imageLimit = pLimit(1); // Reduced concurrency to avoid Cloudinary overload
+    const imageLimit = pLimit(1);
 
     const processBlock = async (block) => {
       const processedBlock = { ...block };
@@ -665,7 +668,7 @@ export const createPost = async (req, res, next) => {
       processedThumbnail = await imageLimit(() =>
         processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
       );
-      logMemory("🖼️スタッフ After processing thumbnail");
+      logMemory("🖼️ After processing thumbnail");
     }
 
     const moderateContent = async (text) => {
@@ -740,7 +743,13 @@ export const createPost = async (req, res, next) => {
       logMemory("💾 After DB insert");
       await session.commitTransaction();
 
-      io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
+      // Retry socket emission
+      await asyncRetry(
+        async () => {
+          io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
+        },
+        { retries: 3, minTimeout: 1000 }
+      );
 
       const cacheKey = `postCounts:${req.user._id}`;
       let counts = cache.get(cacheKey);
@@ -768,9 +777,13 @@ export const createPost = async (req, res, next) => {
         logMemory("📊 After cache update");
       }
 
-      setTimeout(() => {
-        io.to(req.user._id).emit("postCountsUpdated", counts);
-      }, 1000);
+      // Retry socket emission for post counts
+      await asyncRetry(
+        async () => {
+          io.to(req.user._id).emit("postCountsUpdated", counts);
+        },
+        { retries: 3, minTimeout: 1000 }
+      );
 
       logMemory("🎉 End createPost");
       res
@@ -786,14 +799,11 @@ export const createPost = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError(
-            error.message || "Failed to create post",
-            500,
-            "CreatePost"
-          )
+        : new AppError(error.message || "Failed to create post", 500, "CreatePost")
     );
   }
 };
+
 
 // Get all published + unblocked posts with pagination
 export const getPublicPosts = async (req, res, next) => {

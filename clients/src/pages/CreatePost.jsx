@@ -6,7 +6,7 @@ import CategorySelector from "../components/CreatePost/CategorySelector";
 import PostTypeSelector from "../components/CreatePost/PostTypeSelector";
 import PostEditor from "../components/CreatePost/PostEditor";
 import PostPreviewList from "../components/CreatePost/PostPreviewList";
-import { createPosts, deletePost } from "../store/postSlice";
+import { createPosts, deletePost, getSinglePost } from "../store/postSlice";
 import { fetchCategories } from "../store/categorySlice";
 import {
   setCategory,
@@ -29,8 +29,54 @@ const CreatePost = () => {
   );
   const { categories } = useSelector((state) => state.categories);
 
+  // Client-side image compression
+  const compressImage = async (file) => {
+    const image = new Image();
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const reader = new FileReader();
+
+    return new Promise((resolve, reject) => {
+      if (file.size > 5 * 1024 * 1024) {
+        return reject(new Error("Image size exceeds 5MB limit"));
+      }
+
+      reader.onload = (e) => {
+        image.src = e.target.result;
+        image.onload = () => {
+          const maxWidth = 600;
+          const maxHeight = 600;
+          let { width, height } = image;
+
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width *= ratio;
+            height *= ratio;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(image, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result); // Base64 string
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            },
+            "image/webp",
+            0.3 // 30% quality
+          );
+        };
+        image.onerror = reject;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   useEffect(() => {
-    // console.log("[CreatePost] Fetching categories");
     const savedPostType = localStorage.getItem("postType");
     if (savedPostType) {
       dispatch(setPostType(savedPostType));
@@ -44,10 +90,6 @@ const CreatePost = () => {
   }, [dispatch]);
 
   const categoryMap = useMemo(() => {
-    // console.log(
-    //   "[CreatePost] Creating category map with categories:",
-    //   categories
-    // );
     const map = {};
     categories.forEach((cat) => {
       map[cat._id] = cat.name;
@@ -59,23 +101,14 @@ const CreatePost = () => {
   const filteredPosts = selectedCategoryId
     ? posts.filter((p) => p.category === selectedCategoryId)
     : posts;
-  // console.log("[CreatePost] Filtered posts:", filteredPosts);
 
   const handleCategoryContinue = (selectedCategory) => {
-    // console.log("[CreatePost] Category selected:", selectedCategory);
     if (!selectedCategory?.id) return toast.error("Please select a category");
     dispatch(setCategory(selectedCategory.id));
     setShowCategoryModal(false);
   };
 
   const handleCreatePost = async (metaData) => {
-    // console.log("[CreatePost] Creating post with data:", {
-    //   title,
-    //   blocks,
-    //   postType,
-    //   selectedCategoryId,
-    //   metaData,
-    // });
     if (!title.trim()) return toast.error("Please enter a title");
     if (!blocks.length) return toast.error("Please add content blocks");
     if (!postType && !localStorage.getItem("postType"))
@@ -86,34 +119,56 @@ const CreatePost = () => {
     if (!/^[a-z]{2}$/i.test(metaData.language))
       return toast.error("Invalid language code");
 
-    const updatedBlocks = blocks.map((block) => {
-      if (block.type === "table") {
-        if (!block.data?.length || !block.data.some((row) => row.length)) {
-          toast.error("Table block must have non-empty data");
-          throw new Error("Invalid table block");
+    // Compress images in blocks
+    const updatedBlocks = await Promise.all(
+      blocks.map(async (block) => {
+        if (
+          block.type === "image" &&
+          block.src &&
+          block.src.startsWith("data:image")
+        ) {
+          try {
+            const file = await fetch(block.src).then((res) => res.blob());
+            const compressedSrc = await compressImage(file);
+            return { ...block, src: compressedSrc, blocked: false };
+          } catch (err) {
+            toast.error("Failed to compress image");
+            throw err;
+          }
         }
-        return {
-          ...block,
-          blocked: false,
-        };
+        if (block.type === "table") {
+          if (!block.data?.length || !block.data.some((row) => row.length)) {
+            toast.error("Table block must have non-empty data");
+            throw new Error("Invalid table block");
+          }
+        }
+        return { ...block, blocked: false };
+      })
+    );
+
+    // Compress thumbnail
+    let compressedThumbnail = metaData.thumbnail;
+    if (compressedThumbnail && compressedThumbnail.startsWith("data:image")) {
+      try {
+        const file = await fetch(compressedThumbnail).then((res) => res.blob());
+        compressedThumbnail = await compressImage(file);
+      } catch (err) {
+        toast.error("Failed to compress thumbnail");
+        throw err;
       }
-      return {
-        ...block,
-        blocked: false,
-      };
-    });
+    }
 
     const postData = {
       postType,
       category: selectedCategoryId,
       title,
       blocks: updatedBlocks,
+      thumbnail: compressedThumbnail,
       ...metaData,
     };
 
     try {
       const resultAction = await dispatch(createPosts(postData)).unwrap();
-      // console.log("[CreatePost] Post created successfully:", resultAction);
       toast.success("Post created successfully!");
       setTitle("");
       setBlocks([]);
@@ -123,11 +178,25 @@ const CreatePost = () => {
     } catch (err) {
       console.error("[CreatePost] Post creation failed:", err);
       toast.error(err?.message || "Post creation failed");
+      // Check if post was created despite error
+      const slug = slugify(title, { lower: true, strict: true });
+      try {
+        const checkPost = await dispatch(
+          getSinglePost({ slug, isGuest: false })
+        ).unwrap();
+        if (checkPost) {
+          toast.success(
+            "Post was created but response was delayed. Redirecting..."
+          );
+          navigate(`/post/${checkPost.slug}`);
+        }
+      } catch (checkErr) {
+        console.error("[CreatePost] Check post failed:", checkErr);
+      }
     }
   };
 
   const handleDeletePost = (id) => {
-    // console.log("[CreatePost] Deleting post with id:", id);
     dispatch(deletePost(id))
       .unwrap()
       .then(() => toast.success("Post deleted"))
@@ -138,19 +207,9 @@ const CreatePost = () => {
   };
 
   const handleUpdateDraft = (draft) => {
-    // console.log("[CreatePost] Updating draft:", draft);
     setTitle(draft.title || "");
     setBlocks(draft.blocks || []);
   };
-
-  // console.log("[CreatePost] Render state:", {
-  //   showPostTypeModal,
-  //   showCategoryModal,
-  //   title,
-  //   blocks,
-  //   postType,
-  //   selectedCategoryId,
-  // });
 
   return (
     <div className="flex flex-col md:flex-row bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
@@ -162,17 +221,14 @@ const CreatePost = () => {
           <PostTypeSelector
             postType={postType}
             setPostType={(value) => {
-              // console.log("[CreatePost] Setting post type:", value);
               dispatch(setPostType(value));
               localStorage.setItem("postType", value);
             }}
             onContinue={() => {
-              // console.log("[CreatePost] PostTypeSelector continue");
               setShowPostTypeModal(false);
               setShowCategoryModal(true);
             }}
             onClose={() => {
-              // console.log("[CreatePost] PostTypeSelector close");
               localStorage.removeItem("postType");
               navigate("/");
             }}
@@ -186,13 +242,11 @@ const CreatePost = () => {
         >
           <CategorySelector
             onBack={() => {
-              // console.log("[CreatePost] CategorySelector back");
               setShowCategoryModal(false);
               setShowPostTypeModal(true);
             }}
             onContinue={handleCategoryContinue}
             onClose={() => {
-              // console.log("[CreatePost] CategorySelector close");
               localStorage.removeItem("postType");
               navigate("/");
             }}
@@ -207,7 +261,6 @@ const CreatePost = () => {
           <div className="w-full flex justify-start px-4 pt-10 pl-11">
             <button
               onClick={() => {
-                // console.log("[CreatePost] Cancel button clicked");
                 localStorage.removeItem("postType");
                 navigate("/");
               }}
