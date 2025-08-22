@@ -550,6 +550,7 @@ export const createPost = async (req, res, next) => {
   try {
     logMemory("📝 Start createPost");
 
+    // Validate payload size (8MB limit)
     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
     if (payloadSize > 8 * 1024 * 1024) {
       throw new AppError("Payload exceeds 8MB limit", 400, "CreatePost");
@@ -736,7 +737,7 @@ export const createPost = async (req, res, next) => {
       );
       logMemory("🖼️ After processing thumbnail");
     } else if (rawThumbnail && isThumbnailEmbed) {
-      processedThumbnail = rawThumbnail;
+      processedThumbnail = rawThumbnail; // Use embed URL directly
     }
 
     const moderateContent = async (text) => {
@@ -1826,6 +1827,7 @@ export const processBlock = async (block) => {
 // };
 
 // new code
+
 export const updatePostBySlug = async (req, res, next) => {
   let session = null;
   try {
@@ -1880,32 +1882,11 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError("Blocks must be an array", 400, "UpdatePostBySlug");
     }
 
-    // Validate block IDs
-    const blockIds = blocks.map((block) => block.id).filter(Boolean);
-    if (blockIds.length !== new Set(blockIds).size) {
-      throw new AppError(
-        "Duplicate block IDs detected",
-        400,
-        "UpdatePostBySlug"
-      );
-    }
-
     const blockLimit = pLimit(3);
     const imageLimit = pLimit(1);
 
-    const processBlock = async (block, index) => {
-      if (!block || typeof block !== "object" || !block.type) {
-        throw new AppError(
-          `Invalid block at index ${index}`,
-          400,
-          "UpdatePostBySlug"
-        );
-      }
-      const processedBlock = {
-        id: block.id || uuidv4(),
-        type: block.type,
-        ...block,
-      };
+    const processBlock = async (block) => {
+      const processedBlock = { ...block };
       if (block.type === "image" && block.src && !block.isEmbed) {
         logMemory(`🖼️ Processing image block ${block.id}`);
         processedBlock.src = await imageLimit(() =>
@@ -1973,7 +1954,7 @@ export const updatePostBySlug = async (req, res, next) => {
           throw new AppError(
             "Table block must have non-empty data",
             400,
-            "UpdatePostBySlug"
+            "ProcessBlock"
           );
         }
         if (
@@ -1984,7 +1965,7 @@ export const updatePostBySlug = async (req, res, next) => {
           throw new AppError(
             "Table block has invalid data format",
             400,
-            "UpdatePostBySlug"
+            "ProcessBlock"
           );
         }
         processedBlock.data = processedBlock.data.map((row) =>
@@ -2013,7 +1994,6 @@ export const updatePostBySlug = async (req, res, next) => {
         "items",
         "data",
         "blocked",
-        "isEmbed",
       ];
 
       return Object.fromEntries(
@@ -2026,9 +2006,7 @@ export const updatePostBySlug = async (req, res, next) => {
     logMemory("🖼️ Before processing blocks");
     const processedBlocks = blocks
       ? await Promise.all(
-          blocks.map((block, index) =>
-            blockLimit(() => processBlock(block, index))
-          )
+          blocks.map((block) => blockLimit(() => processBlock(block)))
         )
       : undefined;
     logMemory("🖼️ After processing blocks");
