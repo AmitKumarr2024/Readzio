@@ -1,35 +1,48 @@
 import React, { useState } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { ZoomIn } from "lucide-react";
-import { X } from "lucide-react";
+import { ZoomIn, X } from "lucide-react";
 
-const ImageBlockOutput = ({ src, caption }) => {
+const ImageBlockOutput = ({ src, caption, isEmbed }) => {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
     <figure className="my-6 relative">
-      <img
-        src={src}
-        alt={caption || "Image"}
-        className="rounded-lg shadow-md max-h-[550px] aspect-video object-contain w-full"
-      />
+      {isEmbed ? (
+        <iframe
+          src={src}
+          className="rounded-lg shadow-md max-h-[550px] aspect-video w-full"
+          frameBorder="0"
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+          title="Instagram Reel"
+        />
+      ) : (
+        <img
+          src={src}
+          alt={caption || "Image"}
+          className="rounded-lg shadow-md max-h-[550px] aspect-video object-contain w-full"
+          loading="lazy"
+        />
+      )}
       {caption && (
         <figcaption className="text-sm text-center text-text-main-light dark:text-text-main-dark mt-2">
           {caption}
         </figcaption>
       )}
 
-      {/* Zoom Button (icon only) */}
-      <button
-        onClick={() => setModalOpen(true)}
-        title="Zoom"
-        className="absolute bottom-2 right-2 bg-white dark:bg-gray-800 p-2 rounded-full border border-gray-300 dark:border-gray-600 shadow hover:bg-indigo-100 dark:hover:bg-indigo-900 transition"
-      >
-        <ZoomIn size={18} />
-      </button>
+      {/* Zoom Button (only for images, not embeds) */}
+      {!isEmbed && (
+        <button
+          onClick={() => setModalOpen(true)}
+          title="Zoom"
+          className="absolute bottom-2 right-2 bg-white dark:bg-gray-800 p-2 rounded-full border border-gray-300 dark:border-gray-600 shadow hover:bg-indigo-100 dark:hover:bg-indigo-900 transition"
+        >
+          <ZoomIn size={18} />
+        </button>
+      )}
 
-      {/* Zoom Modal */}
-      {modalOpen && (
+      {/* Zoom Modal (only for images) */}
+      {!isEmbed && modalOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4 sm:px-6"
           onClick={() => setModalOpen(false)}
@@ -38,7 +51,6 @@ const ImageBlockOutput = ({ src, caption }) => {
             className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark p-2 sm:p-4 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Button */}
             <button
               onClick={() => setModalOpen(false)}
               className="absolute top-2 right-2 text-gray-500 hover:text-red-500"
@@ -46,8 +58,6 @@ const ImageBlockOutput = ({ src, caption }) => {
             >
               <X size={22} />
             </button>
-
-            {/* Zoom + Pan Enabled */}
             <TransformWrapper
               wheel={{ step: 0.2 }}
               doubleClick={{ disabled: true }}

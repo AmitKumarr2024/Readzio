@@ -27,6 +27,7 @@ import {
 } from "../../store/Post/postMetaSlice";
 import LoadingBar from "../../Utils/LoadingBar";
 import TableBlocksOutput from "../actualPostDisplay/TableBlocksOutput";
+import ImageBlockOutput from "../actualPostDisplay/ImageBlockOutput";
 
 const PostPreviewList = ({
   currentDraftPost,
@@ -140,11 +141,17 @@ const PostPreviewList = ({
     setShowConfirmModal(true);
   };
 
-  const handleModalConfirm = async ({ tags, thumbnail, thumbnailSize }) => {
+  const handleModalConfirm = async ({
+    tags,
+    thumbnail,
+    thumbnailSize,
+    isEmbed,
+  }) => {
     const newPostData = {
       tags,
       thumbnail,
       thumbnailSize,
+      isEmbed, // Include isEmbed for thumbnail
       isFeatured,
       isPinned,
       isPublished,
@@ -418,26 +425,16 @@ const PostPreviewList = ({
               key={i}
               className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
             >
-              {block.size && (
+              {block.size && !block.isEmbed && (
                 <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
                   {formatFileSize(block.size)}
                 </div>
               )}
-              {block.src ? (
-                <img
-                  src={block.src}
-                  alt={block.caption || "Image"}
-                  className="w-full h-auto max-h-96 object-contain rounded-lg"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="w-full h-48 flex items-center justify-center italic opacity-80">
-                  No image source provided
-                </div>
-              )}
-              {block.caption && (
-                <p className="mt-2 text-sm italic">{block.caption}</p>
-              )}
+              <ImageBlockOutput
+                src={block.src || ""}
+                caption={block.caption || ""}
+                isEmbed={block.isEmbed || false}
+              />
               <button
                 onClick={() => deleteBlock(i)}
                 className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
@@ -630,17 +627,28 @@ const PostPreviewList = ({
           </p>
           {postData?.thumbnail && (
             <div className="relative my-4 bg-background-light dark:bg-background-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
-              {postData.thumbnailSize && (
+              {postData.thumbnailSize && !postData.isEmbed && (
                 <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
                   {formatFileSize(postData.thumbnailSize)}
                 </div>
               )}
-              <img
-                src={postData.thumbnail}
-                alt="Thumbnail"
-                className="w-full h-40 object-cover rounded-lg"
-                loading="lazy"
-              />
+              {postData.isEmbed ? (
+                <iframe
+                  src={postData.thumbnail}
+                  className="w-full h-40 rounded-lg border border-gray-200"
+                  frameBorder="0"
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                  title="Instagram Reel Thumbnail"
+                />
+              ) : (
+                <img
+                  src={postData.thumbnail}
+                  alt="Thumbnail"
+                  className="w-full h-40 object-cover rounded-lg"
+                  loading="lazy"
+                />
+              )}
             </div>
           )}
           <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 mb-8 border border-gray-200 dark:border-gray-800">
@@ -741,24 +749,35 @@ const PostPreviewList = ({
                 >
                   {firstBlock?.type === "image" ? (
                     <div className="relative">
-                      {firstBlock.size && (
+                      {firstBlock.size && !firstBlock.isEmbed && (
                         <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
                           {formatFileSize(firstBlock.size)}
                         </div>
                       )}
-                      <img
-                        src={firstBlock.src}
-                        alt={firstBlock.caption || "Post Image"}
-                        className="w-full h-40 object-cover rounded-t-xl hover:scale-105 transition-transform duration-300"
-                        onError={(e) => {
-                          console.error(
-                            "[PostPreviewList] Image load error for post:",
-                            post._id
-                          );
-                          e.target.style.display = "none";
-                        }}
-                        loading="lazy"
-                      />
+                      {firstBlock.isEmbed ? (
+                        <iframe
+                          src={firstBlock.src}
+                          className="w-full h-40 rounded-t-xl border border-gray-200"
+                          frameBorder="0"
+                          allow="autoplay; encrypted-media"
+                          allowFullScreen
+                          title="Instagram Reel"
+                        />
+                      ) : (
+                        <img
+                          src={firstBlock.src}
+                          alt={firstBlock.caption || "Post Image"}
+                          className="w-full h-40 object-cover rounded-t-xl hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            console.error(
+                              "[PostPreviewList] Image load error for post:",
+                              post._id
+                            );
+                            e.target.style.display = "none";
+                          }}
+                          loading="lazy"
+                        />
+                      )}
                     </div>
                   ) : firstBlock?.type === "text" ? (
                     <div
