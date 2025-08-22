@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  fetchComments,
+  fetchCommentsAndCount,
   editComment,
   deleteComment,
   blockComment,
 } from "../../../store/commentSlice";
+import { debounce } from "lodash";
 import { Trash2, Edit, Lock, Unlock } from "lucide-react";
 import { Button } from "../../../Utils/Button";
 import { motion, AnimatePresence } from "framer-motion";
-import {FaSpinner } from "react-icons/fa";
+import { FaSpinner } from "react-icons/fa";
 
 const CommentManager = ({ userId }) => {
   const dispatch = useDispatch();
@@ -21,31 +22,34 @@ const CommentManager = ({ userId }) => {
   const [editingComment, setEditingComment] = useState(null);
   const [editContent, setEditContent] = useState("");
 
-  useEffect(() => {
-    // console.log("CommentManager: Fetching comments for userId:", userId);
-    // Fetch comments for all posts by the user
-    const userPosts = posts.filter((post) => post.author._id === userId);
-    // console.log("CommentManager: User posts:", userPosts);
-    userPosts.forEach((post) => {
-      dispatch(fetchComments(post._id));
-    });
-  }, [dispatch, userId, posts]);
+  // Debounced batch fetch for comments
+  const debouncedFetchComments = useMemo(
+    () =>
+      debounce((postIds) => {
+        if (postIds.length && !loading) {
+          postIds.forEach((postId) => {
+            dispatch(fetchCommentsAndCount(postId));
+          });
+        }
+      }, 1000),
+    [dispatch, loading]
+  );
 
-  // useEffect(() => {
-    // console.log("CommentManager: Comments state:", comments);
-  // }, [comments]);
+  useEffect(() => {
+    const userPosts = posts.filter((post) => post.author._id === userId);
+    const postIds = userPosts.map((post) => post._id);
+    if (postIds.length) {
+      debouncedFetchComments(postIds);
+    }
+    return () => debouncedFetchComments.cancel();
+  }, [dispatch, userId, posts, debouncedFetchComments]);
 
   const handleEdit = (comment) => {
-    // console.log("CommentManager: Editing comment:", comment);
     setEditingComment(comment.id);
     setEditContent(comment.content);
   };
 
   const handleSaveEdit = (commentId) => {
-    // console.log("CommentManager: Saving edited comment:", {
-    //   commentId,
-    //   editContent,
-    // });
     dispatch(editComment({ commentId, content: editContent }));
     setEditingComment(null);
     setEditContent("");
@@ -53,7 +57,6 @@ const CommentManager = ({ userId }) => {
 
   const handleDelete = (commentId) => {
     if (window.confirm("Delete this comment?")) {
-      // console.log("CommentManager: Deleting comment:", commentId);
       dispatch(deleteComment(commentId));
     }
   };
@@ -62,19 +65,11 @@ const CommentManager = ({ userId }) => {
     if (
       window.confirm(blocked ? "Unblock this comment?" : "Block this comment?")
     ) {
-      // console.log("CommentManager: Toggling block for comment:", {
-      //   commentId,
-      //   blocked,
-      // });
       dispatch(blockComment(commentId));
     }
   };
 
   const renderComment = (comment, level = 0) => {
-    // console.log("CommentManager: Rendering comment:", {
-    //   id: comment.id,
-    //   user: comment.user,
-    // });
     return (
       <motion.div
         key={comment.id}
@@ -83,7 +78,7 @@ const CommentManager = ({ userId }) => {
         exit={{ opacity: 0, y: -10 }}
         className={`ml-${
           level * 6
-        } p-4 bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border-l-4 border-blue-100 mb-3 hover:shadow-md transition-shadow duration-300`}
+        } p-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border-l-4 border-blue-100 mb-3 hover:shadow-md transition-shadow duration-300`}
       >
         {editingComment === comment.id ? (
           <div className="flex flex-col gap-3">
@@ -96,13 +91,13 @@ const CommentManager = ({ userId }) => {
             <div className="flex gap-2">
               <Button
                 onClick={() => handleSaveEdit(comment.id)}
-                className="bg-blue-600   text-text-main-light dark:text-text-main-dark px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="bg-blue-600 text-text-main-light dark:text-text-main-dark px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Save
               </Button>
               <Button
                 onClick={() => setEditingComment(null)}
-                className="bg-gray-200   text-text-main-light dark:text-text-main-dark px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                className="bg-gray-200 text-text-main-light dark:text-text-main-dark px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 Cancel
               </Button>
@@ -110,10 +105,10 @@ const CommentManager = ({ userId }) => {
           </div>
         ) : (
           <div>
-            <p className=" text-text-main-light dark:text-text-main-dark text-base font-medium">
+            <p className="text-text-main-light dark:text-text-main-dark text-base font-medium">
               {comment.content}
             </p>
-            <p className="text-sm  text-text-main-light dark:text-text-main-dark mt-1">
+            <p className="text-sm text-text-main-light dark:text-text-main-dark mt-1">
               By{" "}
               <span className="font-semibold">
                 {comment.user?.name || "Unknown User"}
@@ -161,13 +156,13 @@ const CommentManager = ({ userId }) => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="p-4 bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border-l-4 border-red-100 mb-3 flex justify-between items-center hover:shadow-md transition-shadow duration-300"
+                className="p-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border-l-4 border-red-100 mb-3 flex justify-between items-center hover:shadow-md transition-shadow duration-300"
               >
                 <div>
-                  <p className="  text-text-main-light dark:text-text-main-dark text-base font-medium">
+                  <p className="text-text-main-light dark:text-text-main-dark text-base font-medium">
                     {comment.content}
                   </p>
-                  <p className="text-sm   text-text-main-light dark:text-text-main-dark">
+                  <p className="text-sm text-text-main-light dark:text-text-main-dark">
                     By{" "}
                     <span className="font-semibold">
                       {comment.user?.name || "Unknown User"}
@@ -201,7 +196,7 @@ const CommentManager = ({ userId }) => {
   );
 
   return (
-    <div className="p-6 bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark min-h-screen">
+    <div className="p-6 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark min-h-screen">
       <div className="max-w-4xl mx-auto">
         <div className="flex gap-3 mb-6">
           <Button
@@ -235,7 +230,9 @@ const CommentManager = ({ userId }) => {
               transition={{ duration: 0.5 }}
             >
               <FaSpinner className="w-12 h-12 text-indigo-600 animate-spin" />
-              <p className="text-lg font-semibold  text-text-main-light dark:text-text-main-dark">Loading...</p>
+              <p className="text-lg font-semibold text-text-main-light dark:text-text-main-dark">
+                Loading...
+              </p>
             </motion.div>
           </div>
         )}
@@ -252,7 +249,7 @@ const CommentManager = ({ userId }) => {
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center   text-text-main-light dark:text-text-main-dark text-lg"
+            className="text-center text-text-main-light dark:text-text-main-dark text-lg"
           >
             No comments found for your posts.
           </motion.p>

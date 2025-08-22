@@ -13,7 +13,7 @@ import {
   fetchFollowingPosts,
   getSinglePost,
 } from "../../store/postSlice";
-import { fetchCommentCount } from "../../store/commentSlice";
+import { fetchCommentsAndCount } from "../../store/commentSlice"; // Updated import
 import { fetchCategories } from "../../store/categorySlice";
 import { fetchFollowers } from "../../store/followSlice";
 import {
@@ -39,7 +39,9 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   const { publicPosts = [], publicLoading = false } = useSelector(
     (state) => state.guest || {}
   );
-  const { commentCounts = {} } = useSelector((state) => state.comment || {});
+  const { commentCounts = {}, loading: commentLoading } = useSelector(
+    (state) => state.comment || {}
+  );
   const { categories = [] } = useSelector((state) => state.categories || {});
   const isSidebarOpen = useSelector(
     (state) => state.postMeta?.isSidebarOpen ?? false
@@ -55,6 +57,17 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const observer = useRef(null);
   const lastPostElementRef = useRef(null);
+
+  // Debounced fetch for comments
+  const debouncedFetchComments = useMemo(
+    () =>
+      debounce((postIds) => {
+        postIds.forEach((postId) => {
+          dispatch(fetchCommentsAndCount(postId));
+        });
+      }, 1000),
+    [dispatch]
+  );
 
   const cardsPerRow = useMemo(() => {
     if (isSidebarOpen) {
@@ -388,18 +401,27 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     }));
   }, [sortedPosts, categoryMap]);
 
+  // Updated useEffect for fetching comments
   useEffect(() => {
     const postsToFetch = (
       customPosts.length ? customPosts : isAuthenticated ? posts : publicPosts
-    ).filter((post) => post?._id && commentCounts[post._id] === undefined);
-    postsToFetch.forEach((post) => dispatch(fetchCommentCount(post._id)));
+    )
+      .filter((post) => post?._id && commentCounts[post._id] === undefined)
+      .map((post) => post._id)
+      .slice(0, 10); // Batch to 10 posts to reduce load
+    if (postsToFetch.length && !commentLoading) {
+      debouncedFetchComments(postsToFetch);
+    }
+    return () => debouncedFetchComments.cancel();
   }, [
     dispatch,
     customPosts,
     posts,
     publicPosts,
     commentCounts,
+    commentLoading,
     isAuthenticated,
+    debouncedFetchComments,
   ]);
 
   const screenWidth = useWindowWidth();

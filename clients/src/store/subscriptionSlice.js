@@ -277,29 +277,39 @@ export const unsubscribeFromPlanByAuthor = createAsyncThunk(
 
 export const fetchSubscriptionPlansByAuthor = createAsyncThunk(
   "subscription/fetchPlansByAuthor",
-  async (authorId, { rejectWithValue }) => {
+  async (authorId, { rejectWithValue, getState }) => {
+    const {
+      subscription: { fetchedAuthorIds },
+    } = getState();
+    if (fetchedAuthorIds[authorId]) {
+      return { plans: [], authorId, fromCache: true }; // Skip fetch if cached
+    }
     try {
-      // console.log("📩 Fetching plans by author:", authorId);
       const response = await axiosInstance.get(
         `/subscription/plans/author/${authorId}`,
         {
           withCredentials: true,
-          timeout: 20000, // 20 seconds
+          timeout: 30000, // Increased to 30 seconds
         }
       );
-      // console.log("✅ Fetch plans by author response:", {
-      //   count: response.data.plans?.length,
-      // });
-      return response.data;
+      return { plans: response.data.plans, authorId, fromCache: false };
     } catch (error) {
-      const errorDetails = {
-        message: error.response?.data?.message || error.message,
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to fetch plans";
+      console.error("subscriptionSlice: Error fetching plans by author:", {
+        message: errorMsg,
         status: error.response?.status,
         authorId,
         timeout: error.code === "ECONNABORTED",
-      };
-      console.error("❌ Error fetching plans by author:", errorDetails);
-      return rejectWithValue(errorDetails);
+      });
+      return rejectWithValue({
+        message: errorMsg,
+        status: error.response?.status,
+        authorId,
+        timeout: error.code === "ECONNABORTED",
+      });
     }
   }
 );
@@ -428,6 +438,7 @@ const subscriptionSlice = createSlice({
     accountAgeDays: 0,
     criteria: null,
     hasFetchedSubscribedPlans: false,
+    fetchedAuthorIds: {},
   },
   reducers: {
     clearError: (state) => {
@@ -745,24 +756,21 @@ const subscriptionSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(fetchSubscriptionPlansByAuthor.pending, (state) => {
-        // console.log("subscriptionSlice: Fetch plans by author pending");
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchSubscriptionPlansByAuthor.fulfilled, (state, action) => {
-        // console.log(
-        //   "subscriptionSlice: Fetched plans by author:",
-        //   action.payload
-        // );
         state.loading = false;
-        state.plans = action.payload.plans || [];
-        state.count = action.payload.count || 0;
+        const { plans, authorId, fromCache } = action.payload;
+        if (!fromCache) {
+          state.plans = [
+            ...state.plans.filter((p) => p.author !== authorId),
+            ...plans.map((plan) => ({ ...plan, author: authorId })),
+          ];
+          state.fetchedAuthorIds[authorId] = true; // Mark as cached
+        }
       })
       .addCase(fetchSubscriptionPlansByAuthor.rejected, (state, action) => {
-        console.error(
-          "subscriptionSlice: Error fetching plans by author:",
-          action.payload
-        );
         state.loading = false;
         state.error = action.payload;
       })

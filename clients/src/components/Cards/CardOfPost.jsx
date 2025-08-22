@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { debounce } from "lodash";
 import { MessageCircle, Eye, Heart, Bookmark, Share2 } from "lucide-react";
 import { fetchSubscriptionPlansByAuthor } from "../../store/subscriptionSlice";
 import Skeleton from "@/components/Ui/Skeleton";
@@ -28,20 +29,34 @@ const CardOfPost = ({
   readTime,
 }) => {
   const dispatch = useDispatch();
-  const { plans = [], isSubscribed = {} } = useSelector(
-    (state) => state.subscription || {}
-  );
+  const {
+    plans = [],
+    isSubscribed = {},
+    loading: subscriptionLoading,
+  } = useSelector((state) => state.subscription || {});
   const currentUser = useSelector((state) => state.auth.user);
 
   const authorId = author?._id || "";
   const isPostPremium = isPremium;
   const isSubscribedToAuthor = isSubscribed[authorId];
 
-  // console.log("CardOfPost - postType:", postType);
+  // Debounced fetch for subscription plans
+  const debouncedFetchPlans = useMemo(
+    () =>
+      debounce((authorId) => {
+        if (authorId && !subscriptionLoading) {
+          dispatch(fetchSubscriptionPlansByAuthor(authorId));
+        }
+      }, 1000),
+    [dispatch, subscriptionLoading]
+  );
 
   useEffect(() => {
-    if (authorId) dispatch(fetchSubscriptionPlansByAuthor(authorId));
-  }, [dispatch, authorId]);
+    if (authorId) {
+      debouncedFetchPlans(authorId);
+    }
+    return () => debouncedFetchPlans.cancel();
+  }, [authorId, debouncedFetchPlans]);
 
   if (loading) {
     return (

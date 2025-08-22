@@ -7,6 +7,7 @@ const initialState = {
   failedCountFetches: {},
   loading: false,
   error: null,
+  fetchedPostIds: {}, // Track fetched postIds
 };
 
 const normalizeCommentTree = (comments) => {
@@ -18,6 +19,45 @@ const normalizeCommentTree = (comments) => {
   }));
   return normalized;
 };
+
+export const fetchCommentsAndCount = createAsyncThunk(
+  "comment/fetchCommentsAndCount",
+  async (postId, { rejectWithValue, getState }) => {
+    const {
+      comment: { fetchedPostIds },
+    } = getState();
+    if (fetchedPostIds[postId]) {
+      return { comments: [], postId, count: null, fromCache: true };
+    }
+    try {
+      const response = await axiosInstance.get(
+        `/comment/all-comments/${postId}`,
+        {
+          withCredentials: true,
+          timeout: 30000, // Increased to 30 seconds
+        }
+      );
+      const comments = response.data.comments || [];
+      const count = comments.reduce(
+        (sum, c) => sum + (c.repliesCount || c.replies?.length || 0) + 1,
+        0
+      );
+      return { comments, postId, count, fromCache: false };
+    } catch (error) {
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to fetch comments";
+      console.error("[CommentSlice:fetchCommentsAndCount] Error:", {
+        errorMsg,
+        status: error.response?.status,
+        postId,
+        timeout: error.code === "ECONNABORTED",
+      });
+      return rejectWithValue({ message: errorMsg, postId });
+    }
+  }
+);
 
 export const addComment = createAsyncThunk(
   "comment/addComment",
@@ -31,50 +71,15 @@ export const addComment = createAsyncThunk(
     } catch (err) {
       const errorMsg =
         err.response?.data?.message || err.message || "Failed to add comment";
+      console.error("[CommentSlice:addComment] Error:", {
+        errorMsg,
+        status: err.response?.status,
+        postId,
+      });
       return rejectWithValue({
         message: errorMsg,
         status: err.response?.status,
       });
-    }
-  }
-);
-
-export const fetchComments = createAsyncThunk(
-  "comment/fetchAll",
-  async (postId, { rejectWithValue }) => {
-    try {
-      const response = await axiosInstance.get(
-        `/comment/all-comments/${postId}`
-      );
-      return { comments: response.data.comments, postId };
-    } catch (error) {
-      const errorMsg =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to fetch comments";
-      return rejectWithValue(errorMsg);
-    }
-  }
-);
-
-export const fetchCommentCount = createAsyncThunk(
-  "comment/fetchCount",
-  async (postId, { rejectWithValue }) => {
-    try {
-      const response = await axiosInstance.get(
-        `/comment/all-comments/${postId}`
-      );
-      const count = response.data.comments.reduce(
-        (sum, c) => sum + (c.repliesCount || c.replies?.length || 0) + 1,
-        0
-      );
-      return { postId, count };
-    } catch (error) {
-      const errorMsg =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to fetch comment count";
-      return rejectWithValue(errorMsg);
     }
   }
 );
@@ -85,7 +90,9 @@ export const toggleReaction = createAsyncThunk(
     try {
       const response = await axiosInstance.post(
         `/comment/reaction/${commentId}`,
-        { reactionType }
+        {
+          reactionType,
+        }
       );
       return { commentId, reactions: response.data.reactions };
     } catch (error) {
@@ -93,6 +100,11 @@ export const toggleReaction = createAsyncThunk(
         error.response?.data?.message ||
         error.message ||
         "Failed to toggle reaction";
+      console.error("[CommentSlice:toggleReaction] Error:", {
+        errorMsg,
+        status: error.response?.status,
+        commentId,
+      });
       return rejectWithValue(errorMsg);
     }
   }
@@ -111,6 +123,11 @@ export const editComment = createAsyncThunk(
         error.response?.data?.message ||
         error.message ||
         "Failed to edit comment";
+      console.error("[CommentSlice:editComment] Error:", {
+        errorMsg,
+        status: error.response?.status,
+        commentId,
+      });
       return rejectWithValue(errorMsg);
     }
   }
@@ -127,6 +144,11 @@ export const blockComment = createAsyncThunk(
         error.response?.data?.message ||
         error.message ||
         "Failed to block comment";
+      console.error("[CommentSlice:blockComment] Error:", {
+        errorMsg,
+        status: error.response?.status,
+        commentId,
+      });
       return rejectWithValue(errorMsg);
     }
   }
@@ -145,6 +167,11 @@ export const deleteComment = createAsyncThunk(
         error.response?.data?.message ||
         error.message ||
         "Failed to delete comment";
+      console.error("[CommentSlice:deleteComment] Error:", {
+        errorMsg,
+        status: error.response?.status,
+        commentId,
+      });
       return rejectWithValue(errorMsg);
     }
   }
@@ -201,6 +228,25 @@ const commentSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(fetchCommentsAndCount.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchCommentsAndCount.fulfilled, (state, action) => {
+        state.loading = false;
+        const { comments, postId, count, fromCache } = action.payload;
+        if (!fromCache) {
+          state.comments = normalizeCommentTree(comments);
+          state.commentCounts[postId] = count;
+          state.fetchedPostIds[postId] = true;
+          delete state.failedCountFetches[postId];
+        }
+      })
+      .addCase(fetchCommentsAndCount.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload.message;
+        state.failedCountFetches[action.payload.postId] = true;
+      })
       .addCase(addComment.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -259,39 +305,6 @@ const commentSlice = createSlice({
           (state.commentCounts[postId] || 0) - 1,
           0
         );
-      })
-      .addCase(fetchComments.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchComments.fulfilled, (state, action) => {
-        state.loading = false;
-        const { comments, postId } = action.payload;
-        state.comments = normalizeCommentTree(comments || []);
-        state.commentCounts[postId] = comments.reduce(
-          (sum, c) => sum + (c.repliesCount || c.replies?.length || 0) + 1,
-          0
-        );
-      })
-      .addCase(fetchComments.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      .addCase(fetchCommentCount.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchCommentCount.fulfilled, (state, action) => {
-        state.loading = false;
-        const { postId, count } = action.payload;
-        state.commentCounts[postId] = count;
-        delete state.failedCountFetches[postId];
-      })
-      .addCase(fetchCommentCount.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-        const postId = action.meta.arg;
-        state.failedCountFetches[postId] = true;
       })
       .addCase(toggleReaction.pending, (state) => {
         state.loading = true;
