@@ -107,40 +107,24 @@ const PostPreviewList = ({
           (b) => b.type === "table" && (!b.data || !b.data.length)
         )
       ) {
-        toast.error("Please fill in all table blocks before publishing.", {
-          position: "top-right",
-        });
+        toast.error("Please fill in all table blocks before publishing.");
         return;
       }
-      if (!currentDraftPost?.title) {
-        toast.error("Please enter a title", { position: "top-right" });
-        return;
-      }
-      if (!currentDraftPost?.blocks?.length) {
-        toast.error("Please add content blocks", { position: "top-right" });
-        return;
-      }
-      if (!postType) {
-        toast.error("Please select a post type", { position: "top-right" });
-        return;
-      }
-      if (!category) {
-        toast.error("Please select a category", { position: "top-right" });
-        return;
-      }
-      if (!language.match(/^[a-z]{2}$/i)) {
-        toast.error("Invalid language code (e.g., 'en')", {
-          position: "top-right",
-        });
-        return;
-      }
+      if (!currentDraftPost?.title) return toast.error("Please enter a title");
+      if (!currentDraftPost?.blocks?.length)
+        return toast.error("Please add content blocks");
+      if (!postType) return toast.error("Please select a post type");
+      if (!category) return toast.error("Please select a category");
+      if (!language.match(/^[a-z]{2}$/i))
+        return toast.error("Invalid language code (e.g., 'en')");
+
       if (!isFeatured && !isPinned && !isPublished && language === "en") {
         toast.error(
-          "Set at least one metadata field (feature, pin, publish, or language)",
-          { position: "top-right" }
+          "Set at least one metadata field (feature, pin, publish, or language)"
         );
         return;
       }
+
       setShowConfirmModal(true);
     }, 1000),
     [
@@ -210,9 +194,7 @@ const PostPreviewList = ({
             ["Cell 1", "Cell 2"],
             ["Cell 3", "Cell 4"],
           ];
-          toast.error("Table block is empty. Using default data.", {
-            position: "top-right",
-          });
+          toast.error("Table block is empty. Using default data.");
         } else {
           const tableDataString = JSON.stringify(tableData);
           if (tableDataString !== lastLoggedData) {
@@ -249,13 +231,10 @@ const PostPreviewList = ({
         err?.message?.includes("A post with this title was recently created")
       ) {
         toast.error(
-          "Please wait before creating another post with the same title.",
-          { position: "top-right" }
+          "Please wait before creating another post with the same title."
         );
       } else {
-        toast.error(err?.message || "Failed to create post", {
-          position: "top-right",
-        });
+        toast.error(err?.message || "Failed to create post");
       }
     } finally {
       setShowPublishLoading(false);
@@ -269,7 +248,7 @@ const PostPreviewList = ({
     setIsPostConfirmed(false);
     setPostData(null);
     setCountdown(5);
-    toast("Post publishing cancelled.", { position: "top-right" });
+    toast("Post publishing cancelled.");
   };
 
   const handleDeletePost = (postId) => {
@@ -277,15 +256,24 @@ const PostPreviewList = ({
       dispatch(deletePost(postId))
         .unwrap()
         .then(() => {
-          toast.success("Post deleted successfully", { position: "top-right" });
+          toast.success("Post deleted successfully");
         })
         .catch((err) => {
           console.error("[PostPreviewList] Post deletion failed:", err);
-          toast.error(`Failed to delete post: ${err.message || err}`, {
-            position: "top-right",
-          });
+          toast.error(`Failed to delete post: ${err.message || err}`);
         });
     }
+  };
+
+  const deleteBlock = (index) => {
+    if (!onUpdateDraft) {
+      console.error("[PostPreviewList] No update function provided");
+      toast.error("No update function provided");
+      return;
+    }
+    const updatedBlocks = currentDraftPost.blocks.filter((_, i) => i !== index);
+    onUpdateDraft({ ...currentDraftPost, blocks: updatedBlocks });
+    toast.success("Block deleted");
   };
 
   const renderBlock = useCallback(
@@ -295,7 +283,7 @@ const PostPreviewList = ({
           `[PostPreviewList] Invalid block at index ${i}:`,
           JSON.stringify(block, null, 2)
         );
-        toast.error("Invalid block detected", { position: "top-right" });
+        toast.error("Invalid block detected");
         return (
           <div key={i} className="my-4 text-red-500 italic">
             Invalid block
@@ -706,8 +694,7 @@ const PostPreviewList = ({
           </button>
           {createError && (
             <p className="mt-2 text-red-500 text-sm text-center">
-              {createError.message ||
-                "Failed to create post. Please try again."}
+              {createError}
             </p>
           )}
         </>
