@@ -8,8 +8,8 @@ import { toast } from "react-hot-toast";
 const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   const tags = useSelector((state) => state.postMeta.tags);
   const [selectedThumbnail, setSelectedThumbnail] = useState(null);
-  const [fileSizeText, setFileSizeText] = useState(""); // State for file size text
-  const [fileSize, setFileSize] = useState(0); // State for raw file size
+  const [fileSizeText, setFileSizeText] = useState("");
+  const [fileSize, setFileSize] = useState(0);
   const [activeTab, setActiveTab] = useState("upload");
   const [urlInput, setUrlInput] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
@@ -22,6 +22,33 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
       return `Size: ${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
     }
     return `Size: ${(sizeInBytes / 1024).toFixed(0)} KB`;
+  };
+
+  const fetchSocialMediaImage = async (url) => {
+    try {
+      // Mock API call for X/Instagram (replace with actual API in production)
+      const response = await fetch(url, { method: "GET" });
+      if (!response.ok) throw new Error("Failed to fetch image");
+      const blob = await response.blob();
+      if (!ALLOWED_FORMATS.includes(blob.type)) {
+        toast.error("Fetched image must be JPEG, PNG, or WebP.", {
+          position: "top-right",
+        });
+        return null;
+      }
+      if (blob.size > MAX_FILE_SIZE) {
+        toast.error("Fetched image exceeds 5MB limit.", {
+          position: "top-right",
+        });
+        return null;
+      }
+      return blob;
+    } catch (err) {
+      toast.error(`Failed to fetch image: ${err.message}`, {
+        position: "top-right",
+      });
+      return null;
+    }
   };
 
   const handleFileUpload = (event) => {
@@ -47,28 +74,42 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       setSelectedThumbnail(reader.result);
-      setFileSize(file.size); // Store raw file size
-      setFileSizeText(formatFileSize(file.size)); // Set file size text
+      setFileSize(file.size);
+      setFileSizeText(formatFileSize(file.size));
       setUrlInput("");
     };
     reader.readAsDataURL(file);
   };
 
-  const handleUrlSubmit = () => {
+  const handleUrlSubmit = async () => {
     if (!urlInput) {
       toast.error("Please enter an image URL.", { position: "top-right" });
       return;
     }
-    if (!/\.(jpe?g|png|webp)$/i.test(urlInput)) {
+    const isSocialMediaUrl =
+      urlInput.includes("x.com") || urlInput.includes("instagram.com");
+    if (isSocialMediaUrl) {
+      const file = await fetchSocialMediaImage(urlInput);
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setSelectedThumbnail(reader.result);
+          setFileSize(file.size);
+          setFileSizeText(formatFileSize(file.size));
+          setUrlInput("");
+        };
+        reader.readAsDataURL(file);
+      }
+    } else if (/\.(jpe?g|png|webp)$/i.test(urlInput)) {
+      setSelectedThumbnail(urlInput);
+      setFileSize(0);
+      setFileSizeText("");
+      setUrlInput("");
+    } else {
       toast.error("Please enter a valid image URL (JPEG, PNG, or WebP).", {
         position: "top-right",
       });
-      return;
     }
-    setSelectedThumbnail(urlInput);
-    setFileSize(0); // No file size for URLs
-    setFileSizeText(""); // Clear file size for URLs
-    setUrlInput("");
   };
 
   const handleConfirm = () => {
@@ -90,14 +131,14 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
 
   const handleFinalConfirm = () => {
     setIsConfirming(false);
-    onConfirm({ tags, thumbnail: selectedThumbnail, thumbnailSize: fileSize }); // Include thumbnailSize
+    onConfirm({ tags, thumbnail: selectedThumbnail, thumbnailSize: fileSize });
   };
 
   const handleCancel = () => {
     setIsConfirming(false);
     setSelectedThumbnail(null);
-    setFileSize(0); // Clear file size
-    setFileSizeText(""); // Clear file size text
+    setFileSize(0);
+    setFileSizeText("");
     setUrlInput("");
     onCancel();
   };
@@ -176,7 +217,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                         type="text"
                         value={urlInput}
                         onChange={(e) => setUrlInput(e.target.value)}
-                        placeholder="Enter image URL (JPEG, PNG, or WebP)"
+                        placeholder="Enter image or X/Instagram post URL (JPEG, PNG, or WebP)"
                         className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                         aria-label="Thumbnail image URL"
                       />
