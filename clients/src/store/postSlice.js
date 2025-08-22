@@ -34,6 +34,7 @@ const initialState = {
   isTracking: false,
   appealLoading: false,
   appealError: null,
+  recentTitles: [], // Track recent titles for deduplication
 };
 
 // Simplified Blob URL check
@@ -81,7 +82,7 @@ export const fetchFollowingPosts = createAsyncThunk(
       if (limit) params.append("limit", limit);
       const response = await asyncRetry(() =>
         axiosInstance.get(`/post/following?${params.toString()}`, {
-          timeout: 10000, // Added timeout
+          timeout: 10000,
         })
       );
       return {
@@ -133,6 +134,17 @@ export const fetchPublicPosts = createAsyncThunk(
 export const createPosts = createAsyncThunk(
   "post/createPost",
   async (postData, { rejectWithValue, getState }) => {
+    const { post } = getState();
+    const title = postData.title?.trim();
+    // Check for recent title in state
+    const recentTitle = post.recentTitles.find(
+      (rt) => rt.title === title && Date.now() - rt.timestamp < 60 * 1000
+    );
+    if (recentTitle) {
+      return rejectWithValue({
+        message: "A post with this title was recently created",
+      });
+    }
     if (
       !postData.blocks ||
       !Array.isArray(postData.blocks) ||
@@ -151,14 +163,13 @@ export const createPosts = createAsyncThunk(
     }
     try {
       const { auth } = getState();
-      const response = await asyncRetry(() =>
-        axiosInstance.post("/post/post-create", postData, {
-          timeout: 15000, // Longer timeout for post creation
-        })
-      );
+      // No retries for creation to prevent duplicates
+      const response = await axiosInstance.post("/post/create", postData, {
+        timeout: 15000,
+      });
       // Wait 2s to account for backend indexing delay
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      return { ...response.data, authorId: auth.user?._id };
+      return { ...response.data, authorId: auth.user?._id, title };
     } catch (error) {
       const errMsg = error.response?.data?.message || "Failed to create post";
       console.error("[createPosts] Error:", errMsg);
@@ -464,6 +475,7 @@ const postSlice = createSlice({
       state.trendingPosts = [];
       state.searchPosts = [];
       state.lastFetched = null;
+      state.recentTitles = [];
     },
     clearError: (state) => {
       state.error = null;
@@ -563,6 +575,15 @@ const postSlice = createSlice({
         state.createLoading = false;
         state.posts.unshift(action.payload.post);
         state.followingPosts.unshift(action.payload.post);
+        // Add title to recentTitles with timestamp
+        state.recentTitles.push({
+          title: action.payload.title,
+          timestamp: Date.now(),
+        });
+        // Clean up titles older than 60 seconds
+        state.recentTitles = state.recentTitles.filter(
+          (rt) => Date.now() - rt.timestamp < 60 * 1000
+        );
       })
       .addCase(createPosts.rejected, (state, action) => {
         state.createLoading = false;

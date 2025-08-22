@@ -12,7 +12,6 @@ import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { PacmanLoader } from "react-spinners";
-import { debounce } from "lodash";
 import DOMPurify from "dompurify";
 import FileBlock from "../PostFeature/FileBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
@@ -39,7 +38,6 @@ const PostPreviewList = ({
   createLoading,
   createError,
   onCreatePost,
-  isSubmitting, // Receive isSubmitting prop
 }) => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -95,50 +93,32 @@ const PostPreviewList = ({
     toast.success("Code copied!");
   };
 
-  // Debounced createPost to prevent multiple rapid clicks
-  const createPost = useCallback(
-    debounce(() => {
-      if (isSubmitting || createLoading) {
-        console.log("[PostPreviewList] Submission already in progress");
-        return;
-      }
-      if (
-        currentDraftPost.blocks.some(
-          (b) => b.type === "table" && (!b.data || !b.data.length)
-        )
-      ) {
-        toast.error("Please fill in all table blocks before publishing.");
-        return;
-      }
-      if (!currentDraftPost?.title) return toast.error("Please enter a title");
-      if (!currentDraftPost?.blocks?.length)
-        return toast.error("Please add content blocks");
-      if (!postType) return toast.error("Please select a post type");
-      if (!category) return toast.error("Please select a category");
-      if (!language.match(/^[a-z]{2}$/i))
-        return toast.error("Invalid language code (e.g., 'en')");
+  const createPost = () => {
+    if (
+      currentDraftPost.blocks.some(
+        (b) => b.type === "table" && (!b.data || !b.data.length)
+      )
+    ) {
+      return toast.error("Please fill in all table blocks before publishing.");
+    }
 
-      if (!isFeatured && !isPinned && !isPublished && language === "en") {
-        toast.error(
-          "Set at least one metadata field (feature, pin, publish, or language)"
-        );
-        return;
-      }
+    if (!currentDraftPost?.title) return toast.error("Please enter a title");
+    if (!currentDraftPost?.blocks?.length)
+      return toast.error("Please add content blocks");
+    if (!postType) return toast.error("Please select a post type");
+    if (!category) return toast.error("Please select a category");
+    if (!language.match(/^[a-z]{2}$/i))
+      return toast.error("Invalid language code (e.g., 'en')");
 
-      setShowConfirmModal(true);
-    }, 1000),
-    [
-      isSubmitting,
-      createLoading,
-      currentDraftPost,
-      postType,
-      category,
-      language,
-      isFeatured,
-      isPinned,
-      isPublished,
-    ]
-  );
+    if (!isFeatured && !isPinned && !isPublished && language === "en") {
+      toast.error(
+        "Set at least one metadata field (feature, pin, publish, or language)"
+      );
+      return;
+    }
+
+    setShowConfirmModal(true);
+  };
 
   const handleModalConfirm = async ({ tags, thumbnail }) => {
     const newPostData = {
@@ -161,10 +141,11 @@ const PostPreviewList = ({
   };
 
   const sanitizeBlocks = useCallback((blocks) => {
-    let lastLoggedData = null;
+    let lastLoggedData = null; // Track last logged table data to avoid duplicate logs
     return blocks.map((block) => {
       if (block.type === "table") {
         let tableData = block.data;
+        // Handle old headers/rows format
         if (!tableData && (block.headers || block.rows)) {
           const headers =
             Array.isArray(block.headers) && block.headers.length
@@ -180,6 +161,7 @@ const PostPreviewList = ({
                 ];
           tableData = [headers, ...rows];
         }
+        // Validate table data
         const isValidTableData =
           Array.isArray(tableData) &&
           tableData.length > 0 &&
@@ -189,6 +171,10 @@ const PostPreviewList = ({
               row.some((cell) => cell != null && cell !== "")
           );
         if (!isValidTableData) {
+          // console.warn(
+          //   "[PostPreviewList] Invalid table data, using default:",
+          //   JSON.stringify(block, null, 2)
+          // );
           tableData = [
             ["Header 1", "Header 2"],
             ["Cell 1", "Cell 2"],
@@ -198,7 +184,8 @@ const PostPreviewList = ({
         } else {
           const tableDataString = JSON.stringify(tableData);
           if (tableDataString !== lastLoggedData) {
-            lastLoggedData = tableDataString;
+            // console.log("[PostPreviewList] Valid table data:", tableDataString);
+            lastLoggedData = tableDataString; // Update last logged data
           }
         }
         return {
@@ -227,15 +214,6 @@ const PostPreviewList = ({
       await onCreatePost({ ...postData, draft: cleanedDraft });
     } catch (err) {
       console.error("[PostPreviewList] Post creation failed:", err);
-      if (
-        err?.message?.includes("A post with this title was recently created")
-      ) {
-        toast.error(
-          "Please wait before creating another post with the same title."
-        );
-      } else {
-        toast.error(err?.message || "Failed to create post");
-      }
     } finally {
       setShowPublishLoading(false);
       setPostData(null);
@@ -676,14 +654,14 @@ const PostPreviewList = ({
 
           <button
             onClick={createPost}
-            disabled={isSubmitting || createLoading}
+            disabled={createLoading}
             className={`w-full flex items-center justify-center text-lg font-semibold py-3 rounded-lg shadow-sm transition duration-300 ${
-              isSubmitting || createLoading
+              createLoading
                 ? "bg-blue-400 cursor-not-allowed"
                 : "bg-blue-500 hover:bg-blue-600 text-white"
             }`}
           >
-            {isSubmitting || createLoading ? (
+            {createLoading ? (
               <>
                 Creating...{" "}
                 <PacmanLoader size={12} color="#ffffff" className="ml-2" />
