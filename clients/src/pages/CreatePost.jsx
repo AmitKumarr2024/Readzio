@@ -51,54 +51,6 @@ const CreatePost = () => {
   const MAX_IMAGE_COUNT = 20; // 20 images
   const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
 
-  const compressImage = async (file) => {
-    const image = new Image();
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const reader = new FileReader();
-
-    return new Promise((resolve, reject) => {
-      if (file.size > MAX_IMAGE_SIZE) {
-        return reject(new Error("Image size exceeds 5MB limit"));
-      }
-
-      reader.onload = (e) => {
-        image.src = e.target.result;
-        image.onload = () => {
-          const maxWidth = 2400;
-          const maxHeight = 2400;
-          let { width, height } = image;
-
-          if (width > maxWidth || height > maxHeight) {
-            const ratio = Math.min(maxWidth / width, maxHeight / height);
-            width = Math.round(width * ratio);
-            height = Math.round(height * ratio);
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          ctx.imageSmoothingQuality = "high";
-          ctx.drawImage(image, 0, 0, width, height);
-
-          canvas.toBlob(
-            (blob) => {
-              const reader = new FileReader();
-              reader.onloadend = () =>
-                resolve({ src: reader.result, size: blob.size });
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            },
-            "image/webp",
-            0.95
-          );
-        };
-        image.onerror = reject;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   useEffect(() => {
     const savedPostType = localStorage.getItem("postType");
     if (savedPostType) {
@@ -190,55 +142,42 @@ const CreatePost = () => {
           );
         }
       }
+      if (block.type === "image" && block.src && !block.isEmbed) {
+        try {
+          const file = await fetch(block.src).then((res) => res.blob());
+          if (file.size > MAX_IMAGE_SIZE) {
+            return toast.error(
+              `Image at position ${index + 1} exceeds 5MB limit`,
+              { position: "top-right" }
+            );
+          }
+        } catch (err) {
+          console.error(
+            `[CreatePost] Image validation failed at index ${index + 1}:`,
+            err
+          );
+          toast.error(`Invalid image at position ${index + 1}`, {
+            position: "top-right",
+          });
+          throw err;
+        }
+      }
     }
 
-    const updatedBlocks = await Promise.all(
-      blocks.map(async (block, index) => {
-        if (
-          block.type === "image" &&
-          block.src &&
-          block.src.startsWith("data:image") &&
-          !block.isEmbed
-        ) {
-          try {
-            const file = await fetch(block.src).then((res) => res.blob());
-            const compressed = await compressImage(file);
-            return {
-              ...block,
-              src: compressed.src,
-              size: compressed.size,
-              blocked: false,
-            };
-          } catch (err) {
-            console.error(
-              `[CreatePost] Image compression failed at index ${index + 1}:`,
-              err
-            );
-            toast.error(`Failed to compress image at position ${index + 1}`, {
-              position: "top-right",
-            });
-            throw err;
-          }
-        }
-        return { ...block, blocked: false };
-      })
-    );
-
-    let compressedThumbnail = metaData.thumbnail;
+    let thumbnail = metaData.thumbnail;
     let thumbnailSize = metaData.thumbnailSize || 0;
-    if (
-      compressedThumbnail &&
-      compressedThumbnail.startsWith("data:image") &&
-      !metaData.isEmbed
-    ) {
+    if (thumbnail && thumbnail.startsWith("data:image") && !metaData.isEmbed) {
       try {
-        const file = await fetch(compressedThumbnail).then((res) => res.blob());
-        const compressed = await compressImage(file);
-        compressedThumbnail = compressed.src;
-        thumbnailSize = compressed.size;
+        const file = await fetch(thumbnail).then((res) => res.blob());
+        if (file.size > MAX_IMAGE_SIZE) {
+          return toast.error("Thumbnail exceeds 5MB limit", {
+            position: "top-right",
+          });
+        }
+        thumbnailSize = file.size;
       } catch (err) {
-        console.error("[CreatePost] Thumbnail compression failed:", err);
-        toast.error("Failed to compress thumbnail", { position: "top-right" });
+        console.error("[CreatePost] Thumbnail validation failed:", err);
+        toast.error("Invalid thumbnail", { position: "top-right" });
         throw err;
       }
     }
@@ -247,8 +186,8 @@ const CreatePost = () => {
       postType,
       category: selectedCategoryId,
       title,
-      blocks: updatedBlocks,
-      thumbnail: compressedThumbnail,
+      blocks,
+      thumbnail,
       thumbnailSize,
       excerpt: metaData.excerpt || "",
       tags: metaData.tags,
