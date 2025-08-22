@@ -26,8 +26,37 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
 
   const fetchSocialMediaImage = async (url) => {
     try {
-      // Mock API call for X/Instagram (replace with actual API in production)
-      const response = await fetch(url, { method: "GET" });
+      // Mock API for X/Instagram (replace with actual API in production)
+      let imageUrl = url;
+      if (url.includes("instagram.com/reel/")) {
+        // For Instagram reels, fetch thumbnail from og:image meta tag
+        const response = await fetch(
+          `/api/fetch-meta?url=${encodeURIComponent(url)}`
+        );
+        if (!response.ok) throw new Error("Failed to fetch reel metadata");
+        const { ogImage } = await response.json();
+        if (!ogImage || !/\.(jpe?g|png|webp)$/i.test(ogImage)) {
+          throw new Error(
+            "Reels/videos are not supported. Please use a post with a JPEG, PNG, or WebP image."
+          );
+        }
+        imageUrl = ogImage;
+      } else if (url.includes("x.com")) {
+        // For X posts, extract image from media (mocked)
+        const response = await fetch(
+          `/api/fetch-x-image?url=${encodeURIComponent(url)}`
+        );
+        if (!response.ok) throw new Error("Failed to fetch X post image");
+        const { image } = await response.json();
+        if (!image || !/\.(jpe?g|png|webp)$/i.test(image)) {
+          throw new Error(
+            "X post has no supported image (JPEG, PNG, or WebP)."
+          );
+        }
+        imageUrl = image;
+      }
+
+      const response = await fetch(imageUrl, { method: "GET" });
       if (!response.ok) throw new Error("Failed to fetch image");
       const blob = await response.blob();
       if (!ALLOWED_FORMATS.includes(blob.type)) {
@@ -44,7 +73,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
       }
       return blob;
     } catch (err) {
-      toast.error(`Failed to fetch image: ${err.message}`, {
+      toast.error(err.message || "Failed to fetch image.", {
         position: "top-right",
       });
       return null;
