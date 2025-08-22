@@ -448,6 +448,7 @@ const asyncRetry = async (fn, options = {}) => {
   }
   throw lastError;
 };
+
 const processImage = async (source, id, folder) => {
   try {
     // If it's an Instagram embed, return directly
@@ -461,7 +462,11 @@ const processImage = async (source, id, folder) => {
       const [, format, base64Data] =
         source.match(/^data:image\/([a-z]+);base64,(.+)$/) || [];
       if (!base64Data || !["jpeg", "png", "webp"].includes(format)) {
-        throw new AppError("Invalid or unsupported image format", 400, "ProcessImage");
+        throw new AppError(
+          "Invalid or unsupported image format",
+          400,
+          "ProcessImage"
+        );
       }
       buffer = Buffer.from(base64Data, "base64");
     }
@@ -475,7 +480,11 @@ const processImage = async (source, id, folder) => {
         });
         buffer = Buffer.from(response.data, "binary");
       } catch (err) {
-        throw new AppError("Failed to fetch image from URL", 400, "ProcessImage");
+        throw new AppError(
+          "Failed to fetch image from URL",
+          400,
+          "ProcessImage"
+        );
       }
     } else {
       throw new AppError("Unsupported image source", 400, "ProcessImage");
@@ -494,8 +503,8 @@ const processImage = async (source, id, folder) => {
       throw new AppError("Unsupported image format", 400, "ProcessImage");
     }
 
-    // ✅ Resize only if extremely large (better quality balance)
-    const MAX_DIMENSION = 2400; // Increased from 1600 for better clarity
+    // Resize only if extremely large (better quality balance)
+    const MAX_DIMENSION = 2400;
     if (metadata.width > MAX_DIMENSION || metadata.height > MAX_DIMENSION) {
       image.resize({
         width: MAX_DIMENSION,
@@ -505,22 +514,20 @@ const processImage = async (source, id, folder) => {
       });
     }
 
-    // ✅ High-quality WebP conversion
+    // High-quality WebP conversion
     const compressedBuffer = await image
       .webp({
-        quality: 95,          // Better quality
-        effort: 4,            // Balance speed & compression
-        nearLossless: true,   // Keep details
+        quality: 95,
+        effort: 4,
+        nearLossless: true,
       })
       .toBuffer();
 
-    // ✅ Cloudinary upload without heavy recompression
+    // Cloudinary upload without heavy recompression
     const result = await uploadToCloudinary({
       buffer: compressedBuffer,
       folder,
-      transformation: [
-        { fetch_format: "webp", quality: "auto:best" }, // Best quality
-      ],
+      transformation: [{ fetch_format: "webp", quality: "auto:best" }],
     });
 
     if (!result?.secure_url) {
