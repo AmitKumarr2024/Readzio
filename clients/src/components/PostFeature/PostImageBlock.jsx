@@ -71,7 +71,7 @@ const PostImageBlock = ({
       layout
     >
       {fileSizeText && block.src && (
-        <div className="absolute top-4 left-4 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+        <div className="absolute top-0 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
           {fileSizeText}
         </div>
       )}
