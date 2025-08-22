@@ -540,19 +540,16 @@ const asyncRetry = async (fn, options = {}) => {
 // Optimized image processing
 const processImage = async (source, id, folder) => {
   try {
-    if (source.includes("instagram.com") && source.includes("/embed")) {
-      return source;
-    }
-
     let buffer;
     let format;
 
+    // Handle image source
     if (source.startsWith("data:image")) {
       const [, imgFormat, base64Data] =
         source.match(/^data:image\/([a-z]+);base64,(.+)$/) || [];
       if (!base64Data || !["jpeg", "png", "webp"].includes(imgFormat)) {
         throw new AppError(
-          "Invalid or unsupported image format",
+          `Invalid or unsupported image format: ${imgFormat}`,
           400,
           "ProcessImage"
         );
@@ -578,33 +575,54 @@ const processImage = async (source, id, folder) => {
       throw new AppError("Unsupported image source", 400, "ProcessImage");
     }
 
+    // Validate size
     if (buffer.length > 5 * 1024 * 1024) {
-      throw new AppError("Image size exceeds 5MB limit", 400, "ProcessImage");
+      throw new AppError(
+        `Image size exceeds 5MB limit: ${(buffer.length / 1024 / 1024).toFixed(
+          2
+        )}MB`,
+        400,
+        "ProcessImage"
+      );
     }
 
     const image = sharp(buffer);
     const metadata = await image.metadata();
+    console.log(
+      `[processImage] Input image ${id}: format=${metadata.format}, size=${
+        buffer.length / 1024
+      }KB, dimensions=${metadata.width}x${metadata.height}`
+    );
 
     if (!["jpeg", "png", "webp"].includes(metadata.format)) {
-      throw new AppError("Unsupported image format", 400, "ProcessImage");
+      throw new AppError(
+        `Unsupported image format: ${metadata.format}`,
+        400,
+        "ProcessImage"
+      );
     }
 
-    // Skip processing for small, optimized WebP images
+    // Skip processing for optimized WebP images
     if (
       metadata.format === "webp" &&
-      metadata.width <= 2500 &&
-      metadata.height <= 2500 &&
-      buffer.length <= 2 * 1024 * 1024
+      metadata.width <= 2000 &&
+      metadata.height <= 2000 &&
+      buffer.length <= 1.5 * 1024 * 1024
     ) {
+      console.log(
+        `[processImage] Skipping processing for optimized WebP: ${id}`
+      );
       return await asyncRetry(() => uploadToCloudinary({ buffer, folder }), {
         retries: 3,
         minTimeout: 2000,
       });
     }
 
-    const MAX_DIMENSION = folder.includes("thumbnails") ? 1200 : 2500;
-    const QUALITY = folder.includes("thumbnails") ? 95 : 90;
-    const EFFORT = folder.includes("thumbnails") ? 4 : 3;
+    // Dynamic settings based on image type
+    const isThumbnail = folder.includes("thumbnails");
+    const MAX_DIMENSION = isThumbnail ? 1600 : 2000;
+    const QUALITY = isThumbnail ? 98 : 92;
+    const EFFORT = isThumbnail ? 5 : 4;
 
     if (metadata.width > MAX_DIMENSION || metadata.height > MAX_DIMENSION) {
       image.resize({
@@ -614,6 +632,9 @@ const processImage = async (source, id, folder) => {
         withoutEnlargement: true,
         fastShrinkOnLoad: true,
       });
+      console.log(
+        `[processImage] Resized ${id} to ${MAX_DIMENSION}x${MAX_DIMENSION}`
+      );
     }
 
     const optimizedBuffer = await image
@@ -622,8 +643,15 @@ const processImage = async (source, id, folder) => {
         effort: EFFORT,
         nearLossless: QUALITY >= 95,
         smartSubsample: true,
+        lossless: isThumbnail ? false : metadata.format === "png",
       })
       .toBuffer();
+
+    console.log(
+      `[processImage] Optimized ${id}: size=${
+        optimizedBuffer.length / 1024
+      }KB, quality=${QUALITY}, effort=${EFFORT}`
+    );
 
     const result = await asyncRetry(
       () =>
@@ -633,9 +661,9 @@ const processImage = async (source, id, folder) => {
           transformation: [
             {
               fetch_format: "webp",
-              quality: folder.includes("thumbnails")
-                ? "auto:best"
-                : "auto:good",
+              quality: isThumbnail ? "auto:best" : "auto:good",
+              dpr: "auto",
+              flags: "progressive",
             },
           ],
         }),

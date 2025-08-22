@@ -280,20 +280,31 @@ export const fetchSubscriptionPlansByAuthor = createAsyncThunk(
   async (authorId, { rejectWithValue }) => {
     try {
       // console.log("📩 Fetching plans by author:", authorId);
-      const response = await axiosInstance.get(
-        `/subscription/plans/author/${authorId}`,
-        { withCredentials: true }
+      const response = await asyncRetry(
+        () =>
+          axiosInstance.get(`/subscription/plans/author/${authorId}`, {
+            withCredentials: true,
+            timeout: 20000, // Increased from 10000ms to 20000ms
+          }),
+        {
+          retries: 3,
+          minTimeout: 2000,
+          factor: 2,
+        }
       );
       // console.log("✅ Fetch plans by author response:", {
       //   count: response.data.plans?.length,
       // });
       return response.data;
     } catch (error) {
-      console.error(
-        "❌ Error fetching plans by author:",
-        error.response?.data || error.message
-      );
-      return rejectWithValue(error.response?.data?.message || error.message);
+      const errorDetails = {
+        message: error.response?.data?.message || error.message,
+        status: error.response?.status,
+        authorId,
+        timeout: error.code === "ECONNABORTED",
+      };
+      console.error("❌ Error fetching plans by author:", errorDetails);
+      return rejectWithValue(errorDetails);
     }
   }
 );
