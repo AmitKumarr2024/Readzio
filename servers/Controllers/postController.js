@@ -426,13 +426,27 @@ const validateObjectId = (id, type = "ID") => {
 // };
 
 // new create code
-// Simple fallback slug generator if slugify fails
 // Fallback slug generator
 const fallbackSlugify = (title) => {
   return title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+};
+
+// Async retry utility
+const asyncRetry = async (fn, options = {}) => {
+  const { retries = 3, minTimeout = 1000 } = options;
+  let lastError = null;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      await new Promise((resolve) => setTimeout(resolve, minTimeout * (i + 1)));
+    }
+  }
+  throw lastError;
 };
 
 export const createPost = async (req, res, next) => {
@@ -787,7 +801,7 @@ export const createPost = async (req, res, next) => {
       logMemory("💾 After DB insert");
       await session.commitTransaction();
 
-      // Retry socket emission
+      // Socket emission with retry
       await asyncRetry(
         async () => {
           io.emit("postCreated", { ...newPost._doc, authorId: req.user._id });
@@ -821,7 +835,7 @@ export const createPost = async (req, res, next) => {
         logMemory("📊 After cache update");
       }
 
-      // Retry socket emission for post counts
+      // Socket emission for post counts
       await asyncRetry(
         async () => {
           io.to(req.user._id).emit("postCountsUpdated", counts);
@@ -834,7 +848,7 @@ export const createPost = async (req, res, next) => {
         .status(201)
         .json({ success: true, message: "Post created", post: newPost });
     } catch (err) {
-      throw err; // Let error propagate to outer catch
+      throw err;
     }
   } catch (error) {
     if (session && session.inTransaction()) {
@@ -1797,6 +1811,7 @@ export const processBlock = async (block) => {
 // };
 
 // new code
+
 export const updatePostBySlug = async (req, res, next) => {
   let session = null;
   try {
@@ -2201,6 +2216,52 @@ export const updatePostBySlug = async (req, res, next) => {
           message: `Edited post: ${updatedPost.title}`,
         },
         { session }
+      );
+
+      // Socket emission with retry
+      await asyncRetry(
+        async () => {
+          io.emit("postUpdated", {
+            ...updatedPost._doc,
+            authorId: userId,
+          });
+        },
+        { retries: 3, minTimeout: 1000 }
+      );
+
+      // Update post counts cache
+      const cacheKey = `postCounts:${userId}`;
+      let counts = cache.get(cacheKey);
+      if (!counts) {
+        logMemory("📊 Before cache update");
+        const [allPostsCount, myPostsCount, followingPostsCount] =
+          await Promise.all([
+            PostModel.countDocuments({
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+            PostModel.countDocuments({
+              author: userId,
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+            PostModel.countDocuments({
+              author: { $in: req.user.following || [] },
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+          ]);
+        counts = { allPostsCount, myPostsCount, followingPostsCount };
+        cache.set(cacheKey, counts);
+        logMemory("📊 After cache update");
+      }
+
+      // Socket emission for post counts
+      await asyncRetry(
+        async () => {
+          io.to(userId).emit("postCountsUpdated", counts);
+        },
+        { retries: 3, minTimeout: 1000 }
       );
 
       await session.commitTransaction();
