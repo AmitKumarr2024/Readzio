@@ -426,6 +426,13 @@ const validateObjectId = (id, type = "ID") => {
 // };
 
 // new create code
+// Simple fallback slug generator if slugify fails
+const fallbackSlugify = (title) => {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+};
 
 export const createPost = async (req, res, next) => {
   try {
@@ -444,6 +451,8 @@ export const createPost = async (req, res, next) => {
       tags: rawTags,
       blocks: rawBlocks = [],
       thumbnail: rawThumbnail,
+      thumbnailSize,
+      isEmbed: isThumbnailEmbed = false,
       isFeatured = false,
       isPinned = false,
       language = "en",
@@ -470,7 +479,11 @@ export const createPost = async (req, res, next) => {
 
     const blocksWithIds = blocks.map((block, index) => {
       if (!block || typeof block !== "object" || !block.type) {
-        throw new AppError(`Invalid block at index ${index}`, 400, "CreatePost");
+        throw new AppError(
+          `Invalid block at index ${index}`,
+          400,
+          "CreatePost"
+        );
       }
       return {
         id: block.id || uuidv4(),
@@ -505,20 +518,40 @@ export const createPost = async (req, res, next) => {
 
     const processImage = async (source, id, folder) => {
       try {
+        // Skip processing for Instagram embed URLs
+        if (
+          source.includes("instagram.com/reel/") &&
+          source.includes("/embed")
+        ) {
+          return source; // Return embed URL directly
+        }
+
         let buffer;
         if (source.startsWith("data:image")) {
-          const [, base64Data] =
-            source.match(/^data:image\/[a-z]+;base64,(.+)$/) || [];
-          if (!base64Data) {
-            throw new AppError("Invalid base64 image", 400, "CreatePost");
+          const [, format, base64Data] =
+            source.match(/^data:image\/([a-z]+);base64,(.+)$/) || [];
+          if (!base64Data || !["jpeg", "png", "webp"].includes(format)) {
+            throw new AppError(
+              "Invalid or unsupported image format",
+              400,
+              "CreatePost"
+            );
           }
           buffer = Buffer.from(base64Data, "base64");
         } else if (source.startsWith("http")) {
-          const response = await axios.get(source, {
-            responseType: "arraybuffer",
-            timeout: 5000,
-          });
-          buffer = Buffer.from(response.data, "binary");
+          try {
+            const response = await axios.get(source, {
+              responseType: "arraybuffer",
+              timeout: 5000,
+            });
+            buffer = Buffer.from(response.data, "binary");
+          } catch (err) {
+            throw new AppError(
+              "Failed to fetch image from URL",
+              400,
+              "CreatePost"
+            );
+          }
         } else {
           throw new AppError("Unsupported image source", 400, "CreatePost");
         }
@@ -566,7 +599,7 @@ export const createPost = async (req, res, next) => {
 
     const processBlock = async (block) => {
       const processedBlock = { ...block };
-      if (block.type === "image" && block.src) {
+      if (block.type === "image" && block.src && !block.isEmbed) {
         logMemory(`🖼️ Processing image block ${block.id}`);
         processedBlock.src = await imageLimit(() =>
           processImage(block.src, block.id, "blogs/post/images/")
@@ -663,12 +696,14 @@ export const createPost = async (req, res, next) => {
     const { readTime, readingTime } = calculateReadTime(processedBlocks);
 
     let processedThumbnail = null;
-    if (rawThumbnail) {
+    if (rawThumbnail && !isThumbnailEmbed) {
       logMemory("🖼️ Before processing thumbnail");
       processedThumbnail = await imageLimit(() =>
         processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
       );
       logMemory("🖼️ After processing thumbnail");
+    } else if (rawThumbnail && isThumbnailEmbed) {
+      processedThumbnail = rawThumbnail; // Use embed URL directly
     }
 
     const moderateContent = async (text) => {
@@ -697,7 +732,13 @@ export const createPost = async (req, res, next) => {
       );
     }
 
-    let slug = slugify(title, { lower: true, strict: true });
+    let slug;
+    try {
+      slug = slugify(title, { lower: true, strict: true });
+    } catch (err) {
+      console.warn("[CreatePost] slugify failed, using fallback:", err);
+      slug = fallbackSlugify(title);
+    }
     let finalSlug = slug;
     let counter = 1;
 
@@ -714,7 +755,8 @@ export const createPost = async (req, res, next) => {
       category,
       tags,
       thumbnail: processedThumbnail,
-      excerpt,
+      thumbnailSize,
+      isEmbed: isThumbnailEmbed,
       blocks: processedBlocks,
       author: req.user._id,
       isFeatured,
@@ -799,11 +841,14 @@ export const createPost = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message || "Failed to create post", 500, "CreatePost")
+        : new AppError(
+            error.message || "Failed to create post",
+            500,
+            "CreatePost"
+          )
     );
   }
 };
-
 
 // Get all published + unblocked posts with pagination
 export const getPublicPosts = async (req, res, next) => {
