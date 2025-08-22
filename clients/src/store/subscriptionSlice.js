@@ -280,16 +280,11 @@ export const fetchSubscriptionPlansByAuthor = createAsyncThunk(
   async (authorId, { rejectWithValue }) => {
     try {
       // console.log("📩 Fetching plans by author:", authorId);
-      const response = await asyncRetry(
-        () =>
-          axiosInstance.get(`/subscription/plans/author/${authorId}`, {
-            withCredentials: true,
-            timeout: 20000, // Increased from 10000ms to 20000ms
-          }),
+      const response = await axiosInstance.get(
+        `/subscription/plans/author/${authorId}`,
         {
-          retries: 3,
-          minTimeout: 2000,
-          factor: 2,
+          withCredentials: true,
+          timeout: 20000, // 20 seconds
         }
       );
       // console.log("✅ Fetch plans by author response:", {
