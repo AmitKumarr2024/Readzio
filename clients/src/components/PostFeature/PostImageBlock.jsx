@@ -57,7 +57,9 @@ const PostImageBlock = ({
       /https:\/\/www\.instagram\.com\/reel\/([A-Za-z0-9_-]+)/;
     const match = input.match(instagramRegex);
     if (match && match[1]) {
-      return `https://www.instagram.com/reel/${match[1]}/embed`;
+      const embedUrl = `https://www.instagram.com/reel/${match[1]}/embed`;
+      console.log("[PostImageBlock] Generated embed URL:", embedUrl);
+      return embedUrl;
     }
     return null;
   };
@@ -77,6 +79,7 @@ const PostImageBlock = ({
         updateBlock(index, { ...block, src: embedUrl, size: 0, isEmbed: true });
         setFileSizeText("");
         setUrlInput("");
+        toast.success("Instagram reel URL added.", { position: "top-right" });
       } else {
         toast.error("Invalid Instagram reel URL.", { position: "top-right" });
       }
@@ -102,6 +105,7 @@ const PostImageBlock = ({
         setFileSizeText(formatFileSize(blob.size));
         handleImageUpload(blob, index);
         setUrlInput("");
+        toast.success("Image URL added.", { position: "top-right" });
       } catch (err) {
         toast.error(err.message || "Failed to fetch image.", {
           position: "top-right",
@@ -110,9 +114,7 @@ const PostImageBlock = ({
     } else {
       toast.error(
         "Please enter a valid image URL (JPEG, PNG, or WebP) or Instagram reel URL.",
-        {
-          position: "top-right",
-        }
+        { position: "top-right" }
       );
     }
   };
@@ -122,6 +124,7 @@ const PostImageBlock = ({
     if (file && validateImage(file)) {
       setFileSizeText(formatFileSize(file.size));
       handleImageUpload(file, index);
+      toast.success("Image uploaded.", { position: "top-right" });
     } else {
       setFileSizeText("");
     }
@@ -147,6 +150,7 @@ const PostImageBlock = ({
           removeBlock(index);
           setFileSizeText("");
           setUrlInput("");
+          toast.success("Block removed.", { position: "top-right" });
         }}
         className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition"
         aria-label="Remove image"
@@ -180,7 +184,7 @@ const PostImageBlock = ({
       </label>
       <input
         placeholder="Caption (optional)"
-        value={block.caption}
+        value={block.caption || ""}
         onChange={(e) =>
           updateBlock(index, { ...block, caption: e.target.value })
         }
@@ -188,20 +192,36 @@ const PostImageBlock = ({
       />
       {block.src &&
         (block.isEmbed ? (
-          <iframe
-            src={block.src}
-            className="w-full h-96 rounded-lg border border-gray-200"
-            frameBorder="0"
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-            title="Instagram Reel"
-          />
+          <div className="relative w-full aspect-video">
+            <iframe
+              src={block.src}
+              className="w-full h-full rounded-lg border border-gray-200"
+              frameBorder="0"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+              title="Instagram Reel"
+              onError={(e) =>
+                console.error(
+                  "[PostImageBlock] Iframe failed to load:",
+                  block.src,
+                  e.message
+                )
+              }
+            />
+          </div>
         ) : (
           <img
             src={block.src}
             alt={block.caption || "Uploaded"}
-            className="w-full max-h-96 object-contain rounded-lg border border-gray-200"
+            className="w-full max-h-[550px] object-contain rounded-lg border border-gray-200"
             loading="lazy"
+            onError={(e) =>
+              console.error(
+                "[PostImageBlock] Image failed to load:",
+                block.src,
+                e.message
+              )
+            }
           />
         ))}
     </motion.div>

@@ -453,7 +453,7 @@ const processImage = async (source, id, folder) => {
   try {
     // Skip processing for Instagram embed URLs
     if (source.includes("instagram.com/reel/") && source.includes("/embed")) {
-      return source; // Return embed URL directly
+      return source;
     }
 
     let buffer;
@@ -472,7 +472,7 @@ const processImage = async (source, id, folder) => {
       try {
         const response = await axios.get(source, {
           responseType: "arraybuffer",
-          timeout: 10000, // Increased timeout
+          timeout: 15000, // Increased timeout
         });
         buffer = Buffer.from(response.data, "binary");
       } catch (err) {
@@ -492,19 +492,33 @@ const processImage = async (source, id, folder) => {
       throw new AppError("Unsupported image format", 400, "CreatePost");
     }
 
-    // Preserve aspect ratio, target larger dimensions for better quality
+    // Preserve aspect ratio, target higher resolution for quality
     const maxDimension = Math.max(metadata.width, metadata.height);
-    const targetWidth = maxDimension > 1200 ? 1200 : undefined;
-    const targetHeight = maxDimension > 1200 ? 1200 : undefined;
+    const targetSize = maxDimension > 1920 ? 1920 : undefined;
+
+    // Choose output format based on input quality and size
+    let outputFormat = "webp";
+    let outputOptions = { quality: 90, effort: 4 }; // Higher quality
+    if (
+      metadata.format === "jpeg" &&
+      metadata.quality >= 90 &&
+      buffer.length < 2 * 1024 * 1024
+    ) {
+      outputFormat = "jpeg";
+      outputOptions = { quality: 95, progressive: true }; // Preserve JPEG for high-quality inputs
+    } else if (metadata.format === "png" && buffer.length < 2 * 1024 * 1024) {
+      outputFormat = "png";
+      outputOptions = { compressionLevel: 6 }; // Preserve PNG for smaller, high-quality inputs
+    }
 
     const compressedBuffer = await image
       .resize({
-        width: targetWidth,
-        height: targetHeight,
+        width: targetSize,
+        height: targetSize,
         fit: "inside",
         withoutEnlargement: true,
       })
-      .webp({ quality: 80, effort: 4 }) // Improved quality
+      [outputFormat](outputOptions)
       .toBuffer();
 
     const result = await uploadToCloudinary({
@@ -515,6 +529,9 @@ const processImage = async (source, id, folder) => {
       throw new AppError("Image upload failed", 500, "CreatePost");
     }
 
+    console.log(
+      `[processImage] Uploaded image ${id}: ${result.secure_url}, format: ${outputFormat}`
+    );
     return result.secure_url;
   } catch (err) {
     throw new AppError(
@@ -717,7 +734,7 @@ export const createPost = async (req, res, next) => {
       );
       logMemory("🖼️ After processing thumbnail");
     } else if (rawThumbnail && isThumbnailEmbed) {
-      processedThumbnail = rawThumbnail; // Use embed URL directly
+      processedThumbnail = rawThumbnail;
     }
 
     const moderateContent = async (text) => {
