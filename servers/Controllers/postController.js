@@ -589,7 +589,7 @@ export const createPost = async (req, res, next) => {
             fit: "inside",
             withoutEnlargement: true,
           })
-          .webp({ quality: 30, effort: 4 })
+          .webp({ quality: 60, effort: 4 })
           .toBuffer();
 
         const result = await uploadToCloudinary({
@@ -1935,7 +1935,7 @@ export const updatePostBySlug = async (req, res, next) => {
             fit: "inside",
             withoutEnlargement: true,
           })
-          .webp({ quality: 30, effort: 4 })
+          .webp({ quality: 60, effort: 4 })
           .toBuffer();
 
         const result = await uploadToCloudinary({

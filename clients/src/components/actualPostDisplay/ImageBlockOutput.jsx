@@ -1,27 +1,51 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { ZoomIn, X } from "lucide-react";
 
 const ImageBlockOutput = ({ src, caption, isEmbed }) => {
   const [modalOpen, setModalOpen] = useState(false);
 
+  // Debug props
+  useEffect(() => {
+    console.log("[ImageBlockOutput] Props:", { src, isEmbed, caption });
+    if (
+      isEmbed &&
+      !src.includes("instagram.com/reel/") &&
+      !src.includes("/embed")
+    ) {
+      console.warn("[ImageBlockOutput] Invalid embed URL:", src);
+    }
+  }, [src, isEmbed]);
+
   return (
     <figure className="my-6 relative">
       {isEmbed ? (
-        <iframe
-          src={src}
-          className="rounded-lg shadow-md max-h-[550px] aspect-video w-full"
-          frameBorder="0"
-          allow="autoplay; encrypted-media"
-          allowFullScreen
-          title="Instagram Reel"
-        />
+        src.includes("instagram.com/reel/") && src.includes("/embed") ? (
+          <iframe
+            src={src}
+            className="rounded-lg shadow-md max-h-[550px] aspect-video w-full"
+            frameBorder="0"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            title="Instagram Reel"
+            onError={() =>
+              console.error("[ImageBlockOutput] Iframe failed to load:", src)
+            }
+          />
+        ) : (
+          <div className="text-red-500 text-center">
+            Invalid Instagram embed URL
+          </div>
+        )
       ) : (
         <img
           src={src}
           alt={caption || "Image"}
           className="rounded-lg shadow-md max-h-[550px] aspect-video object-contain w-full"
           loading="lazy"
+          onError={() =>
+            console.error("[ImageBlockOutput] Image failed to load:", src)
+          }
         />
       )}
       {caption && (
