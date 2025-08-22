@@ -5,7 +5,7 @@ import { ZoomIn, X } from "lucide-react";
 const ImageBlockOutput = ({ src, caption, isEmbed }) => {
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Improved debug logging
+  // Debug logging
   useEffect(() => {
     console.log(
       "[ImageBlockOutput] Props:",
@@ -14,55 +14,60 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
     if (isEmbed) {
       if (!src) {
         console.error("[ImageBlockOutput] Missing src for embed");
-      } else if (
-        !src.includes("instagram.com/reel/") ||
-        !src.includes("/embed")
-      ) {
+      } else if (!src.includes("instagram.com") || !src.includes("/embed")) {
         console.warn("[ImageBlockOutput] Invalid Instagram embed URL:", src);
       }
+    } else if (
+      src &&
+      src.includes("scontent") &&
+      src.includes("instagram.com")
+    ) {
+      console.log("[ImageBlockOutput] Using proxy for Instagram image:", src);
     }
   }, [src, isEmbed, caption]);
+
+  // Proxy Instagram images to bypass CORS
+  const getImageSrc = (src) => {
+    if (!isEmbed && src.includes("scontent") && src.includes("instagram.com")) {
+      return `/api/proxy/proxy-image?url=${encodeURIComponent(src)}`;
+    }
+    return src;
+  };
+
+  const handleError = (e, type = "Image") => {
+    console.error(`[ImageBlockOutput] ${type} failed to load:`, src, e.message);
+  };
 
   return (
     <figure className="my-6 relative">
       {isEmbed ? (
-        src && src.includes("instagram.com/reel/") && src.includes("/embed") ? (
-          <div className="relative w-full aspect-video max-h-[550px]">
+        src && src.includes("instagram.com") && src.includes("/embed") ? (
+          <div className="relative w-full max-w-[600px] mx-auto min-h-[300px] h-[500px] sm:h-[550px]">
             <iframe
               src={src}
               className="rounded-lg shadow-md w-full h-full"
               frameBorder="0"
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-              title="Instagram Reel"
-              onError={(e) =>
-                console.error(
-                  "[ImageBlockOutput] Iframe failed to load:",
-                  src,
-                  e.message
-                )
-              }
-              style={{ minHeight: "300px" }} // Ensure visibility
+              sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+              allow="autoplay; encrypted-media; fullscreen"
+              title="Instagram Embed"
+              onError={(e) => handleError(e, "Iframe")}
+              loading="lazy"
             />
           </div>
         ) : (
           <div className="text-red-500 text-center p-4 border border-red-500 rounded-lg">
-            {src ? "Invalid Instagram embed URL" : "Missing embed URL"}
+            {src
+              ? "Invalid or unsupported Instagram embed URL"
+              : "Missing embed URL"}
           </div>
         )
       ) : src ? (
         <img
-          src={src}
+          src={getImageSrc(src)}
           alt={caption || "Image"}
-          className="rounded-lg shadow-md max-h-[550px] aspect-video object-contain w-full"
+          className="rounded-lg shadow-md max-h-[550px] w-full object-contain"
           loading="lazy"
-          onError={(e) =>
-            console.error(
-              "[ImageBlockOutput] Image failed to load:",
-              src,
-              e.message
-            )
-          }
+          onError={(e) => handleError(e, "Image")}
         />
       ) : (
         <div className="text-red-500 text-center p-4 border border-red-500 rounded-lg">
@@ -81,6 +86,7 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
           onClick={() => setModalOpen(true)}
           title="Zoom"
           className="absolute bottom-2 right-2 bg-white dark:bg-gray-800 p-2 rounded-full border border-gray-300 dark:border-gray-600 shadow hover:bg-indigo-100 dark:hover:bg-indigo-900 transition"
+          aria-label="Zoom image"
         >
           <ZoomIn size={18} />
         </button>
@@ -89,17 +95,21 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
       {/* Zoom Modal (only for images) */}
       {!isEmbed && modalOpen && src && (
         <div
-          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4 sm:px-6"
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center px-2 sm:px-4"
           onClick={() => setModalOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image zoom modal"
         >
           <div
-            className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark p-2 sm:p-4 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+            className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark p-2 sm:p-4 rounded-lg shadow-xl max-w-[90vw] max-h-[90vh] w-full overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setModalOpen(false)}
               className="absolute top-2 right-2 text-gray-500 hover:text-red-500"
               title="Close"
+              aria-label="Close zoom modal"
             >
               <X size={22} />
             </button>
@@ -113,12 +123,13 @@ const ImageBlockOutput = ({ src, caption, isEmbed }) => {
               maxScale={4}
             >
               <TransformComponent wrapperClass="w-full h-full">
-                <div className="h-[70vh] w-full flex justify-center items-center overflow-hidden cursor-grab active:cursor-grabbing">
+                <div className="h-[80vh] sm:h-[70vh] w-full flex justify-center items-center overflow-hidden cursor-grab active:cursor-grabbing">
                   <img
-                    src={src}
+                    src={getImageSrc(src)}
                     alt="Zoomed"
                     className="object-contain max-h-full max-w-full select-none"
                     draggable={false}
+                    onError={(e) => handleError(e, "Zoomed Image")}
                   />
                 </div>
               </TransformComponent>

@@ -448,10 +448,8 @@ const asyncRetry = async (fn, options = {}) => {
   }
   throw lastError;
 };
-
 const processImage = async (source, id, folder) => {
   try {
-    // Skip processing for Instagram embed URLs
     if (source.includes("instagram.com/reel/") && source.includes("/embed")) {
       return source;
     }
@@ -472,7 +470,7 @@ const processImage = async (source, id, folder) => {
       try {
         const response = await axios.get(source, {
           responseType: "arraybuffer",
-          timeout: 15000, // Increased timeout
+          timeout: 5000,
         });
         buffer = Buffer.from(response.data, "binary");
       } catch (err) {
@@ -492,35 +490,18 @@ const processImage = async (source, id, folder) => {
       throw new AppError("Unsupported image format", 400, "CreatePost");
     }
 
-    // Preserve aspect ratio, target higher resolution for quality
-    const maxDimension = Math.max(metadata.width, metadata.height);
-    const targetSize = maxDimension > 1920 ? 1920 : undefined;
-
-    // Choose output format based on input quality and size
-    let outputFormat = "webp";
-    let outputOptions = { quality: 90, effort: 4 }; // Higher quality
-    if (
-      metadata.format === "jpeg" &&
-      metadata.quality >= 90 &&
-      buffer.length < 2 * 1024 * 1024
-    ) {
-      outputFormat = "jpeg";
-      outputOptions = { quality: 95, progressive: true }; // Preserve JPEG for high-quality inputs
-    } else if (metadata.format === "png" && buffer.length < 2 * 1024 * 1024) {
-      outputFormat = "png";
-      outputOptions = { compressionLevel: 6 }; // Preserve PNG for smaller, high-quality inputs
+    if (metadata.width > 1200 || metadata.height > 1200) {
+      image.resize({
+        width: 1200,
+        height: 1200,
+        fit: "inside",
+        withoutEnlargement: true,
+      });
     }
 
     const compressedBuffer = await image
-      .resize({
-        width: targetSize,
-        height: targetSize,
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      [outputFormat](outputOptions)
+      .webp({ quality: 75, effort: 4 })
       .toBuffer();
-
     const result = await uploadToCloudinary({
       buffer: compressedBuffer,
       folder,
@@ -529,9 +510,7 @@ const processImage = async (source, id, folder) => {
       throw new AppError("Image upload failed", 500, "CreatePost");
     }
 
-    console.log(
-      `[processImage] Uploaded image ${id}: ${result.secure_url}, format: ${outputFormat}`
-    );
+    console.log(`[processImage] Uploaded image ${id}: ${result.secure_url}`);
     return result.secure_url;
   } catch (err) {
     throw new AppError(
@@ -547,7 +526,6 @@ export const createPost = async (req, res, next) => {
   try {
     logMemory("📝 Start createPost");
 
-    // Validate payload size (8MB limit)
     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
     if (payloadSize > 8 * 1024 * 1024) {
       throw new AppError("Payload exceeds 8MB limit", 400, "CreatePost");
@@ -1824,7 +1802,6 @@ export const processBlock = async (block) => {
 // };
 
 // new code
-
 export const updatePostBySlug = async (req, res, next) => {
   let session = null;
   try {
@@ -1879,11 +1856,32 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError("Blocks must be an array", 400, "UpdatePostBySlug");
     }
 
+    // Validate block IDs
+    const blockIds = blocks.map((block) => block.id).filter(Boolean);
+    if (blockIds.length !== new Set(blockIds).size) {
+      throw new AppError(
+        "Duplicate block IDs detected",
+        400,
+        "UpdatePostBySlug"
+      );
+    }
+
     const blockLimit = pLimit(3);
     const imageLimit = pLimit(1);
 
-    const processBlock = async (block) => {
-      const processedBlock = { ...block };
+    const processBlock = async (block, index) => {
+      if (!block || typeof block !== "object" || !block.type) {
+        throw new AppError(
+          `Invalid block at index ${index}`,
+          400,
+          "UpdatePostBySlug"
+        );
+      }
+      const processedBlock = {
+        id: block.id || uuidv4(),
+        type: block.type,
+        ...block,
+      };
       if (block.type === "image" && block.src && !block.isEmbed) {
         logMemory(`🖼️ Processing image block ${block.id}`);
         processedBlock.src = await imageLimit(() =>
@@ -1951,7 +1949,7 @@ export const updatePostBySlug = async (req, res, next) => {
           throw new AppError(
             "Table block must have non-empty data",
             400,
-            "ProcessBlock"
+            "UpdatePostBySlug"
           );
         }
         if (
@@ -1962,7 +1960,7 @@ export const updatePostBySlug = async (req, res, next) => {
           throw new AppError(
             "Table block has invalid data format",
             400,
-            "ProcessBlock"
+            "UpdatePostBySlug"
           );
         }
         processedBlock.data = processedBlock.data.map((row) =>
@@ -1991,6 +1989,7 @@ export const updatePostBySlug = async (req, res, next) => {
         "items",
         "data",
         "blocked",
+        "isEmbed",
       ];
 
       return Object.fromEntries(
@@ -2003,7 +2002,9 @@ export const updatePostBySlug = async (req, res, next) => {
     logMemory("🖼️ Before processing blocks");
     const processedBlocks = blocks
       ? await Promise.all(
-          blocks.map((block) => blockLimit(() => processBlock(block)))
+          blocks.map((block, index) =>
+            blockLimit(() => processBlock(block, index))
+          )
         )
       : undefined;
     logMemory("🖼️ After processing blocks");

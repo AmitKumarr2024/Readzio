@@ -90,6 +90,28 @@ app.use((req, res, next) => {
   logMemory("🗜️ Compression middleware");
   compression()(req, res, next);
 });
+// old cors
+// app.use(
+//   cors({
+//     origin: (origin, callback) => {
+//       logMemory("🌐 CORS check");
+//       console.log("[Server:CORS] Request from:", origin);
+//       const allowedOrigins = [
+//         CLIENT_URL?.replace(/\/$/, ""),
+//         "http://localhost:5173",
+//         "http://localhost:8001",
+//         "https://inksha-uedq.onrender.com",
+//       ].filter(Boolean);
+//       if (!origin || allowedOrigins.some((o) => origin.startsWith(o)))
+//         return callback(null, true);
+//       return callback(new Error("CORS not allowed"));
+//     },
+//     credentials: true,
+//     allowedHeaders: ["Content-Type", "Authorization"],
+//     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+//   })
+// );
+// new cors
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -110,6 +132,7 @@ app.use(
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
 );
+
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 app.use(cookieParser());
