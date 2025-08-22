@@ -451,7 +451,7 @@ const asyncRetry = async (fn, options = {}) => {
 
 const processImage = async (source, id, folder) => {
   try {
-    // If it's an Instagram embed, return directly
+    // Handle Instagram embed
     if (source.includes("instagram.com") && source.includes("/embed")) {
       return source;
     }
@@ -481,7 +481,7 @@ const processImage = async (source, id, folder) => {
         buffer = Buffer.from(response.data, "binary");
       } catch (err) {
         throw new AppError(
-          "Failed to fetch image from URL",
+          `Failed to fetch image from URL: ${err.message}`,
           400,
           "ProcessImage"
         );
@@ -503,7 +503,7 @@ const processImage = async (source, id, folder) => {
       throw new AppError("Unsupported image format", 400, "ProcessImage");
     }
 
-    // Resize only if extremely large (better quality balance)
+    // Resize only if large
     const MAX_DIMENSION = 2400;
     if (metadata.width > MAX_DIMENSION || metadata.height > MAX_DIMENSION) {
       image.resize({
@@ -523,7 +523,7 @@ const processImage = async (source, id, folder) => {
       })
       .toBuffer();
 
-    // Cloudinary upload without heavy recompression
+    // Cloudinary upload
     const result = await uploadToCloudinary({
       buffer: compressedBuffer,
       folder,
@@ -537,9 +537,10 @@ const processImage = async (source, id, folder) => {
     console.log(`[processImage] Uploaded image ${id}: ${result.secure_url}`);
     return result.secure_url;
   } catch (err) {
+    console.error(`[processImage] Error for ${id}:`, err);
     throw new AppError(
       err.message || `Image processing failed: ${id}`,
-      400,
+      err.status || 400,
       "ProcessImage"
     );
   }
@@ -556,6 +557,7 @@ export const createPost = async (req, res, next) => {
       throw new AppError("Payload exceeds 8MB limit", 400, "CreatePost");
     }
 
+    // Destructure with validation
     const {
       title,
       category,
@@ -571,24 +573,47 @@ export const createPost = async (req, res, next) => {
       postType = "Blog",
     } = req.body;
 
+    // Validate required fields
+    if (!title?.trim()) {
+      throw new AppError("Title is required", 400, "CreatePost");
+    }
+    if (!category?.trim()) {
+      throw new AppError("Category is required", 400, "CreatePost");
+    }
+    if (!language?.trim()) {
+      throw new AppError("Language is required", 400, "CreatePost");
+    }
     if (!req.user?._id) {
       throw new AppError("You must be signed in.", 401, "CreatePost");
     }
 
-    const tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
+    // Parse tags
+    let tags;
+    try {
+      tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
+    } catch (err) {
+      throw new AppError("Invalid tags format", 400, "CreatePost");
+    }
     if (!Array.isArray(tags)) {
       throw new AppError("Tags must be an array", 400, "CreatePost");
     }
 
-    const blocks = Array.isArray(rawBlocks)
-      ? rawBlocks
-      : JSON.parse(rawBlocks || "[]");
-    if (!Array.isArray(blocks)) {
-      throw new AppError("Blocks must be an array", 400, "CreatePost");
+    // Parse blocks
+    let blocks;
+    try {
+      blocks = Array.isArray(rawBlocks)
+        ? rawBlocks
+        : JSON.parse(rawBlocks || "[]");
+    } catch (err) {
+      throw new AppError("Invalid blocks format", 400, "CreatePost");
+    }
+    if (!Array.isArray(blocks) || !blocks.length) {
+      throw new AppError("Blocks must be a non-empty array", 400, "CreatePost");
     }
 
     logMemory("📦 After parsing input");
 
+    // Assign IDs and validate blocks
     const blocksWithIds = blocks.map((block, index) => {
       if (!block || typeof block !== "object" || !block.type) {
         throw new AppError(
@@ -605,6 +630,7 @@ export const createPost = async (req, res, next) => {
       };
     });
 
+    // Validate table blocks
     blocksWithIds.forEach((block, index) => {
       if (block.type === "table") {
         if (
@@ -692,28 +718,6 @@ export const createPost = async (req, res, next) => {
           : [];
       }
       if (block.type === "table") {
-        if (
-          !processedBlock.data ||
-          !Array.isArray(processedBlock.data) ||
-          processedBlock.data.length === 0
-        ) {
-          throw new AppError(
-            "Table block must have non-empty data",
-            400,
-            "ProcessBlock"
-          );
-        }
-        if (
-          !processedBlock.data.every(
-            (row) => Array.isArray(row) && row.length > 0
-          )
-        ) {
-          throw new AppError(
-            "Table block has invalid data format",
-            400,
-            "ProcessBlock"
-          );
-        }
         processedBlock.data = processedBlock.data.map((row) =>
           row.map((cell) => (cell == null ? "" : String(cell)))
         );
@@ -737,7 +741,7 @@ export const createPost = async (req, res, next) => {
       );
       logMemory("🖼️ After processing thumbnail");
     } else if (rawThumbnail && isThumbnailEmbed) {
-      processedThumbnail = rawThumbnail; // Use embed URL directly
+      processedThumbnail = rawThumbnail;
     }
 
     const moderateContent = async (text) => {
@@ -806,6 +810,7 @@ export const createPost = async (req, res, next) => {
     session.startTransaction();
     try {
       logMemory("💾 Before DB insert");
+      console.log("[CreatePost] Saving postData:", postData);
       const [newPost] = await PostModel.create([postData], { session });
       await recordActivity(
         {
@@ -860,13 +865,22 @@ export const createPost = async (req, res, next) => {
       );
 
       logMemory("🎉 End createPost");
-      res
-        .status(201)
-        .json({ success: true, message: "Post created", post: newPost });
+      console.log("[CreatePost] Post created, slug:", newPost.slug);
+      res.status(201).json({
+        success: true,
+        message: "Post created",
+        post: { ...newPost._doc, slug: newPost.slug },
+      });
     } catch (err) {
-      throw err;
+      console.error("[CreatePost] DB Error:", err);
+      throw new AppError(
+        err.message || "Failed to save post to database",
+        500,
+        "CreatePost"
+      );
     }
   } catch (error) {
+    console.error("[CreatePost] Error:", error);
     if (session && session.inTransaction()) {
       await session.abortTransaction();
     }

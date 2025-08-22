@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import slugify from "slugify"; // Add this import
+import slugify from "slugify";
 import CategorySelector from "../components/CreatePost/CategorySelector";
 import PostTypeSelector from "../components/CreatePost/PostTypeSelector";
 import PostEditor from "../components/CreatePost/PostEditor";
@@ -30,7 +30,7 @@ const CreatePost = () => {
   );
   const { categories } = useSelector((state) => state.categories);
 
-  const MAX_PAYLOAD_SIZE = 18 * 1024 * 1024; // 18MB (under 20MB server limit)
+  const MAX_PAYLOAD_SIZE = 8 * 1024 * 1024; // 8MB (matches server limit)
   const MAX_TEXT_BLOCK_SIZE = 100 * 1024; // 100KB per text block
   const MAX_TABLE_BLOCK_SIZE = 200 * 1024; // 200KB per table block
   const MAX_IMAGE_COUNT = 20; // 20 images max
@@ -51,18 +51,19 @@ const CreatePost = () => {
       reader.onload = (e) => {
         image.src = e.target.result;
         image.onload = () => {
-          const maxWidth = 1600;
-          const maxHeight = 1600;
+          const maxWidth = 2400; // Increased for better quality
+          const maxHeight = 2400;
           let { width, height } = image;
 
           if (width > maxWidth || height > maxHeight) {
             const ratio = Math.min(maxWidth / width, maxHeight / height);
-            width *= ratio;
-            height *= ratio;
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
           }
 
           canvas.width = width;
           canvas.height = height;
+          ctx.imageSmoothingQuality = "high"; // Improve rendering quality
           ctx.drawImage(image, 0, 0, width, height);
 
           canvas.toBlob(
@@ -74,7 +75,7 @@ const CreatePost = () => {
               reader.readAsDataURL(blob);
             },
             "image/webp",
-            0.8
+            0.95 // Increased quality to 0.95
           );
         };
         image.onerror = reject;
@@ -185,7 +186,8 @@ const CreatePost = () => {
         if (
           block.type === "image" &&
           block.src &&
-          block.src.startsWith("data:image")
+          block.src.startsWith("data:image") &&
+          !block.isEmbed
         ) {
           try {
             const file = await fetch(block.src).then((res) => res.blob());
@@ -193,10 +195,14 @@ const CreatePost = () => {
             return {
               ...block,
               src: compressed.src,
-              size: file.size,
+              size: compressed.size,
               blocked: false,
             };
           } catch (err) {
+            console.error(
+              `[CreatePost] Image compression failed at index ${index + 1}:`,
+              err
+            );
             toast.error(`Failed to compress image at position ${index + 1}`, {
               position: "top-right",
             });
@@ -210,13 +216,18 @@ const CreatePost = () => {
     // Compress thumbnail
     let compressedThumbnail = metaData.thumbnail;
     let thumbnailSize = metaData.thumbnailSize || 0;
-    if (compressedThumbnail && compressedThumbnail.startsWith("data:image")) {
+    if (
+      compressedThumbnail &&
+      compressedThumbnail.startsWith("data:image") &&
+      !metaData.isEmbed
+    ) {
       try {
         const file = await fetch(compressedThumbnail).then((res) => res.blob());
         const compressed = await compressImage(file);
         compressedThumbnail = compressed.src;
-        thumbnailSize = file.size;
+        thumbnailSize = compressed.size;
       } catch (err) {
+        console.error("[CreatePost] Thumbnail compression failed:", err);
         toast.error("Failed to compress thumbnail", { position: "top-right" });
         throw err;
       }
@@ -230,19 +241,26 @@ const CreatePost = () => {
       blocks: updatedBlocks,
       thumbnail: compressedThumbnail,
       thumbnailSize,
-      ...metaData,
+      excerpt: metaData.excerpt || "",
+      tags: metaData.tags,
+      language: metaData.language,
+      isEmbed: metaData.isEmbed || false,
+      isFeatured: metaData.isFeatured || false,
+      isPinned: metaData.isPinned || false,
     };
     const payloadString = JSON.stringify(postData);
     const payloadSize = new TextEncoder().encode(payloadString).length;
     if (payloadSize > MAX_PAYLOAD_SIZE) {
       return toast.error(
-        "Post data exceeds 18MB. Reduce images (max 20), text, or table content.",
+        "Post data exceeds 8MB. Reduce images (max 20), text, or table content.",
         { position: "top-right" }
       );
     }
 
     try {
+      console.log("[CreatePost] Sending postData:", postData);
       const resultAction = await dispatch(createPosts(postData)).unwrap();
+      console.log("[CreatePost] Post created:", resultAction.post);
       toast.success("Post created successfully!", { position: "top-right" });
       setTitle("");
       setBlocks([]);
@@ -251,7 +269,7 @@ const CreatePost = () => {
       navigate(`/post/${resultAction.post.slug}`);
     } catch (err) {
       console.error("[CreatePost] Post creation failed:", err);
-      if (err.message?.includes("Payload exceeds 20MB")) {
+      if (err.message?.includes("Payload exceeds")) {
         toast.error(
           "Post data too large. Use fewer images (max 20) or reduce text/table content.",
           { position: "top-right" }
