@@ -427,6 +427,7 @@ const validateObjectId = (id, type = "ID") => {
 
 // new create code
 // Simple fallback slug generator if slugify fails
+// Fallback slug generator
 const fallbackSlugify = (title) => {
   return title
     .toLowerCase()
@@ -435,6 +436,7 @@ const fallbackSlugify = (title) => {
 };
 
 export const createPost = async (req, res, next) => {
+  let session = null;
   try {
     logMemory("📝 Start createPost");
 
@@ -768,7 +770,7 @@ export const createPost = async (req, res, next) => {
       postType,
     };
 
-    const session = await mongoose.startSession();
+    session = await mongoose.startSession();
     session.startTransaction();
     try {
       logMemory("💾 Before DB insert");
@@ -832,12 +834,12 @@ export const createPost = async (req, res, next) => {
         .status(201)
         .json({ success: true, message: "Post created", post: newPost });
     } catch (err) {
-      await session.abortTransaction();
-      throw err;
-    } finally {
-      session.endSession();
+      throw err; // Let error propagate to outer catch
     }
   } catch (error) {
+    if (session && session.inTransaction()) {
+      await session.abortTransaction();
+    }
     next(
       error instanceof AppError
         ? error
@@ -847,6 +849,10 @@ export const createPost = async (req, res, next) => {
             "CreatePost"
           )
     );
+  } finally {
+    if (session) {
+      session.endSession();
+    }
   }
 };
 
@@ -1649,9 +1655,153 @@ export const processBlock = async (block) => {
 };
 
 // Update post by slug
+// old code
+// export const updatePostBySlug = async (req, res, next) => {
+//   try {
+//     logMemory("✏️ Start updatePostBySlug");
+//     const { slug } = req.params;
+//     const userId = req.user?._id;
+//     const userRole = req.user?.role;
+
+//     if (!slug) {
+//       throw new AppError("Missing slug", 400, "UpdatePostBySlug");
+//     }
+
+//     if (!userId) {
+//       throw new AppError(
+//         "You must be signed in to access this feature.",
+//         401,
+//         "UpdatePostBySlug"
+//       );
+//     }
+
+//     const updates = { ...req.body };
+
+//     const blockLimit = pLimit(3);
+//     if (updates.blocks) {
+//       logMemory("🖼️ Before processing blocks");
+//       updates.blocks = await Promise.all(
+//         updates.blocks.map((block, i) =>
+//           blockLimit(async () => {
+//             if (!block || typeof block !== "object" || !block.type) {
+//               throw new AppError(
+//                 `Invalid block at index ${i}`,
+//                 400,
+//                 "UpdatePostBySlug"
+//               );
+//             }
+
+//             const processedBlock = await processBlock({
+//               ...block,
+//               id: block.id || uuidv4(),
+//               blocked:
+//                 typeof block.blocked === "boolean" ? block.blocked : false,
+//             });
+
+//             const allowedFields = [
+//               "id",
+//               "type",
+//               "value",
+//               "level",
+//               "text",
+//               "code",
+//               "caption",
+//               "src",
+//               "href",
+//               "url",
+//               "name",
+//               "size",
+//               "ordered",
+//               "author",
+//               "question",
+//               "options",
+//               "votedUserIds",
+//               "items",
+//               "data",
+//               "blocked",
+//             ];
+
+//             return Object.fromEntries(
+//               Object.entries(processedBlock).filter(([key]) =>
+//                 allowedFields.includes(key)
+//               )
+//             );
+//           })
+//         )
+//       );
+//       logMemory("🖼️ After processing blocks");
+//     }
+
+//     const { readTime, readingTime } = calculateReadTime(updates.blocks || []);
+//     updates.readTime = readTime;
+//     updates.readingTime = readingTime;
+
+//     const query =
+//       userRole === "admin"
+//         ? { slug: { $regex: new RegExp(`^${slug}$`, "i") } }
+//         : { slug: { $regex: new RegExp(`^${slug}$`, "i") }, author: userId };
+
+//     logMemory("📖 Before fetching post");
+//     const post = await PostModel.findOne(query).lean();
+//     logMemory("📖 After fetching post");
+//     if (!post) {
+//       throw new AppError(
+//         "Post not found or unauthorized",
+//         404,
+//         "UpdatePostBySlug"
+//       );
+//     }
+
+//     if (post.blocked) {
+//       throw new AppError("Post is blocked", 403, "UpdatePostBySlug");
+//     }
+
+//     logMemory("💾 Before updating post");
+//     const updatedPost = await PostModel.findOneAndUpdate(
+//       query,
+//       { ...updates, isPublished: true, lastEditedAt: new Date() },
+//       { new: true, runValidators: true }
+//     ).select(
+//       "title slug category excerpt thumbnail blocks author isPublished isPinned createdAt lastEditedAt postType"
+//     );
+//     logMemory("💾 After updating post");
+
+//     if (!updatedPost) {
+//       throw new AppError("Failed to update post", 500, "UpdatePostBySlug");
+//     }
+
+//     await recordActivity({
+//       userId,
+//       action: "POST_EDITED",
+//       targetPost: updatedPost._id,
+//       message: `Edited post: ${updatedPost.title}`,
+//     });
+
+//     logMemory("✏️ End updatePostBySlug");
+//     res.status(200).json({
+//       success: true,
+//       message: "Post updated successfully",
+//       post: updatedPost,
+//     });
+//   } catch (error) {
+//     next(
+//       error instanceof AppError
+//         ? error
+//         : new AppError(
+//             error.message || "Failed to update post",
+//             500,
+//             "UpdatePostBySlug"
+//           )
+//     );
+//   }
+// };
+
+// new code
 export const updatePostBySlug = async (req, res, next) => {
+  let session = null;
   try {
     logMemory("✏️ Start updatePostBySlug");
+
     const { slug } = req.params;
     const userId = req.user?._id;
     const userRole = req.user?.role;
@@ -1668,66 +1818,270 @@ export const updatePostBySlug = async (req, res, next) => {
       );
     }
 
-    const updates = { ...req.body };
-
-    const blockLimit = pLimit(3);
-    if (updates.blocks) {
-      logMemory("🖼️ Before processing blocks");
-      updates.blocks = await Promise.all(
-        updates.blocks.map((block, i) =>
-          blockLimit(async () => {
-            if (!block || typeof block !== "object" || !block.type) {
-              throw new AppError(
-                `Invalid block at index ${i}`,
-                400,
-                "UpdatePostBySlug"
-              );
-            }
-
-            const processedBlock = await processBlock({
-              ...block,
-              id: block.id || uuidv4(),
-              blocked:
-                typeof block.blocked === "boolean" ? block.blocked : false,
-            });
-
-            const allowedFields = [
-              "id",
-              "type",
-              "value",
-              "level",
-              "text",
-              "code",
-              "caption",
-              "src",
-              "href",
-              "url",
-              "name",
-              "size",
-              "ordered",
-              "author",
-              "question",
-              "options",
-              "votedUserIds",
-              "items",
-              "data",
-              "blocked",
-            ];
-
-            return Object.fromEntries(
-              Object.entries(processedBlock).filter(([key]) =>
-                allowedFields.includes(key)
-              )
-            );
-          })
-        )
-      );
-      logMemory("🖼️ After processing blocks");
+    // Validate payload size (8MB limit)
+    const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
+    if (payloadSize > 8 * 1024 * 1024) {
+      throw new AppError("Payload exceeds 8MB limit", 400, "UpdatePostBySlug");
     }
 
-    const { readTime, readingTime } = calculateReadTime(updates.blocks || []);
-    updates.readTime = readTime;
-    updates.readingTime = readingTime;
+    const {
+      title,
+      category,
+      excerpt,
+      tags: rawTags,
+      blocks: rawBlocks,
+      thumbnail: rawThumbnail,
+      thumbnailSize,
+      isEmbed: isThumbnailEmbed = false,
+      isFeatured,
+      isPinned,
+      language,
+      postType,
+    } = req.body;
+
+    const tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
+    if (!Array.isArray(tags)) {
+      throw new AppError("Tags must be an array", 400, "UpdatePostBySlug");
+    }
+
+    const blocks = Array.isArray(rawBlocks)
+      ? rawBlocks
+      : JSON.parse(rawBlocks || "[]");
+    if (!Array.isArray(blocks)) {
+      throw new AppError("Blocks must be an array", 400, "UpdatePostBySlug");
+    }
+
+    const processImage = async (source, id, folder) => {
+      try {
+        // Skip processing for Instagram embed URLs
+        if (
+          source.includes("instagram.com/reel/") &&
+          source.includes("/embed")
+        ) {
+          return source; // Return embed URL directly
+        }
+
+        let buffer;
+        if (source.startsWith("data:image")) {
+          const [, format, base64Data] =
+            source.match(/^data:image\/([a-z]+);base64,(.+)$/) || [];
+          if (!base64Data || !["jpeg", "png", "webp"].includes(format)) {
+            throw new AppError(
+              "Invalid or unsupported image format",
+              400,
+              "UpdatePostBySlug"
+            );
+          }
+          buffer = Buffer.from(base64Data, "base64");
+        } else if (source.startsWith("http")) {
+          try {
+            const response = await axios.get(source, {
+              responseType: "arraybuffer",
+              timeout: 5000,
+            });
+            buffer = Buffer.from(response.data, "binary");
+          } catch (err) {
+            throw new AppError(
+              "Failed to fetch image from URL",
+              400,
+              "UpdatePostBySlug"
+            );
+          }
+        } else {
+          throw new AppError(
+            "Unsupported image source",
+            400,
+            "UpdatePostBySlug"
+          );
+        }
+
+        if (buffer.length > 5 * 1024 * 1024) {
+          throw new AppError(
+            "Image size exceeds 5MB limit",
+            400,
+            "UpdatePostBySlug"
+          );
+        }
+
+        const image = sharp(buffer);
+        const metadata = await image.metadata();
+        if (!["jpeg", "png", "webp"].includes(metadata.format)) {
+          throw new AppError(
+            "Unsupported image format",
+            400,
+            "UpdatePostBySlug"
+          );
+        }
+
+        const compressedBuffer = await image
+          .resize({
+            width: 600,
+            height: 600,
+            fit: "inside",
+            withoutEnlargement: true,
+          })
+          .webp({ quality: 30, effort: 4 })
+          .toBuffer();
+
+        const result = await uploadToCloudinary({
+          buffer: compressedBuffer,
+          folder,
+        });
+        if (!result?.secure_url) {
+          throw new AppError("Image upload failed", 500, "UpdatePostBySlug");
+        }
+
+        return result.secure_url;
+      } catch (err) {
+        throw new AppError(
+          err.message || `Image processing failed: ${id}`,
+          400,
+          "UpdatePostBySlug"
+        );
+      }
+    };
+
+    const blockLimit = pLimit(3);
+    const imageLimit = pLimit(1);
+
+    const processBlock = async (block) => {
+      const processedBlock = { ...block };
+      if (block.type === "image" && block.src && !block.isEmbed) {
+        logMemory(`🖼️ Processing image block ${block.id}`);
+        processedBlock.src = await imageLimit(() =>
+          processImage(block.src, block.id, "blogs/post/images/")
+        );
+      }
+      if (processedBlock.text) {
+        processedBlock.text = processedBlock.text.replace(
+          /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+          ""
+        );
+      }
+      if (processedBlock.caption) {
+        processedBlock.caption = processedBlock.caption.replace(
+          /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+          ""
+        );
+      }
+      if (block.type === "poll") {
+        processedBlock.question =
+          processedBlock.question?.trim() || "Default Question";
+        processedBlock.options = Array.isArray(processedBlock.options)
+          ? processedBlock.options
+              .map((opt) => {
+                const value =
+                  typeof opt === "string"
+                    ? opt
+                    : typeof opt === "object" && typeof opt.option === "string"
+                    ? opt.option
+                    : "";
+                const trimmed = value.trim();
+                return trimmed &&
+                  trimmed.length >= 2 &&
+                  trimmed.toLowerCase() !== "option"
+                  ? {
+                      option: trimmed,
+                      votes:
+                        typeof opt === "object" && Number.isInteger(opt.votes)
+                          ? opt.votes
+                          : 0,
+                    }
+                  : null;
+              })
+              .filter(Boolean)
+          : [];
+        processedBlock.votedUserIds = Array.isArray(processedBlock.votedUserIds)
+          ? processedBlock.votedUserIds
+              .map((vote) =>
+                mongoose.Types.ObjectId.isValid(vote.userId)
+                  ? {
+                      userId: new mongoose.Types.ObjectId(vote.userId),
+                      votedAt: vote.votedAt || new Date(),
+                    }
+                  : null
+              )
+              .filter(Boolean)
+          : [];
+      }
+      if (block.type === "table") {
+        if (
+          !processedBlock.data ||
+          !Array.isArray(processedBlock.data) ||
+          processedBlock.data.length === 0
+        ) {
+          throw new AppError(
+            "Table block must have non-empty data",
+            400,
+            "ProcessBlock"
+          );
+        }
+        if (
+          !processedBlock.data.every(
+            (row) => Array.isArray(row) && row.length > 0
+          )
+        ) {
+          throw new AppError(
+            "Table block has invalid data format",
+            400,
+            "ProcessBlock"
+          );
+        }
+        processedBlock.data = processedBlock.data.map((row) =>
+          row.map((cell) => (cell == null ? "" : String(cell)))
+        );
+      }
+
+      const allowedFields = [
+        "id",
+        "type",
+        "value",
+        "level",
+        "text",
+        "code",
+        "caption",
+        "src",
+        "href",
+        "url",
+        "name",
+        "size",
+        "ordered",
+        "author",
+        "question",
+        "options",
+        "votedUserIds",
+        "items",
+        "data",
+        "blocked",
+      ];
+
+      return Object.fromEntries(
+        Object.entries(processedBlock).filter(([key]) =>
+          allowedFields.includes(key)
+        )
+      );
+    };
+
+    logMemory("🖼️ Before processing blocks");
+    const processedBlocks = blocks
+      ? await Promise.all(
+          blocks.map((block) => blockLimit(() => processBlock(block)))
+        )
+      : undefined;
+    logMemory("🖼️ After processing blocks");
+
+    let processedThumbnail = null;
+    if (rawThumbnail && !isThumbnailEmbed) {
+      logMemory("🖼️ Before processing thumbnail");
+      processedThumbnail = await imageLimit(() =>
+        processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
+      );
+      logMemory("🖼️ After processing thumbnail");
+    } else if (rawThumbnail && isThumbnailEmbed) {
+      processedThumbnail = rawThumbnail; // Use embed URL directly
+    }
+
+    const { readTime, readingTime } = calculateReadTime(processedBlocks || []);
 
     const query =
       userRole === "admin"
@@ -1749,34 +2103,120 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError("Post is blocked", 403, "UpdatePostBySlug");
     }
 
-    logMemory("💾 Before updating post");
-    const updatedPost = await PostModel.findOneAndUpdate(
-      query,
-      { ...updates, isPublished: true, lastEditedAt: new Date() },
-      { new: true, runValidators: true }
-    ).select(
-      "title slug category excerpt thumbnail blocks author isPublished isPinned createdAt lastEditedAt postType"
-    );
-    logMemory("💾 After updating post");
-
-    if (!updatedPost) {
-      throw new AppError("Failed to update post", 500, "UpdatePostBySlug");
+    let finalSlug = post.slug;
+    if (title && title !== post.title) {
+      try {
+        finalSlug = slugify(title, { lower: true, strict: true });
+      } catch (err) {
+        console.warn("[UpdatePostBySlug] slugify failed, using fallback:", err);
+        finalSlug = fallbackSlugify(title);
+      }
+      let counter = 1;
+      while (
+        await PostModel.exists({
+          slug: finalSlug,
+          _id: { $ne: post._id },
+        }).lean()
+      ) {
+        finalSlug = `${finalSlug}-${counter++}`;
+      }
     }
 
-    await recordActivity({
-      userId,
-      action: "POST_EDITED",
-      targetPost: updatedPost._id,
-      message: `Edited post: ${updatedPost.title}`,
-    });
+    const moderateContent = async (text) => {
+      return { isFlagged: false, categories: {} };
+    };
 
-    logMemory("✏️ End updatePostBySlug");
-    res.status(200).json({
-      success: true,
-      message: "Post updated successfully",
-      post: updatedPost,
-    });
+    const blockTextContent = processedBlocks
+      ? processedBlocks
+          .flatMap((block) =>
+            ["text", "value", "code", "caption", "question"]
+              .map((f) => block[f])
+              .filter(Boolean)
+          )
+          .join("\n")
+      : "";
+    const fullText = `${title || post.title}\n${
+      excerpt || post.excerpt || ""
+    }\n${blockTextContent}`;
+    logMemory("🔍 Before content moderation");
+    const moderation = await moderateContent(fullText);
+    logMemory("🔍 After content moderation");
+    if (moderation.isFlagged) {
+      const reasons = Object.entries(moderation.categories)
+        .filter(([_, flagged]) => flagged)
+        .map(([key]) => key);
+      throw new AppError(
+        `Restricted content: ${reasons.join(", ")}`,
+        400,
+        "UpdatePostBySlug"
+      );
+    }
+
+    const updates = {
+      title,
+      slug: finalSlug,
+      category,
+      excerpt,
+      tags,
+      thumbnail: processedThumbnail,
+      thumbnailSize,
+      isEmbed: isThumbnailEmbed,
+      blocks: processedBlocks,
+      isFeatured,
+      isPinned,
+      language,
+      postType,
+      readTime,
+      readingTime,
+      isPublished: true,
+      lastEditedAt: new Date(),
+    };
+
+    session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      logMemory("💾 Before updating post");
+      const updatedPost = await PostModel.findOneAndUpdate(
+        query,
+        {
+          $set: Object.fromEntries(
+            Object.entries(updates).filter(([_, v]) => v !== undefined)
+          ),
+        },
+        { new: true, runValidators: true, session }
+      ).select(
+        "title slug category excerpt thumbnail blocks author isPublished isPinned createdAt lastEditedAt postType"
+      );
+      logMemory("💾 After updating post");
+
+      if (!updatedPost) {
+        throw new AppError("Failed to update post", 500, "UpdatePostBySlug");
+      }
+
+      await recordActivity(
+        {
+          userId,
+          action: "POST_EDITED",
+          targetPost: updatedPost._id,
+          message: `Edited post: ${updatedPost.title}`,
+        },
+        { session }
+      );
+
+      await session.commitTransaction();
+      logMemory("✏️ End updatePostBySlug");
+      res.status(200).json({
+        success: true,
+        message: "Post updated successfully",
+        post: updatedPost,
+      });
+    } catch (err) {
+      throw err;
+    }
   } catch (error) {
+    if (session && session.inTransaction()) {
+      await session.abortTransaction();
+    }
     next(
       error instanceof AppError
         ? error
@@ -1786,6 +2226,10 @@ export const updatePostBySlug = async (req, res, next) => {
             "UpdatePostBySlug"
           )
     );
+  } finally {
+    if (session) {
+      session.endSession();
+    }
   }
 };
 
