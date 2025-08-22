@@ -37,15 +37,16 @@ const CreatePost = () => {
     const reader = new FileReader();
 
     return new Promise((resolve, reject) => {
-      if (file.size > 5 * 1024 * 1024) {
-        return reject(new Error("Image size exceeds 5MB limit"));
+      if (file.size > 2 * 1024 * 1024) {
+        // Reduced to 2MB per image
+        return reject(new Error("Image size exceeds 2MB limit"));
       }
 
       reader.onload = (e) => {
         image.src = e.target.result;
         image.onload = () => {
-          const maxWidth = 600;
-          const maxHeight = 600;
+          const maxWidth = 400; // Reduced from 600
+          const maxHeight = 400;
           let { width, height } = image;
 
           if (width > maxWidth || height > maxHeight) {
@@ -61,12 +62,12 @@ const CreatePost = () => {
           canvas.toBlob(
             (blob) => {
               const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result); // Base64 string
+              reader.onloadend = () => resolve(reader.result);
               reader.onerror = reject;
               reader.readAsDataURL(blob);
             },
             "image/webp",
-            0.3 // 30% quality
+            0.2 // Reduced to 20% quality
           );
         };
         image.onerror = reject;
@@ -119,6 +120,12 @@ const CreatePost = () => {
     if (!/^[a-z]{2}$/i.test(metaData.language))
       return toast.error("Invalid language code");
 
+    // Limit number of images
+    const imageBlocks = blocks.filter((b) => b.type === "image");
+    if (imageBlocks.length > 3) {
+      return toast.error("Maximum 3 images allowed per post");
+    }
+
     // Compress images in blocks
     const updatedBlocks = await Promise.all(
       blocks.map(async (block) => {
@@ -132,7 +139,7 @@ const CreatePost = () => {
             const compressedSrc = await compressImage(file);
             return { ...block, src: compressedSrc, blocked: false };
           } catch (err) {
-            toast.error("Failed to compress image");
+            toast.error(err.message || "Failed to compress image");
             throw err;
           }
         }
@@ -153,11 +160,12 @@ const CreatePost = () => {
         const file = await fetch(compressedThumbnail).then((res) => res.blob());
         compressedThumbnail = await compressImage(file);
       } catch (err) {
-        toast.error("Failed to compress thumbnail");
+        toast.error(err.message || "Failed to compress thumbnail");
         throw err;
       }
     }
 
+    // Estimate payload size
     const postData = {
       postType,
       category: selectedCategoryId,
@@ -166,6 +174,11 @@ const CreatePost = () => {
       thumbnail: compressedThumbnail,
       ...metaData,
     };
+    const payloadSize = Buffer.byteLength(JSON.stringify(postData), "utf8");
+    if (payloadSize > 6 * 1024 * 1024) {
+      // Warn before sending
+      return toast.error("Post data exceeds 6MB. Reduce images or content.");
+    }
 
     try {
       const resultAction = await dispatch(createPosts(postData)).unwrap();
@@ -177,8 +190,14 @@ const CreatePost = () => {
       navigate(`/post/${resultAction.post.slug}`);
     } catch (err) {
       console.error("[CreatePost] Post creation failed:", err);
-      toast.error(err?.message || "Post creation failed");
-      // Check if post was created despite error
+      if (err.message === "Payload exceeds 8MB limit") {
+        toast.error(
+          "Post data too large. Use fewer or smaller images (max 3)."
+        );
+      } else {
+        toast.error(err?.message || "Post creation failed");
+      }
+      // Check if post was created
       const slug = slugify(title, { lower: true, strict: true });
       try {
         const checkPost = await dispatch(
