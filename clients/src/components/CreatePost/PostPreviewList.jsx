@@ -39,7 +39,7 @@ const PostPreviewList = ({
   createLoading,
   createError,
   onCreatePost,
-  isSubmitting, // Receive isSubmitting prop
+  isSubmitting,
 }) => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -95,7 +95,6 @@ const PostPreviewList = ({
     toast.success("Code copied!");
   };
 
-  // Debounced createPost to prevent multiple rapid clicks
   const createPost = useCallback(
     debounce(() => {
       if (isSubmitting || createLoading) {
@@ -612,7 +611,18 @@ const PostPreviewList = ({
 
   return (
     <div className="sticky mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800">
-      <LoadingBar loading={showPublishLoading} text="Publishing..." />
+      <AnimatePresence>
+        {showPublishLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
+          >
+            <LoadingBar loading={showPublishLoading} text="Publishing..." />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {currentDraftPost && (
         <>
           <h2 className="text-3xl sm:text-4xl font-bold text-center text-blue-600 dark:text-blue-400 mb-6">
