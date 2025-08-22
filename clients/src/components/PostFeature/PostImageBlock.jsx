@@ -18,7 +18,7 @@ const PostImageBlock = ({
   handleImageUpload,
   refProp,
 }) => {
-  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   const ALLOWED_FORMATS = ["image/jpeg", "image/png", "image/webp"];
   const [fileSizeText, setFileSizeText] = useState(""); // State to store file size text
 
@@ -35,7 +35,7 @@ const PostImageBlock = ({
     }
     if (file.size > MAX_FILE_SIZE) {
       toast.error(
-        "Image size exceeds 2MB limit. Please use an image smaller than 2MB.",
+        "Image size exceeds 5MB limit. Please use an image smaller than 5MB.",
         { position: "top-right" }
       );
       return false;

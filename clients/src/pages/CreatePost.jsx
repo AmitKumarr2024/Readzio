@@ -29,6 +29,12 @@ const CreatePost = () => {
   );
   const { categories } = useSelector((state) => state.categories);
 
+  const MAX_PAYLOAD_SIZE = 18 * 1024 * 1024; // 18MB (under 20MB server limit)
+  const MAX_TEXT_BLOCK_SIZE = 100 * 1024; // 100KB per text block
+  const MAX_TABLE_BLOCK_SIZE = 200 * 1024; // 200KB per table block
+  const MAX_IMAGE_COUNT = 20; // 20 images max
+  const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
+
   // Client-side image compression
   const compressImage = async (file) => {
     const image = new Image();
@@ -37,15 +43,15 @@ const CreatePost = () => {
     const reader = new FileReader();
 
     return new Promise((resolve, reject) => {
-      if (file.size > 2 * 1024 * 1024) {
-        return reject(new Error("Image size exceeds 2MB limit"));
+      if (file.size > MAX_IMAGE_SIZE) {
+        return reject(new Error("Image size exceeds 5MB limit"));
       }
 
       reader.onload = (e) => {
         image.src = e.target.result;
         image.onload = () => {
-          const maxWidth = 400;
-          const maxHeight = 400;
+          const maxWidth = 300;
+          const maxHeight = 300;
           let { width, height } = image;
 
           if (width > maxWidth || height > maxHeight) {
@@ -67,7 +73,7 @@ const CreatePost = () => {
               reader.readAsDataURL(blob);
             },
             "image/webp",
-            0.2
+            0.15
           );
         };
         image.onerror = reject;
@@ -132,15 +138,49 @@ const CreatePost = () => {
 
     // Limit number of images
     const imageBlocks = blocks.filter((b) => b.type === "image");
-    if (imageBlocks.length > 3) {
-      return toast.error("Maximum 3 images allowed per post", {
+    if (imageBlocks.length > MAX_IMAGE_COUNT) {
+      return toast.error(`Maximum ${MAX_IMAGE_COUNT} images allowed per post`, {
         position: "top-right",
       });
     }
 
+    // Validate text and table block sizes
+    for (const [index, block] of blocks.entries()) {
+      if (block.type === "text") {
+        const textSize = new TextEncoder().encode(block.value || "").length;
+        if (textSize > MAX_TEXT_BLOCK_SIZE) {
+          return toast.error(
+            `Text block at position ${
+              index + 1
+            } too large (>100KB). Please reduce content.`,
+            { position: "top-right" }
+          );
+        }
+      }
+      if (block.type === "table") {
+        if (!block.data?.length || !block.data.some((row) => row.length)) {
+          return toast.error(
+            `Table block at position ${index + 1} must have non-empty data`,
+            { position: "top-right" }
+          );
+        }
+        const tableSize = new TextEncoder().encode(
+          JSON.stringify(block.data)
+        ).length;
+        if (tableSize > MAX_TABLE_BLOCK_SIZE) {
+          return toast.error(
+            `Table block at position ${
+              index + 1
+            } too large (>200KB). Please reduce table data.`,
+            { position: "top-right" }
+          );
+        }
+      }
+    }
+
     // Compress images in blocks
     const updatedBlocks = await Promise.all(
-      blocks.map(async (block) => {
+      blocks.map(async (block, index) => {
         if (
           block.type === "image" &&
           block.src &&
@@ -156,18 +196,10 @@ const CreatePost = () => {
               blocked: false,
             };
           } catch (err) {
-            toast.error(err.message || "Failed to compress image", {
+            toast.error(`Failed to compress image at position ${index + 1}`, {
               position: "top-right",
             });
             throw err;
-          }
-        }
-        if (block.type === "table") {
-          if (!block.data?.length || !block.data.some((row) => row.length)) {
-            toast.error("Table block must have non-empty data", {
-              position: "top-right",
-            });
-            throw new Error("Invalid table block");
           }
         }
         return { ...block, blocked: false };
@@ -176,7 +208,7 @@ const CreatePost = () => {
 
     // Compress thumbnail
     let compressedThumbnail = metaData.thumbnail;
-    let thumbnailSize = 0;
+    let thumbnailSize = metaData.thumbnailSize || 0;
     if (compressedThumbnail && compressedThumbnail.startsWith("data:image")) {
       try {
         const file = await fetch(compressedThumbnail).then((res) => res.blob());
@@ -184,14 +216,12 @@ const CreatePost = () => {
         compressedThumbnail = compressed.src;
         thumbnailSize = file.size;
       } catch (err) {
-        toast.error(err.message || "Failed to compress thumbnail", {
-          position: "top-right",
-        });
+        toast.error("Failed to compress thumbnail", { position: "top-right" });
         throw err;
       }
     }
 
-    // Estimate payload size (browser-compatible)
+    // Estimate payload size
     const postData = {
       postType,
       category: selectedCategoryId,
@@ -203,10 +233,11 @@ const CreatePost = () => {
     };
     const payloadString = JSON.stringify(postData);
     const payloadSize = new TextEncoder().encode(payloadString).length;
-    if (payloadSize > 6 * 1024 * 1024) {
-      return toast.error("Post data exceeds 6MB. Reduce images or content.", {
-        position: "top-right",
-      });
+    if (payloadSize > MAX_PAYLOAD_SIZE) {
+      return toast.error(
+        "Post data exceeds 18MB. Reduce images (max 20), text, or table content.",
+        { position: "top-right" }
+      );
     }
 
     try {
@@ -219,9 +250,9 @@ const CreatePost = () => {
       navigate(`/post/${resultAction.post.slug}`);
     } catch (err) {
       console.error("[CreatePost] Post creation failed:", err);
-      if (err.message === "Payload exceeds 8MB limit") {
+      if (err.message?.includes("Payload exceeds 20MB")) {
         toast.error(
-          "Post data too large. Use fewer or smaller images (max 3).",
+          "Post data too large. Use fewer images (max 20) or reduce text/table content.",
           { position: "top-right" }
         );
       } else {

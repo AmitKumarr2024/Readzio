@@ -9,11 +9,12 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
   const tags = useSelector((state) => state.postMeta.tags);
   const [selectedThumbnail, setSelectedThumbnail] = useState(null);
   const [fileSizeText, setFileSizeText] = useState(""); // State for file size text
+  const [fileSize, setFileSize] = useState(0); // State for raw file size
   const [activeTab, setActiveTab] = useState("upload");
   const [urlInput, setUrlInput] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
 
-  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   const ALLOWED_FORMATS = ["image/jpeg", "image/png", "image/webp"];
 
   const formatFileSize = (sizeInBytes) => {
@@ -37,10 +38,8 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
     }
     if (file.size > MAX_FILE_SIZE) {
       toast.error(
-        "Image size exceeds 2MB limit. Please use an image smaller than 2MB.",
-        {
-          position: "top-right",
-        }
+        "Image size exceeds 5MB limit. Please use an image smaller than 5MB.",
+        { position: "top-right" }
       );
       return;
     }
@@ -48,6 +47,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       setSelectedThumbnail(reader.result);
+      setFileSize(file.size); // Store raw file size
       setFileSizeText(formatFileSize(file.size)); // Set file size text
       setUrlInput("");
     };
@@ -66,6 +66,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
       return;
     }
     setSelectedThumbnail(urlInput);
+    setFileSize(0); // No file size for URLs
     setFileSizeText(""); // Clear file size for URLs
     setUrlInput("");
   };
@@ -74,9 +75,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
     if (!selectedThumbnail) {
       toast.error(
         "Please select a thumbnail by uploading a file or entering a URL.",
-        {
-          position: "top-right",
-        }
+        { position: "top-right" }
       );
       return;
     }
@@ -91,13 +90,14 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
 
   const handleFinalConfirm = () => {
     setIsConfirming(false);
-    onConfirm({ tags, thumbnail: selectedThumbnail });
+    onConfirm({ tags, thumbnail: selectedThumbnail, thumbnailSize: fileSize }); // Include thumbnailSize
   };
 
   const handleCancel = () => {
     setIsConfirming(false);
     setSelectedThumbnail(null);
-    setFileSizeText(""); // Clear file size on cancel
+    setFileSize(0); // Clear file size
+    setFileSizeText(""); // Clear file size text
     setUrlInput("");
     onCancel();
   };
@@ -166,7 +166,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                       aria-label="Upload thumbnail image"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Supported formats: JPEG, PNG, WebP (max 2MB)
+                      Supported formats: JPEG, PNG, WebP (max 5MB)
                     </p>
                   </div>
                 ) : (
@@ -198,7 +198,7 @@ const ConfirmPostModal = ({ onConfirm, onCancel }) => {
                       Selected Thumbnail:
                     </p>
                     {fileSizeText && (
-                      <div className="absolute top-0 left-0 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+                      <div className="absolute top-0 right-0 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full shadow-sm">
                         {fileSizeText}
                       </div>
                     )}
