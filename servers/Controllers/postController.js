@@ -1262,6 +1262,14 @@ const validatePaginationParams = (page, limit) => {
   const limitNum = limit ? Math.min(100, Math.max(1, parseInt(limit))) : 20;
   return { pageNum, limitNum };
 };
+
+// Helper function to hash IP for privacy
+const hashIP = (ip) => {
+  return crypto
+    .createHash("sha256")
+    .update(ip + process.env.IP_SALT || "default_salt")
+    .digest("hex");
+};
 // Get post ID by slug
 // Improved getPostIdBySlug - fix RegEx injection
 export const getPostIdBySlug = async (req, res, next) => {
@@ -1446,7 +1454,7 @@ export const countFollowingPosts = async (req, res, next) => {
   }
 };
 
-// Get single public post by slug
+// Fixed getPublicPost - Remove RegEx vulnerability
 export const getPublicPost = async (req, res, next) => {
   try {
     logMemory("📄 Start getPublicPost");
@@ -1456,15 +1464,30 @@ export const getPublicPost = async (req, res, next) => {
       throw new AppError("Invalid post slug", 400, "GetPublicPost");
     }
 
+    // Validate slug format and length
     const sanitizedSlug = slug.trim().toLowerCase();
+    if (sanitizedSlug.length > 200 || !/^[a-z0-9-_]+$/.test(sanitizedSlug)) {
+      throw new AppError("Invalid slug format", 400, "GetPublicPost");
+    }
+
     console.log("Querying slug:", sanitizedSlug);
 
+    // Add caching
+    const cacheKey = `publicPost:${sanitizedSlug}`;
+    const cachedPost = cache.get(cacheKey);
+    if (cachedPost) {
+      logMemory("Cache hit for public post");
+      return res.status(200).json({ success: true, post: cachedPost });
+    }
+
     logMemory("📖 Before fetching post");
+    // Use exact match instead of regex to prevent injection
     const post = await PostModel.findOne({
-      slug: { $regex: `^${sanitizedSlug}$`, $options: "i" },
+      slug: sanitizedSlug,
       isPublished: true,
       blocked: false,
     })
+      .maxTimeMS(10000)
       .select(
         "title slug category excerpt thumbnail author createdAt isPublished readTime readingTime tags language viewsCount shareCount postType"
       )
@@ -1480,6 +1503,9 @@ export const getPublicPost = async (req, res, next) => {
         "GetPublicPost"
       );
     }
+
+    // Cache the result
+    cache.set(cacheKey, post, 600); // 10 minutes
 
     console.log("Post fetched:", post.title);
     logMemory("📄 End getPublicPost");
@@ -1498,38 +1524,70 @@ export const getPublicPost = async (req, res, next) => {
   }
 };
 
-// Track guest view
+// Fixed trackGuestView with privacy improvements
 export const trackGuestView = async (req, res, next) => {
   try {
     logMemory("Before trackGuestView start");
     const { slug } = req.params;
+
+    if (!slug || typeof slug !== "string") {
+      throw new AppError("Invalid slug", 400, "TrackGuestView");
+    }
+
     const sanitizedSlug = slug.trim().toLowerCase();
+    if (sanitizedSlug.length > 200 || !/^[a-z0-9-_]+$/.test(sanitizedSlug)) {
+      throw new AppError("Invalid slug format", 400, "TrackGuestView");
+    }
+
+    // Rate limiting for guest views
+    const clientIP = req.ip;
+    const rateLimitKey = `guestView:${clientIP}:${sanitizedSlug}`;
+    const recentViews = cache.get(rateLimitKey) || 0;
+
+    if (recentViews >= 10) {
+      // Max 10 views per IP per post per minute
+      return res.status(429).json({
+        success: false,
+        message: "Too many view attempts",
+      });
+    }
+
+    cache.set(rateLimitKey, recentViews + 1, 60); // 1 minute
 
     logMemory("Before PostModel.findOneAndUpdate");
     const post = await PostModel.findOneAndUpdate(
       { slug: sanitizedSlug, isPublished: true, blocked: false },
       { $inc: { viewsCount: 1 } },
-      { select: "_id title" }
+      {
+        select: "_id title",
+        new: true,
+        maxTimeMS: 5000,
+      }
     ).lean();
 
     if (!post) {
       throw new AppError("Post not found", 404, "TrackGuestView");
     }
 
+    // Hash IP for privacy
+    const hashedIP = hashIP(clientIP);
+
     logMemory("Before GuestModel.create");
     await GuestModel.create({
       slug: sanitizedSlug,
-      ip: req.ip,
-      userAgent: req.headers["user-agent"],
+      ip: hashedIP, // Store hashed IP instead of plain IP
+      userAgent: req.headers["user-agent"]?.substring(0, 500), // Limit length
+      timestamp: new Date(),
     });
 
     logMemory("Before socket emit");
+    // Don't emit actual IP to admin room
     io.to("adminRoom").emit("guestViewUpdate", {
       postId: post._id,
       slug: sanitizedSlug,
-      ip: req.ip,
-      userAgent: req.headers["user-agent"],
+      ipHash: hashedIP,
       location: req.headers["cf-ipcountry"] || null,
+      timestamp: new Date(),
     });
 
     logMemory("After trackGuestView complete");
@@ -1657,17 +1715,25 @@ export const trackGuestVisit = async (req, res, next) => {
   }
 };
 
-// Get all posts
-
+// Fixed getAllPosts with better validation and performance
 export const getAllPosts = async (req, res, next) => {
   try {
     logMemory("📋 Start getAllPosts");
-    const page = parseInt(req.query.page) || 1;
-    const limit = req.query.limit ? parseInt(req.query.limit) : null;
-    const skip = limit ? (page - 1) * limit : 0;
+
+    // Improved input validation
+    const { pageNum, limitNum } = validatePaginationParams(
+      req.query.page,
+      req.query.limit
+    );
+    const skip = (pageNum - 1) * limitNum;
     const authorId = req.query.authorId;
     const rawAuthorIds = req.query.authorIds || req.query.followingIds;
     const isGuest = req.query.isGuest === "true";
+
+    // Validate author ID if provided
+    if (authorId && !mongoose.Types.ObjectId.isValid(authorId)) {
+      throw new AppError("Invalid author ID format", 400, "GetAllPosts");
+    }
 
     const query = {
       blocked: { $ne: true },
@@ -1677,47 +1743,123 @@ export const getAllPosts = async (req, res, next) => {
     if (authorId && mongoose.Types.ObjectId.isValid(authorId)) {
       query.author = authorId;
     } else if (rawAuthorIds) {
+      // Better validation for author IDs
       const authorIdArray = rawAuthorIds
         .split(",")
         .map((id) => id.trim())
-        .filter((id) => mongoose.Types.ObjectId.isValid(id));
-      if (authorIdArray.length) {
-        query.author = { $in: authorIdArray };
-      } else {
-        throw new AppError("Invalid author IDs provided", 400, "GetAllPosts");
+        .filter((id) => {
+          if (!mongoose.Types.ObjectId.isValid(id)) {
+            console.warn(`Invalid author ID: ${id}`);
+            return false;
+          }
+          return true;
+        });
+
+      if (authorIdArray.length === 0) {
+        throw new AppError("No valid author IDs provided", 400, "GetAllPosts");
       }
+
+      if (authorIdArray.length > 100) {
+        // Limit to prevent abuse
+        throw new AppError("Too many author IDs (max 100)", 400, "GetAllPosts");
+      }
+
+      query.author = { $in: authorIdArray };
+    }
+
+    // Add caching
+    const cacheKey = `allPosts:${pageNum}:${limitNum}:${JSON.stringify(
+      query
+    )}:${req.user?._id || "guest"}`;
+    const cachedResult = cache.get(cacheKey);
+    if (cachedResult) {
+      logMemory("Cache hit for all posts");
+      return res.status(200).json(cachedResult);
     }
 
     console.log("Query:", JSON.stringify(query));
     logMemory("📖 Before fetching posts");
-    let postQuery = PostModel.find(query)
-      .maxTimeMS(15000) // Increased timeout
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .populate("author", "name avatar")
-      .populate("category", "name slug")
-      .lean();
 
-    if (limit) postQuery = postQuery.limit(limit);
+    // Use aggregation for better performance
+    const pipeline = [
+      { $match: query },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limitNum },
+      {
+        $lookup: {
+          from: "users",
+          localField: "author",
+          foreignField: "_id",
+          as: "author",
+          pipeline: [{ $project: { name: 1, avatar: 1 } }],
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category",
+          pipeline: [{ $project: { name: 1, slug: 1 } }],
+        },
+      },
+      { $unwind: { path: "$author", preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          title: 1,
+          slug: 1,
+          category: 1,
+          excerpt: 1,
+          thumbnail: 1,
+          author: 1,
+          createdAt: 1,
+          isPublished: 1,
+          isPinned: 1,
+          isPremium: 1,
+          isSubscriberOnly: 1,
+          blocked: 1,
+          message: 1,
+          readTime: 1,
+          likesCount: 1,
+          commentsCount: 1,
+          viewsCount: 1,
+          bookmarksCount: 1,
+          likes: 1,
+          tags: 1,
+          language: 1,
+          isFeatured: 1,
+          allowComments: 1,
+          timeSpent: 1,
+          updatedAt: 1,
+          shareCount: 1,
+          sharedBy: 1,
+          blocks: 1,
+          postType: 1,
+          readingTime: 1,
+        },
+      },
+    ];
 
-    const posts = await asyncRetry(
-      () =>
-        postQuery.select(
-          "title slug category excerpt thumbnail author createdAt isPublished isPinned isPremium isSubscriberOnly blocked message readTime likesCount commentsCount viewsCount bookmarksCount likes tags language isFeatured allowComments timeSpent updatedAt shareCount sharedBy blocks postType"
-        ),
-      { retries: 3, minTimeout: 2000 }
-    );
+    const [posts, total] = await Promise.all([
+      asyncRetry(() => PostModel.aggregate(pipeline).allowDiskUse(true), {
+        retries: 3,
+        minTimeout: 1000,
+      }),
+      asyncRetry(() => PostModel.countDocuments(query).maxTimeMS(10000), {
+        retries: 3,
+        minTimeout: 1000,
+      }),
+    ]);
+
     logMemory("📖 After fetching posts");
-
     console.log("Posts fetched:", posts.length);
-    const total = await asyncRetry(
-      () => PostModel.countDocuments(query).maxTimeMS(10000).lean(),
-      { retries: 3, minTimeout: 2000 }
-    );
     console.log("Total posts:", total);
 
-    const cacheKey = `postCounts:${req.user?._id || "guest"}`;
-    let counts = cache.get(cacheKey);
+    // Update post counts cache
+    const postCountsCacheKey = `postCounts:${req.user?._id || "guest"}`;
+    let counts = cache.get(postCountsCacheKey);
     if (!counts) {
       logMemory("📊 Before cache update");
       const [allPostsCount, myPostsCount, followingPostsCount] =
@@ -1742,26 +1884,46 @@ export const getAllPosts = async (req, res, next) => {
             : Promise.resolve(0),
         ]);
       counts = { allPostsCount, myPostsCount, followingPostsCount };
-      cache.set(cacheKey, counts);
+      cache.set(postCountsCacheKey, counts, 600); // 10 minutes
       logMemory("📊 After cache update");
     }
 
+    // Record activity for authenticated users
     if (req.user?._id && !isGuest) {
       await recordActivity({
         userId: req.user._id,
         action: "VIEWED_POSTS",
         message: "Viewed all posts",
+      }).catch((err) => {
+        console.warn("Failed to record activity:", err.message);
       });
+
+      // Emit socket event with retry
       await asyncRetry(
         async () => {
-          io.to(req.user._id).emit("postCountsUpdated", counts);
+          io.to(req.user._id.toString()).emit("postCountsUpdated", counts);
         },
-        { retries: 3, minTimeout: 1000 }
-      );
+        { retries: 2, minTimeout: 500 }
+      ).catch((err) => {
+        console.warn("Failed to emit socket event:", err.message);
+      });
     }
 
+    const result = {
+      success: true,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      posts,
+      hasNextPage: pageNum * limitNum < total,
+      totalPages: Math.ceil(total / limitNum),
+    };
+
+    // Cache the result
+    cache.set(cacheKey, result, 300); // 5 minutes
+
     logMemory("📋 End getAllPosts");
-    res.status(200).json({ success: true, total, page, posts });
+    res.status(200).json(result);
   } catch (error) {
     console.error("Error in getAllPosts:", error.message, error.stack);
     next(
@@ -1775,87 +1937,7 @@ export const getAllPosts = async (req, res, next) => {
     );
   }
 };
-
-// Get single post
-// export const getSinglePost = async (req, res, next) => {
-//   try {
-//     logMemory("📄 Start getSinglePost");
-//     const { slug } = req.params;
-//     const userId = req.user?._id;
-//     const userRole = req.user?.role;
-
-//     if (!slug || typeof slug !== "string" || slug.trim() === "") {
-//       throw new AppError("Invalid post slug", 400, "GetSinglePost");
-//     }
-
-//     const sanitizedSlug = slug.trim().toLowerCase();
-
-//     const query = {
-//       slug: sanitizedSlug, // Remove regex for exact match
-//       ...(userId
-//         ? {
-//             $or: [
-//               { isPublished: true, blocked: false },
-//               { author: userId },
-//               ...(userRole === "admin" ? [{}] : []),
-//             ],
-//           }
-//         : { isPublished: true, blocked: false }),
-//     };
-
-//     logMemory("📖 Before fetching post");
-//     const post = await PostModel.findOne(query)
-//       .select(
-//         `
-//         title slug category excerpt thumbnail author createdAt
-//         isPublished isPinned isPremium isSubscriberOnly blocked message readTime
-//         likesCount commentsCount viewsCount bookmarksCount likes
-//         tags language isFeatured allowComments timeSpent updatedAt
-//         shareCount sharedBy blocks postType
-//         `
-//       )
-//       .populate("author", "name email avatar")
-//       .populate("category")
-//       .lean();
-//     logMemory("📖 After fetching post");
-
-//     if (!post) {
-//       throw new AppError(
-//         "Post not found or has been deleted",
-//         404,
-//         "GetSinglePost"
-//       );
-//     }
-
-//     if (
-//       post.blocked &&
-//       (!userId ||
-//         (post.author.toString() !== userId.toString() && userRole !== "admin"))
-//     ) {
-//       throw new AppError(
-//         "Post is not available (blocked)",
-//         403,
-//         "GetSinglePost"
-//       );
-//     }
-
-//     logMemory("📄 End getSinglePost");
-//     res.status(200).json({ success: true, post });
-//   } catch (error) {
-//     console.error("[GetSinglePost] Error:", error);
-//     next(
-//       error instanceof AppError
-//         ? error
-//         : new AppError(
-//             error.message || "Failed to fetch post",
-//             500,
-//             "GetSinglePost"
-//           )
-//     );
-//   }
-// };
-// new code
-
+// Fixed getSinglePost with security improvements
 export const getSinglePost = async (req, res, next) => {
   try {
     logMemory("📄 Start getSinglePost");
@@ -1867,39 +1949,63 @@ export const getSinglePost = async (req, res, next) => {
       throw new AppError("Invalid post slug", 400, "GetSinglePost");
     }
 
+    // Better slug validation
     const sanitizedSlug = slug.trim().toLowerCase();
+    if (sanitizedSlug.length > 200 || !/^[a-z0-9-_]+$/.test(sanitizedSlug)) {
+      throw new AppError("Invalid slug format", 400, "GetSinglePost");
+    }
+
     console.log("[GetSinglePost] Querying slug:", sanitizedSlug);
 
-    const query = {
-      slug: { $regex: `^${sanitizedSlug}$`, $options: "i" },
-      ...(userId
-        ? {
-            $or: [
-              { isPublished: true, blocked: false },
-              { author: userId },
-              ...(userRole === "admin" ? [{}] : []),
-            ],
-          }
-        : { isPublished: true, blocked: false }),
-    };
+    // Build query based on user permissions
+    let query = { slug: sanitizedSlug };
+
+    if (!userId) {
+      // Guest users can only see published, non-blocked posts
+      query = {
+        ...query,
+        isPublished: true,
+        blocked: false,
+      };
+    } else if (userRole === "admin") {
+      // Admin can see all posts
+      // No additional restrictions
+    } else {
+      // Regular users can see published posts or their own posts
+      query = {
+        ...query,
+        $or: [{ isPublished: true, blocked: false }, { author: userId }],
+      };
+    }
+
+    // Check cache first
+    const cacheKey = `singlePost:${sanitizedSlug}:${userId || "guest"}:${
+      userRole || "none"
+    }`;
+    const cachedPost = cache.get(cacheKey);
+    if (cachedPost) {
+      logMemory("Cache hit for single post");
+      return res.status(200).json({ success: true, post: cachedPost });
+    }
 
     logMemory("📖 Before fetching post");
     const post = await asyncRetry(
       async () => {
         const result = await PostModel.findOne(query)
-          .maxTimeMS(15000) // Increased timeout
+          .maxTimeMS(10000)
           .select(
             `
             title slug category excerpt thumbnail author createdAt
             isPublished isPinned isPremium isSubscriberOnly blocked message readTime
             likesCount commentsCount viewsCount bookmarksCount likes
             tags language isFeatured allowComments timeSpent updatedAt
-            shareCount sharedBy blocks postType
-            `
+            shareCount sharedBy blocks postType readingTime
+          `
           )
           .populate("author", "name email avatar")
-          .populate("category")
+          .populate("category", "name slug")
           .lean();
+
         if (!result) {
           throw new AppError(
             "Post not found or has been deleted",
@@ -1909,24 +2015,25 @@ export const getSinglePost = async (req, res, next) => {
         }
         return result;
       },
-      { retries: 5, minTimeout: 2000 }
+      { retries: 3, minTimeout: 1000 }
     );
     logMemory("📖 After fetching post");
 
+    // Additional permission check
     if (
       post.blocked &&
-      (!userId ||
-        (post.author.toString() !== userId.toString() && userRole !== "admin"))
+      userId &&
+      post.author._id.toString() !== userId.toString() &&
+      userRole !== "admin"
     ) {
-      throw new AppError(
-        "Post is not available (blocked)",
-        403,
-        "GetSinglePost"
-      );
+      throw new AppError("Post is not available", 403, "GetSinglePost");
     }
 
+    // Cache the result (shorter time for dynamic content)
+    cache.set(cacheKey, post, 300); // 5 minutes
+
     // Cache post ID for faster lookups
-    cache.set(`postId:${sanitizedSlug}`, post._id, 600);
+    cache.set(`postId:${sanitizedSlug}`, post._id, 1800); // 30 minutes
 
     logMemory("📄 End getSinglePost");
     res.status(200).json({ success: true, post });
@@ -1943,8 +2050,7 @@ export const getSinglePost = async (req, res, next) => {
     );
   }
 };
-
-// Track time spent
+// Enhanced trackTimeSpent with validation
 export const trackTimeSpent = async (req, res, next) => {
   try {
     logMemory("⏱️ Start trackTimeSpent");
@@ -1956,28 +2062,76 @@ export const trackTimeSpent = async (req, res, next) => {
       throw new AppError("Invalid postId", 400, "trackTimeSpent");
     }
 
+    if (!userId) {
+      throw new AppError("Authentication required", 401, "trackTimeSpent");
+    }
+
+    // Validate duration
     if (typeof duration !== "number" || isNaN(duration) || duration < 0) {
       throw new AppError("Invalid duration", 400, "trackTimeSpent");
     }
 
+    // Reasonable limits (max 1 hour per request)
+    if (duration > 3600) {
+      throw new AppError(
+        "Duration too large (max 1 hour)",
+        400,
+        "trackTimeSpent"
+      );
+    }
+
+    // Rate limiting
+    const rateLimitKey = `timeSpent:${userId}:${postId}`;
+    const recentUpdates = cache.get(rateLimitKey) || 0;
+
+    if (recentUpdates >= 10) {
+      // Max 10 updates per user per post per minute
+      return res.status(429).json({
+        success: false,
+        message: "Too many time tracking attempts",
+      });
+    }
+
+    cache.set(rateLimitKey, recentUpdates + 1, 60); // 1 minute
+
     logMemory("💾 Before updating interaction");
     const [interactionUpdate, postUpdate] = await Promise.all([
       PostInteraction.findOneAndUpdate(
-        { postId, userId },
-        { $inc: { timeSpent: duration }, $set: { updatedAt: new Date() } },
-        { upsert: true, new: false }
+        { postId: new mongoose.Types.ObjectId(postId), userId },
+        {
+          $inc: { timeSpent: duration },
+          $set: { updatedAt: new Date() },
+        },
+        {
+          upsert: true,
+          new: false,
+          maxTimeMS: 5000,
+        }
       ),
-      PostModel.updateOne({ _id: postId }, { $inc: { timeSpent: duration } }),
+      PostModel.updateOne(
+        { _id: postId },
+        {
+          $inc: { timeSpent: duration },
+          $set: { lastInteractedAt: new Date() },
+        },
+        { maxTimeMS: 5000 }
+      ),
     ]);
     logMemory("💾 After updating interaction");
 
-    if (!postUpdate.modifiedCount && !interactionUpdate) {
+    if (!postUpdate.matchedCount) {
       throw new AppError("Post not found", 404, "trackTimeSpent");
     }
 
     logMemory("⏱️ End trackTimeSpent");
-    res.status(200).json({ success: true, message: "Time spent recorded" });
+    res.status(200).json({
+      success: true,
+      message: "Time spent recorded",
+      duration: duration,
+      totalTimeSpent: (interactionUpdate?.timeSpent || 0) + duration,
+    });
   } catch (error) {
+    console.error("Error in trackTimeSpent:", error.stack);
     next(
       error instanceof AppError
         ? error
@@ -1990,238 +2144,7 @@ export const trackTimeSpent = async (req, res, next) => {
   }
 };
 
-// Process block old code
-// export const processBlock = async (block) => {
-//   logMemory(`🛠️ Start processBlock ${block.id || "unknown"}`);
-//   const processedBlock = { ...block };
-
-//   if (processedBlock.text) {
-//     processedBlock.text = processedBlock.text.replace(
-//       /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-//       ""
-//     );
-//   }
-//   if (processedBlock.caption) {
-//     processedBlock.caption = processedBlock.caption.replace(
-//       /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-//       ""
-//     );
-//   }
-
-//   if (block.type === "poll") {
-//     processedBlock.question =
-//       processedBlock.question?.trim() || "Default Question";
-//     processedBlock.options = Array.isArray(processedBlock.options)
-//       ? block.options
-//           .map((opt) => {
-//             const value =
-//               typeof opt === "string"
-//                 ? opt
-//                 : typeof opt === "object" && typeof opt.option === "string"
-//                 ? opt.option
-//                 : "";
-//             const trimmed = value.trim();
-//             return trimmed &&
-//               trimmed.length >= 2 &&
-//               trimmed.toLowerCase() !== "option"
-//               ? {
-//                   option: trimmed,
-//                   votes:
-//                     typeof opt === "object" && Number.isInteger(opt.votes)
-//                       ? opt.votes
-//                       : 0,
-//                 }
-//               : null;
-//           })
-//           .filter(Boolean)
-//       : [];
-//     processedBlock.votedUserIds = Array.isArray(processedBlock.votedUserIds)
-//       ? processedBlock.votedUserIds
-//           .map((vote) =>
-//             mongoose.Types.ObjectId.isValid(vote.userId)
-//               ? {
-//                   userId: new mongoose.Types.ObjectId(vote.userId),
-//                   votedAt: vote.votedAt || new Date(),
-//                 }
-//               : null
-//           )
-//           .filter(Boolean)
-//       : [];
-//   }
-
-//   if (block.type === "table") {
-//     if (
-//       !processedBlock.data ||
-//       !Array.isArray(processedBlock.data) ||
-//       processedBlock.data.length === 0
-//     ) {
-//       throw new AppError(
-//         "Table block must have non-empty data",
-//         400,
-//         "ProcessBlock"
-//       );
-//     }
-//     if (
-//       !processedBlock.data.every((row) => Array.isArray(row) && row.length > 0)
-//     ) {
-//       throw new AppError(
-//         "Table block has invalid data format",
-//         400,
-//         "ProcessBlock"
-//       );
-//     }
-//     processedBlock.data = processedBlock.data.map((row) =>
-//       row.map((cell) => (cell == null ? "" : String(cell)))
-//     );
-//   }
-
-//   logMemory(`🛠️ End processBlock ${block.id || "unknown"}`);
-//   return processedBlock;
-// };
-
-// Update post by slug
-// old code
-// export const updatePostBySlug = async (req, res, next) => {
-//   try {
-//     logMemory("✏️ Start updatePostBySlug");
-//     const { slug } = req.params;
-//     const userId = req.user?._id;
-//     const userRole = req.user?.role;
-
-//     if (!slug) {
-//       throw new AppError("Missing slug", 400, "UpdatePostBySlug");
-//     }
-
-//     if (!userId) {
-//       throw new AppError(
-//         "You must be signed in to access this feature.",
-//         401,
-//         "UpdatePostBySlug"
-//       );
-//     }
-
-//     const updates = { ...req.body };
-
-//     const blockLimit = pLimit(3);
-//     if (updates.blocks) {
-//       logMemory("🖼️ Before processing blocks");
-//       updates.blocks = await Promise.all(
-//         updates.blocks.map((block, i) =>
-//           blockLimit(async () => {
-//             if (!block || typeof block !== "object" || !block.type) {
-//               throw new AppError(
-//                 `Invalid block at index ${i}`,
-//                 400,
-//                 "UpdatePostBySlug"
-//               );
-//             }
-
-//             const processedBlock = await processBlock({
-//               ...block,
-//               id: block.id || uuidv4(),
-//               blocked:
-//                 typeof block.blocked === "boolean" ? block.blocked : false,
-//             });
-
-//             const allowedFields = [
-//               "id",
-//               "type",
-//               "value",
-//               "level",
-//               "text",
-//               "code",
-//               "caption",
-//               "src",
-//               "href",
-//               "url",
-//               "name",
-//               "size",
-//               "ordered",
-//               "author",
-//               "question",
-//               "options",
-//               "votedUserIds",
-//               "items",
-//               "data",
-//               "blocked",
-//             ];
-
-//             return Object.fromEntries(
-//               Object.entries(processedBlock).filter(([key]) =>
-//                 allowedFields.includes(key)
-//               )
-//             );
-//           })
-//         )
-//       );
-//       logMemory("🖼️ After processing blocks");
-//     }
-
-//     const { readTime, readingTime } = calculateReadTime(updates.blocks || []);
-//     updates.readTime = readTime;
-//     updates.readingTime = readingTime;
-
-//     const query =
-//       userRole === "admin"
-//         ? { slug: { $regex: new RegExp(`^${slug}$`, "i") } }
-//         : { slug: { $regex: new RegExp(`^${slug}$`, "i") }, author: userId };
-
-//     logMemory("📖 Before fetching post");
-//     const post = await PostModel.findOne(query).lean();
-//     logMemory("📖 After fetching post");
-//     if (!post) {
-//       throw new AppError(
-//         "Post not found or unauthorized",
-//         404,
-//         "UpdatePostBySlug"
-//       );
-//     }
-
-//     if (post.blocked) {
-//       throw new AppError("Post is blocked", 403, "UpdatePostBySlug");
-//     }
-
-//     logMemory("💾 Before updating post");
-//     const updatedPost = await PostModel.findOneAndUpdate(
-//       query,
-//       { ...updates, isPublished: true, lastEditedAt: new Date() },
-//       { new: true, runValidators: true }
-//     ).select(
-//       "title slug category excerpt thumbnail blocks author isPublished isPinned createdAt lastEditedAt postType"
-//     );
-//     logMemory("💾 After updating post");
-
-//     if (!updatedPost) {
-//       throw new AppError("Failed to update post", 500, "UpdatePostBySlug");
-//     }
-
-//     await recordActivity({
-//       userId,
-//       action: "POST_EDITED",
-//       targetPost: updatedPost._id,
-//       message: `Edited post: ${updatedPost.title}`,
-//     });
-
-//     logMemory("✏️ End updatePostBySlug");
-//     res.status(200).json({
-//       success: true,
-//       message: "Post updated successfully",
-//       post: updatedPost,
-//     });
-//   } catch (error) {
-//     next(
-//       error instanceof AppError
-//         ? error
-//         : new AppError(
-//             error.message || "Failed to update post",
-//             500,
-//             "UpdatePostBySlug"
-//           )
-//     );
-//   }
-// };
-
-// new code
+// Fixed code
 export const updatePostBySlug = async (req, res, next) => {
   let session = null;
   try {
@@ -2232,6 +2155,7 @@ export const updatePostBySlug = async (req, res, next) => {
     const userId = req.user?._id;
     const userRole = req.user?.role;
 
+    // Input validation
     if (!slug) {
       throw new AppError("Missing slug", 400, "UpdatePostBySlug");
     }
@@ -2244,11 +2168,13 @@ export const updatePostBySlug = async (req, res, next) => {
       );
     }
 
+    // Payload size check
     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
     if (payloadSize > 8 * 1024 * 1024) {
-      throw new AppError("Payload exceeds 8MB limit", 400, "UpdatePostBySlug");
+      throw new AppError("Payload exceeds 8MB limit", 413, "UpdatePostBySlug");
     }
 
+    // Extract and validate request data
     const {
       title,
       category,
@@ -2264,43 +2190,43 @@ export const updatePostBySlug = async (req, res, next) => {
       postType,
     } = req.body;
 
+    // Parse and validate tags
     let tags;
-    try {
-      tags = rawTags
-        ? Array.isArray(rawTags)
-          ? rawTags
-          : JSON.parse(rawTags)
-        : undefined;
-    } catch (err) {
-      throw new AppError("Invalid tags format", 400, "UpdatePostBySlug");
-    }
-    if (tags && !Array.isArray(tags)) {
-      throw new AppError("Tags must be an array", 400, "UpdatePostBySlug");
+    if (rawTags !== undefined) {
+      try {
+        tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags);
+        if (!Array.isArray(tags)) {
+          throw new AppError("Tags must be an array", 400, "UpdatePostBySlug");
+        }
+      } catch (err) {
+        throw new AppError("Invalid tags format", 400, "UpdatePostBySlug");
+      }
     }
 
+    // Parse and validate blocks
     let blocks;
-    try {
-      blocks = rawBlocks
-        ? Array.isArray(rawBlocks)
-          ? rawBlocks
-          : JSON.parse(rawBlocks)
-        : undefined;
-    } catch (err) {
-      throw new AppError("Invalid blocks format", 400, "UpdatePostBySlug");
-    }
-    if (blocks && (!Array.isArray(blocks) || !blocks.length)) {
-      throw new AppError(
-        "Blocks must be a non-empty array",
-        400,
-        "UpdatePostBySlug"
-      );
+    if (rawBlocks !== undefined) {
+      try {
+        blocks = Array.isArray(rawBlocks) ? rawBlocks : JSON.parse(rawBlocks);
+        if (!Array.isArray(blocks) || blocks.length === 0) {
+          throw new AppError(
+            "Blocks must be a non-empty array",
+            400,
+            "UpdatePostBySlug"
+          );
+        }
+      } catch (err) {
+        throw new AppError("Invalid blocks format", 400, "UpdatePostBySlug");
+      }
     }
 
+    // Rate limiting for processing
     const blockLimit = pLimit(3);
     const imageLimit = pLimit(1);
 
     let processedBlocks;
     if (blocks) {
+      // Add IDs to blocks and validate structure
       const blocksWithIds = blocks.map((block, index) => {
         if (!block || typeof block !== "object" || !block.type) {
           throw new AppError(
@@ -2317,6 +2243,7 @@ export const updatePostBySlug = async (req, res, next) => {
         };
       });
 
+      // Validate table blocks specifically
       blocksWithIds.forEach((block, index) => {
         if (block.type === "table") {
           if (
@@ -2342,36 +2269,73 @@ export const updatePostBySlug = async (req, res, next) => {
         }
       });
 
+      // Process blocks with error handling
       logMemory("🖼️ Before processing blocks");
-      processedBlocks = await Promise.all(
-        blocksWithIds.map((block) =>
-          blockLimit(() => processBlock(block, blockLimit, imageLimit))
-        )
-      );
+      try {
+        processedBlocks = await Promise.all(
+          blocksWithIds.map((block) =>
+            blockLimit(async () => {
+              try {
+                return await processBlock(block, blockLimit, imageLimit);
+              } catch (error) {
+                console.error(`Error processing block ${block.id}:`, error);
+                throw new AppError(
+                  `Failed to process block: ${error.message}`,
+                  400,
+                  "UpdatePostBySlug"
+                );
+              }
+            })
+          )
+        );
+      } catch (error) {
+        throw new AppError(
+          `Block processing failed: ${error.message}`,
+          400,
+          "UpdatePostBySlug"
+        );
+      }
       logMemory("🖼️ After processing blocks");
     }
 
+    // Process thumbnail
     let processedThumbnail = undefined;
     if (rawThumbnail && !isThumbnailEmbed) {
       logMemory("🖼️ Before processing thumbnail");
-      processedThumbnail = await imageLimit(() =>
-        processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
-      );
+      try {
+        processedThumbnail = await imageLimit(() =>
+          processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
+        );
+      } catch (error) {
+        console.error("Thumbnail processing error:", error);
+        throw new AppError(
+          `Thumbnail processing failed: ${error.message}`,
+          400,
+          "UpdatePostBySlug"
+        );
+      }
       logMemory("🖼️ After processing thumbnail");
     } else if (rawThumbnail && isThumbnailEmbed) {
       processedThumbnail = rawThumbnail;
     }
 
+    // Calculate read time
     const { readTime, readingTime } = calculateReadTime(processedBlocks || []);
 
+    // Build query based on user role
     const query =
       userRole === "admin"
         ? { slug: { $regex: `^${slug}$`, $options: "i" } }
-        : { slug: { $regex: `^${slug}$`, $options: "i" }, author: userId };
+        : {
+            slug: { $regex: `^${slug}$`, $options: "i" },
+            author: userId,
+          };
 
+    // Fetch existing post
     logMemory("📖 Before fetching post");
     const post = await PostModel.findOne(query).lean();
     logMemory("📖 After fetching post");
+
     if (!post) {
       throw new AppError(
         "Post not found or unauthorized",
@@ -2384,6 +2348,7 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError("Post is blocked", 403, "UpdatePostBySlug");
     }
 
+    // Generate new slug if title changed
     let finalSlug = post.slug;
     if (title && title !== post.title) {
       try {
@@ -2391,10 +2356,12 @@ export const updatePostBySlug = async (req, res, next) => {
       } catch (err) {
         console.warn(
           "[UpdatePostBySlug] slugify failed, using fallback:",
-          err.stack
+          err.message
         );
         finalSlug = fallbackSlugify(title);
       }
+
+      // Ensure slug uniqueness
       let counter = 1;
       while (
         await PostModel.exists({
@@ -2406,70 +2373,88 @@ export const updatePostBySlug = async (req, res, next) => {
       }
     }
 
+    // Content moderation
     const moderateContent = async (text) => {
-      return { isFlagged: false, categories: {} };
+      try {
+        // Add your actual moderation logic here
+        // This is a placeholder implementation
+        return { isFlagged: false, categories: {} };
+      } catch (error) {
+        console.error("Moderation error:", error);
+        // Fail safe - allow content but log error
+        return { isFlagged: false, categories: {} };
+      }
     };
 
     const blockTextContent = processedBlocks
       ? processedBlocks
           .flatMap((block) =>
             ["text", "value", "code", "caption", "question"]
-              .map((f) => block[f])
+              .map((field) => block[field])
               .filter(Boolean)
           )
           .join("\n")
       : "";
+
     const fullText = `${title || post.title}\n${
       excerpt || post.excerpt || ""
     }\n${blockTextContent}`;
+
     logMemory("🔍 Before content moderation");
     const moderation = await moderateContent(fullText);
     logMemory("🔍 After content moderation");
+
     if (moderation.isFlagged) {
       const reasons = Object.entries(moderation.categories)
         .filter(([_, flagged]) => flagged)
         .map(([key]) => key);
       throw new AppError(
-        `Restricted content: ${reasons.join(", ")}`,
+        `Content flagged for: ${reasons.join(", ")}`,
         400,
         "UpdatePostBySlug"
       );
     }
 
-    const updates = {
-      title,
-      slug: finalSlug,
-      category,
-      excerpt,
-      tags,
-      thumbnail: processedThumbnail,
-      thumbnailSize,
-      isEmbed: isThumbnailEmbed,
-      blocks: processedBlocks,
-      isFeatured,
-      isPinned,
-      language,
-      postType,
-      readTime,
-      readingTime,
-      isPublished: true,
-      lastEditedAt: new Date(),
-    };
+    // Prepare update object
+    const updates = {};
+    if (title !== undefined) updates.title = title;
+    if (finalSlug !== post.slug) updates.slug = finalSlug;
+    if (category !== undefined) updates.category = category;
+    if (excerpt !== undefined) updates.excerpt = excerpt;
+    if (tags !== undefined) updates.tags = tags;
+    if (processedThumbnail !== undefined)
+      updates.thumbnail = processedThumbnail;
+    if (thumbnailSize !== undefined) updates.thumbnailSize = thumbnailSize;
+    if (isThumbnailEmbed !== undefined) updates.isEmbed = isThumbnailEmbed;
+    if (processedBlocks !== undefined) updates.blocks = processedBlocks;
+    if (isFeatured !== undefined) updates.isFeatured = isFeatured;
+    if (isPinned !== undefined) updates.isPinned = isPinned;
+    if (language !== undefined) updates.language = language;
+    if (postType !== undefined) updates.postType = postType;
 
+    // Always update these fields
+    updates.readTime = readTime;
+    updates.readingTime = readingTime;
+    updates.isPublished = true;
+    updates.lastEditedAt = new Date();
+
+    // Start database transaction
     session = await mongoose.startSession();
     session.startTransaction();
+
     try {
       logMemory("💾 Before updating post");
       const updatedPost = await PostModel.findOneAndUpdate(
         query,
+        { $set: updates },
         {
-          $set: Object.fromEntries(
-            Object.entries(updates).filter(([_, v]) => v !== undefined)
-          ),
-        },
-        { new: true, runValidators: true, session }
+          new: true,
+          runValidators: true,
+          session,
+          lean: false,
+        }
       ).select(
-        "title slug category excerpt thumbnail blocks author isPublished isPinned createdAt lastEditedAt postType"
+        "title slug category excerpt thumbnail blocks author isPublished isPinned createdAt lastEditedAt postType readTime readingTime"
       );
       logMemory("💾 After updating post");
 
@@ -2477,6 +2462,7 @@ export const updatePostBySlug = async (req, res, next) => {
         throw new AppError("Failed to update post", 500, "UpdatePostBySlug");
       }
 
+      // Record activity
       await recordActivity(
         {
           userId,
@@ -2487,14 +2473,23 @@ export const updatePostBySlug = async (req, res, next) => {
         { session }
       );
 
-      await asyncRetry(
-        async () => {
-          io.emit("postUpdated", { ...updatedPost._doc, authorId: userId });
-        },
-        { retries: 3, minTimeout: 1000 }
-      );
+      // Emit real-time update with retry
+      try {
+        await asyncRetry(
+          async () => {
+            io.emit("postUpdated", {
+              ...updatedPost.toObject(),
+              authorId: userId,
+            });
+          },
+          { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
+        );
+      } catch (emitError) {
+        console.error("Failed to emit postUpdated event:", emitError);
+        // Don't fail the request for emit failures
+      }
 
-      // Invalidate cache
+      // Cache invalidation
       const cacheKeys = [
         `postCounts:${userId}`,
         `publicPosts:*`,
@@ -2502,53 +2497,83 @@ export const updatePostBySlug = async (req, res, next) => {
         `countMyPosts:${userId}`,
         `countFollowingPosts:${userId}`,
         `postId:${finalSlug}`,
+        `postId:${post.slug}`, // Invalidate old slug too
       ];
-      cacheKeys.forEach((key) => cache.del(key));
-      console.log("[UpdatePostBySlug] Cache invalidated:", cacheKeys);
 
-      const [allPostsCount, myPostsCount, followingPostsCount] =
-        await Promise.all([
-          PostModel.countDocuments({
-            blocked: { $ne: true },
-            isPublished: true,
-          }).lean(),
-          PostModel.countDocuments({
-            author: userId,
-            blocked: { $ne: true },
-            isPublished: true,
-          }).lean(),
-          PostModel.countDocuments({
-            author: { $in: req.user.following || [] },
-            blocked: { $ne: true },
-            isPublished: true,
-          }).lean(),
-        ]);
-      const counts = { allPostsCount, myPostsCount, followingPostsCount };
-      cache.set(`postCounts:${userId}`, counts);
+      try {
+        cacheKeys.forEach((key) => {
+          if (key.includes("*")) {
+            // Handle wildcard cache keys if your cache supports it
+            cache.del(key);
+          } else {
+            cache.del(key);
+          }
+        });
+        console.log("[UpdatePostBySlug] Cache invalidated:", cacheKeys);
+      } catch (cacheError) {
+        console.error("Cache invalidation error:", cacheError);
+        // Don't fail the request for cache errors
+      }
 
-      await asyncRetry(
-        async () => {
-          io.to(userId).emit("postCountsUpdated", counts);
-        },
-        { retries: 3, minTimeout: 1000 }
-      );
+      // Update post counts
+      try {
+        const [allPostsCount, myPostsCount, followingPostsCount] =
+          await Promise.all([
+            PostModel.countDocuments({
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+            PostModel.countDocuments({
+              author: userId,
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+            PostModel.countDocuments({
+              author: { $in: req.user.following || [] },
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+          ]);
+
+        const counts = { allPostsCount, myPostsCount, followingPostsCount };
+        cache.set(`postCounts:${userId}`, counts);
+
+        // Emit count updates
+        await asyncRetry(
+          async () => {
+            io.to(userId.toString()).emit("postCountsUpdated", counts);
+          },
+          { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
+        );
+      } catch (countError) {
+        console.error("Failed to update post counts:", countError);
+        // Don't fail the request for count update failures
+      }
 
       await session.commitTransaction();
       logMemory("✏️ End updatePostBySlug");
+
       res.status(200).json({
         success: true,
         message: "Post updated successfully",
         post: updatedPost,
       });
-    } catch (err) {
-      console.error("[UpdatePostBySlug] DB Error:", err.stack);
-      throw err;
+    } catch (dbError) {
+      console.error("[UpdatePostBySlug] DB Error:", dbError);
+      await session.abortTransaction();
+      throw dbError;
     }
   } catch (error) {
-    console.error("[UpdatePostBySlug] Error:", error.stack);
+    console.error("[UpdatePostBySlug] Error:", error);
+
     if (session && session.inTransaction()) {
-      await session.abortTransaction();
+      try {
+        await session.abortTransaction();
+      } catch (abortError) {
+        console.error("Failed to abort transaction:", abortError);
+      }
     }
+
     next(
       error instanceof AppError
         ? error
@@ -2560,154 +2585,180 @@ export const updatePostBySlug = async (req, res, next) => {
     );
   } finally {
     if (session) {
-      session.endSession();
+      try {
+        await session.endSession();
+      } catch (endError) {
+        console.error("Failed to end session:", endError);
+      }
     }
   }
 };
 
-// Delete post
-// export const deletePost = async (req, res, next) => {
-//   try {
-//     logMemory("🗑️ Start deletePost");
-//     const { postId } = req.params;
-//     logMemory("📖 Before fetching post");
-//     const post = await PostModel.findById(postId).lean();
-//     logMemory("📖 After fetching post");
-//     if (!post) {
-//       throw new AppError("Post not found", 404, "DeletePost");
-//     }
-//     if (post.author.toString() !== req.user._id.toString()) {
-//       throw new AppError("Unauthorized to delete this post", 403, "DeletePost");
-//     }
-//     logMemory("💾 Before deleting post");
-//     await PostModel.deleteOne({ _id: postId });
-//     logMemory("💾 After deleting post");
-//     await recordActivity({
-//       userId: req.user._id,
-//       action: "POST_DELETED",
-//       targetPost: postId,
-//       message: `Deleted post: ${post.title}`,
-//     });
-
-//     io.emit("postDeleted", { postId, authorId: req.user._id });
-
-//     const cacheKey = `postCounts:${req.user._id}`;
-//     let counts = cache.get(cacheKey);
-//     if (!counts) {
-//       logMemory("📊 Before cache update");
-//       const [allPostsCount, myPostsCount, followingPostsCount] =
-//         await Promise.all([
-//           PostModel.countDocuments({
-//             blocked: { $ne: true },
-//             isPublished: true,
-//           }).lean(),
-//           PostModel.countDocuments({
-//             author: req.user._id,
-//             blocked: { $ne: true },
-//             isPublished: true,
-//           }).lean(),
-//           PostModel.countDocuments({
-//             author: { $in: req.user.following || [] },
-//             blocked: { $ne: true },
-//             isPublished: true,
-//           }).lean(),
-//         ]);
-//       counts = { allPostsCount, myPostsCount, followingPostsCount };
-//       cache.set(cacheKey, counts);
-//       logMemory("📊 After cache update");
-//     }
-
-//     setTimeout(() => {
-//       io.to(req.user._id).emit("postCountsUpdated", counts);
-//     }, 1000);
-
-//     logMemory("🗑️ End deletePost");
-//     res.status(200).json({ success: true, message: "Post deleted", postId });
-//   } catch (error) {
-//     next(
-//       error instanceof AppError
-//         ? error
-//         : new AppError(
-//             error.message || "Failed to delete post",
-//             500,
-//             "DeletePost"
-//           )
-//     );
-//   }
-// };
-// new code
 export const deletePost = async (req, res, next) => {
+  let session = null;
+
   try {
     logMemory("🗑️ Start deletePost");
     const { postId } = req.params;
+    const userId = req.user?._id;
+
+    // Input validation
+    if (!postId) {
+      throw new AppError("Missing post ID", 400, "DeletePost");
+    }
+
+    if (!userId) {
+      throw new AppError(
+        "You must be signed in to delete a post",
+        401,
+        "DeletePost"
+      );
+    }
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      throw new AppError("Invalid post ID format", 400, "DeletePost");
+    }
+
     logMemory("📖 Before fetching post");
     const post = await PostModel.findById(postId).lean();
     logMemory("📖 After fetching post");
+
     if (!post) {
       throw new AppError("Post not found", 404, "DeletePost");
     }
-    if (post.author.toString() !== req.user._id.toString()) {
+
+    // Authorization check
+    if (
+      post.author.toString() !== userId.toString() &&
+      req.user.role !== "admin"
+    ) {
       throw new AppError("Unauthorized to delete this post", 403, "DeletePost");
     }
-    logMemory("💾 Before deleting post");
-    await PostModel.deleteOne({ _id: postId });
-    logMemory("💾 After deleting post");
-    await recordActivity({
-      userId: req.user._id,
-      action: "POST_DELETED",
-      targetPost: postId,
-      message: `Deleted post: ${post.title}`,
-    });
 
-    await asyncRetry(
-      async () => {
-        io.emit("postDeleted", { postId, authorId: req.user._id });
-      },
-      { retries: 3, minTimeout: 1000 }
-    );
+    if (post.blocked) {
+      throw new AppError("Cannot delete blocked post", 403, "DeletePost");
+    }
 
-    const cacheKeys = [
-      `postCounts:${req.user._id}`,
-      `publicPosts:*`,
-      `countAllPosts`,
-      `countMyPosts:${req.user._id}`,
-      `countFollowingPosts:${req.user._id}`,
-      `postId:${post.slug}`,
-    ];
-    cacheKeys.forEach((key) => cache.del(key));
-    console.log("[DeletePost] Cache invalidated:", cacheKeys);
+    // Start transaction for consistency
+    session = await mongoose.startSession();
+    session.startTransaction();
 
-    const [allPostsCount, myPostsCount, followingPostsCount] =
-      await Promise.all([
-        PostModel.countDocuments({
-          blocked: { $ne: true },
-          isPublished: true,
-        }).lean(),
-        PostModel.countDocuments({
-          author: req.user._id,
-          blocked: { $ne: true },
-          isPublished: true,
-        }).lean(),
-        PostModel.countDocuments({
-          author: { $in: req.user.following || [] },
-          blocked: { $ne: true },
-          isPublished: true,
-        }).lean(),
-      ]);
-    const counts = { allPostsCount, myPostsCount, followingPostsCount };
-    cache.set(`postCounts:${req.user._id}`, counts);
+    try {
+      logMemory("💾 Before deleting post");
+      const deleteResult = await PostModel.deleteOne(
+        { _id: postId },
+        { session }
+      );
+      logMemory("💾 After deleting post");
 
-    await asyncRetry(
-      async () => {
-        io.to(req.user._id).emit("postCountsUpdated", counts);
-      },
-      { retries: 3, minTimeout: 1000 }
-    );
+      if (deleteResult.deletedCount === 0) {
+        throw new AppError("Failed to delete post", 500, "DeletePost");
+      }
 
-    logMemory("🗑️ End deletePost");
-    res.status(200).json({ success: true, message: "Post deleted", postId });
+      // Record activity
+      await recordActivity(
+        {
+          userId,
+          action: "POST_DELETED",
+          targetPost: postId,
+          message: `Deleted post: ${post.title}`,
+        },
+        { session }
+      );
+
+      // Emit real-time update with retry
+      try {
+        await asyncRetry(
+          async () => {
+            io.emit("postDeleted", { postId, authorId: userId });
+          },
+          { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
+        );
+      } catch (emitError) {
+        console.error("Failed to emit postDeleted event:", emitError);
+        // Don't fail the request for emit failures
+      }
+
+      // Cache invalidation
+      const cacheKeys = [
+        `postCounts:${userId}`,
+        `publicPosts:*`,
+        `countAllPosts`,
+        `countMyPosts:${userId}`,
+        `countFollowingPosts:${userId}`,
+        `postId:${post.slug}`,
+      ];
+
+      try {
+        cacheKeys.forEach((key) => {
+          cache.del(key);
+        });
+        console.log("[DeletePost] Cache invalidated:", cacheKeys);
+      } catch (cacheError) {
+        console.error("Cache invalidation error:", cacheError);
+        // Don't fail the request for cache errors
+      }
+
+      // Update post counts
+      try {
+        const [allPostsCount, myPostsCount, followingPostsCount] =
+          await Promise.all([
+            PostModel.countDocuments({
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+            PostModel.countDocuments({
+              author: userId,
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+            PostModel.countDocuments({
+              author: { $in: req.user.following || [] },
+              blocked: { $ne: true },
+              isPublished: true,
+            }).lean(),
+          ]);
+
+        const counts = { allPostsCount, myPostsCount, followingPostsCount };
+        cache.set(`postCounts:${userId}`, counts);
+
+        // Emit count updates
+        await asyncRetry(
+          async () => {
+            io.to(userId.toString()).emit("postCountsUpdated", counts);
+          },
+          { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
+        );
+      } catch (countError) {
+        console.error("Failed to update post counts:", countError);
+        // Don't fail the request for count update failures
+      }
+
+      await session.commitTransaction();
+      logMemory("🗑️ End deletePost");
+
+      res.status(200).json({
+        success: true,
+        message: "Post deleted successfully",
+        postId,
+      });
+    } catch (dbError) {
+      console.error("[DeletePost] DB Error:", dbError);
+      await session.abortTransaction();
+      throw dbError;
+    }
   } catch (error) {
-    console.error("[DeletePost] Error:", error.stack);
+    console.error("[DeletePost] Error:", error);
+
+    if (session && session.inTransaction()) {
+      try {
+        await session.abortTransaction();
+      } catch (abortError) {
+        console.error("Failed to abort transaction:", abortError);
+      }
+    }
+
     next(
       error instanceof AppError
         ? error
@@ -2717,6 +2768,14 @@ export const deletePost = async (req, res, next) => {
             "DeletePost"
           )
     );
+  } finally {
+    if (session) {
+      try {
+        await session.endSession();
+      } catch (endError) {
+        console.error("Failed to end session:", endError);
+      }
+    }
   }
 };
 
@@ -3033,15 +3092,13 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
   }
 };
 
-// Get following posts
+// Fixed Get following posts
 export const getFollowingPosts = async (req, res, next) => {
   try {
     logMemory("📋 Start getFollowingPosts");
     const userId = req.user?._id;
-    const page = parseInt(req.query.page) || 1;
-    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
-    const skip = (page - 1) * limit;
 
+    // Enhanced input validation
     if (!userId) {
       throw new AppError(
         "You must be signed in to access this feature.",
@@ -3050,69 +3107,274 @@ export const getFollowingPosts = async (req, res, next) => {
       );
     }
 
+    // Validate and sanitize pagination parameters
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 100);
+    const skip = (page - 1) * limit;
+
+    // Optional filters
+    const {
+      category,
+      search,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = req.query;
+
+    // Validate sort parameters
+    const allowedSortFields = [
+      "createdAt",
+      "updatedAt",
+      "likesCount",
+      "viewsCount",
+      "title",
+    ];
+    const allowedSortOrders = ["asc", "desc"];
+    const validSortBy = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : "createdAt";
+    const validSortOrder = allowedSortOrders.includes(sortOrder)
+      ? sortOrder
+      : "desc";
+
+    // Check cache first
+    const cacheKey = `followingPosts:${userId}:${page}:${limit}:${
+      category || "all"
+    }:${search || "none"}:${validSortBy}:${validSortOrder}`;
+    const cachedResult = cache.get(cacheKey);
+    if (cachedResult) {
+      logMemory("📋 Cache hit - returning cached following posts");
+      return res.status(200).json(cachedResult);
+    }
+
     logMemory("📖 Before fetching user");
     const user = await UserModel.findById(userId).select("following").lean();
     logMemory("📖 After fetching user");
+
     if (!user) {
       throw new AppError("User not found", 404, "GetFollowingPosts");
     }
 
-    const followingIds = user.following
-      .map((id) => id.toString())
-      .filter((id) => mongoose.Types.ObjectId.isValid(id));
+    // Validate and filter following IDs
+    const followingIds = (user.following || [])
+      .filter((id) => id && mongoose.Types.ObjectId.isValid(id.toString()))
+      .map((id) => new mongoose.Types.ObjectId(id.toString()));
 
     if (!followingIds.length) {
-      logMemory("📋 End getFollowingPosts - No following");
-      return res.status(200).json({
+      const emptyResult = {
         success: true,
         total: 0,
         page,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
         posts: [],
         message: "You are not following any users",
-      });
+      };
+
+      // Cache empty result briefly
+      cache.set(cacheKey, emptyResult, 300); // 5 minutes
+
+      logMemory("📋 End getFollowingPosts - No following");
+      return res.status(200).json(emptyResult);
     }
 
+    // Build query with filters
     const query = {
       author: { $in: followingIds },
       isPublished: true,
-      blocked: false,
+      blocked: { $ne: true },
     };
 
-    logMemory("📖 Before fetching posts");
-    const posts = [];
-    const cursor = PostModel.find(query)
-      .select(
-        `
-        title slug category excerpt thumbnail author createdAt
-        isPublished isPinned isPremium isSubscriberOnly blocked message readTime
-        likesCount commentsCount viewsCount bookmarksCount likes
-        tags language isFeatured allowComments timeSpent readingTime updatedAt
-        shareCount sharedBy blocks postType
-        `
-      )
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("author", "name avatar")
-      .lean()
-      .cursor();
-
-    for await (const post of cursor) {
-      posts.push(post);
+    // Add category filter if provided
+    if (category && category.trim()) {
+      query.category = { $regex: new RegExp(category.trim(), "i") };
     }
+
+    // Add search filter if provided
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), "i");
+      query.$or = [
+        { title: searchRegex },
+        { excerpt: searchRegex },
+        { tags: { $in: [searchRegex] } },
+      ];
+    }
+
+    // Build sort object
+    const sortObj = {};
+    sortObj[validSortBy] = validSortOrder === "desc" ? -1 : 1;
+    // Add secondary sort by createdAt for consistency
+    if (validSortBy !== "createdAt") {
+      sortObj.createdAt = -1;
+    }
+
+    logMemory("📖 Before fetching posts");
+
+    // Use aggregation for better performance with populated fields
+    const aggregationPipeline = [
+      { $match: query },
+      { $sort: sortObj },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "users",
+          localField: "author",
+          foreignField: "_id",
+          as: "author",
+          pipeline: [
+            {
+              $project: {
+                _id: 1,
+                name: 1,
+                username: 1,
+                avatar: 1,
+                isVerified: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$author",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          title: 1,
+          slug: 1,
+          category: 1,
+          excerpt: 1,
+          thumbnail: 1,
+          author: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          isPublished: 1,
+          isPinned: 1,
+          isPremium: 1,
+          isSubscriberOnly: 1,
+          blocked: 1,
+          message: 1,
+          readTime: 1,
+          readingTime: 1,
+          likesCount: 1,
+          commentsCount: 1,
+          viewsCount: 1,
+          bookmarksCount: 1,
+          shareCount: 1,
+          tags: 1,
+          language: 1,
+          isFeatured: 1,
+          allowComments: 1,
+          postType: 1,
+          // Include user-specific data
+          isLiked: {
+            $cond: {
+              if: { $isArray: "$likes" },
+              then: { $in: [userId, "$likes"] },
+              else: false,
+            },
+          },
+          isBookmarked: {
+            $cond: {
+              if: { $isArray: "$bookmarks" },
+              then: { $in: [userId, "$bookmarks"] },
+              else: false,
+            },
+          },
+        },
+      },
+    ];
+
+    const [posts, totalCountResult] = await Promise.all([
+      PostModel.aggregate(aggregationPipeline),
+      PostModel.aggregate([{ $match: query }, { $count: "total" }]),
+    ]);
+
     logMemory("📖 After fetching posts");
 
-    const total = await PostModel.countDocuments(query).lean();
+    const total = totalCountResult[0]?.total || 0;
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
 
-    await recordActivity({
+    // Process posts for any additional data needed
+    const processedPosts = posts.map((post) => ({
+      ...post,
+      // Ensure author exists
+      author: post.author || {
+        _id: null,
+        name: "Unknown User",
+        username: "unknown",
+        avatar: null,
+        isVerified: false,
+      },
+      // Clean up any sensitive data
+      likes: undefined,
+      bookmarks: undefined,
+    }));
+
+    // Record activity (non-blocking)
+    recordActivity({
       userId,
       action: "VIEWED_FOLLOWING_POSTS",
-      message: `Viewed posts from followed users`,
+      message: `Viewed following posts page ${page}`,
+      metadata: {
+        page,
+        postsCount: posts.length,
+        filters: {
+          category,
+          search,
+          sortBy: validSortBy,
+          sortOrder: validSortOrder,
+        },
+      },
+    }).catch((error) => {
+      console.error("Failed to record activity:", error);
     });
 
+    const result = {
+      success: true,
+      total,
+      page,
+      totalPages,
+      hasNextPage,
+      hasPrevPage,
+      posts: processedPosts,
+      filters: {
+        category: category || null,
+        search: search || null,
+        sortBy: validSortBy,
+        sortOrder: validSortOrder,
+      },
+    };
+
+    // Cache successful results for a short time
+    cache.set(cacheKey, result, 600); // 10 minutes
+
     logMemory("📋 End getFollowingPosts");
-    res.status(200).json({ success: true, total, page, posts });
+    res.status(200).json(result);
   } catch (error) {
+    console.error("[GetFollowingPosts] Error:", error);
+
+    // Handle specific error cases
+    if (error.name === "CastError") {
+      return next(
+        new AppError("Invalid user ID format", 400, "GetFollowingPosts")
+      );
+    }
+
+    if (
+      error.name === "MongoNetworkError" ||
+      error.name === "MongoTimeoutError"
+    ) {
+      return next(
+        new AppError("Database connection issue", 503, "GetFollowingPosts")
+      );
+    }
+
     next(
       error instanceof AppError
         ? error
@@ -3125,82 +3387,124 @@ export const getFollowingPosts = async (req, res, next) => {
   }
 };
 
-// Vote on poll
+// Fixed voteOnPoll with better validation
 export const voteOnPoll = async (req, res, next) => {
+  let session = null;
   try {
     logMemory("🗳️ Start voteOnPoll");
     const { postId, blockId, optionIndex } = req.body;
     const userId = req.user?._id;
 
+    // Input validation
     validateObjectId(postId, "Post ID");
     if (!userId) {
       throw new AppError("You must be signed in to vote", 401, "VoteOnPoll");
     }
-    if (!blockId || optionIndex == null) {
-      throw new AppError(
-        "Block ID and option index required",
-        400,
-        "VoteOnPoll"
+    if (!blockId || typeof blockId !== "string") {
+      throw new AppError("Valid block ID required", 400, "VoteOnPoll");
+    }
+    if (!Number.isInteger(optionIndex) || optionIndex < 0) {
+      throw new AppError("Valid option index required", 400, "VoteOnPoll");
+    }
+
+    // Rate limiting
+    const rateLimitKey = `pollVote:${userId}:${postId}`;
+    const recentVotes = cache.get(rateLimitKey) || 0;
+    if (recentVotes >= 5) {
+      throw new AppError("Too many vote attempts", 429, "VoteOnPoll");
+    }
+    cache.set(rateLimitKey, recentVotes + 1, 300); // 5 minutes
+
+    session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      logMemory("📖 Before fetching post");
+      const post = await PostModel.findOne({
+        _id: postId,
+        isPublished: true,
+        blocked: false,
+      })
+        .select("title blocks")
+        .session(session);
+      logMemory("📖 After fetching post");
+
+      if (!post) {
+        throw new AppError("Post not found or unavailable", 404, "VoteOnPoll");
+      }
+
+      const pollBlockIndex = post.blocks.findIndex(
+        (block) => block.id === blockId && block.type === "poll"
       );
+
+      if (pollBlockIndex === -1) {
+        throw new AppError("Poll block not found", 404, "VoteOnPoll");
+      }
+
+      const pollBlock = post.blocks[pollBlockIndex];
+
+      // Validate option index
+      if (optionIndex >= pollBlock.options.length) {
+        throw new AppError("Invalid option index", 400, "VoteOnPoll");
+      }
+
+      // Check if user already voted
+      if (
+        pollBlock.votedUserIds.some(
+          (vote) => vote.userId.toString() === userId.toString()
+        )
+      ) {
+        throw new AppError("User already voted", 400, "VoteOnPoll");
+      }
+
+      // Update poll data
+      pollBlock.options[optionIndex].votes =
+        (pollBlock.options[optionIndex].votes || 0) + 1;
+      pollBlock.votedUserIds.push({
+        userId: new mongoose.Types.ObjectId(userId),
+        votedAt: new Date(),
+      });
+      post.blocks[pollBlockIndex] = pollBlock;
+
+      logMemory("💾 Before updating post");
+      const updatedPost = await PostModel.findByIdAndUpdate(
+        postId,
+        { $set: { blocks: post.blocks, updatedAt: new Date() } },
+        { new: true, select: "title slug blocks", session }
+      );
+      logMemory("💾 After updating post");
+
+      await recordActivity(
+        {
+          userId,
+          action: "POLL_VOTED",
+          targetPost: postId,
+          message: `Voted on poll in post: ${post.title}`,
+        },
+        { session }
+      );
+
+      await session.commitTransaction();
+
+      // Emit socket event
+      io.emit("pollUpdated", {
+        postId,
+        blockId,
+        poll: updatedPost.blocks[pollBlockIndex],
+      });
+
+      logMemory("🗳️ End voteOnPoll");
+      res.status(200).json({
+        success: true,
+        message: "Vote recorded successfully",
+        poll: updatedPost.blocks[pollBlockIndex],
+      });
+    } catch (dbError) {
+      await session.abortTransaction();
+      throw dbError;
     }
-
-    logMemory("📖 Before fetching post");
-    const post = await PostModel.findOne({
-      _id: postId,
-      isPublished: true,
-      blocked: false,
-    })
-      .select("title blocks")
-      .lean();
-    logMemory("📖 After fetching post");
-
-    if (!post) {
-      throw new AppError("Post not found or unavailable", 404, "VoteOnPoll");
-    }
-
-    const pollBlockIndex = post.blocks.findIndex(
-      (block) => block.id === blockId && block.type === "poll"
-    );
-    if (pollBlockIndex === -1) {
-      throw new AppError("Poll block not found", 404, "VoteOnPoll");
-    }
-
-    const pollBlock = post.blocks[pollBlockIndex];
-    if (
-      pollBlock.votedUserIds.some(
-        (vote) => vote.userId.toString() === userId.toString()
-      )
-    ) {
-      throw new AppError("User already voted", 400, "VoteOnPoll");
-    }
-
-    pollBlock.options[optionIndex].votes =
-      (pollBlock.options[optionIndex].votes || 0) + 1;
-    pollBlock.votedUserIds.push({ userId, votedAt: new Date() });
-    post.blocks[pollBlockIndex] = pollBlock;
-
-    logMemory("💾 Before updating post");
-    const updatedPost = await PostModel.findByIdAndUpdate(
-      postId,
-      { $set: { blocks: post.blocks } },
-      { new: true, select: "title slug blocks" }
-    ).lean();
-    logMemory("💾 After updating post");
-
-    await recordActivity({
-      userId,
-      action: "POLL_VOTED",
-      targetPost: postId,
-      message: `Voted on poll in post: ${post.title}`,
-    });
-
-    logMemory("🗳️ End voteOnPoll");
-    res.status(200).json({
-      success: true,
-      message: "Vote recorded",
-      poll: updatedPost.blocks[pollBlockIndex],
-    });
   } catch (error) {
+    console.error("Error in voteOnPoll:", error.stack);
     next(
       error instanceof AppError
         ? error
@@ -3210,26 +3514,64 @@ export const voteOnPoll = async (req, res, next) => {
             "VoteOnPoll"
           )
     );
+  } finally {
+    if (session) {
+      await session.endSession();
+    }
   }
 };
 
-// Increment view
+// Fixed incrementView with better validation
 export const incrementView = async (req, res, next) => {
   try {
     logMemory("👀 Start incrementView");
     const { slug } = req.params;
+
+    if (!slug || typeof slug !== "string") {
+      throw new AppError("Invalid slug", 400, "IncrementView");
+    }
+
     const sanitizedSlug = slug.trim().toLowerCase();
+    if (sanitizedSlug.length > 200 || !/^[a-z0-9-_]+$/.test(sanitizedSlug)) {
+      throw new AppError("Invalid slug format", 400, "IncrementView");
+    }
+
+    // Rate limiting by IP
+    const clientIP = req.ip;
+    const rateLimitKey = `incrementView:${clientIP}:${sanitizedSlug}`;
+    const recentViews = cache.get(rateLimitKey) || 0;
+
+    if (recentViews >= 5) {
+      // Max 5 increments per IP per post per minute
+      return res.status(429).json({
+        success: false,
+        message: "Too many view attempts",
+      });
+    }
+
+    cache.set(rateLimitKey, recentViews + 1, 60); // 1 minute
 
     logMemory("Before PostModel.findOneAndUpdate");
     const post = await PostModel.findOneAndUpdate(
       { slug: sanitizedSlug, isPublished: true, blocked: false },
-      { $inc: { viewsCount: 1 } },
-      { new: true, select: "viewsCount" }
+      {
+        $inc: { viewsCount: 1 },
+        $set: { lastViewedAt: new Date() },
+      },
+      {
+        new: true,
+        select: "viewsCount title",
+        maxTimeMS: 5000,
+      }
     ).lean();
 
     if (!post) {
       throw new AppError("Post not found", 404, "IncrementView");
     }
+
+    // Invalidate relevant caches
+    cache.del(`publicPost:${sanitizedSlug}`);
+    cache.del(`singlePost:${sanitizedSlug}:*`);
 
     logMemory("👀 End incrementView");
     res.status(200).json({
