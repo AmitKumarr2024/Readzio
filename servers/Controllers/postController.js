@@ -1937,7 +1937,6 @@ export const trackTimeSpent = async (req, res, next) => {
   }
 };
 
-
 export const updatePostBySlug = async (req, res, next) => {
   let session = null;
   try {
@@ -1968,8 +1967,6 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError("Payload exceeds 8MB limit", 413, "UpdatePostBySlug");
     }
 
-6494
-
     // Extract and validate request data
     const {
       title,
@@ -1986,8 +1983,6 @@ export const updatePostBySlug = async (req, res, next) => {
       postType,
     } = req.body;
 
-    console.log("[UpdatePostBySlug] Validated inputs:", { title, slug, blocks });
-
     // Parse and validate tags
     let tags;
     if (rawTags !== undefined) {
@@ -1997,12 +1992,13 @@ export const updatePostBySlug = async (req, res, next) => {
           throw new AppError("Tags must be an array", 400, "UpdatePostBySlug");
         }
       } catch (err) {
+        console.error("[UpdatePostBySlug] Tags parsing error:", err);
         throw new AppError("Invalid tags format", 400, "UpdatePostBySlug");
       }
     }
 
     // Parse and validate blocks
-    let blocks;
+    let blocks = null; // Explicitly initialize to null
     if (rawBlocks !== undefined) {
       try {
         blocks = Array.isArray(rawBlocks) ? rawBlocks : JSON.parse(rawBlocks);
@@ -2014,9 +2010,12 @@ export const updatePostBySlug = async (req, res, next) => {
           );
         }
       } catch (err) {
+        console.error("[UpdatePostBySlug] Blocks parsing error:", err);
         throw new AppError("Invalid blocks format", 400, "UpdatePostBySlug");
       }
     }
+
+    console.log("[UpdatePostBySlug] Validated inputs:", { title, slug, blocks });
 
     // Rate limiting for processing
     const blockLimit = pLimit(3);
@@ -2087,6 +2086,7 @@ export const updatePostBySlug = async (req, res, next) => {
           )
         );
       } catch (error) {
+        console.error("[UpdatePostBySlug] Block processing failed:", error);
         throw new AppError(
           `Block processing failed: ${error.message}`,
           400,
@@ -2241,6 +2241,7 @@ export const updatePostBySlug = async (req, res, next) => {
 
     try {
       logMemory("💾 Before updating post");
+      console.log("[UpdatePostBySlug] Updates:", updates);
       const updatedPost = await PostModel.findOneAndUpdate(
         query,
         { $set: updates },
@@ -2281,7 +2282,7 @@ export const updatePostBySlug = async (req, res, next) => {
           },
           { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
         );
-      } catch (emitError) {
+      } catch (EmitError) {
         console.error("Failed to emit postUpdated event:", emitError);
       }
 
@@ -2321,7 +2322,9 @@ export const updatePostBySlug = async (req, res, next) => {
               author: userId,
               blocked: { $ne: true },
               isPublished: true,
-            }).lean(),
+           
+
+ }).lean(),
             PostModel.countDocuments({
               author: { $in: req.user.following || [] },
               blocked: { $ne: true },
@@ -2353,7 +2356,11 @@ export const updatePostBySlug = async (req, res, next) => {
     } catch (dbError) {
       console.error("[UpdatePostBySlug] DB Error:", dbError.stack);
       await session.abortTransaction();
-      throw dbError;
+      throw new AppError(
+        dbError.message || "Failed to update post in database",
+        500,
+        "UpdatePostBySlug"
+      );
     }
   } catch (error) {
     console.error("[UpdatePostBySlug] Error:", error.stack);
