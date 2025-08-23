@@ -471,7 +471,7 @@ export const getSinglePost = createAsyncThunk(
   "post/getSinglePost",
   async ({ slug, isGuest = false }, { rejectWithValue }) => {
     try {
-      console.log("[getSinglePost] Incoming params:", { slug, isGuest });
+      // console.log("[getSinglePost] Incoming params:", { slug, isGuest });
 
       // Input validation
       if (!slug || typeof slug !== "string" || slug.trim() === "") {
@@ -480,7 +480,7 @@ export const getSinglePost = createAsyncThunk(
       }
 
       const cleanSlug = slug.trim();
-      console.log("[getSinglePost] Clean slug:", cleanSlug);
+      // console.log("[getSinglePost] Clean slug:", cleanSlug);
 
       // Prevent duplicate request
       const requestKey = `${cleanSlug}-${isGuest}`;
@@ -498,10 +498,10 @@ export const getSinglePost = createAsyncThunk(
       const endpoint = isGuest
         ? `/post/public/${cleanSlug}`
         : `/post/${cleanSlug}`;
-      console.log("[getSinglePost] Request endpoint:", endpoint);
+      // console.log("[getSinglePost] Request endpoint:", endpoint);
 
       try {
-        console.log("[getSinglePost] Sending GET request...");
+        // console.log("[getSinglePost] Sending GET request...");
         const response = await axiosInstance.get(endpoint, {
           timeout: 15000,
           headers: {
@@ -510,16 +510,16 @@ export const getSinglePost = createAsyncThunk(
           },
         });
 
-        console.log("[getSinglePost] Raw response:", response);
-        console.log("[getSinglePost] Response data:", response.data);
+        // console.log("[getSinglePost] Raw response:", response);
+        // console.log("[getSinglePost] Response data:", response.data);
 
-        console.log("[getSinglePost] Response summary:", {
-          success: response.data.success,
-          postExists: !!response.data.post,
-          postId: response.data.post?._id,
-          postSlug: response.data.post?.slug,
-          postTitle: response.data.post?.title,
-        });
+        // console.log("[getSinglePost] Response summary:", {
+        //   success: response.data.success,
+        //   postExists: !!response.data.post,
+        //   postId: response.data.post?._id,
+        //   postSlug: response.data.post?.slug,
+        //   postTitle: response.data.post?.title,
+        // });
 
         if (!response.data.post) {
           console.error("[getSinglePost] Post not found for slug:", cleanSlug);
@@ -530,7 +530,7 @@ export const getSinglePost = createAsyncThunk(
         }
 
         const receivedPost = response.data.post;
-        console.log("[getSinglePost] Full post object from backend:", receivedPost);
+        // console.log("[getSinglePost] Full post object from backend:", receivedPost);
 
         // Validate slug consistency
         if (receivedPost.slug.toLowerCase() !== cleanSlug.toLowerCase()) {
@@ -542,7 +542,7 @@ export const getSinglePost = createAsyncThunk(
 
         // Normalize blocks
         if (receivedPost.blocks && Array.isArray(receivedPost.blocks)) {
-          console.log("[getSinglePost] Normalizing blocks...");
+          // console.log("[getSinglePost] Normalizing blocks...");
           receivedPost.blocks = receivedPost.blocks.map((block) => ({
             ...block,
             id: block.id || block._id || `block-${Date.now()}-${Math.random()}`,
@@ -551,7 +551,7 @@ export const getSinglePost = createAsyncThunk(
           console.warn("[getSinglePost] No blocks found in post");
         }
 
-        console.log("[getSinglePost] Final normalized post:", receivedPost);
+        // console.log("[getSinglePost] Final normalized post:", receivedPost);
 
         return {
           post: receivedPost,
@@ -591,7 +591,7 @@ export const updatePost = createAsyncThunk(
   "post/updatePost",
   async ({ slug, updateData }, { rejectWithValue }) => {
     try {
-      console.log("[updatePost] Updating post:", slug);
+      // console.log("[updatePost] Updating post:", slug);
 
       const response = await asyncRetry(() =>
         axiosInstance.patch(`/post/update/${slug}`, updateData, {
@@ -599,11 +599,11 @@ export const updatePost = createAsyncThunk(
         })
       );
 
-      console.log("[updatePost] Update response:", {
-        success: response.data.success,
-        postTitle: response.data.post?.title,
-        postSlug: response.data.post?.slug,
-      });
+      // console.log("[updatePost] Update response:", {
+      //   success: response.data.success,
+      //   postTitle: response.data.post?.title,
+      //   postSlug: response.data.post?.slug,
+      // });
 
       return response.data;
     } catch (error) {
@@ -771,7 +771,7 @@ const postSlice = createSlice({
       }
     },
     clearCurrentPost: (state) => {
-      console.log("[clearCurrentPost] Clearing current post");
+      // console.log("[clearCurrentPost] Clearing current post");
       state.currentPost = null;
       state.currentPostSlug = null;
       state.error = null;
@@ -921,7 +921,7 @@ const postSlice = createSlice({
       // FIXED: Better getSinglePost state handling
       .addCase(getSinglePost.pending, (state, action) => {
         const slug = action.meta.arg?.slug;
-        console.log("[getSinglePost.pending] Loading post:", slug);
+        // console.log("[getSinglePost.pending] Loading post:", slug);
 
         // Only set loading if we're not already loading this slug
         if (state.currentPostSlug !== slug) {
@@ -931,16 +931,16 @@ const postSlice = createSlice({
 
           // Clear previous post if loading a different slug
           if (state.currentPost && state.currentPost.slug !== slug) {
-            console.log("[getSinglePost.pending] Clearing previous post");
+            // console.log("[getSinglePost.pending] Clearing previous post");
             state.currentPost = null;
           }
         }
       })
       .addCase(getSinglePost.fulfilled, (state, action) => {
-        console.log("[getSinglePost.fulfilled] Post loaded:", {
-          slug: action.payload.slug,
-          title: action.payload.post?.title,
-        });
+        // console.log("[getSinglePost.fulfilled] Post loaded:", {
+        //   slug: action.payload.slug,
+        //   title: action.payload.post?.title,
+        // });
 
         // FIXED: Always update state regardless of slug check
         state.loading = false;
@@ -949,10 +949,10 @@ const postSlice = createSlice({
         state.currentPostSlug = action.payload.slug;
       })
       .addCase(getSinglePost.rejected, (state, action) => {
-        console.log("[getSinglePost.rejected] Failed to load post:", {
-          slug: action.payload?.slug,
-          message: action.payload?.message,
-        });
+        // console.log("[getSinglePost.rejected] Failed to load post:", {
+        //   slug: action.payload?.slug,
+        //   message: action.payload?.message,
+        // });
 
         state.loading = false;
         state.error = action.payload?.message || "Failed to load post";
