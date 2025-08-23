@@ -2054,839 +2054,7 @@ export const trackTimeSpent = async (req, res, next) => {
 };
 
 // Fixed updatePostBySlug controller with proper error handling and validation
-// export const updatePostBySlug = async (req, res, next) => {
-//   let session = null;
-//   const startTime = Date.now();
 
-//   try {
-//     logMemory("✏️ Start updatePostBySlug");
-//     console.log(
-//       "[UpdatePostBySlug] Received request for slug:",
-//       req.params.slug
-//     );
-//     console.log("[UpdatePostBySlug] Request body keys:", Object.keys(req.body));
-
-//     const { slug } = req.params;
-//     const userId = req.user?._id;
-//     const userRole = req.user?.role;
-
-//     // Enhanced input validation
-//     if (!slug || typeof slug !== "string" || slug.trim().length === 0) {
-//       throw new AppError("Valid slug is required", 400, "UpdatePostBySlug");
-//     }
-
-//     if (!userId) {
-//       throw new AppError(
-//         "You must be signed in to access this feature.",
-//         401,
-//         "UpdatePostBySlug"
-//       );
-//     }
-
-//     // Validate user exists and is not blocked
-//     if (req.user.blocked) {
-//       throw new AppError("Account is blocked", 403, "UpdatePostBySlug");
-//     }
-
-//     // Payload size check
-//     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
-//     if (payloadSize > 10 * 1024 * 1024) {
-//       // Increased to 10MB
-//       throw new AppError(
-//         `Payload exceeds 10MB limit: ${(payloadSize / 1024 / 1024).toFixed(
-//           2
-//         )}MB`,
-//         413,
-//         "UpdatePostBySlug"
-//       );
-//     }
-
-//     // Extract and validate request data
-//     const {
-//       title,
-//       category,
-//       excerpt,
-//       tags: rawTags,
-//       blocks: rawBlocks,
-//       thumbnail: rawThumbnail,
-//       thumbnailSize,
-//       isEmbed: isThumbnailEmbed = false,
-//       isFeatured,
-//       isPinned,
-//       language,
-//       postType,
-//     } = req.body;
-
-//     console.log("[UpdatePostBySlug] Processing update for fields:", {
-//       hasTitle: !!title,
-//       hasCategory: !!category,
-//       hasExcerpt: !!excerpt,
-//       hasBlocks: !!rawBlocks,
-//       hasThumbnail: !!rawThumbnail,
-//     });
-
-//     // Parse and validate tags with better error handling
-//     let tags;
-//     if (rawTags !== undefined) {
-//       try {
-//         if (Array.isArray(rawTags)) {
-//           tags = rawTags;
-//         } else if (typeof rawTags === "string") {
-//           tags = JSON.parse(rawTags);
-//         } else {
-//           throw new Error("Tags must be array or JSON string");
-//         }
-
-//         if (!Array.isArray(tags)) {
-//           throw new AppError("Tags must be an array", 400, "UpdatePostBySlug");
-//         }
-
-//         // Validate and clean tags
-//         tags = tags
-//           .filter((tag) => tag && typeof tag === "string" && tag.trim())
-//           .map((tag) => tag.trim())
-//           .slice(0, 20); // Limit to 20 tags
-//       } catch (err) {
-//         console.error("[UpdatePostBySlug] Tags parsing error:", err);
-//         throw new AppError("Invalid tags format", 400, "UpdatePostBySlug");
-//       }
-//     }
-
-//     // Parse and validate blocks with better error handling
-//     let blocks;
-//     if (rawBlocks !== undefined) {
-//       try {
-//         if (Array.isArray(rawBlocks)) {
-//           blocks = rawBlocks;
-//         } else if (typeof rawBlocks === "string") {
-//           blocks = JSON.parse(rawBlocks);
-//         } else {
-//           throw new Error("Blocks must be array or JSON string");
-//         }
-
-//         if (!Array.isArray(blocks) || blocks.length === 0) {
-//           throw new AppError(
-//             "Blocks must be a non-empty array",
-//             400,
-//             "UpdatePostBySlug"
-//           );
-//         }
-
-//         // Limit number of blocks
-//         if (blocks.length > 500) {
-//           throw new AppError(
-//             "Too many blocks (max 500)",
-//             400,
-//             "UpdatePostBySlug"
-//           );
-//         }
-//       } catch (err) {
-//         console.error("[UpdatePostBySlug] Blocks parsing error:", err);
-//         throw new AppError("Invalid blocks format", 400, "UpdatePostBySlug");
-//       }
-//     }
-
-//     // Enhanced input validation
-//     if (title !== undefined) {
-//       if (!title || typeof title !== "string" || title.trim().length < 3) {
-//         throw new AppError(
-//           "Title must be at least 3 characters",
-//           400,
-//           "UpdatePostBySlug"
-//         );
-//       }
-//       if (title.length > 300) {
-//         throw new AppError(
-//           "Title too long (max 300 characters)",
-//           400,
-//           "UpdatePostBySlug"
-//         );
-//       }
-//     }
-
-//     if (category !== undefined) {
-//       if (
-//         !category ||
-//         typeof category !== "string" ||
-//         category.trim().length === 0
-//       ) {
-//         throw new AppError("Category is required", 400, "UpdatePostBySlug");
-//       }
-//       if (category.length > 100) {
-//         throw new AppError(
-//           "Category too long (max 100 characters)",
-//           400,
-//           "UpdatePostBySlug"
-//         );
-//       }
-//     }
-
-//     if (
-//       excerpt !== undefined &&
-//       typeof excerpt === "string" &&
-//       excerpt.length > 1000
-//     ) {
-//       throw new AppError(
-//         "Excerpt too long (max 1000 characters)",
-//         400,
-//         "UpdatePostBySlug"
-//       );
-//     }
-
-//     // Rate limiting for processing
-//     const blockLimit = pLimit(3);
-//     const imageLimit = pLimit(2);
-
-//     let processedBlocks;
-//     if (blocks) {
-//       // Add IDs to blocks and validate structure
-//       const blocksWithIds = blocks.map((block, index) => {
-//         if (!block || typeof block !== "object" || !block.type) {
-//           throw new AppError(
-//             `Invalid block at index ${index} - must be object with type property`,
-//             400,
-//             "UpdatePostBySlug"
-//           );
-//         }
-
-//         // Validate block type
-//         const validBlockTypes = [
-//           "header",
-//           "paragraph",
-//           "list",
-//           "image",
-//           "quote",
-//           "code",
-//           "delimiter",
-//           "table",
-//           "embed",
-//           "poll",
-//           "checklist",
-//           "warning",
-//         ];
-
-//         if (!validBlockTypes.includes(block.type)) {
-//           console.warn(`[UpdatePostBySlug] Unknown block type: ${block.type}`);
-//         }
-
-//         return {
-//           id: block.id || uuidv4(),
-//           type: block.type,
-//           ...block,
-//           blocked: false,
-//         };
-//       });
-
-//       // Validate table blocks specifically
-//       blocksWithIds.forEach((block, index) => {
-//         if (block.type === "table") {
-//           if (
-//             !block.data ||
-//             !Array.isArray(block.data) ||
-//             block.data.length === 0
-//           ) {
-//             throw new AppError(
-//               `Table block at index ${index} must have non-empty data`,
-//               400,
-//               "UpdatePostBySlug"
-//             );
-//           }
-//           if (
-//             !block.data.every((row) => Array.isArray(row) && row.length > 0)
-//           ) {
-//             throw new AppError(
-//               `Table block at index ${index} has invalid data format`,
-//               400,
-//               "UpdatePostBySlug"
-//             );
-//           }
-//         }
-//       });
-
-//       // Process blocks with error handling
-//       logMemory("🖼️ Before processing blocks");
-//       try {
-//         processedBlocks = await Promise.all(
-//           blocksWithIds.map((block) =>
-//             blockLimit(async () => {
-//               try {
-//                 return await processBlock(block, blockLimit, imageLimit);
-//               } catch (error) {
-//                 console.error(`Error processing block ${block.id}:`, error);
-//                 throw new AppError(
-//                   `Failed to process block: ${error.message}`,
-//                   400,
-//                   "UpdatePostBySlug"
-//                 );
-//               }
-//             })
-//           )
-//         );
-//         console.log(
-//           `[UpdatePostBySlug] Successfully processed ${processedBlocks.length} blocks`
-//         );
-//       } catch (error) {
-//         console.error("[UpdatePostBySlug] Block processing failed:", error);
-//         throw new AppError(
-//           `Block processing failed: ${error.message}`,
-//           400,
-//           "UpdatePostBySlug"
-//         );
-//       }
-//       logMemory("🖼️ After processing blocks");
-//     }
-
-//     // Process thumbnail
-//     let processedThumbnail = undefined;
-//     if (rawThumbnail && !isThumbnailEmbed) {
-//       logMemory("🖼️ Before processing thumbnail");
-//       try {
-//         processedThumbnail = await imageLimit(() =>
-//           processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
-//         );
-//         console.log(
-//           `[UpdatePostBySlug] Thumbnail processed: ${processedThumbnail}`
-//         );
-//       } catch (error) {
-//         console.error("Thumbnail processing error:", error);
-//         throw new AppError(
-//           `Thumbnail processing failed: ${error.message}`,
-//           400,
-//           "UpdatePostBySlug"
-//         );
-//       }
-//       logMemory("🖼️ After processing thumbnail");
-//     } else if (rawThumbnail && isThumbnailEmbed) {
-//       // Validate embed URL
-//       try {
-//         new URL(rawThumbnail);
-//         processedThumbnail = rawThumbnail;
-//       } catch (err) {
-//         throw new AppError(
-//           "Invalid thumbnail embed URL",
-//           400,
-//           "UpdatePostBySlug"
-//         );
-//       }
-//     }
-
-//     // Calculate read time only if blocks are being updated
-//     let readTime, readingTime;
-//     if (processedBlocks) {
-//       const readTimeResult = calculateReadTime(processedBlocks);
-//       readTime = readTimeResult.readTime;
-//       readingTime = readTimeResult.readingTime;
-//       console.log(
-//         `[UpdatePostBySlug] Calculated read time: ${readTime} minutes`
-//       );
-//     }
-
-//     // Build query based on user role with better case handling
-//     const query =
-//       userRole === "admin"
-//         ? {
-//             slug: {
-//               $regex: `^${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
-//               $options: "i",
-//             },
-//           }
-//         : {
-//             slug: {
-//               $regex: `^${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
-//               $options: "i",
-//             },
-//             author: new mongoose.Types.ObjectId(userId),
-//           };
-
-//     // Fetch existing post with better error handling
-//     logMemory("📖 Before fetching post");
-//     console.log("[UpdatePostBySlug] Query:", JSON.stringify(query));
-
-//     const post = await PostModel.findOne(query).lean();
-//     console.log(`[UpdatePostBySlug] Found post: ${post ? "Yes" : "No"}`);
-
-//     logMemory("📖 After fetching post");
-
-//     if (!post) {
-//       // Check if post exists with different case or author
-//       const postExists = await PostModel.findOne({
-//         slug: {
-//           $regex: `^${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
-//           $options: "i",
-//         },
-//       })
-//         .select("author")
-//         .lean();
-
-//       if (postExists) {
-//         throw new AppError(
-//           "Unauthorized to update this post",
-//           403,
-//           "UpdatePostBySlug"
-//         );
-//       } else {
-//         throw new AppError("Post not found", 404, "UpdatePostBySlug");
-//       }
-//     }
-
-//     if (post.blocked) {
-//       throw new AppError(
-//         "Post is blocked and cannot be updated",
-//         403,
-//         "UpdatePostBySlug"
-//       );
-//     }
-
-//     console.log(
-//       `[UpdatePostBySlug] Current post: ${post.title} (${post.slug})`
-//     );
-
-//     // Generate new slug if title changed
-//     let finalSlug = post.slug;
-//     if (title && title.trim() !== post.title) {
-//       try {
-//         finalSlug = slugify(title, { lower: true, strict: true });
-//       } catch (err) {
-//         console.warn(
-//           "[UpdatePostBySlug] slugify failed, using fallback:",
-//           err.message
-//         );
-//         finalSlug = fallbackSlugify(title);
-//       }
-
-//       // Ensure slug uniqueness
-//       let counter = 1;
-//       const maxAttempts = 100;
-//       let baseSlug = finalSlug;
-
-//       while (counter <= maxAttempts) {
-//         const existingPost = await PostModel.exists({
-//           slug: finalSlug,
-//           _id: { $ne: post._id },
-//         }).lean();
-
-//         if (!existingPost) break;
-
-//         finalSlug = `${baseSlug}-${counter}`;
-//         counter++;
-//       }
-
-//       if (counter > maxAttempts) {
-//         finalSlug = `${baseSlug}-${Date.now()}`;
-//       }
-
-//       console.log(
-//         `[UpdatePostBySlug] New slug generated: ${post.slug} -> ${finalSlug}`
-//       );
-//     }
-
-//     // Content moderation for new/updated content
-//     if (title || excerpt || processedBlocks) {
-//       const moderateContent = async (text) => {
-//         try {
-//           // Simple spam detection - replace with your actual moderation logic
-//           const spamPatterns = [
-//             /(.)\1{30,}/i, // Increase threshold for repeated characters
-//             /http[s]?:\/\/[^\s]{100,}/i,
-//           ];
-
-//           for (const pattern of spamPatterns) {
-//             if (pattern.test(text)) {
-//               return { isFlagged: true, categories: { spam: true } };
-//             }
-//           }
-
-//           return { isFlagged: false, categories: {} };
-//         } catch (error) {
-//           console.error("Moderation error:", error);
-//           return { isFlagged: false, categories: {} };
-//         }
-//       };
-
-//       const blockTextContent = processedBlocks
-//         ? processedBlocks
-//             .flatMap((block) =>
-//               ["text", "value", "code", "caption", "question"]
-//                 .map((field) => block[field])
-//                 .filter(Boolean)
-//             )
-//             .join("\n")
-//         : "";
-
-//       const fullText = `${title || post.title}\n${
-//         excerpt || post.excerpt || ""
-//       }\n${blockTextContent}`;
-
-//       logMemory("🔍 Before content moderation");
-//       const moderation = await moderateContent(fullText);
-//       logMemory("🔍 After content moderation");
-
-//       if (moderation.isFlagged) {
-//         const reasons = Object.entries(moderation.categories)
-//           .filter(([_, flagged]) => flagged)
-//           .map(([key]) => key);
-//         throw new AppError(
-//           `Content flagged for: ${reasons.join(", ")}`,
-//           400,
-//           "UpdatePostBySlug"
-//         );
-//       }
-//     }
-
-//     // Prepare update object - only include fields that are actually changing
-//     const updates = {};
-
-//     if (title !== undefined && title.trim() !== post.title) {
-//       updates.title = title.trim();
-//     }
-
-//     if (finalSlug !== post.slug) {
-//       updates.slug = finalSlug;
-//     }
-
-//     if (category !== undefined && category.trim() !== post.category) {
-//       updates.category = category.trim();
-//     }
-
-//     if (excerpt !== undefined) {
-//       const newExcerpt = excerpt ? excerpt.trim() : "";
-//       if (newExcerpt !== (post.excerpt || "")) {
-//         updates.excerpt = newExcerpt;
-//       }
-//     }
-
-//     if (tags !== undefined) {
-//       const newTags = JSON.stringify(tags.sort());
-//       const oldTags = JSON.stringify((post.tags || []).sort());
-//       if (newTags !== oldTags) {
-//         updates.tags = tags;
-//       }
-//     }
-
-//     if (
-//       processedThumbnail !== undefined &&
-//       processedThumbnail !== post.thumbnail
-//     ) {
-//       updates.thumbnail = processedThumbnail;
-//     }
-
-//     if (thumbnailSize !== undefined && thumbnailSize !== post.thumbnailSize) {
-//       updates.thumbnailSize = thumbnailSize;
-//     }
-
-//     if (isThumbnailEmbed !== undefined && isThumbnailEmbed !== post.isEmbed) {
-//       updates.isEmbed = isThumbnailEmbed;
-//     }
-
-//     if (processedBlocks !== undefined) {
-//       // Always update blocks if provided (they may contain processed images)
-//       updates.blocks = processedBlocks;
-//     }
-
-//     if (
-//       isFeatured !== undefined &&
-//       Boolean(isFeatured) !== Boolean(post.isFeatured)
-//     ) {
-//       updates.isFeatured = Boolean(isFeatured);
-//     }
-
-//     if (
-//       isPinned !== undefined &&
-//       Boolean(isPinned) !== Boolean(post.isPinned)
-//     ) {
-//       updates.isPinned = Boolean(isPinned);
-//     }
-
-//     if (language !== undefined && language.trim() !== post.language) {
-//       updates.language = language.trim();
-//     }
-
-//     if (postType !== undefined && postType.trim() !== post.postType) {
-//       updates.postType = postType.trim();
-//     }
-
-//     // Always update these fields when there are changes
-//     if (readTime !== undefined) updates.readTime = readTime;
-//     if (readingTime !== undefined) updates.readingTime = readingTime;
-
-//     // Always update these metadata fields
-//     updates.isPublished = true;
-//     updates.lastEditedAt = new Date();
-//     updates.updatedAt = new Date();
-
-//     console.log(`[UpdatePostBySlug] Updates to apply:`, Object.keys(updates));
-
-//     // Check if there are actually any updates to make
-//     if (Object.keys(updates).length <= 3) {
-//       // Only metadata fields
-//       console.log("[UpdatePostBySlug] No substantial changes detected");
-//       return res.status(200).json({
-//         success: true,
-//         message: "No changes detected",
-//         post: {
-//           _id: post._id,
-//           title: post.title,
-//           slug: post.slug,
-//           category: post.category,
-//           excerpt: post.excerpt,
-//           thumbnail: post.thumbnail,
-//           author: post.author,
-//           isPublished: post.isPublished,
-//           isPinned: post.isPinned,
-//           createdAt: post.createdAt,
-//           lastEditedAt: post.lastEditedAt || post.updatedAt,
-//           postType: post.postType,
-//           readTime: post.readTime,
-//           readingTime: post.readingTime,
-//         },
-//       });
-//     }
-
-//     // Start database transaction
-//     session = await mongoose.startSession();
-//     session.startTransaction();
-
-//     try {
-//       logMemory("💾 Before updating post");
-//       console.log("[UpdatePostBySlug] Applying updates to database...");
-
-//       // Use findOneAndUpdate with specific options for better reliability
-//       const updatedPost = await PostModel.findOneAndUpdate(
-//         { _id: post._id }, // Use _id instead of slug query for reliability
-//         { $set: updates },
-//         {
-//           new: true,
-//           runValidators: true,
-//           session,
-//           lean: false, // Get full mongoose document
-//           select:
-//             "title slug category excerpt thumbnail blocks author isPublished isPinned isFeatured createdAt lastEditedAt updatedAt postType readTime readingTime language tags",
-//         }
-//       );
-
-//       console.log(
-//         `[UpdatePostBySlug] Database update result: ${
-//           updatedPost ? "Success" : "Failed"
-//         }`
-//       );
-
-//       if (!updatedPost) {
-//         throw new AppError(
-//           "Failed to update post - document not found",
-//           500,
-//           "UpdatePostBySlug"
-//         );
-//       }
-
-//       logMemory("💾 After updating post");
-
-//       // Record activity
-//       try {
-//         await recordActivity(
-//           {
-//             userId: new mongoose.Types.ObjectId(userId),
-//             action: "POST_EDITED",
-//             targetPost: updatedPost._id,
-//             message: `Edited post: ${updatedPost.title}`,
-//           },
-//           { session }
-//         );
-//         console.log("[UpdatePostBySlug] Activity recorded");
-//       } catch (activityError) {
-//         console.error(
-//           "[UpdatePostBySlug] Failed to record activity:",
-//           activityError
-//         );
-//         // Don't fail the transaction for activity logging
-//       }
-
-//       // Commit transaction before non-critical operations
-//       await session.commitTransaction();
-//       console.log("[UpdatePostBySlug] Transaction committed successfully");
-
-//       // Post-transaction operations (non-critical)
-//       try {
-//         // Emit real-time update with retry
-//         await asyncRetry(
-//           async () => {
-//             io.emit("postUpdated", {
-//               ...updatedPost.toObject(),
-//               authorId: userId,
-//             });
-//           },
-//           { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
-//         );
-//         console.log("[UpdatePostBySlug] Socket event emitted");
-//       } catch (emitError) {
-//         console.error("Failed to emit postUpdated event:", emitError);
-//       }
-
-//       // Cache invalidation
-//       const cacheKeys = [
-//         `postCounts:${userId}`,
-//         `publicPosts:*`,
-//         `countAllPosts`,
-//         `countMyPosts:${userId}`,
-//         `countFollowingPosts:${userId}`,
-//         `postId:${finalSlug}`,
-//         `postId:${post.slug}`, // Invalidate old slug too
-//         `post:${finalSlug}`,
-//         `post:${post.slug}`,
-//         `userPosts:${userId}`,
-//       ];
-
-//       try {
-//         cacheKeys.forEach((key) => {
-//           try {
-//             cache.del(key);
-//           } catch (cacheDelError) {
-//             console.warn(
-//               `Failed to delete cache key ${key}:`,
-//               cacheDelError.message
-//             );
-//           }
-//         });
-//         console.log(
-//           "[UpdatePostBySlug] Cache invalidated for keys:",
-//           cacheKeys.length
-//         );
-//       } catch (cacheError) {
-//         console.error("Cache invalidation error:", cacheError);
-//       }
-
-//       // Update post counts asynchronously
-//       Promise.all([
-//         PostModel.countDocuments({
-//           blocked: { $ne: true },
-//           isPublished: true,
-//         }).lean(),
-//         PostModel.countDocuments({
-//           author: userId,
-//           blocked: { $ne: true },
-//           isPublished: true,
-//         }).lean(),
-//         PostModel.countDocuments({
-//           author: { $in: req.user.following || [] },
-//           blocked: { $ne: true },
-//           isPublished: true,
-//         }).lean(),
-//       ])
-//         .then(async ([allPostsCount, myPostsCount, followingPostsCount]) => {
-//           const counts = { allPostsCount, myPostsCount, followingPostsCount };
-//           cache.set(`postCounts:${userId}`, counts, 300);
-
-//           try {
-//             await asyncRetry(
-//               async () => {
-//                 io.to(userId.toString()).emit("postCountsUpdated", counts);
-//               },
-//               { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
-//             );
-//           } catch (countEmitError) {
-//             console.warn("Failed to emit post counts:", countEmitError.message);
-//           }
-//         })
-//         .catch((countError) => {
-//           console.error("Failed to update post counts:", countError);
-//         });
-
-//       const processingTime = Date.now() - startTime;
-//       logMemory("✏️ End updatePostBySlug");
-//       console.log(
-//         `[UpdatePostBySlug] Success: ${finalSlug}, time=${processingTime}ms`
-//       );
-
-//       // Return success response
-//       res.status(200).json({
-//         success: true,
-//         message: "Post updated successfully",
-//         post: {
-//           _id: updatedPost._id,
-//           title: updatedPost.title,
-//           slug: updatedPost.slug,
-//           category: updatedPost.category,
-//           excerpt: updatedPost.excerpt,
-//           thumbnail: updatedPost.thumbnail,
-//           author: updatedPost.author,
-//           isPublished: updatedPost.isPublished,
-//           isPinned: updatedPost.isPinned,
-//           isFeatured: updatedPost.isFeatured,
-//           createdAt: updatedPost.createdAt,
-//           lastEditedAt: updatedPost.lastEditedAt,
-//           updatedAt: updatedPost.updatedAt,
-//           postType: updatedPost.postType,
-//           readTime: updatedPost.readTime,
-//           readingTime: updatedPost.readingTime,
-//           language: updatedPost.language,
-//           tags: updatedPost.tags,
-//         },
-//         meta: {
-//           processingTime,
-//           fieldsUpdated: Object.keys(updates).length,
-//           blocksProcessed: processedBlocks ? processedBlocks.length : 0,
-//         },
-//       });
-//     } catch (dbError) {
-//       console.error("[UpdatePostBySlug] DB Error:", dbError);
-
-//       // Abort transaction
-//       if (session.inTransaction()) {
-//         await session.abortTransaction();
-//       }
-
-//       // Provide specific error messages
-//       if (dbError.code === 11000) {
-//         throw new AppError(
-//           "A post with this title/slug already exists",
-//           409,
-//           "UpdatePostBySlug"
-//         );
-//       }
-
-//       throw new AppError(
-//         dbError.message || "Database update failed",
-//         500,
-//         "UpdatePostBySlug"
-//       );
-//     }
-//   } catch (error) {
-//     const processingTime = Date.now() - startTime;
-//     console.error(`[UpdatePostBySlug] Error after ${processingTime}ms:`, error);
-
-//     // Abort transaction if it exists and is active
-//     if (session && session.inTransaction()) {
-//       try {
-//         await session.abortTransaction();
-//       } catch (abortError) {
-//         console.error("Failed to abort transaction:", abortError);
-//       }
-//     }
-
-//     // Pass error to error handler
-//     next(
-//       error instanceof AppError
-//         ? error
-//         : new AppError(
-//             error.message || "Failed to update post",
-//             500,
-//             "UpdatePostBySlug"
-//           )
-//     );
-//   } finally {
-//     // Always end session
-//     if (session) {
-//       try {
-//         await session.endSession();
-//       } catch (endError) {
-//         console.error("Failed to end session:", endError);
-//       }
-//     }
-
-//     logMemory("🧹 Final cleanup");
-//   }
-// };
-
-// log code
 
 export const updatePostBySlug = async (req, res, next) => {
   let session = null;
@@ -2924,10 +2092,10 @@ export const updatePostBySlug = async (req, res, next) => {
 
     // Payload size check
     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
-    console.log(
-      "[UpdatePostBySlug] Payload size:",
-      `${(payloadSize / 1024 / 1024).toFixed(2)}MB`
-    );
+    // console.log(
+    //   "[UpdatePostBySlug] Payload size:",
+    //   `${(payloadSize / 1024 / 1024).toFixed(2)}MB`
+    // );
     if (payloadSize > 10 * 1024 * 1024) {
       throw new AppError(
         `Payload exceeds 10MB limit: ${(payloadSize / 1024 / 1024).toFixed(
@@ -2954,13 +2122,13 @@ export const updatePostBySlug = async (req, res, next) => {
       postType,
     } = req.body;
 
-    console.log("[UpdatePostBySlug] Processing update for fields:", {
-      hasTitle: !!title,
-      hasCategory: !!category,
-      hasExcerpt: !!excerpt,
-      hasBlocks: !!rawBlocks,
-      hasThumbnail: !!rawThumbnail,
-    });
+    // console.log("[UpdatePostBySlug] Processing update for fields:", {
+    //   hasTitle: !!title,
+    //   hasCategory: !!category,
+    //   hasExcerpt: !!excerpt,
+    //   hasBlocks: !!rawBlocks,
+    //   hasThumbnail: !!rawThumbnail,
+    // });
 
     // Parse and validate tags
     let tags;
@@ -2972,7 +2140,7 @@ export const updatePostBySlug = async (req, res, next) => {
           .filter((tag) => tag && typeof tag === "string" && tag.trim())
           .map((tag) => tag.trim())
           .slice(0, 20);
-        console.log("[UpdatePostBySlug] Processed tags:", tags);
+        // console.log("[UpdatePostBySlug] Processed tags:", tags);
       } catch (err) {
         console.error("[UpdatePostBySlug] Tags parsing error:", err);
         throw new AppError("Invalid tags format", 400, "UpdatePostBySlug");
@@ -2998,10 +2166,10 @@ export const updatePostBySlug = async (req, res, next) => {
             "UpdatePostBySlug"
           );
         }
-        console.log(
-          "[UpdatePostBySlug] Raw blocks:",
-          JSON.stringify(blocks, null, 2)
-        );
+        // console.log(
+        //   "[UpdatePostBySlug] Raw blocks:",
+        //   JSON.stringify(blocks, null, 2)
+        // );
       } catch (err) {
         console.error("[UpdatePostBySlug] Blocks parsing error:", err);
         throw new AppError("Invalid blocks format", 400, "UpdatePostBySlug");
@@ -3067,10 +2235,10 @@ export const updatePostBySlug = async (req, res, next) => {
         };
       });
 
-      console.log(
-        "[UpdatePostBySlug] Blocks with IDs:",
-        JSON.stringify(blocksWithIds, null, 2)
-      );
+      // console.log(
+      //   "[UpdatePostBySlug] Blocks with IDs:",
+      //   JSON.stringify(blocksWithIds, null, 2)
+      // );
 
       try {
         processedBlocks = await Promise.all(
@@ -3092,10 +2260,10 @@ export const updatePostBySlug = async (req, res, next) => {
             })
           )
         );
-        console.log(
-          "[UpdatePostBySlug] Processed blocks:",
-          JSON.stringify(processedBlocks, null, 2)
-        );
+        // console.log(
+        //   "[UpdatePostBySlug] Processed blocks:",
+        //   JSON.stringify(processedBlocks, null, 2)
+        // );
       } catch (error) {
         console.error("[UpdatePostBySlug] Block processing failed:", error);
         throw new AppError(
@@ -3113,10 +2281,10 @@ export const updatePostBySlug = async (req, res, next) => {
         processedThumbnail = await pLimit(2)(() =>
           processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
         );
-        console.log(
-          "[UpdatePostBySlug] Thumbnail processed:",
-          processedThumbnail
-        );
+        // console.log(
+        //   "[UpdatePostBySlug] Thumbnail processed:",
+        //   processedThumbnail
+        // );
       } catch (error) {
         console.error("[UpdatePostBySlug] Thumbnail processing error:", error);
         throw new AppError(
@@ -3144,7 +2312,7 @@ export const updatePostBySlug = async (req, res, next) => {
       const readTimeResult = calculateReadTime(processedBlocks);
       readTime = readTimeResult.readTime;
       readingTime = readTimeResult.readingTime;
-      console.log("[UpdatePostBySlug] Calculated read time:", readTime);
+      // console.log("[UpdatePostBySlug] Calculated read time:", readTime);
     }
 
     // Build query
@@ -3164,16 +2332,16 @@ export const updatePostBySlug = async (req, res, next) => {
             author: new mongoose.Types.ObjectId(userId),
           };
 
-    console.log("[UpdatePostBySlug] Query:", JSON.stringify(query));
+    // console.log("[UpdatePostBySlug] Query:", JSON.stringify(query));
 
     // Fetch existing post
     const post = await PostModel.findOne(query).lean();
-    console.log(
-      "[UpdatePostBySlug] Found post:",
-      post
-        ? { _id: post._id, title: post.title, slug: post.slug }
-        : "No post found"
-    );
+    // console.log(
+    //   "[UpdatePostBySlug] Found post:",
+    //   post
+    //     ? { _id: post._id, title: post.title, slug: post.slug }
+    //     : "No post found"
+    // );
 
     if (!post) {
       const postExists = await PostModel.findOne({
@@ -3204,13 +2372,13 @@ export const updatePostBySlug = async (req, res, next) => {
       const moderateContent = async (text) => {
         try {
           const spamPatterns = [/(.)\1{50,}/i, /http[s]?:\/\/[^\s]{100,}/i];
-          console.log("[UpdatePostBySlug] Moderating content:", text);
+          // console.log("[UpdatePostBySlug] Moderating content:", text);
           for (const pattern of spamPatterns) {
             if (pattern.test(text)) {
-              console.log(
-                "[UpdatePostBySlug] Content flagged by pattern:",
-                pattern
-              );
+              // console.log(
+              //   "[UpdatePostBySlug] Content flagged by pattern:",
+              //   pattern
+              // );
               return { isFlagged: true, categories: { spam: true } };
             }
           }
@@ -3234,7 +2402,7 @@ export const updatePostBySlug = async (req, res, next) => {
         excerpt || post.excerpt || ""
       }\n${blockTextContent}`;
       const moderation = await moderateContent(fullText);
-      console.log("[UpdatePostBySlug] Moderation result:", moderation);
+      // console.log("[UpdatePostBySlug] Moderation result:", moderation);
 
       if (moderation.isFlagged) {
         const reasons = Object.entries(moderation.categories)
@@ -3271,14 +2439,14 @@ export const updatePostBySlug = async (req, res, next) => {
     updates.lastEditedAt = new Date();
     updates.updatedAt = new Date();
 
-    console.log(
-      "[UpdatePostBySlug] Updates to apply:",
-      JSON.stringify(updates, null, 2)
-    );
+    // console.log(
+    //   "[UpdatePostBySlug] Updates to apply:",
+    //   JSON.stringify(updates, null, 2)
+    // );
 
     // Check for substantial changes
     if (Object.keys(updates).length <= 3) {
-      console.log("[UpdatePostBySlug] No substantial changes detected");
+      // console.log("[UpdatePostBySlug] No substantial changes detected");
       return res
         .status(200)
         .json({ success: true, message: "No changes detected", post });
@@ -3294,16 +2462,16 @@ export const updatePostBySlug = async (req, res, next) => {
         { $set: updates },
         { new: true, runValidators: true, session, lean: false }
       );
-      console.log(
-        "[UpdatePostBySlug] Database update result:",
-        updatedPost
-          ? {
-              _id: updatedPost._id,
-              title: updatedPost.title,
-              slug: updatedPost.slug,
-            }
-          : "Failed"
-      );
+      // console.log(
+      //   "[UpdatePostBySlug] Database update result:",
+      //   updatedPost
+      //     ? {
+      //         _id: updatedPost._id,
+      //         title: updatedPost.title,
+      //         slug: updatedPost.slug,
+      //       }
+      //     : "Failed"
+      // );
 
       if (!updatedPost) {
         throw new AppError(
@@ -3323,7 +2491,7 @@ export const updatePostBySlug = async (req, res, next) => {
         { session }
       );
       await session.commitTransaction();
-      console.log("[UpdatePostBySlug] Transaction committed successfully");
+      // console.log("[UpdatePostBySlug] Transaction committed successfully");
 
       // Cache invalidation
       const cacheKeys = [
@@ -3340,7 +2508,7 @@ export const updatePostBySlug = async (req, res, next) => {
       cacheKeys.forEach((key) => {
         try {
           cache.del(key);
-          console.log("[UpdatePostBySlug] Cache deleted for key:", key);
+          // console.log("[UpdatePostBySlug] Cache deleted for key:", key);
         } catch (cacheDelError) {
           console.warn(
             "[UpdatePostBySlug] Failed to delete cache key:",
@@ -3360,7 +2528,7 @@ export const updatePostBySlug = async (req, res, next) => {
             }),
           { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
         );
-        console.log("[UpdatePostBySlug] Socket event emitted");
+        // console.log("[UpdatePostBySlug] Socket event emitted");
       } catch (emitError) {
         console.error(
           "[UpdatePostBySlug] Failed to emit postUpdated event:",
@@ -3369,10 +2537,10 @@ export const updatePostBySlug = async (req, res, next) => {
       }
 
       const processingTime = Date.now() - startTime;
-      console.log("[UpdatePostBySlug] Success:", {
-        slug,
-        time: `${processingTime}ms`,
-      });
+      // console.log("[UpdatePostBySlug] Success:", {
+      //   slug,
+      //   time: `${processingTime}ms`,
+      // });
 
       res.status(200).json({
         success: true,
