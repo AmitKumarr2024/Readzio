@@ -360,10 +360,119 @@ export const getSearchPosts = createAsyncThunk(
 const activeRequests = new Map(); // Track active requests globally
 
 // Enhanced getSinglePost with proper loop prevention
+// export const getSinglePost = createAsyncThunk(
+//   "post/getSinglePost",
+//   async ({ slug, isGuest = false }, { rejectWithValue, getState }) => {
+//     try {
+//       // Input validation
+//       if (!slug || typeof slug !== "string" || slug.trim() === "") {
+//         console.error("[getSinglePost] Invalid slug:", slug);
+//         return rejectWithValue({ message: "Invalid post slug" });
+//       }
+
+//       const cleanSlug = slug.trim();
+//       console.log("[getSinglePost] Fetching post with slug:", cleanSlug);
+
+//       // FIXED: Better duplicate request prevention using Map
+//       const requestKey = `${cleanSlug}-${isGuest}`;
+//       if (activeRequests.has(requestKey)) {
+//         console.log("[getSinglePost] Already loading this slug, skipping");
+//         return rejectWithValue({
+//           slug: cleanSlug,
+//           message: "Already loading this post",
+//         });
+//       }
+
+//       // Mark this request as active
+//       activeRequests.set(requestKey, true);
+
+//       const endpoint = isGuest
+//         ? `/post/public/${cleanSlug}`
+//         : `/post/${cleanSlug}`;
+//       console.log("[getSinglePost] Request endpoint:", endpoint);
+
+//       try {
+//         // REMOVED: asyncRetry to prevent retry loops
+//         const response = await axiosInstance.get(endpoint, {
+//           timeout: 15000,
+//           headers: {
+//             "Cache-Control": "no-cache",
+//             Pragma: "no-cache",
+//           },
+//         });
+
+//         console.log("[getSinglePost] Response received:", {
+//           success: response.data.success,
+//           postTitle: response.data.post?.title,
+//           postSlug: response.data.post?.slug,
+//           postId: response.data.post?._id,
+//         });
+
+//         if (!response.data.post) {
+//           console.error("[getSinglePost] Post not found for slug:", cleanSlug);
+//           return rejectWithValue({
+//             message: "Post not found",
+//             slug: cleanSlug,
+//           });
+//         }
+
+//         // Validate that we got the correct post
+//         const receivedPost = response.data.post;
+//         if (receivedPost.slug.toLowerCase() !== cleanSlug.toLowerCase()) {
+//           console.warn("[getSinglePost] Slug mismatch:", {
+//             requested: cleanSlug,
+//             received: receivedPost.slug,
+//           });
+//         }
+
+//         // Ensure blocks have proper IDs
+//         if (receivedPost.blocks && Array.isArray(receivedPost.blocks)) {
+//           receivedPost.blocks = receivedPost.blocks.map((block) => ({
+//             ...block,
+//             id: block.id || block._id || `block-${Date.now()}-${Math.random()}`,
+//           }));
+//         }
+
+//         return {
+//           post: receivedPost,
+//           slug: cleanSlug,
+//           timestamp: Date.now(),
+//         };
+//       } finally {
+//         // CRITICAL: Always clean up the active request
+//         activeRequests.delete(requestKey);
+//       }
+//     } catch (error) {
+//       // FIXED: Clean up active request on error
+//       const requestKey = `${slug}-${isGuest}`;
+//       activeRequests.delete(requestKey);
+
+//       const errMsg =
+//         error.response?.data?.message ||
+//         error.message ||
+//         "Failed to fetch post";
+//       console.error("[getSinglePost] Error:", {
+//         slug,
+//         message: errMsg,
+//         status: error.response?.status,
+//         statusText: error.response?.statusText,
+//       });
+//       return rejectWithValue({
+//         message: errMsg,
+//         slug,
+//         status: error.response?.status,
+//       });
+//     }
+//   }
+// );
+
+// new code
 export const getSinglePost = createAsyncThunk(
   "post/getSinglePost",
-  async ({ slug, isGuest = false }, { rejectWithValue, getState }) => {
+  async ({ slug, isGuest = false }, { rejectWithValue }) => {
     try {
+      console.log("[getSinglePost] Incoming params:", { slug, isGuest });
+
       // Input validation
       if (!slug || typeof slug !== "string" || slug.trim() === "") {
         console.error("[getSinglePost] Invalid slug:", slug);
@@ -371,28 +480,28 @@ export const getSinglePost = createAsyncThunk(
       }
 
       const cleanSlug = slug.trim();
-      console.log("[getSinglePost] Fetching post with slug:", cleanSlug);
+      console.log("[getSinglePost] Clean slug:", cleanSlug);
 
-      // FIXED: Better duplicate request prevention using Map
+      // Prevent duplicate request
       const requestKey = `${cleanSlug}-${isGuest}`;
       if (activeRequests.has(requestKey)) {
-        console.log("[getSinglePost] Already loading this slug, skipping");
+        console.warn("[getSinglePost] Duplicate request detected:", requestKey);
         return rejectWithValue({
           slug: cleanSlug,
           message: "Already loading this post",
         });
       }
 
-      // Mark this request as active
       activeRequests.set(requestKey, true);
 
+      // Endpoint selection
       const endpoint = isGuest
         ? `/post/public/${cleanSlug}`
         : `/post/${cleanSlug}`;
       console.log("[getSinglePost] Request endpoint:", endpoint);
 
       try {
-        // REMOVED: asyncRetry to prevent retry loops
+        console.log("[getSinglePost] Sending GET request...");
         const response = await axiosInstance.get(endpoint, {
           timeout: 15000,
           headers: {
@@ -401,11 +510,15 @@ export const getSinglePost = createAsyncThunk(
           },
         });
 
-        console.log("[getSinglePost] Response received:", {
+        console.log("[getSinglePost] Raw response:", response);
+        console.log("[getSinglePost] Response data:", response.data);
+
+        console.log("[getSinglePost] Response summary:", {
           success: response.data.success,
-          postTitle: response.data.post?.title,
-          postSlug: response.data.post?.slug,
+          postExists: !!response.data.post,
           postId: response.data.post?._id,
+          postSlug: response.data.post?.slug,
+          postTitle: response.data.post?.title,
         });
 
         if (!response.data.post) {
@@ -416,8 +529,10 @@ export const getSinglePost = createAsyncThunk(
           });
         }
 
-        // Validate that we got the correct post
         const receivedPost = response.data.post;
+        console.log("[getSinglePost] Full post object from backend:", receivedPost);
+
+        // Validate slug consistency
         if (receivedPost.slug.toLowerCase() !== cleanSlug.toLowerCase()) {
           console.warn("[getSinglePost] Slug mismatch:", {
             requested: cleanSlug,
@@ -425,13 +540,18 @@ export const getSinglePost = createAsyncThunk(
           });
         }
 
-        // Ensure blocks have proper IDs
+        // Normalize blocks
         if (receivedPost.blocks && Array.isArray(receivedPost.blocks)) {
+          console.log("[getSinglePost] Normalizing blocks...");
           receivedPost.blocks = receivedPost.blocks.map((block) => ({
             ...block,
             id: block.id || block._id || `block-${Date.now()}-${Math.random()}`,
           }));
+        } else {
+          console.warn("[getSinglePost] No blocks found in post");
         }
+
+        console.log("[getSinglePost] Final normalized post:", receivedPost);
 
         return {
           post: receivedPost,
@@ -439,24 +559,24 @@ export const getSinglePost = createAsyncThunk(
           timestamp: Date.now(),
         };
       } finally {
-        // CRITICAL: Always clean up the active request
         activeRequests.delete(requestKey);
       }
     } catch (error) {
-      // FIXED: Clean up active request on error
-      const requestKey = `${slug}-${isGuest}`;
-      activeRequests.delete(requestKey);
+      activeRequests.delete(`${slug}-${isGuest}`);
 
       const errMsg =
         error.response?.data?.message ||
         error.message ||
         "Failed to fetch post";
-      console.error("[getSinglePost] Error:", {
+
+      console.error("[getSinglePost] Error details:", {
         slug,
         message: errMsg,
         status: error.response?.status,
         statusText: error.response?.statusText,
+        error: error,
       });
+
       return rejectWithValue({
         message: errMsg,
         slug,
@@ -465,6 +585,7 @@ export const getSinglePost = createAsyncThunk(
     }
   }
 );
+
 
 export const updatePost = createAsyncThunk(
   "post/updatePost",

@@ -21,63 +21,80 @@ export const uploadToCloudinary = async ({ buffer, base64, folder }) => {
       const shortId = uuidv4().slice(0, 8);
       const publicId = `img_${shortId}`;
 
-      let compressedBuffer;
+      // ✅ Step 1: Convert to Buffer
+      let originalBuffer;
       if (buffer) {
-        if (buffer.length > 5 * 1024 * 1024) {
-          return reject(new Error("Image size exceeds 5MB limit"));
-        }
-        compressedBuffer = await sharp(buffer)
-          .resize({
-            width: 600,
-            height: 600,
-            fit: "inside",
-            withoutEnlargement: true,
-          })
-          .webp({ quality: 30, effort: 4 })
-          .toBuffer();
+        originalBuffer = buffer;
       } else if (base64) {
-        const bufferFromBase64 = Buffer.from(base64.split(",")[1], "base64");
-        if (bufferFromBase64.length > 5 * 1024 * 1024) {
-          return reject(new Error("Image size exceeds 5MB limit"));
-        }
-        compressedBuffer = await sharp(bufferFromBase64)
-          .resize({
-            width: 600,
-            height: 600,
-            fit: "inside",
-            withoutEnlargement: true,
-          })
-          .webp({ quality: 30, effort: 4 })
-          .toBuffer();
+        originalBuffer = Buffer.from(base64.split(",")[1], "base64");
       } else {
         return reject(new Error("No valid file data provided to Cloudinary"));
       }
 
-      await asyncRetry(
-        async () => {
-          return new Promise((res, rej) => {
+      // ✅ Step 2: Validate size (15MB max)
+      if (originalBuffer.length > 15 * 1024 * 1024) {
+        return reject(new Error("Image size exceeds 15MB limit"));
+      }
+
+      // ✅ Step 3: Get metadata for smart processing
+      const metadata = await sharp(originalBuffer).metadata();
+
+      // ✅ Step 4: Resize only if too large (max 1200px)
+      const MAX_SIZE = 1200;
+      const shouldResize =
+        metadata.width > MAX_SIZE || metadata.height > MAX_SIZE;
+
+      let sharpInstance = sharp(originalBuffer, { failOnError: false });
+      if (shouldResize) {
+        sharpInstance = sharpInstance.resize({
+          width: MAX_SIZE,
+          height: MAX_SIZE,
+          fit: "inside",
+          withoutEnlargement: true,
+        });
+      }
+
+      // ✅ Step 5: Smart format & compression
+      let compressedBuffer;
+      if (metadata.format === "png" && metadata.hasAlpha) {
+        // Preserve transparency
+        compressedBuffer = await sharpInstance
+          .png({ quality: 90, compressionLevel: 6 })
+          .toBuffer();
+      } else {
+        compressedBuffer = await sharpInstance
+          .webp({ quality: 80, effort: 4 }) // Higher quality
+          .toBuffer();
+      }
+
+      // ✅ Step 6: Retry-safe upload to Cloudinary
+      const result = await asyncRetry(
+        () =>
+          new Promise((res, rej) => {
             const uploadStream = cloudinary.v2.uploader.upload_stream(
               {
                 folder,
                 public_id: publicId,
                 resource_type: "image",
-                timeout: 60000,
+                transformation: [
+                  {
+                    fetch_format: "auto",
+                    quality: "auto:best",
+                    flags: ["progressive", "immutable_cache"],
+                  },
+                ],
               },
-              (error, result) => {
-                if (error)
-                  return rej(
-                    new Error("Cloudinary upload failed: " + error.message)
-                  );
-                res(result);
+              (error, uploadResult) => {
+                if (error) return rej(error);
+                res(uploadResult);
               }
             );
             streamifier.createReadStream(compressedBuffer).pipe(uploadStream);
-          });
-        },
+          }),
         { retries: 5, minTimeout: 1000, maxTimeout: 5000 }
-      )
-        .then(resolve)
-        .catch(reject);
+      );
+
+      resolve(result);
     } catch (err) {
       reject(new Error("Error during image processing: " + err.message));
     }
