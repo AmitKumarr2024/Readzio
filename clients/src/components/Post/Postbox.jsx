@@ -338,9 +338,9 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   ]);
 
   const filteredPosts = useMemo(() => {
-    console.log("📊 Source posts count:", getSourcePosts.length);
-    console.log("📊 Filter type:", filterType);
-    console.log("📊 Category filter:", category);
+    // console.log("📊 Source posts count:", getSourcePosts.length);
+    // console.log("📊 Filter type:", filterType);
+    // console.log("📊 Category filter:", category);
 
     let validPosts = getSourcePosts.filter(
       (post) =>
@@ -351,7 +351,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
         post?.category
     );
 
-    console.log("📊 Valid posts after basic filtering:", validPosts.length);
+    // console.log("📊 Valid posts after basic filtering:", validPosts.length);
 
     if (category) {
       validPosts = validPosts.filter((post) => {
@@ -364,10 +364,10 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
         }
         return postCategorySlug === category.toLowerCase();
       });
-      console.log(
-        "📊 Valid posts after category filtering:",
-        validPosts.length
-      );
+      // console.log(
+      //   "📊 Valid posts after category filtering:",
+      //   validPosts.length
+      // );
     }
 
     return validPosts;
@@ -392,7 +392,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
       return false;
     });
 
-    console.log("📊 Final sorted posts count:", uniquePosts.length);
+    // console.log("📊 Final sorted posts count:", uniquePosts.length);
     return uniquePosts;
   }, [filteredPosts]);
 
@@ -483,7 +483,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
         limit: postsPerPage,
       };
       try {
-        console.log("🔄 Loading more posts, page:", nextPage);
+        // console.log("🔄 Loading more posts, page:", nextPage);
 
         if (isAuthenticated) {
           if (filterType === "Following") {
@@ -506,7 +506,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
           await dispatch(fetchPublicPosts(options)).unwrap();
         }
 
-        console.log("✅ More posts loaded successfully");
+        // console.log("✅ More posts loaded successfully");
       } catch (e) {
         console.error("❌ Failed to load more posts:", e);
       }
@@ -558,29 +558,29 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   );
 
   // Debug logging
-  useEffect(() => {
-    console.log("🐛 Debug Info:", {
-      hasInitialized,
-      postLoading,
-      publicLoading,
-      postsCount: getSourcePosts.length,
-      filteredPostsCount: filteredPosts.length,
-      selectedPostsCount: selectedPosts.length,
-      filterType,
-      isAuthenticated,
-      customPostsLength: customPosts.length,
-    });
-  }, [
-    hasInitialized,
-    postLoading,
-    publicLoading,
-    getSourcePosts.length,
-    filteredPosts.length,
-    selectedPosts.length,
-    filterType,
-    isAuthenticated,
-    customPosts.length,
-  ]);
+  // useEffect(() => {
+  //   console.log("🐛 Debug Info:", {
+  //     hasInitialized,
+  //     postLoading,
+  //     publicLoading,
+  //     postsCount: getSourcePosts.length,
+  //     filteredPostsCount: filteredPosts.length,
+  //     selectedPostsCount: selectedPosts.length,
+  //     filterType,
+  //     isAuthenticated,
+  //     customPostsLength: customPosts.length,
+  //   });
+  // }, [
+  //   hasInitialized,
+  //   postLoading,
+  //   publicLoading,
+  //   getSourcePosts.length,
+  //   filteredPosts.length,
+  //   selectedPosts.length,
+  //   filterType,
+  //   isAuthenticated,
+  //   customPosts.length,
+  // ]);
 
   return (
     <ErrorBoundary>
