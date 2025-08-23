@@ -281,3 +281,9 @@
     transform: rotate(360deg);
   }
 }
+
+.custom-image-rendering {
+  image-rendering: crisp-edges;
+  -webkit-image-rendering: optimize-contrast;
+  -ms-interpolation-mode: nearest-neighbor;
+}

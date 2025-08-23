@@ -10,12 +10,7 @@ const ImageBlockOutput = ({ src, caption }) => {
       <img
         src={src}
         alt={caption || "Image"}
-        className="rounded-lg shadow-md max-h-[550px] w-auto mx-auto block"
-        style={{
-          imageRendering: "high-quality",
-          imageRendering: "-webkit-optimize-contrast",
-          imageRendering: "crisp-edges",
-        }}
+        className="rounded-lg shadow-md max-h-[550px] w-auto mx-auto block custom-image-rendering"
         loading="lazy"
       />
       {caption && (
@@ -77,8 +72,6 @@ const ImageBlockOutput = ({ src, caption }) => {
                     alt="Zoomed view"
                     className="select-none pointer-events-none"
                     style={{
-                      imageRendering: "high-quality",
-                      imageRendering: "-webkit-optimize-contrast",
                       maxHeight: "85vh",
                       maxWidth: "85vw",
                       height: "auto",
