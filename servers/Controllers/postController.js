@@ -1716,71 +1716,90 @@ export const trackGuestVisit = async (req, res, next) => {
 };
 
 // Fixed getAllPosts with better validation and performance
+// Fixed getAllPosts with better validation, guest handling, and performance
 export const getAllPosts = async (req, res, next) => {
   try {
     logMemory("📋 Start getAllPosts");
 
-    // Improved input validation
+    // Validate and normalize pagination params
     const { pageNum, limitNum } = validatePaginationParams(
       req.query.page,
       req.query.limit
     );
     const skip = (pageNum - 1) * limitNum;
+
     const authorId = req.query.authorId;
     const rawAuthorIds = req.query.authorIds || req.query.followingIds;
     const isGuest = req.query.isGuest === "true";
+    const loggedInUserId = req.user?._id?.toString();
 
-    // Validate author ID if provided
-    if (authorId && !mongoose.Types.ObjectId.isValid(authorId)) {
-      throw new AppError("Invalid author ID format", 400, "GetAllPosts");
-    }
-
+    /** ------------------------
+     * Build Query Conditions
+     * ------------------------- */
     const query = {
       blocked: { $ne: true },
-      ...(isGuest || !req.user?._id ? { isPublished: true } : {}),
     };
 
-    if (authorId && mongoose.Types.ObjectId.isValid(authorId)) {
-      query.author = authorId;
+    // Guests or unauthenticated users should see only published posts
+    if (isGuest || !loggedInUserId) {
+      query.isPublished = true;
+    }
+
+    // If specific authorId is provided
+    if (authorId) {
+      if (!mongoose.Types.ObjectId.isValid(authorId)) {
+        throw new AppError("Invalid author ID format", 400, "GetAllPosts");
+      }
+      query.author = new mongoose.Types.ObjectId(authorId);
+
+      // ✅ If user is author, allow their drafts too
+      if (loggedInUserId === authorId) {
+        delete query.isPublished;
+      }
     } else if (rawAuthorIds) {
-      // Better validation for author IDs
+      // Multiple author IDs (followers/following)
       const authorIdArray = rawAuthorIds
         .split(",")
         .map((id) => id.trim())
-        .filter((id) => {
-          if (!mongoose.Types.ObjectId.isValid(id)) {
-            console.warn(`Invalid author ID: ${id}`);
-            return false;
-          }
-          return true;
-        });
+        .filter((id) => mongoose.Types.ObjectId.isValid(id));
 
       if (authorIdArray.length === 0) {
         throw new AppError("No valid author IDs provided", 400, "GetAllPosts");
       }
-
       if (authorIdArray.length > 100) {
-        // Limit to prevent abuse
         throw new AppError("Too many author IDs (max 100)", 400, "GetAllPosts");
       }
 
-      query.author = { $in: authorIdArray };
+      query.author = {
+        $in: authorIdArray.map((id) => new mongoose.Types.ObjectId(id)),
+      };
     }
 
-    // Add caching
+    /** ------------------------
+     * Cache Handling
+     * ------------------------- */
     const cacheKey = `allPosts:${pageNum}:${limitNum}:${JSON.stringify(
       query
-    )}:${req.user?._id || "guest"}`;
+    )}:${loggedInUserId || "guest"}`;
     const cachedResult = cache.get(cacheKey);
     if (cachedResult) {
       logMemory("Cache hit for all posts");
       return res.status(200).json(cachedResult);
     }
 
-    console.log("Query:", JSON.stringify(query));
     logMemory("📖 Before fetching posts");
+    console.log(
+      "Query:",
+      JSON.stringify(query),
+      "Skip:",
+      skip,
+      "Limit:",
+      limitNum
+    );
 
-    // Use aggregation for better performance
+    /** ------------------------
+     * Aggregation Pipeline
+     * ------------------------- */
     const pipeline = [
       { $match: query },
       { $sort: { createdAt: -1 } },
@@ -1842,6 +1861,9 @@ export const getAllPosts = async (req, res, next) => {
       },
     ];
 
+    /** ------------------------
+     * Fetch Data with Retry
+     * ------------------------- */
     const [posts, total] = await Promise.all([
       asyncRetry(() => PostModel.aggregate(pipeline).allowDiskUse(true), {
         retries: 3,
@@ -1854,28 +1876,27 @@ export const getAllPosts = async (req, res, next) => {
     ]);
 
     logMemory("📖 After fetching posts");
-    console.log("Posts fetched:", posts.length);
-    console.log("Total posts:", total);
+    console.log("Posts fetched:", posts.length, "Total posts:", total);
 
-    // Update post counts cache
-    const postCountsCacheKey = `postCounts:${req.user?._id || "guest"}`;
+    /** ------------------------
+     * Post Counts for Sidebar
+     * ------------------------- */
+    const postCountsCacheKey = `postCounts:${loggedInUserId || "guest"}`;
     let counts = cache.get(postCountsCacheKey);
     if (!counts) {
-      logMemory("📊 Before cache update");
       const [allPostsCount, myPostsCount, followingPostsCount] =
         await Promise.all([
           PostModel.countDocuments({
             blocked: { $ne: true },
             isPublished: true,
           }).lean(),
-          req.user?._id
+          loggedInUserId
             ? PostModel.countDocuments({
-                author: req.user._id,
+                author: loggedInUserId,
                 blocked: { $ne: true },
-                isPublished: true,
               }).lean()
             : Promise.resolve(0),
-          req.user?._id
+          loggedInUserId
             ? PostModel.countDocuments({
                 author: { $in: req.user.following || [] },
                 blocked: { $ne: true },
@@ -1884,31 +1905,34 @@ export const getAllPosts = async (req, res, next) => {
             : Promise.resolve(0),
         ]);
       counts = { allPostsCount, myPostsCount, followingPostsCount };
-      cache.set(postCountsCacheKey, counts, 600); // 10 minutes
-      logMemory("📊 After cache update");
+      cache.set(postCountsCacheKey, counts, 600);
     }
 
-    // Record activity for authenticated users
-    if (req.user?._id && !isGuest) {
+    /** ------------------------
+     * Record Activity + Emit Socket
+     * ------------------------- */
+    if (loggedInUserId && !isGuest) {
       await recordActivity({
-        userId: req.user._id,
+        userId: loggedInUserId,
         action: "VIEWED_POSTS",
         message: "Viewed all posts",
-      }).catch((err) => {
-        console.warn("Failed to record activity:", err.message);
-      });
+      }).catch((err) =>
+        console.warn("Failed to record activity:", err.message)
+      );
 
-      // Emit socket event with retry
       await asyncRetry(
-        async () => {
-          io.to(req.user._id.toString()).emit("postCountsUpdated", counts);
+        () => {
+          io.to(loggedInUserId).emit("postCountsUpdated", counts);
         },
         { retries: 2, minTimeout: 500 }
-      ).catch((err) => {
-        console.warn("Failed to emit socket event:", err.message);
-      });
+      ).catch((err) =>
+        console.warn("Failed to emit socket event:", err.message)
+      );
     }
 
+    /** ------------------------
+     * Final Response
+     * ------------------------- */
     const result = {
       success: true,
       total,
@@ -1919,10 +1943,9 @@ export const getAllPosts = async (req, res, next) => {
       totalPages: Math.ceil(total / limitNum),
     };
 
-    // Cache the result
-    cache.set(cacheKey, result, 300); // 5 minutes
-
+    cache.set(cacheKey, result, 300); // Cache for 5 minutes
     logMemory("📋 End getAllPosts");
+
     res.status(200).json(result);
   } catch (error) {
     console.error("Error in getAllPosts:", error.message, error.stack);
@@ -1937,6 +1960,7 @@ export const getAllPosts = async (req, res, next) => {
     );
   }
 };
+
 // Fixed getSinglePost with security improvements
 export const getSinglePost = async (req, res, next) => {
   try {

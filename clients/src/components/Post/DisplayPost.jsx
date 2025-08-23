@@ -1,11 +1,5 @@
-import React, {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -40,10 +34,8 @@ import { selectPostViews } from "../../Utils/postSelectors";
 const DisplayPost = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const dispatch = useDispatch();
 
-  // Redux state
   const {
     currentPost: post,
     loading,
@@ -65,7 +57,6 @@ const DisplayPost = () => {
   const viewsData = useSelector((state) => selectPostViews(state, slug));
   const { views } = viewsData;
 
-  // Local state
   const [sessionTime, setSessionTime] = useState(0);
   const [localStartTime, setLocalStartTime] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -74,16 +65,9 @@ const DisplayPost = () => {
   const [postReady, setPostReady] = useState(false);
   const [showSeeMore, setShowSeeMore] = useState(false);
   const [showAnyway, setShowAnyway] = useState(false);
-  const [currentSlug, setCurrentSlug] = useState(null);
 
-  // Refs for tracking and preventing race conditions
   const hasFetchedStatus = useRef(false);
-  const sessionTimeInterval = useRef(null);
-  const previousSlug = useRef(null);
-  const isInitialMount = useRef(true);
-  const fetchController = useRef(null);
 
-  // Derived state
   const activePost = isAuthenticated ? post : guestPost;
   const activeLoading = isAuthenticated ? loading : guestLoading;
   const activeError = isAuthenticated ? error : guestError;
@@ -116,260 +100,115 @@ const DisplayPost = () => {
   const isUserSubscribed =
     activePost?.author?._id && isSubscribed[activePost?.author?._id];
 
-  // Cleanup function for reading session
-  const cleanupReadingSession = useCallback(() => {
-    if (sessionTimeInterval.current) {
-      clearInterval(sessionTimeInterval.current);
-      sessionTimeInterval.current = null;
-    }
-
-    if (isTracking && activePost?._id && localStartTime) {
-      const timeSpent = Math.floor((Date.now() - localStartTime) / 1000);
-      if (timeSpent > 3) {
-        dispatch(submitReadingTime({ postId: activePost._id, timeSpent }))
-          .unwrap()
-          .catch((error) =>
-            console.error("[DisplayPost] Failed to record reading time:", error)
-          );
-      }
-      dispatch(stopReading());
-    }
-
-    setLocalStartTime(null);
-    setSessionTime(0);
-  }, [dispatch, activePost?._id, isTracking, localStartTime]);
-
-  // Reset component state when slug changes
-  const resetComponentState = useCallback(() => {
-    setFetchAttempted(false);
-    setPostReady(false);
-    setShowSeeMore(false);
-    setShowAnyway(false);
-    setIsDeleteModalOpen(false);
-    setIsUserModalOpen(false);
-    hasFetchedStatus.current = false;
-
-    // Cancel any ongoing fetch
-    if (fetchController.current) {
-      fetchController.current.abort();
-      fetchController.current = null;
-    }
-  }, []);
-
-  // Main effect for fetching post data when slug changes
   useEffect(() => {
     if (!slug) return;
 
-    console.log(`[DisplayPost] useEffect triggered with slug: ${slug}`);
-    console.log(`[DisplayPost] Previous slug: ${previousSlug.current}`);
-    console.log(`[DisplayPost] Is initial mount: ${isInitialMount.current}`);
-
-    // Check if this is a new slug or just a re-render
-    const isNewSlug = previousSlug.current !== slug;
-    previousSlug.current = slug;
-
-    if (!isNewSlug && !isInitialMount.current) {
-      console.log(`[DisplayPost] Same slug, skipping fetch`);
-      return; // Don't refetch if it's the same slug
-    }
-
-    isInitialMount.current = false;
-
-    // Cleanup previous reading session
-    cleanupReadingSession();
-
-    // Reset component state
-    resetComponentState();
-
-    // Clear previous post data immediately
-    console.log(`[DisplayPost] Clearing previous post data`);
+    // CLEAR old data before fetching
     if (isAuthenticated) {
-      dispatch(clearCurrentPost());
+      dispatch({ type: "post/clearCurrentPost" });
     } else {
       dispatch({ type: "guest/clearSinglePost" });
     }
 
-    // Update current slug state
-    setCurrentSlug(slug);
-
-    console.log(`[DisplayPost] Fetching post with slug: ${slug}`);
+    setFetchAttempted(false);
+    setPostReady(false);
+    hasFetchedStatus.current = false;
 
     const fetchData = async () => {
       try {
-        // Create new AbortController for this fetch
-        fetchController.current = new AbortController();
-
-        let result;
         if (isAuthenticated) {
-          result = await dispatch(
-            getSinglePost({
-              slug,
-              isGuest: false,
-              signal: fetchController.current.signal,
-            })
-          ).unwrap();
+          await dispatch(getSinglePost({ slug, isGuest: false })).unwrap();
         } else {
-          result = await dispatch(
-            fetchPublicPostBySlug(slug, {
-              signal: fetchController.current.signal,
-            })
-          ).unwrap();
-        }
-
-        // Verify the result matches the current slug
-        if (result?.slug === slug) {
-          console.log(
-            `[DisplayPost] Successfully fetched post: ${result.title}`
-          );
-          setFetchAttempted(true);
-          setPostReady(true);
-
-          if (isAuthenticated) {
-            dispatch(fetchCategories());
-          }
-        } else {
-          console.warn(
-            `[DisplayPost] Slug mismatch in result: expected ${slug}, got ${result?.slug}`
-          );
-          setFetchAttempted(true);
-          setPostReady(false);
-        }
-      } catch (err) {
-        // Don't show error if request was aborted (component unmounted or slug changed)
-        if (err.name !== "AbortError") {
-          console.error("[DisplayPost] Failed to fetch post:", err);
-          toast.error(err?.message || "Post not found");
+          await dispatch(fetchPublicPostBySlug(slug)).unwrap();
         }
         setFetchAttempted(true);
+        setPostReady(true);
+        if (isAuthenticated) {
+          dispatch(fetchCategories());
+        }
+      } catch (err) {
+        console.error("[DisplayPost] Failed to fetch post:", err);
+        toast.error(err?.message || "Post not found");
+        setFetchAttempted(true);
         setPostReady(false);
-      } finally {
-        fetchController.current = null;
       }
     };
 
     fetchData();
+  }, [dispatch, slug, isAuthenticated]);
 
-    // Cleanup function
-    return () => {
-      if (fetchController.current) {
-        fetchController.current.abort();
-        fetchController.current = null;
-      }
-    };
-  }, [
-    slug,
-    isAuthenticated,
-    dispatch,
-    cleanupReadingSession,
-    resetComponentState,
-  ]);
-
-  // Effect for fetching additional data when post is loaded
   useEffect(() => {
     if (
       !isAuthenticated ||
       !activePost?._id ||
       !activePost?.author?._id ||
-      hasFetchedStatus.current ||
-      activePost?.slug !== slug // CRITICAL: Ensure we're fetching for the correct post
-    ) {
+      hasFetchedStatus.current
+    )
       return;
-    }
-
-    console.log(
-      `[DisplayPost] Fetching additional data for post: ${activePost.title}`
-    );
     hasFetchedStatus.current = true;
 
-    const fetchAdditionalData = async () => {
-      try {
-        await Promise.all([
-          dispatch(fetchBookmarkAndLikeStatus(activePost._id)),
-          dispatch(fetchSubscriptionPlansByAuthor(activePost.author._id)),
-        ]);
-      } catch (err) {
-        console.error("Failed to fetch additional data:", err);
-      }
-    };
+    dispatch(fetchBookmarkAndLikeStatus(activePost._id)).catch(() =>
+      toast.error("Failed to fetch interaction status")
+    );
 
-    fetchAdditionalData();
+    dispatch(fetchSubscriptionPlansByAuthor(activePost.author._id)).catch(
+      (err) => console.error("Subscription fetch error:", err)
+    );
   }, [
     dispatch,
     activePost?._id,
     activePost?.author?._id,
-    activePost?.slug, // CRITICAL: Include slug in dependencies
     isAuthenticated,
     slug,
   ]);
 
-  // Effect for starting reading tracking
   useEffect(() => {
-    if (
-      activePost?.slug === slug && // CRITICAL: Check slug match
-      !isTracking &&
-      !localStartTime &&
-      postReady &&
-      activePost?._id
-    ) {
-      console.log(
-        `[DisplayPost] Starting reading tracking for: ${activePost.title}`
-      );
+    if (activePost?.slug && !isTracking && !localStartTime) {
       dispatch(startReading(activePost._id));
       setLocalStartTime(Date.now());
     }
-  }, [
-    dispatch,
-    activePost?.slug,
-    activePost?._id,
-    activePost?.title,
-    isTracking,
-    localStartTime,
-    slug,
-    postReady,
-  ]);
-
-  // Effect for session time tracking
-  useEffect(() => {
-    if (!isTracking || !localStartTime) {
-      if (sessionTimeInterval.current) {
-        clearInterval(sessionTimeInterval.current);
-        sessionTimeInterval.current = null;
-      }
-      return;
-    }
-
-    sessionTimeInterval.current = setInterval(() => {
-      setSessionTime(Math.floor((Date.now() - localStartTime) / 1000));
-    }, 1000);
 
     return () => {
-      if (sessionTimeInterval.current) {
-        clearInterval(sessionTimeInterval.current);
-        sessionTimeInterval.current = null;
+      if (isTracking && activePost?.slug && localStartTime) {
+        const timeSpent = Math.floor((Date.now() - localStartTime) / 1000);
+        if (timeSpent > 3) {
+          dispatch(submitReadingTime({ postId: activePost._id, timeSpent }))
+            .unwrap()
+            .catch((error) =>
+              console.error(
+                "[DisplayPost] Failed to record reading time:",
+                error
+              )
+            );
+        }
+        dispatch(stopReading());
       }
     };
+  }, [dispatch, activePost?.slug, activePost?._id, isTracking, localStartTime]);
+
+  useEffect(() => {
+    if (!isTracking || !localStartTime) return;
+    const interval = setInterval(() => {
+      setSessionTime(Math.floor((Date.now() - localStartTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
   }, [isTracking, localStartTime]);
 
-  // Effect for handling subscription banner
   useEffect(() => {
     if (!isAuthenticated && isPostRestricted && activePost && !showSeeMore) {
       setShowSeeMore(true);
     }
-  }, [isAuthenticated, isPostRestricted, activePost, showSeeMore]);
+  }, [isAuthenticated, isPostRestricted, activePost]);
 
-  // Effect for error handling and navigation
   useEffect(() => {
     if (!fetchAttempted) return;
 
-    if (!postReady && !activeLoading && activeError) {
-      console.log("[DisplayPost] Post not found, navigating to 404");
+    if (!postReady && !activeLoading) {
       navigate("/404", { replace: true });
-      return;
     }
 
     if (activeError && !activeLoading) {
       toast.error(activeError || "An error occurred");
-      return;
     }
 
     if (
@@ -391,36 +230,9 @@ const DisplayPost = () => {
     isPostRestricted,
     canViewPost,
     isAuthenticated,
+    slug,
     navigate,
   ]);
-
-  // Cleanup effect on unmount
-  useEffect(() => {
-    return () => {
-      cleanupReadingSession();
-      if (fetchController.current) {
-        fetchController.current.abort();
-      }
-    };
-  }, [cleanupReadingSession]);
-
-  // CRITICAL: Prevent rendering if slug mismatch
-  if (activePost && activePost.slug && activePost.slug !== slug) {
-    console.log(
-      `[DisplayPost] Slug mismatch detected: expected ${slug}, got ${activePost.slug}`
-    );
-    return (
-      <ErrorBoundary>
-        <HelmetProvider>
-          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-            <div className="max-w-7xl mx-auto px-8 sm:px-6 lg:px-8 py-8">
-              {renderSkeleton()}
-            </div>
-          </div>
-        </HelmetProvider>
-      </ErrorBoundary>
-    );
-  }
 
   const BASE_URL =
     import.meta.env.VITE_API_URL || "https://inksha-uedq.onrender.com";
@@ -480,25 +292,14 @@ const DisplayPost = () => {
   );
 
   const renderPostContent = () => {
-    console.log(`[DisplayPost] renderPostContent called`);
-    console.log(`[DisplayPost] fetchAttempted: ${fetchAttempted}`);
-    console.log(`[DisplayPost] activeLoading: ${activeLoading}`);
-    console.log(`[DisplayPost] postReady: ${postReady}`);
-    console.log(`[DisplayPost] activePost slug: ${activePost?.slug}`);
-    console.log(`[DisplayPost] current slug: ${slug}`);
-
-    // Show skeleton while loading or if post doesn't match current slug
-    if (!fetchAttempted || activeLoading || subscriptionLoading) {
+    if (!fetchAttempted || activeLoading || subscriptionLoading)
       return renderSkeleton();
-    }
 
-    // Show not found if no post or post doesn't match slug
     if (
       !postReady ||
       !activePost ||
       !activePost._id ||
-      !Array.isArray(activePost.blocks) ||
-      activePost.slug !== slug // CRITICAL CHECK
+      !Array.isArray(activePost.blocks)
     ) {
       return <PostNotFound message={activeError || "Post not found"} />;
     }
@@ -530,7 +331,7 @@ const DisplayPost = () => {
 
     return (
       <>
-        <Helmet key={activePost.slug}>
+        <Helmet>
           <title>{activePost.title || "Loading..."} | inkshaa</title>
           <meta name="robots" content="index, follow" />
           <meta name="description" content={plainText} />
@@ -635,7 +436,7 @@ const DisplayPost = () => {
             <DeleteModal
               isOpen={isDeleteModalOpen}
               onClose={() => setIsDeleteModalOpen(false)}
-              postId={activePost?._id}
+              postId={activePost._id}
               slug={activePost?.slug}
             />
           )}
