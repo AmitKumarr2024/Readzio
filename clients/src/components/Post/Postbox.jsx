@@ -115,7 +115,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     const options = { page: 1, limit: postsPerPage };
     const loadInitialPosts = async () => {
       try {
-        console.log("🔄 Loading initial posts for filterType:", filterType);
+        // console.log("🔄 Loading initial posts for filterType:", filterType);
 
         if (isAuthenticated) {
           if (filterType === "Following") {
@@ -139,7 +139,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
         }
 
         setHasInitialized(true);
-        console.log("✅ Initial posts loaded successfully");
+        // console.log("✅ Initial posts loaded successfully");
       } catch (e) {
         console.error("❌ Failed to load initial posts:", e);
         setHasInitialized(true); // Set as initialized even on error to prevent retry loop
@@ -162,7 +162,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     if (!socket || customPosts.length) return;
 
     const handlePostCreated = debounce((newPost) => {
-      console.log("🔔 New post created, reloading...");
+      // console.log("🔔 New post created, reloading...");
       const options = { page: 1, limit: postsPerPage };
       const reloadPosts = async () => {
         try {
@@ -206,7 +206,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     }, 300);
 
     const handlePostUpdated = debounce(() => {
-      console.log("🔔 Post updated, reloading...");
+      // console.log("🔔 Post updated, reloading...");
       const options = { page: 1, limit: postsPerPage };
       const reloadPosts = async () => {
         try {
@@ -231,7 +231,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     }, 300);
 
     const handlePostDeleted = debounce((data) => {
-      console.log("🔔 Post deleted, reloading...");
+      // console.log("🔔 Post deleted, reloading...");
       const options = { page: 1, limit: postsPerPage };
       const reloadPosts = async () => {
         try {
