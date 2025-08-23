@@ -356,7 +356,10 @@ export const getSearchPosts = createAsyncThunk(
   }
 );
 
-// FIXED: Enhanced getSinglePost with better slug handling and state management
+// Add this at the top of your slice file
+const activeRequests = new Map(); // Track active requests globally
+
+// Enhanced getSinglePost with proper loop prevention
 export const getSinglePost = createAsyncThunk(
   "post/getSinglePost",
   async ({ slug, isGuest = false }, { rejectWithValue, getState }) => {
@@ -370,63 +373,80 @@ export const getSinglePost = createAsyncThunk(
       const cleanSlug = slug.trim();
       console.log("[getSinglePost] Fetching post with slug:", cleanSlug);
 
-      // Check if we're already loading this slug to prevent duplicate requests
-      const { post } = getState();
-      if (post.loading && post.currentPostSlug === cleanSlug) {
+      // FIXED: Better duplicate request prevention using Map
+      const requestKey = `${cleanSlug}-${isGuest}`;
+      if (activeRequests.has(requestKey)) {
         console.log("[getSinglePost] Already loading this slug, skipping");
-        return rejectWithValue({ message: "Already loading this post" });
+        return rejectWithValue({
+          slug: cleanSlug,
+          message: "Already loading this post",
+        });
       }
+
+      // Mark this request as active
+      activeRequests.set(requestKey, true);
 
       const endpoint = isGuest
         ? `/post/public/${cleanSlug}`
         : `/post/${cleanSlug}`;
       console.log("[getSinglePost] Request endpoint:", endpoint);
 
-      const response = await asyncRetry(() =>
-        axiosInstance.get(endpoint, {
-          timeout: 15000, // Increased timeout
+      try {
+        // REMOVED: asyncRetry to prevent retry loops
+        const response = await axiosInstance.get(endpoint, {
+          timeout: 15000,
           headers: {
             "Cache-Control": "no-cache",
             Pragma: "no-cache",
           },
-        })
-      );
-
-      console.log("[getSinglePost] Response received:", {
-        success: response.data.success,
-        postTitle: response.data.post?.title,
-        postSlug: response.data.post?.slug,
-        postId: response.data.post?._id,
-      });
-
-      if (!response.data.post) {
-        console.error("[getSinglePost] Post not found for slug:", cleanSlug);
-        return rejectWithValue({ message: "Post not found" });
-      }
-
-      // Validate that we got the correct post
-      const receivedPost = response.data.post;
-      if (receivedPost.slug.toLowerCase() !== cleanSlug.toLowerCase()) {
-        console.warn("[getSinglePost] Slug mismatch:", {
-          requested: cleanSlug,
-          received: receivedPost.slug,
         });
-      }
 
-      // Ensure blocks have proper IDs
-      if (receivedPost.blocks && Array.isArray(receivedPost.blocks)) {
-        receivedPost.blocks = receivedPost.blocks.map((block) => ({
-          ...block,
-          id: block.id || block._id || `block-${Date.now()}-${Math.random()}`,
-        }));
-      }
+        console.log("[getSinglePost] Response received:", {
+          success: response.data.success,
+          postTitle: response.data.post?.title,
+          postSlug: response.data.post?.slug,
+          postId: response.data.post?._id,
+        });
 
-      return {
-        post: receivedPost,
-        slug: cleanSlug,
-        timestamp: Date.now(),
-      };
+        if (!response.data.post) {
+          console.error("[getSinglePost] Post not found for slug:", cleanSlug);
+          return rejectWithValue({
+            message: "Post not found",
+            slug: cleanSlug,
+          });
+        }
+
+        // Validate that we got the correct post
+        const receivedPost = response.data.post;
+        if (receivedPost.slug.toLowerCase() !== cleanSlug.toLowerCase()) {
+          console.warn("[getSinglePost] Slug mismatch:", {
+            requested: cleanSlug,
+            received: receivedPost.slug,
+          });
+        }
+
+        // Ensure blocks have proper IDs
+        if (receivedPost.blocks && Array.isArray(receivedPost.blocks)) {
+          receivedPost.blocks = receivedPost.blocks.map((block) => ({
+            ...block,
+            id: block.id || block._id || `block-${Date.now()}-${Math.random()}`,
+          }));
+        }
+
+        return {
+          post: receivedPost,
+          slug: cleanSlug,
+          timestamp: Date.now(),
+        };
+      } finally {
+        // CRITICAL: Always clean up the active request
+        activeRequests.delete(requestKey);
+      }
     } catch (error) {
+      // FIXED: Clean up active request on error
+      const requestKey = `${slug}-${isGuest}`;
+      activeRequests.delete(requestKey);
+
       const errMsg =
         error.response?.data?.message ||
         error.message ||
@@ -634,11 +654,18 @@ const postSlice = createSlice({
       state.currentPost = null;
       state.currentPostSlug = null;
       state.error = null;
+      state.loading = false; // ADDED: Reset loading state
     },
-    // NEW: Action to set the slug we're about to load
+    // FIXED: Better slug management
     setLoadingSlug: (state, action) => {
       state.currentPostSlug = action.payload;
       state.error = null;
+    },
+    // NEW: Force clear active requests (for debugging)
+    clearActiveRequests: (state) => {
+      activeRequests.clear();
+      state.loading = false;
+      state.currentPostSlug = null;
     },
   },
   extraReducers: (builder) => {
@@ -770,23 +797,22 @@ const postSlice = createSlice({
         state.searchLoading = false;
         state.searchError = action.payload.message;
       })
-      // FIXED: Enhanced getSinglePost state handling
+      // FIXED: Better getSinglePost state handling
       .addCase(getSinglePost.pending, (state, action) => {
-        console.log(
-          "[getSinglePost.pending] Loading post:",
-          action.meta.arg?.slug
-        );
-        state.loading = true;
-        state.error = null;
-        state.currentPostSlug = action.meta.arg?.slug || null;
+        const slug = action.meta.arg?.slug;
+        console.log("[getSinglePost.pending] Loading post:", slug);
 
-        // Only clear currentPost if we're loading a different slug
-        if (
-          state.currentPost &&
-          state.currentPost.slug !== action.meta.arg?.slug
-        ) {
-          console.log("[getSinglePost.pending] Clearing previous post");
-          state.currentPost = null;
+        // Only set loading if we're not already loading this slug
+        if (state.currentPostSlug !== slug) {
+          state.loading = true;
+          state.error = null;
+          state.currentPostSlug = slug || null;
+
+          // Clear previous post if loading a different slug
+          if (state.currentPost && state.currentPost.slug !== slug) {
+            console.log("[getSinglePost.pending] Clearing previous post");
+            state.currentPost = null;
+          }
         }
       })
       .addCase(getSinglePost.fulfilled, (state, action) => {
@@ -795,22 +821,11 @@ const postSlice = createSlice({
           title: action.payload.post?.title,
         });
 
+        // FIXED: Always update state regardless of slug check
         state.loading = false;
         state.error = null;
-
-        // Only update if this is the slug we were expecting
-        if (state.currentPostSlug === action.payload.slug) {
-          state.currentPost = action.payload.post;
-          state.currentPostSlug = action.payload.slug;
-        } else {
-          console.warn(
-            "[getSinglePost.fulfilled] Slug mismatch - ignoring response",
-            {
-              expected: state.currentPostSlug,
-              received: action.payload.slug,
-            }
-          );
-        }
+        state.currentPost = action.payload.post;
+        state.currentPostSlug = action.payload.slug;
       })
       .addCase(getSinglePost.rejected, (state, action) => {
         console.log("[getSinglePost.rejected] Failed to load post:", {
@@ -819,13 +834,11 @@ const postSlice = createSlice({
         });
 
         state.loading = false;
-        state.error = action.payload.message;
+        state.error = action.payload?.message || "Failed to load post";
 
-        // Only clear if this was the slug we were trying to load
-        if (state.currentPostSlug === action.payload?.slug) {
-          state.currentPost = null;
-          state.currentPostSlug = null;
-        }
+        // FIXED: Always clear state on error to prevent stuck states
+        state.currentPost = null;
+        state.currentPostSlug = null;
       })
       .addCase(updatePost.pending, (state) => {
         state.updateLoading = true;
@@ -974,6 +987,7 @@ export const {
   updateCurrentPostBlockedStatus,
   clearCurrentPost,
   setLoadingSlug,
+  clearActiveRequests,
 } = postSlice.actions;
 
 export default postSlice.reducer;

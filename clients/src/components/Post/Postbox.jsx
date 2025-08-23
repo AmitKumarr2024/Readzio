@@ -11,16 +11,15 @@ import CardOfPost from "../Cards/CardOfPost";
 import {
   getAllPosts,
   fetchFollowingPosts,
-  getSinglePost,
+  clearCurrentPost, // Import the clear action
 } from "../../store/postSlice";
-import { fetchCommentsAndCount } from "../../store/commentSlice"; // Updated import
+import { fetchCommentsAndCount } from "../../store/commentSlice";
 import { fetchCategories } from "../../store/categorySlice";
 import { fetchFollowers } from "../../store/followSlice";
 import {
   selectSocketState,
   fetchInitialPostCounts,
 } from "../../store/socketSlice";
-import { fetchPostsSequentially } from "../../Utils/fetchPostsSequentially";
 import { fetchPublicPosts } from "../../store/guestSlice";
 import Sorted from "../Tabs/Sorted";
 import ErrorBoundary from "./ErrorBoundary";
@@ -35,10 +34,14 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     posts = [],
     loading: postLoading = false,
     error: postError,
+    followingPosts = [], // Add this
+    publicPosts: reduxPublicPosts = [], // Add this for authenticated users
   } = useSelector((state) => state.post || {});
+
   const { publicPosts = [], publicLoading = false } = useSelector(
     (state) => state.guest || {}
   );
+
   const { commentCounts = {}, loading: commentLoading } = useSelector(
     (state) => state.comment || {}
   );
@@ -55,8 +58,14 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
 
   const postsPerPage = 100;
   const [currentPage, setCurrentPage] = useState(1);
+  const [hasInitialized, setHasInitialized] = useState(false); // Track initialization
   const observer = useRef(null);
   const lastPostElementRef = useRef(null);
+
+  // Clear any stuck post state on component mount
+  useEffect(() => {
+    dispatch(clearCurrentPost());
+  }, [dispatch]);
 
   // Debounced fetch for comments
   const debouncedFetchComments = useMemo(
@@ -92,47 +101,51 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
       : 1;
   }, [isSidebarOpen]);
 
+  // Initialize categories and followers
   useEffect(() => {
     dispatch(fetchCategories());
     if (isAuthenticated) dispatch(fetchFollowers());
     dispatch(fetchInitialPostCounts());
   }, [dispatch, isAuthenticated]);
 
+  // FIXED: Simplified initial posts loading without fetchPostsSequentially
   useEffect(() => {
-    if (customPosts.length) return;
-    const options = { page: 1, limit: postsPerPage, blocked: { $ne: true } };
+    if (customPosts.length || hasInitialized) return;
+
+    const options = { page: 1, limit: postsPerPage };
     const loadInitialPosts = async () => {
       try {
-        let metaPosts;
+        console.log("🔄 Loading initial posts for filterType:", filterType);
+
         if (isAuthenticated) {
           if (filterType === "Following") {
-            metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+            await dispatch(fetchFollowingPosts(options)).unwrap();
           } else if (filterType === "Followers" && followers.list.length) {
-            metaPosts = await dispatch(
+            await dispatch(
               getAllPosts({
                 authorIds: followers.list.map((u) => u._id),
                 ...options,
               })
             ).unwrap();
           } else if (filterType === "My Posts" && user?._id) {
-            metaPosts = await dispatch(
+            await dispatch(
               getAllPosts({ userId: user._id, ...options })
             ).unwrap();
           } else {
-            metaPosts = await dispatch(getAllPosts(options)).unwrap();
+            await dispatch(getAllPosts(options)).unwrap();
           }
-          await fetchPostsSequentially({
-            dispatch,
-            posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
-            getThunk: ({ slug }) => getSinglePost({ slug }),
-          });
         } else {
-          metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
+          await dispatch(fetchPublicPosts(options)).unwrap();
         }
+
+        setHasInitialized(true);
+        console.log("✅ Initial posts loaded successfully");
       } catch (e) {
         console.error("❌ Failed to load initial posts:", e);
+        setHasInitialized(true); // Set as initialized even on error to prevent retry loop
       }
     };
+
     loadInitialPosts();
   }, [
     dispatch,
@@ -141,39 +154,38 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     customPosts.length,
     followers.list,
     isAuthenticated,
+    hasInitialized, // Add this dependency
   ]);
 
+  // FIXED: Simplified socket handling without fetchPostsSequentially
   useEffect(() => {
     if (!socket || customPosts.length) return;
 
     const handlePostCreated = debounce((newPost) => {
-      const options = { page: 1, limit: postsPerPage, blocked: { $ne: true } };
+      console.log("🔔 New post created, reloading...");
+      const options = { page: 1, limit: postsPerPage };
       const reloadPosts = async () => {
         try {
-          let metaPosts;
           if (isAuthenticated) {
             if (filterType === "Following") {
-              metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+              await dispatch(fetchFollowingPosts(options)).unwrap();
             } else if (filterType === "My Posts" && user?._id) {
-              metaPosts = await dispatch(
+              await dispatch(
                 getAllPosts({ userId: user._id, ...options })
               ).unwrap();
             } else {
-              metaPosts = await dispatch(getAllPosts(options)).unwrap();
+              await dispatch(getAllPosts(options)).unwrap();
             }
-            await fetchPostsSequentially({
-              dispatch,
-              posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
-              getThunk: ({ slug }) => getSinglePost({ slug }),
-            });
           } else {
-            metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
+            await dispatch(fetchPublicPosts(options)).unwrap();
           }
         } catch (e) {
           console.error("❌ Failed to reload posts:", e);
         }
       };
       reloadPosts();
+
+      // Update counts
       if (isAuthenticated) {
         dispatch({
           type: "socket/setPostCounts",
@@ -194,27 +206,22 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     }, 300);
 
     const handlePostUpdated = debounce(() => {
-      const options = { page: 1, limit: postsPerPage, blocked: { $ne: true } };
+      console.log("🔔 Post updated, reloading...");
+      const options = { page: 1, limit: postsPerPage };
       const reloadPosts = async () => {
         try {
-          let metaPosts;
           if (isAuthenticated) {
             if (filterType === "Following") {
-              metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+              await dispatch(fetchFollowingPosts(options)).unwrap();
             } else if (filterType === "My Posts" && user?._id) {
-              metaPosts = await dispatch(
+              await dispatch(
                 getAllPosts({ userId: user._id, ...options })
               ).unwrap();
             } else {
-              metaPosts = await dispatch(getAllPosts(options)).unwrap();
+              await dispatch(getAllPosts(options)).unwrap();
             }
-            await fetchPostsSequentially({
-              dispatch,
-              posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
-              getThunk: ({ slug }) => getSinglePost({ slug }),
-            });
           } else {
-            metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
+            await dispatch(fetchPublicPosts(options)).unwrap();
           }
         } catch (e) {
           console.error("❌ Failed to reload posts:", e);
@@ -224,33 +231,30 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     }, 300);
 
     const handlePostDeleted = debounce((data) => {
-      const options = { page: 1, limit: postsPerPage, blocked: { $ne: true } };
+      console.log("🔔 Post deleted, reloading...");
+      const options = { page: 1, limit: postsPerPage };
       const reloadPosts = async () => {
         try {
-          let metaPosts;
           if (isAuthenticated) {
             if (filterType === "Following") {
-              metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+              await dispatch(fetchFollowingPosts(options)).unwrap();
             } else if (filterType === "My Posts" && user?._id) {
-              metaPosts = await dispatch(
+              await dispatch(
                 getAllPosts({ userId: user._id, ...options })
               ).unwrap();
             } else {
-              metaPosts = await dispatch(getAllPosts(options)).unwrap();
+              await dispatch(getAllPosts(options)).unwrap();
             }
-            await fetchPostsSequentially({
-              dispatch,
-              posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
-              getThunk: ({ slug }) => getSinglePost({ slug }),
-            });
           } else {
-            metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
+            await dispatch(fetchPublicPosts(options)).unwrap();
           }
         } catch (e) {
           console.error("❌ Failed to reload posts:", e);
         }
       };
       reloadPosts();
+
+      // Update counts
       if (isAuthenticated) {
         dispatch({
           type: "socket/setPostCounts",
@@ -298,20 +302,56 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     }, {});
   }, [categories]);
 
+  // FIXED: Get the correct posts based on filter type
+  const getSourcePosts = useMemo(() => {
+    if (customPosts.length) return customPosts;
+
+    if (isAuthenticated) {
+      switch (filterType) {
+        case "Following":
+          return followingPosts;
+        case "My Posts":
+          return posts.filter((post) => post.author?._id === user?._id);
+        case "Followers":
+          const followersIds = followers.list.map((u) => u._id);
+          return posts.filter(
+            (post) =>
+              followersIds.includes(String(post.author?._id)) &&
+              String(post.author?._id) !== String(currentUser._id)
+          );
+        default:
+          return posts;
+      }
+    }
+
+    return publicPosts;
+  }, [
+    customPosts,
+    posts,
+    followingPosts,
+    publicPosts,
+    filterType,
+    user?._id,
+    followers.list,
+    currentUser._id,
+    isAuthenticated,
+  ]);
+
   const filteredPosts = useMemo(() => {
-    const sourcePosts = customPosts.length
-      ? customPosts
-      : isAuthenticated
-      ? posts
-      : publicPosts;
-    let validPosts = sourcePosts.filter(
+    console.log("📊 Source posts count:", getSourcePosts.length);
+    console.log("📊 Filter type:", filterType);
+    console.log("📊 Category filter:", category);
+
+    let validPosts = getSourcePosts.filter(
       (post) =>
         post?._id &&
-        post?.isPublished &&
+        post?.isPublished !== false && // Allow undefined or true
         !post?.blocked &&
         post?.author &&
         post?.category
     );
+
+    console.log("📊 Valid posts after basic filtering:", validPosts.length);
 
     if (category) {
       validPosts = validPosts.filter((post) => {
@@ -324,49 +364,36 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
         }
         return postCategorySlug === category.toLowerCase();
       });
-    }
-
-    if (isAuthenticated && filterType === "My Posts") {
-      validPosts = validPosts.filter((post) => post.author?._id === user?._id);
-    }
-
-    if (isAuthenticated && filterType === "Followers") {
-      const followersIds = followers.list.map((user) => user._id);
-      validPosts = validPosts.filter(
-        (post) =>
-          followersIds.includes(String(post.author?._id)) &&
-          String(post.author?._id) !== String(currentUser._id)
-      );
-    }
-
-    if (isAuthenticated && filterType === "Following") {
-      validPosts = validPosts.filter(
-        (post) => String(post.author?._id) !== String(currentUser._id)
+      console.log(
+        "📊 Valid posts after category filtering:",
+        validPosts.length
       );
     }
 
     return validPosts;
   }, [
-    customPosts,
-    posts,
-    publicPosts,
+    getSourcePosts,
     filterType,
     user?._id,
     followers.list,
     category,
     currentUser._id,
     isAuthenticated,
+    categories,
   ]);
 
   const sortedPosts = useMemo(() => {
     const seen = new Set();
-    return filteredPosts.filter((post) => {
+    const uniquePosts = filteredPosts.filter((post) => {
       if (post?._id && !seen.has(post._id)) {
         seen.add(post._id);
         return true;
       }
       return false;
     });
+
+    console.log("📊 Final sorted posts count:", uniquePosts.length);
+    return uniquePosts;
   }, [filteredPosts]);
 
   const hasMore = useMemo(
@@ -403,9 +430,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
 
   // Updated useEffect for fetching comments
   useEffect(() => {
-    const postsToFetch = (
-      customPosts.length ? customPosts : isAuthenticated ? posts : publicPosts
-    )
+    const postsToFetch = getSourcePosts
       .filter((post) => post?._id && commentCounts[post._id] === undefined)
       .map((post) => post._id)
       .slice(0, 10); // Batch to 10 posts to reduce load
@@ -413,16 +438,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
       debouncedFetchComments(postsToFetch);
     }
     return () => debouncedFetchComments.cancel();
-  }, [
-    dispatch,
-    customPosts,
-    posts,
-    publicPosts,
-    commentCounts,
-    commentLoading,
-    isAuthenticated,
-    debouncedFetchComments,
-  ]);
+  }, [getSourcePosts, commentCounts, commentLoading, debouncedFetchComments]);
 
   const screenWidth = useWindowWidth();
 
@@ -457,44 +473,42 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     [selectedPosts, screenWidth]
   );
 
+  // FIXED: Simplified load more without fetchPostsSequentially
   const loadMorePosts = useCallback(async () => {
-    if (!(postLoading || publicLoading) && hasMore) {
+    if (!(postLoading || publicLoading) && hasMore && hasInitialized) {
       const nextPage = currentPage + 1;
       setCurrentPage(nextPage);
       const options = {
         page: nextPage,
         limit: postsPerPage,
-        blocked: { $ne: true },
       };
       try {
-        let metaPosts;
+        console.log("🔄 Loading more posts, page:", nextPage);
+
         if (isAuthenticated) {
           if (filterType === "Following") {
-            metaPosts = await dispatch(fetchFollowingPosts(options)).unwrap();
+            await dispatch(fetchFollowingPosts(options)).unwrap();
           } else if (filterType === "Followers" && followers.list.length) {
-            metaPosts = await dispatch(
+            await dispatch(
               getAllPosts({
                 authorIds: followers.list.map((user) => user._id),
                 ...options,
               })
             ).unwrap();
           } else if (filterType === "My Posts" && user?._id) {
-            metaPosts = await dispatch(
+            await dispatch(
               getAllPosts({ userId: user._id, ...options })
             ).unwrap();
           } else {
-            metaPosts = await dispatch(getAllPosts(options)).unwrap();
+            await dispatch(getAllPosts(options)).unwrap();
           }
-          await fetchPostsSequentially({
-            dispatch,
-            posts: metaPosts.posts.map((p) => ({ slug: p.slug })),
-            getThunk: ({ slug }) => getSinglePost({ slug }),
-          });
         } else {
-          metaPosts = await dispatch(fetchPublicPosts(options)).unwrap();
+          await dispatch(fetchPublicPosts(options)).unwrap();
         }
+
+        console.log("✅ More posts loaded successfully");
       } catch (e) {
-        console.error("❌ Failed to load posts:", e);
+        console.error("❌ Failed to load more posts:", e);
       }
     }
   }, [
@@ -503,6 +517,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     postLoading,
     publicLoading,
     hasMore,
+    hasInitialized,
     filterType,
     followers.list,
     user?._id,
@@ -510,7 +525,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   ]);
 
   useEffect(() => {
-    if (!lastPostElementRef.current || !hasMore) return;
+    if (!lastPostElementRef.current || !hasMore || !hasInitialized) return;
     observer.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !(postLoading || publicLoading))
@@ -523,7 +538,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
       if (observer.current && lastPostElementRef.current)
         observer.current.unobserve(lastPostElementRef.current);
     };
-  }, [loadMorePosts, hasMore, postLoading, publicLoading]);
+  }, [loadMorePosts, hasMore, postLoading, publicLoading, hasInitialized]);
 
   const renderSkeletonGrid = () => (
     <div
@@ -533,7 +548,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
           : "lg:grid-cols-3 xl:grid-cols-5"
       } gap-4 py-6 w-full`}
     >
-      {Array.from({ length: postsPerPage }).map((_, i) => (
+      {Array.from({ length: 12 }).map((_, i) => (
         <Skeleton
           key={i}
           className="h-64 w-full rounded-lg bg-gray-200 dark:bg-gray-700"
@@ -542,16 +557,54 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     </div>
   );
 
+  // Debug logging
+  useEffect(() => {
+    console.log("🐛 Debug Info:", {
+      hasInitialized,
+      postLoading,
+      publicLoading,
+      postsCount: getSourcePosts.length,
+      filteredPostsCount: filteredPosts.length,
+      selectedPostsCount: selectedPosts.length,
+      filterType,
+      isAuthenticated,
+      customPostsLength: customPosts.length,
+    });
+  }, [
+    hasInitialized,
+    postLoading,
+    publicLoading,
+    getSourcePosts.length,
+    filteredPosts.length,
+    selectedPosts.length,
+    filterType,
+    isAuthenticated,
+    customPosts.length,
+  ]);
+
   return (
     <ErrorBoundary>
       <div className="w-full px-4 py-4">
         <Sorted posts={filteredPosts} onSortChange={() => {}} />
-        {(postLoading || publicLoading) && !selectedPosts.length ? (
+
+        {/* Show loading only if not initialized or no posts yet */}
+        {(postLoading || publicLoading) && !hasInitialized ? (
           renderSkeletonGrid()
         ) : postError ? (
-          <p className="text-center text-red-500">
-            {postError?.message || "Error loading posts"}
-          </p>
+          <div className="text-center py-8">
+            <p className="text-red-500 mb-4">
+              {postError?.message || "Error loading posts"}
+            </p>
+            <button
+              onClick={() => {
+                setHasInitialized(false);
+                setCurrentPage(1);
+              }}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Retry
+            </button>
+          </div>
         ) : (
           <>
             <div
@@ -596,10 +649,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
                       <CardOfPost
                         {...item}
                         commentsCount={commentCounts[item._id] ?? 0}
-                        loading={
-                          (postLoading || publicLoading) &&
-                          !selectedPosts.length
-                        }
+                        loading={false} // Don't show loading on individual cards
                         categoryMap={categoryMap}
                         postType={item?.postType}
                         isPremium={item?.isPremium}
@@ -608,23 +658,41 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
                     </div>
                   );
                 })
-              ) : (
-                <p className="col-span-full text-center text-gray-500">
-                  {filterType === "Following"
-                    ? "Follow users to see their posts here."
-                    : filterType === "Followers"
-                    ? "No posts from your followers yet."
-                    : filterType === "My Posts"
-                    ? "You haven't posted yet."
-                    : "No posts found"}
-                </p>
-              )}
+              ) : hasInitialized ? (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-gray-500 text-lg mb-4">
+                    {filterType === "Following"
+                      ? "Follow users to see their posts here."
+                      : filterType === "Followers"
+                      ? "No posts from your followers yet."
+                      : filterType === "My Posts"
+                      ? "You haven't posted yet."
+                      : "No posts found"}
+                  </p>
+                  {(filterType === "Following" ||
+                    filterType === "Followers") && (
+                    <button
+                      onClick={() => {
+                        setHasInitialized(false);
+                        setCurrentPage(1);
+                      }}
+                      className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Refresh
+                    </button>
+                  )}
+                </div>
+              ) : null}
             </div>
-            {(postLoading || publicLoading) && selectedPosts.length > 0 && (
-              <div className="flex justify-center py-4">
-                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            )}
+
+            {/* Loading more indicator */}
+            {(postLoading || publicLoading) &&
+              hasInitialized &&
+              selectedPosts.length > 0 && (
+                <div className="flex justify-center py-4">
+                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
           </>
         )}
       </div>
