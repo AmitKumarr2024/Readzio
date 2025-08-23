@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import io from "socket.io-client";
 import PostEditor from "../CreatePost/PostEditor";
 import { updatePost, getSinglePost, clearError } from "../../store/postSlice";
 import LoadingBar from "../../Utils/LoadingBar";
@@ -14,6 +15,12 @@ import {
 import { fetchCategories, selectCategory } from "../../store/categorySlice";
 import { X } from "lucide-react";
 import { Transition } from "@headlessui/react";
+
+// Initialize Socket.IO client
+const socket = io("https://inksha-uedq.onrender.com", {
+  withCredentials: true,
+  transports: ["websocket", "polling"],
+});
 
 const ErrorBoundary = ({ children }) => {
   const [hasError, setHasError] = useState(false);
@@ -58,9 +65,21 @@ const EditPost = () => {
     dispatch(getSinglePost({ slug, isGuest: false }));
     dispatch(fetchCategories());
 
+    // Listen for postUpdated event
+    socket.on("postUpdated", (updatedPost) => {
+      console.log("[Client] Received postUpdated event:", updatedPost);
+      if (updatedPost.slug === slug) {
+        dispatch({
+          type: "post/updatePost/fulfilled",
+          payload: { post: updatedPost },
+        });
+      }
+    });
+
     return () => {
       dispatch(clearError());
       dispatch(resetPostMeta());
+      socket.off("postUpdated");
     };
   }, [dispatch, slug, navigate, isAuthenticated]);
 
@@ -79,7 +98,7 @@ const EditPost = () => {
               : [
                   ["", ""],
                   ["", ""],
-                ]; // Default 2x2 table
+                ];
           return {
             id: block.id,
             type: "table",
@@ -105,14 +124,15 @@ const EditPost = () => {
   }, [currentPost, categories, dispatch, postType, selectedCategory, tags]);
 
   useEffect(() => {
-    if (updateSuccess) {
+    if (updateSuccess && currentPost) {
+      console.log("[Client] Update success, navigating to:", currentPost.slug);
       toast.success("Post updated successfully");
       setTimeout(() => {
         setIsOpen(false);
         navigate(`/post/${currentPost.slug}`);
-      }, 2000);
+      }, 1000); // Reduced delay for faster feedback
     }
-  }, [updateSuccess, navigate, currentPost?.slug]);
+  }, [updateSuccess, navigate, currentPost]);
 
   const handleSave = async () => {
     if (!title.trim()) return toast.error("Post title cannot be empty");
@@ -132,7 +152,7 @@ const EditPost = () => {
             : [
                 ["", ""],
                 ["", ""],
-              ]; // Default 2x2 table
+              ];
         return {
           id: block.id,
           type: "table",
@@ -153,15 +173,23 @@ const EditPost = () => {
     };
 
     try {
+      console.log("[Client] Sending update data:", updateData);
       const action = await dispatch(
         updatePost({ slug: currentPost.slug, updateData })
       );
       if (updatePost.fulfilled.match(action)) {
+        console.log("[Client] Update response:", action.payload);
+        // Immediately update state with response
+        dispatch({
+          type: "post/updatePost/fulfilled",
+          payload: action.payload,
+        });
         dispatch(clearError());
       } else {
         throw new Error(action.error?.message || "Update failed");
       }
     } catch (err) {
+      console.error("[Client] Update error:", err);
       toast.error(err.message || "Failed to update post");
     }
   };
@@ -178,7 +206,7 @@ const EditPost = () => {
       toast.error("Invalid post type selected");
       return;
     }
-    dispatch(setPostType(newPostType)); // Update local state
+    dispatch(setPostType(newPostType));
     try {
       const action = await dispatch(
         updatePost({
@@ -194,7 +222,7 @@ const EditPost = () => {
       }
     } catch (err) {
       toast.error(err.message || "Failed to update post type");
-      dispatch(setPostType(currentPost.postType || "Article")); // Revert on failure
+      dispatch(setPostType(currentPost.postType || "Article"));
     }
   };
 
