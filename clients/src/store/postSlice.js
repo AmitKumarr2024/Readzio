@@ -34,10 +34,9 @@ const initialState = {
   isTracking: false,
   appealLoading: false,
   appealError: null,
-  recentTitles: [], // Track recent titles for deduplication
+  recentTitles: [],
 };
 
-// Simplified Blob URL check
 const containsBlobUrl = (data) => {
   if (!data) return false;
   if (typeof data === "string") return data.startsWith("blob:");
@@ -47,7 +46,6 @@ const containsBlobUrl = (data) => {
   return false;
 };
 
-// Async retry with exponential backoff
 const asyncRetry = async (
   fn,
   retries = 3,
@@ -131,61 +129,11 @@ export const fetchPublicPosts = createAsyncThunk(
   }
 );
 
-// old code
-// export const createPosts = createAsyncThunk(
-//   "post/createPost",
-//   async (postData, { rejectWithValue, getState }) => {
-//     const { post } = getState();
-//     const title = postData.title?.trim();
-//     // Check for recent title in state
-//     const recentTitle = post.recentTitles.find(
-//       (rt) => rt.title === title && Date.now() - rt.timestamp < 60 * 1000
-//     );
-//     if (recentTitle) {
-//       return rejectWithValue({
-//         message: "A post with this title was recently created",
-//       });
-//     }
-//     if (
-//       !postData.blocks ||
-//       !Array.isArray(postData.blocks) ||
-//       postData.blocks.length === 0
-//     ) {
-//       return rejectWithValue({ message: "Blocks are required" });
-//     }
-//     if (
-//       containsBlobUrl(postData.thumbnail) ||
-//       containsBlobUrl(postData.blocks)
-//     ) {
-//       return rejectWithValue({
-//         message:
-//           "Upload failed: Please convert Blob URLs to base64 or upload images properly.",
-//       });
-//     }
-//     try {
-//       const { auth } = getState();
-//       // No retries for creation to prevent duplicates
-//       const response = await axiosInstance.post("/post/create", postData, {
-//         timeout: 15000,
-//       });
-//       // Wait 2s to account for backend indexing delay
-//       await new Promise((resolve) => setTimeout(resolve, 2000));
-//       return { ...response.data, authorId: auth.user?._id, title };
-//     } catch (error) {
-//       const errMsg = error.response?.data?.message || "Failed to create post";
-//       console.error("[createPosts] Error:", errMsg);
-//       return rejectWithValue({ message: errMsg });
-//     }
-//   }
-// );
-// new code
 export const createPosts = createAsyncThunk(
   "post/createPost",
   async (postData, { rejectWithValue, getState }) => {
     const { post } = getState();
     const title = postData.title?.trim();
-
-    // Check for recent title in state
     const recentTitle = post.recentTitles.find(
       (rt) => rt.title === title && Date.now() - rt.timestamp < 60 * 1000
     );
@@ -194,7 +142,6 @@ export const createPosts = createAsyncThunk(
         message: "A post with this title was recently created",
       });
     }
-
     if (
       !postData.blocks ||
       !Array.isArray(postData.blocks) ||
@@ -202,7 +149,6 @@ export const createPosts = createAsyncThunk(
     ) {
       return rejectWithValue({ message: "Blocks are required" });
     }
-
     if (
       containsBlobUrl(postData.thumbnail) ||
       containsBlobUrl(postData.blocks)
@@ -212,37 +158,26 @@ export const createPosts = createAsyncThunk(
           "Upload failed: Please convert Blob URLs to base64 or upload images properly.",
       });
     }
-
     try {
       const { auth } = getState();
-
-      // FIXED: Increased timeout to 60 seconds for large posts with images
       const response = await axiosInstance.post("/post/post-create", postData, {
-        timeout: 60000, // 60 seconds instead of 15
-        // Add these headers for better handling
+        timeout: 60000,
         headers: {
           "Content-Type": "application/json",
         },
       });
-
-      // FIXED: Removed artificial delay - let the server respond naturally
-      // FIXED: Better error handling - check if response has expected structure
       if (!response.data || !response.data.post) {
         throw new Error("Invalid server response format");
       }
-
       return {
         ...response.data,
         authorId: auth.user?._id,
         title,
       };
     } catch (error) {
-      // FIXED: Better error detection and logging
       console.error("[createPosts] Full error:", error);
       console.error("[createPosts] Response:", error.response?.data);
       console.error("[createPosts] Status:", error.response?.status);
-
-      // Handle specific error cases
       if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
         return rejectWithValue({
           message:
@@ -250,13 +185,11 @@ export const createPosts = createAsyncThunk(
           isTimeout: true,
         });
       }
-
       if (error.response?.status === 413) {
         return rejectWithValue({
           message: "Post data too large. Please reduce image sizes or content.",
         });
       }
-
       if (error.response?.status >= 500) {
         return rejectWithValue({
           message:
@@ -264,7 +197,6 @@ export const createPosts = createAsyncThunk(
           isServerError: true,
         });
       }
-
       const errMsg =
         error.response?.data?.message ||
         error.message ||
@@ -414,7 +346,7 @@ export const getSinglePost = createAsyncThunk(
       }
       const endpoint = isGuest ? `/post/public/${slug}` : `/post/${slug}`;
       const response = await asyncRetry(() =>
-        axiosInstance.get(endpoint, { timeout: 10000 })
+        axiosInstance.get(`${endpoint}?t=${Date.now()}`, { timeout: 10000 })
       );
       if (!response.data.post) {
         console.error("[getSinglePost] Post not found for slug:", slug);
@@ -434,10 +366,17 @@ export const updatePost = createAsyncThunk(
   async ({ slug, updateData }, { rejectWithValue }) => {
     try {
       const response = await asyncRetry(() =>
-        axiosInstance.patch(`/post/update/${slug}`, updateData, {
-          timeout: 10000,
-        })
+        axiosInstance.patch(
+          `/post/update/${slug}?t=${Date.now()}`,
+          updateData,
+          {
+            timeout: 10000,
+          }
+        )
       );
+      if (!response.data.post) {
+        throw new Error("Invalid server response format");
+      }
       return response.data;
     } catch (error) {
       const errMsg = error.response?.data?.message || "Failed to update post";
@@ -606,6 +545,24 @@ const postSlice = createSlice({
     clearCurrentPost: (state) => {
       state.currentPost = null;
     },
+    handlePostUpdated: (state, action) => {
+      const updatedPost = action.payload;
+      if (state.currentPost?.slug === updatedPost.slug) {
+        state.currentPost = { ...state.currentPost, ...updatedPost };
+      }
+      const updateArray = (array) => {
+        const idx = array.findIndex((p) => p.slug === updatedPost.slug);
+        if (idx !== -1) {
+          array[idx] = { ...array[idx], ...updatedPost };
+        }
+      };
+      updateArray(state.posts);
+      updateArray(state.publicPosts);
+      updateArray(state.followingPosts);
+      updateArray(state.latestPosts);
+      updateArray(state.trendingPosts);
+      updateArray(state.searchPosts);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -671,12 +628,10 @@ const postSlice = createSlice({
         state.createLoading = false;
         state.posts.unshift(action.payload.post);
         state.followingPosts.unshift(action.payload.post);
-        // Add title to recentTitles with timestamp
         state.recentTitles.push({
           title: action.payload.title,
           timestamp: Date.now(),
         });
-        // Clean up titles older than 60 seconds
         state.recentTitles = state.recentTitles.filter(
           (rt) => Date.now() - rt.timestamp < 60 * 1000
         );
@@ -739,6 +694,7 @@ const postSlice = createSlice({
       .addCase(getSinglePost.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.currentPost = null; // Ensure clean state
       })
       .addCase(getSinglePost.fulfilled, (state, action) => {
         state.loading = false;
@@ -906,6 +862,7 @@ export const {
   clearReadingError,
   updateCurrentPostBlockedStatus,
   clearCurrentPost,
+  handlePostUpdated,
 } = postSlice.actions;
 
 export default postSlice.reducer;
