@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import TextBlock from "../actualPostDisplay/TextBlock";
@@ -41,13 +41,11 @@ const BlockRenderer = ({
     !isPostRestricted || canViewPost
   );
 
-  // Fixed useEffect with complete dependencies
   useEffect(() => {
     if (!isAuthenticated || !authorId || !user?._id || authorId === user?._id) {
       setSubscriptionStatus(null);
       return;
     }
-
     dispatch(getSubscriptionStatusByAuthor({ userId: user._id, authorId }))
       .unwrap()
       .then((status) => setSubscriptionStatus(status))
@@ -55,55 +53,51 @@ const BlockRenderer = ({
         console.error("Failed to fetch subscription status:", err);
         setSubscriptionStatus(null);
       });
-  }, [dispatch, isAuthenticated, user?._id, authorId]); // Complete dependency array
+  }, [dispatch, isAuthenticated, user?._id, authorId]);
 
-  // Memoized ad insertion function for better performance
-  const getAdBlocks = useMemo(() => {
-    return (blocks) => {
-      if (!Array.isArray(blocks)) return blocks;
+  const getAdBlocks = (blocks) => {
+    if (!Array.isArray(blocks)) return blocks;
 
-      const adBlocks = [...blocks];
-      const validTypes = [
-        "text",
-        "image",
-        "video",
-        "code",
-        "list",
-        "quote",
-        "poll",
-        "link",
-        "table",
-      ];
+    const adBlocks = [...blocks];
+    const validTypes = [
+      "text",
+      "image",
+      "video",
+      "code",
+      "list",
+      "quote",
+      "poll",
+      "link",
+      "table",
+    ];
 
-      const validIndices = [];
-      for (let i = 0; i < blocks.length; i++) {
-        if (validTypes.includes(blocks[i]?.type)) {
-          validIndices.push(i);
-        }
+    const validIndices = [];
+    for (let i = 0; i < blocks.length; i++) {
+      if (validTypes.includes(blocks[i]?.type)) {
+        validIndices.push(i);
       }
+    }
 
-      const adInsertions = [];
-      const interval = 3;
-      let current = validIndices.length > 0 ? 0 : -1;
+    const adInsertions = [];
+    const interval = 3;
+    let current = validIndices.length > 0 ? 0 : -1; // Start at first valid block
 
-      while (current >= 0 && current < validIndices.length) {
-        const adAfterIndex = validIndices[current];
-        adInsertions.push(adAfterIndex);
-        current += interval;
-      }
+    while (current >= 0 && current < validIndices.length) {
+      const adAfterIndex = validIndices[current];
+      adInsertions.push(adAfterIndex);
+      current += interval;
+    }
 
-      // Insert ads in reverse order to maintain correct indices
-      adInsertions.reverse().forEach((insertAt, index) => {
-        adBlocks.splice(insertAt + 1, 0, {
-          type: "ad",
-          adIndex: index,
-          adContent: "Sponsored",
-        });
+    adInsertions.reverse().forEach((insertAt, index) => {
+      adBlocks.splice(insertAt + 1, 0, {
+        type: "ad",
+        adIndex: index,
+        adContent: "Sponsored",
       });
+    });
 
-      return adBlocks;
-    };
-  }, []); // Empty dependency since this function doesn't depend on any props/state
+    return adBlocks;
+  };
 
   const renderBlock = (block, i) => {
     if (!block || !block.type) {
@@ -115,28 +109,11 @@ const BlockRenderer = ({
       );
     }
 
-    // Fixed table block processing
     if (block.type === "table") {
       const headers = Array.isArray(block.headers) ? block.headers : [];
-      const rows = Array.isArray(block.rows)
-        ? block.rows.filter((row) => Array.isArray(row) && row.length > 0)
-        : [];
-      const data =
-        block.data ||
-        (headers.length || rows.length
-          ? [headers, ...rows]
-          : [
-              ["Header 1", "Header 2"],
-              ["Cell 1", "Cell 2"],
-            ]);
-
-      block = {
-        ...block,
-        data,
-        caption: block.caption || "",
-        headers: undefined,
-        rows: undefined,
-      };
+      const rows = Array.isArray(block.rows) ? block.rows.filter(row => Array.isArray(row) && row.length > 0) : [];
+      const data = block.data || (headers.length || rows.length ? [headers, ...rows] : [["Header 1", "Header 2"], ["Cell 1", "Cell 2"]]);
+      block = { ...block, data, caption: block.caption || "", headers: undefined, rows: undefined };
     }
 
     switch (block.type) {
@@ -251,19 +228,16 @@ const BlockRenderer = ({
             options={block.options || []}
             caption={block.caption}
             className="my-6 p-4 bg-background-alt-light dark:bg-background-alt-dark rounded-lg"
-          />
+            />
         );
       case "ad":
         return (
-          <div key={i} className="my-6 w-full">
-            <InArticleAd postId={postId} adIndex={block.adIndex} />
+          <div className="my-6 w-full">
+            <InArticleAd key={`ad-${i}`} postId={postId} adIndex={block.adIndex} />
           </div>
         );
       default:
-        console.warn(
-          `[DEBUG] Unsupported block type at index ${i}:`,
-          block.type
-        );
+        console.warn(`[DEBUG] Unsupported block type at index ${i}:`, block.type);
         return (
           <div key={i} className="text-red-500 italic my-6">
             Unsupported content block: {block.type}
@@ -272,7 +246,6 @@ const BlockRenderer = ({
     }
   };
 
-  // Early return for loading state
   if (subscriptionLoading) {
     return (
       <div className="space-y-6">
@@ -316,7 +289,6 @@ const BlockRenderer = ({
     );
   }
 
-  // Early return for invalid blocks
   if (!Array.isArray(blocks)) {
     console.warn("BlockRenderer: 'blocks' prop is not an array", blocks);
     return null;
@@ -324,22 +296,15 @@ const BlockRenderer = ({
 
   const isAuthor = user?._id === authorId;
   const previewBlockLimit = 3;
-
-  // Memoized blocks processing
-  const blocksWithAds = useMemo(() => {
-    return isPostRestricted && !canViewPost && isAuthenticated
+  const blocksWithAds =
+    isPostRestricted && !canViewPost && isAuthenticated
       ? blocks
       : getAdBlocks(blocks);
-  }, [blocks, isPostRestricted, canViewPost, isAuthenticated, getAdBlocks]);
-
-  const previewBlocks = useMemo(() => {
-    return blocks
-      .slice(0, previewBlockLimit)
-      .filter((block) =>
-        ["text", "image", "heading", "table"].includes(block.type)
-      );
-  }, [blocks, previewBlockLimit]);
-
+  const previewBlocks = blocks
+    .slice(0, previewBlockLimit)
+    .filter((block) =>
+      ["text", "image", "heading", "table"].includes(block.type)
+    );
   const displayedBlocks = showFullContent ? blocksWithAds : previewBlocks;
 
   const handleSeeMore = () => {
@@ -357,13 +322,12 @@ const BlockRenderer = ({
   return (
     <div className="relative flex flex-col space-y-0">
       {displayedBlocks.map((block, i) => (
-        <div key={`block-${i}`} className="w-full">
+        <div key={i} className="w-full">
           {renderBlock(block, i)}
         </div>
       ))}
-
       {isPostRestricted && !showFullContent && (
-        <div className="my-6 p-6 bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl text-center shadow-lg font-sans">
+        <div className="my-6 p-6 bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl text-center shadow-lg font-(family-name:--font-Urbanist)">
           <p className="text-white mb-4 text-lg font-medium">
             Unlock the full story with a subscription.
           </p>
@@ -384,7 +348,6 @@ const BlockRenderer = ({
           </button>
         </div>
       )}
-
       {showFullContent && tags?.length > 0 && <PostTags tags={tags} />}
     </div>
   );
