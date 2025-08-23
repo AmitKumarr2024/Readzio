@@ -72,12 +72,7 @@ const PostMetaSection = ({
             {post?.readTime && (
               <span className="text-gray-500 text-sm">{post.readTime}</span>
             )}
-            {typeof post.readingTime === "number" && (
-              <span className="text-gray-500 text-sm">
-                {post.readingTime} min read
-              </span>
-            )}
-
+            
             <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
               <TimeAgo date={post.createdAt} />
             </div>

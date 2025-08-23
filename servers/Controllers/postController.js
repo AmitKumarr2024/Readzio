@@ -1729,7 +1729,6 @@ export const getAllPosts = async (req, res, next) => {
   }
 };
 
-
 // Fixed getSinglePost with security improvements
 export const getSinglePost = async (req, res, next) => {
   try {
@@ -1998,7 +1997,7 @@ export const updatePostBySlug = async (req, res, next) => {
     }
 
     // Parse and validate blocks
-    let blocks = null; // Explicitly initialize to null
+    let blocks = null;
     if (rawBlocks !== undefined) {
       try {
         blocks = Array.isArray(rawBlocks) ? rawBlocks : JSON.parse(rawBlocks);
@@ -2015,7 +2014,11 @@ export const updatePostBySlug = async (req, res, next) => {
       }
     }
 
-    console.log("[UpdatePostBySlug] Validated inputs:", { title, slug, blocks });
+    console.log("[UpdatePostBySlug] Validated inputs:", {
+      title,
+      slug,
+      blocks,
+    });
 
     // Rate limiting for processing
     const blockLimit = pLimit(3);
@@ -2023,7 +2026,6 @@ export const updatePostBySlug = async (req, res, next) => {
 
     let processedBlocks;
     if (blocks) {
-      // Add IDs to blocks and validate structure
       const blocksWithIds = blocks.map((block, index) => {
         if (!block || typeof block !== "object" || !block.type) {
           throw new AppError(
@@ -2040,7 +2042,6 @@ export const updatePostBySlug = async (req, res, next) => {
         };
       });
 
-      // Validate table blocks specifically
       blocksWithIds.forEach((block, index) => {
         if (block.type === "table") {
           if (
@@ -2066,7 +2067,6 @@ export const updatePostBySlug = async (req, res, next) => {
         }
       });
 
-      // Process blocks with error handling
       logMemory("🖼️ Before processing blocks");
       try {
         processedBlocks = await Promise.all(
@@ -2161,7 +2161,6 @@ export const updatePostBySlug = async (req, res, next) => {
         finalSlug = fallbackSlugify(title);
       }
 
-      // Ensure slug uniqueness
       let counter = 1;
       while (
         await PostModel.exists({
@@ -2229,7 +2228,6 @@ export const updatePostBySlug = async (req, res, next) => {
     if (language !== undefined) updates.language = language;
     if (postType !== undefined) updates.postType = postType;
 
-    // Always update these fields
     updates.readTime = readTime;
     updates.readingTime = readingTime;
     updates.isPublished = true;
@@ -2271,18 +2269,25 @@ export const updatePostBySlug = async (req, res, next) => {
         { session }
       );
 
-      // Emit real-time update with retry
+      // Emit real-time update to specific user and broadcast
       try {
         await asyncRetry(
           async () => {
-            io.emit("postUpdated", {
+            const postData = {
               ...updatedPost.toObject(),
               authorId: userId,
-            });
+              timestamp: new Date(),
+            };
+            io.to(userId.toString()).emit("postUpdated", postData); // To specific user
+            io.emit("postUpdated", postData); // To all connected clients
+            console.log(
+              "[UpdatePostBySlug] Emitted postUpdated event:",
+              postData
+            );
           },
           { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
         );
-      } catch (EmitError) {
+      } catch (emitError) {
         console.error("Failed to emit postUpdated event:", emitError);
       }
 
@@ -2322,9 +2327,7 @@ export const updatePostBySlug = async (req, res, next) => {
               author: userId,
               blocked: { $ne: true },
               isPublished: true,
-           
-
- }).lean(),
+            }).lean(),
             PostModel.countDocuments({
               author: { $in: req.user.following || [] },
               blocked: { $ne: true },
@@ -2333,11 +2336,15 @@ export const updatePostBySlug = async (req, res, next) => {
           ]);
 
         const counts = { allPostsCount, myPostsCount, followingPostsCount };
-        cache.set(`postCounts:${userId}`, counts);
+        cache.set(`postCounts:${userId}`, counts, 300); // Cache for 5 minutes
 
         await asyncRetry(
           async () => {
             io.to(userId.toString()).emit("postCountsUpdated", counts);
+            console.log(
+              "[UpdatePostBySlug] Emitted postCountsUpdated:",
+              counts
+            );
           },
           { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
         );
