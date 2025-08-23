@@ -1732,7 +1732,7 @@ export const getAllPosts = async (req, res, next) => {
 export const getSinglePost = async (req, res, next) => {
   try {
     logMemory("📄 Start getSinglePost");
-    
+
     const { slug } = req.params;
     const userId = req.user?._id;
     const userRole = req.user?.role;
@@ -1746,7 +1746,7 @@ export const getSinglePost = async (req, res, next) => {
 
     // DON'T modify the slug case - preserve original case for exact matching
     const cleanSlug = slug.trim();
-    
+
     // Better slug validation (allow mixed case, numbers, hyphens, underscores)
     if (cleanSlug.length > 200 || !/^[a-zA-Z0-9-_]+$/.test(cleanSlug)) {
       throw new AppError("Invalid slug format", 400, "GetSinglePost");
@@ -1755,11 +1755,11 @@ export const getSinglePost = async (req, res, next) => {
     console.log("[GetSinglePost] Processing slug:", cleanSlug);
 
     // Build query with case-insensitive slug matching
-    let baseQuery = { 
-      slug: { 
-        $regex: `^${cleanSlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 
-        $options: "i" 
-      }
+    let baseQuery = {
+      slug: {
+        $regex: `^${cleanSlug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        $options: "i",
+      },
     };
 
     let query;
@@ -1778,8 +1778,8 @@ export const getSinglePost = async (req, res, next) => {
       query = {
         ...baseQuery,
         $or: [
-          { isPublished: true, blocked: { $ne: true } }, 
-          { author: new mongoose.Types.ObjectId(userId) }
+          { isPublished: true, blocked: { $ne: true } },
+          { author: new mongoose.Types.ObjectId(userId) },
         ],
       };
     }
@@ -1787,17 +1787,19 @@ export const getSinglePost = async (req, res, next) => {
     console.log("[GetSinglePost] Database query:", JSON.stringify(query));
 
     // Create cache key with original slug case
-    const cacheKey = `singlePost:${cleanSlug}:${userId || "guest"}:${userRole || "none"}`;
-    
+    const cacheKey = `singlePost:${cleanSlug}:${userId || "guest"}:${
+      userRole || "none"
+    }`;
+
     // Check cache first
     const cachedPost = cache.get(cacheKey);
     if (cachedPost) {
       console.log("[GetSinglePost] Cache hit for slug:", cleanSlug);
       logMemory("Cache hit for single post");
-      return res.status(200).json({ 
-        success: true, 
+      return res.status(200).json({
+        success: true,
         post: cachedPost,
-        source: "cache"
+        source: "cache",
       });
     }
 
@@ -1808,32 +1810,39 @@ export const getSinglePost = async (req, res, next) => {
       async () => {
         const result = await PostModel.findOne(query)
           .maxTimeMS(15000) // Increased timeout
-          .select(`
+          .select(
+            `
             _id title slug category excerpt thumbnail thumbnailSize isEmbed
             author createdAt lastEditedAt updatedAt isPublished isPinned 
             isPremium isSubscriberOnly blocked message readTime readingTime
             likesCount commentsCount viewsCount bookmarksCount shareCount
             tags language isFeatured allowComments timeSpent blocks postType
             likes sharedBy
-          `)
+          `
+          )
           .populate({
             path: "author",
             select: "name email avatar username",
-            options: { lean: true }
+            options: { lean: true },
           })
           .populate({
-            path: "category", 
+            path: "category",
             select: "name slug",
-            options: { lean: true }
+            options: { lean: true },
           })
           .lean();
 
-        console.log("[GetSinglePost] Database result:", result ? {
-          _id: result._id,
-          title: result.title,
-          slug: result.slug,
-          author: result.author?.name
-        } : "No post found");
+        console.log(
+          "[GetSinglePost] Database result:",
+          result
+            ? {
+                _id: result._id,
+                title: result.title,
+                slug: result.slug,
+                author: result.author?.name,
+              }
+            : "No post found"
+        );
 
         return result;
       },
@@ -1848,7 +1857,7 @@ export const getSinglePost = async (req, res, next) => {
         .select("_id title slug isPublished blocked author")
         .populate("author", "name")
         .lean();
-      
+
       if (debugPost) {
         console.log("[GetSinglePost] Post exists but not accessible:", {
           id: debugPost._id,
@@ -1858,32 +1867,34 @@ export const getSinglePost = async (req, res, next) => {
           blocked: debugPost.blocked,
           author: debugPost.author?.name,
           requestingUser: userId,
-          isOwner: debugPost.author?._id?.toString() === userId?.toString()
+          isOwner: debugPost.author?._id?.toString() === userId?.toString(),
         });
-        
+
         if (debugPost.blocked) {
           throw new AppError("Post is not available", 403, "GetSinglePost");
         } else if (!debugPost.isPublished) {
           throw new AppError("Post is not published", 404, "GetSinglePost");
         }
       }
-      
+
       throw new AppError("Post not found", 404, "GetSinglePost");
     }
 
     // Additional permission check for blocked posts
-    if (post.blocked && 
-        userId && 
-        post.author?._id?.toString() !== userId.toString() && 
-        userRole !== "admin") {
+    if (
+      post.blocked &&
+      userId &&
+      post.author?._id?.toString() !== userId.toString() &&
+      userRole !== "admin"
+    ) {
       throw new AppError("Post is not available", 403, "GetSinglePost");
     }
 
     // Ensure blocks are properly formatted
     if (post.blocks && Array.isArray(post.blocks)) {
-      post.blocks = post.blocks.map(block => ({
+      post.blocks = post.blocks.map((block) => ({
         ...block,
-        id: block.id || block._id || uuidv4()
+        id: block.id || block._id || uuidv4(),
       }));
     }
 
@@ -1893,14 +1904,17 @@ export const getSinglePost = async (req, res, next) => {
         post._id,
         { $inc: { viewsCount: 1 } },
         { upsert: false }
-      ).catch(err => {
-        console.warn("[GetSinglePost] Failed to increment view count:", err.message);
+      ).catch((err) => {
+        console.warn(
+          "[GetSinglePost] Failed to increment view count:",
+          err.message
+        );
       });
     }
 
     // Cache the result with shorter TTL for dynamic content
     cache.set(cacheKey, post, 300); // 5 minutes
-    
+
     // Cache post ID mapping for faster lookups
     cache.set(`postId:${cleanSlug}`, post._id, 1800); // 30 minutes
     cache.set(`postSlug:${post._id}`, post.slug, 1800); // Reverse mapping
@@ -1909,31 +1923,30 @@ export const getSinglePost = async (req, res, next) => {
       id: post._id,
       title: post.title,
       slug: post.slug,
-      blocksCount: post.blocks?.length || 0
+      blocksCount: post.blocks?.length || 0,
     });
 
     logMemory("📄 End getSinglePost");
-    
-    res.status(200).json({ 
-      success: true, 
+
+    res.status(200).json({
+      success: true,
       post,
       source: "database",
       meta: {
         slug: cleanSlug,
         cacheKey,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
-
   } catch (error) {
     console.error("[GetSinglePost] Error details:", {
       message: error.message,
       stack: error.stack,
       slug: req.params.slug,
       userId: req.user?._id,
-      url: req.originalUrl
+      url: req.originalUrl,
     });
-    
+
     next(
       error instanceof AppError
         ? error
@@ -2040,15 +2053,17 @@ export const trackTimeSpent = async (req, res, next) => {
   }
 };
 
-
 // Fixed updatePostBySlug controller with proper error handling and validation
 export const updatePostBySlug = async (req, res, next) => {
   let session = null;
   const startTime = Date.now();
-  
+
   try {
     logMemory("✏️ Start updatePostBySlug");
-    console.log("[UpdatePostBySlug] Received request for slug:", req.params.slug);
+    console.log(
+      "[UpdatePostBySlug] Received request for slug:",
+      req.params.slug
+    );
     console.log("[UpdatePostBySlug] Request body keys:", Object.keys(req.body));
 
     const { slug } = req.params;
@@ -2056,7 +2071,7 @@ export const updatePostBySlug = async (req, res, next) => {
     const userRole = req.user?.role;
 
     // Enhanced input validation
-    if (!slug || typeof slug !== 'string' || slug.trim().length === 0) {
+    if (!slug || typeof slug !== "string" || slug.trim().length === 0) {
       throw new AppError("Valid slug is required", 400, "UpdatePostBySlug");
     }
 
@@ -2075,10 +2090,13 @@ export const updatePostBySlug = async (req, res, next) => {
 
     // Payload size check
     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
-    if (payloadSize > 10 * 1024 * 1024) { // Increased to 10MB
+    if (payloadSize > 10 * 1024 * 1024) {
+      // Increased to 10MB
       throw new AppError(
-        `Payload exceeds 10MB limit: ${(payloadSize / 1024 / 1024).toFixed(2)}MB`, 
-        413, 
+        `Payload exceeds 10MB limit: ${(payloadSize / 1024 / 1024).toFixed(
+          2
+        )}MB`,
+        413,
         "UpdatePostBySlug"
       );
     }
@@ -2104,7 +2122,7 @@ export const updatePostBySlug = async (req, res, next) => {
       hasCategory: !!category,
       hasExcerpt: !!excerpt,
       hasBlocks: !!rawBlocks,
-      hasThumbnail: !!rawThumbnail
+      hasThumbnail: !!rawThumbnail,
     });
 
     // Parse and validate tags with better error handling
@@ -2113,22 +2131,21 @@ export const updatePostBySlug = async (req, res, next) => {
       try {
         if (Array.isArray(rawTags)) {
           tags = rawTags;
-        } else if (typeof rawTags === 'string') {
+        } else if (typeof rawTags === "string") {
           tags = JSON.parse(rawTags);
         } else {
           throw new Error("Tags must be array or JSON string");
         }
-        
+
         if (!Array.isArray(tags)) {
           throw new AppError("Tags must be an array", 400, "UpdatePostBySlug");
         }
 
         // Validate and clean tags
         tags = tags
-          .filter(tag => tag && typeof tag === 'string' && tag.trim())
-          .map(tag => tag.trim())
+          .filter((tag) => tag && typeof tag === "string" && tag.trim())
+          .map((tag) => tag.trim())
           .slice(0, 20); // Limit to 20 tags
-
       } catch (err) {
         console.error("[UpdatePostBySlug] Tags parsing error:", err);
         throw new AppError("Invalid tags format", 400, "UpdatePostBySlug");
@@ -2141,12 +2158,12 @@ export const updatePostBySlug = async (req, res, next) => {
       try {
         if (Array.isArray(rawBlocks)) {
           blocks = rawBlocks;
-        } else if (typeof rawBlocks === 'string') {
+        } else if (typeof rawBlocks === "string") {
           blocks = JSON.parse(rawBlocks);
         } else {
           throw new Error("Blocks must be array or JSON string");
         }
-        
+
         if (!Array.isArray(blocks) || blocks.length === 0) {
           throw new AppError(
             "Blocks must be a non-empty array",
@@ -2163,7 +2180,6 @@ export const updatePostBySlug = async (req, res, next) => {
             "UpdatePostBySlug"
           );
         }
-
       } catch (err) {
         console.error("[UpdatePostBySlug] Blocks parsing error:", err);
         throw new AppError("Invalid blocks format", 400, "UpdatePostBySlug");
@@ -2172,25 +2188,49 @@ export const updatePostBySlug = async (req, res, next) => {
 
     // Enhanced input validation
     if (title !== undefined) {
-      if (!title || typeof title !== 'string' || title.trim().length < 3) {
-        throw new AppError("Title must be at least 3 characters", 400, "UpdatePostBySlug");
+      if (!title || typeof title !== "string" || title.trim().length < 3) {
+        throw new AppError(
+          "Title must be at least 3 characters",
+          400,
+          "UpdatePostBySlug"
+        );
       }
       if (title.length > 300) {
-        throw new AppError("Title too long (max 300 characters)", 400, "UpdatePostBySlug");
+        throw new AppError(
+          "Title too long (max 300 characters)",
+          400,
+          "UpdatePostBySlug"
+        );
       }
     }
 
     if (category !== undefined) {
-      if (!category || typeof category !== 'string' || category.trim().length === 0) {
+      if (
+        !category ||
+        typeof category !== "string" ||
+        category.trim().length === 0
+      ) {
         throw new AppError("Category is required", 400, "UpdatePostBySlug");
       }
       if (category.length > 100) {
-        throw new AppError("Category too long (max 100 characters)", 400, "UpdatePostBySlug");
+        throw new AppError(
+          "Category too long (max 100 characters)",
+          400,
+          "UpdatePostBySlug"
+        );
       }
     }
 
-    if (excerpt !== undefined && typeof excerpt === 'string' && excerpt.length > 1000) {
-      throw new AppError("Excerpt too long (max 1000 characters)", 400, "UpdatePostBySlug");
+    if (
+      excerpt !== undefined &&
+      typeof excerpt === "string" &&
+      excerpt.length > 1000
+    ) {
+      throw new AppError(
+        "Excerpt too long (max 1000 characters)",
+        400,
+        "UpdatePostBySlug"
+      );
     }
 
     // Rate limiting for processing
@@ -2211,10 +2251,20 @@ export const updatePostBySlug = async (req, res, next) => {
 
         // Validate block type
         const validBlockTypes = [
-          "header", "paragraph", "list", "image", "quote", "code", 
-          "delimiter", "table", "embed", "poll", "checklist", "warning"
+          "header",
+          "paragraph",
+          "list",
+          "image",
+          "quote",
+          "code",
+          "delimiter",
+          "table",
+          "embed",
+          "poll",
+          "checklist",
+          "warning",
         ];
-        
+
         if (!validBlockTypes.includes(block.type)) {
           console.warn(`[UpdatePostBySlug] Unknown block type: ${block.type}`);
         }
@@ -2230,14 +2280,20 @@ export const updatePostBySlug = async (req, res, next) => {
       // Validate table blocks specifically
       blocksWithIds.forEach((block, index) => {
         if (block.type === "table") {
-          if (!block.data || !Array.isArray(block.data) || block.data.length === 0) {
+          if (
+            !block.data ||
+            !Array.isArray(block.data) ||
+            block.data.length === 0
+          ) {
             throw new AppError(
               `Table block at index ${index} must have non-empty data`,
               400,
               "UpdatePostBySlug"
             );
           }
-          if (!block.data.every((row) => Array.isArray(row) && row.length > 0)) {
+          if (
+            !block.data.every((row) => Array.isArray(row) && row.length > 0)
+          ) {
             throw new AppError(
               `Table block at index ${index} has invalid data format`,
               400,
@@ -2266,7 +2322,9 @@ export const updatePostBySlug = async (req, res, next) => {
             })
           )
         );
-        console.log(`[UpdatePostBySlug] Successfully processed ${processedBlocks.length} blocks`);
+        console.log(
+          `[UpdatePostBySlug] Successfully processed ${processedBlocks.length} blocks`
+        );
       } catch (error) {
         console.error("[UpdatePostBySlug] Block processing failed:", error);
         throw new AppError(
@@ -2286,7 +2344,9 @@ export const updatePostBySlug = async (req, res, next) => {
         processedThumbnail = await imageLimit(() =>
           processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
         );
-        console.log(`[UpdatePostBySlug] Thumbnail processed: ${processedThumbnail}`);
+        console.log(
+          `[UpdatePostBySlug] Thumbnail processed: ${processedThumbnail}`
+        );
       } catch (error) {
         console.error("Thumbnail processing error:", error);
         throw new AppError(
@@ -2302,7 +2362,11 @@ export const updatePostBySlug = async (req, res, next) => {
         new URL(rawThumbnail);
         processedThumbnail = rawThumbnail;
       } catch (err) {
-        throw new AppError("Invalid thumbnail embed URL", 400, "UpdatePostBySlug");
+        throw new AppError(
+          "Invalid thumbnail embed URL",
+          400,
+          "UpdatePostBySlug"
+        );
       }
     }
 
@@ -2312,44 +2376,70 @@ export const updatePostBySlug = async (req, res, next) => {
       const readTimeResult = calculateReadTime(processedBlocks);
       readTime = readTimeResult.readTime;
       readingTime = readTimeResult.readingTime;
-      console.log(`[UpdatePostBySlug] Calculated read time: ${readTime} minutes`);
+      console.log(
+        `[UpdatePostBySlug] Calculated read time: ${readTime} minutes`
+      );
     }
 
     // Build query based on user role with better case handling
-    const query = userRole === "admin" 
-      ? { slug: { $regex: `^${slug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" } }
-      : {
-          slug: { $regex: `^${slug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" },
-          author: new mongoose.Types.ObjectId(userId),
-        };
+    const query =
+      userRole === "admin"
+        ? {
+            slug: {
+              $regex: `^${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+              $options: "i",
+            },
+          }
+        : {
+            slug: {
+              $regex: `^${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+              $options: "i",
+            },
+            author: new mongoose.Types.ObjectId(userId),
+          };
 
     // Fetch existing post with better error handling
     logMemory("📖 Before fetching post");
     console.log("[UpdatePostBySlug] Query:", JSON.stringify(query));
-    
+
     const post = await PostModel.findOne(query).lean();
-    console.log(`[UpdatePostBySlug] Found post: ${post ? 'Yes' : 'No'}`);
-    
+    console.log(`[UpdatePostBySlug] Found post: ${post ? "Yes" : "No"}`);
+
     logMemory("📖 After fetching post");
 
     if (!post) {
       // Check if post exists with different case or author
-      const postExists = await PostModel.findOne({ 
-        slug: { $regex: `^${slug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" }
-      }).select('author').lean();
-      
+      const postExists = await PostModel.findOne({
+        slug: {
+          $regex: `^${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+          $options: "i",
+        },
+      })
+        .select("author")
+        .lean();
+
       if (postExists) {
-        throw new AppError("Unauthorized to update this post", 403, "UpdatePostBySlug");
+        throw new AppError(
+          "Unauthorized to update this post",
+          403,
+          "UpdatePostBySlug"
+        );
       } else {
         throw new AppError("Post not found", 404, "UpdatePostBySlug");
       }
     }
 
     if (post.blocked) {
-      throw new AppError("Post is blocked and cannot be updated", 403, "UpdatePostBySlug");
+      throw new AppError(
+        "Post is blocked and cannot be updated",
+        403,
+        "UpdatePostBySlug"
+      );
     }
 
-    console.log(`[UpdatePostBySlug] Current post: ${post.title} (${post.slug})`);
+    console.log(
+      `[UpdatePostBySlug] Current post: ${post.title} (${post.slug})`
+    );
 
     // Generate new slug if title changed
     let finalSlug = post.slug;
@@ -2357,7 +2447,10 @@ export const updatePostBySlug = async (req, res, next) => {
       try {
         finalSlug = slugify(title, { lower: true, strict: true });
       } catch (err) {
-        console.warn("[UpdatePostBySlug] slugify failed, using fallback:", err.message);
+        console.warn(
+          "[UpdatePostBySlug] slugify failed, using fallback:",
+          err.message
+        );
         finalSlug = fallbackSlugify(title);
       }
 
@@ -2365,15 +2458,15 @@ export const updatePostBySlug = async (req, res, next) => {
       let counter = 1;
       const maxAttempts = 100;
       let baseSlug = finalSlug;
-      
+
       while (counter <= maxAttempts) {
         const existingPost = await PostModel.exists({
           slug: finalSlug,
           _id: { $ne: post._id },
         }).lean();
-        
+
         if (!existingPost) break;
-        
+
         finalSlug = `${baseSlug}-${counter}`;
         counter++;
       }
@@ -2382,7 +2475,9 @@ export const updatePostBySlug = async (req, res, next) => {
         finalSlug = `${baseSlug}-${Date.now()}`;
       }
 
-      console.log(`[UpdatePostBySlug] New slug generated: ${post.slug} -> ${finalSlug}`);
+      console.log(
+        `[UpdatePostBySlug] New slug generated: ${post.slug} -> ${finalSlug}`
+      );
     }
 
     // Content moderation for new/updated content
@@ -2391,8 +2486,8 @@ export const updatePostBySlug = async (req, res, next) => {
         try {
           // Simple spam detection - replace with your actual moderation logic
           const spamPatterns = [
-            /(.)\1{20,}/i, // Repeated characters
-            /http[s]?:\/\/[^\s]{100,}/i, // Very long URLs
+            /(.)\1{30,}/i, // Increase threshold for repeated characters
+            /http[s]?:\/\/[^\s]{100,}/i,
           ];
 
           for (const pattern of spamPatterns) {
@@ -2418,7 +2513,9 @@ export const updatePostBySlug = async (req, res, next) => {
             .join("\n")
         : "";
 
-      const fullText = `${title || post.title}\n${excerpt || post.excerpt || ""}\n${blockTextContent}`;
+      const fullText = `${title || post.title}\n${
+        excerpt || post.excerpt || ""
+      }\n${blockTextContent}`;
 
       logMemory("🔍 Before content moderation");
       const moderation = await moderateContent(fullText);
@@ -2438,26 +2535,26 @@ export const updatePostBySlug = async (req, res, next) => {
 
     // Prepare update object - only include fields that are actually changing
     const updates = {};
-    
+
     if (title !== undefined && title.trim() !== post.title) {
       updates.title = title.trim();
     }
-    
+
     if (finalSlug !== post.slug) {
       updates.slug = finalSlug;
     }
-    
+
     if (category !== undefined && category.trim() !== post.category) {
       updates.category = category.trim();
     }
-    
+
     if (excerpt !== undefined) {
       const newExcerpt = excerpt ? excerpt.trim() : "";
       if (newExcerpt !== (post.excerpt || "")) {
         updates.excerpt = newExcerpt;
       }
     }
-    
+
     if (tags !== undefined) {
       const newTags = JSON.stringify(tags.sort());
       const oldTags = JSON.stringify((post.tags || []).sort());
@@ -2465,36 +2562,45 @@ export const updatePostBySlug = async (req, res, next) => {
         updates.tags = tags;
       }
     }
-    
-    if (processedThumbnail !== undefined && processedThumbnail !== post.thumbnail) {
+
+    if (
+      processedThumbnail !== undefined &&
+      processedThumbnail !== post.thumbnail
+    ) {
       updates.thumbnail = processedThumbnail;
     }
-    
+
     if (thumbnailSize !== undefined && thumbnailSize !== post.thumbnailSize) {
       updates.thumbnailSize = thumbnailSize;
     }
-    
+
     if (isThumbnailEmbed !== undefined && isThumbnailEmbed !== post.isEmbed) {
       updates.isEmbed = isThumbnailEmbed;
     }
-    
+
     if (processedBlocks !== undefined) {
       // Always update blocks if provided (they may contain processed images)
       updates.blocks = processedBlocks;
     }
-    
-    if (isFeatured !== undefined && Boolean(isFeatured) !== Boolean(post.isFeatured)) {
+
+    if (
+      isFeatured !== undefined &&
+      Boolean(isFeatured) !== Boolean(post.isFeatured)
+    ) {
       updates.isFeatured = Boolean(isFeatured);
     }
-    
-    if (isPinned !== undefined && Boolean(isPinned) !== Boolean(post.isPinned)) {
+
+    if (
+      isPinned !== undefined &&
+      Boolean(isPinned) !== Boolean(post.isPinned)
+    ) {
       updates.isPinned = Boolean(isPinned);
     }
-    
+
     if (language !== undefined && language.trim() !== post.language) {
       updates.language = language.trim();
     }
-    
+
     if (postType !== undefined && postType.trim() !== post.postType) {
       updates.postType = postType.trim();
     }
@@ -2502,7 +2608,7 @@ export const updatePostBySlug = async (req, res, next) => {
     // Always update these fields when there are changes
     if (readTime !== undefined) updates.readTime = readTime;
     if (readingTime !== undefined) updates.readingTime = readingTime;
-    
+
     // Always update these metadata fields
     updates.isPublished = true;
     updates.lastEditedAt = new Date();
@@ -2511,7 +2617,8 @@ export const updatePostBySlug = async (req, res, next) => {
     console.log(`[UpdatePostBySlug] Updates to apply:`, Object.keys(updates));
 
     // Check if there are actually any updates to make
-    if (Object.keys(updates).length <= 3) { // Only metadata fields
+    if (Object.keys(updates).length <= 3) {
+      // Only metadata fields
       console.log("[UpdatePostBySlug] No substantial changes detected");
       return res.status(200).json({
         success: true,
@@ -2531,7 +2638,7 @@ export const updatePostBySlug = async (req, res, next) => {
           postType: post.postType,
           readTime: post.readTime,
           readingTime: post.readingTime,
-        }
+        },
       });
     }
 
@@ -2542,7 +2649,7 @@ export const updatePostBySlug = async (req, res, next) => {
     try {
       logMemory("💾 Before updating post");
       console.log("[UpdatePostBySlug] Applying updates to database...");
-      
+
       // Use findOneAndUpdate with specific options for better reliability
       const updatedPost = await PostModel.findOneAndUpdate(
         { _id: post._id }, // Use _id instead of slug query for reliability
@@ -2552,14 +2659,23 @@ export const updatePostBySlug = async (req, res, next) => {
           runValidators: true,
           session,
           lean: false, // Get full mongoose document
-          select: "title slug category excerpt thumbnail blocks author isPublished isPinned isFeatured createdAt lastEditedAt updatedAt postType readTime readingTime language tags"
+          select:
+            "title slug category excerpt thumbnail blocks author isPublished isPinned isFeatured createdAt lastEditedAt updatedAt postType readTime readingTime language tags",
         }
       );
 
-      console.log(`[UpdatePostBySlug] Database update result: ${updatedPost ? 'Success' : 'Failed'}`);
-      
+      console.log(
+        `[UpdatePostBySlug] Database update result: ${
+          updatedPost ? "Success" : "Failed"
+        }`
+      );
+
       if (!updatedPost) {
-        throw new AppError("Failed to update post - document not found", 500, "UpdatePostBySlug");
+        throw new AppError(
+          "Failed to update post - document not found",
+          500,
+          "UpdatePostBySlug"
+        );
       }
 
       logMemory("💾 After updating post");
@@ -2577,7 +2693,10 @@ export const updatePostBySlug = async (req, res, next) => {
         );
         console.log("[UpdatePostBySlug] Activity recorded");
       } catch (activityError) {
-        console.error("[UpdatePostBySlug] Failed to record activity:", activityError);
+        console.error(
+          "[UpdatePostBySlug] Failed to record activity:",
+          activityError
+        );
         // Don't fail the transaction for activity logging
       }
 
@@ -2621,10 +2740,16 @@ export const updatePostBySlug = async (req, res, next) => {
           try {
             cache.del(key);
           } catch (cacheDelError) {
-            console.warn(`Failed to delete cache key ${key}:`, cacheDelError.message);
+            console.warn(
+              `Failed to delete cache key ${key}:`,
+              cacheDelError.message
+            );
           }
         });
-        console.log("[UpdatePostBySlug] Cache invalidated for keys:", cacheKeys.length);
+        console.log(
+          "[UpdatePostBySlug] Cache invalidated for keys:",
+          cacheKeys.length
+        );
       } catch (cacheError) {
         console.error("Cache invalidation error:", cacheError);
       }
@@ -2646,28 +2771,30 @@ export const updatePostBySlug = async (req, res, next) => {
           isPublished: true,
         }).lean(),
       ])
-      .then(async ([allPostsCount, myPostsCount, followingPostsCount]) => {
-        const counts = { allPostsCount, myPostsCount, followingPostsCount };
-        cache.set(`postCounts:${userId}`, counts, 300);
+        .then(async ([allPostsCount, myPostsCount, followingPostsCount]) => {
+          const counts = { allPostsCount, myPostsCount, followingPostsCount };
+          cache.set(`postCounts:${userId}`, counts, 300);
 
-        try {
-          await asyncRetry(
-            async () => {
-              io.to(userId.toString()).emit("postCountsUpdated", counts);
-            },
-            { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
-          );
-        } catch (countEmitError) {
-          console.warn("Failed to emit post counts:", countEmitError.message);
-        }
-      })
-      .catch((countError) => {
-        console.error("Failed to update post counts:", countError);
-      });
+          try {
+            await asyncRetry(
+              async () => {
+                io.to(userId.toString()).emit("postCountsUpdated", counts);
+              },
+              { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
+            );
+          } catch (countEmitError) {
+            console.warn("Failed to emit post counts:", countEmitError.message);
+          }
+        })
+        .catch((countError) => {
+          console.error("Failed to update post counts:", countError);
+        });
 
       const processingTime = Date.now() - startTime;
       logMemory("✏️ End updatePostBySlug");
-      console.log(`[UpdatePostBySlug] Success: ${finalSlug}, time=${processingTime}ms`);
+      console.log(
+        `[UpdatePostBySlug] Success: ${finalSlug}, time=${processingTime}ms`
+      );
 
       // Return success response
       res.status(200).json({
@@ -2697,17 +2824,16 @@ export const updatePostBySlug = async (req, res, next) => {
           processingTime,
           fieldsUpdated: Object.keys(updates).length,
           blocksProcessed: processedBlocks ? processedBlocks.length : 0,
-        }
+        },
       });
-
     } catch (dbError) {
       console.error("[UpdatePostBySlug] DB Error:", dbError);
-      
+
       // Abort transaction
       if (session.inTransaction()) {
         await session.abortTransaction();
       }
-      
+
       // Provide specific error messages
       if (dbError.code === 11000) {
         throw new AppError(
@@ -2716,14 +2842,13 @@ export const updatePostBySlug = async (req, res, next) => {
           "UpdatePostBySlug"
         );
       }
-      
+
       throw new AppError(
         dbError.message || "Database update failed",
         500,
         "UpdatePostBySlug"
       );
     }
-
   } catch (error) {
     const processingTime = Date.now() - startTime;
     console.error(`[UpdatePostBySlug] Error after ${processingTime}ms:`, error);
@@ -2756,7 +2881,7 @@ export const updatePostBySlug = async (req, res, next) => {
         console.error("Failed to end session:", endError);
       }
     }
-    
+
     logMemory("🧹 Final cleanup");
   }
 };
