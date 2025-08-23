@@ -217,7 +217,7 @@ export const createPosts = createAsyncThunk(
       const { auth } = getState();
 
       // FIXED: Increased timeout to 60 seconds for large posts with images
-      const response = await axiosInstance.post("/post/create", postData, {
+      const response = await axiosInstance.post("/post/post-create", postData, {
         timeout: 60000, // 60 seconds instead of 15
         // Add these headers for better handling
         headers: {
