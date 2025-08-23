@@ -1937,12 +1937,13 @@ export const trackTimeSpent = async (req, res, next) => {
   }
 };
 
-// Fixed code
+
 export const updatePostBySlug = async (req, res, next) => {
   let session = null;
   try {
     logMemory("✏️ Start updatePostBySlug");
     console.log("[UpdatePostBySlug] Received data:", req.body);
+    console.log("[UpdatePostBySlug] User:", req.user);
 
     const { slug } = req.params;
     const userId = req.user?._id;
@@ -1953,7 +1954,7 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError("Missing slug", 400, "UpdatePostBySlug");
     }
 
-    if (!userId) {
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
       throw new AppError(
         "You must be signed in to access this feature.",
         401,
@@ -1966,6 +1967,8 @@ export const updatePostBySlug = async (req, res, next) => {
     if (payloadSize > 8 * 1024 * 1024) {
       throw new AppError("Payload exceeds 8MB limit", 413, "UpdatePostBySlug");
     }
+
+6494
 
     // Extract and validate request data
     const {
@@ -1982,6 +1985,8 @@ export const updatePostBySlug = async (req, res, next) => {
       language,
       postType,
     } = req.body;
+
+    console.log("[UpdatePostBySlug] Validated inputs:", { title, slug, blocks });
 
     // Parse and validate tags
     let tags;
@@ -2121,8 +2126,10 @@ export const updatePostBySlug = async (req, res, next) => {
         ? { slug: { $regex: `^${slug}$`, $options: "i" } }
         : {
             slug: { $regex: `^${slug}$`, $options: "i" },
-            author: userId,
+            author: new mongoose.Types.ObjectId(userId),
           };
+
+    console.log("[UpdatePostBySlug] Query:", query);
 
     // Fetch existing post
     logMemory("📖 Before fetching post");
@@ -2169,12 +2176,9 @@ export const updatePostBySlug = async (req, res, next) => {
     // Content moderation
     const moderateContent = async (text) => {
       try {
-        // Add your actual moderation logic here
-        // This is a placeholder implementation
         return { isFlagged: false, categories: {} };
       } catch (error) {
         console.error("Moderation error:", error);
-        // Fail safe - allow content but log error
         return { isFlagged: false, categories: {} };
       }
     };
@@ -2279,7 +2283,6 @@ export const updatePostBySlug = async (req, res, next) => {
         );
       } catch (emitError) {
         console.error("Failed to emit postUpdated event:", emitError);
-        // Don't fail the request for emit failures
       }
 
       // Cache invalidation
@@ -2290,22 +2293,20 @@ export const updatePostBySlug = async (req, res, next) => {
         `countMyPosts:${userId}`,
         `countFollowingPosts:${userId}`,
         `postId:${finalSlug}`,
-        `postId:${post.slug}`, // Invalidate old slug too
+        `postId:${post.slug}`,
       ];
 
       try {
         cacheKeys.forEach((key) => {
+          console.log(`[UpdatePostBySlug] Deleting cache key: ${key}`);
           if (key.includes("*")) {
-            // Handle wildcard cache keys if your cache supports it
-            cache.del(key);
+            cache.delWildcard(key);
           } else {
             cache.del(key);
           }
         });
-        console.log("[UpdatePostBySlug] Cache invalidated:", cacheKeys);
       } catch (cacheError) {
         console.error("Cache invalidation error:", cacheError);
-        // Don't fail the request for cache errors
       }
 
       // Update post counts
@@ -2331,7 +2332,6 @@ export const updatePostBySlug = async (req, res, next) => {
         const counts = { allPostsCount, myPostsCount, followingPostsCount };
         cache.set(`postCounts:${userId}`, counts);
 
-        // Emit count updates
         await asyncRetry(
           async () => {
             io.to(userId.toString()).emit("postCountsUpdated", counts);
@@ -2340,7 +2340,6 @@ export const updatePostBySlug = async (req, res, next) => {
         );
       } catch (countError) {
         console.error("Failed to update post counts:", countError);
-        // Don't fail the request for count update failures
       }
 
       await session.commitTransaction();
@@ -2352,12 +2351,12 @@ export const updatePostBySlug = async (req, res, next) => {
         post: updatedPost,
       });
     } catch (dbError) {
-      console.error("[UpdatePostBySlug] DB Error:", dbError);
+      console.error("[UpdatePostBySlug] DB Error:", dbError.stack);
       await session.abortTransaction();
       throw dbError;
     }
   } catch (error) {
-    console.error("[UpdatePostBySlug] Error:", error);
+    console.error("[UpdatePostBySlug] Error:", error.stack);
 
     if (session && session.inTransaction()) {
       try {
