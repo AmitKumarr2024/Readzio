@@ -267,42 +267,100 @@ const CreatePost = () => {
         navigate(`/post/${resultAction.post.slug}`);
       } catch (err) {
         console.error("[CreatePost] Post creation failed:", err);
-        if (
-          err?.message?.includes("A post with this title was recently created")
-        ) {
+
+        // Handle timeout/server errors differently
+        if (err?.isTimeout || err?.isServerError) {
+          // Don't show error immediately - check if post was created
+          const slug = slugify(title, { lower: true, strict: true });
+
+          try {
+            console.log(
+              "[CreatePost] Checking if post exists after timeout:",
+              slug
+            );
+            const checkPost = await asyncRetry(
+              () => dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
+              { retries: 5, minTimeout: 2000 }
+            );
+
+            if (checkPost) {
+              console.log(
+                "[CreatePost] Post was created despite timeout:",
+                checkPost.slug
+              );
+              toast.success("Post created successfully!", {
+                position: "top-right",
+              });
+              setTitle("");
+              setBlocks([]);
+              dispatch(resetPostMeta());
+              localStorage.removeItem("postType");
+              navigate(`/post/${checkPost.slug}`);
+              return;
+            }
+          } catch (checkErr) {
+            console.log("[CreatePost] Post was not found");
+          }
+
+          // Show timeout-specific error
           toast.error(
-            "Please wait before creating another post with the same title.",
+            err?.message ||
+              "Request timed out. Please check if your post was created.",
             {
               position: "top-right",
             }
           );
         } else {
-          toast.error(err?.message || "Failed to create post", {
-            position: "top-right",
-          });
-        }
-
-        // Retry getSinglePost to handle potential indexing delays
-        const slug = slugify(title, { lower: true, strict: true });
-        try {
-          console.log("[CreatePost] Retrying getSinglePost with slug:", slug);
-          const checkPost = await asyncRetry(
-            () => dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
-            { retries: 5, minTimeout: 2000 }
-          );
-          if (checkPost) {
-            console.log("[CreatePost] Post found on retry:", checkPost.slug);
-            toast.success(
-              "Post was created but response was delayed. Redirecting...",
-              { position: "top-right" }
+          // Handle normal errors
+          if (
+            err?.message?.includes(
+              "A post with this title was recently created"
+            )
+          ) {
+            toast.error(
+              "Please wait before creating another post with the same title.",
+              {
+                position: "top-right",
+              }
             );
-            navigate(`/post/${checkPost.slug}`);
+          } else {
+            toast.error(err?.message || "Failed to create post", {
+              position: "top-right",
+            });
           }
-        } catch (checkErr) {
-          console.error("[CreatePost] Check post failed:", checkErr);
-          toast.error("Failed to verify post creation", {
-            position: "top-right",
-          });
+
+          // Only retry for non-timeout errors if it might be a duplicate title issue
+          if (
+            err?.message?.includes(
+              "A post with this title was recently created"
+            )
+          ) {
+            const slug = slugify(title, { lower: true, strict: true });
+            try {
+              console.log(
+                "[CreatePost] Checking for duplicate post with slug:",
+                slug
+              );
+              const checkPost = await asyncRetry(
+                () =>
+                  dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
+                { retries: 3, minTimeout: 1000 }
+              );
+
+              if (checkPost) {
+                console.log(
+                  "[CreatePost] Duplicate post found, redirecting:",
+                  checkPost.slug
+                );
+                toast.success("Post already exists. Redirecting...", {
+                  position: "top-right",
+                });
+                navigate(`/post/${checkPost.slug}`);
+              }
+            } catch (checkErr) {
+              console.log("[CreatePost] No duplicate post found");
+            }
+          }
         }
       } finally {
         setIsSubmitting(false);

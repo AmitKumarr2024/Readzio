@@ -131,11 +131,60 @@ export const fetchPublicPosts = createAsyncThunk(
   }
 );
 
+// old code
+// export const createPosts = createAsyncThunk(
+//   "post/createPost",
+//   async (postData, { rejectWithValue, getState }) => {
+//     const { post } = getState();
+//     const title = postData.title?.trim();
+//     // Check for recent title in state
+//     const recentTitle = post.recentTitles.find(
+//       (rt) => rt.title === title && Date.now() - rt.timestamp < 60 * 1000
+//     );
+//     if (recentTitle) {
+//       return rejectWithValue({
+//         message: "A post with this title was recently created",
+//       });
+//     }
+//     if (
+//       !postData.blocks ||
+//       !Array.isArray(postData.blocks) ||
+//       postData.blocks.length === 0
+//     ) {
+//       return rejectWithValue({ message: "Blocks are required" });
+//     }
+//     if (
+//       containsBlobUrl(postData.thumbnail) ||
+//       containsBlobUrl(postData.blocks)
+//     ) {
+//       return rejectWithValue({
+//         message:
+//           "Upload failed: Please convert Blob URLs to base64 or upload images properly.",
+//       });
+//     }
+//     try {
+//       const { auth } = getState();
+//       // No retries for creation to prevent duplicates
+//       const response = await axiosInstance.post("/post/create", postData, {
+//         timeout: 15000,
+//       });
+//       // Wait 2s to account for backend indexing delay
+//       await new Promise((resolve) => setTimeout(resolve, 2000));
+//       return { ...response.data, authorId: auth.user?._id, title };
+//     } catch (error) {
+//       const errMsg = error.response?.data?.message || "Failed to create post";
+//       console.error("[createPosts] Error:", errMsg);
+//       return rejectWithValue({ message: errMsg });
+//     }
+//   }
+// );
+// new code
 export const createPosts = createAsyncThunk(
   "post/createPost",
   async (postData, { rejectWithValue, getState }) => {
     const { post } = getState();
     const title = postData.title?.trim();
+
     // Check for recent title in state
     const recentTitle = post.recentTitles.find(
       (rt) => rt.title === title && Date.now() - rt.timestamp < 60 * 1000
@@ -145,6 +194,7 @@ export const createPosts = createAsyncThunk(
         message: "A post with this title was recently created",
       });
     }
+
     if (
       !postData.blocks ||
       !Array.isArray(postData.blocks) ||
@@ -152,6 +202,7 @@ export const createPosts = createAsyncThunk(
     ) {
       return rejectWithValue({ message: "Blocks are required" });
     }
+
     if (
       containsBlobUrl(postData.thumbnail) ||
       containsBlobUrl(postData.blocks)
@@ -161,18 +212,63 @@ export const createPosts = createAsyncThunk(
           "Upload failed: Please convert Blob URLs to base64 or upload images properly.",
       });
     }
+
     try {
       const { auth } = getState();
-      // No retries for creation to prevent duplicates
+
+      // FIXED: Increased timeout to 60 seconds for large posts with images
       const response = await axiosInstance.post("/post/create", postData, {
-        timeout: 15000,
+        timeout: 60000, // 60 seconds instead of 15
+        // Add these headers for better handling
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
-      // Wait 2s to account for backend indexing delay
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      return { ...response.data, authorId: auth.user?._id, title };
+
+      // FIXED: Removed artificial delay - let the server respond naturally
+      // FIXED: Better error handling - check if response has expected structure
+      if (!response.data || !response.data.post) {
+        throw new Error("Invalid server response format");
+      }
+
+      return {
+        ...response.data,
+        authorId: auth.user?._id,
+        title,
+      };
     } catch (error) {
-      const errMsg = error.response?.data?.message || "Failed to create post";
-      console.error("[createPosts] Error:", errMsg);
+      // FIXED: Better error detection and logging
+      console.error("[createPosts] Full error:", error);
+      console.error("[createPosts] Response:", error.response?.data);
+      console.error("[createPosts] Status:", error.response?.status);
+
+      // Handle specific error cases
+      if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+        return rejectWithValue({
+          message:
+            "Request timed out - but post may have been created. Please check your posts.",
+          isTimeout: true,
+        });
+      }
+
+      if (error.response?.status === 413) {
+        return rejectWithValue({
+          message: "Post data too large. Please reduce image sizes or content.",
+        });
+      }
+
+      if (error.response?.status >= 500) {
+        return rejectWithValue({
+          message:
+            "Server error - post may have been created. Please refresh and check.",
+          isServerError: true,
+        });
+      }
+
+      const errMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to create post";
       return rejectWithValue({ message: errMsg });
     }
   }
