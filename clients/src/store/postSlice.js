@@ -9,6 +9,7 @@ const initialState = {
   followingPosts: [],
   lastFetched: null,
   currentPost: null,
+  currentPostSlug: null, // Track which slug is currently being loaded
   createLoading: false,
   createError: null,
   updateLoading: false,
@@ -34,9 +35,10 @@ const initialState = {
   isTracking: false,
   appealLoading: false,
   appealError: null,
-  recentTitles: [],
+  recentTitles: [], // Track recent titles for deduplication
 };
 
+// Simplified Blob URL check
 const containsBlobUrl = (data) => {
   if (!data) return false;
   if (typeof data === "string") return data.startsWith("blob:");
@@ -46,6 +48,7 @@ const containsBlobUrl = (data) => {
   return false;
 };
 
+// Async retry with exponential backoff
 const asyncRetry = async (
   fn,
   retries = 3,
@@ -134,6 +137,8 @@ export const createPosts = createAsyncThunk(
   async (postData, { rejectWithValue, getState }) => {
     const { post } = getState();
     const title = postData.title?.trim();
+
+    // Check for recent title in state
     const recentTitle = post.recentTitles.find(
       (rt) => rt.title === title && Date.now() - rt.timestamp < 60 * 1000
     );
@@ -142,6 +147,7 @@ export const createPosts = createAsyncThunk(
         message: "A post with this title was recently created",
       });
     }
+
     if (
       !postData.blocks ||
       !Array.isArray(postData.blocks) ||
@@ -149,6 +155,7 @@ export const createPosts = createAsyncThunk(
     ) {
       return rejectWithValue({ message: "Blocks are required" });
     }
+
     if (
       containsBlobUrl(postData.thumbnail) ||
       containsBlobUrl(postData.blocks)
@@ -158,26 +165,36 @@ export const createPosts = createAsyncThunk(
           "Upload failed: Please convert Blob URLs to base64 or upload images properly.",
       });
     }
+
     try {
       const { auth } = getState();
+
+      // FIXED: Increased timeout to 60 seconds for large posts with images
       const response = await axiosInstance.post("/post/post-create", postData, {
-        timeout: 60000,
+        timeout: 60000, // 60 seconds instead of 15
+        // Add these headers for better handling
         headers: {
           "Content-Type": "application/json",
         },
       });
+
+      // FIXED: Better error handling - check if response has expected structure
       if (!response.data || !response.data.post) {
         throw new Error("Invalid server response format");
       }
+
       return {
         ...response.data,
         authorId: auth.user?._id,
         title,
       };
     } catch (error) {
+      // FIXED: Better error detection and logging
       console.error("[createPosts] Full error:", error);
       console.error("[createPosts] Response:", error.response?.data);
       console.error("[createPosts] Status:", error.response?.status);
+
+      // Handle specific error cases
       if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
         return rejectWithValue({
           message:
@@ -185,11 +202,13 @@ export const createPosts = createAsyncThunk(
           isTimeout: true,
         });
       }
+
       if (error.response?.status === 413) {
         return rejectWithValue({
           message: "Post data too large. Please reduce image sizes or content.",
         });
       }
+
       if (error.response?.status >= 500) {
         return rejectWithValue({
           message:
@@ -197,6 +216,7 @@ export const createPosts = createAsyncThunk(
           isServerError: true,
         });
       }
+
       const errMsg =
         error.response?.data?.message ||
         error.message ||
@@ -336,27 +356,92 @@ export const getSearchPosts = createAsyncThunk(
   }
 );
 
+// FIXED: Enhanced getSinglePost with better slug handling and state management
 export const getSinglePost = createAsyncThunk(
   "post/getSinglePost",
-  async ({ slug, isGuest = false }, { rejectWithValue }) => {
+  async ({ slug, isGuest = false }, { rejectWithValue, getState }) => {
     try {
-      if (!slug || typeof slug !== "string") {
+      // Input validation
+      if (!slug || typeof slug !== "string" || slug.trim() === "") {
         console.error("[getSinglePost] Invalid slug:", slug);
         return rejectWithValue({ message: "Invalid post slug" });
       }
-      const endpoint = isGuest ? `/post/public/${slug}` : `/post/${slug}`;
+
+      const cleanSlug = slug.trim();
+      console.log("[getSinglePost] Fetching post with slug:", cleanSlug);
+
+      // Check if we're already loading this slug to prevent duplicate requests
+      const { post } = getState();
+      if (post.loading && post.currentPostSlug === cleanSlug) {
+        console.log("[getSinglePost] Already loading this slug, skipping");
+        return rejectWithValue({ message: "Already loading this post" });
+      }
+
+      const endpoint = isGuest
+        ? `/post/public/${cleanSlug}`
+        : `/post/${cleanSlug}`;
+      console.log("[getSinglePost] Request endpoint:", endpoint);
+
       const response = await asyncRetry(() =>
-        axiosInstance.get(`${endpoint}?t=${Date.now()}`, { timeout: 10000 })
+        axiosInstance.get(endpoint, {
+          timeout: 15000, // Increased timeout
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+        })
       );
+
+      console.log("[getSinglePost] Response received:", {
+        success: response.data.success,
+        postTitle: response.data.post?.title,
+        postSlug: response.data.post?.slug,
+        postId: response.data.post?._id,
+      });
+
       if (!response.data.post) {
-        console.error("[getSinglePost] Post not found for slug:", slug);
+        console.error("[getSinglePost] Post not found for slug:", cleanSlug);
         return rejectWithValue({ message: "Post not found" });
       }
-      return response.data.post;
+
+      // Validate that we got the correct post
+      const receivedPost = response.data.post;
+      if (receivedPost.slug.toLowerCase() !== cleanSlug.toLowerCase()) {
+        console.warn("[getSinglePost] Slug mismatch:", {
+          requested: cleanSlug,
+          received: receivedPost.slug,
+        });
+      }
+
+      // Ensure blocks have proper IDs
+      if (receivedPost.blocks && Array.isArray(receivedPost.blocks)) {
+        receivedPost.blocks = receivedPost.blocks.map((block) => ({
+          ...block,
+          id: block.id || block._id || `block-${Date.now()}-${Math.random()}`,
+        }));
+      }
+
+      return {
+        post: receivedPost,
+        slug: cleanSlug,
+        timestamp: Date.now(),
+      };
     } catch (error) {
-      const errMsg = error.response?.data?.message || "Failed to fetch post";
-      console.error("[getSinglePost] Error:", errMsg);
-      return rejectWithValue({ message: errMsg });
+      const errMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to fetch post";
+      console.error("[getSinglePost] Error:", {
+        slug,
+        message: errMsg,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+      });
+      return rejectWithValue({
+        message: errMsg,
+        slug,
+        status: error.response?.status,
+      });
     }
   }
 );
@@ -365,18 +450,20 @@ export const updatePost = createAsyncThunk(
   "post/updatePost",
   async ({ slug, updateData }, { rejectWithValue }) => {
     try {
+      console.log("[updatePost] Updating post:", slug);
+
       const response = await asyncRetry(() =>
-        axiosInstance.patch(
-          `/post/update/${slug}?t=${Date.now()}`,
-          updateData,
-          {
-            timeout: 10000,
-          }
-        )
+        axiosInstance.patch(`/post/update/${slug}`, updateData, {
+          timeout: 30000, // Increased timeout for updates
+        })
       );
-      if (!response.data.post) {
-        throw new Error("Invalid server response format");
-      }
+
+      console.log("[updatePost] Update response:", {
+        success: response.data.success,
+        postTitle: response.data.post?.title,
+        postSlug: response.data.post?.slug,
+      });
+
       return response.data;
     } catch (error) {
       const errMsg = error.response?.data?.message || "Failed to update post";
@@ -543,25 +630,15 @@ const postSlice = createSlice({
       }
     },
     clearCurrentPost: (state) => {
+      console.log("[clearCurrentPost] Clearing current post");
       state.currentPost = null;
+      state.currentPostSlug = null;
+      state.error = null;
     },
-    handlePostUpdated: (state, action) => {
-      const updatedPost = action.payload;
-      if (state.currentPost?.slug === updatedPost.slug) {
-        state.currentPost = { ...state.currentPost, ...updatedPost };
-      }
-      const updateArray = (array) => {
-        const idx = array.findIndex((p) => p.slug === updatedPost.slug);
-        if (idx !== -1) {
-          array[idx] = { ...array[idx], ...updatedPost };
-        }
-      };
-      updateArray(state.posts);
-      updateArray(state.publicPosts);
-      updateArray(state.followingPosts);
-      updateArray(state.latestPosts);
-      updateArray(state.trendingPosts);
-      updateArray(state.searchPosts);
+    // NEW: Action to set the slug we're about to load
+    setLoadingSlug: (state, action) => {
+      state.currentPostSlug = action.payload;
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -628,10 +705,12 @@ const postSlice = createSlice({
         state.createLoading = false;
         state.posts.unshift(action.payload.post);
         state.followingPosts.unshift(action.payload.post);
+        // Add title to recentTitles with timestamp
         state.recentTitles.push({
           title: action.payload.title,
           timestamp: Date.now(),
         });
+        // Clean up titles older than 60 seconds
         state.recentTitles = state.recentTitles.filter(
           (rt) => Date.now() - rt.timestamp < 60 * 1000
         );
@@ -691,19 +770,62 @@ const postSlice = createSlice({
         state.searchLoading = false;
         state.searchError = action.payload.message;
       })
-      .addCase(getSinglePost.pending, (state) => {
+      // FIXED: Enhanced getSinglePost state handling
+      .addCase(getSinglePost.pending, (state, action) => {
+        console.log(
+          "[getSinglePost.pending] Loading post:",
+          action.meta.arg?.slug
+        );
         state.loading = true;
         state.error = null;
-        state.currentPost = null; // Ensure clean state
+        state.currentPostSlug = action.meta.arg?.slug || null;
+
+        // Only clear currentPost if we're loading a different slug
+        if (
+          state.currentPost &&
+          state.currentPost.slug !== action.meta.arg?.slug
+        ) {
+          console.log("[getSinglePost.pending] Clearing previous post");
+          state.currentPost = null;
+        }
       })
       .addCase(getSinglePost.fulfilled, (state, action) => {
+        console.log("[getSinglePost.fulfilled] Post loaded:", {
+          slug: action.payload.slug,
+          title: action.payload.post?.title,
+        });
+
         state.loading = false;
-        state.currentPost = action.payload;
+        state.error = null;
+
+        // Only update if this is the slug we were expecting
+        if (state.currentPostSlug === action.payload.slug) {
+          state.currentPost = action.payload.post;
+          state.currentPostSlug = action.payload.slug;
+        } else {
+          console.warn(
+            "[getSinglePost.fulfilled] Slug mismatch - ignoring response",
+            {
+              expected: state.currentPostSlug,
+              received: action.payload.slug,
+            }
+          );
+        }
       })
       .addCase(getSinglePost.rejected, (state, action) => {
+        console.log("[getSinglePost.rejected] Failed to load post:", {
+          slug: action.payload?.slug,
+          message: action.payload?.message,
+        });
+
         state.loading = false;
         state.error = action.payload.message;
-        state.currentPost = null;
+
+        // Only clear if this was the slug we were trying to load
+        if (state.currentPostSlug === action.payload?.slug) {
+          state.currentPost = null;
+          state.currentPostSlug = null;
+        }
       })
       .addCase(updatePost.pending, (state) => {
         state.updateLoading = true;
@@ -716,39 +838,32 @@ const postSlice = createSlice({
         state.updateMessage = action.payload.message;
         state.updateSuccess = true;
         const updatedPost = action.payload.post || action.payload;
-        const idx = state.posts.findIndex((p) => p.slug === updatedPost.slug);
-        if (idx !== -1) {
-          state.posts[idx] = { ...state.posts[idx], ...updatedPost };
-        }
-        if (state.currentPost?.slug === updatedPost.slug) {
+
+        // Update in all relevant arrays
+        const updatePostInArray = (array) => {
+          const idx = array.findIndex(
+            (p) => p.slug === updatedPost.slug || p._id === updatedPost._id
+          );
+          if (idx !== -1) {
+            array[idx] = { ...array[idx], ...updatedPost };
+          }
+        };
+
+        // Update posts in all arrays
+        updatePostInArray(state.posts);
+        updatePostInArray(state.latestPosts);
+        updatePostInArray(state.trendingPosts);
+        updatePostInArray(state.followingPosts);
+        updatePostInArray(state.publicPosts);
+        updatePostInArray(state.searchPosts);
+
+        // Update currentPost if it matches
+        if (
+          state.currentPost &&
+          (state.currentPost.slug === updatedPost.slug ||
+            state.currentPost._id === updatedPost._id)
+        ) {
           state.currentPost = { ...state.currentPost, ...updatedPost };
-        }
-        const latestIdx = state.latestPosts.findIndex(
-          (p) => p.slug === updatedPost.slug
-        );
-        if (latestIdx !== -1) {
-          state.latestPosts[latestIdx] = {
-            ...state.latestPosts[latestIdx],
-            ...updatedPost,
-          };
-        }
-        const trendingIdx = state.trendingPosts.findIndex(
-          (p) => p.slug === updatedPost.slug
-        );
-        if (trendingIdx !== -1) {
-          state.trendingPosts[trendingIdx] = {
-            ...state.trendingPosts[trendingIdx],
-            ...updatedPost,
-          };
-        }
-        const followingIdx = state.followingPosts.findIndex(
-          (p) => p.slug === updatedPost.slug
-        );
-        if (followingIdx !== -1) {
-          state.followingPosts[followingIdx] = {
-            ...state.followingPosts[followingIdx],
-            ...updatedPost,
-          };
         }
       })
       .addCase(updatePost.rejected, (state, action) => {
@@ -764,26 +879,22 @@ const postSlice = createSlice({
       .addCase(deletePost.fulfilled, (state, action) => {
         state.deleteLoading = false;
         state.deleteMessage = action.payload.message;
-        state.posts = state.posts.filter(
-          (p) => p._id !== action.payload.postId
-        );
-        state.publicPosts = state.publicPosts.filter(
-          (p) => p._id !== action.payload.postId
-        );
-        state.followingPosts = state.followingPosts.filter(
-          (p) => p._id !== action.payload.postId
-        );
-        state.latestPosts = state.latestPosts.filter(
-          (p) => p._id !== action.payload.postId
-        );
-        state.trendingPosts = state.trendingPosts.filter(
-          (p) => p._id !== action.payload.postId
-        );
-        state.searchPosts = state.searchPosts.filter(
-          (p) => p._id !== action.payload.postId
-        );
+
+        // Remove from all arrays
+        const filterPosts = (array) =>
+          array.filter((p) => p._id !== action.payload.postId);
+
+        state.posts = filterPosts(state.posts);
+        state.publicPosts = filterPosts(state.publicPosts);
+        state.followingPosts = filterPosts(state.followingPosts);
+        state.latestPosts = filterPosts(state.latestPosts);
+        state.trendingPosts = filterPosts(state.trendingPosts);
+        state.searchPosts = filterPosts(state.searchPosts);
+
+        // Clear currentPost if it was deleted
         if (state.currentPost?._id === action.payload.postId) {
           state.currentPost = null;
+          state.currentPostSlug = null;
         }
       })
       .addCase(deletePost.rejected, (state, action) => {
@@ -862,7 +973,7 @@ export const {
   clearReadingError,
   updateCurrentPostBlockedStatus,
   clearCurrentPost,
-  handlePostUpdated,
+  setLoadingSlug,
 } = postSlice.actions;
 
 export default postSlice.reducer;

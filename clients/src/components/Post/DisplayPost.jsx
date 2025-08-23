@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 import { useDispatch, useSelector } from "react-redux";
-import io from "socket.io-client";
 import {
   getSinglePost,
   startReading,
@@ -32,17 +31,11 @@ import DisplayAd from "../../Ads/DisplayAd";
 import { toast } from "react-hot-toast";
 import { selectPostViews } from "../../Utils/postSelectors";
 
-// Initialize Socket.IO client
-const socket = io("https://inksha-uedq.onrender.com", {
-  withCredentials: true,
-  transports: ["websocket", "polling"],
-});
-
 const DisplayPost = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { state } = useLocation();
+
   const {
     currentPost: post,
     loading,
@@ -72,12 +65,10 @@ const DisplayPost = () => {
   const [postReady, setPostReady] = useState(false);
   const [showSeeMore, setShowSeeMore] = useState(false);
   const [showAnyway, setShowAnyway] = useState(false);
-  const [displayPost, setDisplayPost] = useState(state?.post || null); // Use location state if available
 
   const hasFetchedStatus = useRef(false);
-  const lastEventTimestamp = useRef(null); // Prevent duplicate Socket.IO events
 
-  const activePost = displayPost || (isAuthenticated ? post : guestPost);
+  const activePost = isAuthenticated ? post : guestPost;
   const activeLoading = isAuthenticated ? loading : guestLoading;
   const activeError = isAuthenticated ? error : guestError;
 
@@ -112,28 +103,23 @@ const DisplayPost = () => {
   useEffect(() => {
     if (!slug) return;
 
-    // Clear old data before fetching
+    // CLEAR old data before fetching
     if (isAuthenticated) {
-      dispatch(clearCurrentPost());
+      dispatch({ type: "post/clearCurrentPost" });
     } else {
       dispatch({ type: "guest/clearSinglePost" });
     }
 
     setFetchAttempted(false);
     setPostReady(false);
-    setDisplayPost(state?.post || null); // Use location state if available
     hasFetchedStatus.current = false;
 
     const fetchData = async () => {
       try {
         if (isAuthenticated) {
-          const result = await dispatch(
-            getSinglePost({ slug, isGuest: false })
-          ).unwrap();
-          setDisplayPost(result.post); // Update local state with fetched data
+          await dispatch(getSinglePost({ slug, isGuest: false })).unwrap();
         } else {
-          const result = await dispatch(fetchPublicPostBySlug(slug)).unwrap();
-          setDisplayPost(result.post);
+          await dispatch(fetchPublicPostBySlug(slug)).unwrap();
         }
         setFetchAttempted(true);
         setPostReady(true);
@@ -149,31 +135,7 @@ const DisplayPost = () => {
     };
 
     fetchData();
-
-    // Listen for postUpdated event
-    const handlePostUpdated = (updatedPost) => {
-      console.log("[DisplayPost] Received postUpdated event:", updatedPost);
-      if (
-        updatedPost.slug === slug &&
-        updatedPost.timestamp !== lastEventTimestamp.current
-      ) {
-        lastEventTimestamp.current = updatedPost.timestamp;
-        setDisplayPost(updatedPost);
-        dispatch({
-          type: isAuthenticated
-            ? "post/updatePost/fulfilled"
-            : "guest/fetchPublicPostBySlug/fulfilled",
-          payload: { post: updatedPost },
-        });
-      }
-    };
-
-    socket.on("postUpdated", handlePostUpdated);
-
-    return () => {
-      socket.off("postUpdated", handlePostUpdated);
-    };
-  }, [dispatch, slug, isAuthenticated, state]);
+  }, [dispatch, slug, isAuthenticated]);
 
   useEffect(() => {
     if (
