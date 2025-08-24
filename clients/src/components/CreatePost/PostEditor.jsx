@@ -30,6 +30,7 @@ import PollBlock from "../PostFeature/PollBlock";
 import QuoteBlock from "../PostFeature/QuoteBlock";
 import TableBlock from "../PostFeature/TableBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
+import { FiEdit3 } from "react-icons/fi";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -265,7 +266,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     >
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-          <Edit3 className="w-5 h-5 text-white" />
+          <FiEdit3 className="w-5 h-5 text-white" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
