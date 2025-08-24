@@ -11,56 +11,31 @@ import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
-import { PacmanLoader } from "react-spinners";
-import { debounce } from "lodash";
-import DOMPurify from "dompurify";
 import {
-  Eye,
-  Trash2,
-  Copy,
-  Check,
+  Sparkles,
   Settings,
   Globe,
-  Pin,
   Star,
-  Loader2,
-  Sparkles,
+  Pin,
   Zap,
+  Loader2,
 } from "lucide-react";
-
-// Modern Loading Component
-const ModernLoadingBar = ({ loading, text = "Loading..." }) => {
-  if (!loading) return null;
-
-  return (
-    <div className="flex flex-col items-center justify-center space-y-6">
-      <div className="relative">
-        {/* Outer ring */}
-        <div className="w-20 h-20 rounded-full border-4 border-blue-200/30 dark:border-blue-800/30"></div>
-        {/* Spinning ring */}
-        <div className="absolute top-0 left-0 w-20 h-20 rounded-full border-4 border-transparent border-t-blue-500 animate-spin"></div>
-        {/* Inner pulsing circle */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-blue-500 rounded-full animate-pulse"></div>
-      </div>
-      <div className="text-center space-y-2">
-        <p className="text-lg font-medium text-gray-900 dark:text-white">
-          {text}
-        </p>
-        <div className="flex space-x-1">
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-          <div
-            className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
-            style={{ animationDelay: "0.1s" }}
-          ></div>
-          <div
-            className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
-            style={{ animationDelay: "0.2s" }}
-          ></div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import { debounce } from "lodash";
+import DOMPurify from "dompurify";
+import FileBlock from "../PostFeature/FileBlock";
+import VideoBlock from "../PostFeature/VideoBlock";
+import TableBlock from "../PostFeature/TableBlock";
+import PostView from "./PostView";
+import { getSinglePost, deletePost } from "../../store/postSlice";
+import ConfirmPostModal from "./ConfirmPostModal";
+import {
+  setIsFeatured,
+  setIsPinned,
+  setIsPublished,
+  setLanguage,
+} from "../../store/Post/postMetaSlice";
+import LoadingBar from "../../Utils/LoadingBar";
+import TableBlocksOutput from "../actualPostDisplay/TableBlocksOutput";
 
 const PostPreviewList = ({
   currentDraftPost,
@@ -185,9 +160,15 @@ const PostPreviewList = ({
     setPostData(newPostData);
     setIsPostConfirmed(true);
     setCountdown(5);
+
+    dispatch(setIsFeatured(isFeatured));
+    dispatch(setIsPinned(isPinned));
+    dispatch(setIsPublished(isPublished));
+    dispatch(setLanguage(language));
   };
 
   const sanitizeBlocks = useCallback((blocks) => {
+    let lastLoggedData = null;
     return blocks.map((block) => {
       if (block.type === "table") {
         let tableData = block.data;
@@ -221,6 +202,11 @@ const PostPreviewList = ({
             ["Cell 3", "Cell 4"],
           ];
           toast.error("Table block is empty. Using default data.");
+        } else {
+          const tableDataString = JSON.stringify(tableData);
+          if (tableDataString !== lastLoggedData) {
+            lastLoggedData = tableDataString;
+          }
         }
         return {
           ...block,
@@ -272,6 +258,20 @@ const PostPreviewList = ({
     toast("Post publishing cancelled.");
   };
 
+  const handleDeletePost = (postId) => {
+    if (window.confirm("Are you sure you want to delete this post?")) {
+      dispatch(deletePost(postId))
+        .unwrap()
+        .then(() => {
+          toast.success("Post deleted successfully");
+        })
+        .catch((err) => {
+          console.error("[PostPreviewList] Post deletion failed:", err);
+          toast.error(`Failed to delete post: ${err.message || err}`);
+        });
+    }
+  };
+
   const deleteBlock = (index) => {
     if (!onUpdateDraft) {
       console.error("[PostPreviewList] No update function provided");
@@ -286,194 +286,330 @@ const PostPreviewList = ({
   const renderBlock = useCallback(
     (block, i) => {
       if (!block || !block.type) {
+        console.warn(
+          `[PostPreviewList] Invalid block at index ${i}:`,
+          JSON.stringify(block, null, 2)
+        );
+        toast.error("Invalid block detected");
         return (
-          <div
-            key={i}
-            className="my-6 p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl"
-          >
-            <p className="text-red-600 dark:text-red-400 font-medium">
-              Invalid block detected
-            </p>
+          <div key={i} className="my-4 text-red-500 italic">
+            Invalid block
           </div>
         );
       }
 
-      const deleteButton = (
-        <button
-          onClick={() => deleteBlock(i)}
-          className="absolute top-3 right-3 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-all duration-200 hover:scale-110 opacity-80 hover:opacity-100"
-          aria-label={`Delete ${block.type} block`}
-        >
-          <Trash2 size={14} />
-        </button>
-      );
+      const blockProps = {
+        block,
+        index: i,
+        zoomLevel,
+        copiedIndex,
+        handleCopyCode,
+        className: "relative my-4",
+      };
 
       switch (block.type) {
         case "code":
           return (
             <div
               key={i}
-              className="relative my-6 bg-gray-900 dark:bg-black rounded-2xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-800 group"
+              className="relative my-4 bg-gray-800 dark:bg-gray-900 text-text-main-light dark:text-text-main-dark rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800"
             >
-              <div className="absolute top-4 right-4 flex gap-2 z-10">
-                <button
-                  onClick={() =>
-                    handleCopyCode(block.code || block.value || "", i)
-                  }
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 shadow-lg"
-                >
-                  {copiedIndex === i ? <Check size={16} /> : <Copy size={16} />}
-                  {copiedIndex === i ? "Copied!" : "Copy"}
-                </button>
-                {deleteButton}
-              </div>
               <SyntaxHighlighter
                 language={block.language || "javascript"}
                 style={tomorrow}
                 showLineNumbers
                 wrapLines
-                customStyle={{
-                  margin: 0,
-                  padding: "1.5rem",
-                  paddingTop: "4rem",
-                  background: "transparent",
-                }}
               >
                 {block.code || block.value || ""}
               </SyntaxHighlighter>
-            </div>
-          );
-
-        case "text":
-          return (
-            <div key={i} className="relative my-6 group">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-all duration-300">
-                <div
-                  className="prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-200 leading-relaxed"
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(block.value || "Empty text"),
-                  }}
-                />
-                {deleteButton}
-              </div>
-            </div>
-          );
-
-        case "image":
-          return (
-            <div key={i} className="relative my-6 group">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-all duration-300">
-                {block.src ? (
-                  <div className="relative overflow-hidden rounded-xl">
-                    <img
-                      src={block.src}
-                      alt={block.caption || "Image"}
-                      className="w-full h-auto max-h-96 object-contain rounded-xl transform hover:scale-105 transition-transform duration-500"
-                      loading="lazy"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-full h-48 flex items-center justify-center bg-gray-50 dark:bg-gray-700 rounded-xl">
-                    <p className="text-gray-500 dark:text-gray-400 italic">
-                      No image source provided
-                    </p>
-                  </div>
-                )}
-                {block.caption && (
-                  <p className="mt-4 text-sm text-gray-600 dark:text-gray-400 italic text-center">
-                    {block.caption}
-                  </p>
-                )}
-                {deleteButton}
-              </div>
-            </div>
-          );
-
-        case "heading":
-          return (
-            <div key={i} className="relative my-6 group">
-              <h2
-                className={`font-bold text-gray-900 dark:text-white ${
-                  block.level === 1
-                    ? "text-4xl"
-                    : block.level === 3
-                    ? "text-xl"
-                    : "text-2xl"
-                } hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200`}
+              <button
+                onClick={() =>
+                  handleCopyCode(block.code || block.value || "", i)
+                }
+                className="absolute top-2 right-2 bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600 transition z-10"
               >
-                {block.text || "Empty heading"}
-              </h2>
-              {deleteButton}
+                {copiedIndex === i ? "Copied!" : "Copy"}
+              </button>
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-16 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete code block"
+              >
+                🗑
+              </button>
             </div>
           );
-
+        case "file":
+          return (
+            <div
+              key={i}
+              className="relative my-6 group bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-all duration-300"
+            >
+              <FileBlock {...blockProps} />
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete file block"
+              >
+                🗑
+              </button>
+            </div>
+          );
         case "list":
           if (!block.items || !Array.isArray(block.items)) {
+            console.warn("[PostPreviewList] Invalid list items:", block.items);
             return (
-              <div
-                key={i}
-                className="my-6 p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl"
-              >
-                <p className="text-red-600 dark:text-red-400">
-                  Invalid list data
-                </p>
-                {deleteButton}
+              <div key={i} className="my-4 text-red-500 italic">
+                Invalid list data: {JSON.stringify(block.items)}
+                <button
+                  onClick={() => deleteBlock(i)}
+                  className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                  aria-label="Delete list block"
+                >
+                  🗑
+                </button>
               </div>
             );
           }
           return (
-            <div key={i} className="relative my-6 group">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-all duration-300">
-                {block.ordered ? (
-                  <ol className="list-decimal list-inside space-y-2 text-gray-800 dark:text-gray-200">
-                    {block.items.map((item, j) => (
-                      <li key={j} className="leading-relaxed">
-                        {item || "Empty item"}
-                      </li>
-                    ))}
-                  </ol>
-                ) : (
-                  <ul className="list-disc list-inside space-y-2 text-gray-800 dark:text-gray-200">
-                    {block.items.map((item, j) => (
-                      <li key={j} className="leading-relaxed">
-                        {item || "Empty item"}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {deleteButton}
-              </div>
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
+              {block.ordered ? (
+                <ol className="list-decimal list-inside space-y-1">
+                  {block.items.map((item, j) => (
+                    <li key={j}>{item || "Empty item"}</li>
+                  ))}
+                </ol>
+              ) : (
+                <ul className="list-disc list-inside space-y-1">
+                  {block.items.map((item, j) => (
+                    <li key={j}>{item || "Empty item"}</li>
+                  ))}
+                </ul>
+              )}
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete list block"
+              >
+                🗑
+              </button>
             </div>
           );
-
+        case "video":
+          return (
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
+              <VideoBlock
+                src={block.src || ""}
+                caption={block.caption || ""}
+                autoPlay={false}
+                muted={false}
+                loop={false}
+              />
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete video block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case "image":
+          return (
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
+              {block.src ? (
+                <img
+                  src={block.src}
+                  alt={block.caption || "Image"}
+                  className="w-full h-auto max-h-96 object-contain rounded-lg"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-48 flex items-center justify-center italic opacity-80">
+                  No image source provided
+                </div>
+              )}
+              {block.caption && (
+                <p className="mt-2 text-sm italic">{block.caption}</p>
+              )}
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete image block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case "heading":
+          return (
+            <div key={i} className="relative my-4">
+              <h2
+                className={`font-semibold ${
+                  block.level === 1
+                    ? "text-2xl"
+                    : block.level === 3
+                    ? "text-lg"
+                    : "text-xl"
+                }`}
+              >
+                {block.text || "Empty heading"}
+              </h2>
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete heading block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case "hr":
+          return (
+            <div key={i} className="relative my-4">
+              <hr className="border-gray-200 dark:border-gray-800" />
+              {block.caption && (
+                <p className="mt-2 text-sm italic">{block.caption}</p>
+              )}
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete HR block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case "link":
+          return (
+            <div key={i} className="relative my-4">
+              <a
+                href={block.href || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {block.text || block.href || "Empty link"}
+              </a>
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete link block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case "poll":
+          return (
+            <div
+              key={i}
+              className="relative my-4 p-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800"
+            >
+              <h3 className="text-lg font-medium">
+                {block.question || "Poll"}
+              </h3>
+              <ul className="mt-2 space-y-2 list-disc list-inside">
+                {(block.options || []).map((opt, j) => (
+                  <li key={j}>
+                    {typeof opt === "string" ? opt : opt.option || "Option"}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete poll block"
+              >
+                🗑
+              </button>
+            </div>
+          );
         case "quote":
           return (
-            <div key={i} className="relative my-6 group">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 shadow-lg border-l-4 border-blue-500 hover:shadow-xl transition-all duration-300">
-                <blockquote className="text-gray-800 dark:text-gray-200">
-                  <p className="text-lg italic leading-relaxed font-medium">
-                    "{block.text || "Empty quote"}"
-                  </p>
-                  {block.author && (
-                    <footer className="mt-4 text-sm text-gray-600 dark:text-gray-400 font-semibold">
-                      — {block.author}
-                    </footer>
-                  )}
-                </blockquote>
-                {deleteButton}
-              </div>
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
+              <blockquote className="border-l-4 border-blue-500 dark:border-blue-600 pl-4 italic">
+                <p>{block.text || "Empty quote"}</p>
+                {block.author && (
+                  <footer className="mt-2 text-sm">— {block.author}</footer>
+                )}
+              </blockquote>
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete quote block"
+              >
+                🗑
+              </button>
             </div>
           );
-
-        default:
+        case "table":
           return (
-            <div key={i} className="relative my-6 group">
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-2xl p-6">
-                <p className="text-yellow-800 dark:text-yellow-200 font-medium">
-                  Unsupported block type: {block.type}
-                </p>
-                {deleteButton}
-              </div>
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
+              <TableBlocksOutput
+                data={block.data}
+                caption={block.caption || ""}
+              />
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete table block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        case "text":
+          return (
+            <div
+              key={i}
+              className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
+            >
+              <div
+                className="rich-content text-base leading-relaxed my-4"
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(block.value || "Empty text"),
+                }}
+              />
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete text block"
+              >
+                🗑
+              </button>
+            </div>
+          );
+        default:
+          console.warn(
+            `[PostPreviewList] Unsupported block type at index ${i}:`,
+            block.type
+          );
+          return (
+            <div key={i} className="relative my-4 text-red-500 italic">
+              Unsupported block type: {block.type}
+              <button
+                onClick={() => deleteBlock(i)}
+                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
+                aria-label="Delete unsupported block"
+              >
+                🗑
+              </button>
             </div>
           );
       }
@@ -483,201 +619,86 @@ const PostPreviewList = ({
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
-      {/* Modern Loading Overlay */}
       <AnimatePresence>
         {showPublishLoading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center"
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
           >
-            <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700">
-              <ModernLoadingBar
-                loading={showPublishLoading}
-                text="Publishing your amazing post..."
-              />
-            </div>
+            <LoadingBar loading={showPublishLoading} text="Publishing..." />
           </motion.div>
         )}
       </AnimatePresence>
-
       {currentDraftPost && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-8"
-        >
-          {/* Header Section */}
-          <div className="text-center space-y-4">
-            <div className="flex items-center justify-center gap-3">
-              <Sparkles className="text-blue-500" size={32} />
-              <h2 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                Draft Preview
-              </h2>
-              <Sparkles className="text-purple-500" size={32} />
-            </div>
+        <>
+          <div className="text-center space-y-4 mb-8">
+            <h2 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+              Draft Preview
+            </h2>
             <p className="text-gray-600 dark:text-gray-400 text-lg">
               Review your content before publishing to the world
             </p>
           </div>
-
-          {/* Post Header */}
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700 mb-8">
+            <h1 className="text-2xl sm:text-3xl font-semibold mb-4 capitalize">
               {currentDraftPost.title || "Untitled Draft"}
             </h1>
-            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-              <Globe size={18} />
-              <span className="font-medium">
-                Category: {categoryName || "Uncategorized"}
-              </span>
-            </div>
+            <p className="mb-4 opacity-80">
+              Category: {categoryName || "Uncategorized"}
+            </p>
           </div>
-
-          {/* Content Blocks */}
-          <div className="bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900/20 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700 min-h-96">
+          <div className="bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900/20 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700 min-h-96 mb-8">
             {sanitizedBlocks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-                <div className="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                  <Settings
-                    className="text-gray-400 dark:text-gray-500"
-                    size={40}
-                  />
-                </div>
-                <p className="text-xl font-medium text-gray-500 dark:text-gray-400">
-                  No content blocks added yet
-                </p>
-                <p className="text-gray-400 dark:text-gray-500">
-                  Start creating your amazing content!
-                </p>
-              </div>
+              <p className="italic text-center opacity-80">
+                No content blocks added yet.
+              </p>
             ) : (
-              <div className="space-y-8">
-                {sanitizedBlocks.map((block, i) => renderBlock(block, i))}
-              </div>
+              sanitizedBlocks.map((block, i) => renderBlock(block, i))
             )}
           </div>
 
-          {/* Post Settings */}
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
-              <Settings className="text-blue-500" size={24} />
-              Post Settings
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <label className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={isFeatured}
-                    onChange={() => setIsFeaturedLocal(!isFeatured)}
-                    className="sr-only"
-                  />
-                  <div
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      isFeatured
-                        ? "bg-blue-500"
-                        : "bg-gray-300 dark:bg-gray-600"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
-                        isFeatured ? "translate-x-6" : "translate-x-0.5"
-                      } mt-0.5`}
-                    ></div>
-                  </div>
-                </div>
-                <Star
-                  className={`${
-                    isFeatured ? "text-blue-500" : "text-gray-400"
-                  }`}
-                  size={20}
-                />
-                <span className="font-medium text-gray-800 dark:text-gray-200">
-                  Feature Post
-                </span>
-              </label>
-
-              <label className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={isPinned}
-                    onChange={() => setIsPinnedLocal(!isPinned)}
-                    className="sr-only"
-                  />
-                  <div
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      isPinned ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
-                        isPinned ? "translate-x-6" : "translate-x-0.5"
-                      } mt-0.5`}
-                    ></div>
-                  </div>
-                </div>
-                <Pin
-                  className={`${isPinned ? "text-green-500" : "text-gray-400"}`}
-                  size={20}
-                />
-                <span className="font-medium text-gray-800 dark:text-gray-200">
-                  Pin Post
-                </span>
-              </label>
-
-              <label className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={isPublished}
-                    onChange={() => setIsPublishedLocal(!isPublished)}
-                    className="sr-only"
-                  />
-                  <div
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      isPublished
-                        ? "bg-purple-500"
-                        : "bg-gray-300 dark:bg-gray-600"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
-                        isPublished ? "translate-x-6" : "translate-x-0.5"
-                      } mt-0.5`}
-                    ></div>
-                  </div>
-                </div>
-                <Zap
-                  className={`${
-                    isPublished ? "text-purple-500" : "text-gray-400"
-                  }`}
-                  size={20}
-                />
-                <span className="font-medium text-gray-800 dark:text-gray-200">
-                  Publish Post
-                </span>
-              </label>
-
-              <div className="space-y-2">
-                <label className="flex items-center gap-3 font-medium text-gray-800 dark:text-gray-200">
-                  <Globe className="text-blue-500" size={20} />
-                  Language
-                </label>
-                <input
-                  type="text"
-                  value={language}
-                  onChange={(e) => setLanguageLocal(e.target.value)}
-                  placeholder="e.g., en"
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
-              </div>
-            </div>
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700 mb-8">
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={isFeatured}
+                onChange={() => setIsFeaturedLocal(!isFeatured)}
+                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+              />
+              Feature Post
+            </label>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={isPinned}
+                onChange={() => setIsPinnedLocal(!isPinned)}
+                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+              />
+              Pin Post
+            </label>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={isPublished}
+                onChange={() => setIsPublishedLocal(!isPublished)}
+                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+              />
+              Publish Post
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-medium">Language</span>
+              <input
+                type="text"
+                value={language}
+                onChange={(e) => setLanguageLocal(e.target.value)}
+                placeholder="e.g., en"
+                className="px-3 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </label>
           </div>
 
-          {/* Publish Button */}
           <button
             onClick={createPost}
             disabled={isSubmitting || createLoading}
@@ -700,20 +721,74 @@ const PostPreviewList = ({
               </div>
             )}
           </button>
-
           {createError && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-4"
-            >
-              <p className="text-red-600 dark:text-red-400 text-center font-medium">
-                {createError}
-              </p>
-            </motion.div>
+            <p className="mt-2 text-red-500 text-sm text-center">
+              {createError}
+            </p>
           )}
-        </motion.div>
+        </>
       )}
+      {allPosts.length === 0 ? (
+        <p className="text-center mt-8 opacity-80">No posts available yet.</p>
+      ) : (
+        <div className="grid gap-6 mt-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {allPosts.map((post) => {
+            const firstBlock = post.blocks.find((b) =>
+              ["image", "text", "file", "heading"].includes(b.type)
+            );
+            return (
+              <motion.div
+                key={post._id}
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-lg transition-all duration-300"
+              >
+                <div
+                  onClick={() => dispatch(getSinglePost(post.slug))}
+                  className="cursor-pointer"
+                >
+                  {firstBlock?.type === "image" ? (
+                    <img
+                      src={firstBlock.src}
+                      alt={firstBlock.caption || "Post Image"}
+                      className="w-full h-40 object-cover rounded-t-xl hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        console.error(
+                          "[PostPreviewList] Image load error for post:",
+                          post._id
+                        );
+                        e.target.style.display = "none";
+                      }}
+                      loading="lazy"
+                    />
+                  ) : firstBlock?.type === "text" ? (
+                    <div
+                      className="p-4 line-clamp-3 text-sm list-inside"
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(firstBlock.value),
+                      }}
+                    />
+                  ) : (
+                    <div className="p-4 italic text-sm">
+                      No preview available
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <ConfirmPostModal
+            onConfirm={handleModalConfirm}
+            onCancel={handleCancelPublish}
+          />
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {isPostConfirmed && (
           <motion.div
