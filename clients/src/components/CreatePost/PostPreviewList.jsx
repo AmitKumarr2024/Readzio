@@ -83,8 +83,10 @@ const PostPreviewList = ({
   useEffect(() => {
     let timer;
     if (isPostConfirmed && countdown > 0 && !createLoading) {
+      console.log("Countdown running:", countdown);
       timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
     } else if (isPostConfirmed && countdown === 0 && !createLoading) {
+      console.log("Countdown reached 0, calling handleConfirmPublish");
       handleConfirmPublish();
     }
     return () => clearTimeout(timer);
@@ -237,18 +239,17 @@ const PostPreviewList = ({
     };
     setIsPostConfirmed(false);
     setShowPublishLoading(true);
-    setTimeout(() => {
-      console.log(
-        "LoadingBar triggered, showPublishLoading:",
-        showPublishLoading
-      );
-    }, 0);
+    console.log("showPublishLoading set to true");
+    await new Promise((resolve) => setTimeout(resolve, 0)); // Ensure state update
     console.log(
       "LoadingBar triggered, showPublishLoading:",
       showPublishLoading
     );
-
     try {
+      console.log("[CreatePost] Sending postData:", {
+        ...postData,
+        draft: cleanedDraft,
+      });
       await onCreatePost({ ...postData, draft: cleanedDraft });
     } catch (err) {
       console.error("[PostPreviewList] Post creation failed:", err);
