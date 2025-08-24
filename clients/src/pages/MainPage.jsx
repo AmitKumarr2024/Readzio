@@ -35,7 +35,7 @@ const MainPage = () => {
 
   // Handle tab changes for TabbedPostSection
   const handleTabChange = useCallback((tab) => {
-    console.log(`Tab changed to: ${tab}`);
+    // console.log(`Tab changed to: ${tab}`);
     // Add your tab-specific logic here
     // Example:
     // if (tab === "Following") {

@@ -24,13 +24,13 @@ const TabbedPostSection = ({
   const { postCounts } = useSelector(selectSocketState);
   const isAuthenticated = !!user;
 
-  console.log("🔍 TabbedPostSection Props:", {
-    userExists: !!user,
-    userId: user?._id || user?.id,
-    postsCount: posts.length,
-    activeTab,
-    samplePost: posts[0],
-  });
+  // console.log("🔍 TabbedPostSection Props:", {
+  //   userExists: !!user,
+  //   userId: user?._id || user?.id,
+  //   postsCount: posts.length,
+  //   activeTab,
+  //   samplePost: posts[0],
+  // });
 
   const tabs = isAuthenticated
     ? ["All Posts", "Following", "My Posts"]
@@ -51,24 +51,24 @@ const TabbedPostSection = ({
 
   // Filter posts based on active tab
   const filteredPosts = useMemo(() => {
-    console.log("🎯 Filtering posts for tab:", activeTab);
-    console.log("📊 Filter data:", {
-      totalPosts: posts.length,
-      userId: user?._id || user?.id,
-      sampleAuthor: posts[0]?.author,
-    });
+    // console.log("🎯 Filtering posts for tab:", activeTab);
+    // console.log("📊 Filter data:", {
+    //   totalPosts: posts.length,
+    //   userId: user?._id || user?.id,
+    //   sampleAuthor: posts[0]?.author,
+    // });
 
     switch (activeTab) {
       case "All Posts":
-        console.log("✅ All Posts tab - returning", posts.length, "posts");
+        // console.log("✅ All Posts tab - returning", posts.length, "posts");
         return posts;
 
       case "Following":
         if (followingPosts.length > 0) {
-          console.log(
-            "✅ Using provided followingPosts:",
-            followingPosts.length
-          );
+          // console.log(
+          //   "✅ Using provided followingPosts:",
+          //   followingPosts.length
+          // );
           return followingPosts;
         }
 
@@ -79,12 +79,12 @@ const TabbedPostSection = ({
               typeof post.author === "object" &&
               post.author.isFollowed)
         );
-        console.log("✅ Filtered following posts:", followingFiltered.length);
+        // console.log("✅ Filtered following posts:", followingFiltered.length);
         return followingFiltered;
 
       case "My Posts":
         if (myPosts.length > 0) {
-          console.log("✅ Using provided myPosts:", myPosts.length);
+          // console.log("✅ Using provided myPosts:", myPosts.length);
           return myPosts;
         }
 
@@ -92,7 +92,7 @@ const TabbedPostSection = ({
         const userId = user?._id || user?.id;
 
         if (!userId) {
-          console.log("❌ No user ID found");
+          // console.log("❌ No user ID found");
           return [];
         }
 
@@ -105,18 +105,18 @@ const TabbedPostSection = ({
             post.userId === userId || // Alternative field
             post.createdBy === userId; // Alternative field
 
-          if (isMyPost) {
-            console.log("✅ Found my post:", {
-              title: post.title,
-              postAuthor: post.author,
-              userId: userId,
-            });
-          }
+          // if (isMyPost) {
+          //   console.log("✅ Found my post:", {
+          //     title: post.title,
+          //     postAuthor: post.author,
+          //     userId: userId,
+          //   });
+          // }
 
           return isMyPost;
         });
 
-        console.log("✅ My posts filtered result:", userPosts.length);
+        // console.log("✅ My posts filtered result:", userPosts.length);
         return userPosts;
 
       default:
@@ -126,7 +126,7 @@ const TabbedPostSection = ({
 
   // Handle tab change
   const handleTabChange = (tab) => {
-    console.log("🔄 Changing tab to:", tab);
+    // console.log("🔄 Changing tab to:", tab);
     setActiveTab(tab);
 
     if (onTabChange) {
