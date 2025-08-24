@@ -1,82 +1,8 @@
 import React, { useState } from "react";
 import { X, Tag, Image, Upload, Link, Check, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Mock TagsInput component since we don't have the actual one
-const TagsInput = () => {
-  const [tags, setTags] = useState(["react", "javascript"]);
-  const [inputValue, setInputValue] = useState("");
-
-  const addTag = (tag) => {
-    if (tag && !tags.includes(tag) && tags.length < 10) {
-      setTags([...tags, tag]);
-    }
-    setInputValue("");
-  };
-
-  const removeTag = (tagToRemove) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      addTag(inputValue.trim());
-    } else if (e.key === "Backspace" && !inputValue && tags.length > 0) {
-      removeTag(tags[tags.length - 1]);
-    }
-  };
-
-  return (
-    <div className="w-full">
-      <div className="flex flex-wrap gap-2 mb-3">
-        {tags.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium transition-colors"
-          >
-            {tag}
-            <button
-              onClick={() => removeTag(tag)}
-              className="hover:bg-blue-200 dark:hover:bg-blue-800/50 rounded-full p-0.5 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </span>
-        ))}
-      </div>
-      <input
-        type="text"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={
-          tags.length === 0
-            ? "Add tags (press Enter or comma to add)"
-            : "Add another tag..."
-        }
-        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-        maxLength={30}
-      />
-      <div className="flex justify-between items-center mt-2 text-xs">
-        <span className="text-gray-500 dark:text-gray-400">
-          Press Enter or comma to add tags
-        </span>
-        <span
-          className={`font-medium ${
-            tags.length >= 10
-              ? "text-red-500"
-              : tags.length >= 7
-              ? "text-yellow-500"
-              : "text-gray-500 dark:text-gray-400"
-          }`}
-        >
-          {tags.length}/10 tags
-        </span>
-      </div>
-    </div>
-  );
-};
+import { useSelector } from "react-redux";
+import TagsInput from "./TagsInput"; // Assuming TagsInput is in a separate file
 
 const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
   const [selectedThumbnail, setSelectedThumbnail] = useState(null);
@@ -87,6 +13,7 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isEmbed, setIsEmbed] = useState(false);
   const [errors, setErrors] = useState({});
+  const tags = useSelector((state) => state.postMeta.tags || []); // Get tags from Redux
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   const ALLOWED_FORMATS = ["image/jpeg", "image/png", "image/webp"];
@@ -105,7 +32,6 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
     }, 4000);
   };
 
-  // Extract clean Instagram reel URL and generate embed URL
   const getEmbedUrl = (input) => {
     const instagramRegex =
       /https:\/\/www\.instagram\.com\/reel\/([A-Za-z0-9_-]+)/;
@@ -205,6 +131,10 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
   };
 
   const handleConfirm = () => {
+    if (tags.length === 0) {
+      showError("tags", "Please provide at least one tag.");
+      return;
+    }
     if (!selectedThumbnail) {
       showError(
         "thumbnail",
@@ -221,6 +151,7 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
       thumbnail: selectedThumbnail,
       thumbnailSize: fileSize,
       isEmbed,
+      tags, // Include tags in the confirmation payload
     });
   };
 
@@ -295,6 +226,16 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
                   <TagsInput />
+                  {errors.tags && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm mt-3 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg"
+                    >
+                      <AlertCircle size={16} />
+                      {errors.tags}
+                    </motion.div>
+                  )}
                 </div>
               </div>
 
@@ -315,7 +256,6 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
                 </div>
 
                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                  {/* Tab Navigation */}
                   <div className="flex border-b border-gray-200 dark:border-gray-700">
                     <button
                       onClick={() => setActiveTab("upload")}
@@ -341,7 +281,6 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
                     </button>
                   </div>
 
-                  {/* Tab Content */}
                   <div className="p-4">
                     {activeTab === "upload" ? (
                       <div className="space-y-4">
@@ -398,7 +337,6 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
                       </div>
                     )}
 
-                    {/* Error Display */}
                     {errors.thumbnail && (
                       <motion.div
                         initial={{ opacity: 0, y: -10 }}
@@ -410,7 +348,6 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
                       </motion.div>
                     )}
 
-                    {/* Preview */}
                     {selectedThumbnail && (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -452,7 +389,6 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={handleCancel}
