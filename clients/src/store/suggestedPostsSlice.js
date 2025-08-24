@@ -9,15 +9,15 @@ export const fetchSuggestedPosts = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      console.log("[fetchSuggestedPosts] Starting request with params:", {
-        limit,
-        category,
-        exclude,
-      });
-      console.log(
-        "[fetchSuggestedPosts] Axios instance baseURL:",
-        axiosInstance.defaults.baseURL
-      );
+      // console.log("[fetchSuggestedPosts] Starting request with params:", {
+      //   limit,
+      //   category,
+      //   exclude,
+      // });
+      // console.log(
+      //   "[fetchSuggestedPosts] Axios instance baseURL:",
+      //   axiosInstance.defaults.baseURL
+      // );
 
       const response = await axiosInstance.get(
         "/post/suggested-post/suggested",
@@ -27,8 +27,8 @@ export const fetchSuggestedPosts = createAsyncThunk(
         }
       );
 
-      console.log("[fetchSuggestedPosts] Response status:", response.status);
-      console.log("[fetchSuggestedPosts] Response data:", response.data);
+      // console.log("[fetchSuggestedPosts] Response status:", response.status);
+      // console.log("[fetchSuggestedPosts] Response data:", response.data);
 
       // Check if response.data.posts exists
       if (!response.data.posts) {

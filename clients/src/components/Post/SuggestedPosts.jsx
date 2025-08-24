@@ -28,10 +28,10 @@ const SuggestedPosts = ({ postId, className }) => {
 
     if (status === "idle" && !hasFetched.current) {
       hasFetched.current = true;
-      console.log(
-        "[SuggestedPosts] Fetching suggested posts, limit: 30, exclude:",
-        postId
-      );
+      // console.log(
+      //   "[SuggestedPosts] Fetching suggested posts, limit: 30, exclude:",
+      //   postId
+      // );
 
       dispatch(
         fetchSuggestedPosts({
@@ -41,11 +41,11 @@ const SuggestedPosts = ({ postId, className }) => {
       )
         .unwrap()
         .then((result) => {
-          console.log(
-            "[SuggestedPosts] Fetch successful:",
-            result?.length,
-            "posts"
-          );
+          // console.log(
+          //   "[SuggestedPosts] Fetch successful:",
+          //   result?.length,
+          //   "posts"
+          // );
         })
         .catch((error) => {
           console.error("[SuggestedPosts] Fetch error:", error);
