@@ -44,7 +44,7 @@ const staticRoutes = [
   "/about",
   "/contact",
   "/privacy",
-  "/Term&Condition",
+  "/terms",
   "/login",
   "/signup",
   
