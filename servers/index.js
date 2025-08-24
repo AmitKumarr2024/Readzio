@@ -38,11 +38,30 @@ import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 const app = express();
 app.set("trust proxy", true);
 
+// ✅ Route validation helper to catch malformed routes
+const validateRouter = (router, routeName) => {
+  try {
+    if (!router || typeof router !== "function") {
+      throw new Error(`${routeName} is not a valid router function`);
+    }
+
+    // Test the router by creating a dummy app and mounting it
+    const testApp = express();
+    testApp.use("/test", router);
+
+    return true;
+  } catch (error) {
+    console.error(`❌ Invalid router detected: ${routeName}`);
+    console.error(`Error: ${error.message}`);
+    return false;
+  }
+};
+
 // ✅ Fixed: Set server timeout before creating socket
 const server = http.createServer(app);
-server.setTimeout(120000); // ✅ Moved here and increased timeout
-server.keepAliveTimeout = 65000; // ✅ Added keep-alive timeout
-server.headersTimeout = 66000; // ✅ Added headers timeout
+server.setTimeout(120000);
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
 
 const __dirname = path.resolve();
 
@@ -66,7 +85,6 @@ const setRouteTimeout = (timeoutMs) => (req, res, next) => {
     }
   }, timeoutMs);
 
-  // ✅ Clear timeout when response finishes
   res.on("finish", () => clearTimeout(timeout));
   res.on("close", () => clearTimeout(timeout));
 
@@ -103,7 +121,7 @@ app.post(
   }
 );
 
-// ✅ Fixed: Better middleware order and socket attachment
+// ✅ Socket attachment middleware
 app.use((req, res, next) => {
   req.io = io;
   next();
@@ -113,16 +131,14 @@ app.use((req, res, next) => {
 app.use(
   compression({
     filter: (req, res) => {
-      // Don't compress if response is already compressed
       if (req.headers["x-no-compression"]) return false;
-      // Use compression for all other requests
       return compression.filter(req, res);
     },
-    threshold: 1024, // Only compress responses larger than 1KB
+    threshold: 1024,
   })
 );
 
-// ✅ Fixed: Better CORS configuration with exact matching
+// ✅ Enhanced CORS configuration
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -135,10 +151,8 @@ app.use(
         "https://inksha-uedq.onrender.com",
       ].filter(Boolean);
 
-      // Allow requests with no origin (mobile apps, Postman, etc.)
       if (!origin) return callback(null, true);
 
-      // ✅ Fixed: Use exact match instead of startsWith for security
       const isAllowed = allowedOrigins.includes(origin);
 
       if (isAllowed) {
@@ -159,16 +173,15 @@ app.use(
       "Origin",
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    optionsSuccessStatus: 200, // ✅ For legacy browser support
+    optionsSuccessStatus: 200,
   })
 );
 
-// ✅ Enhanced body parsing with better limits
+// ✅ Enhanced body parsing
 app.use(
   express.json({
     limit: "20mb",
     verify: (req, res, buf, encoding) => {
-      // Store raw body for webhooks that need it
       if (req.path.includes("/webhook")) {
         req.rawBody = buf;
       }
@@ -179,54 +192,131 @@ app.use(
   express.urlencoded({
     extended: true,
     limit: "20mb",
-    parameterLimit: 50000, // ✅ Prevent parameter pollution
+    parameterLimit: 50000,
   })
 );
 app.use(cookieParser());
 
-// ✅ Enhanced route mounting with better error handling
-const routes = [
-  ["/api/auth", AuthRoutes],
-  ["/api/user", UserRoutes],
-  ["/api/post", PostRoutes, setRouteTimeout(60000)],
-  ["/api/category", CategoryRoutes],
-  ["/api/block", BlockRoutes],
-  ["/api/follow", FollowRoutes],
-  ["/api/notification", NotificationRoutes],
-  ["/api/payment", RazorpayRoutes],
-  ["/api/subscription", SubscriptionRoutes],
-  ["/api/earning", EarningRoutes],
-  ["/api/achievement", AchievementRoutes],
-  ["/api/comment", CommentsRoutes],
-  ["/api/admin", AdminRoutes],
-  ["/api/dailyMail", PostEmailRoutes],
-  ["/api/bannerNotification", BannerNotificationRoutes],
-  ["/api/public", guestRoutes, setRouteTimeout(60000)],
+// ✅ Enhanced route mounting with validation
+const routeConfigs = [
+  { path: "/api/auth", router: AuthRoutes, name: "AuthRoutes" },
+  { path: "/api/user", router: UserRoutes, name: "UserRoutes" },
+  {
+    path: "/api/post",
+    router: PostRoutes,
+    name: "PostRoutes",
+    middleware: setRouteTimeout(60000),
+  },
+  { path: "/api/category", router: CategoryRoutes, name: "CategoryRoutes" },
+  { path: "/api/block", router: BlockRoutes, name: "BlockRoutes" },
+  { path: "/api/follow", router: FollowRoutes, name: "FollowRoutes" },
+  {
+    path: "/api/notification",
+    router: NotificationRoutes,
+    name: "NotificationRoutes",
+  },
+  { path: "/api/payment", router: RazorpayRoutes, name: "RazorpayRoutes" },
+  {
+    path: "/api/subscription",
+    router: SubscriptionRoutes,
+    name: "SubscriptionRoutes",
+  },
+  { path: "/api/earning", router: EarningRoutes, name: "EarningRoutes" },
+  {
+    path: "/api/achievement",
+    router: AchievementRoutes,
+    name: "AchievementRoutes",
+  },
+  { path: "/api/comment", router: CommentsRoutes, name: "CommentsRoutes" },
+  { path: "/api/admin", router: AdminRoutes, name: "AdminRoutes" },
+  { path: "/api/dailyMail", router: PostEmailRoutes, name: "PostEmailRoutes" },
+  {
+    path: "/api/bannerNotification",
+    router: BannerNotificationRoutes,
+    name: "BannerNotificationRoutes",
+  },
+  {
+    path: "/api/public",
+    router: guestRoutes,
+    name: "guestRoutes",
+    middleware: setRouteTimeout(60000),
+  },
 ];
 
-routes.forEach(([routePath, router, middleware]) => {
+// ✅ Mount routes with comprehensive validation
+let successfulRoutes = 0;
+let failedRoutes = 0;
+
+routeConfigs.forEach(({ path, router, name, middleware }) => {
   try {
-    if (NODE_ENV !== "production") {
-      console.log(`🛤️ Mounting route: ${routePath}`);
+    // ✅ Validate router before mounting
+    if (!validateRouter(router, name)) {
+      console.error(`❌ Skipping invalid router: ${name} at ${path}`);
+      failedRoutes++;
+      return;
     }
-    app.use(routePath, middleware || [], router);
+
+    // ✅ Log route mounting in development
+    if (NODE_ENV !== "production") {
+      console.log(`🛤️ Mounting route: ${path} (${name})`);
+    }
+
+    // ✅ Mount the route with error handling
+    if (middleware) {
+      app.use(path, middleware, router);
+    } else {
+      app.use(path, router);
+    }
+
+    successfulRoutes++;
   } catch (err) {
-    console.error(`❌ Failed to mount route ${routePath}:`, err.message);
+    console.error(`❌ Failed to mount route ${path} (${name}):`, err.message);
+    console.error(`Stack trace:`, err.stack);
+    failedRoutes++;
+
+    // ✅ Create a fallback route to prevent complete failure
+    app.use(path, (req, res) => {
+      res.status(503).json({
+        error: `Service temporarily unavailable: ${name} failed to load`,
+        path: req.path,
+        method: req.method,
+      });
+    });
   }
 });
 
-// ✅ Enhanced route listing for development
+console.log(`\n📊 Route mounting summary:`);
+console.log(`✅ Successfully mounted: ${successfulRoutes} routes`);
+if (failedRoutes > 0) {
+  console.log(`❌ Failed to mount: ${failedRoutes} routes`);
+}
+
+// ✅ Enhanced route listing for development with error handling
 if (NODE_ENV !== "production") {
   try {
     const endpoints = listEndpoints(app);
     console.log("\n📋 Available Routes:");
-    endpoints.forEach((route) => {
-      const methods = route.methods.join(", ").padEnd(20);
-      console.log(`  ${methods} ${route.path}`);
+
+    // ✅ Group endpoints by path prefix for better readability
+    const groupedEndpoints = endpoints.reduce((acc, route) => {
+      const prefix = route.path.split("/")[1] || "root";
+      if (!acc[prefix]) acc[prefix] = [];
+      acc[prefix].push(route);
+      return acc;
+    }, {});
+
+    Object.entries(groupedEndpoints).forEach(([prefix, routes]) => {
+      console.log(`\n  📂 /${prefix}:`);
+      routes.forEach((route) => {
+        const methods = route.methods.join(", ").padEnd(15);
+        console.log(`    ${methods} ${route.path}`);
+      });
     });
-    console.log(`\n✅ Total routes: ${endpoints.length}\n`);
+
+    console.log(`\n✅ Total endpoints: ${endpoints.length}\n`);
   } catch (err) {
     console.error("❌ Route inspection failed:", err.message);
+    console.error("This might indicate malformed route patterns");
   }
 }
 
@@ -236,7 +326,7 @@ if (fs.existsSync(publicPath)) {
   app.use(
     "/public",
     express.static(publicPath, {
-      maxAge: NODE_ENV === "production" ? "1d" : 0, // Cache in production
+      maxAge: NODE_ENV === "production" ? "1d" : 0,
       etag: true,
       lastModified: true,
     })
@@ -262,20 +352,18 @@ app.get("/ads.txt", (req, res) => {
     .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
 });
 
-// ✅ Enhanced frontend serving with better error handling
+// ✅ Enhanced frontend serving
 const clientPath = path.join(__dirname, "clients", "dist");
 const clientIndexPath = path.join(clientPath, "index.html");
 
 if (NODE_ENV === "production") {
   if (fs.existsSync(clientIndexPath)) {
-    // Serve static files with caching
     app.use(
       express.static(clientPath, {
         maxAge: "1d",
         etag: true,
         lastModified: true,
         setHeaders: (res, path) => {
-          // Don't cache HTML files
           if (path.endsWith(".html")) {
             res.setHeader("Cache-Control", "no-cache");
           }
@@ -283,20 +371,23 @@ if (NODE_ENV === "production") {
       })
     );
 
-    // Handle client-side routing
-    app.get(/^\/(?!api\/).*/, (req, res) => {
-      res.sendFile(clientIndexPath, (err) => {
-        if (err) {
-          console.error(
-            "[Server:Static] ❌ Failed to serve index.html:",
-            err.message
-          );
-          if (!res.headersSent) {
-            res.status(500).send("Internal Server Error");
+    // ✅ Fixed: More specific regex pattern to avoid conflicts
+    app.get(
+      /^\/(?!api\/|public\/|health$|robots\.txt$|sitemap\.xml$|ads\.txt$).*/,
+      (req, res) => {
+        res.sendFile(clientIndexPath, (err) => {
+          if (err) {
+            console.error(
+              "[Server:Static] ❌ Failed to serve index.html:",
+              err.message
+            );
+            if (!res.headersSent) {
+              res.status(500).send("Internal Server Error");
+            }
           }
-        }
-      });
-    });
+        });
+      }
+    );
   } else {
     console.error("❌ Client build not found:", clientIndexPath);
     app.get("*", (req, res) => {
@@ -305,10 +396,9 @@ if (NODE_ENV === "production") {
   }
 }
 
-// ✅ Enhanced health check with more details
+// ✅ Enhanced health check
 app.get("/health", (req, res) => {
   const memUsage = process.memoryUsage();
-  const cpuUsage = process.cpuUsage();
 
   res.status(200).json({
     status: "OK",
@@ -324,6 +414,11 @@ app.get("/health", (req, res) => {
       rss: Math.round(memUsage.rss / 1024 / 1024) + "MB",
       heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + "MB",
       heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + "MB",
+    },
+    routes: {
+      successful: successfulRoutes,
+      failed: failedRoutes,
+      total: successfulRoutes + failedRoutes,
     },
     timestamp: new Date().toISOString(),
     environment: NODE_ENV,
@@ -343,7 +438,7 @@ app.use("/api/*", (req, res) => {
 // ✅ Error handler (must be last)
 app.use(errorHandler);
 
-// ✅ Enhanced global error handlers
+// ✅ Enhanced error handlers
 const gracefulShutdown = (signal) => {
   console.log(
     `\n[Server:Shutdown] 🛑 Received ${signal}, starting graceful shutdown...`
@@ -370,14 +465,13 @@ const gracefulShutdown = (signal) => {
     });
   });
 
-  // Force shutdown after 30 seconds
   setTimeout(() => {
     console.error("[Server:Shutdown] ⚠️ Forcing shutdown after timeout");
     process.exit(1);
   }, 30000);
 };
 
-// ✅ Better error handling
+// ✅ Error event handlers
 io.on("error", (err) => {
   console.error("[Socket.IO] ❌ Error:", err.message);
 });
@@ -409,11 +503,10 @@ process.on("unhandledRejection", (reason, promise) => {
   process.exit(1);
 });
 
-// ✅ Graceful shutdown handlers
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-// ✅ Enhanced server startup
+// ✅ Enhanced server startup with route validation
 const startServer = async () => {
   try {
     console.log("[Server:Startup] 🚀 Starting inkshaa API server...");
@@ -425,7 +518,6 @@ const startServer = async () => {
     await connectDb();
     console.log("[Server:Startup] ✅ Database connected successfully");
 
-    // Start background jobs
     console.log("[Server:Startup] 🧹 Starting cleanup jobs...");
     startTempCleanup();
     startDailyDigestJob();
@@ -451,6 +543,12 @@ const startServer = async () => {
         );
       } else {
         console.log("[Server:Startup] 🔧 Development mode: API only");
+      }
+
+      if (failedRoutes > 0) {
+        console.warn(
+          `[Server:Startup] ⚠️ Warning: ${failedRoutes} routes failed to mount`
+        );
       }
     });
   } catch (err) {
