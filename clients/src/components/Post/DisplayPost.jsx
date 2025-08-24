@@ -161,15 +161,40 @@ const DisplayPost = () => {
     isAuthenticated,
     slug,
   ]);
+  // old code
+  // useEffect(() => {
+  //   if (activePost?.slug && !isTracking && !localStartTime) {
+  //     dispatch(startReading(activePost._id));
+  //     setLocalStartTime(Date.now());
+  //   }
 
+  //   return () => {
+  //     if (isTracking && activePost?.slug && localStartTime) {
+  //       const timeSpent = Math.floor((Date.now() - localStartTime) / 1000);
+  //       if (timeSpent > 3) {
+  //         dispatch(submitReadingTime({ postId: activePost._id, timeSpent }))
+  //           .unwrap()
+  //           .catch((error) =>
+  //             console.error(
+  //               "[DisplayPost] Failed to record reading time:",
+  //               error
+  //             )
+  //           );
+  //       }
+  //       dispatch(stopReading());
+  //     }
+  //   };
+  // }, [dispatch, activePost?.slug, activePost?._id, isTracking, localStartTime]);
+
+  // new code
   useEffect(() => {
-    if (activePost?.slug && !isTracking && !localStartTime) {
+    if (activePost?.slug && isAuthenticated && !isTracking && !localStartTime) {
       dispatch(startReading(activePost._id));
       setLocalStartTime(Date.now());
     }
 
     return () => {
-      if (isTracking && activePost?.slug && localStartTime) {
+      if (isAuthenticated && isTracking && activePost?._id && localStartTime) {
         const timeSpent = Math.floor((Date.now() - localStartTime) / 1000);
         if (timeSpent > 3) {
           dispatch(submitReadingTime({ postId: activePost._id, timeSpent }))
@@ -184,7 +209,14 @@ const DisplayPost = () => {
         dispatch(stopReading());
       }
     };
-  }, [dispatch, activePost?.slug, activePost?._id, isTracking, localStartTime]);
+  }, [
+    dispatch,
+    activePost?._id,
+    activePost?.slug,
+    isTracking,
+    localStartTime,
+    isAuthenticated,
+  ]);
 
   useEffect(() => {
     if (!isTracking || !localStartTime) return;

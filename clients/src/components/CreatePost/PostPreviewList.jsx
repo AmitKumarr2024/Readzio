@@ -239,8 +239,8 @@ const PostPreviewList = ({
     };
     setIsPostConfirmed(false);
     setShowPublishLoading(true);
-    console.log("showPublishLoading set to true");
-    await new Promise((resolve) => setTimeout(resolve, 0)); // Ensure state update
+    // Wait for state to update and ensure re-render
+    await new Promise((resolve) => setTimeout(resolve, 100)); // Increase delay slightly
     console.log(
       "LoadingBar triggered, showPublishLoading:",
       showPublishLoading
@@ -268,7 +268,6 @@ const PostPreviewList = ({
       setCountdown(5);
     }
   };
-
   const handleCancelPublish = () => {
     setShowConfirmModal(false);
     setIsPostConfirmed(false);
