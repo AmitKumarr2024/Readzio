@@ -105,6 +105,12 @@ const PostPreviewList = ({
 
   const createPost = useCallback(
     debounce(() => {
+      console.log(
+        "createPost called, isSubmitting:",
+        isSubmitting,
+        "createLoading:",
+        createLoading
+      );
       if (isSubmitting || createLoading) {
         console.log("[PostPreviewList] Submission already in progress");
         return;
@@ -148,6 +154,7 @@ const PostPreviewList = ({
   );
 
   const handleModalConfirm = async ({ tags, thumbnail }) => {
+    console.log("handleModalConfirm called, triggering handleConfirmPublish");
     const newPostData = {
       tags,
       thumbnail,
@@ -230,6 +237,12 @@ const PostPreviewList = ({
     };
     setIsPostConfirmed(false);
     setShowPublishLoading(true);
+    setTimeout(() => {
+      console.log(
+        "LoadingBar triggered, showPublishLoading:",
+        showPublishLoading
+      );
+    }, 0);
     console.log(
       "LoadingBar triggered, showPublishLoading:",
       showPublishLoading
@@ -632,7 +645,7 @@ const PostPreviewList = ({
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
           >
-            <LoadingBar loading={true} text="Publishing..." />
+            <LoadingBar loading={showPublishLoading} text="Publishing..." />
           </motion.div>
         )}
       </AnimatePresence>
