@@ -178,9 +178,12 @@ export const followUser = async (req, res, next) => {
 
       // Update cache
       const cacheKey = `follow:${userId}:${targetUserId}`;
-      const cachePromise = setCache(cacheKey, true).catch((err) => {
+      try {
+        setCache(cacheKey, isFollowing, 300);
+
+      } catch (err) {
         console.error("Failed to cache follow status:", err.message);
-      });
+      }
 
       // Record activity
       const activityPromise = recordActivity({
@@ -209,7 +212,7 @@ export const followUser = async (req, res, next) => {
       }
 
       // Handle cache and activity in background
-      Promise.allSettled([cachePromise, activityPromise]);
+    Promise.allSettled([activityPromise]);
     } catch (postTransactionError) {
       console.error(
         "Post-transaction operations failed:",
@@ -641,10 +644,12 @@ export const getFollowStatus = async (req, res, next) => {
 
     // ✅ Cache the result with TTL
     logMemory("📊 Caching follow status");
-    setCache(cacheKey, isFollowing, 300).catch((err) => {
-      // 5 min TTL
+    try {
+      setCache(cacheKey, isFollowing, 300);
+
+    } catch (err) {
       console.error("Failed to cache follow status:", err.message);
-    });
+    }
 
     logMemory("🔍 End getFollowStatus");
     res.status(200).json({
