@@ -31,6 +31,7 @@ import QuoteBlock from "../PostFeature/QuoteBlock";
 import TableBlock from "../PostFeature/TableBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
 import { FiEdit3 } from "react-icons/fi";
+import { Trash2 } from "lucide-react";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
