@@ -103,9 +103,8 @@ app.post(
         `[Server:Razorpay] ❌ Webhook error after ${duration}ms:`,
         err.message
       );
-      if (!res.headersSent) {
+      if (!res.headersSent)
         res.status(500).json({ error: "Webhook processing failed" });
-      }
     }
   }
 );
@@ -316,20 +315,26 @@ if (NODE_ENV === "production") {
         },
       })
     );
-    app.get(
-      /^(?!\/api|\/public|\/health|\/robots\.txt|\/sitemap\.xml|\/ads\.txt).*$/,
-      (req, res) => {
-        res.sendFile(clientIndexPath, (err) => {
-          if (err) {
-            console.error(
-              "[Server:Static] ❌ Failed to serve index.html:",
-              err.message
-            );
-            if (!res.headersSent) res.status(500).send("Internal Server Error");
-          }
-        });
-      }
-    );
+    app.get("*", (req, res, next) => {
+      const disallowed = [
+        req.path.startsWith("/api"),
+        req.path.startsWith("/public"),
+        req.path === "/health",
+        req.path === "/robots.txt",
+        req.path === "/sitemap.xml",
+        req.path === "/ads.txt",
+      ];
+      if (disallowed.some(Boolean)) return next();
+      res.sendFile(clientIndexPath, (err) => {
+        if (err) {
+          console.error(
+            "[Server:Static] ❌ Failed to serve index.html:",
+            err.message
+          );
+          if (!res.headersSent) res.status(500).send("Internal Server Error");
+        }
+      });
+    });
   } else {
     console.error("❌ Client build not found:", clientIndexPath);
     app.get("*", (req, res) => {
