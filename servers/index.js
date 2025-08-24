@@ -38,17 +38,14 @@ import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 const app = express();
 app.set("trust proxy", true);
 
-// ✅ Route validation helper to catch malformed routes
+// Route validation helper
 const validateRouter = (router, routeName) => {
   try {
     if (!router || typeof router !== "function") {
       throw new Error(`${routeName} is not a valid router function`);
     }
-
-    // Test the router by creating a dummy app and mounting it
     const testApp = express();
     testApp.use("/test", router);
-
     return true;
   } catch (error) {
     console.error(`❌ Invalid router detected: ${routeName}`);
@@ -57,25 +54,20 @@ const validateRouter = (router, routeName) => {
   }
 };
 
-// ✅ Fixed: Set server timeout before creating socket
 const server = http.createServer(app);
 server.setTimeout(120000);
 server.keepAliveTimeout = 65000;
 server.headersTimeout = 66000;
 
 const __dirname = path.resolve();
-
-// ✅ Initialize socket AFTER server configuration
 const io = initializeSocket(server);
 
-// ✅ Serve robots.txt BEFORE anything else
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain").send(`User-agent: *
 Allow: /
 Sitemap: https://inksha-uedq.onrender.com/sitemap.xml`);
 });
 
-// ✅ Fixed: Better timeout middleware with cleanup
 const setRouteTimeout = (timeoutMs) => (req, res, next) => {
   const timeout = setTimeout(() => {
     if (!res.headersSent) {
@@ -87,11 +79,9 @@ const setRouteTimeout = (timeoutMs) => (req, res, next) => {
 
   res.on("finish", () => clearTimeout(timeout));
   res.on("close", () => clearTimeout(timeout));
-
   next();
 };
 
-// ✅ Enhanced Razorpay webhook with better error handling
 app.post(
   "/api/razorpay/webhook",
   setRouteTimeout(60000),
@@ -103,7 +93,6 @@ app.post(
   async (req, res, next) => {
     const startTime = Date.now();
     logMemory("💸 Razorpay webhook start");
-
     try {
       await handleRazorpayWebhook(req, res, next);
       const duration = Date.now() - startTime;
@@ -121,13 +110,11 @@ app.post(
   }
 );
 
-// ✅ Socket attachment middleware
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
-// ✅ Apply compression early but with conditions
 app.use(
   compression({
     filter: (req, res) => {
@@ -138,27 +125,19 @@ app.use(
   })
 );
 
-// ✅ Enhanced CORS configuration
 app.use(
   cors({
     origin: (origin, callback) => {
       console.log("[Server:CORS] Request from:", origin);
-
       const allowedOrigins = [
         CLIENT_URL?.replace(/\/$/, ""),
         "http://localhost:5173",
         "http://localhost:8001",
         "https://inksha-uedq.onrender.com",
       ].filter(Boolean);
-
       if (!origin) return callback(null, true);
-
       const isAllowed = allowedOrigins.includes(origin);
-
-      if (isAllowed) {
-        return callback(null, true);
-      }
-
+      if (isAllowed) return callback(null, true);
       console.error("[Server:CORS] ❌ Blocked origin:", origin);
       return callback(
         new Error(`CORS policy violation: ${origin} not allowed`)
@@ -177,27 +156,19 @@ app.use(
   })
 );
 
-// ✅ Enhanced body parsing
 app.use(
   express.json({
     limit: "20mb",
-    verify: (req, res, buf, encoding) => {
-      if (req.path.includes("/webhook")) {
-        req.rawBody = buf;
-      }
+    verify: (req, res, buf) => {
+      if (req.path.includes("/webhook")) req.rawBody = buf;
     },
   })
 );
 app.use(
-  express.urlencoded({
-    extended: true,
-    limit: "20mb",
-    parameterLimit: 50000,
-  })
+  express.urlencoded({ extended: true, limit: "20mb", parameterLimit: 50000 })
 );
 app.use(cookieParser());
 
-// ✅ Enhanced route mounting with validation
 const routeConfigs = [
   { path: "/api/auth", router: AuthRoutes, name: "AuthRoutes" },
   { path: "/api/user", router: UserRoutes, name: "UserRoutes" },
@@ -243,38 +214,25 @@ const routeConfigs = [
   },
 ];
 
-// ✅ Mount routes with comprehensive validation
 let successfulRoutes = 0;
 let failedRoutes = 0;
 
 routeConfigs.forEach(({ path, router, name, middleware }) => {
   try {
-    // ✅ Validate router before mounting
     if (!validateRouter(router, name)) {
       console.error(`❌ Skipping invalid router: ${name} at ${path}`);
       failedRoutes++;
       return;
     }
-
-    // ✅ Log route mounting in development
-    if (NODE_ENV !== "production") {
+    if (NODE_ENV !== "production")
       console.log(`🛤️ Mounting route: ${path} (${name})`);
-    }
-
-    // ✅ Mount the route with error handling
-    if (middleware) {
-      app.use(path, middleware, router);
-    } else {
-      app.use(path, router);
-    }
-
+    if (middleware) app.use(path, middleware, router);
+    else app.use(path, router);
     successfulRoutes++;
   } catch (err) {
     console.error(`❌ Failed to mount route ${path} (${name}):`, err.message);
     console.error(`Stack trace:`, err.stack);
     failedRoutes++;
-
-    // ✅ Create a fallback route to prevent complete failure
     app.use(path, (req, res) => {
       res.status(503).json({
         error: `Service temporarily unavailable: ${name} failed to load`,
@@ -287,24 +245,18 @@ routeConfigs.forEach(({ path, router, name, middleware }) => {
 
 console.log(`\n📊 Route mounting summary:`);
 console.log(`✅ Successfully mounted: ${successfulRoutes} routes`);
-if (failedRoutes > 0) {
-  console.log(`❌ Failed to mount: ${failedRoutes} routes`);
-}
+if (failedRoutes > 0) console.log(`❌ Failed to mount: ${failedRoutes} routes`);
 
-// ✅ Enhanced route listing for development with error handling
 if (NODE_ENV !== "production") {
   try {
     const endpoints = listEndpoints(app);
     console.log("\n📋 Available Routes:");
-
-    // ✅ Group endpoints by path prefix for better readability
     const groupedEndpoints = endpoints.reduce((acc, route) => {
       const prefix = route.path.split("/")[1] || "root";
       if (!acc[prefix]) acc[prefix] = [];
       acc[prefix].push(route);
       return acc;
     }, {});
-
     Object.entries(groupedEndpoints).forEach(([prefix, routes]) => {
       console.log(`\n  📂 /${prefix}:`);
       routes.forEach((route) => {
@@ -312,7 +264,6 @@ if (NODE_ENV !== "production") {
         console.log(`    ${methods} ${route.path}`);
       });
     });
-
     console.log(`\n✅ Total endpoints: ${endpoints.length}\n`);
   } catch (err) {
     console.error("❌ Route inspection failed:", err.message);
@@ -320,7 +271,6 @@ if (NODE_ENV !== "production") {
   }
 }
 
-// ✅ Enhanced static file serving
 const publicPath = path.join(__dirname, "servers", "public");
 if (fs.existsSync(publicPath)) {
   app.use(
@@ -335,12 +285,10 @@ if (fs.existsSync(publicPath)) {
   console.warn("⚠️ Public directory not found:", publicPath);
 }
 
-// ✅ Enhanced sitemap serving
 app.get("/sitemap.xml", (req, res) => {
   const sitemapPath = path.join(__dirname, "clients", "dist", "sitemap.xml");
-  if (fs.existsSync(sitemapPath)) {
-    res.sendFile(sitemapPath);
-  } else {
+  if (fs.existsSync(sitemapPath)) res.sendFile(sitemapPath);
+  else {
     console.warn("⚠️ Sitemap not found:", sitemapPath);
     res.status(404).send("Sitemap not found");
   }
@@ -352,7 +300,6 @@ app.get("/ads.txt", (req, res) => {
     .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
 });
 
-// ✅ Enhanced frontend serving
 const clientPath = path.join(__dirname, "clients", "dist");
 const clientIndexPath = path.join(clientPath, "index.html");
 
@@ -364,16 +311,13 @@ if (NODE_ENV === "production") {
         etag: true,
         lastModified: true,
         setHeaders: (res, path) => {
-          if (path.endsWith(".html")) {
+          if (path.endsWith(".html"))
             res.setHeader("Cache-Control", "no-cache");
-          }
         },
       })
     );
-
-    // ✅ Fixed: More specific regex pattern to avoid conflicts
     app.get(
-      /^\/(?!api\/|public\/|health$|robots\.txt$|sitemap\.xml$|ads\.txt$).*/,
+      /^(?!\/api|\/public|\/health|\/robots\.txt|\/sitemap\.xml|\/ads\.txt).*$/,
       (req, res) => {
         res.sendFile(clientIndexPath, (err) => {
           if (err) {
@@ -381,9 +325,7 @@ if (NODE_ENV === "production") {
               "[Server:Static] ❌ Failed to serve index.html:",
               err.message
             );
-            if (!res.headersSent) {
-              res.status(500).send("Internal Server Error");
-            }
+            if (!res.headersSent) res.status(500).send("Internal Server Error");
           }
         });
       }
@@ -396,10 +338,8 @@ if (NODE_ENV === "production") {
   }
 }
 
-// ✅ Enhanced health check
 app.get("/health", (req, res) => {
   const memUsage = process.memoryUsage();
-
   res.status(200).json({
     status: "OK",
     message: "inkshaa API is running",
@@ -426,7 +366,6 @@ app.get("/health", (req, res) => {
   });
 });
 
-// ✅ 404 handler for API routes
 app.use("/api/*", (req, res) => {
   res.status(404).json({
     error: "API endpoint not found",
@@ -435,43 +374,34 @@ app.use("/api/*", (req, res) => {
   });
 });
 
-// ✅ Error handler (must be last)
 app.use(errorHandler);
 
-// ✅ Enhanced error handlers
 const gracefulShutdown = (signal) => {
   console.log(
     `\n[Server:Shutdown] 🛑 Received ${signal}, starting graceful shutdown...`
   );
-
   server.close((err) => {
     if (err) {
       console.error("[Server:Shutdown] ❌ Error during shutdown:", err.message);
       process.exit(1);
     }
-
     console.log("[Server:Shutdown] ✅ HTTP server closed");
-
     mongoose.connection.close((err) => {
-      if (err) {
+      if (err)
         console.error(
           "[Server:Shutdown] ❌ Database close error:",
           err.message
         );
-      } else {
-        console.log("[Server:Shutdown] ✅ Database connection closed");
-      }
+      else console.log("[Server:Shutdown] ✅ Database connection closed");
       process.exit(0);
     });
   });
-
   setTimeout(() => {
     console.error("[Server:Shutdown] ⚠️ Forcing shutdown after timeout");
     process.exit(1);
   }, 30000);
 };
 
-// ✅ Error event handlers
 io.on("error", (err) => {
   console.error("[Socket.IO] ❌ Error:", err.message);
 });
@@ -486,9 +416,7 @@ server.on("error", (err) => {
 
 server.on("clientError", (err, socket) => {
   console.error("[HTTP Server] ❌ Client error:", err.message);
-  if (!socket.destroyed) {
-    socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
-  }
+  if (!socket.destroyed) socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
 });
 
 process.on("uncaughtException", (err) => {
@@ -506,25 +434,20 @@ process.on("unhandledRejection", (reason, promise) => {
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-// ✅ Enhanced server startup with route validation
 const startServer = async () => {
   try {
     console.log("[Server:Startup] 🚀 Starting inkshaa API server...");
     console.log("[Server:Startup] 📊 Environment:", NODE_ENV);
     console.log("[Server:Startup] 📊 Node version:", process.version);
     console.log("[Server:Startup] 📊 Platform:", process.platform);
-
     console.log("[Server:Startup] 🔌 Connecting to MongoDB...");
     await connectDb();
     console.log("[Server:Startup] ✅ Database connected successfully");
-
     console.log("[Server:Startup] 🧹 Starting cleanup jobs...");
     startTempCleanup();
     startDailyDigestJob();
     console.log("[Server:Startup] ✅ Background jobs started");
-
     const port = process.env.PORT || 10000;
-
     server.listen(port, "0.0.0.0", function () {
       const address = this.address();
       console.log(
@@ -536,20 +459,15 @@ const startServer = async () => {
       console.log(
         `[Server:Startup] 🔗 Health check: http://0.0.0.0:${address.port}/health`
       );
-
-      if (NODE_ENV === "production") {
+      if (NODE_ENV === "production")
         console.log(
           "[Server:Startup] 🎯 Production mode: Client app will be served"
         );
-      } else {
-        console.log("[Server:Startup] 🔧 Development mode: API only");
-      }
-
-      if (failedRoutes > 0) {
+      else console.log("[Server:Startup] 🔧 Development mode: API only");
+      if (failedRoutes > 0)
         console.warn(
           `[Server:Startup] ⚠️ Warning: ${failedRoutes} routes failed to mount`
         );
-      }
     });
   } catch (err) {
     console.error("[Server:Startup] ❌ Failed to start server:", err.message);
