@@ -9,28 +9,63 @@ import { AppError } from "../../servers/Utils/AppError.js";
 import UserLocation from "../Models/UserLocation.js";
 import UserModel from "../../servers/Models/User.js";
 import mongoose from "mongoose";
-import { logMemory } from "../../servers/Utils/memoryLogger.js"; // Import logMemory
+import { logMemory } from "../../servers/Utils/memoryLogger.js";
+
+// ✅ Helper function to validate MongoDB ObjectId
+const isValidObjectId = (id) => {
+  return mongoose.Types.ObjectId.isValid(id) && /^[0-9a-fA-F]{24}$/.test(id);
+};
+
+// ✅ Helper function to validate user authentication
+const validateAuth = (req) => {
+  if (!req.user || !req.user._id) {
+    throw new AppError(
+      "Unauthorized: User not found in request",
+      401,
+      "Auth",
+      "User not authenticated"
+    );
+  }
+  return req.user._id.toString();
+};
+
+// ✅ Helper function to validate pagination
+const validatePagination = (page, limit) => {
+  const pageNum = Math.max(parseInt(page) || 1, 1);
+  const limitNum = Math.min(Math.max(parseInt(limit) || 12, 1), 100);
+
+  if (isNaN(pageNum) || pageNum < 1) {
+    throw new AppError(
+      "Invalid page number",
+      400,
+      "Pagination",
+      "Page number must be a positive integer"
+    );
+  }
+  if (isNaN(limitNum) || limitNum < 1) {
+    throw new AppError(
+      "Invalid limit",
+      400,
+      "Pagination",
+      "Limit must be a positive integer"
+    );
+  }
+
+  return { pageNum, limitNum };
+};
 
 // Allows a user to follow another user
 export const followUser = async (req, res, next) => {
+  const session = await mongoose.startSession();
+
   try {
     logMemory("🤝 Start followUser");
-    // Validates authentication
-    if (!req.user || !req.user._id) {
-      throw new AppError(
-        "Unauthorized: User not found in request",
-        401,
-        "FollowUser",
-        "User not authenticated"
-      );
-    }
 
-    const userId = req.user._id.toString();
+    const userId = validateAuth(req);
     const { targetUserId } = req.params;
 
-    // Validates target user ID
-    logMemory("🔍 Before validating target user ID");
-    if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+    // ✅ Enhanced validation
+    if (!isValidObjectId(targetUserId)) {
       throw new AppError(
         "Invalid target user ID",
         400,
@@ -38,98 +73,166 @@ export const followUser = async (req, res, next) => {
         "Invalid MongoDB ObjectId for target user"
       );
     }
+
     if (userId === targetUserId) {
       throw new AppError(
-        "You can't follow yourself",
+        "You cannot follow yourself",
         400,
         "FollowUser",
         "Self-follow not allowed"
       );
     }
-    logMemory("🔍 After validating target user ID");
 
-    // Fetches both users
-    logMemory("📖 Before fetching users");
-    const [me, targetUser] = await Promise.all([
-      UserModel.findById(userId),
-      UserModel.findById(targetUserId),
+    // ✅ Start transaction for data consistency
+    session.startTransaction();
+
+    // ✅ Check if already following (prevent duplicate follows)
+    logMemory("🔍 Checking existing follow relationship");
+    const existingFollow = await UserModel.findOne(
+      {
+        _id: userId,
+        following: targetUserId,
+      },
+      null,
+      { session }
+    );
+
+    if (existingFollow) {
+      await session.abortTransaction();
+      return res.status(200).json({
+        success: true,
+        message: "Already following this user.",
+        data: { isFollowing: true },
+      });
+    }
+
+    // ✅ Verify both users exist in single query
+    logMemory("📖 Verifying users exist");
+    const [currentUser, targetUser] = await Promise.all([
+      UserModel.findById(userId, "_id name", { session }),
+      UserModel.findById(targetUserId, "_id name followers", { session }),
     ]);
-    logMemory("📖 After fetching users");
 
-    if (!me || !targetUser) {
+    if (!currentUser) {
       throw new AppError(
-        "User not found",
+        "Current user not found",
         404,
         "FollowUser",
-        "Either current user or target user does not exist"
+        "Current user does not exist"
       );
     }
 
-    // Updates follow relationships
-    logMemory("💾 Before updating follow relationships");
-    await Promise.all([
+    if (!targetUser) {
+      throw new AppError(
+        "Target user not found",
+        404,
+        "FollowUser",
+        "Target user does not exist"
+      );
+    }
+
+    // ✅ Update both users atomically
+    logMemory("💾 Updating follow relationships");
+    const [updateResult1, updateResult2] = await Promise.all([
       UserModel.updateOne(
         { _id: userId },
-        { $addToSet: { following: targetUserId } }
+        { $addToSet: { following: targetUserId } },
+        { session }
       ),
       UserModel.updateOne(
         { _id: targetUserId },
-        { $addToSet: { followers: userId } }
+        { $addToSet: { followers: userId } },
+        { session }
       ),
     ]);
-    logMemory("💾 After updating follow relationships");
 
-    // Fetches updated user data
-    logMemory("📖 Before fetching updated user");
-    const updatedUser = await UserModel.findById(userId).select("following");
-    logMemory("📖 After fetching updated user");
-
-    // Creates notification for target user
-    logMemory("📬 Before creating notification");
-    const notification = await createNotification({
-      user: targetUserId,
-      sender: userId,
-      type: "follow",
-    });
-    logMemory("📬 After creating notification");
-
-    // Emits notification if created
-    if (notification && req.io?.to) {
-      logMemory("📡 Before emitting notification");
-      req.io.to(targetUserId).emit("newNotification", {
-        notificationId: notification._id,
-        type: "follow",
-        userId,
-      });
-      logMemory("📡 After emitting notification");
+    // ✅ Check if updates were successful
+    if (updateResult1.matchedCount === 0 || updateResult2.matchedCount === 0) {
+      throw new AppError(
+        "Failed to update follow relationships",
+        500,
+        "FollowUser",
+        "Database update failed"
+      );
     }
 
-    // Logs activity
-    logMemory("📝 Before recording activity");
-    await recordActivity({
+    // ✅ Get updated following count efficiently
+    const updatedFollowingCount = await UserModel.findById(
       userId,
-      action: "FOLLOWED_USER",
-      message: `Followed ${targetUser.name} from ${
-        req.geoLocation
-          ? `${req.geoLocation.city}, ${req.geoLocation.country}`
-          : "unknown location"
-      }`,
-    });
-    logMemory("📝 After recording activity");
+      "following",
+      { session }
+    );
 
-    // Caches follow status
-    logMemory("📊 Before caching follow status");
-    await setCache(`follow:${userId}:${targetUserId}`, true);
-    logMemory("📊 After caching follow status");
+    await session.commitTransaction();
+
+    // ✅ Handle post-transaction operations
+    try {
+      // Create notification (non-blocking)
+      const notificationPromise = createNotification({
+        user: targetUserId,
+        sender: userId,
+        type: "follow",
+      }).catch((err) => {
+        console.error("Failed to create follow notification:", err.message);
+      });
+
+      // Update cache
+      const cacheKey = `follow:${userId}:${targetUserId}`;
+      const cachePromise = setCache(cacheKey, true).catch((err) => {
+        console.error("Failed to cache follow status:", err.message);
+      });
+
+      // Record activity
+      const activityPromise = recordActivity({
+        userId,
+        action: "FOLLOWED_USER",
+        message: `Followed ${targetUser.name} from ${
+          req.geoLocation
+            ? `${req.geoLocation.city}, ${req.geoLocation.country}`
+            : "unknown location"
+        }`,
+      }).catch((err) => {
+        console.error("Failed to record follow activity:", err.message);
+      });
+
+      // Wait for notification creation to emit socket event
+      const notification = await notificationPromise;
+
+      // ✅ Emit notification if created
+      if (notification && req.io?.to) {
+        logMemory("📡 Emitting notification");
+        req.io.to(targetUserId).emit("newNotification", {
+          notificationId: notification._id,
+          type: "follow",
+          userId,
+        });
+      }
+
+      // Handle cache and activity in background
+      Promise.allSettled([cachePromise, activityPromise]);
+    } catch (postTransactionError) {
+      console.error(
+        "Post-transaction operations failed:",
+        postTransactionError.message
+      );
+      // Don't fail the main operation for these auxiliary operations
+    }
 
     logMemory("🤝 End followUser");
     res.status(200).json({
       success: true,
-      message: "Followed user.",
-      data: { following: updatedUser.following },
+      message: "Successfully followed user.",
+      data: {
+        isFollowing: true,
+        followingCount: updatedFollowingCount?.following?.length || 0,
+      },
     });
   } catch (error) {
     logMemory("❌ Error in followUser");
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+
     next(
       error instanceof AppError
         ? error
@@ -140,29 +243,23 @@ export const followUser = async (req, res, next) => {
             "Error in followUser"
           )
     );
+  } finally {
+    session.endSession();
   }
 };
 
 // Allows a user to unfollow another user
 export const unfollowUser = async (req, res, next) => {
+  const session = await mongoose.startSession();
+
   try {
     logMemory("🚫 Start unfollowUser");
-    // Validates authentication
-    if (!req.user || !req.user._id) {
-      throw new AppError(
-        "Unauthorized: User not found in request",
-        401,
-        "UnfollowUser",
-        "User not authenticated"
-      );
-    }
 
-    const userId = req.user._id.toString();
+    const userId = validateAuth(req);
     const { targetUserId } = req.params;
 
-    // Validates target user ID
-    logMemory("🔍 Before validating target user ID");
-    if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+    // ✅ Enhanced validation
+    if (!isValidObjectId(targetUserId)) {
       throw new AppError(
         "Invalid target user ID",
         400,
@@ -170,25 +267,46 @@ export const unfollowUser = async (req, res, next) => {
         "Invalid MongoDB ObjectId for target user"
       );
     }
+
     if (userId === targetUserId) {
       throw new AppError(
-        "You can't unfollow yourself",
+        "You cannot unfollow yourself",
         400,
         "UnfollowUser",
         "Self-unfollow not allowed"
       );
     }
-    logMemory("🔍 After validating target user ID");
 
-    // Fetches both users
-    logMemory("📖 Before fetching users");
-    const [me, targetUser] = await Promise.all([
-      UserModel.findById(userId),
-      UserModel.findById(targetUserId),
+    session.startTransaction();
+
+    // ✅ Check if actually following
+    logMemory("🔍 Checking follow relationship");
+    const isFollowing = await UserModel.findOne(
+      {
+        _id: userId,
+        following: targetUserId,
+      },
+      null,
+      { session }
+    );
+
+    if (!isFollowing) {
+      await session.abortTransaction();
+      return res.status(200).json({
+        success: true,
+        message: "Not following this user.",
+        data: { isFollowing: false },
+      });
+    }
+
+    // ✅ Verify users exist
+    logMemory("📖 Verifying users exist");
+    const [currentUser, targetUser] = await Promise.all([
+      UserModel.findById(userId, "_id name", { session }),
+      UserModel.findById(targetUserId, "_id name", { session }),
     ]);
-    logMemory("📖 After fetching users");
 
-    if (!me || !targetUser) {
+    if (!currentUser || !targetUser) {
       throw new AppError(
         "User not found",
         404,
@@ -197,51 +315,82 @@ export const unfollowUser = async (req, res, next) => {
       );
     }
 
-    // Updates follow relationships
-    logMemory("💾 Before updating follow relationships");
-    await Promise.all([
+    // ✅ Update both users atomically
+    logMemory("💾 Updating follow relationships");
+    const [updateResult1, updateResult2] = await Promise.all([
       UserModel.updateOne(
         { _id: userId },
-        { $pull: { following: targetUserId } }
+        { $pull: { following: targetUserId } },
+        { session }
       ),
       UserModel.updateOne(
         { _id: targetUserId },
-        { $pull: { followers: userId } }
+        { $pull: { followers: userId } },
+        { session }
       ),
     ]);
-    logMemory("💾 After updating follow relationships");
 
-    // Fetches updated user data
-    logMemory("📖 Before fetching updated user");
-    const updatedUser = await UserModel.findById(userId).select("following");
-    logMemory("📖 After fetching updated user");
+    if (updateResult1.matchedCount === 0 || updateResult2.matchedCount === 0) {
+      throw new AppError(
+        "Failed to update follow relationships",
+        500,
+        "UnfollowUser",
+        "Database update failed"
+      );
+    }
 
-    // Logs activity
-    logMemory("📝 Before recording activity");
-    await recordActivity({
+    const updatedFollowingCount = await UserModel.findById(
       userId,
-      action: "UNFOLLOWED_USER",
-      message: `Unfollowed user ${targetUser.name} from ${
-        req.geoLocation
-          ? `${req.geoLocation.city}, ${req.geoLocation.country}`
-          : "unknown location"
-      }`,
-    });
-    logMemory("📝 After recording activity");
+      "following",
+      { session }
+    );
 
-    // Removes follow status from cache
-    logMemory("📊 Before removing cache");
-    await delCache(`follow:${userId}:${targetUserId}`);
-    logMemory("📊 After removing cache");
+    await session.commitTransaction();
+
+    // ✅ Handle post-transaction operations
+    try {
+      // Remove from cache and record activity
+      const cachePromise = delCache(`follow:${userId}:${targetUserId}`).catch(
+        (err) => {
+          console.error("Failed to remove follow cache:", err.message);
+        }
+      );
+
+      const activityPromise = recordActivity({
+        userId,
+        action: "UNFOLLOWED_USER",
+        message: `Unfollowed ${targetUser.name} from ${
+          req.geoLocation
+            ? `${req.geoLocation.city}, ${req.geoLocation.country}`
+            : "unknown location"
+        }`,
+      }).catch((err) => {
+        console.error("Failed to record unfollow activity:", err.message);
+      });
+
+      Promise.allSettled([cachePromise, activityPromise]);
+    } catch (postTransactionError) {
+      console.error(
+        "Post-transaction operations failed:",
+        postTransactionError.message
+      );
+    }
 
     logMemory("🚫 End unfollowUser");
     res.status(200).json({
       success: true,
-      message: "Unfollowed user.",
-      data: { following: updatedUser.following },
+      message: "Successfully unfollowed user.",
+      data: {
+        isFollowing: false,
+        followingCount: updatedFollowingCount?.following?.length || 0,
+      },
     });
   } catch (error) {
     logMemory("❌ Error in unfollowUser");
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+
     next(
       error instanceof AppError
         ? error
@@ -252,6 +401,8 @@ export const unfollowUser = async (req, res, next) => {
             "Error in unfollowUser"
           )
     );
+  } finally {
+    session.endSession();
   }
 };
 
@@ -259,53 +410,50 @@ export const unfollowUser = async (req, res, next) => {
 export const fetchFollowers = async (req, res, next) => {
   try {
     logMemory("👥 Start fetchFollowers");
-    // Validates authentication
-    const userId = req.user._id;
-    if (!userId) {
-      throw new AppError(
-        "Unauthorized: User not found in request",
-        401,
-        "FetchFollowers",
-        "User not authenticated"
-      );
-    }
 
+    const userId = validateAuth(req);
     const { page = 1, limit = 12 } = req.query;
-    const pageNum = Math.max(parseInt(page), 1);
-    const limitNum = Math.min(parseInt(limit), 100);
-
-    // Validates pagination parameters
-    logMemory("🔍 Before validating pagination");
-    if (isNaN(pageNum) || pageNum < 1) {
-      throw new AppError(
-        "Invalid page number",
-        400,
-        "FetchFollowers",
-        "Page number must be a positive integer"
-      );
-    }
-    if (isNaN(limitNum) || limitNum < 1) {
-      throw new AppError(
-        "Invalid limit",
-        400,
-        "FetchFollowers",
-        "Limit must be a positive integer"
-      );
-    }
-    logMemory("🔍 After validating pagination");
+    const { pageNum, limitNum } = validatePagination(page, limit);
 
     const skip = (pageNum - 1) * limitNum;
 
-    // Fetches user with followers
-    logMemory("📖 Before fetching user with followers");
-    const user = await UserModel.findById(userId).populate({
-      path: "followers",
-      select: "_id name username email avatar location",
-      options: { skip, limit: limitNum },
-    });
-    logMemory("📖 After fetching user with followers");
+    // ✅ Use aggregation for better performance with large datasets
+    logMemory("📖 Fetching followers with aggregation");
+    const pipeline = [
+      { $match: { _id: new mongoose.Types.ObjectId(userId) } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "followers",
+          foreignField: "_id",
+          as: "followerDetails",
+          pipeline: [
+            {
+              $project: {
+                _id: 1,
+                name: 1,
+                username: 1,
+                email: 1,
+                avatar: 1,
+                location: 1,
+              },
+            },
+            { $skip: skip },
+            { $limit: limitNum },
+          ],
+        },
+      },
+      {
+        $project: {
+          followers: "$followerDetails",
+          totalFollowers: { $size: "$followers" },
+        },
+      },
+    ];
 
-    if (!user) {
+    const result = await UserModel.aggregate(pipeline);
+
+    if (!result || result.length === 0) {
       throw new AppError(
         "User not found",
         404,
@@ -314,28 +462,29 @@ export const fetchFollowers = async (req, res, next) => {
       );
     }
 
-    const total = user.followers.length;
+    const { followers, totalFollowers } = result[0];
 
-    // Logs activity
-    logMemory("📝 Before recording activity");
-    await recordActivity({
+    // ✅ Record activity in background
+    recordActivity({
       userId,
       action: "FETCHED_FOLLOWERS",
-      message: `Fetched ${user.followers.length} followers from ${
+      message: `Fetched ${followers.length} followers from ${
         req.geoLocation
           ? `${req.geoLocation.city}, ${req.geoLocation.country}`
           : "unknown location"
       }`,
+    }).catch((err) => {
+      console.error("Failed to record fetchFollowers activity:", err.message);
     });
-    logMemory("📝 After recording activity");
 
     logMemory("👥 End fetchFollowers");
     res.status(200).json({
       success: true,
-      list: user.followers,
-      count: total,
+      list: followers,
+      count: followers.length,
+      total: totalFollowers,
       page: pageNum,
-      totalPages: Math.ceil(total / limitNum),
+      totalPages: Math.ceil(totalFollowers / limitNum),
     });
   } catch (error) {
     logMemory("❌ Error in fetchFollowers");
@@ -356,53 +505,50 @@ export const fetchFollowers = async (req, res, next) => {
 export const fetchFollowing = async (req, res, next) => {
   try {
     logMemory("👥 Start fetchFollowing");
-    // Validates authentication
-    const userId = req.user._id;
-    if (!userId) {
-      throw new AppError(
-        "Unauthorized: User not found in request",
-        401,
-        "FetchFollowing",
-        "User not authenticated"
-      );
-    }
 
+    const userId = validateAuth(req);
     const { page = 1, limit = 12 } = req.query;
-    const pageNum = Math.max(parseInt(page), 1);
-    const limitNum = Math.min(parseInt(limit), 100);
-
-    // Validates pagination parameters
-    logMemory("🔍 Before validating pagination");
-    if (isNaN(pageNum) || pageNum < 1) {
-      throw new AppError(
-        "Invalid page number",
-        400,
-        "FetchFollowing",
-        "Page number must be a positive integer"
-      );
-    }
-    if (isNaN(limitNum) || limitNum < 1) {
-      throw new AppError(
-        "Invalid limit",
-        400,
-        "FetchFollowing",
-        "Limit must be a positive integer"
-      );
-    }
-    logMemory("🔍 After validating pagination");
+    const { pageNum, limitNum } = validatePagination(page, limit);
 
     const skip = (pageNum - 1) * limitNum;
 
-    // Fetches user with following
-    logMemory("📖 Before fetching user with following");
-    const user = await UserModel.findById(userId).populate({
-      path: "following",
-      select: "_id name username email avatar location",
-      options: { skip, limit: limitNum },
-    });
-    logMemory("📖 After fetching user with following");
+    // ✅ Use aggregation for better performance
+    logMemory("📖 Fetching following with aggregation");
+    const pipeline = [
+      { $match: { _id: new mongoose.Types.ObjectId(userId) } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "following",
+          foreignField: "_id",
+          as: "followingDetails",
+          pipeline: [
+            {
+              $project: {
+                _id: 1,
+                name: 1,
+                username: 1,
+                email: 1,
+                avatar: 1,
+                location: 1,
+              },
+            },
+            { $skip: skip },
+            { $limit: limitNum },
+          ],
+        },
+      },
+      {
+        $project: {
+          following: "$followingDetails",
+          totalFollowing: { $size: "$following" },
+        },
+      },
+    ];
 
-    if (!user) {
+    const result = await UserModel.aggregate(pipeline);
+
+    if (!result || result.length === 0) {
       throw new AppError(
         "User not found",
         404,
@@ -411,28 +557,29 @@ export const fetchFollowing = async (req, res, next) => {
       );
     }
 
-    const total = user.following.length;
+    const { following, totalFollowing } = result[0];
 
-    // Logs activity
-    logMemory("📝 Before recording activity");
-    await recordActivity({
+    // ✅ Record activity in background
+    recordActivity({
       userId,
       action: "FETCHED_FOLLOWING",
-      message: `Fetched ${user.following.length} following from ${
+      message: `Fetched ${following.length} following from ${
         req.geoLocation
           ? `${req.geoLocation.city}, ${req.geoLocation.country}`
           : "unknown location"
       }`,
+    }).catch((err) => {
+      console.error("Failed to record fetchFollowing activity:", err.message);
     });
-    logMemory("📝 After recording activity");
 
     logMemory("👥 End fetchFollowing");
     res.status(200).json({
       success: true,
-      list: user.following,
-      count: total,
+      list: following,
+      count: following.length,
+      total: totalFollowing,
       page: pageNum,
-      totalPages: Math.ceil(total / limitNum),
+      totalPages: Math.ceil(totalFollowing / limitNum),
     });
   } catch (error) {
     logMemory("❌ Error in fetchFollowing");
@@ -453,22 +600,11 @@ export const fetchFollowing = async (req, res, next) => {
 export const getFollowStatus = async (req, res, next) => {
   try {
     logMemory("🔍 Start getFollowStatus");
-    // Validates authentication
-    const userId = req.user._id.toString();
-    if (!userId) {
-      throw new AppError(
-        "Unauthorized: User not found in request",
-        401,
-        "GetFollowStatus",
-        "User not authenticated"
-      );
-    }
 
+    const userId = validateAuth(req);
     const { targetUserId } = req.params;
 
-    // Validates target user ID
-    logMemory("🔍 Before validating target user ID");
-    if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+    if (!isValidObjectId(targetUserId)) {
       throw new AppError(
         "Invalid target user ID",
         400,
@@ -476,43 +612,46 @@ export const getFollowStatus = async (req, res, next) => {
         "Invalid MongoDB ObjectId for target user"
       );
     }
-    logMemory("🔍 After validating target user ID");
 
-    // Checks cache for follow status
-    logMemory("📊 Before checking cache");
+    // ✅ Check cache first
+    logMemory("📊 Checking cache for follow status");
     const cacheKey = `follow:${userId}:${targetUserId}`;
     const cached = await getCache(cacheKey);
+
     if (cached !== null) {
       logMemory("📊 Cache hit for follow status");
-      return res
-        .status(200)
-        .json({ success: true, isFollowing: cached === true });
-    }
-    logMemory("📊 After checking cache");
-
-    // Fetches target user
-    logMemory("📖 Before fetching target user");
-    const targetUser = await UserModel.findById(targetUserId);
-    logMemory("📖 After fetching target user");
-    if (!targetUser) {
-      throw new AppError(
-        "Target user not found",
-        404,
-        "GetFollowStatus",
-        "Target user does not exist"
-      );
+      return res.status(200).json({
+        success: true,
+        isFollowing: cached === true,
+        source: "cache",
+      });
     }
 
-    // Determines follow status
-    const isFollowing = targetUser.followers?.includes(userId) || false;
+    // ✅ More efficient database query
+    logMemory("📖 Checking follow status in database");
+    const followStatus = await UserModel.findOne(
+      {
+        _id: userId,
+        following: targetUserId,
+      },
+      "_id"
+    ).lean();
 
-    // Caches result
-    logMemory("📊 Before caching follow status");
-    await setCache(cacheKey, isFollowing);
-    logMemory("📊 After caching follow status");
+    const isFollowing = !!followStatus;
+
+    // ✅ Cache the result with TTL
+    logMemory("📊 Caching follow status");
+    setCache(cacheKey, isFollowing, 300).catch((err) => {
+      // 5 min TTL
+      console.error("Failed to cache follow status:", err.message);
+    });
 
     logMemory("🔍 End getFollowStatus");
-    res.status(200).json({ success: true, isFollowing });
+    res.status(200).json({
+      success: true,
+      isFollowing,
+      source: "database",
+    });
   } catch (error) {
     logMemory("❌ Error in getFollowStatus");
     next(
@@ -532,45 +671,15 @@ export const getFollowStatus = async (req, res, next) => {
 export const getFollowerLocations = async (req, res, next) => {
   try {
     logMemory("📍 Start getFollowerLocations");
-    // Validates authentication
-    const userId = req.user._id;
-    if (!userId) {
-      throw new AppError(
-        "Unauthorized: User not found in request",
-        401,
-        "GetFollowerLocations",
-        "User not authenticated"
-      );
-    }
 
+    const userId = validateAuth(req);
     const { page = 1, limit = 12 } = req.query;
-    const pageNum = Math.max(parseInt(page), 1);
-    const limitNum = Math.min(parseInt(limit), 100);
+    const { pageNum, limitNum } = validatePagination(page, limit);
 
-    // Validates pagination parameters
-    logMemory("🔍 Before validating pagination");
-    if (isNaN(pageNum) || pageNum < 1) {
-      throw new AppError(
-        "Invalid page number",
-        400,
-        "GetFollowerLocations",
-        "Page number must be a positive integer"
-      );
-    }
-    if (isNaN(limitNum) || limitNum < 1) {
-      throw new AppError(
-        "Invalid limit",
-        400,
-        "GetFollowerLocations",
-        "Limit must be a positive integer"
-      );
-    }
-    logMemory("🔍 After validating pagination");
+    // ✅ Get followers efficiently
+    logMemory("📖 Fetching user followers");
+    const user = await UserModel.findById(userId, "followers").lean();
 
-    // Fetches user and their followers
-    logMemory("📖 Before fetching user");
-    const user = await UserModel.findById(userId).select("followers");
-    logMemory("📖 After fetching user");
     if (!user) {
       throw new AppError(
         "User not found",
@@ -582,7 +691,6 @@ export const getFollowerLocations = async (req, res, next) => {
 
     const followerIds = user.followers || [];
 
-    // Handles case with no followers
     if (!followerIds.length) {
       logMemory("📍 No followers found");
       return res.status(200).json({
@@ -594,19 +702,9 @@ export const getFollowerLocations = async (req, res, next) => {
       });
     }
 
-    // Fetches follower names
-    logMemory("📖 Before fetching follower names");
-    const followerUsers = await UserModel.find({
-      _id: { $in: followerIds },
-    }).select("_id name");
-    const userIdToName = Object.fromEntries(
-      followerUsers.map((u) => [u._id.toString(), u.name || "Unknown"])
-    );
-    logMemory("📖 After fetching follower names");
-
-    // Aggregates latest locations for followers
-    logMemory("📖 Before aggregating follower locations");
-    const locations = await UserLocation.aggregate([
+    // ✅ Optimized aggregation pipeline
+    logMemory("📖 Aggregating follower locations");
+    const pipeline = [
       { $match: { userId: { $in: followerIds } } },
       { $sort: { timestamp: -1 } },
       {
@@ -621,37 +719,50 @@ export const getFollowerLocations = async (req, res, next) => {
           timestamp: { $first: "$timestamp" },
         },
       },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "userInfo",
+          pipeline: [{ $project: { name: 1 } }],
+        },
+      },
+      {
+        $addFields: {
+          name: { $ifNull: [{ $first: "$userInfo.name" }, "Unknown"] },
+        },
+      },
       { $skip: (pageNum - 1) * limitNum },
       { $limit: limitNum },
-    ]);
-    logMemory("📖 After aggregating follower locations");
-
-    const total = followerIds.length;
-
-    // Formats location data
-    logMemory("📄 Before formatting locations");
-    const formatted = locations.map((loc) => {
-      logMemory(`📄 Processing location for user ${loc.userId}`);
-      return {
-        userId: loc.userId.toString(),
-        name: userIdToName[loc.userId.toString()] || "Unknown",
-        coordinates: {
-          lat: loc.coordinates?.coordinates?.[1] || 0,
-          lon: loc.coordinates?.coordinates?.[0] || 0,
+      {
+        $project: {
+          userId: { $toString: "$userId" },
+          name: 1,
+          coordinates: {
+            lat: {
+              $ifNull: [{ $arrayElemAt: ["$coordinates.coordinates", 1] }, 0],
+            },
+            lon: {
+              $ifNull: [{ $arrayElemAt: ["$coordinates.coordinates", 0] }, 0],
+            },
+          },
+          city: { $ifNull: ["$city", "N/A"] },
+          country: { $ifNull: ["$country", "N/A"] },
+          state: { $ifNull: ["$state", "N/A"] },
+          pincode: { $ifNull: ["$pincode", "N/A"] },
+          timestamp: { $ifNull: ["$timestamp", new Date()] },
         },
-        city: loc.city || "N/A",
-        country: loc.country || "N/A",
-        state: loc.state || "N/A",
-        pincode: loc.pincode || "N/A",
-        timestamp: loc.timestamp || Date.now(),
-      };
-    });
-    logMemory("📄 After formatting locations");
+      },
+    ];
+
+    const locations = await UserLocation.aggregate(pipeline);
+    const total = followerIds.length;
 
     logMemory("📍 End getFollowerLocations");
     res.status(200).json({
       success: true,
-      list: formatted,
+      list: locations,
       page: pageNum,
       total,
       totalPages: Math.ceil(total / limitNum),

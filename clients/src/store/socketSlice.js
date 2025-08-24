@@ -15,6 +15,8 @@ import { toast } from "react-hot-toast";
 const isDev = import.meta.env.MODE === "development";
 const MAX_USER_LOCATIONS = 500;
 const MAX_GUEST_VISITS = 100;
+const CONNECTION_RETRY_DELAY = 2000;
+const MAX_RETRY_ATTEMPTS = 5;
 
 const log = (...args) => {
   const [first] = args;
@@ -88,6 +90,178 @@ export const fetchInitialPostCounts = createAsyncThunk(
   }
 );
 
+// ✅ Fixed: Better event listener management
+const setupEventListeners = (socket, dispatch, getState) => {
+  // Remove all existing listeners first
+  const eventList = [
+    "onlineUsersCount",
+    "newNotification",
+    "updateUnreadCount",
+    "userStatus",
+    "userLocationUpdate",
+    "newAppeal",
+    "newBroadcastNotification",
+    "postCountsUpdated",
+    "broadcastNotificationDismissed",
+    "broadcastNotificationDeactivated",
+    "broadcastNotificationDeletedAll",
+    "postBlockToggled",
+    "guestVisitUpdate",
+    "showFeedbackPrompt",
+  ];
+
+  eventList.forEach((event) => socket.off(event));
+
+  // Debounced handlers
+  const debouncedLocationHandler = debounce((location) => {
+    dispatch(addUserLocation(location));
+  }, 1000);
+
+  const debouncedGuestVisit = debounce((guest) => {
+    log("[socketSlice] 🔵 [Debounced] Processing guestVisitUpdate:", {
+      guestId: guest.guestId,
+      visitCount: guest.visitCount,
+      lastVisit: guest.lastVisit,
+      timestamp: new Date().toISOString(),
+    });
+    dispatch(addGuestVisit(guest));
+  }, 1000);
+
+  // Set up all event listeners
+  socket.on("onlineUsersCount", (count) => {
+    dispatch(setOnlineUsersCount(count));
+  });
+
+  socket.on("newNotification", (notification) => {
+    const userId = getState().auth.user?._id?.toString();
+    if (notification?.user?.toString() === userId) {
+      dispatch(addNotification(notification));
+      dispatch(newNotificationReceived(notification));
+      dispatch(setNotificationDismissReason("deactivated"));
+    }
+  });
+
+  socket.on("updateUnreadCount", ({ count }) => {
+    dispatch(updateUnreadCount(count));
+  });
+
+  socket.on("userStatus", ({ userId, isOnline }) => {
+    dispatch(setUserStatus({ userId, isOnline }));
+  });
+
+  socket.on("userLocationUpdate", (location) => {
+    if (
+      location?.userId &&
+      location?.coordinates?.lat &&
+      location?.coordinates?.lon
+    ) {
+      debouncedLocationHandler(location);
+    }
+  });
+
+  socket.on("newAppeal", (appeal) => {
+    const isAdmin = getState().auth.user?.role === "admin";
+    if (isAdmin) {
+      dispatch(
+        newNotificationReceived({
+          _id: appeal.postId,
+          message: `New appeal for post: ${appeal.postTitle}`,
+          type: "appeal",
+        })
+      );
+    }
+  });
+
+  socket.on("newBroadcastNotification", (notification) => {
+    const user = getState().auth?.user;
+    if (
+      notification.region === "global" ||
+      notification.region === user?.region
+    ) {
+      axiosInstance
+        .get(`/bannerNotification/dismissed/${notification._id}`, {
+          withCredentials: true,
+        })
+        .then((res) => {
+          if (!res.data.dismissed) {
+            dispatch(newNotificationReceived(notification));
+            dispatch(setNotificationDismissReason("deactivated"));
+          }
+        })
+        .catch((err) => {
+          if (err.response?.status === 403) {
+            console.warn(
+              "⚠️ Admin not allowed to fetch banner dismissal status"
+            );
+          } else {
+            console.error("Error checking dismissed status:", err.message);
+          }
+        });
+    }
+  });
+
+  socket.on(
+    "postCountsUpdated",
+    ({ allPostsCount, myPostsCount, followingPostsCount }) => {
+      dispatch(
+        setPostCounts({
+          allPostsCount,
+          myPostsCount,
+          followingPostsCount,
+        })
+      );
+    }
+  );
+
+  const handleDeactivationOrDismissal = ({ id }) => {
+    const current = getState().socket.newNotification;
+    if (current?._id === id) {
+      dispatch(newNotificationReceived(null));
+      dispatch(setNotificationDismissReason("deactivated"));
+    }
+    const isAdmin = getState().auth.user?.role === "admin";
+    if (isAdmin) {
+      dispatch(fetchBannerNotifications());
+    }
+  };
+
+  socket.on("broadcastNotificationDismissed", handleDeactivationOrDismissal);
+  socket.on("broadcastNotificationDeactivated", handleDeactivationOrDismissal);
+
+  socket.on("broadcastNotificationDeletedAll", () => {
+    const isAdmin = getState().auth.user?.role === "admin";
+    if (isAdmin) {
+      dispatch(fetchBannerNotifications());
+    }
+  });
+
+  socket.on("postBlockToggled", ({ postId, blocked }) => {
+    dispatch({
+      type: "admin/updatePostBlockStatus",
+      payload: { postId, blocked },
+    });
+    dispatch({
+      type: "post/updateCurrentPostBlockedStatus",
+      payload: { postId, blocked },
+    });
+  });
+
+  socket.on("guestVisitUpdate", (guest) => {
+    log("[socketSlice] 🔴 Received guestVisitUpdate:", {
+      guestId: guest.guestId,
+      visitCount: guest.visitCount,
+      lastVisit: guest.lastVisit,
+      timestamp: new Date().toISOString(),
+    });
+    debouncedGuestVisit(guest);
+  });
+
+  socket.on("showFeedbackPrompt", (data) => {
+    log("[socketSlice] 💬 Received showFeedbackPrompt:", data);
+    dispatch(setFeedbackPrompt(data?.message || "We'd love your feedback!"));
+  });
+};
+
 export const initializeSocket = createAsyncThunk(
   "socket/initialize",
   async (_, { dispatch, getState }) => {
@@ -95,228 +269,96 @@ export const initializeSocket = createAsyncThunk(
     const { user, isGuest } = getState().auth;
     let token = getToken();
 
-    // console.log("[Socket:Auth] token", token);
-
-    if (!token && !user?._id && isGuest) {
-      log("[socketSlice] Guest user, skipping join/postCounts");
-    } else if (!token) {
+    // ✅ Fixed: Better token validation
+    if (!isGuest && !token) {
       try {
         await dispatch(checkAuth()).unwrap();
         token = getToken();
+        if (!token) {
+          throw new Error("Failed to get token after authentication");
+        }
       } catch (err) {
         console.warn("[socketSlice] checkAuth failed:", err.message);
+        return Promise.reject("Authentication required for non-guest users");
       }
     }
 
     const userId = user?._id?.toString();
+
+    // ✅ Fixed: Better validation logic
     if (!isGuest && !userId) {
-      log("[socketSlice] ⏳ Waiting for userId...");
-      return Promise.reject("User not ready");
+      log("[socketSlice] ❌ User ID required for authenticated users");
+      return Promise.reject("User ID not available");
     }
 
     const socket = io(import.meta.env.VITE_API_URL || "http://localhost:8001", {
       auth: { token: token || null },
-      transports: ["websocket", "polling"], // Added polling fallback
-      path: "/socket.io/",
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000,
+      transports: ["websocket", "polling"],
+      path: "/socket.io", // ✅ Fixed: Removed trailing slash
+      reconnectionAttempts: MAX_RETRY_ATTEMPTS,
+      reconnectionDelay: CONNECTION_RETRY_DELAY,
+      timeout: 10000, // ✅ Added connection timeout
     });
 
-    const debouncedLocationHandler = debounce((dispatch, location) => {
-      dispatch(addUserLocation(location));
-    }, 1000);
-
     return new Promise((resolve, reject) => {
+      // ✅ Fixed: Clean up existing listeners
       socket.removeAllListeners();
 
+      let connectionTimeout;
+
       socket.on("connect", () => {
+        if (connectionTimeout) {
+          clearTimeout(connectionTimeout);
+        }
+
+        log("[socketSlice] ✅ Socket connected successfully");
+
         if (!isGuest && userId) {
           socket.emit("join", userId);
           socket.emit("join", "adminRoom");
           dispatch(fetchInitialPostCounts());
         }
 
+        // ✅ Fixed: Set up event listeners properly
+        setupEventListeners(socket, dispatch, getState);
         dispatch(setSocketInstance(socket));
         resolve(socket);
       });
 
+      // ✅ Fixed: Better error handling with rate limiting
       let lastToast = 0;
       socket.on("connect_error", (err) => {
+        if (connectionTimeout) {
+          clearTimeout(connectionTimeout);
+        }
+
         const now = Date.now();
         if (now - lastToast > 10000) {
           toast.error("🚨 Can't connect to server. Please try again.");
           lastToast = now;
         }
+
         dispatch(setError(err.message));
         console.error("Socket Connect Error:", err.message);
-        reject(err);
+        reject(new Error(`Connection failed: ${err.message}`));
       });
 
-      socket.io.on("reconnect_attempt", () => {
-        log("🌀 Trying to reconnect...");
+      socket.io.on("reconnect_attempt", (attemptNumber) => {
+        log(
+          `🌀 Reconnection attempt ${attemptNumber}/${MAX_RETRY_ATTEMPTS}...`
+        );
       });
 
       socket.on("disconnect", (reason) => {
+        log(`[socketSlice] 🔌 Socket disconnected: ${reason}`);
         dispatch(setDisconnected());
       });
 
-      socket.off("onlineUsersCount").on("onlineUsersCount", (count) => {
-        dispatch(setOnlineUsersCount(count));
-      });
-
-      socket.off("newNotification").on("newNotification", (notification) => {
-        if (notification?.user?.toString() === userId) {
-          dispatch(addNotification(notification));
-          dispatch(newNotificationReceived(notification));
-          dispatch(setNotificationDismissReason("deactivated"));
-        }
-      });
-
-      socket.off("updateUnreadCount").on("updateUnreadCount", ({ count }) => {
-        dispatch(updateUnreadCount(count));
-      });
-
-      socket.off("userStatus").on("userStatus", ({ userId, isOnline }) => {
-        dispatch(setUserStatus({ userId, isOnline }));
-      });
-
-      socket.off("userLocationUpdate").on("userLocationUpdate", (location) => {
-        if (
-          location?.userId &&
-          location?.coordinates?.lat &&
-          location?.coordinates?.lon
-        ) {
-          debouncedLocationHandler(dispatch, location);
-        }
-      });
-
-      socket.off("newAppeal").on("newAppeal", (appeal) => {
-        const isAdmin = getState().auth.user?.role === "admin";
-        if (isAdmin) {
-          dispatch(
-            newNotificationReceived({
-              _id: appeal.postId,
-              message: `New appeal for post: ${appeal.postTitle}`,
-              type: "appeal",
-            })
-          );
-        }
-      });
-
-      socket
-        .off("newBroadcastNotification")
-        .on("newBroadcastNotification", (notification) => {
-          const user = getState().auth?.user;
-          if (
-            notification.region === "global" ||
-            notification.region === user?.region
-          ) {
-            axiosInstance
-              .get(`/bannerNotification/dismissed/${notification._id}`, {
-                withCredentials: true,
-              })
-              .then((res) => {
-                if (!res.data.dismissed) {
-                  dispatch(newNotificationReceived(notification));
-                  dispatch(setNotificationDismissReason("deactivated"));
-                }
-              })
-              .catch((err) => {
-                if (err.response?.status === 403) {
-                  console.warn(
-                    "⚠️ Admin not allowed to fetch banner dismissal status"
-                  );
-                } else {
-                  console.error(
-                    "Error checking dismissed status:",
-                    err.message
-                  );
-                }
-              });
-          }
-        });
-
-      socket
-        .off("postCountsUpdated")
-        .on(
-          "postCountsUpdated",
-          ({ allPostsCount, myPostsCount, followingPostsCount }) => {
-            dispatch(
-              setPostCounts({
-                allPostsCount,
-                myPostsCount,
-                followingPostsCount,
-              })
-            );
-          }
-        );
-
-      const handleDeactivationOrDismissal = ({ id }) => {
-        const current = getState().socket.newNotification;
-        if (current?._id === id) {
-          dispatch(newNotificationReceived(null));
-          dispatch(setNotificationDismissReason("deactivated"));
-        }
-        const isAdmin = getState().auth.user?.role === "admin";
-        if (isAdmin) {
-          dispatch(fetchBannerNotifications());
-        }
-      };
-
-      socket
-        .off("broadcastNotificationDismissed")
-        .on("broadcastNotificationDismissed", handleDeactivationOrDismissal);
-      socket
-        .off("broadcastNotificationDeactivated")
-        .on("broadcastNotificationDeactivated", handleDeactivationOrDismissal);
-
-      socket
-        .off("broadcastNotificationDeletedAll")
-        .on("broadcastNotificationDeletedAll", () => {
-          const isAdmin = getState().auth.user?.role === "admin";
-          if (isAdmin) {
-            dispatch(fetchBannerNotifications());
-          }
-        });
-
-      socket
-        .off("postBlockToggled")
-        .on("postBlockToggled", ({ postId, blocked }) => {
-          dispatch({
-            type: "admin/updatePostBlockStatus",
-            payload: { postId, blocked },
-          });
-          dispatch({
-            type: "post/updateCurrentPostBlockedStatus",
-            payload: { postId, blocked },
-          });
-        });
-
-      const debouncedGuestVisit = debounce((guest, dispatch) => {
-        log("[socketSlice] 🔵 [Debounced] Processing guestVisitUpdate:", {
-          guestId: guest.guestId,
-          visitCount: guest.visitCount,
-          lastVisit: guest.lastVisit,
-          timestamp: new Date().toISOString(),
-        });
-        dispatch(addGuestVisit(guest));
-      }, 1000);
-
-      socket.off("guestVisitUpdate").on("guestVisitUpdate", (guest) => {
-        log("[socketSlice] 🔴 Received guestVisitUpdate:", {
-          guestId: guest.guestId,
-          visitCount: guest.visitCount,
-          lastVisit: guest.lastVisit,
-          timestamp: new Date().toISOString(),
-        });
-        debouncedGuestVisit(guest, dispatch);
-      });
-      socket.off("showFeedbackPrompt").on("showFeedbackPrompt", (data) => {
-        log("[socketSlice] 💬 Received showFeedbackPrompt:", data);
-        dispatch(
-          setFeedbackPrompt(data?.message || "We'd love your feedback!")
-        );
-      });
+      // ✅ Fixed: Add connection timeout
+      connectionTimeout = setTimeout(() => {
+        socket.disconnect();
+        reject(new Error("Connection timeout"));
+      }, 15000);
     });
   }
 );
@@ -326,23 +368,9 @@ export const disconnectSocket = createAsyncThunk(
   async (_, { dispatch, getState }) => {
     const socket = getState().socket.socketInstance;
     if (socket) {
-      const events = [
-        "onlineUsersCount",
-        "newNotification",
-        "updateUnreadCount",
-        "userStatus",
-        "userLocationUpdate",
-        "newAppeal",
-        "newBroadcastNotification",
-        "postCountsUpdated",
-        "broadcastNotificationDismissed",
-        "broadcastNotificationDeactivated",
-        "broadcastNotificationDeletedAll",
-        "postBlockToggled",
-        "guestVisitUpdate",
-        "showFeedbackPrompt",
-      ];
-      events.forEach((event) => socket.off(event));
+      log("[socketSlice] 🔌 Disconnecting socket...");
+
+      // ✅ Fixed: Proper cleanup
       socket.removeAllListeners();
       socket.disconnect();
       dispatch(setDisconnected());
@@ -381,7 +409,7 @@ const socketSlice = createSlice({
     },
     setError(state, action) {
       state.error = action.payload;
-      state.status = "disconnected";
+      state.status = "error"; // ✅ Fixed: Better status handling
     },
     setOnlineUsersCount(state, action) {
       state.onlineUsersCount = Number(action.payload) || 0;
@@ -499,7 +527,7 @@ const socketSlice = createSlice({
         state.newNotification = action.payload;
       })
       .addCase(fetchActiveNotifications.rejected, (state, action) => {
-        state.status = "disconnected";
+        state.status = "error";
         state.error = action.payload;
       })
       .addCase(fetchInitialPostCounts.pending, (state) => {
@@ -511,7 +539,7 @@ const socketSlice = createSlice({
         state.postCounts = action.payload;
       })
       .addCase(fetchInitialPostCounts.rejected, (state, action) => {
-        state.status = "disconnected";
+        state.status = "error";
         state.error = action.payload;
       })
       .addCase(initializeSocket.pending, (state) => {
@@ -520,14 +548,16 @@ const socketSlice = createSlice({
       })
       .addCase(initializeSocket.fulfilled, (state) => {
         state.status = "connected";
+        state.error = null;
       })
       .addCase(initializeSocket.rejected, (state, action) => {
-        state.status = "disconnected";
+        state.status = "error";
         state.error = action.error.message;
       })
       .addCase(disconnectSocket.fulfilled, (state) => {
         state.status = "disconnected";
         state.error = null;
+        state.socketInstance = null;
       });
   },
 });
@@ -551,6 +581,7 @@ export const selectSocketState = createSelector(
   (socket) => ({
     socket: socket.socketInstance,
     isConnected: socket.status === "connected",
+    isConnecting: socket.status === "connecting",
     error: socket.error,
     onlineUsersCount: socket.onlineUsersCount,
     userStatus: socket.userStatus,
@@ -559,6 +590,7 @@ export const selectSocketState = createSelector(
     notificationDismissReason: socket.notificationDismissReason,
     postCounts: socket.postCounts,
     guestVisits: socket.guestVisits,
+    feedbackPrompt: socket.feedbackPrompt,
   })
 );
 

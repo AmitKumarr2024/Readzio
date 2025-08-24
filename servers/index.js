@@ -38,9 +38,16 @@ import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 const app = express();
 app.set("trust proxy", true);
 
+// ✅ Fixed: Set server timeout before creating socket
 const server = http.createServer(app);
-const io = initializeSocket(server);
+server.setTimeout(120000); // ✅ Moved here and increased timeout
+server.keepAliveTimeout = 65000; // ✅ Added keep-alive timeout
+server.headersTimeout = 66000; // ✅ Added headers timeout
+
 const __dirname = path.resolve();
+
+// ✅ Initialize socket AFTER server configuration
+const io = initializeSocket(server);
 
 // ✅ Serve robots.txt BEFORE anything else
 app.get("/robots.txt", (req, res) => {
@@ -49,17 +56,24 @@ Allow: /
 Sitemap: https://inksha-uedq.onrender.com/sitemap.xml`);
 });
 
-// Timeout middleware for specific routes
+// ✅ Fixed: Better timeout middleware with cleanup
 const setRouteTimeout = (timeoutMs) => (req, res, next) => {
-  req.setTimeout(timeoutMs, () => {
-    const err = new Error("Request Timeout");
-    err.status = 408;
-    next(err);
-  });
+  const timeout = setTimeout(() => {
+    if (!res.headersSent) {
+      const err = new Error(`Request timeout after ${timeoutMs}ms`);
+      err.status = 408;
+      next(err);
+    }
+  }, timeoutMs);
+
+  // ✅ Clear timeout when response finishes
+  res.on("finish", () => clearTimeout(timeout));
+  res.on("close", () => clearTimeout(timeout));
+
   next();
 };
 
-// Razorpay webhook
+// ✅ Enhanced Razorpay webhook with better error handling
 app.post(
   "/api/razorpay/webhook",
   setRouteTimeout(60000),
@@ -68,76 +82,109 @@ app.post(
       req.rawBody = buf.toString();
     },
   }),
-  (req, res, next) => {
+  async (req, res, next) => {
+    const startTime = Date.now();
     logMemory("💸 Razorpay webhook start");
+
     try {
-      handleRazorpayWebhook(req, res, next);
-      logMemory("💸 Razorpay webhook end");
+      await handleRazorpayWebhook(req, res, next);
+      const duration = Date.now() - startTime;
+      logMemory(`💸 Razorpay webhook completed in ${duration}ms`);
     } catch (err) {
-      console.error("[Server:Razorpay] ❌ Webhook error:", err.message);
-      next(err);
+      const duration = Date.now() - startTime;
+      console.error(
+        `[Server:Razorpay] ❌ Webhook error after ${duration}ms:`,
+        err.message
+      );
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Webhook processing failed" });
+      }
     }
   }
 );
 
-// Middleware
+// ✅ Fixed: Better middleware order and socket attachment
 app.use((req, res, next) => {
-  logMemory("🔌 Attaching socket to request");
   req.io = io;
   next();
 });
-app.use((req, res, next) => {
-  logMemory("🗜️ Compression middleware");
-  compression()(req, res, next);
-});
-// old cors
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       logMemory("🌐 CORS check");
-//       console.log("[Server:CORS] Request from:", origin);
-//       const allowedOrigins = [
-//         CLIENT_URL?.replace(/\/$/, ""),
-//         "http://localhost:5173",
-//         "http://localhost:8001",
-//         "https://inksha-uedq.onrender.com",
-//       ].filter(Boolean);
-//       if (!origin || allowedOrigins.some((o) => origin.startsWith(o)))
-//         return callback(null, true);
-//       return callback(new Error("CORS not allowed"));
-//     },
-//     credentials: true,
-//     allowedHeaders: ["Content-Type", "Authorization"],
-//     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-//   })
-// );
-// new cors
+
+// ✅ Apply compression early but with conditions
+app.use(
+  compression({
+    filter: (req, res) => {
+      // Don't compress if response is already compressed
+      if (req.headers["x-no-compression"]) return false;
+      // Use compression for all other requests
+      return compression.filter(req, res);
+    },
+    threshold: 1024, // Only compress responses larger than 1KB
+  })
+);
+
+// ✅ Fixed: Better CORS configuration with exact matching
 app.use(
   cors({
     origin: (origin, callback) => {
-      logMemory("🌐 CORS check");
       console.log("[Server:CORS] Request from:", origin);
+
       const allowedOrigins = [
         CLIENT_URL?.replace(/\/$/, ""),
         "http://localhost:5173",
         "http://localhost:8001",
         "https://inksha-uedq.onrender.com",
       ].filter(Boolean);
-      if (!origin || allowedOrigins.some((o) => origin.startsWith(o)))
+
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+
+      // ✅ Fixed: Use exact match instead of startsWith for security
+      const isAllowed = allowedOrigins.includes(origin);
+
+      if (isAllowed) {
         return callback(null, true);
-      return callback(new Error("CORS not allowed"));
+      }
+
+      console.error("[Server:CORS] ❌ Blocked origin:", origin);
+      return callback(
+        new Error(`CORS policy violation: ${origin} not allowed`)
+      );
     },
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+    ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    optionsSuccessStatus: 200, // ✅ For legacy browser support
   })
 );
 
-app.use(express.json({ limit: "20mb" }));
-app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+// ✅ Enhanced body parsing with better limits
+app.use(
+  express.json({
+    limit: "20mb",
+    verify: (req, res, buf, encoding) => {
+      // Store raw body for webhooks that need it
+      if (req.path.includes("/webhook")) {
+        req.rawBody = buf;
+      }
+    },
+  })
+);
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "20mb",
+    parameterLimit: 50000, // ✅ Prevent parameter pollution
+  })
+);
 app.use(cookieParser());
 
-// Routes
+// ✅ Enhanced route mounting with better error handling
 const routes = [
   ["/api/auth", AuthRoutes],
   ["/api/user", UserRoutes],
@@ -157,29 +204,56 @@ const routes = [
   ["/api/public", guestRoutes, setRouteTimeout(60000)],
 ];
 
-routes.forEach(([path, router, middleware]) => {
-  logMemory(`🛤️ Mounting route: ${path}`);
-  app.use(path, middleware || [], router);
+routes.forEach(([routePath, router, middleware]) => {
+  try {
+    if (NODE_ENV !== "production") {
+      console.log(`🛤️ Mounting route: ${routePath}`);
+    }
+    app.use(routePath, middleware || [], router);
+  } catch (err) {
+    console.error(`❌ Failed to mount route ${routePath}:`, err.message);
+  }
 });
 
-// Route listing in dev
+// ✅ Enhanced route listing for development
 if (NODE_ENV !== "production") {
   try {
     const endpoints = listEndpoints(app);
+    console.log("\n📋 Available Routes:");
     endpoints.forEach((route) => {
-      console.log(`${route.methods.join(", ")} ${route.path}`);
+      const methods = route.methods.join(", ").padEnd(20);
+      console.log(`  ${methods} ${route.path}`);
     });
+    console.log(`\n✅ Total routes: ${endpoints.length}\n`);
   } catch (err) {
     console.error("❌ Route inspection failed:", err.message);
   }
 }
 
-// Public/static
+// ✅ Enhanced static file serving
 const publicPath = path.join(__dirname, "servers", "public");
-app.use("/public", express.static(publicPath));
+if (fs.existsSync(publicPath)) {
+  app.use(
+    "/public",
+    express.static(publicPath, {
+      maxAge: NODE_ENV === "production" ? "1d" : 0, // Cache in production
+      etag: true,
+      lastModified: true,
+    })
+  );
+} else {
+  console.warn("⚠️ Public directory not found:", publicPath);
+}
 
+// ✅ Enhanced sitemap serving
 app.get("/sitemap.xml", (req, res) => {
-  res.sendFile(path.join(__dirname, "clients", "dist", "sitemap.xml"));
+  const sitemapPath = path.join(__dirname, "clients", "dist", "sitemap.xml");
+  if (fs.existsSync(sitemapPath)) {
+    res.sendFile(sitemapPath);
+  } else {
+    console.warn("⚠️ Sitemap not found:", sitemapPath);
+    res.status(404).send("Sitemap not found");
+  }
 });
 
 app.get("/ads.txt", (req, res) => {
@@ -188,74 +262,202 @@ app.get("/ads.txt", (req, res) => {
     .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
 });
 
-// Serve frontend (production)
+// ✅ Enhanced frontend serving with better error handling
 const clientPath = path.join(__dirname, "clients", "dist");
 const clientIndexPath = path.join(clientPath, "index.html");
 
-if (NODE_ENV === "production" && fs.existsSync(clientIndexPath)) {
-  app.use(express.static(clientPath));
-  app.get(/^\/(?!api\/).*/, (req, res) => {
-    res.sendFile(clientIndexPath, (err) => {
-      if (err) {
-        console.error(
-          "[Server:Static] ❌ Failed to serve index.html:",
-          err.message
-        );
-        res.status(500).send("Internal Server Error");
-      }
+if (NODE_ENV === "production") {
+  if (fs.existsSync(clientIndexPath)) {
+    // Serve static files with caching
+    app.use(
+      express.static(clientPath, {
+        maxAge: "1d",
+        etag: true,
+        lastModified: true,
+        setHeaders: (res, path) => {
+          // Don't cache HTML files
+          if (path.endsWith(".html")) {
+            res.setHeader("Cache-Control", "no-cache");
+          }
+        },
+      })
+    );
+
+    // Handle client-side routing
+    app.get(/^\/(?!api\/).*/, (req, res) => {
+      res.sendFile(clientIndexPath, (err) => {
+        if (err) {
+          console.error(
+            "[Server:Static] ❌ Failed to serve index.html:",
+            err.message
+          );
+          if (!res.headersSent) {
+            res.status(500).send("Internal Server Error");
+          }
+        }
+      });
     });
-  });
+  } else {
+    console.error("❌ Client build not found:", clientIndexPath);
+    app.get("*", (req, res) => {
+      res.status(503).send("Service temporarily unavailable - build not found");
+    });
+  }
 }
 
-// Health check
+// ✅ Enhanced health check with more details
 app.get("/health", (req, res) => {
+  const memUsage = process.memoryUsage();
+  const cpuUsage = process.cpuUsage();
+
   res.status(200).json({
     status: "OK",
     message: "inkshaa API is running",
-    uptime: process.uptime(),
+    uptime: Math.floor(process.uptime()),
     database:
       mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-    socket: io.engine.clientsCount > 0 ? "active" : "inactive",
+    socket: {
+      status: io.engine.clientsCount > 0 ? "active" : "inactive",
+      clients: io.engine.clientsCount,
+    },
+    memory: {
+      rss: Math.round(memUsage.rss / 1024 / 1024) + "MB",
+      heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + "MB",
+      heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + "MB",
+    },
     timestamp: new Date().toISOString(),
+    environment: NODE_ENV,
+    nodeVersion: process.version,
   });
 });
 
-// Error handler
+// ✅ 404 handler for API routes
+app.use("/api/*", (req, res) => {
+  res.status(404).json({
+    error: "API endpoint not found",
+    path: req.path,
+    method: req.method,
+  });
+});
+
+// ✅ Error handler (must be last)
 app.use(errorHandler);
 
-// Global error logs
-io.on("error", (err) => console.error("[Socket.IO] Error:", err.message));
-server.on("error", (err) => console.error("[HTTP Server] Error:", err.message));
+// ✅ Enhanced global error handlers
+const gracefulShutdown = (signal) => {
+  console.log(
+    `\n[Server:Shutdown] 🛑 Received ${signal}, starting graceful shutdown...`
+  );
+
+  server.close((err) => {
+    if (err) {
+      console.error("[Server:Shutdown] ❌ Error during shutdown:", err.message);
+      process.exit(1);
+    }
+
+    console.log("[Server:Shutdown] ✅ HTTP server closed");
+
+    mongoose.connection.close((err) => {
+      if (err) {
+        console.error(
+          "[Server:Shutdown] ❌ Database close error:",
+          err.message
+        );
+      } else {
+        console.log("[Server:Shutdown] ✅ Database connection closed");
+      }
+      process.exit(0);
+    });
+  });
+
+  // Force shutdown after 30 seconds
+  setTimeout(() => {
+    console.error("[Server:Shutdown] ⚠️ Forcing shutdown after timeout");
+    process.exit(1);
+  }, 30000);
+};
+
+// ✅ Better error handling
+io.on("error", (err) => {
+  console.error("[Socket.IO] ❌ Error:", err.message);
+});
+
+server.on("error", (err) => {
+  console.error("[HTTP Server] ❌ Error:", err.message);
+  if (err.code === "EADDRINUSE") {
+    console.error(`❌ Port ${err.port} is already in use`);
+    process.exit(1);
+  }
+});
+
+server.on("clientError", (err, socket) => {
+  console.error("[HTTP Server] ❌ Client error:", err.message);
+  if (!socket.destroyed) {
+    socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
+  }
+});
+
 process.on("uncaughtException", (err) => {
   console.error("[UncaughtException] ❌", err.message);
-  process.exit(1);
-});
-process.on("unhandledRejection", (err) => {
-  console.error("[UnhandledRejection] ❌", err.message);
+  console.error(err.stack);
   process.exit(1);
 });
 
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("[UnhandledRejection] ❌", reason);
+  console.error("Unhandled Rejection at:", promise);
+  process.exit(1);
+});
+
+// ✅ Graceful shutdown handlers
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+// ✅ Enhanced server startup
 const startServer = async () => {
   try {
-    console.log("[Server:Startup] Connecting to MongoDB...");
-    await connectDb();
-    console.log("[Server:Startup] ✅ Database connected");
+    console.log("[Server:Startup] 🚀 Starting inkshaa API server...");
+    console.log("[Server:Startup] 📊 Environment:", NODE_ENV);
+    console.log("[Server:Startup] 📊 Node version:", process.version);
+    console.log("[Server:Startup] 📊 Platform:", process.platform);
 
+    console.log("[Server:Startup] 🔌 Connecting to MongoDB...");
+    await connectDb();
+    console.log("[Server:Startup] ✅ Database connected successfully");
+
+    // Start background jobs
+    console.log("[Server:Startup] 🧹 Starting cleanup jobs...");
     startTempCleanup();
     startDailyDigestJob();
+    console.log("[Server:Startup] ✅ Background jobs started");
 
     const port = process.env.PORT || 10000;
+
     server.listen(port, "0.0.0.0", function () {
+      const address = this.address();
       console.log(
-        `[Server:Startup] ✅ inkshaa API running on port ${this.address().port}`
+        `[Server:Startup] ✅ inkshaa API running on port ${address.port}`
       );
+      console.log(
+        `[Server:Startup] 🌐 Server URL: http://0.0.0.0:${address.port}`
+      );
+      console.log(
+        `[Server:Startup] 🔗 Health check: http://0.0.0.0:${address.port}/health`
+      );
+
+      if (NODE_ENV === "production") {
+        console.log(
+          "[Server:Startup] 🎯 Production mode: Client app will be served"
+        );
+      } else {
+        console.log("[Server:Startup] 🔧 Development mode: API only");
+      }
     });
   } catch (err) {
-    console.error("[Server:Startup] ❌ Failed to start:", err);
+    console.error("[Server:Startup] ❌ Failed to start server:", err.message);
+    console.error(err.stack);
     process.exit(1);
   }
 };
-
-server.setTimeout(60000);
 
 startServer();

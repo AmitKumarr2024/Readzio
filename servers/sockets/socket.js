@@ -10,13 +10,12 @@ export const io = new Server({
   path: "/socket.io",
   cors: {
     origin: (origin, callback) => {
-      console.log("[Socket:CORS] Request from:", origin); // Log for debugging
+      console.log("[Socket:CORS] Request from:", origin);
       const allowedOrigins = [
         CLIENT_URL?.replace(/\/$/, ""),
         "http://localhost:5173",
         "http://localhost:8001",
-        "https://inksha-uedq.onrender.com",
-        "https://inksha-uedq.onrender.com", // Added www variant
+        "https://inksha-uedq.onrender.com", // ✅ Fixed: Removed duplicate
         "null",
       ].filter(Boolean);
 
@@ -53,7 +52,7 @@ io.use(async (socket, next) => {
       console.warn(
         "[Socket:Auth] No token found, allowing unauthenticated socket"
       );
-      return next(); // allow connection (optional)
+      return next();
     }
 
     const decoded = verifyToken(token);
@@ -78,6 +77,12 @@ io.on("connection", async (socket) => {
       const user = await UserModel.findById(socket.userId).select(
         "joiningDate feedbackPrompt"
       );
+
+      // ✅ Fixed: Added user existence check
+      if (!user) {
+        console.warn(`[Socket] User ${socket.userId} not found`);
+        return;
+      }
 
       const joinedDaysAgo =
         (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24);
@@ -140,16 +145,33 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("disconnect", (reason) => {
+    console.log(`[Socket] User ${socket.userId} disconnected:`, reason);
     if (socket.userId) {
       connectedUsers.delete(socket.userId);
+      socket.leave(socket.userId); // ✅ Fixed: Ensure room cleanup
+      socket.leave("adminRoom"); // ✅ Fixed: Clean up admin room too
       io.emit("userStatus", { userId: socket.userId, isOnline: false });
       io.emit("onlineUsersCount", connectedUsers.size);
     }
+  });
+
+  // ✅ Fixed: Added error handler for socket errors
+  socket.on("error", (error) => {
+    console.error(`[Socket] Socket error for user ${socket.userId}:`, error);
   });
 });
 
 export default function initializeSocket(server) {
   io.attach(server);
+
+  // ✅ Fixed: Added server error handling
+  io.engine.on("connection_error", (err) => {
+    console.error("[Socket] Connection error:", err.req);
+    console.error("[Socket] Error code:", err.code);
+    console.error("[Socket] Error message:", err.message);
+    console.error("[Socket] Error context:", err.context);
+  });
+
   return io;
 }
 
