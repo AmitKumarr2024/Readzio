@@ -315,7 +315,7 @@ if (NODE_ENV === "production") {
         },
       })
     );
-    app.get("*", (req, res, next) => {
+    app.get("/{*any}", (req, res, next) => {
       const disallowed = [
         req.path.startsWith("/api"),
         req.path.startsWith("/public"),
