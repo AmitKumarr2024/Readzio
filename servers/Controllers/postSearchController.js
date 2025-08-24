@@ -248,31 +248,30 @@ export const getLatestPosts = async (req, res, next) => {
 export const suggestPosts = async (req, res, next) => {
   try {
     logMemory("Before suggestPosts start");
+
     const userId = req.user?._id?.toString(); // May be undefined for guest users
     const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+
+    // ✅ Create cache key based on user & limit
     const cacheKey = `suggestedPosts:${userId || "guest"}:${limit}`;
 
-    logMemory(`Before checking cache: ${cacheKey}`);
+    logMemory(`Checking cache: ${cacheKey}`);
     const cachedPosts = cache.get(cacheKey);
     if (cachedPosts) {
-      logMemory(`Cache hit: ${cacheKey}`);
-      return res.status(200).json({
-        success: true,
-        posts: cachedPosts,
-      });
+      logMemory(`✅ Cache hit for key: ${cacheKey}`);
+      return res.status(200).json({ success: true, posts: cachedPosts });
     }
 
-    let regex = /.*/; // Default: match everything
-    let query = { isPublished: true, blocked: false };
+    let query = { isPublished: true, blocked: false, author: { $ne: userId } };
     let tags = [];
 
+    // ✅ Personalized suggestions if user is logged in
     if (userId) {
-      logMemory("Before ActivityModel.find");
+      logMemory("Fetching user activities for personalization");
       const userActivities = await ActivityModel.find({ userId })
         .select("message")
         .lean();
 
-      logMemory("Before processing user activities");
       tags = userActivities
         .filter((activity) =>
           activity.message.includes("Searched posts with query")
@@ -280,20 +279,13 @@ export const suggestPosts = async (req, res, next) => {
         .map((activity) => activity.message.split(": ")[1])
         .slice(0, 5);
 
-      if (tags.length) {
-        regex = new RegExp(tags.join("|"), "i");
-        query = {
-          $or: [{ tags: regex }, { title: regex }],
-          author: { $ne: userId },
-          isPublished: true,
-          blocked: false,
-        };
-      } else {
-        query = { author: { $ne: userId }, isPublished: true, blocked: false };
+      if (tags.length > 0) {
+        const regex = new RegExp(tags.join("|"), "i");
+        query.$or = [{ tags: regex }, { title: regex }];
       }
     }
 
-    logMemory("Before PostModel.find");
+    logMemory("Fetching posts from DB...");
     const posts = await PostModel.find(query)
       .sort({ likesCount: -1, createdAt: -1 })
       .limit(limit)
@@ -303,17 +295,18 @@ export const suggestPosts = async (req, res, next) => {
       .populate("author", "name avatar")
       .lean();
 
-    logMemory("Before processing posts");
+    // ✅ Normalize blocks field
     const processedPosts = posts.map((post) => ({
       ...post,
       blocks: Array.isArray(post.blocks) ? post.blocks : [],
     }));
 
-    logMemory(`Before setting cache: ${cacheKey}`);
+    // ✅ Cache the processed posts
     cache.set(cacheKey, processedPosts);
+    logMemory(`Cached data for key: ${cacheKey}`);
 
+    // ✅ Log activity for analytics
     if (userId) {
-      logMemory("Before recordActivity");
       await recordActivity({
         userId,
         action: "VIEWED_SUGGESTED_POSTS",
@@ -321,12 +314,11 @@ export const suggestPosts = async (req, res, next) => {
       });
     }
 
-    logMemory("After suggestPosts complete");
-    res.status(200).json({
-      success: true,
-      posts: processedPosts,
-    });
+    logMemory("Completed suggestPosts successfully");
+    res.status(200).json({ success: true, posts: processedPosts });
   } catch (error) {
+    console.error("❌ suggestPosts Error:", error);
+
     next(
       error instanceof AppError
         ? error

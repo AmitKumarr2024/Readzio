@@ -23,6 +23,7 @@ export const fetchSuggestedPosts = createAsyncThunk(
         "/post/suggested-post/suggested",
         {
           params: { limit, category, exclude },
+          timeout: 30000, // 30 seconds
         }
       );
 
