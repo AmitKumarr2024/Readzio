@@ -5,33 +5,18 @@ import { saveUserConsent } from "../../store/userSlice";
 
 export default function CookieConsentBar() {
   const dispatch = useDispatch();
-
-  // Safe optional chaining to avoid undefined errors
   const consent = useSelector((state) => state.user?.cookieConsent ?? null);
-  const isAuthenticated = useSelector(
-    (state) => state.auth?.isAuthenticated ?? false
-  );
 
-  // Don't render anything if user is not authenticated or consent already given
-  if (!isAuthenticated || consent !== null) return null;
-
-  // Sync consent with localStorage whenever it changes
-  useEffect(() => {
-    if (consent !== null) {
-      try {
-        localStorage.setItem("userCookieConsent", consent);
-      } catch (e) {
-        console.warn("[CookieConsentBar] localStorage error:", e);
-      }
-    }
-  }, [consent]);
+  // Only hide if consent already exists
+  if (consent !== null) return null;
 
   const handleConsent = (value) => {
     try {
-      dispatch(saveUserConsent(value));
+      localStorage.setItem("userCookieConsent", value);
     } catch (e) {
-      console.warn("[CookieConsentBar] Dispatch error:", e);
+      console.warn("[CookieConsentBar] localStorage error:", e);
     }
+    dispatch(saveUserConsent(value));
   };
 
   return (
