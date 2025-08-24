@@ -61,11 +61,13 @@ const SortableBlock = ({ block, index, children }) => {
       <button
         {...attributes}
         {...listeners}
-        className="absolute left-0 top-0 bottom-0 flex items-center justify-center w-8 sm:w-10 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark transition-all duration-200 rounded-l-lg cursor-move z-10 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-        title="Drag to reorder"
-        aria-label="Drag to reorder block"
+        className="absolute left-0 top-0 bottom-0 flex items-center justify-center w-10 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-all duration-200 rounded-l-xl cursor-move z-10 opacity-0 group-hover:opacity-100"
       >
-        <FiMove className="text-base sm:text-lg" />
+        <div className="flex flex-col space-y-0.5">
+          <div className="w-1 h-1 bg-current rounded-full"></div>
+          <div className="w-1 h-1 bg-current rounded-full"></div>
+          <div className="w-1 h-1 bg-current rounded-full"></div>
+        </div>
       </button>
       <div className="pl-10 sm:pl-12">{children}</div>
     </div>
@@ -261,9 +263,19 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         size
       )} max-w-[1200px] min-h-[600px] sm:min-h-[800px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300 border border-gray-200 dark:border-gray-800`}
     >
-      <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-center mb-4 sm:mb-6 tracking-wide">
-        Create Content
-      </h1>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+          <Edit3 className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Create Content
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">
+            Build your post with blocks
+          </p>
+        </div>
+      </div>
 
       <TitleInput title={title || ""} setTitle={setTitle} />
 
@@ -397,10 +409,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           <div className="text-right">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition focus:ring-2 focus:ring-blue-500"
-                              aria-label="Remove heading block"
+                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                             >
-                              ❌
+                              <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                             </button>
                           </div>
                         </div>
@@ -453,10 +464,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition focus:ring-2 focus:ring-blue-500"
-                              aria-label="Remove link block"
+                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                             >
-                              ❌
+                              <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                             </button>
                           </div>
                         </div>
@@ -522,10 +532,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
-                              aria-label="Remove list block"
+                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                             >
-                              ❌ Remove List
+                              <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                             </button>
                           </div>
                         </div>
@@ -581,10 +590,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
-                              aria-label="Remove poll block"
+                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                             >
-                              ❌
+                              <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                             </button>
                           </div>
                         </div>
@@ -626,10 +634,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <div className="text-right">
                               <button
                                 onClick={() => removeBlock(index)}
-                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
-                                aria-label="Remove quote block"
+                                className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                               >
-                                ❌
+                                <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                               </button>
                             </div>
                           </div>
@@ -899,10 +906,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <div className="flex justify-end mt-3 sm:mt-4">
                               <button
                                 onClick={() => removeBlock(index)}
-                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-600 text-white text-xs sm:text-sm rounded hover:bg-red-700 transition"
-                                aria-label="Delete table block"
+                                className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                               >
-                                ❌ Delete Table
+                                <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                               </button>
                             </div>
                           </div>
@@ -958,10 +964,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
-                              className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
-                              aria-label="Remove video block"
+                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                             >
-                              ❌
+                              <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                             </button>
                           </div>
                         </div>

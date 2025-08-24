@@ -65,8 +65,11 @@ const DisplayPost = () => {
   const [postReady, setPostReady] = useState(false);
   const [showSeeMore, setShowSeeMore] = useState(false);
   const [showAnyway, setShowAnyway] = useState(false);
+  const [hasShownSubscriptionToast, setHasShownSubscriptionToast] =
+    useState(false);
 
   const hasFetchedStatus = useRef(false);
+  const componentMountedRef = useRef(true);
 
   const activePost = isAuthenticated ? post : guestPost;
   const activeLoading = isAuthenticated ? loading : guestLoading;
@@ -100,18 +103,33 @@ const DisplayPost = () => {
   const isUserSubscribed =
     activePost?.author?._id && isSubscribed[activePost?.author?._id];
 
+  // Set component mounted status
+  useEffect(() => {
+    componentMountedRef.current = true;
+    return () => {
+      componentMountedRef.current = false;
+    };
+  }, []);
+
+  // Main fetch effect - Reset and fetch post data when slug changes
   useEffect(() => {
     if (!slug) return;
 
-    // CLEAR old data before fetching
+    // Clear old data and reset ALL local state
     if (isAuthenticated) {
       dispatch({ type: "post/clearCurrentPost" });
     } else {
       dispatch({ type: "guest/clearSinglePost" });
     }
 
+    // Reset ALL local state
     setFetchAttempted(false);
     setPostReady(false);
+    setSessionTime(0);
+    setLocalStartTime(null);
+    setShowSeeMore(false);
+    setShowAnyway(false);
+    setHasShownSubscriptionToast(false);
     hasFetchedStatus.current = false;
 
     const fetchData = async () => {
@@ -121,22 +139,28 @@ const DisplayPost = () => {
         } else {
           await dispatch(fetchPublicPostBySlug(slug)).unwrap();
         }
-        setFetchAttempted(true);
-        setPostReady(true);
-        if (isAuthenticated) {
-          dispatch(fetchCategories());
+
+        if (componentMountedRef.current) {
+          setFetchAttempted(true);
+          setPostReady(true);
+          if (isAuthenticated) {
+            dispatch(fetchCategories());
+          }
         }
       } catch (err) {
         console.error("[DisplayPost] Failed to fetch post:", err);
-        toast.error(err?.message || "Post not found");
-        setFetchAttempted(true);
-        setPostReady(false);
+        if (componentMountedRef.current) {
+          toast.error(err?.message || "Post not found");
+          setFetchAttempted(true);
+          setPostReady(false);
+        }
       }
     };
 
     fetchData();
   }, [dispatch, slug, isAuthenticated]);
 
+  // Fetch bookmark/like status and subscription plans
   useEffect(() => {
     if (
       !isAuthenticated ||
@@ -145,6 +169,7 @@ const DisplayPost = () => {
       hasFetchedStatus.current
     )
       return;
+
     hasFetchedStatus.current = true;
 
     dispatch(fetchBookmarkAndLikeStatus(activePost._id)).catch(() =>
@@ -161,32 +186,8 @@ const DisplayPost = () => {
     isAuthenticated,
     slug,
   ]);
-  // old code
-  // useEffect(() => {
-  //   if (activePost?.slug && !isTracking && !localStartTime) {
-  //     dispatch(startReading(activePost._id));
-  //     setLocalStartTime(Date.now());
-  //   }
 
-  //   return () => {
-  //     if (isTracking && activePost?.slug && localStartTime) {
-  //       const timeSpent = Math.floor((Date.now() - localStartTime) / 1000);
-  //       if (timeSpent > 3) {
-  //         dispatch(submitReadingTime({ postId: activePost._id, timeSpent }))
-  //           .unwrap()
-  //           .catch((error) =>
-  //             console.error(
-  //               "[DisplayPost] Failed to record reading time:",
-  //               error
-  //             )
-  //           );
-  //       }
-  //       dispatch(stopReading());
-  //     }
-  //   };
-  // }, [dispatch, activePost?.slug, activePost?._id, isTracking, localStartTime]);
-
-  // new code
+  // Reading time tracking
   useEffect(() => {
     if (activePost?.slug && isAuthenticated && !isTracking && !localStartTime) {
       dispatch(startReading(activePost._id));
@@ -199,14 +200,18 @@ const DisplayPost = () => {
         isTracking &&
         activePost?._id &&
         localStartTime &&
-        !activeError // ✅ Prevent API call if post fetch failed or deleted
+        !activeError &&
+        componentMountedRef.current
       ) {
         const timeSpent = Math.floor((Date.now() - localStartTime) / 1000);
         if (timeSpent > 3) {
           dispatch(submitReadingTime({ postId: activePost._id, timeSpent }))
             .unwrap()
             .catch((error) => {
-              if (error?.message !== "Post not found") {
+              if (
+                error?.status !== 404 &&
+                error?.message !== "Post not found"
+              ) {
                 console.error(
                   "[DisplayPost] Failed to record reading time:",
                   error
@@ -224,54 +229,78 @@ const DisplayPost = () => {
     isTracking,
     localStartTime,
     isAuthenticated,
+    activeError,
   ]);
 
+  // Session time counter
   useEffect(() => {
     if (!isTracking || !localStartTime) return;
+
     const interval = setInterval(() => {
-      setSessionTime(Math.floor((Date.now() - localStartTime) / 1000));
+      if (localStartTime && componentMountedRef.current) {
+        setSessionTime(Math.floor((Date.now() - localStartTime) / 1000));
+      }
     }, 1000);
+
     return () => clearInterval(interval);
   }, [isTracking, localStartTime]);
 
+  // Show "See More" for restricted posts
   useEffect(() => {
     if (!isAuthenticated && isPostRestricted && activePost && !showSeeMore) {
       setShowSeeMore(true);
     }
-  }, [isAuthenticated, isPostRestricted, activePost]);
+  }, [isAuthenticated, isPostRestricted, activePost, showSeeMore]);
 
+  // Handle 404 navigation with delay
   useEffect(() => {
     if (!fetchAttempted) return;
 
-    if (!postReady && !activeLoading) {
-      navigate("/404", { replace: true });
-    }
+    const timeoutId = setTimeout(() => {
+      if (
+        !postReady &&
+        !activeLoading &&
+        fetchAttempted &&
+        componentMountedRef.current
+      ) {
+        navigate("/404", { replace: true });
+      }
+    }, 500); // Give some time for data to load
 
-    if (activeError && !activeLoading) {
+    return () => clearTimeout(timeoutId);
+  }, [fetchAttempted, postReady, activeLoading, navigate]);
+
+  // Handle error messages
+  useEffect(() => {
+    if (activeError && !activeLoading && fetchAttempted) {
       toast.error(activeError || "An error occurred");
     }
+  }, [activeError, activeLoading, fetchAttempted]);
 
+  // Handle subscription toast (show only once)
+  useEffect(() => {
     if (
       postReady &&
       !activeLoading &&
       activePost &&
       isPostRestricted &&
       !canViewPost &&
-      isAuthenticated
+      isAuthenticated &&
+      fetchAttempted &&
+      !hasShownSubscriptionToast
     ) {
       toast("This is a paid post. Subscribe to view.", { icon: "🔒" });
+      setHasShownSubscriptionToast(true);
     }
   }, [
-    fetchAttempted,
     postReady,
-    activeError,
-    activePost,
     activeLoading,
+    activePost,
     isPostRestricted,
     canViewPost,
     isAuthenticated,
-    slug,
-    navigate,
+    fetchAttempted,
+    hasShownSubscriptionToast,
   ]);
 
   const BASE_URL =
@@ -332,16 +361,19 @@ const DisplayPost = () => {
   );
 
   const renderPostContent = () => {
-    if (!fetchAttempted || activeLoading || subscriptionLoading)
+    // Show skeleton while loading or before fetch attempt
+    if (activeLoading || subscriptionLoading || !fetchAttempted) {
       return renderSkeleton();
+    }
 
-    if (
-      !postReady ||
-      !activePost ||
-      !activePost._id ||
-      !Array.isArray(activePost.blocks)
-    ) {
-      return <PostNotFound message={activeError || "Post not found"} />;
+    // Show error if there's an error
+    if (activeError) {
+      return <PostNotFound message={activeError} />;
+    }
+
+    // Show not found if no post data
+    if (!activePost?._id || !Array.isArray(activePost.blocks)) {
+      return <PostNotFound message="Post not found" />;
     }
 
     const firstImage =
@@ -352,14 +384,14 @@ const DisplayPost = () => {
         .map((b) => b.content || b.text || "")
         .join(" ")
         .slice(0, 150)
-        .replace(/\s+\S*$/, "") || "";
+        .replace(/\s+\S*$/, "") || "Read this post on inkshaa";
 
     const jsonLd = {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
-      headline: activePost.title,
+      headline: activePost.title || "inkshaa Post",
       description: plainText,
-      image: firstImage,
+      image: firstImage || "/default-og-image.jpg",
       author: {
         "@type": "Person",
         name: activePost.author?.fullName || "inkshaa Author",
@@ -372,27 +404,44 @@ const DisplayPost = () => {
     return (
       <>
         <Helmet>
-          <title>{activePost.title || "Loading..."} | inkshaa</title>
+          <title>
+            {activePost?.title
+              ? `${activePost.title} | inkshaa`
+              : "Loading... | inkshaa"}
+          </title>
           <meta name="robots" content="index, follow" />
           <meta name="description" content={plainText} />
           <link rel="canonical" href={`${BASE_URL}/post/${activePost?.slug}`} />
           <meta
             property="og:title"
-            content={activePost.title || "Loading..."}
+            content={activePost?.title || "inkshaa Post"}
           />
           <meta property="og:description" content={plainText} />
-          <meta property="og:image" content={activePost.thumbnail} />
+          <meta
+            property="og:image"
+            content={activePost?.thumbnail || "/default-og-image.jpg"}
+          />
           <meta property="og:type" content="article" />
           <meta
             property="og:url"
             content={`${BASE_URL}/post/${activePost?.slug}`}
           />
           <meta name="twitter:card" content="summary_large_image" />
-          <meta name="twitter:title" content={activePost.title} />
-          <meta name="twitter:image" content={activePost.thumbnail} />
+          <meta
+            name="twitter:title"
+            content={activePost?.title || "inkshaa Post"}
+          />
+          <meta
+            name="twitter:image"
+            content={activePost?.thumbnail || "/default-og-image.jpg"}
+          />
         </Helmet>
 
-        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+        {/* JSON-LD structured data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
 
         <article className="space-y-6">
           <PostHeader post={activePost} />
