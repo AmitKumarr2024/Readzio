@@ -230,6 +230,11 @@ const PostPreviewList = ({
     };
     setIsPostConfirmed(false);
     setShowPublishLoading(true);
+    console.log(
+      "LoadingBar triggered, showPublishLoading:",
+      showPublishLoading
+    );
+
     try {
       await onCreatePost({ ...postData, draft: cleanedDraft });
     } catch (err) {
@@ -627,7 +632,7 @@ const PostPreviewList = ({
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
           >
-            <LoadingBar loading={showPublishLoading} text="Publishing..." />
+            <LoadingBar loading={true} text="Publishing..." />
           </motion.div>
         )}
       </AnimatePresence>
