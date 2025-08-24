@@ -586,7 +586,6 @@ export const getSinglePost = createAsyncThunk(
   }
 );
 
-
 export const updatePost = createAsyncThunk(
   "post/updatePost",
   async ({ slug, updateData }, { rejectWithValue }) => {
@@ -689,18 +688,27 @@ export const submitReadingTime = createAsyncThunk(
         console.error("[submitReadingTime] Invalid postId:", postId);
         return rejectWithValue({ message: "Invalid postId" });
       }
-      const response = await asyncRetry(() =>
-        axiosInstance.post(
-          `/post/time-spent/${postId}`,
-          { duration: timeSpent },
-          { timeout: 10000 }
-        )
+
+      const response = await asyncRetry(
+        async () => {
+          return axiosInstance.post(
+            `/post/time-spent/${postId}`,
+            { duration: timeSpent }, // Ensure backend expects `duration`
+            { timeout: 8000 }
+          );
+        },
+        {
+          retries: 3,
+          minTimeout: 500,
+          maxTimeout: 2000,
+        }
       );
+
       return response.data;
     } catch (error) {
+      console.error("[submitReadingTime] Error:", error.message);
       const errMsg =
         error.response?.data?.message || "Failed to submit reading time";
-      console.error("[submitReadingTime] Error:", errMsg);
       return rejectWithValue({ message: errMsg });
     }
   }

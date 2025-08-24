@@ -194,17 +194,25 @@ const DisplayPost = () => {
     }
 
     return () => {
-      if (isAuthenticated && isTracking && activePost?._id && localStartTime) {
+      if (
+        isAuthenticated &&
+        isTracking &&
+        activePost?._id &&
+        localStartTime &&
+        !activeError // ✅ Prevent API call if post fetch failed or deleted
+      ) {
         const timeSpent = Math.floor((Date.now() - localStartTime) / 1000);
         if (timeSpent > 3) {
           dispatch(submitReadingTime({ postId: activePost._id, timeSpent }))
             .unwrap()
-            .catch((error) =>
-              console.error(
-                "[DisplayPost] Failed to record reading time:",
-                error
-              )
-            );
+            .catch((error) => {
+              if (error?.message !== "Post not found") {
+                console.error(
+                  "[DisplayPost] Failed to record reading time:",
+                  error
+                );
+              }
+            });
         }
         dispatch(stopReading());
       }
