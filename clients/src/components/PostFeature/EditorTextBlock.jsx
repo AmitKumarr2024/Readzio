@@ -808,11 +808,17 @@ const EditorTextBlock = ({
           borderTop: "1px solid #d1d5db",
         }}
       >
-        <div style={{ display: "flex", gap: "16px" }}>
+        <div
+          className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
+          style={{ display: "flex", gap: "16px" }}
+        >
           <span>{wordCount} words</span>
           <span>{charCount} characters</span>
         </div>
-        <div style={{ fontSize: "12px" }}>
+        <div
+          className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
+          style={{ fontSize: "12px" }}
+        >
           Use Ctrl+B/I/U for quick formatting
         </div>
       </div>
