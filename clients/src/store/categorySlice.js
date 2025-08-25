@@ -233,6 +233,10 @@ const categorySlice = createSlice({
       // );
       state.slugAvailability = { loading: false, isAvailable: null };
     },
+    forceRefreshCategories: (state) => {
+      state.categories = []; // Clear all cached categories
+      state.status = "idle"; // Reset status so fetch will happen
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -426,5 +430,6 @@ export const {
   clearSelectedCategory,
   clearError,
   resetSlugAvailability,
+  forceRefreshCategories,
 } = categorySlice.actions;
 export default categorySlice.reducer;
