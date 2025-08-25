@@ -633,12 +633,13 @@ const EditorTextBlock = ({
 
           {emojiPickerOpen && (
             <div
+              className="wrap-anywhere"
               style={{
                 position: "absolute",
                 right: "0",
                 zIndex: "50",
                 marginTop: "8px",
-                width: "320px",
+                width: "370px",
                 backgroundColor: "white",
                 border: "1px solid #d1d5db",
                 borderRadius: "12px",
