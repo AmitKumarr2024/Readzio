@@ -1,70 +1,79 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
-  FaAlignLeft,
-  FaAlignCenter,
-  FaAlignRight,
-  FaRedo,
-  FaUndo,
-  FaBackspace,
-  FaBold,
-  FaItalic,
-  FaUnderline,
-  FaStrikethrough,
-  FaLink,
-} from "react-icons/fa";
-import { toast } from "react-hot-toast";
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Undo2,
+  Redo2,
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  Link,
+  List,
+  ListOrdered,
+  Quote,
+  Code,
+  Palette,
+  Type,
+  Smile,
+  X,
+  Copy,
+  Scissors,
+  ClipboardPaste,
+} from "lucide-react";
 
-// Emoji options
-const emojiOptions = [
-  "😀",
-  "😂",
-  "😊",
-  "😍",
-  "😎",
-  "😢",
-  "😡",
-  "😴",
-  "🤔",
-  "😭",
-  "👍",
-  "👎",
-  "👏",
-  "🙏",
-  "💪",
-  "🔥",
-  "🎉",
-  "✨",
-  "💯",
-  "🎂",
-  "❤️",
-  "💔",
-  "💕",
-  "💖",
-  "💙",
-  "📌",
-  "📎",
-  "📚",
-  "🧠",
-  "💡",
-  "⚡",
-  "🌟",
-  "🌈",
-  "☀️",
-  "🌙",
-];
+// Emoji options with categories
+const emojiCategories = {
+  smileys: [
+    "😀",
+    "😂",
+    "😊",
+    "😍",
+    "😎",
+    "😢",
+    "😡",
+    "😴",
+    "🤔",
+    "😭",
+    "🥳",
+    "😘",
+  ],
+  gestures: ["👍", "👎", "👏", "🙏", "💪", "✌️", "👌", "🤝"],
+  symbols: ["❤️", "💔", "💕", "💖", "💙", "💚", "💛", "🧡", "💜"],
+  objects: ["📌", "📎", "📚", "🧠", "💡", "⚡", "🔥", "🎉", "✨", "💯", "🎂"],
+  nature: ["🌟", "🌈", "☀️", "🌙", "⭐", "🌸", "🌺", "🌻", "🍀"],
+};
 
-const EditorTextBlock = ({ value, onUpdate }) => {
+const EditorTextBlock = ({
+  value = "",
+  onUpdate,
+  placeholder = "Start typing...",
+}) => {
   const contentRef = useRef(null);
   const emojiPickerRef = useRef(null);
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const [activeCommands, setActiveCommands] = useState({});
+  const fileInputRef = useRef(null);
 
-  // Load initial content
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [activeEmojiCategory, setActiveEmojiCategory] = useState("smileys");
+  const [activeCommands, setActiveCommands] = useState({});
+  const [wordCount, setWordCount] = useState(0);
+  const [charCount, setCharCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Toast notification system (simple implementation)
+  const showToast = useCallback((message, type = "info") => {
+    // Simple toast - in real app you'd use a proper toast library
+    console.log(`${type.toUpperCase()}: ${message}`);
+  }, []);
+
+  // Initialize content
   useEffect(() => {
     if (contentRef.current && value !== contentRef.current.innerHTML) {
-      contentRef.current.innerHTML = value || "<p></p>";
+      contentRef.current.innerHTML = value || `<p>${placeholder}</p>`;
+      updateCounts();
     }
-  }, [value]);
+  }, [value, placeholder]);
 
   // Close emoji picker on outside click
   useEffect(() => {
@@ -80,8 +89,20 @@ const EditorTextBlock = ({ value, onUpdate }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Check which buttons are active
-  const checkActiveCommands = () => {
+  // Update word and character counts
+  const updateCounts = useCallback(() => {
+    if (!contentRef.current) return;
+
+    const text = contentRef.current.innerText || "";
+    const words = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+    const chars = text.length;
+
+    setWordCount(words);
+    setCharCount(chars);
+  }, []);
+
+  // Check which formatting commands are active
+  const checkActiveCommands = useCallback(() => {
     const commands = [
       "bold",
       "italic",
@@ -93,6 +114,7 @@ const EditorTextBlock = ({ value, onUpdate }) => {
       "insertOrderedList",
       "insertUnorderedList",
     ];
+
     const newActiveCommands = {};
     commands.forEach((cmd) => {
       try {
@@ -102,181 +124,290 @@ const EditorTextBlock = ({ value, onUpdate }) => {
       }
     });
     setActiveCommands(newActiveCommands);
-  };
+  }, []);
 
-  // Execute formatting commands
-  const execCommand = (command, val = null) => {
-    try {
-      const selection = window.getSelection();
-      if (
-        command === "removeFormat" &&
-        (!selection || selection.isCollapsed || !selection.toString().trim())
-      ) {
-        toast.error("Please select text to remove formatting.");
-        return;
-      }
+  // Execute formatting commands with better error handling
+  const execCommand = useCallback(
+    (command, value = null) => {
+      try {
+        const selection = window.getSelection();
 
-      // For lists, ensure proper nesting and cleanup
-      if (
-        command === "insertOrderedList" ||
-        command === "insertUnorderedList"
-      ) {
-        const range = selection.getRangeAt(0);
-        const parent = range.commonAncestorContainer.parentElement;
-        if (
-          parent.tagName === "UL" ||
-          parent.tagName === "OL" ||
-          parent.closest("ul, ol")
-        ) {
-          // Toggle off if already in a list
-          document.execCommand("outdent", false, null);
-        } else {
-          document.execCommand(command, false, null);
+        // Special handling for commands that need selection
+        if (["removeFormat", "createLink"].includes(command)) {
+          if (
+            !selection ||
+            selection.isCollapsed ||
+            !selection.toString().trim()
+          ) {
+            showToast("Please select text first.", "error");
+            return;
+          }
         }
-      } else {
-        document.execCommand(command, false, val);
+
+        // Handle list commands with better logic
+        if (
+          command === "insertOrderedList" ||
+          command === "insertUnorderedList"
+        ) {
+          const isInList = document.queryCommandState(command);
+          if (isInList) {
+            document.execCommand("outdent", false, null);
+          } else {
+            document.execCommand(command, false, null);
+          }
+        } else {
+          document.execCommand(command, false, value);
+        }
+
+        handleContentChange();
+        contentRef.current?.focus();
+      } catch (error) {
+        console.error(`Error executing ${command}:`, error);
+        showToast(`Error executing ${command}`, "error");
       }
+    },
+    [showToast]
+  );
 
-      onUpdate(contentRef.current?.innerHTML || "");
-      checkActiveCommands();
-      contentRef.current?.focus();
-    } catch (e) {
-      console.error(`[EditorTextBlock] Error executing ${command}:`, e);
-      toast.error(`Error executing ${command}`);
-    }
-  };
+  // Handle content changes
+  const handleContentChange = useCallback(() => {
+    if (!contentRef.current) return;
 
-  // Handle content change
-  const handleInput = () => {
-    const html = contentRef.current?.innerHTML || "";
+    const html = contentRef.current.innerHTML;
     onUpdate(html);
+    updateCounts();
     checkActiveCommands();
-  };
+  }, [onUpdate, updateCounts, checkActiveCommands]);
 
-  // Clear entire editor
-  const clearContent = () => {
+  // Clear all content
+  const clearContent = useCallback(() => {
     if (contentRef.current) {
-      contentRef.current.innerHTML = "<p></p>";
-      onUpdate("<p></p>");
-      toast.success("Block content cleared");
+      contentRef.current.innerHTML = `<p>${placeholder}</p>`;
+      handleContentChange();
+      showToast("Content cleared", "success");
       contentRef.current.focus();
     }
-  };
+  }, [placeholder, handleContentChange, showToast]);
 
-  // Insert link around selected text
-  const insertLink = () => {
-    const url = prompt("Enter the URL:");
-    if (!url) return;
+  // Insert link
+  const insertLink = useCallback(() => {
     const selection = window.getSelection();
-    if (!selection.rangeCount || !selection.toString()) {
-      toast.error("Please select text to link.");
+    if (!selection.rangeCount || !selection.toString().trim()) {
+      showToast("Please select text to create a link.", "error");
       return;
     }
-    const range = selection.getRangeAt(0);
-    const link = document.createElement("a");
-    link.href = url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = selection.toString();
-    link.className = "text-indigo-600 underline hover:text-indigo-800";
-    range.deleteContents();
-    range.insertNode(link);
-    range.setStartAfter(link);
-    selection.removeAllRanges();
-    selection.addRange(range);
-    onUpdate(contentRef.current?.innerHTML || "");
-    checkActiveCommands();
-  };
 
-  // Insert emoji at cursor
-  const insertEmoji = (emoji) => {
-    const sel = window.getSelection();
-    if (!sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(document.createTextNode(emoji));
-    range.setStartAfter(range.endContainer);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    onUpdate(contentRef.current?.innerHTML || "");
-    setEmojiPickerOpen(false);
-    contentRef.current?.focus();
-    checkActiveCommands();
-  };
+    const url = prompt("Enter the URL:");
+    if (!url) return;
+
+    try {
+      const range = selection.getRangeAt(0);
+      const link = document.createElement("a");
+      link.href = url.startsWith("http") ? url : `https://${url}`;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = selection.toString();
+      link.className =
+        "text-blue-600 hover:text-blue-800 underline transition-colors";
+
+      range.deleteContents();
+      range.insertNode(link);
+      range.setStartAfter(link);
+
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      handleContentChange();
+      showToast("Link created successfully", "success");
+    } catch (error) {
+      showToast("Error creating link", "error");
+    }
+  }, [handleContentChange, showToast]);
+
+  // Insert emoji
+  const insertEmoji = useCallback(
+    (emoji) => {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+
+      const range = selection.getRangeAt(0);
+      const emojiNode = document.createTextNode(emoji);
+      range.deleteContents();
+      range.insertNode(emojiNode);
+      range.setStartAfter(emojiNode);
+
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      handleContentChange();
+      setEmojiPickerOpen(false);
+      contentRef.current?.focus();
+    },
+    [handleContentChange]
+  );
+
+  // Insert blockquote
+  const insertBlockquote = useCallback(() => {
+    execCommand("formatBlock", "blockquote");
+  }, [execCommand]);
+
+  // Insert code block
+  const insertCodeBlock = useCallback(() => {
+    execCommand("formatBlock", "pre");
+  }, [execCommand]);
+
+  // Copy content to clipboard
+  const copyToClipboard = useCallback(async () => {
+    if (!contentRef.current) return;
+
+    try {
+      await navigator.clipboard.writeText(contentRef.current.innerText);
+      showToast("Content copied to clipboard", "success");
+    } catch (error) {
+      showToast("Failed to copy content", "error");
+    }
+  }, [showToast]);
+
+  // Handle paste with formatting cleanup
+  const handlePaste = useCallback(
+    (e) => {
+      e.preventDefault();
+      const text = e.clipboardData.getData("text/plain");
+      document.execCommand("insertText", false, text);
+      handleContentChange();
+    },
+    [handleContentChange]
+  );
+
+  // Handle keyboard shortcuts
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case "b":
+            e.preventDefault();
+            execCommand("bold");
+            break;
+          case "i":
+            e.preventDefault();
+            execCommand("italic");
+            break;
+          case "u":
+            e.preventDefault();
+            execCommand("underline");
+            break;
+          case "z":
+            e.preventDefault();
+            if (e.shiftKey) {
+              execCommand("redo");
+            } else {
+              execCommand("undo");
+            }
+            break;
+        }
+      }
+    },
+    [execCommand]
+  );
+
+  const toolbarButtons = [
+    { icon: Bold, command: "bold", title: "Bold (Ctrl+B)", shortcut: "Ctrl+B" },
+    {
+      icon: Italic,
+      command: "italic",
+      title: "Italic (Ctrl+I)",
+      shortcut: "Ctrl+I",
+    },
+    {
+      icon: Underline,
+      command: "underline",
+      title: "Underline (Ctrl+U)",
+      shortcut: "Ctrl+U",
+    },
+    { icon: Strikethrough, command: "strikeThrough", title: "Strikethrough" },
+    { type: "divider" },
+    { icon: AlignLeft, command: "justifyLeft", title: "Align Left" },
+    { icon: AlignCenter, command: "justifyCenter", title: "Align Center" },
+    { icon: AlignRight, command: "justifyRight", title: "Align Right" },
+    { type: "divider" },
+    { icon: List, command: "insertUnorderedList", title: "Bullet List" },
+    { icon: ListOrdered, command: "insertOrderedList", title: "Numbered List" },
+    { icon: Quote, command: insertBlockquote, title: "Quote" },
+    { icon: Code, command: insertCodeBlock, title: "Code Block" },
+    { type: "divider" },
+    { icon: Link, command: insertLink, title: "Insert Link" },
+    { icon: Undo2, command: "undo", title: "Undo (Ctrl+Z)" },
+    { icon: Redo2, command: "redo", title: "Redo (Ctrl+Shift+Z)" },
+    { type: "divider" },
+    { icon: Copy, command: copyToClipboard, title: "Copy Text" },
+    { text: "🚫", command: "removeFormat", title: "Remove Formatting" },
+  ];
 
   return (
-    <div className="mb-4 border rounded-xl p-3 sm:p-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md transition-shadow hover:shadow-lg">
+    <div className="border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 shadow-lg transition-all hover:shadow-xl">
       {/* Toolbar */}
-      <div className="flex flex-wrap gap-1 sm:gap-2 mb-3 p-2 sm:p-3 rounded-lg">
-        {[
-          { icon: <FaBold />, command: "bold", title: "Bold" },
-          { icon: <FaItalic />, command: "italic", title: "Italic" },
-          { icon: <FaUnderline />, command: "underline", title: "Underline" },
-          {
-            icon: <FaStrikethrough />,
-            command: "strikeThrough",
-            title: "Strikethrough",
-          },
-          {
-            icon: <FaAlignLeft />,
-            command: "justifyLeft",
-            title: "Align Left",
-          },
-          {
-            icon: <FaAlignCenter />,
-            command: "justifyCenter",
-            title: "Align Center",
-          },
-          {
-            icon: <FaAlignRight />,
-            command: "justifyRight",
-            title: "Align Right",
-          },
-          { icon: "1.", command: "insertOrderedList", title: "Ordered List" },
-          { icon: "•", command: "insertUnorderedList", title: "Bullet List" },
-          {
-            icon: <FaLink className="text-indigo-500" />,
-            command: insertLink,
-            title: "Insert Link",
-          },
-          { icon: <FaUndo />, command: "undo", title: "Undo" },
-          { icon: <FaRedo />, command: "redo", title: "Redo" },
-          { icon: "🚫", command: "removeFormat", title: "Remove Format" },
-        ].map(({ icon, command, title }, i) => (
-          <button
-            key={i}
-            onClick={() =>
-              typeof command === "function" ? command() : execCommand(command)
-            }
-            title={title}
-            className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
-              activeCommands[command]
-                ? "bg-indigo-500 text-white"
-                : "hover:bg-gray-200 dark:hover:bg-gray-700"
-            } focus:ring-2 focus:ring-indigo-500 focus:outline-none`}
-            aria-pressed={activeCommands[command] || false}
-            aria-label={title}
-          >
-            {icon}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-1 p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-xl">
+        {toolbarButtons.map((button, index) => {
+          if (button.type === "divider") {
+            return (
+              <div
+                key={index}
+                className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"
+              />
+            );
+          }
+
+          const Icon = button.icon;
+          const isActive = activeCommands[button.command];
+
+          return (
+            <button
+              key={index}
+              onClick={() =>
+                typeof button.command === "function"
+                  ? button.command()
+                  : execCommand(button.command)
+              }
+              title={button.title}
+              className={`
+                p-2 rounded-lg transition-all duration-200 
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+                ${
+                  isActive
+                    ? "bg-blue-500 text-white shadow-md transform scale-105"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                }
+              `}
+              aria-pressed={isActive}
+              aria-label={button.title}
+            >
+              {Icon ? <Icon size={16} /> : button.text}
+            </button>
+          );
+        })}
 
         {/* Text Color Picker */}
-        <input
-          type="color"
-          onChange={(e) => execCommand("foreColor", e.target.value)}
-          defaultValue="#000000"
-          title="Text Color"
-          className="w-6 h-6 sm:w-8 sm:h-8 p-1 rounded-lg border focus:ring-2 focus:ring-indigo-500"
-          aria-label="Text color picker"
-        />
+        <div className="relative">
+          <input
+            type="color"
+            onChange={(e) => execCommand("foreColor", e.target.value)}
+            defaultValue="#000000"
+            title="Text Color"
+            className="w-8 h-8 rounded-lg border-2 border-gray-300 dark:border-gray-600 cursor-pointer focus:ring-2 focus:ring-blue-500"
+            aria-label="Text color picker"
+          />
+          <Palette
+            size={12}
+            className="absolute bottom-0 right-0 text-gray-500 pointer-events-none"
+          />
+        </div>
 
         {/* Font Size Selector */}
         <select
           onChange={(e) => execCommand("fontSize", e.target.value)}
           defaultValue="3"
           title="Font Size"
-          className="border rounded-lg px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
+          className="ml-2 px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 text-sm"
           aria-label="Font size selector"
         >
           <option value="1">10px</option>
@@ -289,28 +420,55 @@ const EditorTextBlock = ({ value, onUpdate }) => {
         </select>
 
         {/* Emoji Picker */}
-        <div className="relative" ref={emojiPickerRef}>
+        <div className="relative ml-2" ref={emojiPickerRef}>
           <button
             onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
             title="Insert Emoji"
-            className="p-1.5 sm:p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             aria-label="Toggle emoji picker"
             aria-expanded={emojiPickerOpen}
           >
-            😀
+            <Smile size={16} />
           </button>
+
           {emojiPickerOpen && (
-            <div className="absolute right-0 z-20 mt-2 p-2 sm:p-3 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark border rounded-lg shadow-xl grid grid-cols-5 sm:grid-cols-6 gap-1 sm:gap-2 max-h-40 sm:max-h-48 overflow-y-auto w-64 sm:w-72">
-              {emojiOptions.map((emoji) => (
+            <div className="absolute right-0 z-50 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl">
+              {/* Emoji Category Tabs */}
+              <div className="flex border-b border-gray-200 dark:border-gray-700 p-2">
+                {Object.keys(emojiCategories).map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setActiveEmojiCategory(category)}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      activeEmojiCategory === category
+                        ? "bg-blue-500 text-white"
+                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
                 <button
-                  key={emoji}
-                  onClick={() => insertEmoji(emoji)}
-                  className="w-8 h-8 sm:w-10 sm:h-10 text-xl flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  aria-label={`Insert ${emoji} emoji`}
+                  onClick={() => setEmojiPickerOpen(false)}
+                  className="ml-auto p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                 >
-                  {emoji}
+                  <X size={16} />
                 </button>
-              ))}
+              </div>
+
+              {/* Emoji Grid */}
+              <div className="grid grid-cols-8 gap-1 p-3 max-h-48 overflow-y-auto">
+                {emojiCategories[activeEmojiCategory].map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => insertEmoji(emoji)}
+                    className="w-8 h-8 text-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-label={`Insert ${emoji} emoji`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -318,38 +476,48 @@ const EditorTextBlock = ({ value, onUpdate }) => {
         {/* Clear Content Button */}
         <button
           onClick={clearContent}
-          title="Clear Block Content"
-          className="p-1.5 sm:p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none"
-          aria-label="Clear text block content"
+          title="Clear All Content"
+          className="ml-auto p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+          aria-label="Clear all content"
         >
-          <FaBackspace className="text-red-500" size={16} />
+          <Trash2 size={16} />
         </button>
       </div>
 
-      {/* Editable Area */}
+      {/* Editor Content */}
       <div
         ref={contentRef}
         contentEditable
         suppressContentEditableWarning
-        onInput={handleInput}
+        onInput={handleContentChange}
+        onPaste={handlePaste}
+        onKeyDown={handleKeyDown}
         onClick={checkActiveCommands}
         onKeyUp={checkActiveCommands}
         onMouseUp={checkActiveCommands}
         className="
-  min-h-[100px] sm:min-h-[120px] p-3 sm:p-4 rounded-lg
-  bg-background-light dark:bg-background-dark
-  text-text-main-light dark:text-text-main-dark
-  border border-gray-200 dark:border-gray-800
-  focus:outline-none focus:ring-2 focus:ring-indigo-500
-  text-xs sm:text-sm leading-relaxed
-  [&>ul]:list-disc [&>ul]:pl-5
-  [&>ol]:list-decimal [&>ol]:pl-5
-  [&>ul]:space-y-1 [&>ol]:space-y-1
-"
+          min-h-[200px] p-4 text-gray-900 dark:text-gray-100 
+          focus:outline-none 
+          prose prose-gray dark:prose-invert max-w-none
+          [&>ul]:list-disc [&>ul]:pl-6 [&>ul]:my-2
+          [&>ol]:list-decimal [&>ol]:pl-6 [&>ol]:my-2
+          [&>blockquote]:border-l-4 [&>blockquote]:border-blue-500 [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:text-gray-600 [&>blockquote]:dark:text-gray-400
+          [&>pre]:bg-gray-100 [&>pre]:dark:bg-gray-800 [&>pre]:p-3 [&>pre]:rounded-lg [&>pre]:font-mono [&>pre]:text-sm [&>pre]:overflow-x-auto
+          [&_a]:text-blue-600 [&_a]:hover:text-blue-800 [&_a]:underline [&_a]:transition-colors
+        "
         role="textbox"
         aria-multiline="true"
-        aria-label="Text editor"
+        aria-label="Rich text editor"
       />
+
+      {/* Footer with stats */}
+      <div className="flex justify-between items-center px-4 py-2 bg-gray-50 dark:bg-gray-800 rounded-b-xl text-sm text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex gap-4">
+          <span>{wordCount} words</span>
+          <span>{charCount} characters</span>
+        </div>
+        <div className="text-xs">Use Ctrl+B/I/U for quick formatting</div>
+      </div>
     </div>
   );
 };
