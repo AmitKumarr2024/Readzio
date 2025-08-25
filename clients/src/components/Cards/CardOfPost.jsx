@@ -1,9 +1,17 @@
-
 import React, { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { debounce } from "lodash";
-import { MessageCircle, Eye, Heart, Bookmark, Share2, Clock, Crown, Sparkles } from "lucide-react";
+import {
+  MessageCircle,
+  Eye,
+  Heart,
+  Bookmark,
+  Share2,
+  Clock,
+  Crown,
+  Sparkles,
+} from "lucide-react";
 import { fetchSubscriptionPlansByAuthor } from "../../store/subscriptionSlice";
 import Skeleton from "@/components/Ui/Skeleton";
 
@@ -92,12 +100,26 @@ const CardOfPost = ({
 
   const getPostTypeConfig = (type) => {
     const configs = {
-      blog: { bg: "bg-gradient-to-r from-purple-500 to-purple-600", icon: "📝" },
-      article: { bg: "bg-gradient-to-r from-emerald-500 to-emerald-600", icon: "📄" },
+      blog: {
+        bg: "bg-gradient-to-r from-purple-500 to-purple-600",
+        icon: "📝",
+      },
+      article: {
+        bg: "bg-gradient-to-r from-emerald-500 to-emerald-600",
+        icon: "📄",
+      },
       news: { bg: "bg-gradient-to-r from-red-500 to-red-600", icon: "📰" },
-      tutorial: { bg: "bg-gradient-to-r from-blue-500 to-blue-600", icon: "🎓" },
+      tutorial: {
+        bg: "bg-gradient-to-r from-blue-500 to-blue-600",
+        icon: "🎓",
+      },
     };
-    return configs[type?.toLowerCase()] || { bg: "bg-gradient-to-r from-gray-500 to-gray-600", icon: "📋" };
+    return (
+      configs[type?.toLowerCase()] || {
+        bg: "bg-gradient-to-r from-gray-500 to-gray-600",
+        icon: "📋",
+      }
+    );
   };
 
   const postTypeConfig = getPostTypeConfig(postType);
@@ -115,14 +137,17 @@ const CardOfPost = ({
     >
       {/* Premium Glow Effect */}
       {isPostPremium && (
-        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl -z-10 blur-xl" />
+        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl blur-xl z-[1]" />
       )}
 
       {/* Image Section */}
       <div className="relative overflow-hidden">
         <div className="aspect-video w-full relative">
           <img
-            src={thumbnail || "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&q=80"}
+            src={
+              thumbnail ||
+              "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&q=80"
+            }
             alt={title || "Post"}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
@@ -151,12 +176,14 @@ const CardOfPost = ({
           {/* Bottom Row - Post Type */}
           <div className="flex justify-between items-end">
             {postType && (
-              <div className={`flex items-center gap-1 px-3 py-1.5 ${postTypeConfig.bg} text-white text-xs font-semibold rounded-full shadow-lg`}>
+              <div
+                className={`flex items-center gap-1 px-3 py-1.5 ${postTypeConfig.bg} text-white text-xs font-semibold rounded-full shadow-lg`}
+              >
                 <span>{postTypeConfig.icon}</span>
                 {postType}
               </div>
             )}
-            
+
             {isSubscribedToAuthor && authorId !== currentUser?._id && (
               <div className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg">
                 <Sparkles className="w-3 h-3" />
@@ -210,7 +237,7 @@ const CardOfPost = ({
               {formatCount(viewsCount)}
             </span>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-yellow-500 transition-colors">
               <Bookmark className="w-4 h-4" />
@@ -250,8 +277,8 @@ const CardOfPost = ({
       </div>
 
       {/* Hover Effect Border */}
-      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-blue-500/20 p-[1px]">
-        <div className="w-full h-full rounded-2xl bg-white dark:bg-slate-900" />
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 p-[2px] z-[2]">
+        <div className="w-full h-full rounded-2xl bg-transparent" />
       </div>
     </Link>
   );
