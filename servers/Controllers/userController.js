@@ -514,9 +514,31 @@ export const updateProfile = async (req, res, next) => {
 
     if (req.files) {
       if (req.files.avatar?.[0]) {
+        const file = req.files.avatar[0];
+
+        // Add validation
+        if (!file.buffer || file.buffer.length === 0) {
+          throw new AppError(
+            "Invalid image file",
+            400,
+            "UpdateProfile",
+            "Avatar file buffer is empty"
+          );
+        }
+
+        // Check file size (e.g., max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          throw new AppError(
+            "File too large",
+            400,
+            "UpdateProfile",
+            "Avatar file exceeds 5MB limit"
+          );
+        }
+
         try {
           const uploadedAvatar = await uploadToCloudinary({
-            buffer: req.files.avatar[0].buffer,
+            buffer: file.buffer,
             folder: "blog/users/avatar",
             transformation: [
               { width: 800, height: 800, crop: "limit" },
@@ -525,19 +547,58 @@ export const updateProfile = async (req, res, next) => {
           });
           user.avatar = uploadedAvatar.secure_url;
         } catch (err) {
+          console.error("Cloudinary upload error:", err); // Add detailed logging
           throw new AppError(
             "Failed to upload avatar",
             500,
             "UpdateProfile",
-            "Error uploading avatar to Cloudinary"
+            `Cloudinary error: ${err.message}`
           );
         }
       }
 
       if (req.files.banner?.[0]) {
+        const file = req.files.banner[0];
+
+        // Add validation
+        if (!file.buffer || file.buffer.length === 0) {
+          throw new AppError(
+            "Invalid banner file",
+            400,
+            "UpdateProfile",
+            "Banner file buffer is empty"
+          );
+        }
+
+        // Check file size (e.g., max 10MB for banners since they're larger)
+        if (file.size > 10 * 1024 * 1024) {
+          throw new AppError(
+            "File too large",
+            400,
+            "UpdateProfile",
+            "Banner file exceeds 10MB limit"
+          );
+        }
+
+        // Validate file type
+        if (!file.mimetype.startsWith("image/")) {
+          throw new AppError(
+            "Invalid file type",
+            400,
+            "UpdateProfile",
+            "Banner must be an image file"
+          );
+        }
+
+        console.log("Banner file details:", {
+          size: file.size,
+          mimetype: file.mimetype,
+          bufferLength: file.buffer?.length,
+        });
+
         try {
           const uploadedBanner = await uploadToCloudinary({
-            buffer: req.files.banner[0].buffer,
+            buffer: file.buffer,
             folder: "blog/users/banner",
             transformation: [
               { width: 1200, height: 400, crop: "limit" },
@@ -546,11 +607,16 @@ export const updateProfile = async (req, res, next) => {
           });
           user.banner = uploadedBanner.secure_url;
         } catch (err) {
+          console.error("Detailed Cloudinary banner upload error:", {
+            message: err.message,
+            stack: err.stack,
+            response: err.response?.data,
+          });
           throw new AppError(
             "Failed to upload banner",
             500,
             "UpdateProfile",
-            "Error uploading banner to Cloudinary"
+            `Error uploading banner: ${err.message}`
           );
         }
       }
