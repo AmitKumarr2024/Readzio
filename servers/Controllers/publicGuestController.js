@@ -11,113 +11,589 @@ import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import NodeCache from "node-cache";
 import { logMemory } from "../../servers/Utils/memoryLogger.js";
 
-const cache = new NodeCache({ stdTTL: 3600 }); // Extended TTL to 1 hour
+const cache = new NodeCache({ stdTTL: 300 }); // Reduced to 5 minutes for better freshness
 
 // Rate limiter for guest visits
 const guestVisitLimiter = new Map();
 const GUEST_VISIT_LIMIT = 100; // Max visits per minute per IP
 const GUEST_VISIT_WINDOW = 60 * 1000; // 1 minute
 
-// GET /public/posts
+// Helper function to clean up rate limiter
+const cleanupRateLimiter = () => {
+  const now = Date.now();
+  for (const [key, data] of guestVisitLimiter.entries()) {
+    if (now - data.windowStart > GUEST_VISIT_WINDOW) {
+      guestVisitLimiter.delete(key);
+    }
+  }
+};
+
+// Clean up rate limiter every 5 minutes
+setInterval(cleanupRateLimiter, 5 * 60 * 1000);
+
+// GET /public/posts - Fixed and optimized version
 export const getPublicPosts = async (req, res, next) => {
   try {
     logMemory("Before getPublicPosts start");
-    const { page = 1, limit = 12, tag, after, blocked = false } = req.query;
-    const pageNum = parseInt(page);
-    const limitNum = Math.min(parseInt(limit), 100);
-    const cacheKey = `publicPosts:${pageNum}:${limitNum}:${tag || "all"}:${
-      after || "none"
-    }:${blocked}`;
 
-    console.log(
-      `Request params: page=${pageNum}, limit=${limitNum}, tag=${
-        tag || "none"
-      }, after=${after || "none"}, blocked=${blocked}`
-    );
-    logMemory(`Before checking cache: ${cacheKey}`);
-    const cachedPosts = cache.get(cacheKey);
-    if (cachedPosts) {
-      logMemory(`Cache hit: ${cacheKey}`);
-      console.log(`Returning cached posts: ${cachedPosts.posts.length} posts`);
-      return res.status(200).json({
-        success: true,
-        posts: cachedPosts.posts,
-        total: cachedPosts.total,
-        page: pageNum,
-        lastFetched: cachedPosts.lastFetched,
-      });
+    // Enhanced input validation
+    const {
+      page = 1,
+      limit = 12,
+      tag,
+      after,
+      cursor, // Support both after and cursor for infinite scroll
+      blocked = false,
+      sortBy = "createdAt",
+      order = "desc",
+    } = req.query;
+
+    // Validate and sanitize inputs
+    const pageNum = Math.max(parseInt(page) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit) || 12, 1), 50); // Reduced max limit
+
+    // Determine if using infinite scroll
+    const cursorValue = cursor || after;
+    const useInfiniteScroll = !!cursorValue;
+
+    // Validate cursor/after parameter
+    let cursorDate = null;
+    if (cursorValue) {
+      cursorDate = new Date(cursorValue);
+      if (isNaN(cursorDate.getTime())) {
+        return next(
+          new AppError("Invalid cursor/after date format", 400, "InvalidCursor")
+        );
+      }
     }
 
-    const query = {
+    // Validate and sanitize tag
+    const sanitizedTag = tag ? tag.trim().replace(/[<>\"']/g, "") : null;
+    if (tag && (!sanitizedTag || sanitizedTag.length === 0)) {
+      return next(new AppError("Invalid tag parameter", 400, "InvalidTag"));
+    }
+
+    // Validate blocked parameter
+    const isBlocked = blocked === "true" || blocked === true;
+
+    // Validate sort parameters
+    const allowedSortFields = ["createdAt", "viewsCount", "shareCount"];
+    const sortField = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
+    const sortOrder = order === "asc" ? 1 : -1;
+
+    // Create cache key based on request type
+    const cacheKey = useInfiniteScroll
+      ? `infinitePosts:${limitNum}:${sanitizedTag || "all"}:${
+          cursorValue || "start"
+        }:${isBlocked}:${sortField}:${sortOrder}`
+      : `publicPosts:${pageNum}:${limitNum}:${
+          sanitizedTag || "all"
+        }:${isBlocked}:${sortField}:${sortOrder}`;
+
+    console.log(
+      `Request params: ${
+        useInfiniteScroll ? "infinite scroll" : "pagination"
+      }, ` +
+        `page=${pageNum}, limit=${limitNum}, tag=${sanitizedTag || "none"}, ` +
+        `cursor=${
+          cursorValue || "none"
+        }, blocked=${isBlocked}, sort=${sortField}:${sortOrder}`
+    );
+
+    logMemory(`Before checking cache: ${cacheKey}`);
+
+    // Check cache with validation
+    const cachedResult = cache.get(cacheKey);
+    if (
+      cachedResult &&
+      cachedResult.posts &&
+      Array.isArray(cachedResult.posts)
+    ) {
+      // Validate cache age for infinite scroll (shorter TTL)
+      const cacheAge =
+        Date.now() - new Date(cachedResult.cachedAt || 0).getTime();
+      const maxCacheAge = useInfiniteScroll ? 60000 : 300000; // 1min vs 5min
+
+      if (cacheAge < maxCacheAge) {
+        logMemory(`Cache hit: ${cacheKey}`);
+        console.log(
+          `Returning cached posts: ${cachedResult.posts.length} posts`
+        );
+
+        return res.status(200).json({
+          success: true,
+          posts: cachedResult.posts,
+          pagination: {
+            ...(useInfiniteScroll
+              ? {
+                  hasMore: cachedResult.hasMore || false,
+                  nextCursor: cachedResult.nextCursor || null,
+                  isInfiniteScroll: true,
+                }
+              : {
+                  total: cachedResult.total || 0,
+                  page: pageNum,
+                  totalPages: Math.ceil((cachedResult.total || 0) / limitNum),
+                  hasNextPage: cachedResult.hasMore || false,
+                }),
+          },
+          lastFetched: cachedResult.lastFetched,
+          meta: {
+            cached: true,
+            cacheAge: Math.round(cacheAge / 1000) + "s",
+          },
+        });
+      } else {
+        // Cache expired, remove it
+        cache.del(cacheKey);
+      }
+    }
+
+    // Build enhanced query with proper validation
+    const baseQuery = {
       isPublished: true,
-      blocked: blocked === "false" ? false : { $ne: true },
-      ...(tag ? { tags: { $in: [tag] } } : {}),
-      ...(after ? { createdAt: { $lt: new Date(after) } } : {}),
+      blocked: isBlocked ? true : { $ne: true },
+      // Enhanced validation filters
+      $and: [
+        { title: { $exists: true, $ne: null, $ne: "" } },
+        { slug: { $exists: true, $ne: null, $ne: "" } },
+        { author: { $exists: true, $ne: null } },
+        { createdAt: { $exists: true, $type: "date" } },
+        // Ensure post is not soft deleted
+        { $or: [{ deleted: { $exists: false } }, { deleted: false }] },
+        // Ensure minimum content exists
+        {
+          $or: [
+            { excerpt: { $exists: true, $ne: null, $ne: "" } },
+            { blocks: { $exists: true, $not: { $size: 0 } } },
+          ],
+        },
+      ],
     };
 
-    console.log("Query:", JSON.stringify(query));
+    // Add tag filter with proper validation
+    if (sanitizedTag) {
+      baseQuery.tags = {
+        $in: [new RegExp(sanitizedTag, "i")], // Case-insensitive search
+        $exists: true,
+        $ne: null,
+      };
+    }
+
+    // Add cursor-based filtering for infinite scroll
+    if (cursorDate) {
+      const cursorFilter =
+        sortOrder === 1 ? { $gt: cursorDate } : { $lt: cursorDate };
+      baseQuery[sortField] = cursorFilter;
+    }
+
+    console.log("Enhanced Query:", JSON.stringify(baseQuery, null, 2));
+
+    // Check database connection
+    if (PostModel.db.readyState !== 1) {
+      throw new AppError(
+        "Database connection unavailable",
+        503,
+        "DatabaseUnavailable"
+      );
+    }
+
     logMemory("Before PostModel.find");
-    const posts = await PostModel.find(query)
-      .maxTimeMS(10000)
-      .sort({ createdAt: -1 })
-      .skip((pageNum - 1) * limitNum)
-      .limit(limitNum)
+
+    // Build optimized query
+    const fetchLimit = useInfiniteScroll ? limitNum + 1 : limitNum;
+    const sortQuery = {};
+    sortQuery[sortField] = sortOrder;
+    if (sortField !== "createdAt") {
+      sortQuery.createdAt = -1; // Secondary sort for consistency
+    }
+    if (sortField !== "_id") {
+      sortQuery._id = sortOrder; // Tertiary sort for absolute consistency
+    }
+
+    const queryBuilder = PostModel.find(baseQuery)
+      .maxTimeMS(15000) // Increased timeout
+      .sort(sortQuery)
+      .limit(fetchLimit)
       .select(
-        "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks"
+        [
+          "_id",
+          "title",
+          "slug",
+          "thumbnail",
+          "excerpt",
+          "author",
+          "category",
+          "viewsCount",
+          "shareCount",
+          "createdAt",
+          "updatedAt",
+          "tags",
+          "blocks",
+        ].join(" ")
       )
-      .populate("author", "name avatar")
-      .populate("category", "name slug")
+      .populate({
+        path: "author",
+        select: "name avatar username",
+        match: {
+          $and: [{ active: { $ne: false } }, { deleted: { $ne: true } }],
+        },
+        options: { lean: true },
+      })
+      .populate({
+        path: "category",
+        select: "name slug description",
+        match: {
+          active: { $ne: false },
+          deleted: { $ne: true },
+        },
+        options: { lean: true },
+      })
       .lean();
 
-    console.log("Posts fetched:", posts.length);
+    // Add skip for traditional pagination only
+    if (!useInfiniteScroll && pageNum > 1) {
+      queryBuilder.skip((pageNum - 1) * limitNum);
+    }
+
+    const rawPosts = await queryBuilder.exec();
+
+    if (!rawPosts) {
+      throw new AppError(
+        "Failed to fetch posts from database",
+        500,
+        "DatabaseQueryFailed"
+      );
+    }
+
+    // Check for more posts (infinite scroll)
+    const hasMore = useInfiniteScroll ? rawPosts.length > limitNum : false;
+    const posts = hasMore ? rawPosts.slice(0, limitNum) : rawPosts;
+
+    console.log(
+      `Posts fetched: ${posts.length}${hasMore ? " (hasMore: true)" : ""}`
+    );
     logMemory("Before processing posts");
-    const processedPosts = posts.map((post) => ({
-      ...post,
-      blocks: Array.isArray(post.blocks) ? post.blocks : [],
-    }));
 
-    logMemory("Before PostModel.countDocuments");
-    const total = await PostModel.countDocuments(query).maxTimeMS(5000).lean();
-    console.log("Total posts:", total);
+    // Enhanced post processing with validation
+    const processedPosts = posts
+      .filter((post) => {
+        // Strict validation - filter out invalid posts
+        if (!post || !post._id || !post.title || !post.slug) {
+          console.warn(
+            `Filtering out invalid post: ${
+              post?._id || "unknown"
+            } - missing required fields`
+          );
+          return false;
+        }
 
-    const lastFetched = posts.length ? posts[posts.length - 1].createdAt : null;
+        if (!post.author) {
+          console.warn(
+            `Filtering out post ${post._id} - missing or invalid author`
+          );
+          return false;
+        }
 
-    logMemory(`Before setting cache: ${cacheKey}`);
-    cache.set(cacheKey, { posts: processedPosts, total, lastFetched });
-    console.log(`Cached posts: ${processedPosts.length} posts`);
+        // Check if post has minimum content
+        const hasContent =
+          (post.excerpt && post.excerpt.trim().length > 0) ||
+          (Array.isArray(post.blocks) && post.blocks.length > 0);
+        if (!hasContent) {
+          console.warn(`Filtering out post ${post._id} - no content`);
+          return false;
+        }
 
-    if (req.user?._id) {
-      logMemory("Before recordActivity");
-      await recordActivity({
-        userId: req.user._id,
-        action: "VIEWED_PUBLIC_POSTS",
-        message: `Viewed public posts (page: ${pageNum}, tag: ${
-          tag || "none"
-        })`,
+        return true;
+      })
+      .map((post) => {
+        // Ensure blocks is always an array
+        const blocks = Array.isArray(post.blocks) ? post.blocks : [];
+
+        // Clean and enhance post data
+        return {
+          id: post._id,
+          title: post.title.trim(),
+          slug: post.slug,
+          thumbnail: post.thumbnail || null,
+          excerpt: post.excerpt ? post.excerpt.trim() : "",
+          author: {
+            id: post.author._id,
+            name: post.author.name || "Unknown Author",
+            avatar: post.author.avatar || null,
+            username: post.author.username || null,
+          },
+          category: post.category
+            ? {
+                id: post.category._id,
+                name: post.category.name,
+                slug: post.category.slug,
+                description: post.category.description || null,
+              }
+            : null,
+          stats: {
+            viewsCount: Math.max(post.viewsCount || 0, 0),
+            shareCount: Math.max(post.shareCount || 0, 0),
+          },
+          timestamps: {
+            createdAt: post.createdAt,
+            updatedAt: post.updatedAt || post.createdAt,
+          },
+          tags: Array.isArray(post.tags)
+            ? post.tags.filter((tag) => tag && tag.trim())
+            : [],
+          blocks: blocks,
+          meta: {
+            hasBlocks: blocks.length > 0,
+            hasExcerpt: !!(post.excerpt && post.excerpt.trim()),
+            hasThumbnail: !!post.thumbnail,
+          },
+        };
       });
-      console.log(`Activity recorded for user: ${req.user._id}`);
+
+    // Calculate next cursor for infinite scroll
+    let nextCursor = null;
+    if (hasMore && processedPosts.length > 0) {
+      const lastPost = processedPosts[processedPosts.length - 1];
+      nextCursor =
+        lastPost.timestamps[sortField]?.toISOString() ||
+        lastPost.timestamps.createdAt.toISOString();
+    }
+
+    // Get total count (only when needed to avoid expensive operations)
+    let total = null;
+    if (!useInfiniteScroll) {
+      logMemory("Before PostModel.countDocuments");
+      try {
+        total = await PostModel.countDocuments(baseQuery)
+          .maxTimeMS(5000)
+          .exec();
+        console.log("Total posts:", total);
+      } catch (countError) {
+        console.warn(
+          "Count query failed, using approximate:",
+          countError.message
+        );
+        total = processedPosts.length; // Fallback
+      }
+    }
+
+    const lastFetched =
+      processedPosts.length > 0
+        ? processedPosts[processedPosts.length - 1].timestamps.createdAt
+        : null;
+
+    // Enhanced caching with metadata
+    logMemory(`Before setting cache: ${cacheKey}`);
+    const cacheData = {
+      posts: processedPosts,
+      hasMore,
+      nextCursor,
+      total,
+      lastFetched,
+      cachedAt: new Date(),
+      requestParams: {
+        useInfiniteScroll,
+        pageNum,
+        limitNum,
+        sortField,
+        sortOrder,
+        tag: sanitizedTag,
+      },
+    };
+
+    // Dynamic cache TTL based on request type
+    const cacheTimeout = useInfiniteScroll ? 60 : 300; // 1min vs 5min
+    cache.set(cacheKey, cacheData, cacheTimeout);
+    console.log(
+      `Cached ${processedPosts.length} posts with ${cacheTimeout}s TTL`
+    );
+
+    // Record user activity (with error handling)
+    if (req.user?._id) {
+      try {
+        logMemory("Before recordActivity");
+        await recordActivity({
+          userId: req.user._id,
+          action: "VIEWED_PUBLIC_POSTS",
+          message: `Viewed public posts (${
+            useInfiniteScroll ? "infinite scroll" : `page ${pageNum}`
+          }${sanitizedTag ? `, tag: ${sanitizedTag}` : ""})`,
+          metadata: {
+            scrollType: useInfiniteScroll ? "infinite" : "pagination",
+            page: pageNum,
+            limit: limitNum,
+            tag: sanitizedTag,
+            cursor: cursorValue,
+            postsCount: processedPosts.length,
+            sortBy: sortField,
+            sortOrder: sortOrder === 1 ? "asc" : "desc",
+          },
+        });
+        console.log(`Activity recorded for user: ${req.user._id}`);
+      } catch (activityError) {
+        console.warn("Failed to record activity:", activityError.message);
+      }
     }
 
     logMemory("After getPublicPosts complete");
-    console.log("Returning response with posts:", processedPosts.length);
-    res.status(200).json({
+    console.log(`Returning response with ${processedPosts.length} posts`);
+
+    // Comprehensive response structure
+    const response = {
       success: true,
       posts: processedPosts,
-      total,
-      page: pageNum,
-      lastFetched,
-    });
+      pagination: useInfiniteScroll
+        ? {
+            // Infinite scroll response
+            hasMore,
+            nextCursor,
+            isInfiniteScroll: true,
+            currentCursor: cursorValue || null,
+          }
+        : {
+            // Traditional pagination response
+            total: total || 0,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: total ? Math.ceil(total / limitNum) : 0,
+            hasNextPage: pageNum * limitNum < (total || 0),
+            hasPreviousPage: pageNum > 1,
+          },
+      meta: {
+        lastFetched,
+        sortBy: sortField,
+        sortOrder: sortOrder === 1 ? "asc" : "desc",
+        tag: sanitizedTag || null,
+        cached: false,
+        processingTime: Date.now() - req.startTime || 0,
+      },
+    };
+
+    res.status(200).json(response);
   } catch (error) {
-    console.error("Error in getPublicPosts:", error.message, error.stack);
+    console.error("Error in getPublicPosts:", {
+      message: error.message,
+      stack: error.stack,
+      query: req.query,
+      userId: req.user?._id,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Enhanced cache cleanup on error
+    try {
+      const {
+        page = 1,
+        limit = 12,
+        tag,
+        after,
+        cursor,
+        blocked = false,
+        sortBy = "createdAt",
+        order = "desc",
+      } = req.query;
+      const cursorValue = cursor || after;
+      const useInfiniteScroll = !!cursorValue;
+      const pageNum = Math.max(parseInt(page) || 1, 1);
+      const limitNum = Math.min(Math.max(parseInt(limit) || 12, 1), 50);
+      const sanitizedTag = tag ? tag.trim().replace(/[<>\"']/g, "") : null;
+      const isBlocked = blocked === "true" || blocked === true;
+      const sortField = ["createdAt", "viewsCount", "shareCount"].includes(
+        sortBy
+      )
+        ? sortBy
+        : "createdAt";
+      const sortOrder = order === "asc" ? 1 : -1;
+
+      const cacheKey = useInfiniteScroll
+        ? `infinitePosts:${limitNum}:${sanitizedTag || "all"}:${
+            cursorValue || "start"
+          }:${isBlocked}:${sortField}:${sortOrder}`
+        : `publicPosts:${pageNum}:${limitNum}:${
+            sanitizedTag || "all"
+          }:${isBlocked}:${sortField}:${sortOrder}`;
+
+      cache.del(cacheKey);
+      console.log(`Cleared cache key on error: ${cacheKey}`);
+    } catch (cacheError) {
+      console.warn("Failed to clear cache on error:", cacheError.message);
+    }
+
+    // Specific error handling
+    if (
+      error.name === "MongoTimeoutError" ||
+      error.message.includes("timeout")
+    ) {
+      return next(
+        new AppError(
+          "Database query timeout - please try again",
+          504,
+          "DatabaseTimeout"
+        )
+      );
+    }
+
+    if (error.name === "ValidationError") {
+      return next(
+        new AppError("Invalid query parameters", 400, "ValidationError")
+      );
+    }
+
+    if (error.name === "MongoNetworkError") {
+      return next(
+        new AppError("Database connection failed", 503, "DatabaseConnection")
+      );
+    }
+
+    if (error.name === "CastError") {
+      return next(
+        new AppError("Invalid data format in request", 400, "CastError")
+      );
+    }
+
+    // Generic error handling
     next(
       error instanceof AppError
         ? error
         : new AppError(
-            error.message || "Failed to fetch public posts",
+            "Failed to fetch public posts",
             500,
-            "GetPublicPosts"
+            "GetPublicPostsError",
+            {
+              originalError: error.message,
+              errorType: error.name || "UnknownError",
+            }
           )
     );
+  }
+};
+
+// Helper function to get cache statistics
+export const getCacheStats = () => {
+  const stats = cache.getStats();
+  return {
+    keys: cache.keys().length,
+    hits: stats.hits,
+    misses: stats.misses,
+    hitRate: stats.hits / (stats.hits + stats.misses) || 0,
+    memoryUsage: process.memoryUsage(),
+  };
+};
+
+// Helper function to clear specific cache patterns
+export const clearPostsCache = (pattern = "") => {
+  const keys = cache.keys();
+  const matchingKeys = keys.filter(
+    (key) => key.includes("publicPosts") || key.includes("infinitePosts")
+  );
+
+  if (pattern) {
+    const filteredKeys = matchingKeys.filter((key) => key.includes(pattern));
+    filteredKeys.forEach((key) => cache.del(key));
+    return filteredKeys.length;
+  } else {
+    matchingKeys.forEach((key) => cache.del(key));
+    return matchingKeys.length;
   }
 };
 
