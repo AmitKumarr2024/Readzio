@@ -277,9 +277,8 @@ const CardOfPost = ({
       </div>
 
       {/* Hover Effect Border */}
-      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 p-[2px] z-[2]">
-        <div className="w-full h-full rounded-2xl bg-transparent" />
-      </div>
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none border-[2px] border-transparent bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500" />
+
     </Link>
   );
 };
