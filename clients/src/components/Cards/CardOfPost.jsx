@@ -1,8 +1,9 @@
+
 import React, { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { debounce } from "lodash";
-import { MessageCircle, Eye, Heart, Bookmark, Share2 } from "lucide-react";
+import { MessageCircle, Eye, Heart, Bookmark, Share2, Clock, Crown, Sparkles } from "lucide-react";
 import { fetchSubscriptionPlansByAuthor } from "../../store/subscriptionSlice";
 import Skeleton from "@/components/Ui/Skeleton";
 
@@ -60,23 +61,21 @@ const CardOfPost = ({
 
   if (loading) {
     return (
-      <div className="bg-card-bg-light dark:bg-card-bg-dark rounded-lg shadow-xl w-full h-full overflow-hidden">
-        <Skeleton className="w-full aspect-video rounded-t-lg bg-gray-200 dark:bg-gray-700" />
-        <div className="p-4 space-y-3">
-          <Skeleton className="h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
-          <div className="flex flex-col sm:flex-row sm:gap-4">
-            <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
-            <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {[...Array(5)].map((_, i) => (
+      <div className="group relative bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-slate-800">
+        <div className="relative">
+          <Skeleton className="w-full h-56 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse" />
+        </div>
+        <div className="p-6 space-y-4">
+          <Skeleton className="h-6 w-4/5 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse rounded-lg" />
+          <Skeleton className="h-4 w-3/5 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse rounded-lg" />
+          <div className="flex gap-3">
+            {[...Array(4)].map((_, i) => (
               <Skeleton
                 key={i}
-                className="h-4 w-10 rounded bg-gray-200 dark:bg-gray-700"
+                className="h-4 w-12 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse rounded-full"
               />
             ))}
           </div>
-          <Skeleton className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
         </div>
       </div>
     );
@@ -86,106 +85,368 @@ const CardOfPost = ({
     "en-US",
     {
       year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
+      month: "short",
+      day: "numeric",
     }
   );
+
+  const getPostTypeConfig = (type) => {
+    const configs = {
+      blog: { bg: "bg-gradient-to-r from-purple-500 to-purple-600", icon: "📝" },
+      article: { bg: "bg-gradient-to-r from-emerald-500 to-emerald-600", icon: "📄" },
+      news: { bg: "bg-gradient-to-r from-red-500 to-red-600", icon: "📰" },
+      tutorial: { bg: "bg-gradient-to-r from-blue-500 to-blue-600", icon: "🎓" },
+    };
+    return configs[type?.toLowerCase()] || { bg: "bg-gradient-to-r from-gray-500 to-gray-600", icon: "📋" };
+  };
+
+  const postTypeConfig = getPostTypeConfig(postType);
+
+  const formatCount = (count) => {
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+    return count.toString();
+  };
 
   return (
     <Link
       to={`/post/${slug}`}
-      className="group bg-white dark:bg-gray-800 font-Urbanist rounded-lg shadow-xl hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col h-full max-w-full"
+      className="group relative bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-slate-700 transform hover:-translate-y-1 block h-full"
     >
-      <div className="relative w-full aspect-video">
-        <img
-          src={thumbnail || "https://placehold.co/400x225?text=No+Image"}
-          alt={title || "Post"}
-          className="w-full h-full object-cover aspect-video rounded-t-lg"
-          loading="lazy"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-        <span className="absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full bg-black bg-opacity-80 text-white">
-          {readTime}
-        </span>
-        {isPostPremium && (
-          <span className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500 text-black">
-            Premium
-          </span>
-        )}
-        {postType && (
-          <span
-            className={`absolute bottom-2 left-2 px-2 py-1 text-[10px] sm:text-xs font-semibold rounded-full text-white animate-pulse ${
-              postType.toLowerCase() === "blog"
-                ? "bg-indigo-600"
-                : postType.toLowerCase() === "article"
-                ? "bg-emerald-600"
-                : "bg-gray-500"
-            }`}
-          >
-            {postType}
-          </span>
-        )}
-      </div>
-      <div className="p-4 flex flex-col gap-3 min-h-[200px]">
-        <h3 className="text-lg sm:text-xl font-semibold leading-snug text-gray-900 dark:text-white group-hover:text-blue-500 line-clamp-2">
-          {title || "Untitled"}
-        </h3>
-        <div className="flex flex-col sm:flex-row sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400 justify-between">
-          <span className="truncate">
-            {categoryMap[category._id] || "Uncategorized"}
-          </span>
-          <span className="truncate font-bold text-gray-700 dark:text-gray-200">
-            {author.name || "Anonymous"}
-          </span>
+      {/* Premium Glow Effect */}
+      {isPostPremium && (
+        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl -z-10 blur-xl" />
+      )}
+
+      {/* Image Section */}
+      <div className="relative overflow-hidden">
+        <div className="aspect-video w-full relative">
+          <img
+            src={thumbnail || "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&q=80"}
+            alt={title || "Post"}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60" />
         </div>
-        <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          <span className="flex items-center gap-1">
-            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" /> {commentsCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Eye className="w-4 h-4 sm:w-5 sm:h-5" /> {viewsCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />{" "}
-            {likesCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />{" "}
-            {bookmarksCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />{" "}
-            {shareCount}
-          </span>
-        </div>
-        <div className="text-xs text-gray-400 dark:text-gray-500">
-          {formattedDate}
-        </div>
-        {isSubscribedToAuthor && authorId !== currentUser?._id && (
-          <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
-            Subscribed
-          </span>
-        )}
-        {tags?.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {tags.slice(0, 3).map((tag) => (
-              <div
-                key={tag}
-                className="text-indigo-500 hover:underline text-xs sm:text-sm font-medium"
-              >
-                #{tag}
+
+        {/* Overlay Content */}
+        <div className="absolute inset-0 flex flex-col justify-between p-4">
+          {/* Top Row - Premium & Read Time */}
+          <div className="flex justify-between items-start">
+            {isPostPremium && (
+              <div className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-bold rounded-full shadow-lg backdrop-blur-sm">
+                <Crown className="w-3 h-3" />
+                Premium
               </div>
-            ))}
-            {tags.length > 3 && (
-              <div className="text-indigo-500 text-xs sm:text-sm font-medium">
-                ...
+            )}
+            {readTime && (
+              <div className="flex items-center gap-1 px-3 py-1.5 bg-black/70 text-white text-xs font-medium rounded-full backdrop-blur-sm">
+                <Clock className="w-3 h-3" />
+                {readTime}
               </div>
             )}
           </div>
+
+          {/* Bottom Row - Post Type */}
+          <div className="flex justify-between items-end">
+            {postType && (
+              <div className={`flex items-center gap-1 px-3 py-1.5 ${postTypeConfig.bg} text-white text-xs font-semibold rounded-full shadow-lg`}>
+                <span>{postTypeConfig.icon}</span>
+                {postType}
+              </div>
+            )}
+            
+            {isSubscribedToAuthor && authorId !== currentUser?._id && (
+              <div className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                <Sparkles className="w-3 h-3" />
+                Subscribed
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Content Section */}
+      <div className="p-6 flex flex-col gap-4">
+        {/* Title */}
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-2 leading-relaxed">
+          {title || "Untitled"}
+        </h3>
+
+        {/* Author & Category */}
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+              {author.name?.charAt(0)?.toUpperCase() || "A"}
+            </div>
+            <div className="flex flex-col">
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {author.name || "Anonymous"}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {categoryMap[category._id] || "Uncategorized"}
+              </span>
+            </div>
+          </div>
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+            {formattedDate}
+          </span>
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors">
+              <Heart className="w-4 h-4" />
+              {formatCount(likesCount)}
+            </span>
+            <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors">
+              <MessageCircle className="w-4 h-4" />
+              {formatCount(commentsCount)}
+            </span>
+            <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors">
+              <Eye className="w-4 h-4" />
+              {formatCount(viewsCount)}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-yellow-500 transition-colors">
+              <Bookmark className="w-4 h-4" />
+              {formatCount(bookmarksCount)}
+            </span>
+            <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-purple-500 transition-colors">
+              <Share2 className="w-4 h-4" />
+              {formatCount(shareCount)}
+            </span>
+          </div>
+        </div>
+
+        {/* Tags */}
+        {tags?.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {tags.slice(0, 3).map((tag, index) => (
+              <span
+                key={tag}
+                className={`px-3 py-1 text-xs font-medium rounded-full transition-all duration-200 hover:scale-105 cursor-pointer ${
+                  index === 0
+                    ? "bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-700 dark:text-blue-300 hover:from-blue-200 hover:to-blue-300"
+                    : index === 1
+                    ? "bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 text-purple-700 dark:text-purple-300 hover:from-purple-200 hover:to-purple-300"
+                    : "bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900 dark:to-green-800 text-green-700 dark:text-green-300 hover:from-green-200 hover:to-green-300"
+                }`}
+              >
+                #{tag}
+              </span>
+            ))}
+            {tags.length > 3 && (
+              <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                +{tags.length - 3} more
+              </span>
+            )}
+          </div>
         )}
+      </div>
+
+      {/* Hover Effect Border */}
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-blue-500/20 p-[1px]">
+        <div className="w-full h-full rounded-2xl bg-white dark:bg-slate-900" />
       </div>
     </Link>
   );
 };
 
 export default CardOfPost;
+// ----------------------------------------------------------------------------------------------------
+// import React, { useEffect, useMemo } from "react";
+// import { Link } from "react-router-dom";
+// import { useDispatch, useSelector } from "react-redux";
+// import { debounce } from "lodash";
+// import { MessageCircle, Eye, Heart, Bookmark, Share2 } from "lucide-react";
+// import { fetchSubscriptionPlansByAuthor } from "../../store/subscriptionSlice";
+// import Skeleton from "@/components/Ui/Skeleton";
+
+// const CardOfPost = ({
+//   _id: id,
+//   slug,
+//   thumbnail,
+//   title,
+//   createdAt,
+//   commentsCount = 0,
+//   viewsCount = 0,
+//   likesCount = 0,
+//   bookmarksCount = 0,
+//   shareCount = 0,
+//   author = { name: "Anonymous", _id: "" },
+//   category = { _id: "" },
+//   categoryMap = {},
+//   isSubscriberOnly = false,
+//   timeSpent = 0,
+//   loading = false,
+//   postType,
+//   isPremium,
+//   tags = [],
+//   readTime,
+// }) => {
+//   const dispatch = useDispatch();
+//   const {
+//     plans = [],
+//     isSubscribed = {},
+//     loading: subscriptionLoading,
+//   } = useSelector((state) => state.subscription || {});
+//   const currentUser = useSelector((state) => state.auth.user);
+
+//   const authorId = author?._id || "";
+//   const isPostPremium = isPremium;
+//   const isSubscribedToAuthor = isSubscribed[authorId];
+
+//   // Debounced fetch for subscription plans
+//   const debouncedFetchPlans = useMemo(
+//     () =>
+//       debounce((authorId) => {
+//         if (authorId && !subscriptionLoading) {
+//           dispatch(fetchSubscriptionPlansByAuthor(authorId));
+//         }
+//       }, 1000),
+//     [dispatch, subscriptionLoading]
+//   );
+
+//   useEffect(() => {
+//     if (authorId) {
+//       debouncedFetchPlans(authorId);
+//     }
+//     return () => debouncedFetchPlans.cancel();
+//   }, [authorId, debouncedFetchPlans]);
+
+//   if (loading) {
+//     return (
+//       <div className="bg-card-bg-light dark:bg-card-bg-dark rounded-lg shadow-xl w-full h-full overflow-hidden">
+//         <Skeleton className="w-full aspect-video rounded-t-lg bg-gray-200 dark:bg-gray-700" />
+//         <div className="p-4 space-y-3">
+//           <Skeleton className="h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
+//           <div className="flex flex-col sm:flex-row sm:gap-4">
+//             <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
+//             <Skeleton className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
+//           </div>
+//           <div className="flex flex-wrap gap-2">
+//             {[...Array(5)].map((_, i) => (
+//               <Skeleton
+//                 key={i}
+//                 className="h-4 w-10 rounded bg-gray-200 dark:bg-gray-700"
+//               />
+//             ))}
+//           </div>
+//           <Skeleton className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   const formattedDate = new Date(createdAt || new Date()).toLocaleDateString(
+//     "en-US",
+//     {
+//       year: "numeric",
+//       month: "2-digit",
+//       day: "2-digit",
+//     }
+//   );
+
+//   return (
+//     <Link
+//       to={`/post/${slug}`}
+//       className="group bg-white dark:bg-gray-800 font-Urbanist rounded-lg shadow-xl hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col h-full max-w-full"
+//     >
+//       <div className="relative w-full aspect-video">
+//         <img
+//           src={thumbnail || "https://placehold.co/400x225?text=No+Image"}
+//           alt={title || "Post"}
+//           className="w-full h-full object-cover aspect-video rounded-t-lg"
+//           loading="lazy"
+//         />
+//         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+//         <span className="absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full bg-black bg-opacity-80 text-white">
+//           {readTime}
+//         </span>
+//         {isPostPremium && (
+//           <span className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500 text-black">
+//             Premium
+//           </span>
+//         )}
+//         {postType && (
+//           <span
+//             className={`absolute bottom-2 left-2 px-2 py-1 text-[10px] sm:text-xs font-semibold rounded-full text-white animate-pulse ${
+//               postType.toLowerCase() === "blog"
+//                 ? "bg-indigo-600"
+//                 : postType.toLowerCase() === "article"
+//                 ? "bg-emerald-600"
+//                 : "bg-gray-500"
+//             }`}
+//           >
+//             {postType}
+//           </span>
+//         )}
+//       </div>
+//       <div className="p-4 flex flex-col gap-3 min-h-[200px]">
+//         <h3 className="text-lg sm:text-xl font-semibold leading-snug text-gray-900 dark:text-white group-hover:text-blue-500 line-clamp-2">
+//           {title || "Untitled"}
+//         </h3>
+//         <div className="flex flex-col sm:flex-row sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400 justify-between">
+//           <span className="truncate">
+//             {categoryMap[category._id] || "Uncategorized"}
+//           </span>
+//           <span className="truncate font-bold text-gray-700 dark:text-gray-200">
+//             {author.name || "Anonymous"}
+//           </span>
+//         </div>
+//         <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+//           <span className="flex items-center gap-1">
+//             <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" /> {commentsCount}
+//           </span>
+//           <span className="flex items-center gap-1">
+//             <Eye className="w-4 h-4 sm:w-5 sm:h-5" /> {viewsCount}
+//           </span>
+//           <span className="flex items-center gap-1">
+//             <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />{" "}
+//             {likesCount}
+//           </span>
+//           <span className="flex items-center gap-1">
+//             <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />{" "}
+//             {bookmarksCount}
+//           </span>
+//           <span className="flex items-center gap-1">
+//             <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />{" "}
+//             {shareCount}
+//           </span>
+//         </div>
+//         <div className="text-xs text-gray-400 dark:text-gray-500">
+//           {formattedDate}
+//         </div>
+//         {isSubscribedToAuthor && authorId !== currentUser?._id && (
+//           <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
+//             Subscribed
+//           </span>
+//         )}
+//         {tags?.length > 0 && (
+//           <div className="flex flex-wrap gap-2 mt-2">
+//             {tags.slice(0, 3).map((tag) => (
+//               <div
+//                 key={tag}
+//                 className="text-indigo-500 hover:underline text-xs sm:text-sm font-medium"
+//               >
+//                 #{tag}
+//               </div>
+//             ))}
+//             {tags.length > 3 && (
+//               <div className="text-indigo-500 text-xs sm:text-sm font-medium">
+//                 ...
+//               </div>
+//             )}
+//           </div>
+//         )}
+//       </div>
+//     </Link>
+//   );
+// };
+
+// export default CardOfPost;
