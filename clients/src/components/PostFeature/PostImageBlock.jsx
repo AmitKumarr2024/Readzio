@@ -25,6 +25,9 @@ const PostImageBlock = ({
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  // Debug: Log block to check if size exists
+  console.log(`Block ${index}:`, block);
+
   return (
     <motion.div
       ref={refProp}
@@ -36,11 +39,12 @@ const PostImageBlock = ({
       layout
     >
       {/* File size display in top-right corner */}
-      {block.size && (
-        <span className="absolute top-1 right-1 text-sm text-gray-500 dark:text-gray-400">
-          {formatFileSize(block.size)}
-        </span>
-      )}
+      <span
+        className="absolute top-1 right-12 text-sm text-gray-500 dark:text-gray-400"
+        style={{ backgroundColor: block.size ? "transparent" : "yellow" }} // Highlight if no size
+      >
+        {block.size ? formatFileSize(block.size) : "No size"}
+      </span>
       <button
         onClick={() => removeBlock(index)}
         className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition"
@@ -74,7 +78,7 @@ const PostImageBlock = ({
       </label>
       <input
         placeholder="Caption (optional)"
-        value={block.caption}
+        value={block.caption || ""}
         onChange={(e) =>
           updateBlock(index, { ...block, caption: e.target.value })
         }
