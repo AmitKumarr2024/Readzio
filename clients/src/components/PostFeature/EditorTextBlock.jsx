@@ -1,108 +1,68 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  FaAlignLeft,
+  FaAlignCenter,
+  FaAlignRight,
+  FaRedo,
+  FaUndo,
+  FaBackspace,
+  FaBold,
+  FaItalic,
+  FaUnderline,
+  FaStrikethrough,
+  FaLink,
+} from "react-icons/fa";
+import { toast } from "react-hot-toast";
 
-// Icon components (simplified for demo - replace with your preferred icons)
-const Bold = ({ size = 16 }) => (
-  <strong style={{ fontSize: `${size}px` }}>B</strong>
-);
-const Italic = ({ size = 16 }) => <em style={{ fontSize: `${size}px` }}>I</em>;
-const Underline = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px`, textDecoration: "underline" }}>U</span>
-);
-const Strikethrough = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px`, textDecoration: "line-through" }}>
-    S
-  </span>
-);
-const AlignLeft = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>⬅</span>
-);
-const AlignCenter = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>⬇</span>
-);
-const AlignRight = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>➡</span>
-);
-const List = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>•</span>
-);
-const ListOrdered = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>1.</span>
-);
-const Quote = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>"</span>
-);
-const Code = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>{"<>"}</span>
-);
-const Link = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>🔗</span>
-);
-const Undo2 = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>↶</span>
-);
-const Redo2 = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>↷</span>
-);
-const Copy = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>📋</span>
-);
-const Palette = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>🎨</span>
-);
-const Smile = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>😊</span>
-);
-const X = ({ size = 16 }) => <span style={{ fontSize: `${size}px` }}>✕</span>;
-const Trash2 = ({ size = 16 }) => (
-  <span style={{ fontSize: `${size}px` }}>🗑</span>
-);
+// Emoji options
+const emojiOptions = [
+  "😀",
+  "😂",
+  "😊",
+  "😍",
+  "😎",
+  "😢",
+  "😡",
+  "😴",
+  "🤔",
+  "😭",
+  "👍",
+  "👎",
+  "👏",
+  "🙏",
+  "💪",
+  "🔥",
+  "🎉",
+  "✨",
+  "💯",
+  "🎂",
+  "❤️",
+  "💔",
+  "💕",
+  "💖",
+  "💙",
+  "📌",
+  "📎",
+  "📚",
+  "🧠",
+  "💡",
+  "⚡",
+  "🌟",
+  "🌈",
+  "☀️",
+  "🌙",
+];
 
-// Emoji options with categories
-const emojiCategories = {
-  smileys: [
-    "😀",
-    "😂",
-    "😊",
-    "😍",
-    "😎",
-    "😢",
-    "😡",
-    "😴",
-    "🤔",
-    "😭",
-    "🥳",
-    "😘",
-  ],
-  gestures: ["👍", "👎", "👏", "🙏", "💪", "✌️", "👌", "🤝"],
-  symbols: ["❤️", "💔", "💕", "💖", "💙", "💚", "💛", "🧡", "💜"],
-  objects: ["📌", "📎", "📚", "🧠", "💡", "⚡", "🔥", "🎉", "✨", "💯", "🎂"],
-  nature: ["🌟", "🌈", "☀️", "🌙", "⭐", "🌸", "🌺", "🌻", "🍀"],
-};
-
-const EditorTextBlock = ({
-  value = "",
-  onUpdate,
-  placeholder = "Start typing...",
-}) => {
+const EditorTextBlock = ({ value, onUpdate }) => {
   const contentRef = useRef(null);
   const emojiPickerRef = useRef(null);
-
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const [activeEmojiCategory, setActiveEmojiCategory] = useState("smileys");
   const [activeCommands, setActiveCommands] = useState({});
-  const [wordCount, setWordCount] = useState(0);
-  const [charCount, setCharCount] = useState(0);
 
-  // Toast notification system (simple implementation)
-  const showToast = useCallback((message, type = "info") => {
-    console.log(`${type.toUpperCase()}: ${message}`);
-  }, []);
-
-  // Initialize content
+  // Load initial content
   useEffect(() => {
     if (contentRef.current && value !== contentRef.current.innerHTML) {
-      contentRef.current.innerHTML = value || `<p><br></p>`;
-      updateCounts();
+      contentRef.current.innerHTML = value || "<p></p>";
     }
   }, [value]);
 
@@ -120,20 +80,8 @@ const EditorTextBlock = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Update word and character counts
-  const updateCounts = useCallback(() => {
-    if (!contentRef.current) return;
-
-    const text = contentRef.current.innerText || "";
-    const words = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
-    const chars = text.length;
-
-    setWordCount(words);
-    setCharCount(chars);
-  }, []);
-
-  // Check which formatting commands are active
-  const checkActiveCommands = useCallback(() => {
+  // Check which buttons are active
+  const checkActiveCommands = () => {
     const commands = [
       "bold",
       "italic",
@@ -145,7 +93,6 @@ const EditorTextBlock = ({
       "insertOrderedList",
       "insertUnorderedList",
     ];
-
     const newActiveCommands = {};
     commands.forEach((cmd) => {
       try {
@@ -155,446 +102,182 @@ const EditorTextBlock = ({
       }
     });
     setActiveCommands(newActiveCommands);
-  }, []);
+  };
 
-  // Execute formatting commands with better error handling
-  const execCommand = useCallback(
-    (command, value = null) => {
-      if (!contentRef.current) return;
-
-      // Ensure the editor has focus before executing commands
-      contentRef.current.focus();
-
-      try {
-        const selection = window.getSelection();
-
-        // For commands that need text selection, check if we have a valid selection
-        if (["removeFormat", "createLink"].includes(command)) {
-          if (
-            !selection ||
-            selection.isCollapsed ||
-            !selection.toString().trim()
-          ) {
-            showToast("Please select text first.", "error");
-            return;
-          }
-        }
-
-        // For basic formatting commands, ensure we have a proper selection context
-        if (
-          ["bold", "italic", "underline", "strikeThrough"].includes(command)
-        ) {
-          // If no selection exists, create a collapsed range at the current cursor position
-          if (
-            !selection.rangeCount ||
-            !contentRef.current.contains(selection.focusNode)
-          ) {
-            const range = document.createRange();
-            range.selectNodeContents(contentRef.current);
-            range.collapse(false);
-            selection.removeAllRanges();
-            selection.addRange(range);
-          }
-        }
-
-        // Handle list commands with better logic
-        if (
-          command === "insertOrderedList" ||
-          command === "insertUnorderedList"
-        ) {
-          const isInList = document.queryCommandState(command);
-          if (isInList) {
-            document.execCommand("outdent", false, null);
-          } else {
-            document.execCommand(command, false, null);
-          }
-        } else {
-          // Execute the command
-          const success = document.execCommand(command, false, value);
-          if (!success && !["undo", "redo"].includes(command)) {
-            console.warn(
-              `Command ${command} may not have executed successfully`
-            );
-          }
-        }
-
-        // Delay content update to allow command to fully execute
-        requestAnimationFrame(() => {
-          handleContentChange();
-          if (contentRef.current) {
-            contentRef.current.focus();
-          }
-        });
-      } catch (error) {
-        console.error(`Error executing ${command}:`, error);
-        showToast(`Error executing ${command}`, "error");
-      }
-    },
-    [showToast]
-  );
-
-  // Handle content changes
-  const handleContentChange = useCallback(() => {
-    if (!contentRef.current) return;
-
-    let html = contentRef.current.innerHTML;
-
-    // Prevent completely empty content
-    if (html.trim() === "" || html === "<br>" || html === "<div><br></div>") {
-      html = "<p><br></p>";
-      contentRef.current.innerHTML = html;
-    }
-
-    if (onUpdate) {
-      onUpdate(html);
-    }
-    updateCounts();
-    checkActiveCommands();
-  }, [onUpdate, updateCounts, checkActiveCommands]);
-
-  // Clear all content
-  const clearContent = useCallback(() => {
-    if (contentRef.current) {
-      contentRef.current.innerHTML = `<p><br></p>`;
-      handleContentChange();
-      showToast("Content cleared", "success");
-      contentRef.current.focus();
-
-      // Place cursor at the beginning
-      const range = document.createRange();
+  // Execute formatting commands
+  const execCommand = (command, val = null) => {
+    try {
       const selection = window.getSelection();
-      range.setStart(contentRef.current.firstChild, 0);
-      range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
-  }, [handleContentChange, showToast]);
+      if (
+        command === "removeFormat" &&
+        (!selection || selection.isCollapsed || !selection.toString().trim())
+      ) {
+        toast.error("Please select text to remove formatting.");
+        return;
+      }
 
-  // Insert link
-  const insertLink = useCallback(() => {
-    const selection = window.getSelection();
-    if (!selection.rangeCount || !selection.toString().trim()) {
-      showToast("Please select text to create a link.", "error");
-      return;
-    }
+      // For lists, ensure proper nesting and cleanup
+      if (
+        command === "insertOrderedList" ||
+        command === "insertUnorderedList"
+      ) {
+        const range = selection.getRangeAt(0);
+        const parent = range.commonAncestorContainer.parentElement;
+        if (
+          parent.tagName === "UL" ||
+          parent.tagName === "OL" ||
+          parent.closest("ul, ol")
+        ) {
+          // Toggle off if already in a list
+          document.execCommand("outdent", false, null);
+        } else {
+          document.execCommand(command, false, null);
+        }
+      } else {
+        document.execCommand(command, false, val);
+      }
 
+      onUpdate(contentRef.current?.innerHTML || "");
+      checkActiveCommands();
+      contentRef.current?.focus();
+    } catch (e) {
+      console.error(`[EditorTextBlock] Error executing ${command}:`, e);
+      toast.error(`Error executing ${command}`);
+    }
+  };
+
+  // Handle content change
+  const handleInput = () => {
+    const html = contentRef.current?.innerHTML || "";
+    onUpdate(html);
+    checkActiveCommands();
+  };
+
+  // Clear entire editor
+  const clearContent = () => {
+    if (contentRef.current) {
+      contentRef.current.innerHTML = "<p></p>";
+      onUpdate("<p></p>");
+      toast.success("Block content cleared");
+      contentRef.current.focus();
+    }
+  };
+
+  // Insert link around selected text
+  const insertLink = () => {
     const url = prompt("Enter the URL:");
     if (!url) return;
-
-    try {
-      const range = selection.getRangeAt(0);
-      const link = document.createElement("a");
-      link.href = url.startsWith("http") ? url : `https://${url}`;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = selection.toString();
-      link.style.color = "#2563eb";
-      link.style.textDecoration = "underline";
-
-      range.deleteContents();
-      range.insertNode(link);
-
-      // Move cursor after the link
-      range.setStartAfter(link);
-      range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
-
-      handleContentChange();
-      showToast("Link created successfully", "success");
-    } catch (error) {
-      console.error("Error creating link:", error);
-      showToast("Error creating link", "error");
+    const selection = window.getSelection();
+    if (!selection.rangeCount || !selection.toString()) {
+      toast.error("Please select text to link.");
+      return;
     }
-  }, [handleContentChange, showToast]);
+    const range = selection.getRangeAt(0);
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = selection.toString();
+    link.className = "text-indigo-600 underline hover:text-indigo-800";
+    range.deleteContents();
+    range.insertNode(link);
+    range.setStartAfter(link);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    onUpdate(contentRef.current?.innerHTML || "");
+    checkActiveCommands();
+  };
 
-  // Insert emoji
-  const insertEmoji = useCallback(
-    (emoji) => {
-      if (!contentRef.current) return;
-
-      contentRef.current.focus();
-
-      try {
-        const selection = window.getSelection();
-        let range;
-
-        if (
-          selection.rangeCount > 0 &&
-          contentRef.current.contains(selection.focusNode)
-        ) {
-          range = selection.getRangeAt(0);
-        } else {
-          // Create a range at the end if no valid selection
-          range = document.createRange();
-          range.selectNodeContents(contentRef.current);
-          range.collapse(false);
-        }
-
-        const emojiNode = document.createTextNode(emoji);
-        range.deleteContents();
-        range.insertNode(emojiNode);
-
-        // Move cursor after the emoji
-        range.setStartAfter(emojiNode);
-        range.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(range);
-
-        handleContentChange();
-        setEmojiPickerOpen(false);
-      } catch (error) {
-        console.error("Error inserting emoji:", error);
-        showToast("Error inserting emoji", "error");
-      }
-    },
-    [handleContentChange, showToast]
-  );
-
-  // Insert blockquote
-  const insertBlockquote = useCallback(() => {
-    execCommand("formatBlock", "blockquote");
-  }, [execCommand]);
-
-  // Insert code block
-  const insertCodeBlock = useCallback(() => {
-    execCommand("formatBlock", "pre");
-  }, [execCommand]);
-
-  // Copy content to clipboard
-  const copyToClipboard = useCallback(async () => {
-    if (!contentRef.current) return;
-
-    try {
-      await navigator.clipboard.writeText(contentRef.current.innerText);
-      showToast("Content copied to clipboard", "success");
-    } catch (error) {
-      showToast("Failed to copy content", "error");
-    }
-  }, [showToast]);
-
-  // Handle paste with formatting cleanup
-  const handlePaste = useCallback(
-    (e) => {
-      e.preventDefault();
-
-      try {
-        const text = e.clipboardData.getData("text/plain");
-        const selection = window.getSelection();
-
-        if (selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-          range.deleteContents();
-          const textNode = document.createTextNode(text);
-          range.insertNode(textNode);
-
-          // Move cursor after inserted text
-          range.setStartAfter(textNode);
-          range.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-
-        handleContentChange();
-      } catch (error) {
-        console.error("Error handling paste:", error);
-        showToast("Error pasting content", "error");
-      }
-    },
-    [handleContentChange, showToast]
-  );
-
-  // Handle keyboard shortcuts
-  const handleKeyDown = useCallback(
-    (e) => {
-      if (e.ctrlKey || e.metaKey) {
-        switch (e.key.toLowerCase()) {
-          case "b":
-            e.preventDefault();
-            execCommand("bold");
-            break;
-          case "i":
-            e.preventDefault();
-            execCommand("italic");
-            break;
-          case "u":
-            e.preventDefault();
-            execCommand("underline");
-            break;
-          case "z":
-            e.preventDefault();
-            if (e.shiftKey) {
-              execCommand("redo");
-            } else {
-              execCommand("undo");
-            }
-            break;
-        }
-      }
-    },
-    [execCommand]
-  );
-
-  // Handle selection changes
-  const handleSelectionChange = useCallback(() => {
-    // Small delay to ensure selection has stabilized
-    setTimeout(checkActiveCommands, 10);
-  }, [checkActiveCommands]);
-
-  const toolbarButtons = [
-    { icon: Bold, command: "bold", title: "Bold (Ctrl+B)" },
-    { icon: Italic, command: "italic", title: "Italic (Ctrl+I)" },
-    { icon: Underline, command: "underline", title: "Underline (Ctrl+U)" },
-    { icon: Strikethrough, command: "strikeThrough", title: "Strikethrough" },
-    { type: "divider" },
-    { icon: AlignLeft, command: "justifyLeft", title: "Align Left" },
-    { icon: AlignCenter, command: "justifyCenter", title: "Align Center" },
-    { icon: AlignRight, command: "justifyRight", title: "Align Right" },
-    { type: "divider" },
-    { icon: List, command: "insertUnorderedList", title: "Bullet List" },
-    { icon: ListOrdered, command: "insertOrderedList", title: "Numbered List" },
-    { icon: Quote, command: insertBlockquote, title: "Quote" },
-    { icon: Code, command: insertCodeBlock, title: "Code Block" },
-    { type: "divider" },
-    { icon: Link, command: insertLink, title: "Insert Link" },
-    { icon: Undo2, command: "undo", title: "Undo (Ctrl+Z)" },
-    { icon: Redo2, command: "redo", title: "Redo (Ctrl+Shift+Z)" },
-    { type: "divider" },
-    { icon: Copy, command: copyToClipboard, title: "Copy Text" },
-    { text: "🚫", command: "removeFormat", title: "Remove Formatting" },
-  ];
+  // Insert emoji at cursor
+  const insertEmoji = (emoji) => {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(document.createTextNode(emoji));
+    range.setStartAfter(range.endContainer);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    onUpdate(contentRef.current?.innerHTML || "");
+    setEmojiPickerOpen(false);
+    contentRef.current?.focus();
+    checkActiveCommands();
+  };
 
   return (
-    <div
-      className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
-      style={{
-        border: "1px solid #d1d5db",
-        borderRadius: "12px",
-
-        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-        transition: "all 0.3s ease",
-      }}
-    >
+    <div className="mb-4 border rounded-xl p-3 sm:p-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md transition-shadow hover:shadow-lg">
       {/* Toolbar */}
-      <div
-        className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: "4px",
-          padding: "12px",
-          borderBottom: "1px solid #d1d5db",
-
-          borderRadius: "12px 12px 0 0",
-        }}
-      >
-        {toolbarButtons.map((button, index) => {
-          if (button.type === "divider") {
-            return (
-              <div
-                className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
-                key={index}
-                style={{
-                  width: "1px",
-                  height: "24px",
-
-                  margin: "0 4px",
-                }}
-              />
-            );
-          }
-
-          const Icon = button.icon;
-          const isActive = activeCommands[button.command];
-
-          return (
-            <button
-              key={index}
-              onMouseDown={(e) => {
-                // Prevent losing focus from the editor
-                e.preventDefault();
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                if (typeof button.command === "function") {
-                  button.command();
-                } else {
-                  execCommand(button.command);
-                }
-              }}
-              title={button.title}
-              className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
-              style={{
-                padding: "8px",
-                borderRadius: "8px",
-                border: "none",
-
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-                transform: isActive ? "scale(1.05)" : "scale(1)",
-                boxShadow: isActive ? "0 2px 4px rgba(0, 0, 0, 0.1)" : "none",
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.target.style.backgroundColor = "#f3f4f6";
-                  e.target.style.color = "#111827";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.target.style.backgroundColor = "transparent";
-                  e.target.style.color = "#4b5563";
-                }
-              }}
-            >
-              {Icon ? <Icon size={16} /> : button.text}
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap gap-1 sm:gap-2 mb-3 p-2 sm:p-3 rounded-lg">
+        {[
+          { icon: <FaBold />, command: "bold", title: "Bold" },
+          { icon: <FaItalic />, command: "italic", title: "Italic" },
+          { icon: <FaUnderline />, command: "underline", title: "Underline" },
+          {
+            icon: <FaStrikethrough />,
+            command: "strikeThrough",
+            title: "Strikethrough",
+          },
+          {
+            icon: <FaAlignLeft />,
+            command: "justifyLeft",
+            title: "Align Left",
+          },
+          {
+            icon: <FaAlignCenter />,
+            command: "justifyCenter",
+            title: "Align Center",
+          },
+          {
+            icon: <FaAlignRight />,
+            command: "justifyRight",
+            title: "Align Right",
+          },
+          { icon: "1.", command: "insertOrderedList", title: "Ordered List" },
+          { icon: "•", command: "insertUnorderedList", title: "Bullet List" },
+          {
+            icon: <FaLink className="text-indigo-500" />,
+            command: insertLink,
+            title: "Insert Link",
+          },
+          { icon: <FaUndo />, command: "undo", title: "Undo" },
+          { icon: <FaRedo />, command: "redo", title: "Redo" },
+          { icon: "🚫", command: "removeFormat", title: "Remove Format" },
+        ].map(({ icon, command, title }, i) => (
+          <button
+            key={i}
+            onClick={() =>
+              typeof command === "function" ? command() : execCommand(command)
+            }
+            title={title}
+            className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
+              activeCommands[command]
+                ? "bg-indigo-500 text-white"
+                : "hover:bg-gray-200 dark:hover:bg-gray-700"
+            } focus:ring-2 focus:ring-indigo-500 focus:outline-none`}
+            aria-pressed={activeCommands[command] || false}
+            aria-label={title}
+          >
+            {icon}
+          </button>
+        ))}
 
         {/* Text Color Picker */}
-        <div style={{ position: "relative", marginLeft: "8px" }}>
-          <input
-            type="color"
-            onMouseDown={(e) => e.preventDefault()}
-            onChange={(e) => execCommand("foreColor", e.target.value)}
-            defaultValue="#000000"
-            title="Text Color"
-            style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "8px",
-              border: "2px solid #d1d5db",
-              cursor: "pointer",
-            }}
-          />
-          <Palette
-            size={12}
-            style={{
-              position: "absolute",
-              bottom: "0",
-              right: "0",
-              pointerEvents: "none",
-            }}
-          />
-        </div>
+        <input
+          type="color"
+          onChange={(e) => execCommand("foreColor", e.target.value)}
+          defaultValue="#000000"
+          title="Text Color"
+          className="w-6 h-6 sm:w-8 sm:h-8 p-1 rounded-lg border focus:ring-2 focus:ring-indigo-500"
+          aria-label="Text color picker"
+        />
 
         {/* Font Size Selector */}
         <select
-          onMouseDown={(e) => e.preventDefault()}
           onChange={(e) => execCommand("fontSize", e.target.value)}
           defaultValue="3"
           title="Font Size"
-          className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
-          style={{
-            marginLeft: "8px",
-            padding: "4px 12px",
-            borderRadius: "8px",
-            border: "1px solid #d1d5db",
-
-            fontSize: "14px",
-          }}
+          className="border rounded-lg px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
+          aria-label="Font size selector"
         >
           <option value="1">10px</option>
           <option value="2">13px</option>
@@ -606,222 +289,67 @@ const EditorTextBlock = ({
         </select>
 
         {/* Emoji Picker */}
-        <div
-          style={{ position: "relative", marginLeft: "8px" }}
-          ref={emojiPickerRef}
-        >
+        <div className="relative" ref={emojiPickerRef}>
           <button
-            onMouseDown={(e) => e.preventDefault()}
             onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
             title="Insert Emoji"
-            className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
-            style={{
-              padding: "8px",
-              borderRadius: "8px",
-              border: "none",
-
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = "#f3f4f6";
-              e.target.style.color = "#111827";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = "transparent";
-              e.target.style.color = "#4b5563";
-            }}
+            className="p-1.5 sm:p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            aria-label="Toggle emoji picker"
+            aria-expanded={emojiPickerOpen}
           >
-            <Smile size={16} />
+            😀
           </button>
-
           {emojiPickerOpen && (
-            <div
-              className="overflow-x-scroll"
-              style={{
-                position: "absolute",
-                right: "0",
-                left: "0",
-                zIndex: "50",
-                marginTop: "8px",
-                width: "370px",
-
-                border: "1px solid #d1d5db",
-                borderRadius: "12px",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-              }}
-            >
-              {/* Emoji Category Tabs */}
-              <div
-                style={{
-                  display: "flex",
-                  borderBottom: "1px solid #d1d5db",
-                  padding: "8px",
-                }}
-              >
-                {Object.keys(emojiCategories).map((category) => (
-                  <button
-                    key={category}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setActiveEmojiCategory(category)}
-                    style={{
-                      padding: "4px 12px",
-                      borderRadius: "8px",
-                      border: "none",
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      backgroundColor:
-                        activeEmojiCategory === category
-                          ? "#3b82f6"
-                          : "transparent",
-                      color:
-                        activeEmojiCategory === category ? "white" : "#4b5563",
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    {category}
-                  </button>
-                ))}
+            <div className="absolute right-0 z-20 mt-2 p-2 sm:p-3 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark border rounded-lg shadow-xl grid grid-cols-5 sm:grid-cols-6 gap-1 sm:gap-2 max-h-40 sm:max-h-48 overflow-y-auto w-64 sm:w-72">
+              {emojiOptions.map((emoji) => (
                 <button
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => setEmojiPickerOpen(false)}
-                  style={{
-                    marginLeft: "auto",
-                    padding: "4px",
-                    border: "none",
-                    backgroundColor: "transparent",
-                    color: "#6b7280",
-                    cursor: "pointer",
-                  }}
+                  key={emoji}
+                  onClick={() => insertEmoji(emoji)}
+                  className="w-8 h-8 sm:w-10 sm:h-10 text-xl flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  aria-label={`Insert ${emoji} emoji`}
                 >
-                  <X size={16} />
+                  {emoji}
                 </button>
-              </div>
-
-              {/* Emoji Grid */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(8, 1fr)",
-                  gap: "4px",
-                  padding: "12px",
-                  maxHeight: "192px",
-                  overflowY: "auto",
-                }}
-              >
-                {emojiCategories[activeEmojiCategory].map((emoji) => (
-                  <button
-                    key={emoji}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => insertEmoji(emoji)}
-                    style={{
-                      width: "32px",
-                      height: "32px",
-                      fontSize: "18px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      border: "none",
-                      backgroundColor: "transparent",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.backgroundColor = "#f3f4f6";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.backgroundColor = "transparent";
-                    }}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
           )}
         </div>
 
         {/* Clear Content Button */}
         <button
-          onMouseDown={(e) => e.preventDefault()}
           onClick={clearContent}
-          title="Clear All Content"
-          style={{
-            marginLeft: "auto",
-            padding: "8px",
-            color: "#ef4444",
-            backgroundColor: "transparent",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.backgroundColor = "#fef2f2";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.backgroundColor = "transparent";
-          }}
+          title="Clear Block Content"
+          className="p-1.5 sm:p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none"
+          aria-label="Clear text block content"
         >
-          <Trash2 size={16} />
+          <FaBackspace className="text-red-500" size={16} />
         </button>
       </div>
 
-      {/* Editor Content */}
+      {/* Editable Area */}
       <div
         ref={contentRef}
         contentEditable
         suppressContentEditableWarning
-        onInput={handleContentChange}
-        onPaste={handlePaste}
-        onKeyDown={handleKeyDown}
-        onMouseUp={handleSelectionChange}
-        onKeyUp={handleSelectionChange}
-        onFocus={checkActiveCommands}
-        className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
-        style={{
-          minHeight: "200px",
-          padding: "16px",
-
-          outline: "none",
-          lineHeight: "1.6",
-        }}
+        onInput={handleInput}
+        onClick={checkActiveCommands}
+        onKeyUp={checkActiveCommands}
+        onMouseUp={checkActiveCommands}
+        className="
+  min-h-[100px] sm:min-h-[120px] p-3 sm:p-4 rounded-lg
+  bg-background-light dark:bg-background-dark
+  text-text-main-light dark:text-text-main-dark
+  border border-gray-200 dark:border-gray-800
+  focus:outline-none focus:ring-2 focus:ring-indigo-500
+  text-xs sm:text-sm leading-relaxed
+  [&>ul]:list-disc [&>ul]:pl-5
+  [&>ol]:list-decimal [&>ol]:pl-5
+  [&>ul]:space-y-1 [&>ol]:space-y-1
+"
         role="textbox"
         aria-multiline="true"
-        aria-label="Rich text editor"
+        aria-label="Text editor"
       />
-
-      {/* Footer with stats */}
-      <div
-        className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "8px 16px",
-          backgroundColor: "#f9fafb",
-          borderRadius: "0 0 12px 12px",
-          fontSize: "14px",
-
-          borderTop: "1px solid #d1d5db",
-        }}
-      >
-        <div
-          className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
-          style={{ display: "flex", gap: "16px" }}
-        >
-          <span>{wordCount} words</span>
-          <span>{charCount} characters</span>
-        </div>
-        <div
-          className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
-          style={{ fontSize: "12px" }}
-        >
-          Use Ctrl+B/I/U for quick formatting
-        </div>
-      </div>
     </div>
   );
 };
