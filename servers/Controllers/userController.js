@@ -492,7 +492,6 @@ export const updateProfile = async (req, res, next) => {
       );
     }
 
-    // Now also allowing 'tourCompleted' to be updated
     const updatableFields = [
       "name",
       "bio",
@@ -503,7 +502,7 @@ export const updateProfile = async (req, res, next) => {
       "avatar",
       "banner",
       "blocked",
-      "tourCompleted", // 👈 Added here
+      "tourCompleted",
     ];
 
     updatableFields.forEach((field) => {
@@ -513,10 +512,9 @@ export const updateProfile = async (req, res, next) => {
     });
 
     if (req.files) {
+      console.log("req.files:", req.files); // Debug log
       if (req.files.avatar?.[0]) {
         const file = req.files.avatar[0];
-
-        // Add validation
         if (!file.buffer || file.buffer.length === 0) {
           throw new AppError(
             "Invalid image file",
@@ -525,8 +523,14 @@ export const updateProfile = async (req, res, next) => {
             "Avatar file buffer is empty"
           );
         }
-
-        // Check file size (e.g., max 5MB)
+        if (!file.mimetype.startsWith("image/")) {
+          throw new AppError(
+            "Invalid file type",
+            400,
+            "UpdateProfile",
+            "Avatar must be an image file"
+          );
+        }
         if (file.size > 5 * 1024 * 1024) {
           throw new AppError(
             "File too large",
@@ -535,7 +539,6 @@ export const updateProfile = async (req, res, next) => {
             "Avatar file exceeds 5MB limit"
           );
         }
-
         try {
           const uploadedAvatar = await uploadToCloudinary({
             buffer: file.buffer,
@@ -547,7 +550,7 @@ export const updateProfile = async (req, res, next) => {
           });
           user.avatar = uploadedAvatar.secure_url;
         } catch (err) {
-          console.error("Cloudinary upload error:", err); // Add detailed logging
+          console.error("Cloudinary upload error:", err);
           throw new AppError(
             "Failed to upload avatar",
             500,
@@ -559,8 +562,6 @@ export const updateProfile = async (req, res, next) => {
 
       if (req.files.banner?.[0]) {
         const file = req.files.banner[0];
-
-        // Add validation
         if (!file.buffer || file.buffer.length === 0) {
           throw new AppError(
             "Invalid banner file",
@@ -569,18 +570,6 @@ export const updateProfile = async (req, res, next) => {
             "Banner file buffer is empty"
           );
         }
-
-        // Check file size (e.g., max 10MB for banners since they're larger)
-        if (file.size > 10 * 1024 * 1024) {
-          throw new AppError(
-            "File too large",
-            400,
-            "UpdateProfile",
-            "Banner file exceeds 10MB limit"
-          );
-        }
-
-        // Validate file type
         if (!file.mimetype.startsWith("image/")) {
           throw new AppError(
             "Invalid file type",
@@ -589,13 +578,19 @@ export const updateProfile = async (req, res, next) => {
             "Banner must be an image file"
           );
         }
-
+        if (file.size > 10 * 1024 * 1024) {
+          throw new AppError(
+            "File too large",
+            400,
+            "UpdateProfile",
+            "Banner file exceeds 10MB limit"
+          );
+        }
         console.log("Banner file details:", {
           size: file.size,
           mimetype: file.mimetype,
           bufferLength: file.buffer?.length,
         });
-
         try {
           const uploadedBanner = await uploadToCloudinary({
             buffer: file.buffer,
@@ -642,7 +637,7 @@ export const updateProfile = async (req, res, next) => {
       profession: user.profession,
       role: user.role,
       blocked: user.blocked,
-      tourCompleted: user.tourCompleted, // 👈 Include in emitted data
+      tourCompleted: user.tourCompleted,
     };
 
     io.to("adminRoom").emit("userProfileUpdate", profileUpdateData);
