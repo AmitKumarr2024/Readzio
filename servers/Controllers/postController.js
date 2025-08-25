@@ -408,7 +408,7 @@ const processBlock = async (block, blockLimit, imageLimit) => {
     if (block.type === "image" && block.src && !block.isEmbed) {
       logMemory(`🖼️ Processing image block ${block.id}`);
       processedBlock.src = await imageLimit(() =>
-        processImage(block.src, block.id, "blogs/post/images/")
+        processImage(block.src, block.id, "inkshaa/post/images/")
       );
     }
 
@@ -832,7 +832,7 @@ export const createPost = async (req, res, next) => {
     if (rawThumbnail && !isThumbnailEmbed) {
       logMemory("🖼️ Before processing thumbnail");
       processedThumbnail = await imageLimit(() =>
-        processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
+        processImage(rawThumbnail, "thumbnail", "inkshaa/post/thumbnails/")
       );
       logMemory("🖼️ After processing thumbnail");
     } else if (rawThumbnail && isThumbnailEmbed) {
@@ -2279,7 +2279,7 @@ export const updatePostBySlug = async (req, res, next) => {
     if (rawThumbnail && !isThumbnailEmbed) {
       try {
         processedThumbnail = await pLimit(2)(() =>
-          processImage(rawThumbnail, "thumbnail", "blogs/post/thumbnails/")
+          processImage(rawThumbnail, "thumbnail", "inkshaa/post/thumbnails/")
         );
         // console.log(
         //   "[UpdatePostBySlug] Thumbnail processed:",

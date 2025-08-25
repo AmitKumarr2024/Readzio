@@ -29,7 +29,7 @@ export const processBlock = async (block) => {
       if (isBase64Image(block.src)) {
         const result = await uploadToCloudinary({
           base64: block.src,
-          folder: "blogs/post/blocks/images/",
+          folder: "Inkshaa/post/blocks/images/",
         });
         processed.src = result.secure_url;
       } else if (isHttpURL(block.src)) {
@@ -47,7 +47,7 @@ export const processBlock = async (block) => {
 
         const result = await uploadToCloudinary({
           buffer: compressedBuffer,
-          folder: "blogs/post/blocks/images/",
+          folder: "inkshaa/post/blocks/images/",
         });
         processed.src = result.secure_url;
       }
