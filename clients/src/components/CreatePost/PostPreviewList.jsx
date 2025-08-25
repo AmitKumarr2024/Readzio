@@ -83,10 +83,10 @@ const PostPreviewList = ({
   useEffect(() => {
     let timer;
     if (isPostConfirmed && countdown > 0 && !createLoading) {
-      console.log("Countdown running:", countdown);
+      // console.log("Countdown running:", countdown);
       timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
     } else if (isPostConfirmed && countdown === 0 && !createLoading) {
-      console.log("Countdown reached 0, calling handleConfirmPublish");
+      // console.log("Countdown reached 0, calling handleConfirmPublish");
       handleConfirmPublish();
     }
     return () => clearTimeout(timer);
@@ -107,14 +107,14 @@ const PostPreviewList = ({
 
   const createPost = useCallback(
     debounce(() => {
-      console.log(
-        "createPost called, isSubmitting:",
-        isSubmitting,
-        "createLoading:",
-        createLoading
-      );
+      // console.log(
+      //   "createPost called, isSubmitting:",
+      //   isSubmitting,
+      //   "createLoading:",
+      //   createLoading
+      // );
       if (isSubmitting || createLoading) {
-        console.log("[PostPreviewList] Submission already in progress");
+        // console.log("[PostPreviewList] Submission already in progress");
         return;
       }
       if (
@@ -156,7 +156,7 @@ const PostPreviewList = ({
   );
 
   const handleModalConfirm = async ({ tags, thumbnail }) => {
-    console.log("handleModalConfirm called, triggering handleConfirmPublish");
+    // console.log("handleModalConfirm called, triggering handleConfirmPublish");
     const newPostData = {
       tags,
       thumbnail,
@@ -241,15 +241,15 @@ const PostPreviewList = ({
     setShowPublishLoading(true);
     // Wait for state to update and ensure re-render
     await new Promise((resolve) => setTimeout(resolve, 100)); // Increase delay slightly
-    console.log(
-      "LoadingBar triggered, showPublishLoading:",
-      showPublishLoading
-    );
+    // console.log(
+    //   "LoadingBar triggered, showPublishLoading:",
+    //   showPublishLoading
+    // );
     try {
-      console.log("[CreatePost] Sending postData:", {
-        ...postData,
-        draft: cleanedDraft,
-      });
+      // console.log("[CreatePost] Sending postData:", {
+      //   ...postData,
+      //   draft: cleanedDraft,
+      // });
       await onCreatePost({ ...postData, draft: cleanedDraft });
     } catch (err) {
       console.error("[PostPreviewList] Post creation failed:", err);
