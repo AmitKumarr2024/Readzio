@@ -157,7 +157,7 @@ const CardOfPost = ({
 
           {/* Premium Badge (Top-Left) */}
           {isPostPremium && (
-            <span className="absolute top-1 left-2 flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-bold rounded-full shadow-lg backdrop-blur-sm animate-pulse">
+            <span className="absolute top-0 left-0 flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-bold rounded-full shadow-lg backdrop-blur-sm animate-pulse">
               <Crown className="w-3 h-3" />
               Premium
             </span>
@@ -165,7 +165,7 @@ const CardOfPost = ({
 
           {/* Read Time (Top-Right) */}
           {readTime && (
-            <span className="absolute top-1 right-2 flex items-center gap-1 px-3 py-1.5 bg-black/70 text-white text-xs font-medium rounded-full backdrop-blur-sm">
+            <span className="absolute top-0 right-0 flex items-center gap-1 px-3 py-1.5 bg-black/70 text-white text-xs font-medium rounded-full backdrop-blur-sm">
               <Clock className="w-3 h-3" />
               {readTime}
             </span>
@@ -174,7 +174,7 @@ const CardOfPost = ({
           {/* Post Type Badge (Bottom-Left) */}
           {postType && (
             <span
-              className={`absolute -bottom-1 left-2 flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full text-white animate-pulse ${
+              className={`absolute bottom-1 left-1 flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full text-white animate-pulse ${
                 postType.toLowerCase() === "blog"
                   ? "bg-indigo-600"
                   : postType.toLowerCase() === "article"
@@ -190,7 +190,7 @@ const CardOfPost = ({
 
           {/* Subscribed Badge (Bottom-Right) */}
           {isSubscribedToAuthor && authorId !== currentUser?._id && (
-            <span className="absolute -bottom-1 right-2 flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg animate-pulse">
+            <span className="absolute bottom-1 right-1 flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg animate-pulse">
               <Sparkles className="w-3 h-3" />
               Subscribed
             </span>
