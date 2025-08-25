@@ -512,7 +512,7 @@ export const updateProfile = async (req, res, next) => {
     });
 
     if (req.files) {
-      console.log("req.files:", req.files); // Debug log
+      // console.log("req.files:", req.files); // Debug log
       if (req.files.avatar?.[0]) {
         const file = req.files.avatar[0];
         if (!file.buffer || file.buffer.length === 0) {
@@ -586,11 +586,11 @@ export const updateProfile = async (req, res, next) => {
             "Banner file exceeds 10MB limit"
           );
         }
-        console.log("Banner file details:", {
-          size: file.size,
-          mimetype: file.mimetype,
-          bufferLength: file.buffer?.length,
-        });
+        // console.log("Banner file details:", {
+        //   size: file.size,
+        //   mimetype: file.mimetype,
+        //   bufferLength: file.buffer?.length,
+        // });
         try {
           const uploadedBanner = await uploadToCloudinary({
             buffer: file.buffer,
