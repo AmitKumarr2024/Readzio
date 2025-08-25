@@ -257,7 +257,7 @@ const CardOfPost = ({
         {/* Tags */}
         {tags?.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {tags.slice(0, 3).map((tag, index) => (
+            {tags.slice(0, 2).map((tag, index) => (
               <span
                 key={tag}
                 className={`px-3 py-1 text-xs font-medium rounded-full transition-all duration-200 hover:scale-105 cursor-pointer ${
@@ -271,9 +271,9 @@ const CardOfPost = ({
                 #{tag}
               </span>
             ))}
-            {tags.length > 3 && (
+            {tags.length > 2 && (
               <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer">
-                +{tags.length - 3} more
+                +{tags.length - 2} more
               </span>
             )}
           </div>
