@@ -21,6 +21,7 @@ import {
   Copy,
   Scissors,
   ClipboardPaste,
+  Trash2,
 } from "lucide-react";
 
 // Emoji options with categories
