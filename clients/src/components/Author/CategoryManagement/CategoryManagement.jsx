@@ -1,4 +1,3 @@
-// components/Author/CategoryManagement/CategoryManagement.jsx
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -24,9 +23,11 @@ import {
 
 const AddCategory = ({ onAdd }) => {
   const dispatch = useDispatch();
-  const { loadingStates, error, slugAvailability } = useSelector(
-    (state) => state.categories
-  );
+  const {
+    loadingStates = {},
+    error,
+    slugAvailability,
+  } = useSelector((state) => state.categories);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
@@ -328,8 +329,13 @@ const AddCategory = ({ onAdd }) => {
 const CategoryManagement = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const { categories, userSelectedCategories, status, error, loadingStates } =
-    useSelector((state) => state.categories);
+  const {
+    categories,
+    userSelectedCategories,
+    status,
+    error,
+    loadingStates = {},
+  } = useSelector((state) => state.categories);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -415,7 +421,7 @@ const CategoryManagement = () => {
     toast.info("Changes reset");
   };
 
-  if (loadingStates.fetching && categories.length === 0) {
+  if (loadingStates?.fetching && categories.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900">
         <motion.div
