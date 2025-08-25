@@ -21,120 +21,103 @@ const GUEST_VISIT_WINDOW = 60 * 1000; // 1 minute
 // GET /public/posts
 export const getPublicPosts = async (req, res, next) => {
   try {
-    const { 
-      page = 1, 
-      limit = 12, 
-      tag, 
-      search,
-      sortBy = 'newest',
-      author 
-    } = req.query;
-    
+    logMemory("Before getPublicPosts start");
+    const { page = 1, limit = 12, tag, after, blocked = false } = req.query;
     const pageNum = parseInt(page);
-    const limitNum = Math.min(parseInt(limit), 50);
+    const limitNum = Math.min(parseInt(limit), 100);
+    const cacheKey = `publicPosts:${pageNum}:${limitNum}:${tag || "all"}:${
+      after || "none"
+    }:${blocked}`;
 
-    // Create cache key
-    const cacheKey = `posts:${pageNum}:${limitNum}:${tag || ''}:${search || ''}:${sortBy}:${author || ''}`;
-    
-    // Check cache first
-    const cached = cache.get(cacheKey);
-    if (cached) {
+    console.log(
+      `Request params: page=${pageNum}, limit=${limitNum}, tag=${
+        tag || "none"
+      }, after=${after || "none"}, blocked=${blocked}`
+    );
+    logMemory(`Before checking cache: ${cacheKey}`);
+    const cachedPosts = cache.get(cacheKey);
+    if (cachedPosts) {
+      logMemory(`Cache hit: ${cacheKey}`);
+      console.log(`Returning cached posts: ${cachedPosts.posts.length} posts`);
       return res.status(200).json({
         success: true,
-        ...cached,
-        fromCache: true
+        posts: cachedPosts.posts,
+        total: cachedPosts.total,
+        page: pageNum,
+        lastFetched: cachedPosts.lastFetched,
       });
     }
 
-    // Build query
     const query = {
       isPublished: true,
-      blocked: { $ne: true }
+      blocked: blocked === "false" ? false : { $ne: true },
+      ...(tag ? { tags: { $in: [tag] } } : {}),
+      ...(after ? { createdAt: { $lt: new Date(after) } } : {}),
     };
 
-    // Add filters
-    if (tag) query.tags = { $in: [tag] };
-    if (author) query.author = author;
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { excerpt: { $regex: search, $options: 'i' } },
-        { tags: { $in: [new RegExp(search, 'i')] } }
-      ];
-    }
+    console.log("Query:", JSON.stringify(query));
+    logMemory("Before PostModel.find");
+    const posts = await PostModel.find(query)
+      .maxTimeMS(10000)
+      .sort({ createdAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .select(
+        "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks"
+      )
+      .populate("author", "name avatar")
+      .populate("category", "name slug")
+      .lean();
 
-    // Sort options
-    const sortOptions = {
-      newest: { createdAt: -1 },
-      oldest: { createdAt: 1 },
-      popular: { viewsCount: -1 },
-      mostShared: { shareCount: -1 }
-    };
-    const sort = sortOptions[sortBy] || sortOptions.newest;
-
-    // Execute queries in parallel
-    const [posts, total] = await Promise.all([
-      PostModel.find(query)
-        .sort(sort)
-        .skip((pageNum - 1) * limitNum)
-        .limit(limitNum)
-        .select('title slug thumbnail excerpt author viewsCount shareCount createdAt updatedAt tags category')
-        .populate('author', 'name avatar username')
-        .populate('category', 'name slug color')
-        .lean(),
-      
-      PostModel.countDocuments(query)
-    ]);
-
-    // Process posts
-    const processedPosts = posts.map(post => ({
+    console.log("Posts fetched:", posts.length);
+    logMemory("Before processing posts");
+    const processedPosts = posts.map((post) => ({
       ...post,
-      isNew: (Date.now() - new Date(post.createdAt).getTime()) < (7 * 24 * 60 * 60 * 1000), // 7 days
-      readTime: Math.ceil((post.excerpt?.length || 0) / 200) // Rough reading time
+      blocks: Array.isArray(post.blocks) ? post.blocks : [],
     }));
 
-    const result = {
-      posts: processedPosts,
-      pagination: {
-        current: pageNum,
-        total: Math.ceil(total / limitNum),
-        hasNext: pageNum < Math.ceil(total / limitNum),
-        hasPrev: pageNum > 1,
-        totalPosts: total
-      },
-      filters: {
-        tag: tag || null,
-        search: search || null,
-        sortBy,
-        author: author || null
-      }
-    };
+    logMemory("Before PostModel.countDocuments");
+    const total = await PostModel.countDocuments(query).maxTimeMS(5000).lean();
+    console.log("Total posts:", total);
 
-    // Cache the result
-    cache.set(cacheKey, result);
+    const lastFetched = posts.length ? posts[posts.length - 1].createdAt : null;
 
+    logMemory(`Before setting cache: ${cacheKey}`);
+    cache.set(cacheKey, { posts: processedPosts, total, lastFetched });
+    console.log(`Cached posts: ${processedPosts.length} posts`);
+
+    if (req.user?._id) {
+      logMemory("Before recordActivity");
+      await recordActivity({
+        userId: req.user._id,
+        action: "VIEWED_PUBLIC_POSTS",
+        message: `Viewed public posts (page: ${pageNum}, tag: ${
+          tag || "none"
+        })`,
+      });
+      console.log(`Activity recorded for user: ${req.user._id}`);
+    }
+
+    logMemory("After getPublicPosts complete");
+    console.log("Returning response with posts:", processedPosts.length);
     res.status(200).json({
       success: true,
-      ...result
+      posts: processedPosts,
+      total,
+      page: pageNum,
+      lastFetched,
     });
-
   } catch (error) {
-    console.error('Error in getPublicPosts:', error);
-    
-    // Handle specific MongoDB errors
-    if (error.name === 'CastError') {
-      return next(new AppError('Invalid ID format', 400));
-    }
-    
-    if (error.name === 'MongoTimeoutError') {
-      return next(new AppError('Database timeout', 504));
-    }
-
-    next(new AppError(
-      error.message || 'Failed to fetch posts', 
-      error.statusCode || 500,
-      'GET_PUBLIC_POSTS_ERROR'
-    ));
+    console.error("Error in getPublicPosts:", error.message, error.stack);
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Failed to fetch public posts",
+            500,
+            "GetPublicPosts"
+          )
+    );
   }
 };
 
