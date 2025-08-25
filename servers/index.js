@@ -157,15 +157,17 @@ app.use(
 
 app.use(
   express.json({
-    limit: "20mb",
+    limit: "30mb", // allow up to 30MB payloads
     verify: (req, res, buf) => {
       if (req.path.includes("/webhook")) req.rawBody = buf;
     },
   })
 );
+
 app.use(
-  express.urlencoded({ extended: true, limit: "20mb", parameterLimit: 50000 })
+  express.urlencoded({ extended: true, limit: "30mb", parameterLimit: 50000 })
 );
+
 app.use(cookieParser());
 
 const routeConfigs = [
