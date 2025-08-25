@@ -47,7 +47,7 @@ const CreatePost = () => {
   );
   const { categories } = useSelector((state) => state.categories);
 
-  const MAX_PAYLOAD_SIZE = 8 * 1024 * 1024; // 8MB
+  const MAX_PAYLOAD_SIZE = 16 * 1024 * 1024; // 16 MB
   const MAX_TEXT_BLOCK_SIZE = 100 * 1024; // 100KB
   const MAX_TABLE_BLOCK_SIZE = 200 * 1024; // 200KB
   const MAX_IMAGE_COUNT = 20; // 20 images
