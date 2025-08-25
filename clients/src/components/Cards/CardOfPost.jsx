@@ -152,45 +152,49 @@ const CardOfPost = ({
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
+          {/* Dark gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60" />
-        </div>
 
-        {/* Overlay Content */}
-        <div className="absolute inset-0 flex flex-col justify-between p-4">
-          {/* Top Row - Premium & Read Time */}
-          <div className="flex justify-between items-start">
-            {isPostPremium && (
-              <div className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-bold rounded-full shadow-lg backdrop-blur-sm">
-                <Crown className="w-3 h-3" />
-                Premium
-              </div>
-            )}
-            {readTime && (
-              <div className="flex items-center gap-1 px-3 py-1.5 bg-black/70 text-white text-xs font-medium rounded-full backdrop-blur-sm">
-                <Clock className="w-3 h-3" />
-                {readTime}
-              </div>
-            )}
-          </div>
+          {/* Premium Badge (Top-Left) */}
+          {isPostPremium && (
+            <span className="absolute top-1 left-2 flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-bold rounded-full shadow-lg backdrop-blur-sm animate-pulse">
+              <Crown className="w-3 h-3" />
+              Premium
+            </span>
+          )}
 
-          {/* Bottom Row - Post Type */}
-          <div className="flex justify-between items-end">
-            {postType && (
-              <div
-                className={`flex items-center gap-1 px-3 py-1.5 ${postTypeConfig.bg} text-white text-xs font-semibold rounded-full shadow-lg`}
-              >
-                <span>{postTypeConfig.icon}</span>
-                {postType}
-              </div>
-            )}
+          {/* Read Time (Top-Right) */}
+          {readTime && (
+            <span className="absolute top-1 right-2 flex items-center gap-1 px-3 py-1.5 bg-black/70 text-white text-xs font-medium rounded-full backdrop-blur-sm">
+              <Clock className="w-3 h-3" />
+              {readTime}
+            </span>
+          )}
 
-            {isSubscribedToAuthor && authorId !== currentUser?._id && (
-              <div className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg">
-                <Sparkles className="w-3 h-3" />
-                Subscribed
-              </div>
-            )}
-          </div>
+          {/* Post Type Badge (Bottom-Left) */}
+          {postType && (
+            <span
+              className={`absolute -bottom-1 left-2 flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full text-white animate-pulse ${
+                postType.toLowerCase() === "blog"
+                  ? "bg-indigo-600"
+                  : postType.toLowerCase() === "article"
+                  ? "bg-emerald-600"
+                  : postType.toLowerCase() === "news"
+                  ? "bg-red-600"
+                  : "bg-gray-500"
+              }`}
+            >
+              {postType}
+            </span>
+          )}
+
+          {/* Subscribed Badge (Bottom-Right) */}
+          {isSubscribedToAuthor && authorId !== currentUser?._id && (
+            <span className="absolute -bottom-1 right-2 flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg animate-pulse">
+              <Sparkles className="w-3 h-3" />
+              Subscribed
+            </span>
+          )}
         </div>
       </div>
 
