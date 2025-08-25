@@ -780,10 +780,11 @@ const EditorTextBlock = ({
         onMouseUp={handleSelectionChange}
         onKeyUp={handleSelectionChange}
         onFocus={checkActiveCommands}
+        className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
         style={{
           minHeight: "200px",
           padding: "16px",
-          color: "#111827",
+
           outline: "none",
           lineHeight: "1.6",
         }}
@@ -794,6 +795,7 @@ const EditorTextBlock = ({
 
       {/* Footer with stats */}
       <div
+        className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -802,7 +804,7 @@ const EditorTextBlock = ({
           backgroundColor: "#f9fafb",
           borderRadius: "0 0 12px 12px",
           fontSize: "14px",
-          color: "#6b7280",
+
           borderTop: "1px solid #d1d5db",
         }}
       >
