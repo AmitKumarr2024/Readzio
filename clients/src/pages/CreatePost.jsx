@@ -90,7 +90,7 @@ const CreatePost = () => {
   const handleCreatePost = useCallback(
     debounce(async (metaData) => {
       if (isSubmitting) {
-        console.log("[CreatePost] Submission already in progress");
+        // console.log("[CreatePost] Submission already in progress");
         return;
       }
       setIsSubmitting(true);
@@ -256,9 +256,9 @@ const CreatePost = () => {
       }
 
       try {
-        console.log("[CreatePost] Sending postData:", postData);
+        // console.log("[CreatePost] Sending postData:", postData);
         const resultAction = await dispatch(createPosts(postData)).unwrap();
-        console.log("[CreatePost] Server response:", resultAction);
+        // console.log("[CreatePost] Server response:", resultAction);
         toast.success("Post created successfully!", { position: "top-right" });
         setTitle("");
         setBlocks([]);
@@ -274,20 +274,20 @@ const CreatePost = () => {
           const slug = slugify(title, { lower: true, strict: true });
 
           try {
-            console.log(
-              "[CreatePost] Checking if post exists after timeout:",
-              slug
-            );
+            // console.log(
+            //   "[CreatePost] Checking if post exists after timeout:",
+            //   slug
+            // );
             const checkPost = await asyncRetry(
               () => dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
               { retries: 5, minTimeout: 2000 }
             );
 
             if (checkPost) {
-              console.log(
-                "[CreatePost] Post was created despite timeout:",
-                checkPost.slug
-              );
+              // console.log(
+              //   "[CreatePost] Post was created despite timeout:",
+              //   checkPost.slug
+              // );
               toast.success("Post created successfully!", {
                 position: "top-right",
               });
@@ -299,7 +299,7 @@ const CreatePost = () => {
               return;
             }
           } catch (checkErr) {
-            console.log("[CreatePost] Post was not found");
+            console.error("[CreatePost] Post was not found");
           }
 
           // Show timeout-specific error
@@ -337,10 +337,10 @@ const CreatePost = () => {
           ) {
             const slug = slugify(title, { lower: true, strict: true });
             try {
-              console.log(
-                "[CreatePost] Checking for duplicate post with slug:",
-                slug
-              );
+              // console.log(
+              //   "[CreatePost] Checking for duplicate post with slug:",
+              //   slug
+              // );
               const checkPost = await asyncRetry(
                 () =>
                   dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
@@ -348,17 +348,17 @@ const CreatePost = () => {
               );
 
               if (checkPost) {
-                console.log(
-                  "[CreatePost] Duplicate post found, redirecting:",
-                  checkPost.slug
-                );
+                // console.log(
+                //   "[CreatePost] Duplicate post found, redirecting:",
+                //   checkPost.slug
+                // );
                 toast.success("Post already exists. Redirecting...", {
                   position: "top-right",
                 });
                 navigate(`/post/${checkPost.slug}`);
               }
             } catch (checkErr) {
-              console.log("[CreatePost] No duplicate post found");
+              console.error("[CreatePost] No duplicate post found");
             }
           }
         }

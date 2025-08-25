@@ -542,7 +542,7 @@ export const updateProfile = async (req, res, next) => {
         try {
           const uploadedAvatar = await uploadToCloudinary({
             buffer: file.buffer,
-            folder: "blog/users/avatar",
+            folder: "inkshaa/users/avatar",
             transformation: [
               { width: 800, height: 800, crop: "limit" },
               { quality: "auto:good", fetch_format: "auto" },
@@ -594,7 +594,7 @@ export const updateProfile = async (req, res, next) => {
         try {
           const uploadedBanner = await uploadToCloudinary({
             buffer: file.buffer,
-            folder: "blog/users/banner",
+            folder: "inkshaa/users/banner",
             transformation: [
               { width: 1200, height: 400, crop: "limit" },
               { quality: "auto:good", fetch_format: "auto" },
