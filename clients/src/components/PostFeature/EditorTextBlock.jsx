@@ -466,16 +466,18 @@ const EditorTextBlock = ({
 
   return (
     <div
+      className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
       style={{
         border: "1px solid #d1d5db",
         borderRadius: "12px",
-        backgroundColor: "white",
+
         boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
         transition: "all 0.3s ease",
       }}
     >
       {/* Toolbar */}
       <div
+        className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
         style={{
           display: "flex",
           flexWrap: "wrap",
@@ -483,7 +485,7 @@ const EditorTextBlock = ({
           gap: "4px",
           padding: "12px",
           borderBottom: "1px solid #d1d5db",
-          backgroundColor: "#f9fafb",
+
           borderRadius: "12px 12px 0 0",
         }}
       >
@@ -491,11 +493,12 @@ const EditorTextBlock = ({
           if (button.type === "divider") {
             return (
               <div
+                className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
                 key={index}
                 style={{
                   width: "1px",
                   height: "24px",
-                  backgroundColor: "#d1d5db",
+
                   margin: "0 4px",
                 }}
               />
@@ -521,12 +524,12 @@ const EditorTextBlock = ({
                 }
               }}
               title={button.title}
+              className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
               style={{
                 padding: "8px",
                 borderRadius: "8px",
                 border: "none",
-                backgroundColor: isActive ? "#3b82f6" : "transparent",
-                color: isActive ? "white" : "#4b5563",
+
                 cursor: "pointer",
                 transition: "all 0.2s ease",
                 transform: isActive ? "scale(1.05)" : "scale(1)",
@@ -583,12 +586,13 @@ const EditorTextBlock = ({
           onChange={(e) => execCommand("fontSize", e.target.value)}
           defaultValue="3"
           title="Font Size"
+          className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
           style={{
             marginLeft: "8px",
             padding: "4px 12px",
             borderRadius: "8px",
             border: "1px solid #d1d5db",
-            backgroundColor: "white",
+
             fontSize: "14px",
           }}
         >
@@ -610,12 +614,12 @@ const EditorTextBlock = ({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
             title="Insert Emoji"
+            className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
             style={{
               padding: "8px",
               borderRadius: "8px",
               border: "none",
-              backgroundColor: "transparent",
-              color: "#4b5563",
+
               cursor: "pointer",
               transition: "all 0.2s ease",
             }}
@@ -633,14 +637,15 @@ const EditorTextBlock = ({
 
           {emojiPickerOpen && (
             <div
-              className="wrap-anywhere"
+              className="overflow-x-scroll"
               style={{
                 position: "absolute",
                 right: "0",
+                left: "0",
                 zIndex: "50",
                 marginTop: "8px",
                 width: "370px",
-                backgroundColor: "white",
+
                 border: "1px solid #d1d5db",
                 borderRadius: "12px",
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
