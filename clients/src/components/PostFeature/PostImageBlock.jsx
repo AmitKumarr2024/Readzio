@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { FiUpload } from "react-icons/fi";
 import { MdDeleteForever } from "react-icons/md";
 import { motion } from "framer-motion";
