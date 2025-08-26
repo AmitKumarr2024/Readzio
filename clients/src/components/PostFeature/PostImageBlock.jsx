@@ -39,8 +39,8 @@ const PostImageBlock = ({
     >
       {/* File size display in top-right corner */}
       {fileSizeText && (
-        <span className="absolute top-1 right-12 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
-          {fileSizeText}
+        <span className="absolute top-0 left-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
+          FileSize: {fileSizeText}
         </span>
       )}
 
