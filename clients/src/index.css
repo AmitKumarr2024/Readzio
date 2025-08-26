@@ -287,3 +287,9 @@
   -webkit-image-rendering: optimize-contrast;
   -ms-interpolation-mode: nearest-neighbor;
 }
+
+/* Hide default search clear button for all browsers */
+input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
