@@ -267,7 +267,7 @@ const PostManagement = () => {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-750">
+                <thead className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                       #
@@ -295,26 +295,26 @@ const PostManagement = () => {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredPosts.map((post, index) => {
                     const serial = (page - 1) * 10 + index + 1;
                     return (
                       <tr
                         key={post._id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+                        className="hover:bg-background-light dark:hover:dark:bg-background-dark transition-colors"
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500 dark:text-gray-400">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-text-main-light dark:text-text-main-dark">
                           {serial}
                         </td>
                         <td className="px-6 py-4">
                           <div className="max-w-xs">
                             <h3
-                              className="text-sm font-semibold text-gray-900 dark:text-white truncate"
+                              className="text-sm font-semibold  text-text-main-light dark:text-text-main-dark  truncate"
                               title={post.title}
                             >
                               {post.title}
                             </h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            <p className="text-xs text-text-main-light dark:text-text-main-dark mt-1">
                               ID: {post._id.slice(-8)}
                             </p>
                           </div>
@@ -322,14 +322,14 @@ const PostManagement = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-semibold text-white">
+                              <span className="text-xs font-semibold text-text-main-light dark:text-text-main-dark">
                                 {(post.author?.name || "N")
                                   .charAt(0)
                                   .toUpperCase()}
                               </span>
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              <p className="text-sm font-medium text-text-main-light dark:text-text-main-dark">
                                 {post.author?.name || "Unknown Author"}
                               </p>
                             </div>
@@ -339,15 +339,15 @@ const PostManagement = () => {
                           <div className="text-sm">
                             {post.sizeInKB ? (
                               <div>
-                                <span className="font-mono text-gray-900 dark:text-white">
+                                <span className="font-mono text-text-main-light dark:text-text-main-dark">
                                   {parseFloat(post.sizeInKB).toFixed(1)} KB
                                 </span>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                <p className="text-xs text-text-main-light dark:text-text-main-dark">
                                   {(post.sizeInKB / 1024).toFixed(2)} MB
                                 </p>
                               </div>
                             ) : (
-                              <span className="text-gray-400 dark:text-gray-500">
+                              <span className="text-text-main-light dark:text-text-main-dark">
                                 N/A
                               </span>
                             )}
@@ -407,7 +407,7 @@ const PostManagement = () => {
             </div>
 
             {/* Table Footer */}
-            <div className="bg-gray-50 dark:bg-gray-750 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
                 <span>
                   Showing {filteredPosts.length} of {totalPosts} posts

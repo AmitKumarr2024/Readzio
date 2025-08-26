@@ -34,7 +34,7 @@ const CategorySelectPage = () => {
             <ArrowLeft size={24} />
           </button>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">
-            Welcome to Blogly ✨
+            Welcome to Inkshaa ✨
           </h1>
         </div>
         <button
