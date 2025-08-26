@@ -57,6 +57,20 @@ const RefundPolicyPage = () => {
             within <strong>9-15 days</strong> to the end customer.
           </p>
 
+          {/* ✅ Razorpay Refund Policy Link */}
+          <p className="mb-4">
+            For complete details on Razorpay's refund and cancellation policies,
+            please visit:{" "}
+            <a
+              href="https://merchant.razorpay.com/policy/QaJuLMQrZ9Vl7R/refund"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              Razorpay Refund Policy
+            </a>
+          </p>
+
           <h2 className="text-2xl font-semibold mt-6 mb-3">Contact Us</h2>
           <p className="mb-4">
             For any refund or cancellation requests, email us at{" "}

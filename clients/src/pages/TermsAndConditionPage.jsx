@@ -201,6 +201,18 @@ const TermsAndConditionPage = () => {
             .
           </p>
 
+          <p className="mb-4">
+            For complete terms and policies provided by Razorpay, please visit:{" "}
+            <a
+              href="https://merchant.razorpay.com/policy/QaJuLMQrZ9Vl7R/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              Razorpay Terms & Conditions
+            </a>
+          </p>
+
           <p className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
             © {new Date().getFullYear()} inkshaa. All rights reserved.
           </p>

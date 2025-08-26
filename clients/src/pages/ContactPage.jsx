@@ -48,6 +48,22 @@ const ContactPage = () => {
             </p>
           </div>
 
+          {/* ✅ Added Razorpay contact link */}
+          <div className="mt-6">
+            <p>
+              For additional merchant-related queries, you can also visit our{" "}
+              <a
+                href="https://merchant.razorpay.com/policy/QaJuLMQrZ9Vl7R/contact_us"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline font-semibold"
+              >
+                Razorpay Contact Page
+              </a>
+              .
+            </p>
+          </div>
+
           <p className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
             © {new Date().getFullYear()} Amit Kumar. All rights reserved.
           </p>
