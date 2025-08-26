@@ -37,7 +37,9 @@ const SearchInput = ({
       setShowDropdown(true);
     } else if (trimmed.length === 0) {
       dispatch(clearSearchedUsers());
-      setShowDropdown(false);
+      if (searchedUsers.length === 0 && searchPosts.length === 0) {
+        setShowDropdown(false);
+      }
     }
   }, 300);
 
@@ -150,6 +152,12 @@ const SearchInput = ({
 
   const isLoading = searchLoading || userLoading;
 
+  useEffect(() => {
+    if (!isLoading && searchedUsers.length === 0 && searchPosts.length === 0) {
+      setShowDropdown(false);
+    }
+  }, [isLoading, searchedUsers, searchPosts]);
+
   return (
     <div
       ref={containerRef}
@@ -174,14 +182,12 @@ const SearchInput = ({
           {...props}
         />
 
-        {/* Loading Indicator */}
         {isLoading && (
           <div className="absolute right-16 top-1/2 -translate-y-1/2">
             <FiLoader className="text-lg text-indigo-500 animate-spin" />
           </div>
         )}
 
-        {/* Clear Button */}
         {searchTerm && !isLoading && (
           <button
             onClick={clearInput}
@@ -193,10 +199,16 @@ const SearchInput = ({
           </button>
         )}
 
-        {/* Search Button */}
         <button
           onClick={handleSearch}
-          disabled={searchTerm.trim().length < 2}
+          Drug
+          Users:Alcohol
+          and
+          Other
+          Drugs
+          in
+          the
+          Workplace
           className="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white p-2.5 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
           aria-label="Search"
           type="button"
@@ -205,115 +217,115 @@ const SearchInput = ({
         </button>
       </div>
 
-      {/* Dropdown Results */}
-      {showDropdown && (
-        <div className="absolute z-50 mt-2 w-full max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl">
-          {isLoading ? (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-              <FiLoader className="inline text-lg animate-spin mr-2" />
-              Searching...
-            </div>
-          ) : searchError ? (
-            <div className="p-4 text-center text-red-500 dark:text-red-400">
-              Error: {searchError}
-            </div>
-          ) : allResults.length === 0 ? (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-              No results found for "{searchTerm}"
-            </div>
-          ) : (
-            <div className="py-2">
-              {searchedUsers.length > 0 && (
-                <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
-                  Users
-                </div>
-              )}
+      {showDropdown &&
+        (searchedUsers.length > 0 || searchPosts.length > 0 || isLoading) && (
+          <div className="absolute z-50 mt-2 w-full max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl">
+            {isLoading ? (
+              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                <FiLoader className="inline text-lg animate-spin mr-2" />
+                Searching...
+              </div>
+            ) : searchError ? (
+              <div className="p-4 text-center text-red-500 dark:text-red-400">
+                Error: {searchError}
+              </div>
+            ) : allResults.length === 0 ? (
+              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                No results found for "{searchTerm}"
+              </div>
+            ) : (
+              <div className="py-2">
+                {searchedUsers.length > 0 && (
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                    Users
+                  </div>
+                )}
 
-              {searchedUsers.map((user, index) => {
-                const globalIndex = index;
-                return (
-                  <button
-                    key={user._id}
-                    id={`search-result-${globalIndex}`}
-                    onClick={() => handleSelectUser(user._id)}
-                    className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors duration-150 focus:outline-none ${
-                      selectedIndex === globalIndex
-                        ? "bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
-                        : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    }`}
-                  >
-                    <div className="flex-shrink-0">
-                      {user.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt={`${user.name || "User"} avatar`}
-                          className="w-10 h-10 rounded-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-semibold">
-                          {(() => {
-                            const name = user.name || "";
-                            const parts = name.trim().split(" ");
-                            if (parts.length >= 2)
-                              return parts[0][0] + parts[1][0];
-                            if (parts.length === 1) return parts[0][0];
-                            return (user.email?.[0] || "U").toUpperCase();
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <FiUser className="text-sm flex-shrink-0" />
-                        <p className="font-medium truncate">{user.name}</p>
+                {searchedUsers.map((user, index) => {
+                  const globalIndex = index;
+                  return (
+                    <button
+                      key={user._id}
+                      id={`search-result-${globalIndex}`}
+                      onClick={() => handleSelectUser(user._id)}
+                      className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors duration-150 focus:outline-none ${
+                        selectedIndex === globalIndex
+                          ? "bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
+                          : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      }`}
+                    >
+                      <div className="flex-shrink-0">
+                        {user.avatar ? (
+                          <img
+                            src={user.avatar}
+                            alt={`${user.name || "User"} avatar`}
+                            className="w-10 h-10 rounded-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-semibold">
+                            {(() => {
+                              const name = user.name || "";
+                              const parts = name.trim().split(" ");
+                              if (parts.length >= 2)
+                                return parts[0][0] + parts[1][0];
+                              if (parts.length === 1) return parts[0][0];
+                              return (user.email?.[0] || "U").toUpperCase();
+                            })()}
+                          </div>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {user.email}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-500">
-                        {user.totalPosts || 0} posts
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-
-              {searchPosts.length > 0 && (
-                <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
-                  Posts
-                </div>
-              )}
-
-              {searchPosts.map((post, index) => {
-                const globalIndex = searchedUsers.length + index;
-                return (
-                  <button
-                    key={post._id}
-                    id={`search-result-${globalIndex}`}
-                    onClick={() => handleSelectPost(post.slug)}
-                    className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors duration-150 focus:outline-none ${
-                      selectedIndex === globalIndex
-                        ? "bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
-                        : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    }`}
-                  >
-                    <FiFileText className="text-lg text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{post.title}</p>
-                      {post.category && (
-                        <p className="text-xs text-gray-500 dark:text-gray-500">
-                          {post.category}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <FiUser className="text-sm flex-shrink-0" />
+                          <p className="font-medium truncate">{user.name}</p>
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                          {user.email}
                         </p>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+                        <p className="text-xs text-gray-500 dark:text-gray-500">
+                          {user.totalPosts || 0} posts
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {searchPosts.length > 0 && (
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                    Posts
+                  </div>
+                )}
+
+                {searchPosts.map((post, index) => {
+                  const globalIndex = searchedUsers.length + index;
+                  return (
+                    <button
+                      key={post._id}
+                      id={`search-result-${globalIndex}`}
+                      onClick={() => handleSelectPost(post.slug)}
+                      className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors duration-150 focus:outline-none ${
+                        selectedIndex === globalIndex
+                          ? "bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
+                          : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      }`}
+                    >
+                      <FiFileText className="text-lg text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{post.title}</p>
+                        {post.category && (
+                          <p className="text-xs text-gray-500 dark:text-gray-500">
+                            {post.category}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
     </div>
   );
 };
