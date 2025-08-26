@@ -14,6 +14,7 @@ import {
   FaCheck,
   FaTimes,
   FaSpinner,
+  FaBell,
 } from "react-icons/fa";
 import {
   fetchNotifications,
