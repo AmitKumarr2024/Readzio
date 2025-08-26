@@ -351,7 +351,7 @@ const Navbar = () => {
                           className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
                           onClick={toggleDropdown}
                         >
-                          Contact
+                          Send Message
                         </Link>
                         {role === "admin" && (
                           <Link
@@ -370,11 +370,11 @@ const Navbar = () => {
                           About
                         </Link>
                         <Link
-                          to="/contact"
+                          to="/ContactPage"
                           onClick={toggleMobileMenu}
-                          className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                          className="block px-4  py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                         >
-                          Contact
+                          Contact Us
                         </Link>
                         <Link
                           to="/terms-conditions"
@@ -397,7 +397,7 @@ const Navbar = () => {
                         >
                           Refund Policy
                         </Link>
-                        
+
                         <button
                           onClick={handleLogout}
                           className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -481,11 +481,11 @@ const Navbar = () => {
                   Bookmarks
                 </Link>
                 <Link
-                  to="/contact"
+                  to="/ContactPage"
                   onClick={toggleMobileMenu}
-                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                  className="block px-4  py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
-                  Contact
+                  Contact Us
                 </Link>
                 <Link
                   to="/terms-conditions"

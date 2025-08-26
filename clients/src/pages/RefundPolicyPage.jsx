@@ -64,9 +64,9 @@ const RefundPolicyPage = () => {
               href="mailto:support@inkshaa.com"
               className="text-blue-600 underline"
             >
-              support@inkshaa.com
+              inksha.official@gmail.com
             </a>{" "}
-            or call us at <strong>+91-XXXXXXXXXX</strong>.
+            or call us at <strong>+91-7634995261</strong>.
           </p>
 
           <p className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
