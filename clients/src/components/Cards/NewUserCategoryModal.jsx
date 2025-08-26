@@ -595,18 +595,18 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-6">
+        <div className="fixed bottom-4 right-4 z-50 p-4">
           <div className="flex gap-4">
             <button
               onClick={handleSkip}
-              className="flex-1 px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+              className="px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
             >
               Skip for Now
             </button>
             <button
               onClick={handleSelect}
               disabled={selectedCategories.length === 0 || isSubmitting}
-              className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+              className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
                 selectedCategories.length > 0 && !isSubmitting
                   ? "bg-green-600 text-white hover:bg-green-700"
                   : "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
