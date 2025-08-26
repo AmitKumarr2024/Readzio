@@ -1,15 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FiSearch, FiX } from "react-icons/fi";
+import { FiSearch, FiX, FiUser, FiFileText, FiLoader } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { getSearchPosts } from "../../store/postSlice";
 import { searchUsers, clearSearchedUsers } from "../../store/userSlice";
 import useDebounce from "./useDebounce";
 
-const SearchInput = ({ className = "", onClose, ...props }) => {
+const SearchInput = ({
+  className = "",
+  onClose,
+  autoFocus = false,
+  ...props
+}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const containerRef = useRef(null);
+  const inputRef = useRef(null);
   const lastQueryRef = useRef("");
 
   const dispatch = useDispatch();
@@ -21,28 +28,75 @@ const SearchInput = ({ className = "", onClose, ...props }) => {
   const searchedUsers = useSelector((state) => state.user.searchedUsers || []);
   const userLoading = useSelector((state) => state.user.searchedUsersLoading);
 
-  const debouncedSearch = useDebounce((value) => {
+  const [debouncedSearch, cancelSearch] = useDebounce((value) => {
     const trimmed = value.trim();
-    if (trimmed.length >= 3 && trimmed !== lastQueryRef.current) {
+    if (trimmed.length >= 2 && trimmed !== lastQueryRef.current) {
       dispatch(getSearchPosts({ query: trimmed }));
       dispatch(searchUsers(trimmed));
       lastQueryRef.current = trimmed;
       setShowDropdown(true);
-    } else if (trimmed.length < 1) {
+    } else if (trimmed.length === 0) {
       dispatch(clearSearchedUsers());
       setShowDropdown(false);
     }
-  }, 400);
+  }, 300);
+
+  const allResults = [
+    ...searchedUsers.map((user) => ({ type: "user", data: user })),
+    ...searchPosts.map((post) => ({ type: "post", data: post })),
+  ];
 
   const handleInputChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
+    setSelectedIndex(-1);
     debouncedSearch(value);
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && searchTerm.trim().length >= 3) {
-      const query = searchTerm.trim();
+    if (!showDropdown || allResults.length === 0) {
+      if (e.key === "Enter" && searchTerm.trim().length >= 2) {
+        handleSearch();
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setSelectedIndex((prev) =>
+          prev < allResults.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setSelectedIndex((prev) =>
+          prev > 0 ? prev - 1 : allResults.length - 1
+        );
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (selectedIndex >= 0) {
+          const selected = allResults[selectedIndex];
+          if (selected.type === "user") {
+            handleSelectUser(selected.data._id);
+          } else {
+            handleSelectPost(selected.data.slug);
+          }
+        } else {
+          handleSearch();
+        }
+        break;
+      case "Escape":
+        setShowDropdown(false);
+        if (onClose) onClose();
+        break;
+    }
+  };
+
+  const handleSearch = () => {
+    const query = searchTerm.trim();
+    if (query.length >= 2) {
       dispatch(getSearchPosts({ query }));
       dispatch(searchUsers(query));
       navigate(`/search?query=${encodeURIComponent(query)}`);
@@ -55,12 +109,16 @@ const SearchInput = ({ className = "", onClose, ...props }) => {
     setSearchTerm("");
     dispatch(clearSearchedUsers());
     setShowDropdown(false);
+    setSelectedIndex(-1);
+    cancelSearch();
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
   };
 
   const handleClickOutside = (e) => {
     if (containerRef.current && !containerRef.current.contains(e.target)) {
       setShowDropdown(false);
-      if (onClose) onClose();
     }
   };
 
@@ -81,45 +139,65 @@ const SearchInput = ({ className = "", onClose, ...props }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      const timer = setTimeout(() => {
+        inputRef.current.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [autoFocus]);
+
+  const isLoading = searchLoading || userLoading;
+
   return (
     <div
       ref={containerRef}
-      className={`relative w-full max-w-2xl ${className}`}
+      className={`relative w-full max-w-3xl ${className}`}
     >
       <div className="relative">
         <input
+          ref={inputRef}
           type="search"
-          placeholder="Search articles or users..."
-          className="w-full px-4 py-3 pr-12 rounded-lg border border-transparent bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900 dark:to-blue-900 text-text-main-light dark:text-text-main-dark placeholder:text-indigo-400 placeholder:text-base text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50 transition-all duration-300 shadow-sm"
+          placeholder="Search articles, users, or topics..."
+          className="w-full px-5 py-4 pr-24 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 shadow-sm hover:shadow-md"
           value={searchTerm}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          aria-label="Search articles or users"
+          aria-label="Search articles, users, or topics"
           aria-expanded={showDropdown}
+          aria-autocomplete="list"
+          aria-activedescendant={
+            selectedIndex >= 0 ? `search-result-${selectedIndex}` : undefined
+          }
+          autoComplete="off"
           {...props}
         />
-        {searchTerm && (
+
+        {/* Loading Indicator */}
+        {isLoading && (
+          <div className="absolute right-16 top-1/2 -translate-y-1/2">
+            <FiLoader className="text-lg text-indigo-500 animate-spin" />
+          </div>
+        )}
+
+        {/* Clear Button */}
+        {searchTerm && !isLoading && (
           <button
             onClick={clearInput}
-            className="absolute right-12 top-1/2 -translate-y-1/2 text-indigo-500 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-100 transition-colors duration-200"
+            className="absolute right-16 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors duration-200 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
             type="button"
             aria-label="Clear search"
           >
             <FiX className="text-lg" />
           </button>
         )}
+
+        {/* Search Button */}
         <button
-          onClick={() => {
-            const query = searchTerm.trim();
-            if (query.length >= 3)  {
-              dispatch(getSearchPosts({ query }));
-              dispatch(searchUsers(query));
-              navigate(`/search?query=${encodeURIComponent(query)}`);
-              setShowDropdown(false);
-              if (onClose) onClose();
-            }
-          }}
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-500 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-100 transition-colors duration-200"
+          onClick={handleSearch}
+          disabled={searchTerm.trim().length < 2}
+          className="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white p-2.5 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
           aria-label="Search"
           type="button"
         >
@@ -127,77 +205,112 @@ const SearchInput = ({ className = "", onClose, ...props }) => {
         </button>
       </div>
 
+      {/* Dropdown Results */}
       {showDropdown && (
-        <div className="absolute z-50 mt-2 w-7xl max-w-[90vw] sm:max-w-md -right-5 sm:-right-4 md:right-0 max-h-[450px] overflow-y-auto bg-background-light dark:bg-background-dark border border-indigo-200 dark:border-indigo-700 rounded-xs shadow-lg transition-all duration-200 ease-in-out">
-          {searchLoading || userLoading ? (
-            <div className="p-4 text-center text-indigo-500 dark:text-indigo-300 animate-pulse text-base sm:text-lg">
-              Loading...
+        <div className="absolute z-50 mt-2 w-full max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl">
+          {isLoading ? (
+            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+              <FiLoader className="inline text-lg animate-spin mr-2" />
+              Searching...
             </div>
           ) : searchError ? (
-            <div className="p-4 text-center text-red-500 dark:text-red-300 text-base sm:text-lg">
+            <div className="p-4 text-center text-red-500 dark:text-red-400">
               Error: {searchError}
             </div>
+          ) : allResults.length === 0 ? (
+            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+              No results found for "{searchTerm}"
+            </div>
           ) : (
-            <>
-              {searchedUsers.map((user, index) => (
-                <button
-                  key={user._id}
-                  onClick={() => handleSelectUser(user._id)}
-                  className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-indigo-100 dark:hover:bg-indigo-800 border-b border-indigo-100 dark:border-indigo-700 last:border-b-0 transition-colors duration-150 text-left focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  tabIndex={0}
-                >
-                  {user.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={`${user.name || "User"} avatar`}
-                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-indigo-500 dark:bg-indigo-600 flex items-center justify-center text-white text-sm font-semibold">
-                      {(() => {
-                        const name = user.name || "";
-                        const parts = name.trim().split(" ");
-                        if (parts.length >= 2) return parts[0][0] + parts[1][0];
-                        if (parts.length === 1) return parts[0][0];
-                        return (user.email?.[0] || "U").toUpperCase();
-                      })()}
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <p className="text-base sm:text-xl font-bold text-indigo-700 dark:text-indigo-200">
-                      {user?.name}{" "}
-                      {/* <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                        {user?.username || "N/A"}
-                      </span> */}
-                    </p>
-                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 truncate">
-                      {user.email}
-                    </p>
-                    <p className="text-sm sm:text-lg text-gray-400 dark:text-gray-500">
-                      Posts: {user.totalPosts || 0}
-                    </p>
-                  </div>
-                </button>
-              ))}
-
-              {searchPosts.map((post, index) => (
-                <button
-                  key={post._id}
-                  onClick={() => handleSelectPost(post.slug)}
-                  className="w-full text-left px-4 py-2.5 hover:bg-indigo-100 dark:hover:bg-indigo-800 border-b border-indigo-100 dark:border-indigo-700 last:border-b-0 transition-colors duration-150 text-base sm:text-xl text-indigo-700 dark:text-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  tabIndex={0}
-                >
-                  📝 {post.title}
-                </button>
-              ))}
-
-              {searchedUsers.length === 0 && searchPosts.length === 0 && (
-                <div className="p-4 text-center text-indigo-500 dark:text-indigo-300 text-sm sm:text-base">
-                  No results found.
+            <div className="py-2">
+              {searchedUsers.length > 0 && (
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  Users
                 </div>
               )}
-            </>
+
+              {searchedUsers.map((user, index) => {
+                const globalIndex = index;
+                return (
+                  <button
+                    key={user._id}
+                    id={`search-result-${globalIndex}`}
+                    onClick={() => handleSelectUser(user._id)}
+                    className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors duration-150 focus:outline-none ${
+                      selectedIndex === globalIndex
+                        ? "bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
+                        : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    }`}
+                  >
+                    <div className="flex-shrink-0">
+                      {user.avatar ? (
+                        <img
+                          src={user.avatar}
+                          alt={`${user.name || "User"} avatar`}
+                          className="w-10 h-10 rounded-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-semibold">
+                          {(() => {
+                            const name = user.name || "";
+                            const parts = name.trim().split(" ");
+                            if (parts.length >= 2)
+                              return parts[0][0] + parts[1][0];
+                            if (parts.length === 1) return parts[0][0];
+                            return (user.email?.[0] || "U").toUpperCase();
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <FiUser className="text-sm flex-shrink-0" />
+                        <p className="font-medium truncate">{user.name}</p>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                        {user.email}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                        {user.totalPosts || 0} posts
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {searchPosts.length > 0 && (
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  Posts
+                </div>
+              )}
+
+              {searchPosts.map((post, index) => {
+                const globalIndex = searchedUsers.length + index;
+                return (
+                  <button
+                    key={post._id}
+                    id={`search-result-${globalIndex}`}
+                    onClick={() => handleSelectPost(post.slug)}
+                    className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors duration-150 focus:outline-none ${
+                      selectedIndex === globalIndex
+                        ? "bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
+                        : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    }`}
+                  >
+                    <FiFileText className="text-lg text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{post.title}</p>
+                      {post.category && (
+                        <p className="text-xs text-gray-500 dark:text-gray-500">
+                          {post.category}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
