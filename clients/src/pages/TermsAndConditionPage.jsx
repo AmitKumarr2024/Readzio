@@ -70,16 +70,27 @@ const TermsAndConditionPage = () => {
             agree to Razorpay's terms and processing policies.
           </p>
           <p className="mb-4">
-            Refunds are generally <strong>not provided</strong> for completed
-            payments, including subscriptions, tips, or donations. However, if a
-            refund is approved under special circumstances (such as duplicate
-            transactions or failed services), the amount will be processed
-            within <strong>9–15 business days</strong> back to your original
-            payment method, as per Razorpay’s policies.
+            You may request a <strong>cancellation and full refund</strong> of
+            your membership subscription within{" "}
+            <strong>7 days of purchase</strong>, provided that you have not
+            extensively used premium services or benefits.
           </p>
           <p className="mb-4">
-            If you experience any issues with payment or billing, you may reach
-            out to us at{" "}
+            After the <strong>7-day window</strong>, all payments become
+            <strong> non-refundable and non-cancellable</strong>. The
+            subscription will remain active until the end of the billing cycle,
+            but no refunds will be issued for any remaining period.
+          </p>
+          <p className="mb-4">
+            If a refund is approved under special circumstances (such as
+            duplicate transactions or failed services), the amount will be
+            processed within
+            <strong> 9–15 business days</strong> back to your original payment
+            method, as per Razorpay’s policies.
+          </p>
+          <p className="mb-4">
+            If you experience any issues with payment or billing, please contact
+            us at{" "}
             <a
               href="mailto:inksha.official@gmail.com"
               className="text-blue-600 underline"
