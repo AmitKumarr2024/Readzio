@@ -18,6 +18,7 @@ const PostImageBlock = ({
   refProp,
 }) => {
   const [fileSizeText, setFileSizeText] = useState("");
+
   // Format file size for display (e.g., KB, MB)
   const formatFileSize = (size) => {
     if (!size) return "";
@@ -25,15 +26,6 @@ const PostImageBlock = ({
     if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   };
-
-  const reader = new FileReader();
-  reader.onloadend = () => {
-    setFileSizeText(formatFileSize(file.size));
-    setUrlInput("");
-  };
-
-  // Debug: Log block to check if size exists
-  console.log(`Block ${index}:`, block);
 
   return (
     <motion.div
@@ -46,13 +38,13 @@ const PostImageBlock = ({
       layout
     >
       {/* File size display in top-right corner */}
-      <span className="absolute top-1 right-12 ">
-        {fileSizeText && !isEmbed && (
-          <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
-            {fileSizeText}
-          </span>
-        )}
-      </span>
+      {fileSizeText && (
+        <span className="absolute top-1 right-12 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
+          {fileSizeText}
+        </span>
+      )}
+
+      {/* Remove image button */}
       <button
         onClick={() => removeBlock(index)}
         className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition"
@@ -60,6 +52,8 @@ const PostImageBlock = ({
       >
         <MdDeleteForever size={24} />
       </button>
+
+      {/* Image URL input */}
       <input
         type="text"
         placeholder="Image URL (or upload below)"
@@ -67,6 +61,8 @@ const PostImageBlock = ({
         onChange={(e) => updateBlock(index, { ...block, src: e.target.value })}
         className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
+
+      {/* File upload input */}
       <label className="flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition mb-4">
         <FiUpload className="w-5 h-5 mr-2" />
         Choose Image
@@ -76,7 +72,8 @@ const PostImageBlock = ({
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file && file.type.startsWith("image/")) {
-              handleImageUpload(file, index);
+              handleImageUpload(file, index); // your upload handler
+              setFileSizeText(formatFileSize(file.size)); // display file size
             } else {
               alert("Please select a valid image.");
             }
@@ -84,6 +81,8 @@ const PostImageBlock = ({
           className="hidden"
         />
       </label>
+
+      {/* Caption input */}
       <input
         placeholder="Caption (optional)"
         value={block.caption || ""}
@@ -92,6 +91,8 @@ const PostImageBlock = ({
         }
         className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
+
+      {/* Display image preview */}
       {block.src && (
         <img
           src={block.src}
