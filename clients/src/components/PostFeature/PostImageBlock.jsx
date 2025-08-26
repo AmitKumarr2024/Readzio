@@ -17,12 +17,19 @@ const PostImageBlock = ({
   handleImageUpload,
   refProp,
 }) => {
+  const [fileSizeText, setFileSizeText] = useState("");
   // Format file size for display (e.g., KB, MB)
   const formatFileSize = (size) => {
     if (!size) return "";
     if (size < 1024) return `${size} B`;
     if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    setFileSizeText(formatFileSize(file.size));
+    setUrlInput("");
   };
 
   // Debug: Log block to check if size exists
@@ -39,11 +46,12 @@ const PostImageBlock = ({
       layout
     >
       {/* File size display in top-right corner */}
-      <span
-        className="absolute top-1 right-12 text-sm text-gray-500 dark:text-gray-400"
-        style={{ backgroundColor: block.size ? "transparent" : "yellow" }} // Highlight if no size
-      >
-        {block.size ? formatFileSize(block.size) : "No size"}
+      <span className="absolute top-1 right-12 ">
+        {fileSizeText && !isEmbed && (
+          <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
+            {fileSizeText}
+          </span>
+        )}
       </span>
       <button
         onClick={() => removeBlock(index)}
