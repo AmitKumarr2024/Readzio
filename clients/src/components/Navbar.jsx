@@ -458,6 +458,35 @@ const Navbar = () => {
                 >
                   Contact
                 </Link>
+                <Link
+                  to="/terms-conditions"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={toggleDropdown}
+                >
+                  Terms & Conditions
+                </Link>
+                <Link
+                  to="/privacy"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={toggleDropdown}
+                >
+                  Privacy Policy
+                </Link>
+                <Link
+                  to="/refund-policy"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={toggleDropdown}
+                >
+                  Refund Policy
+                </Link>
+                <Link
+                  to="/shipping-policy"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={toggleDropdown}
+                >
+                  Shipping Policy
+                </Link>
+
                 {role === "admin" && (
                   <Link
                     to="/admin"

@@ -60,7 +60,7 @@ const TermsAndConditionPage = () => {
             removal or permanent suspension of your account.
           </p>
 
-          {/* ✅ NEW PAYMENT SECTION */}
+          {/* ✅ PAYMENT SECTION */}
           <h2 className="text-2xl font-semibold mt-6 mb-3">
             4. Payments, Subscriptions & Refunds
           </h2>
@@ -84,9 +84,8 @@ const TermsAndConditionPage = () => {
           <p className="mb-4">
             If a refund is approved under special circumstances (such as
             duplicate transactions or failed services), the amount will be
-            processed within
-            <strong> 9–15 business days</strong> back to your original payment
-            method, as per Razorpay’s policies.
+            processed within <strong>9–15 business days</strong> back to your
+            original payment method, as per Razorpay’s policies.
           </p>
           <p className="mb-4">
             If you experience any issues with payment or billing, please contact
@@ -98,6 +97,66 @@ const TermsAndConditionPage = () => {
               inksha.official@gmail.com
             </a>{" "}
             for support.
+          </p>
+
+          {/* ✅ RAZORPAY / TERMS ADDITIONAL SECTION */}
+          <h2 className="text-2xl font-semibold mt-6 mb-3">
+            4a. Razorpay & Liability Terms
+          </h2>
+          <p className="mb-4">
+            For the purpose of these Terms and Conditions, the term{" "}
+            <strong>"we"</strong>, <strong>"us"</strong>, <strong>"our"</strong>{" "}
+            used anywhere on this page shall mean <strong>Amit Kumar</strong>,
+            whose registered/operational office is 24/5 DLF-Phase 3 Gurgaon
+            HARYANA 122010. <strong>"You"</strong>, <strong>“your”</strong>,{" "}
+            <strong>"user"</strong>, <strong>“visitor”</strong> shall mean any
+            natural or legal person who is visiting our website and/or agreed to
+            purchase from us. Your use of the website and/or purchase from us
+            are governed by the following Terms and Conditions:
+          </p>
+          <p className="mb-4">
+            The content of the pages of this website is subject to change
+            without notice. Neither we nor any third parties provide any
+            warranty or guarantee as to the accuracy, timeliness, performance,
+            completeness, or suitability of the information and materials found
+            or offered on this website for any particular purpose. You
+            acknowledge that such information and materials may contain
+            inaccuracies or errors and we expressly exclude liability for any
+            such inaccuracies or errors to the fullest extent permitted by law.
+          </p>
+          <p className="mb-4">
+            Your use of any information or materials on our website and/or
+            product pages is entirely at your own risk, for which we shall not
+            be liable. It shall be your own responsibility to ensure that any
+            products, services, or information available through our website
+            and/or product pages meet your specific requirements.
+          </p>
+          <p className="mb-4">
+            Our website contains material which is owned by or licensed to us.
+            This material includes, but is not limited to, the design, layout,
+            look, appearance, and graphics. Reproduction is prohibited other
+            than in accordance with the copyright notice, which forms part of
+            these terms and conditions. All trademarks reproduced on our website
+            which are not the property of, or licensed to, the operator are
+            acknowledged on the website. Unauthorized use of information
+            provided by us shall give rise to a claim for damages and/or be a
+            criminal offense.
+          </p>
+          <p className="mb-4">
+            From time to time, our website may also include links to other
+            websites. These links are provided for your convenience to provide
+            further information. You may not create a link to our website from
+            another website or document without Amit Kumar’s prior written
+            consent.
+          </p>
+          <p className="mb-4">
+            Any dispute arising out of use of our website and/or purchase with
+            us and/or any engagement with us is subject to the laws of India. We
+            shall be under no liability whatsoever in respect of any loss or
+            damage arising directly or indirectly out of the decline of
+            authorization for any transaction, on account of the Cardholder
+            having exceeded the preset limit mutually agreed by us with our
+            acquiring bank from time to time.
           </p>
 
           <h2 className="text-2xl font-semibold mt-6 mb-3">5. Our Liability</h2>

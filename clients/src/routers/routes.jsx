@@ -4,6 +4,9 @@ import App from "../App";
 import PublicOnlyRoute from "../connection/PublicOnlyRoute";
 import withSuspense from "../Utils/withSuspense";
 import ErrorFallback from "../components/ErrorFallback";
+import RefundPolicyPage from "../pages/RefundPolicyPage";
+import ShippingPolicyPage from "../pages/ShippingPolicyPage";
+import ContactPage from "../pages/ContactPage";
 
 // 🧠 Utility for safe lazy imports with fallback error handler
 const safeLazy = (importFn) =>
@@ -76,8 +79,6 @@ const routes = createBrowserRouter([
       { path: "search", element: <SearchPage /> },
       { path: "admin", element: <Dashboard /> },
       { path: "about", element: <AboutPage /> },
-      { path: "contact", element: <Contact /> },
-      { path: "privacy", element: <PrivacyPage /> },
       { path: "user", element: <UserProfilePage /> },
       { path: "user-setting", element: <UserSettingsPage /> },
       { path: "author-profile/:id", element: <AuthorProfilePage /> },
@@ -88,7 +89,12 @@ const routes = createBrowserRouter([
       { path: "users", element: <UsersPage /> },
       { path: "verify", element: <VerifyEmail /> },
       { path: "tag/:tag", element: <TagWisePage /> },
-      { path: "terms", element: <TermsAndConditionPage /> },
+      { path: "contact", element: <Contact /> },
+      { path: "ContactPage", element: <ContactPage /> },
+      { path: "privacy", element: <PrivacyPage /> },
+      { path: "Terms-Conditions", element: <TermsAndConditionPage /> },
+      { path: "refund-policy", element: <RefundPolicyPage /> },
+      { path: "shipping-policy", element: <ShippingPolicyPage /> },
     ],
   },
   {
