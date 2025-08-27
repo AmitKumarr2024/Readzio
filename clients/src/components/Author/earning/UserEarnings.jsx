@@ -1,6 +1,11 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchUserEarnings, clearError, clearSuccess, resetEarnings } from "../../../store/earningSlice";
+import {
+  fetchUserEarnings,
+  clearError,
+  clearSuccess,
+  resetEarnings,
+} from "../../../store/earningSlice";
 import { motion } from "framer-motion";
 import { FaMoneyBillWave } from "react-icons/fa";
 
@@ -28,18 +33,9 @@ const UserEarnings = ({ userId }) => {
     paymentRecords: [],
   };
 
-  const dummyPaymentRecord = [
-    {
-      orderId: "order_ABC123XYZ",
-      notes: { type: "subscription" },
-      amount: 150000,
-      status: "paid",
-      createdAt: "2025-06-01T10:30:00Z",
-    },
-  ];
-
   const earnings = userEarnings || defaultEarnings;
-  const paymentRecords = earnings.paymentRecords.length > 0 ? earnings.paymentRecords : dummyPaymentRecord;
+  const paymentRecords =
+    earnings.paymentRecords.length > 0 ? earnings.paymentRecords : null;
 
   return (
     <motion.div
@@ -102,17 +98,27 @@ const UserEarnings = ({ userId }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {[
-              { label: "Subscription Earnings", value: earnings.subscriptionEarnings.toFixed(2) },
+              {
+                label: "Subscription Earnings",
+                value: earnings.subscriptionEarnings.toFixed(2),
+              },
               { label: "Ads Earnings", value: earnings.adsEarnings.toFixed(2) },
-              { label: "Total Earnings", value: earnings.totalEarnings.toFixed(2) },
+              {
+                label: "Total Earnings",
+                value: earnings.totalEarnings.toFixed(2),
+              },
             ].map(({ label, value }) => (
               <motion.div
                 key={label}
                 className="bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300"
                 whileHover={{ scale: 1.02 }}
               >
-                <h2 className="text-lg font-semibold  text-text-main-light dark:text-text-main-dark">{label}</h2>
-                <p className="text-2xl font-extrabold text-indigo-600">₹{value}</p>
+                <h2 className="text-lg font-semibold  text-text-main-light dark:text-text-main-dark">
+                  {label}
+                </h2>
+                <p className="text-2xl font-extrabold text-indigo-600">
+                  ₹{value}
+                </p>
               </motion.div>
             ))}
           </div>
@@ -121,7 +127,9 @@ const UserEarnings = ({ userId }) => {
             <motion.button
               onClick={() => dispatch(fetchUserEarnings())}
               disabled={loading}
-              className={`px-6 py-3 rounded-full text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`px-6 py-3 rounded-full text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 ${
+                loading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -137,19 +145,23 @@ const UserEarnings = ({ userId }) => {
             </motion.button>
           </div>
 
-          <h2 className="text-2xl font-semibold  text-text-main-light dark:text-text-main-dark mb-4">Payment Records</h2>
+          <h2 className="text-2xl font-semibold  text-text-main-light dark:text-text-main-dark mb-4">
+            Payment Records
+          </h2>
           <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
             <table className="min-w-full bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark divide-y divide-gray-200">
               <thead className="bg-background-light dark:bg-background-dark  text-text-main-light dark:text-text-main-dark">
                 <tr>
-                  {["Order ID", "Type", "Amount (₹)", "Status", "Date"].map((head) => (
-                    <th
-                      key={head}
-                      className="px-6 py-4 text-left text-xs font-semibold   text-text-main-light dark:text-text-main-dark uppercase tracking-wide"
-                    >
-                      {head}
-                    </th>
-                  ))}
+                  {["Order ID", "Type", "Amount (₹)", "Status", "Date"].map(
+                    (head) => (
+                      <th
+                        key={head}
+                        className="px-6 py-4 text-left text-xs font-semibold   text-text-main-light dark:text-text-main-dark uppercase tracking-wide"
+                      >
+                        {head}
+                      </th>
+                    )
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -161,15 +173,19 @@ const UserEarnings = ({ userId }) => {
                   >
                     <td className="px-6 py-4">{record.orderId}</td>
                     <td className="px-6 py-4">{record.notes?.type || "N/A"}</td>
-                    <td className="px-6 py-4">{(record.amount / 100).toFixed(2)}</td>
+                    <td className="px-6 py-4">
+                      {(record.amount / 100).toFixed(2)}
+                    </td>
                     <td className="px-6 py-4">{record.status}</td>
-                    <td className="px-6 py-4">{new Date(record.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">
+                      {new Date(record.createdAt).toLocaleDateString()}
+                    </td>
                   </motion.tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {paymentRecords === dummyPaymentRecord && (
+          {paymentRecords && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
