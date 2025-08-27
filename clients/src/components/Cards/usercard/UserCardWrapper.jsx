@@ -53,7 +53,7 @@ const UserCardWrapper = ({ userId }) => {
     setLoadingUser(true);
     Promise.all([
       dispatch(getUserById(userId)),
-      dispatch(checkEligibilityForSubscription()),
+      dispatch(checkEligibilityForSubscription()), // ✅ Ensure eligibility check
     ])
       .then(([userRes]) => {
         if (userRes.payload?._id) {
@@ -71,14 +71,21 @@ const UserCardWrapper = ({ userId }) => {
             })
           )
             .unwrap()
-            .then(setSubscriptionStatus)
-            .catch(() => setSubscriptionStatus(null));
+            .then((status) => {
+              console.log("Subscription Status:", status); // ✅ Debug log
+              setSubscriptionStatus(status);
+            })
+            .catch((err) => {
+              console.error("Failed to fetch subscription status:", err);
+              setSubscriptionStatus(null);
+            });
         } else {
           setFetchedUser(null);
           toast.error("Invalid user data received");
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Error in UserCardWrapper:", err);
         setFetchedUser(null);
         setSubscriptionStatus(null);
         toast.error("Failed to fetch user data");

@@ -20,6 +20,12 @@ const UserCard = ({
   const { isEligible } = useSelector(
     (state) => state.subscription || { isEligible: false }
   );
+  console.log(
+    "UserCard - isEligible:",
+    isEligible,
+    "subscriptionStatus:",
+    subscriptionStatus
+  ); // ✅ Debug log
 
   if (!user && !isLoading) return null;
 
@@ -62,7 +68,6 @@ const UserCard = ({
           <table className="w-full table-fixed">
             <tbody>
               <tr>
-                {/* Avatar or Initial */}
                 <td className="w-20 align-top pr-2">
                   <div className="relative w-20 h-20">
                     {user?.avatar ? (
@@ -81,13 +86,8 @@ const UserCard = ({
                     )}
                   </div>
                 </td>
-
-                {/* User Info */}
                 <td className="align-top">
                   <h3 className="font-bold text-2xl mb-1">{authorName}</h3>
-                  {/* <p className="text-lg text-gray-600 dark:text-gray-300 mb-1">
-                    @{user.username || user.email || "unknown"}
-                  </p> */}
                   {user.email && (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       Email: {user.email}
@@ -174,14 +174,15 @@ const UserCard = ({
             onFollowToggle={onFollowToggle}
             className="bg-indigo-500 text-white px-4 py-2 rounded-full hover:bg-indigo-600 font-semibold shadow-sm hover:shadow-md"
           />
-          {isEligible && (
-            <ToggleSubscribeButton
-              authorId={user._id}
-              isSubscribed={subscriptionStatus?.isSubscribed || false}
-              currentUserId={currentUserId}
-              className="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 font-semibold shadow-sm hover:shadow-md"
-            />
-          )}
+          <ToggleSubscribeButton // ✅ Always render if showFollowBtn is true
+            authorId={user._id}
+            isSubscribed={subscriptionStatus?.isSubscribed || false}
+            currentUserId={currentUserId}
+            className={`bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 font-semibold shadow-sm hover:shadow-md ${
+              !isEligible ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            disabled={!isEligible} // ✅ Disable if not eligible
+          />
         </div>
       )}
       {isLoading && (
