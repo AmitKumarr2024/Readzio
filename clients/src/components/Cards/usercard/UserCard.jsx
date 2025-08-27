@@ -174,7 +174,7 @@ const UserCard = ({
             onFollowToggle={onFollowToggle}
             className="bg-indigo-500 text-white px-4 py-2 rounded-full hover:bg-indigo-600 font-semibold shadow-sm hover:shadow-md"
           />
-          <ToggleSubscribeButton // ✅ Always render if showFollowBtn is true
+          {/* <ToggleSubscribeButton // ✅ Always render if showFollowBtn is true
             authorId={user._id}
             isSubscribed={subscriptionStatus?.isSubscribed || false}
             currentUserId={currentUserId}
@@ -182,7 +182,7 @@ const UserCard = ({
               !isEligible ? "opacity-50 cursor-not-allowed" : ""
             }`}
             disabled={!isEligible} // ✅ Disable if not eligible
-          />
+          /> */}
         </div>
       )}
       {isLoading && (
