@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import PostModel from "../../servers/Models/Post.js";
 import UserModel from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";
