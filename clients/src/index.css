@@ -244,6 +244,23 @@
   animation: slide-up 0.5s ease-out;
 }
 
+
+@property --border-angle {
+  inherits: false;
+  initial-value: 0deg;
+  syntax: "<angle>";
+}
+
+@keyframes border-spin {
+  to {
+    --border-angle: 360deg;
+  }
+}
+
+.animate-border {
+  animation: border-spin 4s linear infinite;
+}
+
 .custom-image-rendering {
   image-rendering: crisp-edges;
   -webkit-image-rendering: optimize-contrast;
@@ -254,53 +271,4 @@
 input[type="search"]::-webkit-search-cancel-button {
   -webkit-appearance: none;
   appearance: none;
-}
-@property --border-angle {
-  inherits: false;
-  initial-value: 0deg;
-  syntax: "<angle>";
-}
-
-.rainbow-border {
-  position: relative;
-  display: inline-block;
-  border-radius: 1rem; /* or 9999px for fully rounded buttons */
-  overflow: hidden;
-}
-
-.rainbow-border::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 2px; /* border thickness */
-  background: linear-gradient(45deg, #1e293b, #334155 50%, #1e293b) padding-box,
-    conic-gradient(
-        from var(--border-angle),
-        #ef4444 0%,
-        #f97316 16.66%,
-        #eab308 33.33%,
-        #22c55e 50%,
-        #3b82f6 66.66%,
-        #8b5cf6 83.33%,
-        #ef4444 100%
-      )
-      border-box;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box;
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  animation: spin 3s linear infinite;
-  z-index: 0;
-}
-
-.rainbow-border > * {
-  position: relative;
-  z-index: 1; /* content stays above the rotating border */
-}
-
-@keyframes spin {
-  to {
-    --border-angle: 360deg;
-  }
 }

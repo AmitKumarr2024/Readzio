@@ -267,13 +267,16 @@ const Navbar = () => {
                 )}
               </Link>
             )}
-            <div className="rainbow-border rounded-full">
+            <div className="relative p-[2px] rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 animate-gradient hidden md:inline-block">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
-                  if (isAuthenticated && authUser?._id) navigate("/createPost");
-                  else navigate("/login");
+                  if (isAuthenticated && authUser?._id) {
+                    navigate("/createPost");
+                  } else {
+                    navigate("/login");
+                  }
                 }}
                 className="px-4 py-2 text-sm font-medium flex items-center gap-2 bg-slate-800 rounded-full text-white"
               >
@@ -422,7 +425,7 @@ const Navbar = () => {
             exit={{ opacity: 0, y: -20 }}
             className="md:hidden bg-background-light dark:bg-background-dark px-4 py-4 space-y-2 shadow-xl border-t border-gray-200 dark:border-gray-800"
           >
-            <div className="md:hidden block animated-rainbow-border rounded-full p-[2px]">
+            <div className="relative md:hidden block rounded-full border border-transparent [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,conic-gradient(from_var(--border-angle),#64748b7a_80%,#6366f1_86%,#a5b4fc_90%,#6366f1_94%,#64748b7a)_border-box] animate-border">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
