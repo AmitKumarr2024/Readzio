@@ -185,12 +185,12 @@ const AdminDashboard = () => {
           {activeTab === "reports" && <Reports />}
           {activeTab === "acknowledgments" && <ReportAcknowledgments />}
           {activeTab === "notifications" && <AdminMessageDashboard />}
-          {activeTab === "payments" && <PaymentDashboard />}
+          {/* {activeTab === "payments" && <PaymentDashboard />} */}
           {activeTab === "email-status" && <AdminEmailDashboard />}
           {activeTab === "banner-notifications" && <NotificationManager />}
-          {activeTab === "subscriptions" && (
+          {/* {activeTab === "subscriptions" && (
             <AdminSubscriptionControls userId={user?._id} user={user} />
-          )}
+          )} */}
           {activeTab === "ads-dashboard" && <AdsDashboard />}
           {activeTab === "feedback" && <FeedbackDashboard />}
         </ErrorBoundary>
