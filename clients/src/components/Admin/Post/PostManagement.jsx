@@ -301,64 +301,73 @@ const PostManagement = () => {
                     return (
                       <tr
                         key={post._id}
-                        className="hover:bg-background-dark dark:hover:bg-background-light  text-text-main-light dark:text-text-main-dark transition-colors"
+                        className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-text-main-light dark:text-text-main-dark">
+                        {/* Serial */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200">
                           {serial}
                         </td>
+
+                        {/* Title & ID */}
                         <td className="px-6 py-4">
                           <div className="max-w-xs">
                             <h3
-                              className="text-sm font-semibold  text-text-main-light dark:text-text-main-dark  truncate"
+                              className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate"
                               title={post.title}
                             >
                               {post.title}
                             </h3>
-                            <p className="text-xs text-text-main-light dark:text-text-main-dark mt-1">
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                               ID: {post._id.slice(-8)}
                             </p>
                           </div>
                         </td>
+
+                        {/* Author */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-semibold text-text-main-light dark:text-text-main-dark">
+                              <span className="text-xs font-semibold text-white">
                                 {(post.author?.name || "N")
                                   .charAt(0)
                                   .toUpperCase()}
                               </span>
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-text-main-light dark:text-text-main-dark">
+                              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
                                 {post.author?.name || "Unknown Author"}
                               </p>
                             </div>
                           </div>
                         </td>
+
+                        {/* Size */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm">
                             {post.sizeInKB ? (
                               <div>
-                                <span className="font-mono text-text-main-light dark:text-text-main-dark">
+                                <span className="font-mono text-gray-800 dark:text-gray-200">
                                   {parseFloat(post.sizeInKB).toFixed(1)} KB
                                 </span>
-                                <p className="text-xs text-text-main-light dark:text-text-main-dark">
+                                <p className="text-xs text-gray-600 dark:text-gray-400">
                                   {(post.sizeInKB / 1024).toFixed(2)} MB
                                 </p>
                               </div>
                             ) : (
-                              <span className="text-text-main-light dark:text-text-main-dark">
+                              <span className="text-gray-800 dark:text-gray-200">
                                 N/A
                               </span>
                             )}
                           </div>
                         </td>
+
+                        {/* Status Badge */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
                               post.blocked
-                                ? "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"
-                                : "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800"
+                                ? "bg-red-600 dark:bg-red-800 text-white border border-red-700 dark:border-red-900"
+                                : "bg-green-600 dark:bg-green-700 text-white border border-green-700 dark:border-green-800"
                             }`}
                           >
                             {post.blocked ? (
@@ -369,14 +378,16 @@ const PostManagement = () => {
                             {post.blocked ? "Blocked" : "Active"}
                           </span>
                         </td>
+
+                        {/* Actions */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleToggleBlock(post._id)}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm ${
                                 post.blocked
-                                  ? "bg-green-600 hover:bg-green-700 text-white shadow-sm"
-                                  : "bg-yellow-500 hover:bg-yellow-600 text-white shadow-sm"
+                                  ? "bg-green-600 dark:bg-green-700 hover:bg-green-700 dark:hover:bg-green-800 text-white"
+                                  : "bg-yellow-500 dark:bg-yellow-600 hover:bg-yellow-600 dark:hover:bg-yellow-700 text-white"
                               }`}
                               title={
                                 post.blocked ? "Unblock post" : "Block post"
@@ -389,9 +400,10 @@ const PostManagement = () => {
                               )}
                               {post.blocked ? "Unblock" : "Block"}
                             </button>
+
                             <button
                               onClick={() => handleDelete(post._id)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-all shadow-sm"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 dark:bg-red-700 hover:bg-red-700 dark:hover:bg-red-800 text-white rounded-lg text-xs font-medium transition-all shadow-sm"
                               title="Delete post permanently"
                             >
                               <Trash2 className="w-3 h-3" />

@@ -278,7 +278,7 @@ const Navbar = () => {
                     navigate("/login");
                   }
                 }}
-                className="px-4 py-2 text-sm font-medium flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium flex items-center gap-2 bg-slate-800 rounded-full text-white"
               >
                 <TfiWrite size={16} />
                 <span>Write</span>
@@ -369,7 +369,7 @@ const Navbar = () => {
                         >
                           About Us
                         </Link>
-                       
+
                         <Link
                           to="/terms-conditions"
                           className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -384,7 +384,6 @@ const Navbar = () => {
                         >
                           Privacy Policy
                         </Link>
-                       
 
                         <button
                           onClick={handleLogout}
@@ -426,7 +425,7 @@ const Navbar = () => {
             exit={{ opacity: 0, y: -20 }}
             className="md:hidden bg-background-light dark:bg-background-dark px-4 py-4 space-y-2 shadow-xl border-t border-gray-200 dark:border-gray-800"
           >
-            <div className=" md:hidden block rounded-full">
+            <div className=" md:hidden block rainbow-border  rounded-full">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -438,7 +437,7 @@ const Navbar = () => {
                   }
                   toggleMobileMenu();
                 }}
-                className="px-4 py-2 text-sm font-medium flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium flex items-center gap-2 bg-slate-800 rounded-full text-white"
               >
                 <TfiWrite size={16} />
                 Write
@@ -489,8 +488,6 @@ const Navbar = () => {
                 >
                   Privacy Policy
                 </Link>
-                
-               
 
                 {role === "admin" && (
                   <Link
