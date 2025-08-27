@@ -267,7 +267,7 @@ const Navbar = () => {
                 )}
               </Link>
             )}
-            <div className="relative p-[2px] rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 animate-gradient hidden md:inline-block">
+            <div className="relative rounded-full border border-transparent [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,conic-gradient(from_var(--border-angle),#64748b7a_80%,#6366f1_86%,#a5b4fc_90%,#6366f1_94%,#64748b7a)_border-box] animate-border hidden md:inline-block">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
