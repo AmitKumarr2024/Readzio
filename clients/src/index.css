@@ -244,6 +244,7 @@
   animation: slide-up 0.5s ease-out;
 }
 
+
 @property --border-angle {
   inherits: false;
   initial-value: 0deg;
@@ -257,7 +258,7 @@
 }
 
 .animate-border {
-  animation: border-spin 3s linear infinite;
+  animation: border-spin 4s linear infinite;
 }
 
 .custom-image-rendering {

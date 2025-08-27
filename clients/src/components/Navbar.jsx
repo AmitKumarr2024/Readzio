@@ -432,9 +432,9 @@ animate-border hidden md:inline-block"
           >
             <div
               className="relative md:hidden block rounded-full border-[3px] border-transparent 
-  [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,
-  conic-gradient(from_var(--border-angle),#64748b7a_75%,#6366f1_80%,#a5b4fc_85%,#6366f1_90%,#64748b7a_95%)_border-box] 
-  animate-border"
+[background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,
+conic-gradient(from_var(--border-angle),#6366f1_0%,#a5b4fc_25%,#6366f1_50%,#a5b4fc_75%,#6366f1_100%)_border-box] 
+animate-border"
             >
               <motion.button
                 whileHover={{ scale: 1.05 }}
