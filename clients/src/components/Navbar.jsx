@@ -369,13 +369,7 @@ const Navbar = () => {
                         >
                           About Us
                         </Link>
-                        <Link
-                          to="/ContactPage"
-                          onClick={toggleMobileMenu}
-                          className="block px-4  py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                        >
-                          Contact Us
-                        </Link>
+                       
                         <Link
                           to="/terms-conditions"
                           className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
