@@ -36,11 +36,11 @@ const AboutPage = () => {
             </h1>
 
             <p className="text-lg leading-relaxed text-gray-700 dark:text-gray-300">
-              <strong>inkshaa</strong> is a creative publishing platform designed
-              for writers, bloggers, and curious minds. Whether you're here to
-              express your ideas, share knowledge, or explore meaningful content
-              — inkshaa provides a clean, responsive space that prioritizes
-              clarity and reader engagement.
+              <strong>inkshaa</strong> is a creative publishing platform
+              designed for writers, bloggers, and curious minds. Whether you're
+              here to express your ideas, share knowledge, or explore meaningful
+              content — inkshaa provides a clean, responsive space that
+              prioritizes clarity and reader engagement.
             </p>
 
             <p className="text-lg mt-6 leading-relaxed text-gray-700 dark:text-gray-300">
@@ -114,16 +114,15 @@ const AboutPage = () => {
 
               {/* Twitter/X Link */}
               <p className="mt-4 flex items-center justify-center gap-2">
-                {/* Optional Icon */}
                 <FaXTwitter className="text-xl text-blue-600 dark:text-blue-400" />
-                <Link
-                  to="https://x.com/inkshaaOfficial"
+                <a
+                  href="https://x.com/inkshaaOfficial"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:underline font-medium text-blue-600 dark:text-blue-400"
                 >
                   Follow us on Twitter/X (@inkshaaOfficial)
-                </Link>
+                </a>
               </p>
             </div>
           </div>

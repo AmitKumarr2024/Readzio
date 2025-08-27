@@ -4,9 +4,8 @@ import App from "../App";
 import PublicOnlyRoute from "../connection/PublicOnlyRoute";
 import withSuspense from "../Utils/withSuspense";
 import ErrorFallback from "../components/ErrorFallback";
-import RefundPolicyPage from "../pages/RefundPolicyPage";
-import ShippingPolicyPage from "../pages/ShippingPolicyPage";
-import ContactPage from "../pages/ContactPage";
+
+
 
 // 🧠 Utility for safe lazy imports with fallback error handler
 const safeLazy = (importFn) =>
@@ -90,11 +89,9 @@ const routes = createBrowserRouter([
       { path: "verify", element: <VerifyEmail /> },
       { path: "tag/:tag", element: <TagWisePage /> },
       { path: "contact", element: <Contact /> },
-      { path: "ContactPage", element: <ContactPage /> },
       { path: "privacy", element: <PrivacyPage /> },
       { path: "Terms-Conditions", element: <TermsAndConditionPage /> },
-      { path: "refund-policy", element: <RefundPolicyPage /> },
-      { path: "shipping-policy", element: <ShippingPolicyPage /> },
+      
     ],
   },
   {

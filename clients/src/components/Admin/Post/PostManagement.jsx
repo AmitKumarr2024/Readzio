@@ -301,7 +301,7 @@ const PostManagement = () => {
                     return (
                       <tr
                         key={post._id}
-                        className="hover:bg-background-dark dark:hover:bg-background-light  hover:text-text-main-light dark:hover:text-text-main-dark transition-colors"
+                        className="hover:bg-background-dark dark:hover:bg-background-light  text-text-main-light dark:text-text-main-dark transition-colors"
                       >
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-text-main-light dark:text-text-main-dark">
                           {serial}

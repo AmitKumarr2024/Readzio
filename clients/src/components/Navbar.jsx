@@ -351,7 +351,7 @@ const Navbar = () => {
                           className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
                           onClick={toggleDropdown}
                         >
-                          Send Message
+                          Contact Us
                         </Link>
                         {role === "admin" && (
                           <Link
@@ -367,7 +367,7 @@ const Navbar = () => {
                           className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
                           onClick={toggleDropdown}
                         >
-                          About
+                          About Us
                         </Link>
                         <Link
                           to="/ContactPage"
@@ -390,13 +390,7 @@ const Navbar = () => {
                         >
                           Privacy Policy
                         </Link>
-                        <Link
-                          to="/refund-policy"
-                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                          onClick={toggleDropdown}
-                        >
-                          Refund Policy
-                        </Link>
+                       
 
                         <button
                           onClick={handleLogout}
@@ -481,7 +475,7 @@ const Navbar = () => {
                   Bookmarks
                 </Link>
                 <Link
-                  to="/ContactPage"
+                  to="/Contact"
                   onClick={toggleMobileMenu}
                   className="block px-4  py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
@@ -501,20 +495,8 @@ const Navbar = () => {
                 >
                   Privacy Policy
                 </Link>
-                <Link
-                  to="/refund-policy"
-                  className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                  onClick={toggleDropdown}
-                >
-                  Refund Policy
-                </Link>
-                <Link
-                  to="/shipping-policy"
-                  className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                  onClick={toggleDropdown}
-                >
-                  Shipping Policy
-                </Link>
+                
+               
 
                 {role === "admin" && (
                   <Link
