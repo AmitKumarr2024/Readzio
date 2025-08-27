@@ -152,7 +152,6 @@ export const createSubscriptionPlan = asyncHandler(async (req, res, next) => {
         "User not authorized for this author ID"
       );
     }
-
     validateObjectId(authorId, "Author ID");
     const priceInPaise = validateAndConvertAmount(price, "Price");
     validateDuration(durationDays);
@@ -162,7 +161,6 @@ export const createSubscriptionPlan = asyncHandler(async (req, res, next) => {
     for (const postId of postIds) {
       validateObjectId(postId, "Post ID");
     }
-
     await checkPlanLimit(req.user._id);
     await checkExistingPlan(req.user._id, name);
 
@@ -177,6 +175,14 @@ export const createSubscriptionPlan = asyncHandler(async (req, res, next) => {
       author: req.user._id,
       status: "not_confirmed",
     });
+
+    // ✅ Update posts to premium
+    if (postIds.length) {
+      await PostModel.updateMany(
+        { _id: { $in: postIds } },
+        { $set: { isSubscriberOnly: true, isPremium: true } }
+      );
+    }
 
     // Logs activity
     await recordActivity({
@@ -193,7 +199,6 @@ export const createSubscriptionPlan = asyncHandler(async (req, res, next) => {
       plan: { ...plan.toObject(), price: plan.price / 100 },
     });
   } catch (error) {
-    // AppError with context for creating subscription plan
     next(
       error instanceof AppError
         ? error
@@ -444,6 +449,14 @@ export const activateSubscriptionPlan = asyncHandler(async (req, res, next) => {
     plan.status = "active";
     await plan.save();
 
+    // ✅ Update posts to premium
+    if (plan.postIds.length) {
+      await PostModel.updateMany(
+        { _id: { $in: plan.postIds } },
+        { $set: { isSubscriberOnly: true, isPremium: true } }
+      );
+    }
+
     // Logs activity
     await recordActivity({
       userId: req.user._id.toString(),
@@ -454,7 +467,6 @@ export const activateSubscriptionPlan = asyncHandler(async (req, res, next) => {
 
     res.status(200).json({ success: true, plan });
   } catch (error) {
-    // AppError with context for activating subscription plan
     next(
       error instanceof AppError
         ? error
@@ -467,7 +479,6 @@ export const activateSubscriptionPlan = asyncHandler(async (req, res, next) => {
     );
   }
 });
-
 // Subscribes a user to a plan with Razorpay payment verification
 export const subscribeToPlan = asyncHandler(async (req, res, next) => {
   try {

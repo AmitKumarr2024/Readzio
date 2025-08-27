@@ -441,6 +441,11 @@ const subscriptionSlice = createSlice({
     fetchedAuthorIds: {},
   },
   reducers: {
+    setPosts: (state, action) => {
+      state.posts = action.payload;
+      state.loading = false;
+      state.error = null;
+    },
     clearError: (state) => {
       // console.log("subscriptionSlice: Clearing error");
       state.loading = false;
@@ -461,6 +466,14 @@ const subscriptionSlice = createSlice({
     resetSubscribedPlansFetch: (state) => {
       // console.log("subscriptionSlice: Resetting hasFetchedSubscribedPlans");
       state.hasFetchedSubscribedPlans = false; // Added reducer
+    },
+    updatePostsToPremium: (state, action) => {
+      const postIds = action.payload;
+      state.posts = state.posts.map((post) =>
+        postIds.includes(post._id)
+          ? { ...post, isSubscriberOnly: true, isPremium: true }
+          : post
+      );
     },
   },
   extraReducers: (builder) => {
@@ -871,6 +884,8 @@ export const {
   clearSubscriptionStatus,
   syncSubscriptionCriteria,
   resetSubscribedPlansFetch,
+  setPosts,
+  updatePostsToPremium,
 } = subscriptionSlice.actions;
 
 export default subscriptionSlice.reducer;

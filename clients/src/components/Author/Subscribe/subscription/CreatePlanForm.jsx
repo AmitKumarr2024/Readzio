@@ -5,7 +5,8 @@ import {
   fetchSubscriptionPlansByAuthor,
   activateSubscriptionPlan,
 } from "../../../../store/subscriptionSlice";
-import {toast} from "react-hot-toast";
+import { updatePostsToPremium } from "../../../../store/subscriptionSlice"; // ✅ Import the action
+import { toast } from "react-hot-toast";
 import PriceConfirmModal from "../../../../Utils/PriceConfirmModal";
 import Pagination from "../../../../Utils/Pagination";
 import {
@@ -13,7 +14,6 @@ import {
   formatINRFromRupees,
 } from "../../../../Utils/priceUtils";
 
-// Form component for creating new subscription plans
 const CreatePlanForm = ({ userId, posts }) => {
   const dispatch = useDispatch();
   const { plans, error } = useSelector((state) => state.subscription);
@@ -26,24 +26,22 @@ const CreatePlanForm = ({ userId, posts }) => {
     type: "custom",
     authorId: userId,
   });
-  const [searchTerm, setSearchTerm] = useState(""); // Search term for filtering posts
-  const [sortOption, setSortOption] = useState("title-asc"); // Sorting option for posts
-  const [currentPage, setCurrentPage] = useState(1); // Current pagination page
-  const [isPriceModalVisible, setIsPriceModalVisible] = useState(false); // Price confirmation modal visibility
-  const postsPerPage = 5; // Number of posts per page
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState("title-asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isPriceModalVisible, setIsPriceModalVisible] = useState(false);
+  const postsPerPage = 5;
 
-  // Track used durations and calculate remaining plan slots
   const usedDurations = plans
     .filter((plan) => !plan.deletedAt)
     .map((plan) => plan.durationDays);
-  const maxPlans = 3; // Maximum allowed plans
+  const maxPlans = 3;
   const remainingPlanSlots = maxPlans - usedDurations.length;
   const availableDurations =
     remainingPlanSlots > 0
       ? [30, 90, 365].filter((duration) => !usedDurations.includes(duration))
       : [];
 
-  // Handle input changes for form fields
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -52,7 +50,6 @@ const CreatePlanForm = ({ userId, posts }) => {
     }));
   };
 
-  // Handle duration selection
   const handleDurationChange = (e) => {
     const value = Number(e.target.value);
     setFormData((prev) => {
@@ -67,7 +64,6 @@ const CreatePlanForm = ({ userId, posts }) => {
     });
   };
 
-  // Handle post selection
   const handlePostChange = (e) => {
     const { value, checked } = e.target;
     setFormData((prev) => {
@@ -78,7 +74,6 @@ const CreatePlanForm = ({ userId, posts }) => {
     });
   };
 
-  // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
     if (
@@ -102,7 +97,6 @@ const CreatePlanForm = ({ userId, posts }) => {
     setIsPriceModalVisible(true);
   };
 
-  // Confirm and create plans
   const handlePriceConfirm = async () => {
     try {
       for (const duration of formData.durationDays) {
@@ -114,6 +108,8 @@ const CreatePlanForm = ({ userId, posts }) => {
           deletedAt: null,
         };
         await dispatch(createSubscriptionPlan(planData)).unwrap();
+        // ✅ Update Redux store with premium post status
+        dispatch(updatePostsToPremium(planData.postIds));
       }
       toast.success("Plan(s) created and awaiting activation");
       await dispatch(fetchSubscriptionPlansByAuthor(userId));
@@ -133,10 +129,13 @@ const CreatePlanForm = ({ userId, posts }) => {
     }
   };
 
-  // Activate a pending plan
   const handleActivatePlan = async (planId) => {
     try {
-      await dispatch(activateSubscriptionPlan(planId)).unwrap();
+      const response = await dispatch(
+        activateSubscriptionPlan(planId)
+      ).unwrap();
+      // ✅ Update Redux store with premium post status
+      dispatch(updatePostsToPremium(response.plan.postIds));
       toast.success("Plan activated successfully");
       await dispatch(fetchSubscriptionPlansByAuthor(userId));
     } catch (err) {
@@ -150,7 +149,6 @@ const CreatePlanForm = ({ userId, posts }) => {
     }
   };
 
-  // Filter and sort posts for selection
   const filteredPosts = posts
     .filter((post) =>
       post.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -176,7 +174,6 @@ const CreatePlanForm = ({ userId, posts }) => {
     startIndex + postsPerPage
   );
 
-  // Handle pagination page change
   const handlePageChange = (pageIndex) => {
     if (pageIndex >= 1 && pageIndex <= totalPages) {
       setCurrentPage(pageIndex);
@@ -249,7 +246,7 @@ const CreatePlanForm = ({ userId, posts }) => {
           <p className="text-sm text-text-main-light dark:text-text-main-dark mt-2">
             Entered price:{" "}
             <span className="text-blue-600 font-semibold">
-            ₹{formatINRFromRupees(formData.price)}
+              ₹{formatINRFromRupees(formData.price)}
             </span>
           </p>
           <p className="text-sm text-text-main-light dark:text-text-main-dark mt-2">
