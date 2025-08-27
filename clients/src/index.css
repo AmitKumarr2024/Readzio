@@ -258,7 +258,7 @@
 }
 
 .animate-border {
-  animation: border-spin 4s linear infinite;
+  animation: border-spin 3s linear infinite;
 }
 
 .custom-image-rendering {
