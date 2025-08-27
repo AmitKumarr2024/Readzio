@@ -267,12 +267,7 @@ const Navbar = () => {
                 )}
               </Link>
             )}
-            <div
-              className="relative rounded-full border-[3px] border-transparent 
-  [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,
-  conic-gradient(from_var(--border-angle),#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#8b00ff,#ff0000)_border-box] 
-  animate-border hidden md:inline-block"
-            >
+            <div className="relative rounded-full border-2 border-transparent [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,conic-gradient(from_var(--border-angle),#64748b7a_80%,#6366f1_86%,#a5b4fc_90%,#6366f1_94%,#64748b7a)_border-box] animate-border hidden md:inline-block">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -430,12 +425,7 @@ const Navbar = () => {
             exit={{ opacity: 0, y: -20 }}
             className="md:hidden bg-background-light dark:bg-background-dark px-4 py-4 space-y-2 shadow-xl border-t border-gray-200 dark:border-gray-800"
           >
-            <div
-              className="relative md:hidden block  rounded-full border-[3px] border-transparent 
-  [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,
-  conic-gradient(from_var(--border-angle),#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#8b00ff,#ff0000)_border-box] 
-  animate-border "
-            >
+            <div className="relative md:hidden block rounded-full border-2 border-transparent [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,conic-gradient(from_var(--border-angle),#64748b7a_80%,#6366f1_86%,#a5b4fc_90%,#6366f1_94%,#64748b7a)_border-box] animate-border">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
