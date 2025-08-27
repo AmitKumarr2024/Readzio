@@ -1,5 +1,4 @@
 import asyncHandler from "express-async-handler";
-import mongoose from "mongoose";
 import UserModel from "../../servers/Models/User.js";
 import PostModel from "../../servers/Models/Post.js";
 import SubscriptionConfig from "../Models/SubscriptionConfigModel.js";
