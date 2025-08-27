@@ -174,14 +174,14 @@ const SuggestedPosts = ({ postId, className }) => {
           <div
             className={
               className ||
-              "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-w-8xl mx-auto"
+              "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-7xl mx-auto"
             }
           >
-            {displayedPosts.map((post, index) => (
+            {displayedPosts.slice(0, 4).map((post, index) => (
               <React.Fragment key={post._id || `post-${index}`}>
                 <Link
                   to={`/post/${post.slug}`}
-                  className="group bg-white dark:bg-gray-800 rounded-xs shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+                  className="group bg-white dark:bg-gray-800 rounded-md shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
                 >
                   <div className="relative">
                     <img
@@ -209,22 +209,14 @@ const SuggestedPosts = ({ postId, className }) => {
                     </p>
                   </div>
                 </Link>
-
-                {adPositions.includes(index + 1) && (
-                  <div className="w-full max-w-full overflow-hidden px-2 sm:px-0">
-                    <div className="mx-auto w-full max-w-[728px]">
-                      <SafeInFeedAd postId={post._id} />
-                    </div>
-                  </div>
-                )}
-                {multiplexAdPositions.includes(index + 1) && (
-                  <div className="col-span-full w-full border-t border-b border-gray-300 dark:border-gray-600 my-4">
-                    <HorizontalBannerAd postId={post._id} />
-                  </div>
-                )}
               </React.Fragment>
             ))}
           </div>
+          {displayedPosts.length >= 4 && (
+            <div className="col-span-full w-full border-t border-b border-gray-300 dark:border-gray-600 my-4">
+              <HorizontalBannerAd postId={displayedPosts[0]._id} />
+            </div>
+          )}
         </>
       )}
     </div>
