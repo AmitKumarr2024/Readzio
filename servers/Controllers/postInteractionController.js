@@ -12,25 +12,27 @@ export const toggleLike = async (req, res, next) => {
     const userId = req.user?._id;
     const { postId } = req.params;
 
-    if (!userId) {
-      throw new AppError(
-        "You must be signed in to access this feature. to like a post",
-        401
-      );
+    if (!userId || !req.user) {
+      throw new AppError("You must be signed in to like a post", 401);
+    }
+    if (!mongoose.isValidObjectId(postId)) {
+      throw new AppError("Invalid post ID", 400);
     }
 
     logMemory("📖 Before fetching post");
-    const post = await PostModel.findById(postId).select(
-      "likes author isPublished isSubscriberOnly slug title blocked"
-    );
+    const post = await PostModel.findById(postId)
+      .select("likes author isPublished isSubscriberOnly slug title blocked")
+      .lean();
     logMemory("📖 After fetching post");
     if (!post || !post.isPublished || post.blocked) {
       throw new AppError("Post not found or unavailable", 404);
     }
-
+    if (!post.author) {
+      throw new AppError("Post author not found", 400);
+    }
     if (
       post.isSubscriberOnly &&
-      !req.user.subscribedAuthors.includes(post.author?.toString())
+      !req.user.subscribedAuthors.includes(post.author.toString())
     ) {
       throw new AppError("Post is for subscribers only", 403);
     }
@@ -71,7 +73,7 @@ export const toggleLike = async (req, res, next) => {
     }
 
     logMemory("📖 Before fetching updated post");
-    const updatedPost = await PostModel.findById(postId).select("likes");
+    const updatedPost = await PostModel.findById(postId).select("likes").lean();
     logMemory("📖 After fetching updated post");
 
     logMemory("👍 End toggleLike");
@@ -93,30 +95,34 @@ export const toggleBookmark = async (req, res, next) => {
     const userId = req.user?._id;
     const { postId } = req.params;
 
-    if (!userId) {
-      throw new AppError(
-        "You must be signed in to access this feature. to bookmark a post",
-        401
-      );
+    if (!userId || !req.user) {
+      throw new AppError("You must be signed in to bookmark a post", 401);
+    }
+    if (!mongoose.isValidObjectId(postId)) {
+      throw new AppError("Invalid post ID", 400);
     }
 
     logMemory("📖 Before fetching user");
-    const user = await UserModel.findById(userId).select("bookmarks");
+    const user = await UserModel.findById(userId).select("bookmarks").lean();
     logMemory("📖 After fetching user");
     if (!user) throw new AppError("User not found", 404);
 
     logMemory("📖 Before fetching post");
-    const post = await PostModel.findById(postId).select(
-      "isPublished isSubscriberOnly author bookmarksCount slug title blocked"
-    );
+    const post = await PostModel.findById(postId)
+      .select(
+        "isPublished isSubscriberOnly author bookmarksCount slug title blocked"
+      )
+      .lean();
     logMemory("📖 After fetching post");
     if (!post || !post.isPublished || post.blocked) {
       throw new AppError("Post not found or unavailable", 404);
     }
-
+    if (!post.author) {
+      throw new AppError("Post author not found", 400);
+    }
     if (
       post.isSubscriberOnly &&
-      !req.user.subscribedAuthors.includes(post.author?.toString())
+      !req.user.subscribedAuthors.includes(post.author.toString())
     ) {
       throw new AppError("Post is for subscribers only", 403);
     }
@@ -163,9 +169,9 @@ export const toggleBookmark = async (req, res, next) => {
     }
 
     logMemory("📖 Before fetching updated post");
-    const updatedPost = await PostModel.findById(postId).select(
-      "bookmarksCount"
-    );
+    const updatedPost = await PostModel.findById(postId)
+      .select("bookmarksCount")
+      .lean();
     logMemory("📖 After fetching updated post");
 
     logMemory("📑 End toggleBookmark");
@@ -189,12 +195,22 @@ export const incrementView = async (req, res, next) => {
 
     logMemory("📖 Before fetching post");
     const post = await PostModel.findOne({ slug })
-      .select("author views isPublished blocked")
+      .select("author views isPublished blocked isSubscriberOnly")
       .lean();
     logMemory("📖 After fetching post");
 
     if (!post || !post.isPublished || post.blocked) {
       throw new AppError("Post not found or unavailable", 404);
+    }
+    if (!post.author) {
+      throw new AppError("Post author not found", 400);
+    }
+    if (
+      post.isSubscriberOnly &&
+      userId &&
+      !req.user.subscribedAuthors.includes(post.author.toString())
+    ) {
+      throw new AppError("Post is for subscribers only", 403);
     }
 
     if (userId && post.author?.toString() === userId.toString()) {
@@ -207,7 +223,7 @@ export const incrementView = async (req, res, next) => {
       { slug },
       { $inc: { views: 1 } },
       { new: true, select: "views" }
-    );
+    ).lean();
     logMemory("💾 After updating views");
 
     logMemory("👀 End incrementView");
@@ -283,6 +299,10 @@ export const getBookmarkStatus = async (req, res, next) => {
     const userId = req.user?._id;
     const { postId } = req.params;
 
+    if (!mongoose.isValidObjectId(postId)) {
+      throw new AppError("Invalid post ID", 400);
+    }
+
     logMemory("📖 Before fetching post");
     const post = await PostModel.findById(postId)
       .select(
@@ -294,11 +314,13 @@ export const getBookmarkStatus = async (req, res, next) => {
     if (!post || !post.isPublished || post.blocked) {
       throw new AppError("Post not found or unavailable", 404);
     }
-
+    if (!post.author) {
+      throw new AppError("Post author not found", 400);
+    }
     if (
       post.isSubscriberOnly &&
       userId &&
-      !req.user.subscribedAuthors.includes(post.author?.toString() || "")
+      !req.user.subscribedAuthors.includes(post.author.toString())
     ) {
       throw new AppError("Post is for subscribers only", 403);
     }
@@ -403,23 +425,36 @@ export const incrementShare = async (req, res, next) => {
 export const getSuggestedPosts = async (req, res, next) => {
   try {
     logMemory("📜 Start getSuggestedPosts");
-    const { category, exclude, limit = 4 } = req.query;
+    const { category, exclude, limit = 4, page = 1 } = req.query;
+    const userId = req.user?._id;
 
-    logMemory("📖 Before fetching suggested posts");
-    const posts = await PostModel.find({
+    const query = {
       category,
       isPublished: true,
       blocked: false,
       _id: { $ne: exclude },
-    })
+    };
+    if (userId) {
+      query.$or = [
+        { isSubscriberOnly: false },
+        { author: { $in: req.user.subscribedAuthors } },
+      ];
+    } else {
+      query.isSubscriberOnly = false;
+    }
+
+    logMemory("📖 Before fetching suggested posts");
+    const posts = await PostModel.find(query)
       .sort({ createdAt: -1 })
-      .limit(Number(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .limit(parseInt(limit))
       .select("title slug category thumbnail views createdAt")
       .lean();
     logMemory("📖 After fetching suggested posts");
 
+    const total = await PostModel.countDocuments(query);
     logMemory("📜 End getSuggestedPosts");
-    res.status(200).json({ success: true, posts });
+    res.status(200).json({ success: true, posts, total });
   } catch (error) {
     logMemory("❌ Error in getSuggestedPosts");
     next(new AppError("Failed to fetch suggested posts", 500));
