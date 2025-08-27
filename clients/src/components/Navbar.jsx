@@ -267,16 +267,13 @@ const Navbar = () => {
                 )}
               </Link>
             )}
-            <div className="rainbow-border hidden md:inline-block rounded-full">
+            <div className="rainbow-border rounded-full">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
-                  if (isAuthenticated && authUser?._id) {
-                    navigate("/createPost");
-                  } else {
-                    navigate("/login");
-                  }
+                  if (isAuthenticated && authUser?._id) navigate("/createPost");
+                  else navigate("/login");
                 }}
                 className="px-4 py-2 text-sm font-medium flex items-center gap-2 bg-slate-800 rounded-full text-white"
               >
@@ -425,7 +422,7 @@ const Navbar = () => {
             exit={{ opacity: 0, y: -20 }}
             className="md:hidden bg-background-light dark:bg-background-dark px-4 py-4 space-y-2 shadow-xl border-t border-gray-200 dark:border-gray-800"
           >
-            <div className=" md:hidden block rainbow-border  rounded-full">
+            <div className="md:hidden block animated-rainbow-border rounded-full p-[2px]">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
