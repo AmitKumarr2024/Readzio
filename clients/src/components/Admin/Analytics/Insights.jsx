@@ -14,7 +14,19 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Loader2, BarChart, Users, Clock, FileText } from "lucide-react";
+import {
+  Loader2,
+  BarChart,
+  Users,
+  Clock,
+  FileText,
+  TrendingUp,
+  Activity,
+  MapPin,
+  DollarSign,
+  Eye,
+  Calendar,
+} from "lucide-react";
 import { IoCloseCircleOutline } from "react-icons/io5";
 import { FiMaximize2 } from "react-icons/fi";
 import CountUp from "react-countup";
@@ -36,13 +48,24 @@ const isDev = process.env.NODE_ENV === "development";
 
 const StatModal = ({ type, count, onClose }) => {
   const modalVariants = {
-    initial: { scale: 0.9, opacity: 0 },
+    initial: { scale: 0.8, opacity: 0, y: 50 },
     animate: {
       scale: 1,
       opacity: 1,
-      transition: { duration: 0.4, ease: "easeOut" },
+      y: 0,
+      transition: {
+        type: "spring",
+        damping: 25,
+        stiffness: 300,
+        duration: 0.5,
+      },
     },
-    exit: { scale: 0.9, opacity: 0, transition: { duration: 0.3 } },
+    exit: {
+      scale: 0.8,
+      opacity: 0,
+      y: 50,
+      transition: { duration: 0.3 },
+    },
   };
 
   const titles = {
@@ -51,45 +74,62 @@ const StatModal = ({ type, count, onClose }) => {
     total: "Registered Users",
     guest: "Guest Visitors",
   };
-  const bgClasses = {
-    online:
-      "bg-gradient-to-br from-green-200 dark:from-green-900/50 to-emerald-300 dark:to-emerald-800/50",
-    offline:
-      "bg-gradient-to-br from-gray-200 dark:from-gray-700/50 to-gray-300 dark:to-gray-600/50",
-    total:
-      "bg-gradient-to-br from-blue-200 dark:from-blue-900/50 to-indigo-300 dark:to-indigo-800/50",
-    guest:
-      "bg-gradient-to-br from-pink-200 dark:from-pink-900/50 to-rose-300 dark:to-rose-800/50",
+
+  const gradients = {
+    online: "from-emerald-400 via-teal-500 to-cyan-600",
+    offline: "from-slate-400 via-gray-500 to-zinc-600",
+    total: "from-blue-400 via-purple-500 to-indigo-600",
+    guest: "from-pink-400 via-rose-500 to-red-500",
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-background-light dark:bg-background-dark flex items-center justify-center z-50"
-    >
+    <AnimatePresence>
       <motion.div
-        variants={modalVariants}
-        className={`p-8 sm:p-12 rounded-2xl text-center w-full max-w-4xl h-full max-h-[85vh] flex flex-col items-center justify-center ${bgClasses[type]}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        onClick={onClose}
       >
-        <button
-          onClick={onClose}
-          aria-label="Close modal"
-          className="absolute top-6 right-6 text-text-main-light dark:text-text-main-dark hover:bg-gray-200 dark:hover:bg-gray-600/50 rounded-full p-2 transition"
+        <motion.div
+          variants={modalVariants}
+          className={`relative p-8 sm:p-12 rounded-3xl text-center w-full max-w-2xl bg-gradient-to-br ${gradients[type]} shadow-2xl`}
+          onClick={(e) => e.stopPropagation()}
         >
-          <IoCloseCircleOutline size={36} />
-        </button>
-        <h2 className="text-3xl sm:text-5xl font-bold mb-6 sm:mb-10 text-text-main-light dark:text-text-main-dark">
-          {titles[type]}
-        </h2>
-        <CountUp
-          end={count}
-          duration={1}
-          className="text-7xl sm:text-9xl font-extrabold tracking-tight text-text-main-light dark:text-text-main-dark"
-        />
+          <button
+            onClick={onClose}
+            aria-label="Close modal"
+            className="absolute top-4 right-4 text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
+          >
+            <IoCloseCircleOutline size={32} />
+          </button>
+
+          <div className="text-white/90 mb-4">
+            <h2 className="text-2xl sm:text-4xl font-bold mb-2">
+              {titles[type]}
+            </h2>
+            <div className="w-20 h-1 bg-white/30 rounded-full mx-auto"></div>
+          </div>
+
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+            className="text-white mb-4"
+          >
+            <CountUp
+              end={count}
+              duration={1}
+              className="text-6xl sm:text-8xl font-black"
+            />
+          </motion.div>
+
+          <div className="text-white/70 text-sm sm:text-base">
+            Real-time analytics data
+          </div>
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </AnimatePresence>
   );
 };
 
@@ -106,6 +146,89 @@ const formatTime = (seconds) => {
     parts.push(`${secs} sec${secs === 1 ? "" : "s"}`);
   return parts.join(" ");
 };
+
+const StatCard = ({ type, count, icon: Icon, color, label, onClick }) => {
+  const gradients = {
+    green:
+      "from-emerald-50 to-teal-100 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-200 dark:border-emerald-800",
+    gray: "from-slate-50 to-gray-100 dark:from-slate-800/20 dark:to-gray-800/20 border-slate-200 dark:border-slate-700",
+    blue: "from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800",
+    pink: "from-pink-50 to-rose-100 dark:from-pink-900/20 dark:to-rose-900/20 border-pink-200 dark:border-pink-800",
+  };
+
+  const iconColors = {
+    green: "text-emerald-600 dark:text-emerald-400",
+    gray: "text-slate-600 dark:text-slate-400",
+    blue: "text-blue-600 dark:text-blue-400",
+    pink: "text-pink-600 dark:text-pink-400",
+  };
+
+  return (
+    <motion.div
+      whileHover={{
+        scale: 1.02,
+        y: -4,
+        boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
+      }}
+      whileTap={{ scale: 0.98 }}
+      className={`relative p-6 rounded-2xl bg-gradient-to-br ${gradients[color]} border shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden group`}
+      onClick={onClick}
+    >
+      <div className="absolute top-0 right-0 w-20 h-20 opacity-10">
+        <Icon className="w-full h-full" />
+      </div>
+
+      <div className="relative z-10">
+        <div className="flex items-start justify-between mb-4">
+          <div
+            className={`p-3 rounded-xl bg-white/50 dark:bg-white/10 ${iconColors[color]} group-hover:scale-110 transition-transform duration-200`}
+          >
+            <Icon className="w-6 h-6" />
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className={`p-2 rounded-lg ${iconColors[color]} hover:bg-white/30 dark:hover:bg-white/10 transition-colors duration-200`}
+          >
+            <FiMaximize2 className="w-4 h-4" />
+          </motion.button>
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+            {label.split("•")[0].trim()}
+          </h3>
+          <div className={`text-3xl font-black ${iconColors[color]}`}>
+            <CountUp end={count} duration={1} />
+          </div>
+          {label.includes("•") && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {label.split("•")[1]?.trim()}
+            </p>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const InsightCard = ({ title, icon: Icon, children, className = "" }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className={`bg-background-light dark:bg-background-dark rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-all duration-300 ${className}`}
+  >
+    <div className="flex items-center gap-3 mb-6">
+      <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+        <Icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+      </div>
+      <h3 className="text-lg font-semibold text-text-main-light dark:text-text-main-dark">
+        {title}
+      </h3>
+    </div>
+    {children}
+  </motion.div>
+);
 
 const Insights = () => {
   const dispatch = useDispatch();
@@ -130,12 +253,6 @@ const Insights = () => {
   const offlineUsers = Math.max(0, totalUsers - onlineUsersCount);
   const uniqueGuestCount = useMemo(() => {
     const count = new Set(guestVisits.map((g) => g.guestId)).size;
-    // console.log(
-    //   "[Insights] Calculated uniqueGuestCount:",
-    //   count,
-    //   "from guestVisits:",
-    //   guestVisits
-    // );
     return count;
   }, [guestVisits]);
 
@@ -151,7 +268,6 @@ const Insights = () => {
       { name: "Unique Posts", value: analytics.traffic?.uniquePostsCount || 0 },
       { name: "Guest Users", value: uniqueGuestCount || 0 },
     ];
-    // console.log("[Insights] Pie chart data:", data);
     return data;
   }, [analytics.traffic, uniqueGuestCount]);
 
@@ -164,7 +280,6 @@ const Insights = () => {
 
   useEffect(() => {
     if (currentUser && currentUser._id) {
-      // console.log("[Insights] 🔒 Logged-in user — skip guest dispatch");
       return;
     }
 
@@ -177,15 +292,10 @@ const Insights = () => {
       lastVisit: new Date().toISOString(),
       userAgent: navigator.userAgent || "Unknown",
     };
-    // console.log("[Insights] Dispatching initial guest visit:", guestData);
     dispatch(addGuestVisit(guestData));
   }, [dispatch, currentUser]);
 
   useEffect(() => {
-    // console.log(
-    //   "[Insights] Fetching site analytics with date range:",
-    //   dateRange
-    // );
     dispatch(
       fetchSiteAnalytics({
         startDate: dateRange.startDate,
@@ -196,24 +306,27 @@ const Insights = () => {
   }, [dispatch, dateRange]);
 
   const handleDateChange = (e) => {
-    // console.log("[Insights] Date range changed:", {
-    //   [e.target.name]: e.target.value,
-    // });
     setDateRange({ ...dateRange, [e.target.name]: e.target.value });
   };
 
   const containerVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      y: 0,
-      transition: { duration: 0.5, staggerChildren: 0.2 },
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1,
+      },
     },
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, x: -20 },
-    visible: { opacity: 1, x: 0, transition: { duration: 0.3 } },
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5 },
+    },
   };
 
   const totalTimeSpent = analytics?.traffic?.totalTimeSpent ?? 0;
@@ -224,416 +337,513 @@ const Insights = () => {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="w-full space-y-6 p-6 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark min-h-screen"
+      className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-100/40 dark:from-gray-900 dark:via-blue-950/30 dark:to-indigo-950/40 p-4 sm:p-6 lg:p-8"
     >
-      <motion.div
-        variants={itemVariants}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-      >
-        {[
-          {
-            type: "online",
-            count: onlineUsersCount,
-            icon: Users,
-            color: "green",
-            label: "Online Users",
-          },
-          {
-            type: "offline",
-            count: offlineUsers,
-            icon: Users,
-            color: "gray",
-            label: "Offline Users",
-          },
-          {
-            type: "total",
-            count: totalUsers,
-            icon: Users,
-            color: "blue",
-            label: "Registered Users",
-          },
-          {
-            type: "guest",
-            count: uniqueGuestCount,
-            icon: Users,
-            color: "pink",
-            label:
-              guestVisits.length > 0
-                ? `Guest from ${guestVisits[0].location || "—"} • ${
-                    guestVisits[0].lastVisit
-                      ? formatDistanceToNow(
-                          new Date(guestVisits[0].lastVisit),
-                          { addSuffix: true }
-                        )
-                      : "just now"
-                  }`
-                : "Guest Visitors",
-          },
-        ].map(({ type, count, icon: Icon, color, label }) => (
-          <motion.div
-            key={type}
-            whileHover={{
-              scale: 1.05,
-              boxShadow: `0 10px 20px rgba(0, 128, 64, 0.2)`,
-            }}
-            className={`p-6 rounded-2xl bg-gradient-to-r from-${color}-100 dark:from-${color}-900/50 to-${color}-200 dark:to-${color}-800/50 shadow-lg`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                  <Icon
-                    className={`w-6 h-6 text-${color}-600 dark:text-${color}-400`}
-                  />{" "}
-                  {label}
-                </h3>
-                <CountUp
-                  end={count}
-                  duration={1}
-                  className="text-5xl font-extrabold text-text-main-light dark:text-text-main-dark"
-                />
-              </div>
-              <button
-                onClick={() => setModalType(type)}
-                className={`text-${color}-600 dark:text-${color}-400 hover:bg-${color}-300 dark:hover:bg-${color}-700/50 rounded-full p-2 transition`}
-              >
-                <FiMaximize2 className="w-6 h-6" />
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </motion.div>
-
-      <AnimatePresence>
-        {modalType && (
-          <StatModal
-            type={modalType}
-            count={
-              modalType === "online"
-                ? onlineUsersCount
-                : modalType === "offline"
-                ? offlineUsers
-                : modalType === "total"
-                ? totalUsers
-                : uniqueGuestCount
-            }
-            onClose={() => setModalType(null)}
-          />
-        )}
-      </AnimatePresence>
-
-      <motion.div
-        variants={itemVariants}
-        className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
-      >
-        <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-          <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" /> All
-          User Locations
-        </h2>
-        <ErrorBoundary
-          fallback={
-            <div className="p-6 rounded-lg bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-200 text-center">
-              Failed to load map
-            </div>
-          }
-        >
-          <Suspense
-            fallback={
-              <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600 dark:text-blue-400" />
-            }
-          >
-            <AdminLocationDashboard />
-          </Suspense>
-        </ErrorBoundary>
-      </motion.div>
-
-      <motion.div
-        variants={itemVariants}
-        className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
-      >
-        <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-          <BarChart className="w-8 h-8 text-blue-600 dark:text-blue-400" /> Site
-          Insights
-        </h2>
-
-        <motion.div
-          variants={itemVariants}
-          className="mb-6 flex flex-col sm:flex-row gap-4"
-        >
-          <input
-            type="date"
-            name="startDate"
-            value={dateRange.startDate}
-            onChange={handleDateChange}
-            className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition w-full sm:w-auto"
-          />
-          <input
-            type="date"
-            name="endDate"
-            value={dateRange.endDate}
-            onChange={handleDateChange}
-            className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition w-full sm:w-auto"
-          />
-          {!isValidDateRange && (
-            <p className="text-red-500 text-sm">
-              Start date must be before or equal to end date
-            </p>
-          )}
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <motion.div variants={itemVariants} className="text-center mb-12">
+          <h1 className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
+            Analytics Dashboard
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300 text-lg">
+            Real-time insights and comprehensive analytics
+          </p>
         </motion.div>
 
+        {/* Stats Cards */}
+        <motion.div
+          variants={itemVariants}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+        >
+          {[
+            {
+              type: "online",
+              count: onlineUsersCount,
+              icon: Activity,
+              color: "green",
+              label: "Online Users",
+            },
+            {
+              type: "offline",
+              count: offlineUsers,
+              icon: Users,
+              color: "gray",
+              label: "Offline Users",
+            },
+            {
+              type: "total",
+              count: totalUsers,
+              icon: Users,
+              color: "blue",
+              label: "Registered Users",
+            },
+            {
+              type: "guest",
+              count: uniqueGuestCount,
+              icon: MapPin,
+              color: "pink",
+              label:
+                guestVisits.length > 0
+                  ? `Guest Visitors • from ${guestVisits[0].location || "—"} ${
+                      guestVisits[0].lastVisit
+                        ? formatDistanceToNow(
+                            new Date(guestVisits[0].lastVisit),
+                            { addSuffix: true }
+                          )
+                        : "just now"
+                    }`
+                  : "Guest Visitors",
+            },
+          ].map((stat) => (
+            <StatCard
+              key={stat.type}
+              {...stat}
+              onClick={() => setModalType(stat.type)}
+            />
+          ))}
+        </motion.div>
+
+        {/* Modal */}
         <AnimatePresence>
-          {analyticsError && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mb-6 p-4 bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-200 rounded-lg flex justify-between items-center"
-            >
-              <span>{analyticsError}</span>
-              <button
-                onClick={() => dispatch(clearError())}
-                className="text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-700/50 rounded-full p-2 transition"
-              >
-                Clear
-              </button>
-            </motion.div>
+          {modalType && (
+            <StatModal
+              type={modalType}
+              count={
+                modalType === "online"
+                  ? onlineUsersCount
+                  : modalType === "offline"
+                  ? offlineUsers
+                  : modalType === "total"
+                  ? totalUsers
+                  : uniqueGuestCount
+              }
+              onClose={() => setModalType(null)}
+            />
           )}
         </AnimatePresence>
 
-        {analyticsLoading ? (
-          <div className="text-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600 dark:text-blue-400" />
-            <span className="text-text-main-light dark:text-text-main-dark">
-              Loading...
-            </span>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentUser?.role === "admin" && post && (
-              <motion.div
-                variants={itemVariants}
-                className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
-              >
-                <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
-                  Post Insights
-                </h3>
-                <div className="space-y-3 text-text-main-light dark:text-text-main-dark">
-                  <p className="text-base">
-                    <span className="font-medium">Post Title:</span>{" "}
-                    <span className="text-blue-600 dark:text-blue-400 font-bold">
-                      {post.title || "N/A"}
-                    </span>
-                  </p>
-                  <p className="text-base">
-                    <span className="font-medium">Your Read Time:</span>{" "}
-                    <span className="text-blue-600 dark:text-blue-400 font-bold">
-                      {formatTime(sessionTime || 0)}
-                    </span>
-                  </p>
-                  <p className="text-base">
-                    <span className="font-medium">Total Time Spent:</span>{" "}
-                    <span className="text-blue-600 dark:text-blue-400 font-bold">
-                      {formatTime(post.timeSpent || 0)}
-                    </span>
-                  </p>
-                  <p className="text-base">
-                    <span className="font-medium">Estimated Impressions:</span>{" "}
-                    <span className="text-blue-600 dark:text-blue-400 font-bold">
-                      {Math.floor((post.timeSpent || 0) / IMPRESSION_INTERVAL)}
-                    </span>
-                  </p>
-                  <p className="text-base">
-                    <span className="font-medium">
-                      Ad Earnings (CPM $2.50):
-                    </span>{" "}
-                    <span className="text-blue-600 dark:text-blue-400 font-bold">
-                      ${calculateAdEarnings(post.timeSpent || 0)}
-                    </span>
-                  </p>
+        {/* Location Dashboard */}
+        <motion.div
+          variants={itemVariants}
+          className="bg-background-light dark:bg-background-dark rounded-3xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
+        >
+          <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
+            <MapPin className="w-8 h-8 text-blue-600 dark:text-blue-400" /> All
+            User Locations
+          </h2>
+          <ErrorBoundary
+            fallback={
+              <div className="p-6 rounded-lg bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-200 text-center">
+                Failed to load map
+              </div>
+            }
+          >
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
                 </div>
+              }
+            >
+              <AdminLocationDashboard />
+            </Suspense>
+          </ErrorBoundary>
+        </motion.div>
+
+        {/* Site Insights */}
+        <motion.div
+          variants={itemVariants}
+          className="bg-background-light dark:bg-background-dark rounded-3xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
+        >
+          <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
+            <BarChart className="w-8 h-8 text-blue-600 dark:text-blue-400" />{" "}
+            Site Insights
+          </h2>
+
+          {/* Date Range Filter */}
+          <motion.div
+            variants={itemVariants}
+            className="mb-8 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-lg font-semibold text-text-main-light dark:text-text-main-dark">
+                Date Range Filter
+              </h3>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <input
+                type="date"
+                name="startDate"
+                value={dateRange.startDate}
+                onChange={handleDateChange}
+                className="p-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 w-full sm:w-auto"
+              />
+              <input
+                type="date"
+                name="endDate"
+                value={dateRange.endDate}
+                onChange={handleDateChange}
+                className="p-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 w-full sm:w-auto"
+              />
+              {!isValidDateRange && (
+                <p className="text-red-500 text-sm">
+                  Start date must be before or equal to end date
+                </p>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Error Display */}
+          <AnimatePresence>
+            {analyticsError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-6 p-4 bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-200 rounded-lg flex justify-between items-center"
+              >
+                <span>{analyticsError}</span>
+                <button
+                  onClick={() => dispatch(clearError())}
+                  className="text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-700/50 rounded-full p-2 transition"
+                >
+                  Clear
+                </button>
               </motion.div>
             )}
+          </AnimatePresence>
 
+          {/* Loading State */}
+          {analyticsLoading ? (
+            <div className="text-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600 dark:text-blue-400 mb-4" />
+              <span className="text-text-main-light dark:text-text-main-dark">
+                Loading analytics...
+              </span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Post Insights - Only for Admin */}
+              {currentUser?.role === "admin" && post && (
+                <motion.div variants={itemVariants}>
+                  <InsightCard title="Current Post Insights" icon={FileText}>
+                    <div className="space-y-4">
+                      <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                        <h4 className="font-medium text-text-main-light dark:text-text-main-dark mb-2">
+                          Post Title
+                        </h4>
+                        <p className="text-blue-600 dark:text-blue-400 font-bold">
+                          {post.title || "N/A"}
+                        </p>
+                      </div>
+
+                      {[
+                        {
+                          label: "Your Read Time",
+                          value: formatTime(sessionTime || 0),
+                          icon: Clock,
+                        },
+                        {
+                          label: "Total Time Spent",
+                          value: formatTime(post.timeSpent || 0),
+                          icon: Clock,
+                        },
+                        {
+                          label: "Estimated Impressions",
+                          value: Math.floor(
+                            (post.timeSpent || 0) / IMPRESSION_INTERVAL
+                          ),
+                          icon: Eye,
+                        },
+                        {
+                          label: "Ad Earnings",
+                          value: `$${calculateAdEarnings(post.timeSpent || 0)}`,
+                          icon: DollarSign,
+                        },
+                      ].map((item, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+                        >
+                          <div className="flex items-center gap-3">
+                            <item.icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            <span className="text-sm font-medium text-text-main-light dark:text-text-main-dark">
+                              {item.label}
+                            </span>
+                          </div>
+                          <span className="font-bold text-blue-600 dark:text-blue-400">
+                            {item.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </InsightCard>
+                </motion.div>
+              )}
+
+              {/* Traffic Overview */}
+              <motion.div variants={itemVariants}>
+                <InsightCard title="Traffic Overview" icon={TrendingUp}>
+                  <div className="space-y-4">
+                    {[
+                      {
+                        label: "Total Visits",
+                        value:
+                          analytics.traffic?.totalVisits?.toLocaleString() ||
+                          "0",
+                        icon: Eye,
+                      },
+                      {
+                        label: "Total Time Spent",
+                        value: `${totalHours} hours`,
+                        icon: Clock,
+                      },
+                      {
+                        label: "Unique Users",
+                        value:
+                          analytics.traffic?.uniqueUsersCount?.toLocaleString() ||
+                          "0",
+                        icon: Users,
+                      },
+                      {
+                        label: "Unique Posts",
+                        value:
+                          analytics.traffic?.uniquePostsCount?.toLocaleString() ||
+                          "0",
+                        icon: FileText,
+                      },
+                      {
+                        label: "Guest Users",
+                        value: uniqueGuestCount?.toLocaleString() || "0",
+                        icon: MapPin,
+                      },
+                    ].map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <item.icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                          <span className="text-sm font-medium text-text-main-light dark:text-text-main-dark">
+                            {item.label}
+                          </span>
+                        </div>
+                        <span className="font-bold text-blue-600 dark:text-blue-400">
+                          {item.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </InsightCard>
+              </motion.div>
+
+              {/* Traffic Distribution Chart */}
+              <motion.div variants={itemVariants}>
+                <InsightCard title="Traffic Distribution" icon={BarChart}>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) =>
+                            `${(percent * 100).toFixed(0)}%`
+                          }
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "var(--background-light)",
+                            border: "1px solid #e5e7eb",
+                            borderRadius: "12px",
+                            boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                          }}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </InsightCard>
+              </motion.div>
+
+              {/* Top Posts */}
+              <motion.div variants={itemVariants}>
+                <InsightCard
+                  title="Top Performing Posts"
+                  icon={FileText}
+                  className="h-full"
+                >
+                  {analytics.topPosts?.length > 0 ? (
+                    <div className="space-y-4">
+                      {analytics.topPosts.map((post, index) => (
+                        <motion.div
+                          key={post.postId}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="font-medium text-text-main-light dark:text-text-main-dark truncate">
+                              {post.title}
+                            </h4>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                              #{index + 1}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 dark:text-gray-300">
+                            <div>
+                              <span className="block font-medium">
+                                {post.visitCount || 0}
+                              </span>
+                              <span className="text-gray-400">visits</span>
+                            </div>
+                            <div>
+                              <span className="block font-medium">
+                                {(post.totalTimeSpent
+                                  ? post.totalTimeSpent / 60
+                                  : 0
+                                ).toFixed(2)}
+                                m
+                              </span>
+                              <span className="text-gray-400">time</span>
+                            </div>
+                            <div>
+                              <span className="block font-medium">
+                                ${calculateAdEarnings(post.totalTimeSpent || 0)}
+                              </span>
+                              <span className="text-gray-400">revenue</span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-text-main-light dark:text-text-main-dark text-center py-8">
+                      No data available
+                    </p>
+                  )}
+                </InsightCard>
+              </motion.div>
+
+              {/* Top Users */}
+              <motion.div variants={itemVariants}>
+                <InsightCard
+                  title="Most Active Users"
+                  icon={Users}
+                  className="h-full"
+                >
+                  {Array.isArray(analytics.topUsers) &&
+                  analytics.topUsers.length > 0 ? (
+                    <div className="space-y-4">
+                      {analytics.topUsers.map((user, index) =>
+                        user?._id ? (
+                          <motion.div
+                            key={user._id || index}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200"
+                          >
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                                {user.name?.charAt(0) || "U"}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-text-main-light dark:text-text-main-dark truncate">
+                                  {user.name || "Unknown"}
+                                </h4>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                  {user.email || "No email"}
+                                </p>
+                              </div>
+                              <span className="text-xs text-gray-400 ml-2">
+                                #{index + 1}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-xs text-gray-600 dark:text-gray-300">
+                              <div>
+                                <span className="block font-medium">
+                                  {user.totalVisits || 0}
+                                </span>
+                                <span className="text-gray-400">
+                                  total visits
+                                </span>
+                              </div>
+                              <div>
+                                <span className="block font-medium">
+                                  {(user.totalTimeSpent
+                                    ? user.totalTimeSpent / 60
+                                    : 0
+                                  ).toFixed(2)}
+                                  m
+                                </span>
+                                <span className="text-gray-400">
+                                  time spent
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ) : null
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-text-main-light dark:text-text-main-dark text-center py-8">
+                      No data available
+                    </p>
+                  )}
+                </InsightCard>
+              </motion.div>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Guest Visit Logs */}
+        <motion.div
+          variants={itemVariants}
+          className="bg-background-light dark:bg-background-dark rounded-3xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
+        >
+          <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
+            <Users className="w-8 h-8 text-red-600 dark:text-red-400" /> Guest
+            Visit Logs
+          </h2>
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-6">
+            <RecentGuestVisits />
+          </div>
+        </motion.div>
+
+        {/* Loading Overlay */}
+        <AnimatePresence>
+          {analyticsLoading && (
             <motion.div
-              variants={itemVariants}
-              className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40"
             >
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
-                Traffic Overview
-              </h3>
-              <div className="space-y-3 text-text-main-light dark:text-text-main-dark">
-                <p className="text-base">
-                  <span className="font-medium">Total Visits:</span>{" "}
-                  <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    {analytics.traffic?.totalVisits || 0}
+              <div className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-2xl">
+                <div className="flex items-center gap-4">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+                  <span className="text-text-main-light dark:text-text-main-dark font-medium">
+                    Loading analytics...
                   </span>
-                </p>
-                <p className="text-base">
-                  <span className="font-medium">Total Time Spent:</span>{" "}
-                  <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    {totalHours} hours
-                  </span>
-                </p>
-                <p className="text-base">
-                  <span className="font-medium">Unique Users:</span>{" "}
-                  <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    {analytics.traffic?.uniqueUsersCount || 0}
-                  </span>
-                </p>
-                <p className="text-base">
-                  <span className="font-medium">Unique Posts:</span>{" "}
-                  <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    {analytics.traffic?.uniquePostsCount || 0}
-                  </span>
-                </p>
-                <p className="text-base">
-                  <span className="font-medium">Guest Users:</span>{" "}
-                  <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    {uniqueGuestCount || 0}
-                  </span>
-                </p>
+                </div>
               </div>
             </motion.div>
-
-            <motion.div
-              variants={itemVariants}
-              className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
-            >
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <BarChart className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
-                Traffic Distribution
-              </h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--background-light)",
-                      border: "1px solid var(--gray-200)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </motion.div>
-
-            <motion.div
-              variants={itemVariants}
-              className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
-            >
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
-                Top Posts
-              </h3>
-              {analytics.topPosts?.length > 0 ? (
-                <ul className="space-y-4">
-                  {analytics.topPosts.map((post) => (
-                    <motion.li
-                      key={post.postId}
-                      variants={itemVariants}
-                      className="border-l-4 border-blue-500 pl-4"
-                    >
-                      <span className="font-medium text-text-main-light dark:text-text-main-dark">
-                        {post.title}
-                      </span>
-                      <p className="text-sm text-text-main-light dark:text-text-main-dark">
-                        Visits: {post.visitCount || 0}
-                      </p>
-                      <p className="text-sm text-text-main-light dark:text-text-main-dark">
-                        Time Spent:{" "}
-                        {(post.totalTimeSpent
-                          ? post.totalTimeSpent / 60
-                          : 0
-                        ).toFixed(2)}{" "}
-                        minutes
-                      </p>
-                      <p className="text-sm text-text-main-light dark:text-text-main-dark">
-                        Ad Earnings: $
-                        {calculateAdEarnings(post.totalTimeSpent || 0)}
-                      </p>
-                    </motion.li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-text-main-light dark:text-text-main-dark">
-                  No data available
-                </p>
-              )}
-            </motion.div>
-
-            <motion.div
-              variants={itemVariants}
-              className="p-6 bg-background-light dark:bg-background-dark rounded-xl shadow-md border border-gray-100 dark:border-gray-700"
-            >
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
-                Top Active Users
-              </h3>
-              {Array.isArray(analytics.topUsers) &&
-              analytics.topUsers.length > 0 ? (
-                <ul className="space-y-4">
-                  {analytics.topUsers.map((user, index) =>
-                    user?._id ? (
-                      <motion.li
-                        key={user._id || index}
-                        variants={itemVariants}
-                        className="border-l-4 border-green-500 pl-4"
-                      >
-                        <span className="font-medium text-text-main-light dark:text-text-main-dark">
-                          {user.name || "Unknown"} ({user.email || "No email"})
-                        </span>
-                        <p className="text-sm text-text-main-light dark:text-text-main-dark">
-                          Visits: {user.totalVisits || 0}
-                        </p>
-                        <p className="text-sm text-text-main-light dark:text-text-main-dark">
-                          Time Spent:{" "}
-                          {(user.totalTimeSpent
-                            ? user.totalTimeSpent / 60
-                            : 0
-                          ).toFixed(2)}{" "}
-                          minutes
-                        </p>
-                      </motion.li>
-                    ) : null
-                  )}
-                </ul>
-              ) : (
-                <p className="text-text-main-light dark:text-text-main-dark">
-                  No data available
-                </p>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </motion.div>
-
-      <motion.div
-        variants={itemVariants}
-        className="bg-background-light dark:bg-background-dark rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700"
-      >
-        <h2 className="text-3xl font-semibold mb-6 flex items-center gap-3 text-text-main-light dark:text-text-main-dark">
-          <Users className="w-8 h-8 text-red-600 dark:text-red-400" /> Guest
-          Visit Logs
-        </h2>
-        <RecentGuestVisits />
-      </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 };
