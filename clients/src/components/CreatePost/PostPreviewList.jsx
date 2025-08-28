@@ -639,10 +639,16 @@ const PostPreviewList = ({
     <div className="max-w-6xl mx-auto px-6 py-8">
       <AnimatePresence>
         {showPublishLoading && (
-          <LoadingBar loading={showPublishLoading} text="Publishing..." />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
+          >
+            <LoadingBar loading={showPublishLoading} text="Publishing..." />
+          </motion.div>
         )}
       </AnimatePresence>
-s
       {currentDraftPost && (
         <>
           <div className="text-center space-y-4 mb-8">
