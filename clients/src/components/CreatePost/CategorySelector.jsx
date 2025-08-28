@@ -103,65 +103,57 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   };
 
   const handleAddCategory = async () => {
-    const { name, slug, description } = newCategory;
-    const trimmedName = name.trim();
-    const trimmedSlug = slug.trim();
+  const { name, slug, description } = newCategory;
+  const trimmedName = name.trim();
+  const trimmedSlug = slug.trim();
 
-    // Validation
-    if (!trimmedName || !trimmedSlug) {
-      setFormError("Name and slug are required");
-      return;
-    }
-    if (!/^[a-z0-9-]+$/.test(trimmedSlug)) {
-      setFormError("Slug must be lowercase, alphanumeric, and use dashes");
-      return;
-    }
-    if (categories.find((cat) => cat.slug === trimmedSlug)) {
-      setFormError("Category slug already exists");
-      return;
-    }
-    if (
-      categories.find(
-        (cat) => cat.name.toLowerCase() === trimmedName.toLowerCase()
-      )
-    ) {
-      setFormError("Category name already exists");
-      return;
-    }
+  // Validation...
+  if (!trimmedName || !trimmedSlug) {
+    setFormError("Name and slug are required");
+    return;
+  }
+  if (!/^[a-z0-9-]+$/.test(trimmedSlug)) {
+    setFormError("Slug must be lowercase, alphanumeric, and use dashes");
+    return;
+  }
+  if (categories.find((cat) => cat.slug === trimmedSlug)) {
+    setFormError("Category slug already exists");
+    return;
+  }
+  if (categories.find(
+    (cat) => cat.name.toLowerCase() === trimmedName.toLowerCase()
+  )) {
+    setFormError("Category name already exists");
+    return;
+  }
 
-    setIsCreatingCategory(true);
-    try {
-      const result = await dispatch(
-        createCategory({
-          name: trimmedName,
-          slug: trimmedSlug,
-          description: description.trim() || undefined,
-        })
-      ).unwrap();
+  setIsCreatingCategory(true);
+  try {
+    const result = await dispatch(
+      createCategory({
+        name: trimmedName,
+        slug: trimmedSlug,
+        description: description.trim() || undefined,
+      })
+    ).unwrap();
 
-      // Auto-select and continue with new category
-      setSelectedCategory(result);
-      dispatch(selectCategory(result));
-      setNewCategory({ name: "", slug: "", description: "" });
-      setShowAddCategory(false);
-      toast.success("Category created successfully!");
+    // ✅ No need to reload – Redux slice already added it
+    setNewCategory({ name: "", slug: "", description: "" });
+    setShowAddCategory(false);
+    toast.success("Category created successfully!");
 
-      // Refresh categories list
-      setHasLoadedCategories(false);
-      loadCategories();
+    // ✅ Continue with the new category
+    setTimeout(() => {
+      onContinue({ id: result.category._id, name: result.category.name });
+    }, 500);
+  } catch (err) {
+    setFormError(err.message || "Failed to create category");
+    toast.error(err.message || "Failed to create category");
+  } finally {
+    setIsCreatingCategory(false);
+  }
+};
 
-      // Auto-continue
-      setTimeout(() => {
-        onContinue({ id: result._id, name: result.name });
-      }, 500);
-    } catch (err) {
-      const errorMessage = err.message || err || "Failed to create category";
-      setFormError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsCreatingCategory(false);
-    }
-  };
 
   const handleRetryLoad = () => {
     setHasLoadedCategories(false);
