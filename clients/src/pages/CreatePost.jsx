@@ -137,7 +137,7 @@ const CreatePost = () => {
 
       const imageBlocks = blocks.filter((b) => b.type === "image");
       if (imageBlocks.length > MAX_IMAGE_COUNT) {
-        toast.error(`Maximum ${MAX_IMAGE_COUNT} images allowed per post`, {
+        toast.error(`Maximum ${MAX_IMAGE_COUNT} images allowed per posts`, {
           position: "top-right",
         });
         setIsSubmitting(false);
