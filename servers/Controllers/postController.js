@@ -679,10 +679,10 @@ export const createPost = async (req, res, next) => {
 
     // Validate payload size
     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
-    // For example, allow up to 20MB
-    if (payloadSize > 30 * 1024 * 1024) {
+    // For example, allow up to 40MB
+    if (payloadSize > 40 * 1024 * 1024) {
       throw new AppError(
-        `Payload exceeds 30MB limit: ${(payloadSize / 1024 / 1024).toFixed(
+        `Payload exceeds 40MB limit: ${(payloadSize / 1024 / 1024).toFixed(
           2
         )}MB`,
         413,
@@ -2095,9 +2095,9 @@ export const updatePostBySlug = async (req, res, next) => {
     //   "[UpdatePostBySlug] Payload size:",
     //   `${(payloadSize / 1024 / 1024).toFixed(2)}MB`
     // );
-    if (payloadSize > 30 * 1024 * 1024) {
+    if (payloadSize > 40 * 1024 * 1024) {
       throw new AppError(
-        `Payload exceeds 30MB limit: ${(payloadSize / 1024 / 1024).toFixed(
+        `Payload exceeds 40MB limit: ${(payloadSize / 1024 / 1024).toFixed(
           2
         )}MB`,
         413,

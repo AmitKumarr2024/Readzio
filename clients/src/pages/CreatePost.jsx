@@ -47,10 +47,10 @@ const CreatePost = () => {
   );
   const { categories } = useSelector((state) => state.categories);
 
-  const MAX_PAYLOAD_SIZE = 20 * 1024 * 1024; // 20 MB
+  const MAX_PAYLOAD_SIZE = 40 * 1024 * 1024; // 40 MB
   const MAX_TEXT_BLOCK_SIZE = 100 * 1024; // 100KB
   const MAX_TABLE_BLOCK_SIZE = 200 * 1024; // 200KB
-  const MAX_IMAGE_COUNT = 20; // 20 images
+  const MAX_IMAGE_COUNT = 40; // 40 images
   const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
 
   useEffect(() => {
@@ -248,7 +248,7 @@ const CreatePost = () => {
       const payloadSize = new TextEncoder().encode(payloadString).length;
       if (payloadSize > MAX_PAYLOAD_SIZE) {
         toast.error(
-          "Post data exceeds 8MB. Reduce images (max 20), text, or table content.",
+          "Post data exceeds 8MB. Reduce images (max 40), text, or table content.",
           { position: "top-right" }
         );
         setIsSubmitting(false);
