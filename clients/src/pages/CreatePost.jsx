@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -15,11 +9,7 @@ import PostEditor from "../components/CreatePost/PostEditor";
 import PostPreviewList from "../components/CreatePost/PostPreviewList";
 import { createPosts, deletePost, getSinglePost } from "../store/postSlice";
 import { fetchCategories } from "../store/categorySlice";
-import {
-  setCategory,
-  setPostType,
-  resetPostMeta,
-} from "../store/Post/postMetaSlice";
+import { setCategory, setPostType, resetPostMeta } from "../store/Post/postMetaSlice";
 
 const asyncRetry = async (fn, { retries = 5, minTimeout = 2000 } = {}) => {
   let lastError = null;
@@ -53,9 +43,7 @@ const CreatePost = () => {
 
   // ---- redux
   const { post, createLoading, createError } = useSelector((s) => s.post);
-  const { postType, category: selectedCategoryId } = useSelector(
-    (s) => s.postMeta
-  );
+  const { postType, category: selectedCategoryId } = useSelector((s) => s.postMeta);
   const { categories } = useSelector((s) => s.categories);
 
   // ---- refs / guards
@@ -113,18 +101,13 @@ const CreatePost = () => {
   }, [categories]);
 
   const posts = post ? [post] : [];
-  const filteredPosts = selectedCategoryId
-    ? posts.filter((p) => p.category === selectedCategoryId)
-    : posts;
+  const filteredPosts = selectedCategoryId ? posts.filter((p) => p.category === selectedCategoryId) : posts;
 
   // ---------- HELPERS
 
   const timeout = (ms) =>
     new Promise((_, rej) => {
-      const t = setTimeout(
-        () => rej({ isTimeout: true, message: `Timed out after ${ms}ms` }),
-        ms
-      );
+      const t = setTimeout(() => rej({ isTimeout: true, message: `Timed out after ${ms}ms` }), ms);
       timersRef.current.add(t);
     });
 
@@ -144,22 +127,17 @@ const CreatePost = () => {
   const validateBeforeSubmit = async (metaData) => {
     // title
     if (!title.trim()) throw new Error("Please enter a title");
-    if (title.trim().length < 3)
-      throw new Error("Title must be at least 3 characters long");
+    if (title.trim().length < 3) throw new Error("Title must be at least 3 characters long");
     // content
     if (!blocks.length) throw new Error("Please add content blocks");
-    if (!postType && !localStorage.getItem("postType"))
-      throw new Error("Please select a post type");
+    if (!postType && !localStorage.getItem("postType")) throw new Error("Please select a post type");
     if (!selectedCategoryId) throw new Error("Please select a category");
-    if (!metaData?.tags?.length)
-      throw new Error("Please provide at least one tag");
-    if (!/^[a-z]{2}$/i.test(metaData.language || ""))
-      throw new Error("Invalid language code");
+    if (!metaData?.tags?.length) throw new Error("Please provide at least one tag");
+    if (!/^[a-z]{2}$/i.test(metaData.language || "")) throw new Error("Invalid language code");
 
     // images count
     const imageBlocks = blocks.filter((b) => b.type === "image");
-    if (imageBlocks.length > MAX_IMAGE_COUNT)
-      throw new Error(`Maximum ${MAX_IMAGE_COUNT} images allowed per post`);
+    if (imageBlocks.length > MAX_IMAGE_COUNT) throw new Error(`Maximum ${MAX_IMAGE_COUNT} images allowed per post`);
 
     // validate blocks (with timeouts to avoid hangs)
     for (let i = 0; i < blocks.length; i++) {
@@ -168,38 +146,23 @@ const CreatePost = () => {
       if (block.type === "text") {
         const textSize = new TextEncoder().encode(block.value || "").length;
         if (textSize > MAX_TEXT_BLOCK_SIZE) {
-          throw new Error(
-            `Text block at position ${
-              i + 1
-            } too large (>100KB). Please reduce content.`
-          );
+          throw new Error(`Text block at position ${i + 1} too large (>100KB). Please reduce content.`);
         }
       }
 
       if (block.type === "table") {
         if (!block.data?.length || !block.data.some((row) => row.length)) {
-          throw new Error(
-            `Table block at position ${i + 1} must have non-empty data`
-          );
+          throw new Error(`Table block at position ${i + 1} must have non-empty data`);
         }
-        const tableSize = new TextEncoder().encode(
-          JSON.stringify(block.data)
-        ).length;
+        const tableSize = new TextEncoder().encode(JSON.stringify(block.data)).length;
         if (tableSize > MAX_TABLE_BLOCK_SIZE) {
-          throw new Error(
-            `Table block at position ${
-              i + 1
-            } too large (>200KB). Please reduce table data.`
-          );
+          throw new Error(`Table block at position ${i + 1} too large (>200KB). Please reduce table data.`);
         }
       }
 
       if (block.type === "image" && block.src && !block.isEmbed) {
         try {
-          const res = await Promise.race([
-            fetchWithTimeout(block.src, 7000),
-            timeout(9000),
-          ]);
+          const res = await Promise.race([fetchWithTimeout(block.src, 7000), timeout(9000)]);
           const file = await res.blob();
           if (file.size > MAX_IMAGE_SIZE) {
             throw new Error(`Image at position ${i + 1} exceeds 5MB limit`);
@@ -218,17 +181,12 @@ const CreatePost = () => {
     let thumbnailSize = metaData.thumbnailSize || 0;
     if (thumbnail && thumbnail.startsWith("data:image") && !metaData.isEmbed) {
       try {
-        const res = await Promise.race([
-          fetchWithTimeout(thumbnail, 7000),
-          timeout(9000),
-        ]);
+        const res = await Promise.race([fetchWithTimeout(thumbnail, 7000), timeout(9000)]);
         const file = await res.blob();
-        if (file.size > MAX_IMAGE_SIZE)
-          throw new Error("Thumbnail exceeds 5MB limit");
+        if (file.size > MAX_IMAGE_SIZE) throw new Error("Thumbnail exceeds 5MB limit");
         thumbnailSize = file.size;
       } catch (err) {
-        if (err?.name === "AbortError" || err?.isTimeout)
-          throw new Error("Thumbnail validation timed out");
+        if (err?.name === "AbortError" || err?.isTimeout) throw new Error("Thumbnail validation timed out");
         throw new Error("Invalid thumbnail");
       }
     }
@@ -248,13 +206,9 @@ const CreatePost = () => {
       isFeatured: metaData.isFeatured || false,
       isPinned: metaData.isPinned || false,
     };
-    const payloadSize = new TextEncoder().encode(
-      JSON.stringify(postData)
-    ).length;
+    const payloadSize = new TextEncoder().encode(JSON.stringify(postData)).length;
     if (payloadSize > MAX_PAYLOAD_SIZE) {
-      throw new Error(
-        "Post data exceeds 40MB. Reduce images (max 40), text, or table content."
-      );
+      throw new Error("Post data exceeds 40MB. Reduce images (max 40), text, or table content.");
     }
 
     return postData;
@@ -276,7 +230,7 @@ const CreatePost = () => {
         // 2) Submit with an overall timeout (e.g., 25s)
         const resultAction = await Promise.race([
           dispatch(createPosts(postData)).unwrap(),
-          timeout(25000),
+          timeout(60000),
         ]);
 
         toast.success("Post created successfully!", { position: "top-right" });
@@ -300,9 +254,7 @@ const CreatePost = () => {
               { retries: 3, minTimeout: 1500 }
             );
             if (checkPost) {
-              toast.success("Post created successfully!", {
-                position: "top-right",
-              });
+              toast.success("Post created successfully!", { position: "top-right" });
               setTitle("");
               setBlocks([]);
               dispatch(resetPostMeta());
@@ -313,13 +265,9 @@ const CreatePost = () => {
           } catch {
             // fallthrough to error toast below
           }
-          toast.error(
-            err?.message ||
-              "Request timed out. Please check if your post was created.",
-            {
-              position: "top-right",
-            }
-          );
+          toast.error(err?.message || "Request timed out. Please check if your post was created.", {
+            position: "top-right",
+          });
         } else {
           // Normal errors
           const msg = err?.message || "Failed to create post";
@@ -329,14 +277,11 @@ const CreatePost = () => {
             const slug = slugify(title, { lower: true, strict: true });
             try {
               const checkPost = await asyncRetry(
-                () =>
-                  dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
+                () => dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
                 { retries: 3, minTimeout: 1000 }
               );
               if (checkPost) {
-                toast.success("Post already exists. Redirecting...", {
-                  position: "top-right",
-                });
+                toast.success("Post already exists. Redirecting...", { position: "top-right" });
                 navigate(`/post/${checkPost.slug}`);
               }
             } catch {
@@ -360,9 +305,7 @@ const CreatePost = () => {
       .then(() => toast.success("Post deleted", { position: "top-right" }))
       .catch((err) => {
         console.error("[CreatePost] Delete post failed:", err);
-        toast.error(err?.message || "Failed to delete post", {
-          position: "top-right",
-        });
+        toast.error(err?.message || "Failed to delete post", { position: "top-right" });
       });
   };
 
@@ -376,10 +319,7 @@ const CreatePost = () => {
   return (
     <div className="flex flex-col md:flex-row bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
       {showPostTypeModal && (
-        <div
-          id="post-type-modal"
-          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6"
-        >
+        <div id="post-type-modal" className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
           <PostTypeSelector
             postType={postType}
             setPostType={(value) => {
@@ -399,10 +339,7 @@ const CreatePost = () => {
       )}
 
       {showCategoryModal && (
-        <div
-          id="category-modal"
-          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6"
-        >
+        <div id="category-modal" className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
           <CategorySelector
             onBack={() => {
               setShowCategoryModal(false);
@@ -410,9 +347,7 @@ const CreatePost = () => {
             }}
             onContinue={(selectedCategory) => {
               if (!selectedCategory?.id) {
-                toast.error("Please select a category", {
-                  position: "top-right",
-                });
+                toast.error("Please select a category", { position: "top-right" });
                 return;
               }
               dispatch(setCategory(selectedCategory.id));
@@ -427,10 +362,7 @@ const CreatePost = () => {
       )}
 
       {!showPostTypeModal && !showCategoryModal && (
-        <div
-          id="create-post-main"
-          className="min-w-full flex container justify-around items-center flex-col flex-wrap md:flex-row"
-        >
+        <div id="create-post-main" className="min-w-full flex container justify-around items-center flex-col flex-wrap md:flex-row">
           <div className="w-full flex justify-start px-4 pt-10 pl-11">
             <button
               onClick={() => {
@@ -453,28 +385,20 @@ const CreatePost = () => {
               setBlocks={setBlocks}
               postType={postType}
               category={selectedCategoryId}
-              categoryName={
-                categoryMap[selectedCategoryId] || selectedCategoryId
-              }
+              categoryName={categoryMap[selectedCategoryId] || selectedCategoryId}
             />
             <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              Images will be uploaded in their original format and quality (up
-              to 5MB).
+              Images will be uploaded in their original format and quality (up to 5MB).
             </div>
           </div>
 
-          <div
-            id="post-preview-list-wrapper"
-            className="w-full md:w-2/5 md:pl-1"
-          >
+          <div id="post-preview-list-wrapper" className="w-full md:w-2/5 md:pl-1">
             <PostPreviewList
               currentDraftPost={{ title, blocks }}
               onUpdateDraft={handleUpdateDraft}
               postType={postType}
               category={selectedCategoryId}
-              categoryName={
-                categoryMap[selectedCategoryId] || selectedCategoryId
-              }
+              categoryName={categoryMap[selectedCategoryId] || selectedCategoryId}
               allPosts={filteredPosts}
               deletePost={handleDeletePost}
               createLoading={createLoading}
