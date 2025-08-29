@@ -50,15 +50,6 @@ const HeroSection = () => {
         />
         <meta name="twitter:image" content="https://inkshaa.in/preview.png" />
         <html lang="en" />
-
-        {/* ✅ Preload critical font for faster LCP */}
-        <link
-          rel="preload"
-          href="/fonts/inter-var.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
       </Helmet>
 
       <section
@@ -67,7 +58,6 @@ const HeroSection = () => {
         dark:text-text-main-dark min-h-[200px] sm:min-h-[250px] md:min-h-[300px] 
         flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 py-10 sm:py-14"
       >
-        {/* Decorative circles (low impact on LCP, kept as is) */}
         <div
           aria-hidden="true"
           className="absolute top-6 left-6 sm:top-10 sm:left-10 
@@ -83,11 +73,7 @@ const HeroSection = () => {
           initial="hidden"
           animate="visible"
         >
-          {/* ✅ H1 paints immediately (no delay, no opacity animation) */}
-          <h1
-            className="text-3xl sm:text-5xl md:text-7xl font-extrabold mb-4 sm:mb-6 leading-tight font-sans"
-            style={{ fontDisplay: "swap" }} // fallback font shows instantly
-          >
+          <h1 className="text-3xl sm:text-5xl md:text-7xl font-extrabold mb-4 sm:mb-6 leading-tight font-sans">
             <span translate="no">Welcome to </span>
             <motion.span
               className="text-yellow-300 underline decoration-yellow-300 decoration-4 underline-offset-4 sm:underline-offset-8 notranslate"
