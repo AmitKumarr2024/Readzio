@@ -54,7 +54,13 @@ const HeroSection = () => {
 
       <section className="relative bg-gradient-to-r from-background-light to-gray-200 dark:from-background-dark dark:to-gray-800 text-text-main-light dark:text-text-main-dark min-h-[200px] sm:min-h-[250px] md:min-h-[300px] flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 py-10 sm:py-14">
         {/* Decorative circles */}
-        <div className="absolute top-6 left-6 sm:top-10 sm:left-10 w-16 sm:w-24 h-16 sm:h-24 bg-pink-400 rounded-full opacity-30 animate-pulse blur-3xl"></div>
+        <div
+          aria-hidden="true"
+          className="absolute top-6 left-6 sm:top-10 sm:left-10 
+             w-16 sm:w-24 h-16 sm:h-24 bg-pink-400 
+             rounded-full opacity-30 animate-pulse blur-3xl"
+        ></div>
+
         <div className="absolute bottom-10 right-6 sm:bottom-20 sm:right-20 w-20 sm:w-32 h-20 sm:h-32 bg-indigo-400 rounded-full opacity-30 animate-pulse blur-3xl"></div>
 
         <motion.div
@@ -65,18 +71,24 @@ const HeroSection = () => {
         >
           <motion.h1
             className="text-3xl sm:text-5xl md:text-7xl font-extrabold mb-4 sm:mb-6 drop-shadow-lg leading-tight"
-            variants={itemVariants}
+            initial={{ opacity: 1, y: 0 }} // 👈 visible immediately
+            animate={{ opacity: 1, y: 0 }} // 👈 no delay on LCP
+            transition={{ duration: 0 }} // 👈 instant
           >
             <span translate="no">Welcome to </span>
-            <span
+            <motion.span
               className="text-yellow-300 underline decoration-yellow-300 decoration-4 underline-offset-4 sm:underline-offset-8 notranslate"
               translate="no"
               lang="en"
               aria-label="inkshaa logo"
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
             >
               inkshaa
-            </span>
+            </motion.span>
           </motion.h1>
+
           <motion.p
             className="text-base sm:text-lg md:text-2xl max-w-md sm:max-w-xl mx-auto text-center"
             variants={itemVariants}
