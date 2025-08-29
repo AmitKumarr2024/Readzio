@@ -50,10 +50,24 @@ const HeroSection = () => {
         />
         <meta name="twitter:image" content="https://inkshaa.in/preview.png" />
         <html lang="en" />
+
+        {/* ✅ Preload critical font for faster LCP */}
+        <link
+          rel="preload"
+          href="/fonts/inter-var.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
       </Helmet>
 
-      <section className="relative bg-gradient-to-r from-background-light to-gray-200 dark:from-background-dark dark:to-gray-800 text-text-main-light dark:text-text-main-dark min-h-[200px] sm:min-h-[250px] md:min-h-[300px] flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 py-10 sm:py-14">
-        {/* Decorative circles */}
+      <section
+        className="relative bg-gradient-to-r from-background-light to-gray-200 
+        dark:from-background-dark dark:to-gray-800 text-text-main-light 
+        dark:text-text-main-dark min-h-[200px] sm:min-h-[250px] md:min-h-[300px] 
+        flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 py-10 sm:py-14"
+      >
+        {/* Decorative circles (low impact on LCP, kept as is) */}
         <div
           aria-hidden="true"
           className="absolute top-6 left-6 sm:top-10 sm:left-10 
@@ -69,11 +83,10 @@ const HeroSection = () => {
           initial="hidden"
           animate="visible"
         >
-          <motion.h1
-            className="text-3xl sm:text-5xl md:text-7xl font-extrabold mb-4 sm:mb-6 drop-shadow-lg leading-tight"
-            initial={{ opacity: 1, y: 0 }} // 👈 visible immediately
-            animate={{ opacity: 1, y: 0 }} // 👈 no delay on LCP
-            transition={{ duration: 0 }} // 👈 instant
+          {/* ✅ H1 paints immediately (no delay, no opacity animation) */}
+          <h1
+            className="text-3xl sm:text-5xl md:text-7xl font-extrabold mb-4 sm:mb-6 leading-tight font-sans"
+            style={{ fontDisplay: "swap" }} // fallback font shows instantly
           >
             <span translate="no">Welcome to </span>
             <motion.span
@@ -87,7 +100,7 @@ const HeroSection = () => {
             >
               inkshaa
             </motion.span>
-          </motion.h1>
+          </h1>
 
           <motion.p
             className="text-base sm:text-lg md:text-2xl max-w-md sm:max-w-xl mx-auto text-center"
