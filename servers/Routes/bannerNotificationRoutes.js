@@ -7,6 +7,7 @@ import {
   checkDismissedNotification,
   deactivateNotification,
   deleteAllNotifications,
+  getActiveNotificationsForUser, // ADD THIS IMPORT
 } from "../Controllers/bannerNotificationController.js";
 import { verifyUser } from "../Middlewares/verifyUser.js";
 import { adminOnly } from "../Middlewares/AdminMiddleware.js";
@@ -31,6 +32,16 @@ router.get("/get-Notification", getNotifications);
 // - Test with invalid ObjectId and non-existent IDs
 // - Security: Ensure no sensitive fields (e.g., `createdBy`) are exposed
 router.get("/get-Notification/:id", getNotificationById);
+
+// GET /active-for-user
+// NEW ROUTE: Fetches active notifications for the current user (excluding dismissed ones)
+// - Requires `verifyUser` middleware to authenticate user via JWT
+// - Queries for active, non-expired notifications excluding user's dismissed ones
+// - Supports region filtering via query params (?region=north-america)
+// - Returns only notifications the user hasn't dismissed
+// - Test with various regions and dismissed notification scenarios
+// - Performance: Ensure indexes on both models for optimal query performance
+router.get("/active-for-user", verifyUser, getActiveNotificationsForUser);
 
 // GET /dismissed/:id
 // Checks if authenticated user dismissed a notification

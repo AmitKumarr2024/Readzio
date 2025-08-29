@@ -687,19 +687,26 @@ export const getDailyPostEmailReport = createAsyncThunk(
   }
 );
 
-// Fetch all banner notifications
+// Fetch all banner notifications (Admin view)
 export const fetchBannerNotifications = createAsyncThunk(
-  "admin/fetchBannerNotifications",
-  async (_, { rejectWithValue }) => {
+  "bannerNotifications/fetchBannerNotifications",
+  async ({ includeInactive = false } = {}, { rejectWithValue }) => {
     try {
+      const queryParams = includeInactive ? "?includeInactive=true" : "";
       const response = await axiosInstance.get(
-        "/bannerNotification/get-Notification",
+        `/bannerNotification/get-Notification${queryParams}`,
         { withCredentials: true }
       );
-      return response.data.notifications || [];
+
+      if (response.data.success) {
+        return response.data.notifications || [];
+      }
+
+      return rejectWithValue("Invalid response format");
     } catch (error) {
       console.error("[fetchBannerNotifications] Error:", {
         message: error.response?.data?.message || error.message,
+        status: error.response?.status,
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
@@ -709,20 +716,77 @@ export const fetchBannerNotifications = createAsyncThunk(
   }
 );
 
-// Create a new banner notification
-export const createBannerNotification = createAsyncThunk(
-  "admin/createBannerNotification",
-  async ({ title, message, region }, { rejectWithValue }) => {
+// Fetch active notifications for current user (excluding dismissed ones)
+export const fetchActiveNotificationsForUser = createAsyncThunk(
+  "bannerNotifications/fetchActiveNotificationsForUser",
+  async ({ region } = {}, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.post(
-        "/bannerNotification/create",
-        { title, message, region },
+      const queryParams = region ? `?region=${encodeURIComponent(region)}` : "";
+      const response = await axiosInstance.get(
+        `/bannerNotification/active-for-user${queryParams}`,
         { withCredentials: true }
       );
-      return response.data.notification;
+
+      if (response.data.success) {
+        return {
+          notifications: response.data.notifications || [],
+          count: response.data.count || 0,
+        };
+      }
+
+      return rejectWithValue("Invalid response format");
+    } catch (error) {
+      console.error("[fetchActiveNotificationsForUser] Error:", {
+        message: error.response?.data?.message || error.message,
+        status: error.response?.status,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch active notifications"
+      );
+    }
+  }
+);
+
+// Create a new banner notification
+export const createBannerNotification = createAsyncThunk(
+  "bannerNotifications/createBannerNotification",
+  async ({ title, message, region, expiresAt, link }, { rejectWithValue }) => {
+    try {
+      // Input validation on frontend
+      if (!title?.trim() || !message?.trim()) {
+        return rejectWithValue("Title and message are required");
+      }
+
+      const payload = {
+        title: title.trim(),
+        message: message.trim(),
+        region: region || "global",
+      };
+
+      // Add optional fields only if provided
+      if (expiresAt) {
+        payload.expiresAt = expiresAt;
+      }
+      if (link?.trim()) {
+        payload.link = link.trim();
+      }
+
+      const response = await axiosInstance.post(
+        "/bannerNotification/create",
+        payload,
+        { withCredentials: true }
+      );
+
+      if (response.data.success) {
+        return response.data.notification;
+      }
+
+      return rejectWithValue("Failed to create notification");
     } catch (error) {
       console.error("[createBannerNotification] Error:", {
         message: error.response?.data?.message || error.message,
+        status: error.response?.status,
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
@@ -734,19 +798,32 @@ export const createBannerNotification = createAsyncThunk(
 
 // Dismiss a banner notification
 export const dismissBannerNotification = createAsyncThunk(
-  "admin/dismissBannerNotification",
+  "bannerNotifications/dismissBannerNotification",
   async (notificationId, { rejectWithValue }) => {
     try {
-      await axiosInstance.patch(
+      if (!notificationId) {
+        return rejectWithValue("Notification ID is required");
+      }
+
+      const response = await axiosInstance.patch(
         `/bannerNotification/dismiss/${notificationId}`,
         {},
         { withCredentials: true }
       );
-      return notificationId;
+
+      if (response.data.success) {
+        return {
+          id: notificationId,
+          alreadyDismissed: response.data.data?.alreadyDismissed || false,
+        };
+      }
+
+      return rejectWithValue("Failed to dismiss notification");
     } catch (error) {
       console.error("[dismissBannerNotification] Error:", {
         message: error.response?.data?.message || error.message,
         notificationId,
+        status: error.response?.status,
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
@@ -756,21 +833,71 @@ export const dismissBannerNotification = createAsyncThunk(
   }
 );
 
+// Check if notification is dismissed by user
+export const checkDismissedNotification = createAsyncThunk(
+  "bannerNotifications/checkDismissedNotification",
+  async (notificationId, { rejectWithValue }) => {
+    try {
+      if (!notificationId) {
+        return rejectWithValue("Notification ID is required");
+      }
+
+      const response = await axiosInstance.get(
+        `/bannerNotification/dismissed/${notificationId}`,
+        { withCredentials: true }
+      );
+
+      if (response.data.success) {
+        return {
+          notificationId,
+          dismissed: response.data.dismissed,
+          exists: response.data.notificationExists,
+        };
+      }
+
+      return rejectWithValue("Failed to check dismissal status");
+    } catch (error) {
+      console.error("[checkDismissedNotification] Error:", {
+        message: error.response?.data?.message || error.message,
+        notificationId,
+        status: error.response?.status,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to check dismissal status"
+      );
+    }
+  }
+);
+
 // Deactivate a banner notification
 export const deactivateBannerNotification = createAsyncThunk(
-  "admin/deactivateBannerNotification",
+  "bannerNotifications/deactivateBannerNotification",
   async (id, { rejectWithValue }) => {
     try {
+      if (!id) {
+        return rejectWithValue("Notification ID is required");
+      }
+
       const response = await axiosInstance.patch(
         `/bannerNotification/deactivate/${id}`,
         {},
         { withCredentials: true }
       );
-      return response.data.data;
+
+      if (response.data.success) {
+        return {
+          id,
+          alreadyDeactivated: response.data.data?.alreadyDeactivated || false,
+        };
+      }
+
+      return rejectWithValue("Failed to deactivate notification");
     } catch (error) {
       console.error("[deactivateBannerNotification] Error:", {
         message: error.response?.data?.message || error.message,
         id,
+        status: error.response?.status,
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
@@ -782,17 +909,29 @@ export const deactivateBannerNotification = createAsyncThunk(
 
 // Delete all banner notifications
 export const deleteAllBannerNotifications = createAsyncThunk(
-  "admin/deleteAllBannerNotifications",
+  "bannerNotifications/deleteAllBannerNotifications",
   async (_, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.delete(
         "/bannerNotification/delete-all",
-        { withCredentials: true }
+        {
+          data: { confirm: "DELETE_ALL" }, // Required confirmation from enhanced controller
+          withCredentials: true,
+        }
       );
-      return response.data;
+
+      if (response.data.success) {
+        return {
+          deletedCount: response.data.data?.deletedCount || 0,
+          message: response.data.message,
+        };
+      }
+
+      return rejectWithValue("Failed to delete notifications");
     } catch (error) {
       console.error("[deleteAllBannerNotifications] Error:", {
         message: error.response?.data?.message || error.message,
+        status: error.response?.status,
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
@@ -1590,46 +1729,141 @@ const adminSlice = createSlice({
       .addCase(fetchBannerNotifications.fulfilled, (state, action) => {
         state.loading = false;
         state.bannerNotifications = action.payload;
+        state.error = null;
       })
       .addCase(fetchBannerNotifications.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
+
+      // fetchActiveNotificationsForUser
+      .addCase(fetchActiveNotificationsForUser.pending, (state) => {
+        state.loadingUserNotifications = true;
+        state.error = null;
+      })
+      .addCase(fetchActiveNotificationsForUser.fulfilled, (state, action) => {
+        state.loadingUserNotifications = false;
+        state.activeUserNotifications = action.payload.notifications;
+        state.activeNotificationCount = action.payload.count;
+        state.error = null;
+      })
+      .addCase(fetchActiveNotificationsForUser.rejected, (state, action) => {
+        state.loadingUserNotifications = false;
+        state.error = action.payload;
+      })
+
       // createBannerNotification
+      .addCase(createBannerNotification.pending, (state) => {
+        state.creating = true;
+        state.error = null;
+      })
       .addCase(createBannerNotification.fulfilled, (state, action) => {
+        state.creating = false;
         state.bannerNotifications = [
           action.payload,
           ...state.bannerNotifications,
         ];
-        state.notificationStatus = "Banner notification created";
+        state.notificationStatus = "Banner notification created successfully";
+        state.error = null;
       })
       .addCase(createBannerNotification.rejected, (state, action) => {
+        state.creating = false;
         state.error = action.payload;
       })
+
       // dismissBannerNotification
+      .addCase(dismissBannerNotification.pending, (state) => {
+        state.dismissing = true;
+        state.error = null;
+      })
       .addCase(dismissBannerNotification.fulfilled, (state, action) => {
+        state.dismissing = false;
+        const { id, alreadyDismissed } = action.payload;
+
+        // Remove from both lists regardless of whether it was already dismissed
         state.bannerNotifications = state.bannerNotifications.filter(
-          (notification) => notification._id !== action.payload
+          (notification) => notification._id !== id
         );
+
+        if (state.activeUserNotifications) {
+          state.activeUserNotifications = state.activeUserNotifications.filter(
+            (notification) => notification._id !== id
+          );
+        }
+
+        // Add to dismissed set for tracking
+        if (!state.dismissedNotifications) {
+          state.dismissedNotifications = new Set();
+        }
+        state.dismissedNotifications.add(id);
+
+        state.notificationStatus = alreadyDismissed
+          ? "Notification was already dismissed"
+          : "Notification dismissed successfully";
+        state.error = null;
       })
       .addCase(dismissBannerNotification.rejected, (state, action) => {
+        state.dismissing = false;
         state.error = action.payload;
       })
+
+      // checkDismissedNotification
+      .addCase(checkDismissedNotification.fulfilled, (state, action) => {
+        const { notificationId, dismissed } = action.payload;
+
+        if (!state.dismissalStatus) {
+          state.dismissalStatus = {};
+        }
+        state.dismissalStatus[notificationId] = dismissed;
+      })
+      .addCase(checkDismissedNotification.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+
       // deactivateBannerNotification
+      .addCase(deactivateBannerNotification.pending, (state) => {
+        state.deactivating = true;
+        state.error = null;
+      })
       .addCase(deactivateBannerNotification.fulfilled, (state, action) => {
-        state.bannerNotifications = state.bannerNotifications.filter(
-          (n) => n._id !== action.payload.id
-        );
+        state.deactivating = false;
+        const { id, alreadyDeactivated } = action.payload;
+
+        // Remove from notifications list or update isActive status
+        state.bannerNotifications = state.bannerNotifications
+          .map((n) => (n._id === id ? { ...n, isActive: false } : n))
+          .filter((n) => n.isActive); // Remove inactive ones from display
+
+        state.notificationStatus = alreadyDeactivated
+          ? "Notification was already deactivated"
+          : "Notification deactivated successfully";
+        state.error = null;
       })
       .addCase(deactivateBannerNotification.rejected, (state, action) => {
+        state.deactivating = false;
         state.error = action.payload;
       })
+
       // deleteAllBannerNotifications
-      .addCase(deleteAllBannerNotifications.fulfilled, (state) => {
+      .addCase(deleteAllBannerNotifications.pending, (state) => {
+        state.deletingAll = true;
+        state.error = null;
+      })
+      .addCase(deleteAllBannerNotifications.fulfilled, (state, action) => {
+        state.deletingAll = false;
         state.bannerNotifications = [];
-        state.notificationStatus = "All banner notifications deleted";
+        state.activeUserNotifications = [];
+        state.dismissedNotifications = new Set();
+        state.dismissalStatus = {};
+
+        const { deletedCount, message } = action.payload;
+        state.notificationStatus =
+          message ||
+          `All notifications deleted (${deletedCount} notifications)`;
+        state.error = null;
       })
       .addCase(deleteAllBannerNotifications.rejected, (state, action) => {
+        state.deletingAll = false;
         state.error = action.payload;
       })
       // downloadAllDataCsv
