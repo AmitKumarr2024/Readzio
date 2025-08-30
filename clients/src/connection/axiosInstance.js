@@ -1,19 +1,25 @@
 import axios from "axios";
 import { getToken } from "../Utils/getToken";
 
+// Determine environment
 const isDev = import.meta.env.MODE === "development";
+const baseURL = isDev
+  ? import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"
+  : "/api"; // production relies on reverse proxy
 
 if (isDev && !import.meta.env.VITE_API_BASE_URL) {
   console.warn(
-    "[AxiosInstance] ⚠️ VITE_API_BASE_URL is not defined in .env for development"
+    "[AxiosInstance] ⚠️ VITE_API_BASE_URL is missing in .env for development. Defaulting to http://localhost:5000/api"
   );
 }
 
 const axiosInstance = axios.create({
-  baseURL: isDev ? import.meta.env.VITE_API_BASE_URL : "/api", // Vite proxy will handle this
-  withCredentials: true,
+  baseURL,
+  withCredentials: true, // include cookies (JWT, CSRF, etc.)
+  timeout: 20000, // prevent hanging requests
 });
 
+// 🔹 Attach token to every request if available
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = getToken();
@@ -25,13 +31,27 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Optional: handle global auth errors
+// 🔹 Handle global errors
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      console.warn("[Axios] 401 Unauthorized. Redirect or logout logic here.");
+    const { response } = error;
+
+    if (!response) {
+      console.error("[Axios] ❌ Network error or server not reachable.");
+      return Promise.reject({ message: "Network error" });
     }
+
+    if (response.status === 401) {
+      console.warn("[Axios] 401 Unauthorized → consider logout/redirect.");
+      // Example: dispatch logout or redirect
+      // store.dispatch(logoutUser());
+    }
+
+    if (response.status >= 500) {
+      console.error("[Axios] 🚨 Server error:", response.data?.message);
+    }
+
     return Promise.reject(error);
   }
 );
