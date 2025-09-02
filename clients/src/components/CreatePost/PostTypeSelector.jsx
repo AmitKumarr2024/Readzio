@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { motion } from "framer-motion";
 import { BookOpenText, PenLine, X } from "lucide-react";
@@ -6,68 +6,65 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { setPostType } from "../../store/Post/postMetaSlice";
 import { updatePost } from "../../store/postSlice";
-import debounce from "lodash/debounce"; // Added lodash for debouncing
 
 const PostTypeSelector = ({ onContinue, onClose }) => {
   const navigate = useNavigate();
+  const [hasSelected, setHasSelected] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const dispatch = useDispatch();
   const { postType } = useSelector((state) => state.postMeta);
   const { currentPost } = useSelector((state) => state.post);
-  const [hasSelected, setHasSelected] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Debounced handleSelect
-  const handleSelect = useCallback(
-    debounce(async (type) => {
-      if (hasSelected || isLoading) return;
-      if (!["Article", "Blog"].includes(type)) {
-        toast.error("Invalid post type selected");
-        return;
-      }
+  const handleSelect = (type) => {
+    if (hasSelected || isLoading) return;
+    if (!["Article", "Blog"].includes(type)) {
+      toast.error("Invalid post type selected");
+      return;
+    }
 
-      setIsLoading(true);
-      setHasSelected(true);
+    setIsLoading(true);
+    setHasSelected(true);
 
-      try {
-        dispatch(setPostType(type));
-        localStorage.setItem("postType", type);
+    dispatch(setPostType(type));
+    localStorage.setItem("postType", type);
 
-        if (currentPost?.slug) {
-          await dispatch(
-            updatePost({
-              slug: currentPost.slug,
-              updateData: { postType: type },
-            })
-          ).unwrap();
+    if (currentPost?.slug) {
+      dispatch(
+        updatePost({
+          slug: currentPost.slug,
+          updateData: { postType: type },
+        })
+      )
+        .unwrap()
+        .then(() => {
           toast.success(`Post type updated to ${type}`);
-        } else {
-          toast.success(`Post type set to ${type}`);
-        }
-
-        setTimeout(() => {
           setIsLoading(false);
           onContinue();
-        }, 300); // Reduced delay
-      } catch (error) {
-        toast.error(`Failed to update post type: ${error.message}`);
+        })
+        .catch((error) => {
+          toast.error(`Failed to update post type: ${error.message}`);
+          setIsLoading(false);
+          setHasSelected(false);
+        });
+    } else {
+      toast.success(`Post type set to ${type}`);
+      setTimeout(() => {
         setIsLoading(false);
-        setHasSelected(false);
-      }
-    }, 300),
-    [hasSelected, isLoading, dispatch, currentPost?.slug, onContinue]
-  );
+        onContinue();
+      }, 500);
+    }
+  };
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     localStorage.removeItem("postType");
     navigate("/");
-  }, [navigate]);
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2, ease: "easeOut" }} // Simplified animation
+      initial={{ scale: 0.95, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark border border-gray-200 dark:border-gray-800 p-6 rounded-2xl shadow-lg w-full max-w-md sm:max-w-lg mx-auto"
     >
       <button
