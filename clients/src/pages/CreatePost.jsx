@@ -20,8 +20,10 @@ import {
   setPostType,
   resetPostMeta,
 } from "../store/Post/postMetaSlice";
+import debounce from "lodash/debounce"; // Added lodash for debouncing
 
-const asyncRetry = async (fn, { retries = 5, minTimeout = 2000 } = {}) => {
+const asyncRetry = async (fn, { retries = 3, minTimeout = 1000 } = {}) => {
+  // Reduced retries, timeout
   let lastError = null;
   for (let i = 0; i < retries; i++) {
     try {
@@ -61,6 +63,10 @@ const CreatePost = () => {
   // ---- refs / guards
   const isSubmittingRef = useRef(false);
 
+  // ---- Debounced state updates
+  const debouncedSetTitle = useCallback(debounce(setTitle, 300), []); // Debounce title updates
+  const debouncedSetBlocks = useCallback(debounce(setBlocks, 300), []); // Debounce blocks updates
+
   // ---------- EFFECTS
 
   // Fetch categories ONCE on mount
@@ -71,19 +77,18 @@ const CreatePost = () => {
         console.error("[CreatePost] Fetch categories error:", e);
         toast.error("Failed to load categories.", { position: "top-right" });
       });
-  }, [dispatch]);
+  }, [dispatch]); // Stable dependency
 
-  // Handle saved postType and modal transitions when categories are available
+  // Handle saved postType and modal transitions
   useEffect(() => {
     const savedPostType = localStorage.getItem("postType");
-    if (savedPostType) {
+    if (savedPostType && categories?.length > 0) {
+      // Check categories length
       dispatch(setPostType(savedPostType));
-      if (categories && categories.length > 0) {
-        setShowPostTypeModal(false);
-        setShowCategoryModal(true);
-      }
+      setShowPostTypeModal(false);
+      setShowCategoryModal(true);
     }
-  }, [dispatch, categories]);
+  }, [dispatch, categories?.length]); // Use categories.length for stability
 
   // ---------- MEMOS
 
@@ -95,81 +100,87 @@ const CreatePost = () => {
     return map;
   }, [categories]);
 
-  const posts = post ? [post] : [];
-  const filteredPosts = selectedCategoryId
-    ? posts.filter((p) => p.category === selectedCategoryId)
-    : posts;
+  // Memoized filtered posts
+  const filteredPosts = useMemo(() => {
+    const posts = post ? [post] : [];
+    return selectedCategoryId
+      ? posts.filter((p) => p.category === selectedCategoryId)
+      : posts;
+  }, [post, selectedCategoryId]);
 
-  // ---------- HELPERS
+  // Memoized validation
+  const validateBeforeSubmit = useCallback(
+    async (metaData) => {
+      if (!title.trim()) throw new Error("Please enter a title");
+      if (title.trim().length < 3)
+        throw new Error("Title must be at least 3 characters long");
+      if (!blocks.length) throw new Error("Please add content blocks");
+      if (!postType && !localStorage.getItem("postType"))
+        throw new Error("Please select a post type");
+      if (!selectedCategoryId) throw new Error("Please select a category");
+      if (!metaData?.tags?.length)
+        throw new Error("Please provide at least one tag");
+      if (!/^[a-z]{2}$/i.test(metaData.language || ""))
+        throw new Error("Invalid language code");
 
-  const validateBeforeSubmit = async (metaData) => {
-    if (!title.trim()) throw new Error("Please enter a title");
-    if (title.trim().length < 3)
-      throw new Error("Title must be at least 3 characters long");
-    if (!blocks.length) throw new Error("Please add content blocks");
-    if (!postType && !localStorage.getItem("postType"))
-      throw new Error("Please select a post type");
-    if (!selectedCategoryId) throw new Error("Please select a category");
-    if (!metaData?.tags?.length)
-      throw new Error("Please provide at least one tag");
-    if (!/^[a-z]{2}$/i.test(metaData.language || ""))
-      throw new Error("Invalid language code");
+      // Image count check
+      const imageBlocks = blocks.filter((b) => b.type === "image");
+      if (imageBlocks.length > MAX_IMAGE_COUNT)
+        throw new Error(`Maximum ${MAX_IMAGE_COUNT} images allowed per post`);
 
-    // images count
-    const imageBlocks = blocks.filter((b) => b.type === "image");
-    if (imageBlocks.length > MAX_IMAGE_COUNT)
-      throw new Error(`Maximum ${MAX_IMAGE_COUNT} images allowed per post`);
-
-    // text & table size checks
-    for (let i = 0; i < blocks.length; i++) {
-      const block = blocks[i];
-      if (block.type === "text") {
-        const textSize = new TextEncoder().encode(block.value || "").length;
-        if (textSize > MAX_TEXT_BLOCK_SIZE) {
-          throw new Error(
-            `Text block at position ${
-              i + 1
-            } too large (>100KB). Please reduce content.`
-          );
+      // Text & table size checks
+      for (let i = 0; i < blocks.length; i++) {
+        const block = blocks[i];
+        if (block.type === "text") {
+          const textSize = new TextEncoder().encode(block.value || "").length;
+          if (textSize > MAX_TEXT_BLOCK_SIZE) {
+            throw new Error(
+              `Text block at position ${
+                i + 1
+              } too large (>100KB). Please reduce content.`
+            );
+          }
+        }
+        if (block.type === "table") {
+          const tableSize = new TextEncoder().encode(
+            JSON.stringify(block.data || [])
+          ).length;
+          if (tableSize > MAX_TABLE_BLOCK_SIZE) {
+            throw new Error(
+              `Table block at position ${
+                i + 1
+              } too large (>200KB). Please reduce table data.`
+            );
+          }
         }
       }
-      if (block.type === "table") {
-        const tableSize = new TextEncoder().encode(
-          JSON.stringify(block.data || [])
-        ).length;
-        if (tableSize > MAX_TABLE_BLOCK_SIZE) {
-          throw new Error(
-            `Table block at position ${
-              i + 1
-            } too large (>200KB). Please reduce table data.`
-          );
-        }
-      }
-    }
 
-    const postData = {
-      postType,
-      category: selectedCategoryId,
-      title,
-      blocks,
-      thumbnail: metaData.thumbnail,
-      excerpt: metaData.excerpt || "",
-      tags: metaData.tags,
-      language: metaData.language,
-      isEmbed: metaData.isEmbed || false,
-      isFeatured: metaData.isFeatured || false,
-      isPinned: metaData.isPinned || false,
-    };
-    const payloadSize = new TextEncoder().encode(
-      JSON.stringify(postData)
-    ).length;
-    if (payloadSize > MAX_PAYLOAD_SIZE) {
-      throw new Error(
-        "Post data exceeds 40MB. Reduce images, text, or table content."
-      );
-    }
-    return postData;
-  };
+      const postData = {
+        postType,
+        category: selectedCategoryId,
+        title,
+        blocks,
+        thumbnail: metaData.thumbnail,
+        excerpt: metaData.excerpt || "",
+        tags: metaData.tags,
+        language: metaData.language,
+        isEmbed: metaData.isEmbed || false,
+        isFeatured: metaData.isFeatured || false,
+        isPinned: metaData.isPinned || false,
+      };
+
+      const payloadSize = new TextEncoder().encode(
+        JSON.stringify(postData)
+      ).length;
+      if (payloadSize > MAX_PAYLOAD_SIZE) {
+        throw new Error(
+          "Post data exceeds 40MB. Reduce images, text, or table content."
+        );
+      }
+      return postData;
+    },
+    [title, blocks, postType, selectedCategoryId] // Stable dependencies
+  );
 
   // ---------- ACTIONS
 
@@ -181,8 +192,6 @@ const CreatePost = () => {
 
       try {
         const postData = await validateBeforeSubmit(metaData);
-
-        // ✅ no Promise.race, just dispatch
         const resultAction = await dispatch(createPosts(postData)).unwrap();
 
         toast.success("Post created successfully!", { position: "top-right" });
@@ -190,7 +199,6 @@ const CreatePost = () => {
         setBlocks([]);
         dispatch(resetPostMeta());
         localStorage.removeItem("postType");
-
         navigate(`/post/${resultAction.post.slug}`);
       } catch (err) {
         console.error("[CreatePost] Post creation failed:", err);
@@ -200,7 +208,7 @@ const CreatePost = () => {
           try {
             const checkPost = await asyncRetry(
               () => dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
-              { retries: 3, minTimeout: 1500 }
+              { retries: 2, minTimeout: 1000 } // Reduced retries
             );
             if (checkPost) {
               toast.success("Post created successfully!", {
@@ -232,25 +240,31 @@ const CreatePost = () => {
         setIsSubmitting(false);
       }
     },
-    [dispatch, navigate, postType, selectedCategoryId, title, blocks]
+    [dispatch, navigate, validateBeforeSubmit] // Use validateBeforeSubmit as dependency
   );
 
-  const handleDeletePost = (id) => {
-    dispatch(deletePost(id))
-      .unwrap()
-      .then(() => toast.success("Post deleted", { position: "top-right" }))
-      .catch((err) => {
-        console.error("[CreatePost] Delete post failed:", err);
-        toast.error(err?.message || "Failed to delete post", {
-          position: "top-right",
+  const handleDeletePost = useCallback(
+    (id) => {
+      dispatch(deletePost(id))
+        .unwrap()
+        .then(() => toast.success("Post deleted", { position: "top-right" }))
+        .catch((err) => {
+          console.error("[CreatePost] Delete post failed:", err);
+          toast.error(err?.message || "Failed to delete post", {
+            position: "top-right",
+          });
         });
-      });
-  };
+    },
+    [dispatch]
+  );
 
-  const handleUpdateDraft = (draft) => {
-    setTitle(draft.title || "");
-    setBlocks(draft.blocks || []);
-  };
+  const handleUpdateDraft = useCallback(
+    (draft) => {
+      debouncedSetTitle(draft.title || "");
+      debouncedSetBlocks(draft.blocks || []);
+    },
+    [debouncedSetTitle, debouncedSetBlocks]
+  );
 
   // ---------- RENDER
 
@@ -319,9 +333,9 @@ const CreatePost = () => {
             <PostEditor
               size={55}
               title={title}
-              setTitle={setTitle}
+              setTitle={debouncedSetTitle} // Use debounced setter
               blocks={blocks}
-              setBlocks={setBlocks}
+              setBlocks={debouncedSetBlocks} // Use debounced setter
               postType={postType}
               category={selectedCategoryId}
               categoryName={
