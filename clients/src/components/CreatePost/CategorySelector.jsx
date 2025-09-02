@@ -431,10 +431,9 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
               {onBack && (
                 <button
                   onClick={onBack}
-                  className="fixed bottom-6 left-6 flex items-center gap-2 
+                  className="fixed bottom-6 right-6 flex items-center gap-2 
                text-white font-medium px-4 py-2 rounded-xl shadow-lg gradient-animate"
                 >
-                  <X size={16} className="rotate-45" />
                   Back
                 </button>
               )}
