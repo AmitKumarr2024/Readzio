@@ -15,16 +15,13 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   const { categories, status, error } = useSelector(
     (state) => state.categories
   );
-
   // Core states
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
-
   // Loading control states
   const [hasLoadedCategories, setHasLoadedCategories] = useState(false);
-
   // Form states
   const [newCategory, setNewCategory] = useState({
     name: "",
@@ -32,13 +29,13 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
     description: "",
   });
   const [formError, setFormError] = useState("");
-
   // Refs
   const searchInputRef = useRef(null);
 
-  // Memoized fetch function to prevent infinite loops
+  // Memoized fetch function
   const loadCategories = useCallback(() => {
     if (!hasLoadedCategories && status !== "loading") {
+      console.log("[CategorySelector] Initiating category fetch");
       setHasLoadedCategories(true);
       dispatch(fetchCategories()).catch((err) => {
         console.error("[CategorySelector] Failed to load categories:", err);
@@ -47,21 +44,32 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
     }
   }, [hasLoadedCategories, status, dispatch]);
 
-  // Load categories once on mount
+  // Load categories
   useEffect(() => {
+    console.log("[CategorySelector] useEffect for loadCategories");
     loadCategories();
   }, [loadCategories]);
 
   // Handle errors
   useEffect(() => {
+    console.log(
+      "[CategorySelector] useEffect for error handling, error:",
+      error,
+      "hasLoadedCategories:",
+      hasLoadedCategories
+    );
     if (error && hasLoadedCategories) {
       toast.error(error);
       dispatch(clearError());
     }
   }, [error, hasLoadedCategories, dispatch]);
 
-  // Auto-generate slug from name
+  // Auto-generate slug
   useEffect(() => {
+    console.log(
+      "[CategorySelector] useEffect for slug generation, newCategory:",
+      newCategory
+    );
     if (newCategory.name && !newCategory.slug) {
       const slug = generateSlug(newCategory.name);
       setNewCategory((prev) => ({ ...prev, slug }));
@@ -74,7 +82,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
 
-  // Filter categories based on search term
+  // Filter categories
   const filteredCategories = categories.filter(
     (cat) =>
       cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -83,17 +91,18 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   );
 
   const handleCategorySelect = (category) => {
+    console.log("[CategorySelector] Selecting category:", category);
     setSelectedCategory(category);
     dispatch(selectCategory(category));
-
-    // Auto-continue after selection
     setTimeout(() => {
+      console.log("[CategorySelector] Continuing with category:", category);
       onContinue({ id: category._id, name: category.name });
     }, 300);
   };
 
   const handleNewCategoryChange = (e) => {
     const { name, value } = e.target;
+    console.log("[CategorySelector] New category change:", name, value);
     setNewCategory((prev) => ({
       ...prev,
       [name]: value,
@@ -103,11 +112,10 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   };
 
   const handleAddCategory = async () => {
+    console.log("[CategorySelector] Adding new category:", newCategory);
     const { name, slug, description } = newCategory;
     const trimmedName = name.trim();
     const trimmedSlug = slug.trim();
-
-    // Validation...
     if (!trimmedName || !trimmedSlug) {
       setFormError("Name and slug are required");
       return;
@@ -128,7 +136,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
       setFormError("Category name already exists");
       return;
     }
-
     setIsCreatingCategory(true);
     try {
       const result = await dispatch(
@@ -138,17 +145,19 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
           description: description.trim() || undefined,
         })
       ).unwrap();
-
-      // ✅ No need to reload – Redux slice already added it
+      console.log("[CategorySelector] Category created:", result);
       setNewCategory({ name: "", slug: "", description: "" });
       setShowAddCategory(false);
       toast.success("Category created successfully!");
-
-      // ✅ Continue with the new category
       setTimeout(() => {
+        console.log(
+          "[CategorySelector] Continuing with new category:",
+          result.category
+        );
         onContinue({ id: result.category._id, name: result.category.name });
       }, 500);
     } catch (err) {
+      console.error("[CategorySelector] Failed to create category:", err);
       setFormError(err.message || "Failed to create category");
       toast.error(err.message || "Failed to create category");
     } finally {
@@ -157,6 +166,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   };
 
   const handleRetryLoad = () => {
+    console.log("[CategorySelector] Retrying category load");
     setHasLoadedCategories(false);
     loadCategories();
   };
@@ -164,6 +174,18 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   const isLoading = status === "loading" && !hasLoadedCategories;
   const hasError = status === "failed";
   const isEmpty = categories.length === 0;
+
+  console.log("[CategorySelector] Rendering, state:", {
+    selectedCategory,
+    searchTerm,
+    showAddCategory,
+    isCreatingCategory,
+    hasLoadedCategories,
+    isLoading,
+    hasError,
+    isEmpty,
+    categoriesLength: categories.length,
+  });
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -185,7 +207,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
               <X size={20} />
             </button>
           )}
-
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
               <Tag size={28} />
@@ -196,10 +217,8 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
             </p>
           </div>
         </div>
-
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-          {/* Loading State */}
           {isLoading && (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="animate-spin w-8 h-8 text-blue-500 mr-3" />
@@ -208,8 +227,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
               </span>
             </div>
           )}
-
-          {/* Error State */}
           {hasError && (
             <div className="text-center py-8">
               <div className="text-red-500 dark:text-red-400 mb-4 text-lg">
@@ -223,8 +240,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
               </button>
             </div>
           )}
-
-          {/* No Categories State */}
           {!isLoading && !hasError && isEmpty && (
             <div className="space-y-6">
               <div className="text-center">
@@ -238,7 +253,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
                   Create your first category to get started!
                 </p>
               </div>
-
               <CreateCategoryForm
                 newCategory={newCategory}
                 formError={formError}
@@ -248,11 +262,8 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
               />
             </div>
           )}
-
-          {/* Categories Available */}
           {!isLoading && !hasError && !isEmpty && (
             <div className="space-y-6">
-              {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -264,8 +275,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
                   className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                 />
               </div>
-
-              {/* Selected Category Display */}
               {selectedCategory && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -292,8 +301,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
                   </div>
                 </motion.div>
               )}
-
-              {/* Categories Grid */}
               {filteredCategories.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-600 dark:text-gray-400">
@@ -350,8 +357,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
                   </AnimatePresence>
                 </div>
               )}
-
-              {/* Add New Category Toggle */}
               <div className="text-center pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => setShowAddCategory(!showAddCategory)}
@@ -361,8 +366,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
                   {showAddCategory ? "Cancel" : "Create New Category"}
                 </button>
               </div>
-
-              {/* Add Category Form */}
               <AnimatePresence>
                 {showAddCategory && (
                   <motion.div
@@ -384,8 +387,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
             </div>
           )}
         </div>
-
-        {/* Footer */}
         {!isLoading && !hasError && (
           <div className="border-t border-gray-200 dark:border-gray-700 p-6">
             <div className="flex justify-between items-center">
@@ -397,7 +398,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
                   ← Back
                 </button>
               )}
-
               {selectedCategory && (
                 <button
                   onClick={() =>
@@ -419,7 +419,6 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   );
 };
 
-// Separate component for the create category form to avoid duplication
 const CreateCategoryForm = ({
   newCategory,
   formError,
@@ -431,7 +430,6 @@ const CreateCategoryForm = ({
     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
       Create New Category
     </h3>
-
     {formError && (
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -441,7 +439,6 @@ const CreateCategoryForm = ({
         <p className="text-red-600 dark:text-red-400 text-sm">{formError}</p>
       </motion.div>
     )}
-
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -456,7 +453,6 @@ const CreateCategoryForm = ({
           className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
         />
       </div>
-
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Slug *
@@ -473,7 +469,6 @@ const CreateCategoryForm = ({
           Used in URLs. Auto-generated from name if left empty.
         </p>
       </div>
-
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Description (Optional)
@@ -487,7 +482,6 @@ const CreateCategoryForm = ({
           className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
         />
       </div>
-
       <button
         onClick={onSubmit}
         disabled={isCreating || !newCategory.name.trim()}

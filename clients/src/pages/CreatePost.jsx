@@ -51,6 +51,7 @@ const CreatePost = () => {
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categoriesFetched, setCategoriesFetched] = useState(false);
 
   // ---- redux
   const { post, createLoading, createError } = useSelector((s) => s.post);
@@ -63,74 +64,115 @@ const CreatePost = () => {
   const isSubmittingRef = useRef(false);
   const hasCheckedPostTypeRef = useRef(false);
 
-  // ---- Debounced handlers
-  const handleTitleChange = useMemo(
-    () =>
-      debounce((value) => {
-        setTitle(value);
-      }, 300),
-    []
+  // ---- Stable debounced handlers (moved outside component or memoized properly)
+  const debouncedTitleChange = useCallback(
+    debounce((value) => {
+      console.log("[CreatePost] Debounced title change:", value);
+      setTitle(value);
+    }, 300),
+    [] // Empty dependency array since setTitle is stable
   );
 
-  const handleBlocksChange = useMemo(
-    () =>
-      debounce((value) => {
-        setBlocks(value);
-      }, 300),
-    []
+  const debouncedBlocksChange = useCallback(
+    debounce((value) => {
+      console.log("[CreatePost] Debounced blocks change:", value);
+      setBlocks(value);
+    }, 300),
+    [] // Empty dependency array since setBlocks is stable
   );
 
   // ---- Cleanup debounced functions
   useEffect(() => {
+    console.log("[CreatePost] Component mounted");
     return () => {
-      handleTitleChange.cancel();
-      handleBlocksChange.cancel();
+      console.log(
+        "[CreatePost] Component unmounting, cancelling debounced functions"
+      );
+      debouncedTitleChange.cancel();
+      debouncedBlocksChange.cancel();
     };
-  }, [handleTitleChange, handleBlocksChange]);
+  }, []); // Remove debounced functions from dependencies
 
-  // ---- Fetch categories
+  // ---- Fetch categories (only once)
   useEffect(() => {
+    if (categoriesFetched) return;
+
+    console.log("[CreatePost] Fetching categories");
+    setCategoriesFetched(true);
+
     dispatch(fetchCategories())
       .unwrap?.()
       .catch((e) => {
         console.error("[CreatePost] Fetch categories error:", e);
         toast.error("Failed to load categories.", { position: "top-right" });
+        setCategoriesFetched(false); // Reset on error to allow retry
       });
-  }, [dispatch]);
+  }, [dispatch, categoriesFetched]);
 
-  // ---- Handle saved postType and modal transitions (fix infinite loop)
+  // ---- Handle saved postType and modal transitions (fixed dependencies)
   useEffect(() => {
-    if (hasCheckedPostTypeRef.current || postType) return;
+    if (hasCheckedPostTypeRef.current) {
+      console.log("[CreatePost] Skipping postType check, already processed");
+      return;
+    }
+
+    if (postType) {
+      console.log("[CreatePost] PostType already exists:", postType);
+      return;
+    }
 
     const savedPostType = localStorage.getItem("postType");
+    console.log(
+      "[CreatePost] Checking saved postType:",
+      savedPostType,
+      "Categories length:",
+      categories?.length
+    );
+
     if (savedPostType && categories?.length > 0) {
-      hasCheckedPostTypeRef.current = true; // ✅ set before dispatch
+      console.log("[CreatePost] Setting postType and opening category modal");
       dispatch(setPostType(savedPostType));
       setShowPostTypeModal(false);
       setShowCategoryModal(true);
+      hasCheckedPostTypeRef.current = true;
     }
-  }, [categories, postType, dispatch]);
+  }, [dispatch, categories?.length, postType]); // Use categories?.length instead of categories
 
-  // ---- Memoized category map
+  // ---- Memoized category map (stable dependencies)
   const categoryMap = useMemo(() => {
+    if (!categories?.length) return {};
+
     const map = {};
-    categories?.forEach?.((cat) => {
+    categories.forEach((cat) => {
       map[cat._id] = cat.name;
     });
+    console.log("[CreatePost] Category map created:", map);
     return map;
-  }, [categories]);
+  }, [categories]); // Keep categories as dependency but check length inside
 
-  // ---- Memoized filtered posts
+  // ---- Memoized filtered posts (more stable)
   const filteredPosts = useMemo(() => {
-    const posts = post ? [post] : [];
-    return selectedCategoryId
+    if (!post) return [];
+
+    const posts = [post];
+    const filtered = selectedCategoryId
       ? posts.filter((p) => p.category === selectedCategoryId)
       : posts;
+    console.log("[CreatePost] Filtered posts:", filtered);
+    return filtered;
   }, [post, selectedCategoryId]);
 
-  // ---- Validation
+  // ---- Stable validation function
   const validateBeforeSubmit = useCallback(
     async (metaData) => {
+      console.log("[CreatePost] Validating post data:", {
+        title,
+        blocksLength: blocks.length,
+        postType,
+        selectedCategoryId,
+        metaData,
+      });
+
       if (!title.trim()) throw new Error("Please enter a title");
       if (title.trim().length < 3)
         throw new Error("Title must be at least 3 characters long");
@@ -144,8 +186,9 @@ const CreatePost = () => {
         throw new Error("Invalid language code");
 
       const imageBlocks = blocks.filter((b) => b.type === "image");
-      if (imageBlocks.length > MAX_IMAGE_COUNT)
+      if (imageBlocks.length > MAX_IMAGE_COUNT) {
         throw new Error(`Maximum ${MAX_IMAGE_COUNT} images allowed per post`);
+      }
 
       for (let i = 0; i < blocks.length; i++) {
         const block = blocks[i];
@@ -153,7 +196,9 @@ const CreatePost = () => {
           const textSize = new TextEncoder().encode(block.value || "").length;
           if (textSize > MAX_TEXT_BLOCK_SIZE) {
             throw new Error(
-              `Text block ${i + 1} too large (>100KB). Please reduce content.`
+              `Text block at position ${
+                i + 1
+              } too large (>100KB). Please reduce content.`
             );
           }
         }
@@ -163,7 +208,9 @@ const CreatePost = () => {
           ).length;
           if (tableSize > MAX_TABLE_BLOCK_SIZE) {
             throw new Error(
-              `Table block ${i + 1} too large (>200KB). Please reduce data.`
+              `Table block at position ${
+                i + 1
+              } too large (>200KB). Please reduce table data.`
             );
           }
         }
@@ -187,9 +234,12 @@ const CreatePost = () => {
         JSON.stringify(postData)
       ).length;
       if (payloadSize > MAX_PAYLOAD_SIZE) {
-        throw new Error("Post data exceeds 40MB. Reduce content.");
+        throw new Error(
+          "Post data exceeds 40MB. Reduce images, text, or table content."
+        );
       }
 
+      console.log("[CreatePost] Validation passed");
       return postData;
     },
     [title, blocks, postType, selectedCategoryId]
@@ -198,13 +248,20 @@ const CreatePost = () => {
   // ---- Actions
   const handleCreatePost = useCallback(
     async (metaData) => {
-      if (isSubmittingRef.current) return;
+      if (isSubmittingRef.current) {
+        console.log("[CreatePost] Submission blocked, already submitting");
+        return;
+      }
 
       isSubmittingRef.current = true;
       setIsSubmitting(true);
+      console.log("[CreatePost] Creating post with metaData:", metaData);
+
       try {
         const postData = await validateBeforeSubmit(metaData);
         const resultAction = await dispatch(createPosts(postData)).unwrap();
+        console.log("[CreatePost] Post created successfully:", resultAction);
+
         toast.success("Post created successfully!", { position: "top-right" });
         setTitle("");
         setBlocks([]);
@@ -213,25 +270,58 @@ const CreatePost = () => {
         navigate(`/post/${resultAction.post.slug}`);
       } catch (err) {
         console.error("[CreatePost] Post creation failed:", err);
-        toast.error(err?.message || "Failed to create post", {
-          position: "top-right",
-        });
+
+        if (err?.code === "ECONNABORTED" || err?.isTimeout) {
+          const slug = slugify(title, { lower: true, strict: true });
+          try {
+            const checkPost = await asyncRetry(
+              () => dispatch(getSinglePost({ slug, isGuest: false })).unwrap(),
+              { retries: 2, minTimeout: 1000 }
+            );
+            if (checkPost) {
+              console.log("[CreatePost] Post found after timeout:", checkPost);
+              toast.success("Post created successfully!", {
+                position: "top-right",
+              });
+              setTitle("");
+              setBlocks([]);
+              dispatch(resetPostMeta());
+              localStorage.removeItem("postType");
+              navigate(`/post/${checkPost.slug}`);
+              return;
+            }
+          } catch {
+            console.error("[CreatePost] Failed to verify post after timeout");
+          }
+          toast.error(
+            "Request timed out. Please check if your post was created.",
+            { position: "top-right" }
+          );
+        } else {
+          toast.error(err?.message || "Failed to create post", {
+            position: "top-right",
+          });
+        }
       } finally {
         isSubmittingRef.current = false;
         setIsSubmitting(false);
+        console.log("[CreatePost] Submission complete");
       }
     },
-    [dispatch, navigate, validateBeforeSubmit]
+    [dispatch, navigate, validateBeforeSubmit, title] // Added title for slug generation
   );
 
   const handleDeletePost = useCallback(
     (id) => {
+      console.log("[CreatePost] Deleting post with id:", id);
       dispatch(deletePost(id))
         .unwrap()
         .then(() => {
+          console.log("[CreatePost] Post deleted successfully");
           toast.success("Post deleted", { position: "top-right" });
         })
         .catch((err) => {
+          console.error("[CreatePost] Delete post failed:", err);
           toast.error(err?.message || "Failed to delete post", {
             position: "top-right",
           });
@@ -242,13 +332,26 @@ const CreatePost = () => {
 
   const handleUpdateDraft = useCallback(
     (draft) => {
-      handleTitleChange(draft.title || "");
-      handleBlocksChange(draft.blocks || []);
+      console.log("[CreatePost] Updating draft:", draft);
+      if (draft.title !== undefined) {
+        debouncedTitleChange(draft.title);
+      }
+      if (draft.blocks !== undefined) {
+        debouncedBlocksChange(draft.blocks);
+      }
     },
-    [handleTitleChange, handleBlocksChange]
+    [debouncedTitleChange, debouncedBlocksChange]
   );
 
   // ---- Render
+  console.log("[CreatePost] Rendering, state:", {
+    showPostTypeModal,
+    showCategoryModal,
+    title,
+    blocksLength: blocks.length,
+    isSubmitting,
+  });
+
   return (
     <div className="flex flex-col md:flex-row bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
       {showPostTypeModal && (
@@ -256,14 +359,17 @@ const CreatePost = () => {
           <PostTypeSelector
             postType={postType}
             setPostType={(value) => {
+              console.log("[CreatePost] Setting postType:", value);
               dispatch(setPostType(value));
               localStorage.setItem("postType", value);
             }}
             onContinue={() => {
+              console.log("[CreatePost] PostTypeSelector onContinue");
               setShowPostTypeModal(false);
               setShowCategoryModal(true);
             }}
             onClose={() => {
+              console.log("[CreatePost] PostTypeSelector onClose");
               localStorage.removeItem("postType");
               navigate("/");
             }}
@@ -275,10 +381,15 @@ const CreatePost = () => {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
           <CategorySelector
             onBack={() => {
+              console.log("[CreatePost] CategorySelector onBack");
               setShowCategoryModal(false);
               setShowPostTypeModal(true);
             }}
             onContinue={(selectedCategory) => {
+              console.log(
+                "[CreatePost] CategorySelector onContinue:",
+                selectedCategory
+              );
               if (!selectedCategory?.id) {
                 toast.error("Please select a category", {
                   position: "top-right",
@@ -289,6 +400,7 @@ const CreatePost = () => {
               setShowCategoryModal(false);
             }}
             onClose={() => {
+              console.log("[CreatePost] CategorySelector onClose");
               localStorage.removeItem("postType");
               navigate("/");
             }}
@@ -301,6 +413,7 @@ const CreatePost = () => {
           <div className="w-full flex justify-start px-4 pt-10 pl-11">
             <button
               onClick={() => {
+                console.log("[CreatePost] Cancel & Go Back clicked");
                 localStorage.removeItem("postType");
                 navigate("/");
               }}
@@ -309,13 +422,14 @@ const CreatePost = () => {
               ⬅ Cancel & Go Back
             </button>
           </div>
+
           <div className="w-full md:w-3/5 my-4">
             <PostEditor
               size={55}
               title={title}
-              setTitle={handleTitleChange}
+              setTitle={debouncedTitleChange}
               blocks={blocks}
-              setBlocks={handleBlocksChange}
+              setBlocks={debouncedBlocksChange}
               postType={postType}
               category={selectedCategoryId}
               categoryName={
@@ -327,6 +441,7 @@ const CreatePost = () => {
               to 5MB).
             </div>
           </div>
+
           <div className="w-full md:w-2/5 md:pl-1">
             <PostPreviewList
               currentDraftPost={{ title, blocks }}
