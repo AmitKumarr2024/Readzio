@@ -244,7 +244,6 @@
   animation: slide-up 0.5s ease-out;
 }
 
-
 @property --border-angle {
   inherits: false;
   initial-value: 0deg;
@@ -271,4 +270,30 @@
 input[type="search"]::-webkit-search-cancel-button {
   -webkit-appearance: none;
   appearance: none;
+}
+
+
+/* back button in CategorySelector.jsx  */
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-animate {
+  background: linear-gradient(
+    270deg,
+    #ec4899,
+    #8b5cf6,
+    #3b82f6
+  ); /* pink → purple → blue */
+  background-size: 200% 200%;
+  animation: gradientMove 6s ease infinite;
 }
