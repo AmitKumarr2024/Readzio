@@ -423,36 +423,37 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
             </div>
           )}
         </div>
-      </motion.div>
-      {/* Footer with Back and Continue buttons */}
-      {!isLoading && !hasError && (
-        <div className="border-t border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex justify-between items-center">
-            {onBack && (
-              <button
-                onClick={onBack}
-                className="flex items-center gap-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium transition-colors"
-              >
-                <X size={16} className="rotate-45" />
-                Back
-              </button>
-            )}
-            {selectedCategory && (
-              <button
-                onClick={() =>
-                  onContinue({
-                    id: selectedCategory._id,
-                    name: selectedCategory.name,
-                  })
-                }
-                className="ml-auto bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                Continue with {selectedCategory.name}
-              </button>
-            )}
+
+        {/* Footer with Back and Continue buttons */}
+        {!isLoading && !hasError && (
+          <div className="border-t border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex justify-between items-center">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="absolute bottom-6 left-6 flex items-center gap-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium transition-colors"
+                >
+                  <X size={16} className="rotate-45" />
+                  Back
+                </button>
+              )}
+              {selectedCategory && (
+                <button
+                  onClick={() =>
+                    onContinue({
+                      id: selectedCategory._id,
+                      name: selectedCategory.name,
+                    })
+                  }
+                  className="ml-auto bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  Continue with {selectedCategory.name}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </motion.div>
     </div>
   );
 };
