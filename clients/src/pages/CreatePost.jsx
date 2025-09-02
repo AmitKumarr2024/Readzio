@@ -58,7 +58,7 @@ const CreatePost = () => {
   const { categories } = useSelector((s) => s.categories);
   // ---- refs / guards
   const isSubmittingRef = useRef(false);
-  const hasCheckedPostTypeRef = useRef(false); // New ref to prevent re-running postType logic
+  const hasCheckedPostTypeRef = useRef(false);
   // ---- Debounced handlers
   const handleTitleChange = useMemo(
     () =>
@@ -99,8 +99,11 @@ const CreatePost = () => {
   }, [dispatch]);
   // ---- Handle saved postType and modal transitions
   useEffect(() => {
-    if (hasCheckedPostTypeRef.current) {
-      console.log("[CreatePost] Skipping postType check, already processed");
+    if (hasCheckedPostTypeRef.current || postType) {
+      console.log(
+        "[CreatePost] Skipping postType check, already processed or postType exists:",
+        postType
+      );
       return;
     }
     const savedPostType = localStorage.getItem("postType");
@@ -110,14 +113,14 @@ const CreatePost = () => {
       "Categories:",
       categories
     );
-    if (savedPostType && categories?.length > 0 && !postType) {
+    if (savedPostType && categories?.length > 0) {
       console.log("[CreatePost] Setting postType and opening category modal");
       dispatch(setPostType(savedPostType));
       setShowPostTypeModal(false);
       setShowCategoryModal(true);
-      hasCheckedPostTypeRef.current = true; // Mark as processed
+      hasCheckedPostTypeRef.current = true;
     }
-  }, [dispatch, categories, postType]); // Stabilized dependency
+  }, [dispatch, categories, postType]); // Stable dependencies
   // ---- Memoized category map
   const categoryMap = useMemo(() => {
     const map = {};
