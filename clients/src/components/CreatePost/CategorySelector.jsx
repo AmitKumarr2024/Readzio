@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchCategories,
@@ -15,13 +15,13 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   const { categories, status, error } = useSelector(
     (state) => state.categories
   );
+
   // Core states
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
-  // Loading control states
-  const [hasLoadedCategories, setHasLoadedCategories] = useState(false);
+
   // Form states
   const [newCategory, setNewCategory] = useState({
     name: "",
@@ -29,52 +29,63 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
     description: "",
   });
   const [formError, setFormError] = useState("");
-  // Refs
+
+  // Refs for preventing multiple fetches
+  const hasInitiatedFetch = useRef(false);
   const searchInputRef = useRef(null);
 
-  // Memoized fetch function
-  const loadCategories = useCallback(() => {
-    if (!hasLoadedCategories && status !== "loading") {
-      console.log("[CategorySelector] Initiating category fetch");
-      setHasLoadedCategories(true);
-      dispatch(fetchCategories()).catch((err) => {
-        console.error("[CategorySelector] Failed to load categories:", err);
-        setHasLoadedCategories(false);
-      });
-    }
-  }, [hasLoadedCategories, status, dispatch]);
-
-  // Load categories
+  // FIXED: Load categories only once on mount
   useEffect(() => {
     console.log("[CategorySelector] useEffect for loadCategories");
-    loadCategories();
-  }, [loadCategories]);
 
-  // Handle errors
+    // Skip if already fetched or currently loading
+    if (hasInitiatedFetch.current || status === "loading") {
+      console.log(
+        "[CategorySelector] Skipping fetch - already initiated or loading"
+      );
+      return;
+    }
+
+    // Skip if categories already exist
+    if (categories && categories.length > 0) {
+      console.log(
+        "[CategorySelector] Categories already exist, marking as fetched"
+      );
+      hasInitiatedFetch.current = true;
+      return;
+    }
+
+    console.log("[CategorySelector] Initiating category fetch");
+    hasInitiatedFetch.current = true;
+
+    dispatch(fetchCategories())
+      .unwrap()
+      .then(() => {
+        console.log("[CategorySelector] Categories loaded successfully");
+      })
+      .catch((err) => {
+        console.error("[CategorySelector] Failed to load categories:", err);
+        // Reset flag on error to allow retry
+        hasInitiatedFetch.current = false;
+      });
+  }, [dispatch]); // ONLY dispatch in dependencies
+
+  // Handle errors - separate effect
   useEffect(() => {
-    console.log(
-      "[CategorySelector] useEffect for error handling, error:",
-      error,
-      "hasLoadedCategories:",
-      hasLoadedCategories
-    );
-    if (error && hasLoadedCategories) {
+    if (error) {
+      console.log("[CategorySelector] Error detected:", error);
       toast.error(error);
       dispatch(clearError());
     }
-  }, [error, hasLoadedCategories, dispatch]);
+  }, [error, dispatch]);
 
-  // Auto-generate slug
+  // Auto-generate slug - separate effect
   useEffect(() => {
-    console.log(
-      "[CategorySelector] useEffect for slug generation, newCategory:",
-      newCategory
-    );
     if (newCategory.name && !newCategory.slug) {
       const slug = generateSlug(newCategory.name);
       setNewCategory((prev) => ({ ...prev, slug }));
     }
-  }, [newCategory.name, newCategory.slug]);
+  }, [newCategory.name]); // Remove newCategory.slug from dependencies
 
   const generateSlug = (name) =>
     name
@@ -116,6 +127,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
     const { name, slug, description } = newCategory;
     const trimmedName = name.trim();
     const trimmedSlug = slug.trim();
+
     if (!trimmedName || !trimmedSlug) {
       setFormError("Name and slug are required");
       return;
@@ -136,6 +148,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
       setFormError("Category name already exists");
       return;
     }
+
     setIsCreatingCategory(true);
     try {
       const result = await dispatch(
@@ -145,6 +158,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
           description: description.trim() || undefined,
         })
       ).unwrap();
+
       console.log("[CategorySelector] Category created:", result);
       setNewCategory({ name: "", slug: "", description: "" });
       setShowAddCategory(false);
@@ -167,24 +181,38 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
 
   const handleRetryLoad = () => {
     console.log("[CategorySelector] Retrying category load");
-    setHasLoadedCategories(false);
-    loadCategories();
+    hasInitiatedFetch.current = false;
+    dispatch(fetchCategories())
+      .unwrap()
+      .then(() => {
+        console.log(
+          "[CategorySelector] Categories loaded successfully on retry"
+        );
+        hasInitiatedFetch.current = true;
+      })
+      .catch((err) => {
+        console.error(
+          "[CategorySelector] Failed to load categories on retry:",
+          err
+        );
+      });
   };
 
-  const isLoading = status === "loading" && !hasLoadedCategories;
+  const isLoading = status === "loading";
   const hasError = status === "failed";
-  const isEmpty = categories.length === 0;
+  const isEmpty = categories.length === 0 && status === "succeeded";
 
   console.log("[CategorySelector] Rendering, state:", {
     selectedCategory,
     searchTerm,
     showAddCategory,
     isCreatingCategory,
-    hasLoadedCategories,
+    hasInitiatedFetch: hasInitiatedFetch.current,
     isLoading,
     hasError,
     isEmpty,
     categoriesLength: categories.length,
+    status,
   });
 
   return (
@@ -217,6 +245,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
             </p>
           </div>
         </div>
+
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
           {isLoading && (
@@ -227,6 +256,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
               </span>
             </div>
           )}
+
           {hasError && (
             <div className="text-center py-8">
               <div className="text-red-500 dark:text-red-400 mb-4 text-lg">
@@ -240,6 +270,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
               </button>
             </div>
           )}
+
           {!isLoading && !hasError && isEmpty && (
             <div className="space-y-6">
               <div className="text-center">
@@ -262,6 +293,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
               />
             </div>
           )}
+
           {!isLoading && !hasError && !isEmpty && (
             <div className="space-y-6">
               <div className="relative">
@@ -275,6 +307,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
                   className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                 />
               </div>
+
               {selectedCategory && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -301,6 +334,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
                   </div>
                 </motion.div>
               )}
+
               {filteredCategories.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-600 dark:text-gray-400">
@@ -357,6 +391,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
                   </AnimatePresence>
                 </div>
               )}
+
               <div className="text-center pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => setShowAddCategory(!showAddCategory)}
@@ -366,6 +401,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
                   {showAddCategory ? "Cancel" : "Create New Category"}
                 </button>
               </div>
+
               <AnimatePresence>
                 {showAddCategory && (
                   <motion.div
@@ -387,15 +423,18 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
             </div>
           )}
         </div>
+
+        {/* Footer with Back and Continue buttons */}
         {!isLoading && !hasError && (
           <div className="border-t border-gray-200 dark:border-gray-700 p-6">
             <div className="flex justify-between items-center">
               {onBack && (
                 <button
                   onClick={onBack}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium"
+                  className="flex items-center gap-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium transition-colors"
                 >
-                  ← Back
+                  <X size={16} className="rotate-45" />
+                  Back
                 </button>
               )}
               {selectedCategory && (
