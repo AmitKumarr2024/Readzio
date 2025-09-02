@@ -58,6 +58,7 @@ const CreatePost = () => {
   const { categories } = useSelector((s) => s.categories);
   // ---- refs / guards
   const isSubmittingRef = useRef(false);
+  const hasCheckedPostTypeRef = useRef(false); // New ref to prevent re-running postType logic
   // ---- Debounced handlers
   const handleTitleChange = useMemo(
     () =>
@@ -98,19 +99,25 @@ const CreatePost = () => {
   }, [dispatch]);
   // ---- Handle saved postType and modal transitions
   useEffect(() => {
+    if (hasCheckedPostTypeRef.current) {
+      console.log("[CreatePost] Skipping postType check, already processed");
+      return;
+    }
     const savedPostType = localStorage.getItem("postType");
     console.log(
       "[CreatePost] Checking saved postType:",
       savedPostType,
-      "Categories length:",
-      categories?.length
+      "Categories:",
+      categories
     );
-    if (savedPostType && categories?.length > 0) {
+    if (savedPostType && categories?.length > 0 && !postType) {
+      console.log("[CreatePost] Setting postType and opening category modal");
       dispatch(setPostType(savedPostType));
       setShowPostTypeModal(false);
       setShowCategoryModal(true);
+      hasCheckedPostTypeRef.current = true; // Mark as processed
     }
-  }, [dispatch, categories?.length]);
+  }, [dispatch, categories, postType]); // Stabilized dependency
   // ---- Memoized category map
   const categoryMap = useMemo(() => {
     const map = {};
@@ -353,7 +360,7 @@ const CreatePost = () => {
           />
         </div>
       )}
-      {!showPostTypeModal && !showCategoryModal && (
+      {!showPostTypeModal && !showCategoryModal && !isSubmitting && (
         <div className="min-w-full flex container justify-around items-center flex-col flex-wrap md:flex-row">
           <div className="w-full flex justify-start px-4 pt-10 pl-11">
             <button
