@@ -16,7 +16,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { FiMove } from "react-icons/fi";
-
 import PostImageBlock from "../PostFeature/PostImageBlock";
 import CodeBlock from "../PostFeature/CodeBlock";
 import TextBlockWrapper from "../PostFeature/TextBlockWrapper";
@@ -34,6 +33,11 @@ import { FiEdit3 } from "react-icons/fi";
 import { Trash2 } from "lucide-react";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_IMAGE_COUNT = 40; // 40 images
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
+const MAX_PAYLOAD_SIZE = 40 * 1024 * 1024; // 40 MB
+const MAX_TEXT_BLOCK_SIZE = 100 * 1024; // 100KB
+const MAX_TABLE_BLOCK_SIZE = 200 * 1024; // 200KB
 
 const SortableBlock = ({ block, index, children }) => {
   const {
@@ -44,20 +48,12 @@ const SortableBlock = ({ block, index, children }) => {
     transition,
     isDragging,
   } = useSortable({ id: block.id });
-
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.7 : 1,
     position: "relative",
   };
-
-  // console.log("[SortableBlock] Rendering block:", {
-  //   id: block.id,
-  //   index,
-  //   isDragging,
-  // });
-
   return (
     <div ref={setNodeRef} style={style} className="relative group">
       <button
@@ -94,10 +90,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
-    // console.log("[PostEditor] Drag end:", {
-    //   activeId: active.id,
-    //   overId: over?.id,
-    // });
     if (active.id !== over?.id) {
       const restoreScroll = preventScroll();
       const oldIndex = blocks.findIndex((block) => block.id === active.id);
@@ -106,14 +98,26 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
       const [movedBlock] = newBlocks.splice(oldIndex, 1);
       newBlocks.splice(newIndex, 0, movedBlock);
       setBlocks(newBlocks);
-      // console.log("[PostEditor] Blocks reordered:", newBlocks);
       restoreScroll();
     }
   };
 
   const addBlock = (type, options = {}) => {
-    // console.log("[PostEditor] Adding block:", { type, options });
     const restoreScroll = preventScroll();
+    const imageCount = blocks.filter((b) => b.type === "image").length;
+    const postSize = new TextEncoder().encode(
+      JSON.stringify({ title, blocks })
+    ).length;
+
+    if (type === "image" && imageCount >= MAX_IMAGE_COUNT) {
+      toast.error(`Maximum ${MAX_IMAGE_COUNT} images reached.`);
+      return;
+    }
+    if (postSize >= MAX_PAYLOAD_SIZE) {
+      toast.error("Post size limit of 40MB reached.");
+      return;
+    }
+
     const newBlock =
       type === "text"
         ? { id: uuidv4(), type, value: "<p></p>" }
@@ -155,7 +159,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         return;
       }
       setBlocks([...blocks, newBlock]);
-      // console.log("[PostEditor] Block added:", newBlock);
       toast.success(
         `${type.charAt(0).toUpperCase() + type.slice(1)} block added`
       );
@@ -164,22 +167,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
   };
 
   const updateBlock = (index, newData) => {
-    // console.log(
-    //   "[PostEditor] Updating block at index:",
-    //   index,
-    //   "with data:",
-    //   newData
-    // );
     const restoreScroll = preventScroll();
     const updated = [...blocks];
     updated[index] = { ...updated[index], ...newData };
     setBlocks(updated);
-    // console.log("[PostEditor] Block updated:", updated[index]);
     restoreScroll();
   };
 
   const removeBlock = (index) => {
-    // console.log("[PostEditor] Removing block at index:", index);
     const restoreScroll = preventScroll();
     const updated = blocks.filter((_, i) => i !== index);
     setBlocks(updated);
@@ -188,19 +183,18 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
   };
 
   const handleImageUpload = (file, index) => {
-    // console.log(
-    //   "[PostEditor] Uploading image for block index:",
-    //   index,
-    //   "file:",
-    //   file?.name
-    // );
     if (!file) return;
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error("File size exceeds 10MB limit.");
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error("Image size exceeds 5MB limit.");
       return;
     }
     if (!file.type.startsWith("image/")) {
       toast.error("Please upload an image file.");
+      return;
+    }
+    const imageCount = blocks.filter((b) => b.type === "image").length;
+    if (imageCount >= MAX_IMAGE_COUNT) {
+      toast.error(`Maximum ${MAX_IMAGE_COUNT} images reached.`);
       return;
     }
     const restoreScroll = preventScroll();
@@ -210,7 +204,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         src: reader.result,
         caption: blocks[index]?.caption || "",
       });
-      // console.log("[PostEditor] Image uploaded for block index:", index);
       toast.success("Image uploaded");
       restoreScroll();
     };
@@ -223,15 +216,16 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
 
   const handleFileUpload = (e, index) => {
     const file = e.target.files?.[0];
-    // console.log(
-    //   "[PostEditor] Uploading file for block index:",
-    //   index,
-    //   "file:",
-    //   file?.name
-    // );
     if (!file) return;
     if (file.size > MAX_FILE_SIZE) {
       toast.error("File size exceeds 10MB limit.");
+      return;
+    }
+    const postSize =
+      new TextEncoder().encode(JSON.stringify({ title, blocks })).length +
+      file.size;
+    if (postSize > MAX_PAYLOAD_SIZE) {
+      toast.error("Adding this file exceeds 40MB post size limit.");
       return;
     }
     const restoreScroll = preventScroll();
@@ -241,7 +235,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
       name: file.name,
       size: file.size,
     });
-    // console.log("[PostEditor] File uploaded for block index:", index);
     toast.success("File uploaded");
     restoreScroll();
   };
@@ -257,15 +250,25 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     return widthMap[size] || "w-full";
   };
 
-  // console.log("[PostEditor] Rendering with state:", { title, blocks, size });
+  const imageCount = blocks.filter((b) => b.type === "image").length;
+  const postSize = new TextEncoder().encode(
+    JSON.stringify({ title, blocks })
+  ).length;
+
+  const isImageLimitReached = imageCount >= MAX_IMAGE_COUNT;
+  const isSizeLimitReached = postSize >= MAX_PAYLOAD_SIZE;
 
   return (
     <div
       className={`min-w-[350px] ${sizeToWidthClass(
         size
-      )} max-w-[1200px] min-h-[600px] sm:min-h-[800px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300 border border-gray-200 dark:border-gray-800`}
+      )} max-w-[1200px] min-h-[600px] sm:min-h-[800px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300 border border-gray-200 dark:border-gray-800 ${
+        isImageLimitReached || isSizeLimitReached
+          ? "animate-pulse border-red-500 dark:border-red-400"
+          : ""
+      }`}
     >
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-6 mb-6">
         <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
           <FiEdit3 className="w-5 h-5 text-white" />
         </div>
@@ -277,10 +280,102 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
             Build your post with blocks
           </p>
         </div>
+        <div className="grow ml-10 mb-4">
+          <div className="grid grid-cols-2 gap-6">
+            {/* Images Progress */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Images
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                  {imageCount}/{MAX_IMAGE_COUNT}
+                </span>
+              </div>
+              <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
+                <div
+                  className={`h-2 rounded-full transition-all duration-300 ease-out ${
+                    isImageLimitReached
+                      ? "bg-red-500 animate-pulse"
+                      : imageCount / MAX_IMAGE_COUNT > 0.8
+                      ? "bg-amber-500"
+                      : "bg-blue-500"
+                  }`}
+                  style={{
+                    width: `${Math.min(
+                      (imageCount / MAX_IMAGE_COUNT) * 100,
+                      100
+                    )}%`,
+                  }}
+                ></div>
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {imageCount} of {MAX_IMAGE_COUNT} images
+                </p>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full ${
+                    isImageLimitReached
+                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 animate-pulse"
+                      : imageCount > MAX_IMAGE_COUNT * 0.8
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                      : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                  }`}
+                >
+                  {isImageLimitReached ? "Limit Reached" : "Available"}
+                </span>
+              </div>
+            </div>
+
+            {/* File Size Progress */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Post Size
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                  {((postSize / MAX_PAYLOAD_SIZE) * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
+                <div
+                  className={`h-2 rounded-full transition-all duration-300 ease-out ${
+                    isSizeLimitReached
+                      ? "bg-red-500 animate-pulse"
+                      : postSize / MAX_PAYLOAD_SIZE > 0.8
+                      ? "bg-amber-500"
+                      : "bg-emerald-500"
+                  }`}
+                  style={{
+                    width: `${Math.min(
+                      (postSize / MAX_PAYLOAD_SIZE) * 100,
+                      100
+                    )}%`,
+                  }}
+                ></div>
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {(postSize / 1024).toFixed(2)} KB / 40 MB
+                </p>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full ${
+                    isSizeLimitReached
+                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 animate-pulse"
+                      : postSize > MAX_PAYLOAD_SIZE * 0.8
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                      : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                  }`}
+                >
+                  {isSizeLimitReached ? "Limit Reached" : "Available"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <TitleInput title={title || ""} setTitle={setTitle} />
-
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -293,11 +388,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
           <div className="flex flex-col mx-auto bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark overflow-y-auto mb-4 px-3 sm:px-4 md:px-6 pb-4 sm:pb-6 w-full space-y-4 sm:space-y-6 min-h-[400px] sm:min-h-[430px] pt-4 sm:pt-6 rounded-lg">
             <AnimatePresence>
               {blocks.map((block, index) => {
-                // console.log("[PostEditor] Rendering block:", {
-                //   index,
-                //   type: block.type,
-                //   id: block.id,
-                // });
                 const motionDivProps = {
                   initial: { opacity: 0, y: 20 },
                   animate: { opacity: 1, y: 0 },
@@ -305,7 +395,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                   transition: { duration: 0.3 },
                   layout: true,
                 };
-
                 const blockContent = (() => {
                   switch (block.type) {
                     case "text":
@@ -351,6 +440,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             onChange={(e) => handleFileUpload(e, index)}
                             className="mt-2 block w-full text-xs sm:text-sm text-text-main-light dark:text-text-main-dark file:mr-3 sm:mr-4 file:py-1.5 sm:py-2 file:px-3 sm:px-4 file:rounded file:border-0 file:bg-blue-100 dark:file:bg-blue-900 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-200 dark:hover:file:bg-blue-800"
                             aria-label="Upload file"
+                            disabled={isSizeLimitReached}
                           />
                           <button
                             onClick={() => removeBlock(index)}
@@ -528,6 +618,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             }}
                             className="mt-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500 text-white text-xs sm:text-sm rounded-lg hover:bg-blue-600 transition"
                             aria-label="Add list item"
+                            disabled={isSizeLimitReached}
                           >
                             + Add Item
                           </button>
@@ -560,8 +651,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             }
                             onChangeOptions={(i, val, remove = false) => {
                               let newOptions = [...(block.options || ["", ""])];
-
-                              // If remove is true and at least 3 options exist
                               if (remove) {
                                 if (newOptions.length > 2) {
                                   newOptions.splice(i, 1);
@@ -571,8 +660,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               } else {
                                 newOptions[i] = val;
                               }
-
-                              // Ensure at least 2 non-empty options after update
                               if (
                                 newOptions.filter((opt) => opt?.trim() !== "")
                                   .length < 2
@@ -581,14 +668,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                   newOptions.push("");
                                 }
                               }
-
                               updateBlock(index, {
                                 ...block,
                                 options: newOptions,
                               });
                             }}
                           />
-
                           <div className="text-right mt-2">
                             <button
                               onClick={() => removeBlock(index)}
@@ -680,14 +765,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                         newData[0] = [...(newData[0] || [])];
                                         newData[0][headerIndex] =
                                           e.target.value;
-                                        // console.log(
-                                        //   "[PostEditor] Updating table header:",
-                                        //   {
-                                        //     row: 0,
-                                        //     col: headerIndex,
-                                        //     value: e.target.value,
-                                        //   }
-                                        // );
                                         updateBlock(index, {
                                           ...block,
                                           data: newData,
@@ -712,21 +789,17 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       ...block,
                                       data: newData,
                                     });
-                                    // console.log(
-                                    //   "[PostEditor] Added table column:",
-                                    //   newData
-                                    // );
                                     toast.success("Column added");
                                     restoreScroll();
                                   }}
-                                  className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition"
+                                  className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                                   aria-label="Add table column"
+                                  disabled={isSizeLimitReached}
                                 >
                                   + Add Column
                                 </button>
                               </div>
                             </div>
-
                             {(block.data?.slice(1) || []).map(
                               (row, rowIndex) => (
                                 <div
@@ -748,14 +821,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                         ];
                                         newData[rowIndex + 1][cellIndex] =
                                           e.target.value;
-                                        // console.log(
-                                        //   "[PostEditor] Updating table cell:",
-                                        //   {
-                                        //     row: rowIndex + 1,
-                                        //     col: cellIndex,
-                                        //     value: e.target.value,
-                                        //   }
-                                        // );
                                         updateBlock(index, {
                                           ...block,
                                           data: newData,
@@ -774,7 +839,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 </div>
                               )
                             )}
-
                             <div>
                               <label className="block text-xs sm:text-sm font-medium mb-1">
                                 Caption (optional)
@@ -784,10 +848,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 value={block.caption || ""}
                                 onChange={(e) => {
                                   const restoreScroll = preventScroll();
-                                  // console.log(
-                                  //   "[PostEditor] Updating table caption:",
-                                  //   e.target.value
-                                  // );
                                   updateBlock(index, {
                                     ...block,
                                     caption: e.target.value,
@@ -799,7 +859,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 aria-label="Table caption"
                               />
                             </div>
-
                             <div className="flex flex-wrap gap-2">
                               <button
                                 onClick={() => {
@@ -814,15 +873,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     ...block,
                                     data: newData,
                                   });
-                                  // console.log(
-                                  //   "[PostEditor] Added table row:",
-                                  //   newData
-                                  // );
                                   toast.success("Row added");
                                   restoreScroll();
                                 }}
-                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                                 aria-label="Add table row"
+                                disabled={isSizeLimitReached}
                               >
                                 + Add Row
                               </button>
@@ -836,15 +892,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     ...block,
                                     data: newData,
                                   });
-                                  // console.log(
-                                  //   "[PostEditor] Added table column:",
-                                  //   newData
-                                  // );
                                   toast.success("Column added");
                                   restoreScroll();
                                 }}
-                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition"
+                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                                 aria-label="Add table column"
+                                disabled={isSizeLimitReached}
                               >
                                 + Add Column
                               </button>
@@ -860,10 +913,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       ...block,
                                       data: newData,
                                     });
-                                    // console.log(
-                                    //   "[PostEditor] Removed table row:",
-                                    //   newData
-                                    // );
                                     toast.success("Row removed");
                                   } else {
                                     toast.error("At least one row is required");
@@ -886,10 +935,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       ...block,
                                       data: newData,
                                     });
-                                    // console.log(
-                                    //   "[PostEditor] Removed table column:",
-                                    //   newData
-                                    // );
                                     toast.success("Column removed");
                                   } else {
                                     toast.error(
@@ -904,7 +949,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 - Remove Column
                               </button>
                             </div>
-
                             <div className="flex justify-end mt-3 sm:mt-4">
                               <button
                                 onClick={() => removeBlock(index)}
@@ -977,7 +1021,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                       return null;
                   }
                 })();
-
                 return (
                   <SortableBlock key={block.id} block={block} index={index}>
                     <motion.div key={block.id} {...motionDivProps}>
@@ -990,8 +1033,10 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
           </div>
         </SortableContext>
       </DndContext>
-
-      <AddBlockButtons addBlock={addBlock} />
+      <AddBlockButtons
+        addBlock={addBlock}
+        isDisabled={isImageLimitReached || isSizeLimitReached}
+      />
     </div>
   );
 };

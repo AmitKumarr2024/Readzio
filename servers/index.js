@@ -82,32 +82,32 @@ const setRouteTimeout = (timeoutMs) => (req, res, next) => {
   next();
 };
 
-app.post(
-  "/api/razorpay/webhook",
-  setRouteTimeout(60000),
-  express.json({
-    verify: (req, res, buf) => {
-      req.rawBody = buf.toString();
-    },
-  }),
-  async (req, res, next) => {
-    const startTime = Date.now();
-    logMemory("💸 Razorpay webhook start");
-    try {
-      await handleRazorpayWebhook(req, res, next);
-      const duration = Date.now() - startTime;
-      logMemory(`💸 Razorpay webhook completed in ${duration}ms`);
-    } catch (err) {
-      const duration = Date.now() - startTime;
-      console.error(
-        `[Server:Razorpay] ❌ Webhook error after ${duration}ms:`,
-        err.message
-      );
-      if (!res.headersSent)
-        res.status(500).json({ error: "Webhook processing failed" });
-    }
-  }
-);
+// app.post(
+//   "/api/razorpay/webhook",
+//   setRouteTimeout(60000),
+//   express.json({
+//     verify: (req, res, buf) => {
+//       req.rawBody = buf.toString();
+//     },
+//   }),
+//   async (req, res, next) => {
+//     const startTime = Date.now();
+//     logMemory("💸 Razorpay webhook start");
+//     try {
+//       await handleRazorpayWebhook(req, res, next);
+//       const duration = Date.now() - startTime;
+//       logMemory(`💸 Razorpay webhook completed in ${duration}ms`);
+//     } catch (err) {
+//       const duration = Date.now() - startTime;
+//       console.error(
+//         `[Server:Razorpay] ❌ Webhook error after ${duration}ms:`,
+//         err.message
+//       );
+//       if (!res.headersSent)
+//         res.status(500).json({ error: "Webhook processing failed" });
+//     }
+//   }
+// );
 
 app.use((req, res, next) => {
   req.io = io;
