@@ -287,7 +287,8 @@ if (fs.existsSync(publicPath)) {
 }
 
 app.get("/sitemap.xml", (req, res) => {
-  const sitemapPath = path.join(__dirname, "../clients/dist/sitemap.xml"); // 👈 go up one level
+  const sitemapPath = path.resolve(process.cwd(), "clients/dist/sitemap.xml");
+  console.log("Serving sitemap from:", sitemapPath);
 
   if (fs.existsSync(sitemapPath)) {
     res.setHeader("Content-Type", "application/xml");
