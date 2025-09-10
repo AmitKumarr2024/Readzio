@@ -16,7 +16,7 @@ const __dirname = path.dirname(__filename);
 
 // === CONFIG ===
 const BASE_URL = "https://inksha-uedq.onrender.com";
-const OUTPUT_PATH = path.resolve(__dirname, "../../client/dist/sitemap.xml"); // ✅ check folder name
+const OUTPUT_PATH = path.resolve(__dirname, "../../clients/dist/sitemap.xml"); // ✅ check folder name
 
 // === Ensure directory exists ===
 const distDir = path.dirname(OUTPUT_PATH);
