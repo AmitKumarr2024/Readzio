@@ -288,10 +288,13 @@ if (fs.existsSync(publicPath)) {
 
 app.get("/sitemap.xml", (req, res) => {
   const sitemapPath = path.join(__dirname, "clients", "dist", "sitemap.xml");
-  if (fs.existsSync(sitemapPath)) res.sendFile(sitemapPath);
-  else {
+
+  if (fs.existsSync(sitemapPath)) {
+    res.setHeader("Content-Type", "application/xml");
+    res.sendFile(sitemapPath);
+  } else {
     console.warn("⚠️ Sitemap not found:", sitemapPath);
-    res.status(404).send("Sitemap not found");
+    res.status(404).type("text/plain").send("Sitemap not found");
   }
 });
 

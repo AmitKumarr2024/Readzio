@@ -16,7 +16,7 @@ const __dirname = path.dirname(__filename);
 
 // === CONFIG ===
 const BASE_URL = "https://inksha-uedq.onrender.com";
-const OUTPUT_PATH = path.resolve(__dirname, "../../clients/dist/sitemap.xml");
+const OUTPUT_PATH = path.resolve(__dirname, "../../client/dist/sitemap.xml"); // ✅ check folder name
 
 // === Ensure directory exists ===
 const distDir = path.dirname(OUTPUT_PATH);
@@ -26,8 +26,7 @@ if (!existsSync(distDir)) {
 
 // === Connect to DB ===
 try {
-  await mongoose.connect(MONGO_URI, { dbName: "inkshaapp" });
-  console.log("✅ Connected to MongoDB");
+  await mongoose.connect(MONGO_URI, { dbName: "InkshaApp" });
 } catch (err) {
   console.error("❌ Failed to connect to MongoDB:", err.message);
   process.exit(1);
@@ -47,24 +46,29 @@ const staticRoutes = [
   "/terms-conditions",
   "/login",
   "/signup",
-  
 ];
-staticRoutes.forEach((url) => sitemap.write({ url }));
+staticRoutes.forEach((url) =>
+  sitemap.write({
+    url,
+    changefreq: "monthly",
+    priority: url === "/" ? 1.0 : 0.7,
+  })
+);
 
 // === Dynamic Routes ===
 try {
-  const posts = await PostModel.find({ isPublished: true }, "slug").lean();
-  console.log(`ℹ️  Found ${posts.length} published posts`);
+  const posts = await PostModel.find({}, "slug isPublished").lean();
+  console.log(`ℹ️ Found ${posts?.length} published posts`);
 
-  posts.forEach((post) => {
+  posts.forEach((post) =>
     sitemap.write({
       url: `/post/${post.slug}`,
       changefreq: "weekly",
       priority: 0.8,
-    });
-  });
+    })
+  );
 
-  const sitemapPromise = streamToPromise(sitemap); // ✅ Do this BEFORE .end()
+  const sitemapPromise = streamToPromise(sitemap);
   sitemap.end();
   await sitemapPromise;
 
