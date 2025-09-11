@@ -435,13 +435,13 @@ const DisplayPost = () => {
             name="twitter:image"
             content={activePost?.thumbnail || "/default-og-image.jpg"}
           />
-        </Helmet>
 
-        {/* JSON-LD structured data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+          {/* JSON-LD structured data */}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          />
+        </Helmet>
 
         <article className="space-y-6">
           <PostHeader post={activePost} />
