@@ -1,3 +1,4 @@
+// src/api/axiosInstance.js
 import axios from "axios";
 import { getToken } from "../Utils/getToken";
 
@@ -11,6 +12,11 @@ if (isDev && !import.meta.env.VITE_API_BASE_URL) {
   console.warn(
     "[AxiosInstance] ⚠️ VITE_API_BASE_URL is missing in .env for development. Defaulting to http://localhost:5000/api"
   );
+}
+
+// Helper: sleep for retry backoff
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 const axiosInstance = axios.create({
@@ -31,27 +37,82 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 🔹 Handle global errors
+// 🔹 Handle global errors + retry logic
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const { response } = error;
+  async (error) => {
+    const { response, config, message } = error;
 
-    if (!response) {
-      console.error("[Axios] ❌ Network error or server not reachable.");
-      return Promise.reject({ message: "Network error" });
+    // Retry setup (max 3 attempts with exponential backoff)
+    if (!config._retryCount) {
+      config._retryCount = 0;
     }
 
+    // CASE 1: No response → network error / offline
+    if (!response) {
+      console.warn("[Axios] ❌ Network error:", message);
+
+      if (config._retryCount < 3) {
+        config._retryCount += 1;
+        const delay = config._retryCount * 2000; // 2s, 4s, 6s
+        console.log(
+          `[Axios] 🌐 Retrying request (#${config._retryCount}) in ${
+            delay / 1000
+          }s...`
+        );
+        await sleep(delay);
+        return axiosInstance(config); // retry original request
+      }
+
+      // Give up after retries
+      return Promise.reject({
+        ...error,
+        customMessage: "Network error. Please check your connection.",
+      });
+    }
+
+    // CASE 2: Unauthorized → 401
     if (response.status === 401) {
-      console.warn("[Axios] 401 Unauthorized → consider logout/redirect.");
-      // Example: dispatch logout or redirect
+      console.warn("[Axios] 401 Unauthorized → token may be invalid/expired.");
+      // Example: clear session / redirect
       // store.dispatch(logoutUser());
     }
 
-    if (response.status >= 500) {
-      console.error("[Axios] 🚨 Server error:", response.data?.message);
+    // CASE 3: Forbidden → 403
+    if (response.status === 403) {
+      console.warn("[Axios] 403 Forbidden → insufficient permissions.");
     }
 
+    // CASE 4: Client error (400–499)
+    if (response.status >= 400 && response.status < 500) {
+      console.warn(
+        "[Axios] ⚠️ Client error:",
+        response.data?.message || response.statusText
+      );
+    }
+
+    // CASE 5: Server error (500+)
+    if (response.status >= 500) {
+      console.error(
+        "[Axios] 🚨 Server error:",
+        response.data?.message || response.statusText
+      );
+
+      // Retry server errors too (sometimes servers glitch)
+      if (config._retryCount < 2) {
+        config._retryCount += 1;
+        const delay = config._retryCount * 3000; // 3s, 6s
+        console.log(
+          `[Axios] 🔄 Retrying server error (#${config._retryCount}) in ${
+            delay / 1000
+          }s...`
+        );
+        await sleep(delay);
+        return axiosInstance(config);
+      }
+    }
+
+    // Final rejection → preserve original error
     return Promise.reject(error);
   }
 );
