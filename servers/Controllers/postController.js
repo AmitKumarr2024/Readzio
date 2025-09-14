@@ -665,7 +665,6 @@ export const createPost = async (req, res, next) => {
     logMemory("📝 Start createPost");
     console.log("[CreatePost] Request initiated by user:", req.user?._id);
 
-    // Check authentication
     if (!req.user?._id) {
       throw new AppError(
         "You must be signed in to create posts.",
@@ -677,9 +676,8 @@ export const createPost = async (req, res, next) => {
     // Rate limiting
     checkRateLimit(req.user._id, cache);
 
-    // Validate payload size
+    // Payload size validation
     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
-    // For example, allow up to 40MB
     if (payloadSize > 40 * 1024 * 1024) {
       throw new AppError(
         `Payload exceeds 40MB limit: ${(payloadSize / 1024 / 1024).toFixed(
@@ -705,43 +703,21 @@ export const createPost = async (req, res, next) => {
       postType = "Blog",
     } = req.body;
 
-    // Parse and validate input
-    let tags;
-    try {
-      tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
-    } catch (err) {
-      throw new AppError(
-        "Invalid tags format - must be valid JSON array",
-        400,
-        "CreatePost"
-      );
-    }
+    // Parse tags & blocks
+    let tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
+    let blocks = Array.isArray(rawBlocks)
+      ? rawBlocks
+      : JSON.parse(rawBlocks || "[]");
 
-    let blocks;
-    try {
-      blocks = Array.isArray(rawBlocks)
-        ? rawBlocks
-        : JSON.parse(rawBlocks || "[]");
-    } catch (err) {
-      throw new AppError(
-        "Invalid blocks format - must be valid JSON array",
-        400,
-        "CreatePost"
-      );
-    }
-
-    // Validate all inputs
     validateCreatePostInput({ title, category, language, tags, blocks });
 
-    // Check for recent duplicate posts
+    // Duplicate post check (last 2 minutes)
     const recentPost = await PostModel.findOne({
       title: title.trim(),
       author: req.user._id,
-      createdAt: { $gte: new Date(Date.now() - 2 * 60 * 1000) }, // Last 2 minutes
+      createdAt: { $gte: new Date(Date.now() - 2 * 60 * 1000) },
     }).lean();
-
     if (recentPost) {
-      console.log("[CreatePost] Duplicate post detected:", recentPost.slug);
       throw new AppError(
         "A post with this title was recently created. Please wait before creating another.",
         429,
@@ -751,60 +727,38 @@ export const createPost = async (req, res, next) => {
 
     logMemory("📦 After input validation");
 
-    // Process blocks with IDs and validation
-    const blocksWithIds = blocks.map((block, index) => {
-      if (!block || typeof block !== "object" || !block.type) {
-        throw new AppError(
-          `Invalid block at index ${index} - must be object with type property`,
-          400,
-          "CreatePost"
-        );
-      }
-
-      // Validate block type
-      const validBlockTypes = [
-        "header",
-        "paragraph",
-        "list",
-        "image",
-        "quote",
-        "code",
-        "delimiter",
-        "table",
-        "embed",
-        "poll",
-        "checklist",
-        "warning",
-      ];
-      if (!validBlockTypes.includes(block.type)) {
+    // Process blocks with IDs
+    const validBlockTypes = [
+      "header",
+      "paragraph",
+      "list",
+      "image",
+      "quote",
+      "code",
+      "delimiter",
+      "table",
+      "embed",
+      "poll",
+      "checklist",
+      "warning",
+    ];
+    const blocksWithIds = blocks.map((block, i) => {
+      if (!block || typeof block !== "object" || !block.type)
+        throw new AppError(`Invalid block at index ${i}`, 400, "CreatePost");
+      if (!validBlockTypes.includes(block.type))
         console.warn(`[CreatePost] Unknown block type: ${block.type}`);
-      }
-
-      return {
-        id: block.id || uuidv4(),
-        type: block.type,
-        ...block,
-        blocked: false,
-      };
+      return { id: block.id || uuidv4(), blocked: false, ...block };
     });
 
-    // Validate specific block types
-    blocksWithIds.forEach((block, index) => {
+    blocksWithIds.forEach((block, i) => {
       if (block.type === "table") {
         if (
           !block.data ||
           !Array.isArray(block.data) ||
-          block.data.length === 0
+          !block.data.every((r) => Array.isArray(r) && r.length)
         ) {
           throw new AppError(
-            `Table block at index ${index} must have non-empty data array`,
-            400,
-            "CreatePost"
-          );
-        }
-        if (!block.data.every((row) => Array.isArray(row) && row.length > 0)) {
-          throw new AppError(
-            `Table block at index ${index} has invalid data format - all rows must be non-empty arrays`,
+            `Table block at index ${i} has invalid data`,
             400,
             "CreatePost"
           );
@@ -812,9 +766,9 @@ export const createPost = async (req, res, next) => {
       }
     });
 
-    // Process blocks with controlled concurrency
-    const blockLimit = pLimit(3); // Process 3 blocks concurrently
-    const imageLimit = pLimit(2); // Process 2 images concurrently
+    // Concurrency limits
+    const blockLimit = pLimit(3);
+    const imageLimit = pLimit(2);
 
     logMemory("🖼️ Before processing blocks");
     const processedBlocks = await Promise.all(
@@ -824,111 +778,83 @@ export const createPost = async (req, res, next) => {
     );
     logMemory("🖼️ After processing blocks");
 
-    // Calculate reading time
+    // Reading time
     const { readTime, readingTime } = calculateReadTime(processedBlocks);
 
-    // Process thumbnail
+    // Thumbnail processing
     let processedThumbnail = null;
-    if (rawThumbnail && !isThumbnailEmbed) {
-      logMemory("🖼️ Before processing thumbnail");
-      processedThumbnail = await imageLimit(() =>
-        processImage(rawThumbnail, "thumbnail", "inkshaa/post/thumbnails/")
-      );
-      logMemory("🖼️ After processing thumbnail");
-    } else if (rawThumbnail && isThumbnailEmbed) {
-      // Validate embed URL
-      try {
-        new URL(rawThumbnail);
-        processedThumbnail = rawThumbnail;
-      } catch (err) {
-        throw new AppError("Invalid thumbnail embed URL", 400, "CreatePost");
+    if (rawThumbnail) {
+      if (isThumbnailEmbed) {
+        try {
+          new URL(rawThumbnail);
+          processedThumbnail = rawThumbnail;
+        } catch {
+          throw new AppError("Invalid thumbnail embed URL", 400, "CreatePost");
+        }
+      } else {
+        logMemory("🖼️ Before processing thumbnail");
+        processedThumbnail = await imageLimit(() =>
+          processImage(rawThumbnail, "thumbnail", "inkshaa/post/thumbnails/")
+        );
+        logMemory("🖼️ After processing thumbnail");
       }
     }
 
-    // Content moderation (placeholder - implement real moderation)
+    // Content moderation
     const moderateContent = async (text) => {
-      // Add your content moderation logic here
-      // For now, just check for obvious spam patterns
-      const spamPatterns = [
-        /(.)\1{20,}/i, // Repeated characters
-        /http[s]?:\/\/[^\s]{100,}/i, // Very long URLs
-      ];
-
-      for (const pattern of spamPatterns) {
-        if (pattern.test(text)) {
+      const spamPatterns = [/(.)\1{20,}/i, /http[s]?:\/\/[^\s]{100,}/i];
+      for (const p of spamPatterns)
+        if (p.test(text))
           return { isFlagged: true, categories: { spam: true } };
-        }
-      }
-
       return { isFlagged: false, categories: {} };
     };
-
     const blockTextContent = processedBlocks
-      .flatMap((block) =>
+      .flatMap((b) =>
         ["text", "value", "code", "caption", "question"]
-          .map((f) => block[f])
+          .map((f) => b[f])
           .filter(Boolean)
       )
       .join("\n");
     const fullText = `${title}\n${excerpt || ""}\n${blockTextContent}`;
-
-    logMemory("🔍 Before content moderation");
     const moderation = await moderateContent(fullText);
-    logMemory("🔍 After content moderation");
+    if (moderation.isFlagged)
+      throw new AppError(`Content violates guidelines`, 400, "CreatePost");
 
-    if (moderation.isFlagged) {
-      const reasons = Object.entries(moderation.categories)
-        .filter(([_, flagged]) => flagged)
-        .map(([key]) => key);
-      throw new AppError(
-        `Content violates community guidelines: ${reasons.join(", ")}`,
-        400,
-        "CreatePost"
-      );
-    }
-
-    // Generate unique slug
-    const slug = await generateSafeSlug(title);
-
-    // Prepare post data
-    const postData = {
-      title: title.trim(),
-      slug,
-      category: category.trim(),
-      tags: tags
-        .filter((tag) => tag && typeof tag === "string" && tag.trim())
-        .slice(0, 20),
-      thumbnail: processedThumbnail,
-      thumbnailSize,
-      isEmbed: isThumbnailEmbed,
-      excerpt: excerpt ? excerpt.trim().substring(0, 500) : undefined, // Limit excerpt
-      blocks: processedBlocks,
-      author: req.user._id,
-      isFeatured: Boolean(isFeatured),
-      isPinned: Boolean(isPinned),
-      isPublished: true,
-      language: language.trim(),
-      readTime,
-      readingTime,
-      postType: postType.trim(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    // Database transaction
+    // DB transaction
     session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      logMemory("💾 Before DB operations");
-      console.log("[CreatePost] Creating post with slug:", slug);
+      // Generate unique slug inside transaction
+      const slug = await generateSafeSlug(title);
+
+      const postData = {
+        title: title.trim(),
+        slug,
+        category: category.trim(),
+        tags: tags.filter((t) => t && typeof t === "string").slice(0, 20),
+        thumbnail: processedThumbnail,
+        thumbnailSize,
+        isEmbed: isThumbnailEmbed,
+        excerpt: excerpt ? excerpt.trim().substring(0, 500) : undefined,
+        blocks: processedBlocks,
+        author: req.user._id,
+        isFeatured: Boolean(isFeatured),
+        isPinned: Boolean(isPinned),
+        isPublished: true,
+        language: language.trim(),
+        readTime,
+        readingTime,
+        postType: postType.trim(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
       const [newPost] = await asyncRetry(
         () => PostModel.create([postData], { session }),
         { retries: 3, minTimeout: 2000 }
       );
 
-      // Record activity
       await recordActivity(
         {
           userId: req.user._id,
@@ -939,181 +865,72 @@ export const createPost = async (req, res, next) => {
         { session }
       );
 
-      logMemory("💾 After DB operations");
       await session.commitTransaction();
-      console.log("[CreatePost] Transaction committed successfully");
+      logMemory("💾 Transaction committed");
 
-      // Post-transaction operations (non-critical)
-      try {
-        // Allow some time for database indexing
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Emit socket events with retry
-        await asyncRetry(
-          async () => {
-            io.emit("postCreated", {
-              ...newPost.toObject(),
-              authorId: req.user._id,
-              timestamp: new Date(),
-            });
-          },
-          { retries: 2, minTimeout: 500 }
-        );
-
-        // Invalidate relevant caches
-        const cacheKeys = [
-          `postCounts:${req.user._id}`,
-          `post:${slug}`,
-          `userPosts:${req.user._id}`,
-        ];
-        cacheKeys.forEach((key) => {
-          try {
-            cache.del(key);
-          } catch (err) {
-            console.warn(
-              `[CreatePost] Cache deletion failed for ${key}:`,
-              err.message
-            );
-          }
-        });
-
-        // Update post counts asynchronously
-        Promise.all([
-          PostModel.countDocuments({
-            blocked: { $ne: true },
-            isPublished: true,
-          }).lean(),
-          PostModel.countDocuments({
-            author: req.user._id,
-            blocked: { $ne: true },
-            isPublished: true,
-          }).lean(),
-          PostModel.countDocuments({
-            author: { $in: req.user.following || [] },
-            blocked: { $ne: true },
-            isPublished: true,
-          }).lean(),
-        ])
-          .then(([allPostsCount, myPostsCount, followingPostsCount]) => {
-            const counts = { allPostsCount, myPostsCount, followingPostsCount };
-            cache.set(`postCounts:${req.user._id}`, counts, 300); // 5 minutes cache
-
-            // Emit updated counts
-            return asyncRetry(
-              async () => {
-                io.to(req.user._id.toString()).emit(
-                  "postCountsUpdated",
-                  counts
-                );
-              },
-              { retries: 2, minTimeout: 500 }
-            );
-          })
-          .catch((err) => {
-            console.warn("[CreatePost] Post count update failed:", err.message);
-          });
-      } catch (err) {
-        console.warn(
-          "[CreatePost] Post-transaction operations failed:",
-          err.message
-        );
-        // Don't throw - these are non-critical operations
-      }
+      // Non-blocking post-transaction tasks
+      (async () => {
+        try {
+          await new Promise((r) => setTimeout(r, 1000));
+          await asyncRetry(
+            () =>
+              io.emit("postCreated", {
+                ...newPost.toObject(),
+                authorId: req.user._id,
+                timestamp: new Date(),
+              }),
+            { retries: 2, minTimeout: 500 }
+          );
+          const cacheKeys = [
+            `postCounts:${req.user._id}`,
+            `post:${slug}`,
+            `userPosts:${req.user._id}`,
+          ];
+          cacheKeys.forEach((k) => cache.del(k));
+        } catch (err) {
+          console.warn(
+            "[CreatePost] Post-transaction tasks failed:",
+            err.message
+          );
+        }
+      })();
 
       const processingTime = Date.now() - startTime;
       logMemory("🎉 End createPost");
-      console.log(
-        `[CreatePost] Success: slug=${slug}, time=${processingTime}ms`
-      );
-
-      // Return success response
       res.status(201).json({
         success: true,
         message: "Post created successfully",
-        post: {
-          _id: newPost._id,
-          title: newPost.title,
-          slug: newPost.slug,
-          category: newPost.category,
-          tags: newPost.tags,
-          thumbnail: newPost.thumbnail,
-          excerpt: newPost.excerpt,
-          author: newPost.author,
-          isFeatured: newPost.isFeatured,
-          isPinned: newPost.isPinned,
-          isPublished: newPost.isPublished,
-          language: newPost.language,
-          readTime: newPost.readTime,
-          readingTime: newPost.readingTime,
-          postType: newPost.postType,
-          createdAt: newPost.createdAt,
-          updatedAt: newPost.updatedAt,
-        },
+        post: newPost,
         meta: {
-          processingTime: processingTime,
+          processingTime,
           blocksProcessed: processedBlocks.length,
           imagesProcessed: processedBlocks.filter((b) => b.type === "image")
             .length,
         },
       });
     } catch (dbError) {
-      console.error("[CreatePost] Database error:", dbError);
       await session.abortTransaction();
-
-      // Provide specific error messages for common database issues
-      if (dbError.code === 11000) {
-        throw new AppError(
-          "A post with this title already exists. Please choose a different title.",
-          409,
-          "CreatePost"
-        );
-      }
-
+      if (dbError.code === 11000)
+        throw new AppError("Duplicate title exists", 409, "CreatePost");
       throw new AppError(
-        dbError.message || "Failed to save post to database",
+        dbError.message || "Failed to save post",
         500,
         "CreatePost"
       );
     }
   } catch (error) {
-    const processingTime = Date.now() - startTime;
-    console.error(`[CreatePost] Error after ${processingTime}ms:`, error);
-
-    // Abort transaction if it exists and is active
-    if (session && session.inTransaction()) {
-      try {
-        await session.abortTransaction();
-      } catch (abortError) {
-        console.error("[CreatePost] Failed to abort transaction:", abortError);
-      }
-    }
-
-    // Enhanced error response
-    if (error instanceof AppError) {
-      next(error);
-    } else {
-      // Log unexpected errors for debugging
-      console.error("[CreatePost] Unexpected error:", error.stack);
-      next(
-        new AppError(
-          error.message ||
-            "An unexpected error occurred while creating the post",
-          error.status || 500,
-          "CreatePost"
-        )
-      );
-    }
+    if (session && session.inTransaction()) await session.abortTransaction();
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Unexpected error",
+            error.status || 500,
+            "CreatePost"
+          )
+    );
   } finally {
-    // Ensure session is always closed
-    if (session) {
-      try {
-        await session.endSession();
-      } catch (sessionError) {
-        console.error("[CreatePost] Failed to end session:", sessionError);
-      }
-    }
-
-    // Final memory cleanup
+    if (session) await session.endSession();
     logMemory("🧹 Final cleanup");
   }
 };
@@ -2053,26 +1870,31 @@ export const trackTimeSpent = async (req, res, next) => {
   }
 };
 
+// Content moderation function
 const moderateContent = async (text) => {
-  // Basic content moderation: check for valid content and return moderation result
   if (!text || typeof text !== "string" || text.trim().length === 0) {
     return { isFlagged: true, categories: { invalid: true } };
   }
+
   const spamPatterns = [
     /(.)\1{20,}/i, // Repeated characters
     /http[s]?:\/\/[^\s]{100,}/i, // Very long URLs
+    /<script.*?>.*?<\/script>/i, // Basic XSS check
   ];
+
   for (const pattern of spamPatterns) {
     if (pattern.test(text)) {
       return { isFlagged: true, categories: { spam: true } };
     }
   }
+
   return { isFlagged: false, categories: {} };
 };
 
 export const updatePostBySlug = async (req, res, next) => {
   let session = null;
   const startTime = Date.now();
+
   try {
     logMemory("✏️ Start updatePostBySlug");
     const { slug } = req.params;
@@ -2086,6 +1908,7 @@ export const updatePostBySlug = async (req, res, next) => {
         "UpdatePostBySlug"
       );
     }
+
     if (req.user.blocked) {
       throw new AppError("Account is blocked", 403, "UpdatePostBySlug");
     }
@@ -2116,18 +1939,17 @@ export const updatePostBySlug = async (req, res, next) => {
       postType,
     } = req.body;
 
+    // Parse and validate tags
     let tags;
     if (rawTags !== undefined) {
       try {
         tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags);
-        if (!Array.isArray(tags)) {
-          throw new AppError("Tags must be an array", 400, "UpdatePostBySlug");
-        }
+        if (!Array.isArray(tags)) throw new Error("Tags must be an array");
         tags = tags
-          .filter((tag) => tag && typeof tag === "string" && tag.trim())
-          .map((tag) => tag.trim())
+          .filter((t) => t && typeof t === "string")
+          .map((t) => t.trim())
           .slice(0, 20);
-      } catch (err) {
+      } catch {
         throw new AppError(
           "Invalid tags format - must be valid JSON array",
           400,
@@ -2136,6 +1958,7 @@ export const updatePostBySlug = async (req, res, next) => {
       }
     }
 
+    // Parse and validate blocks
     let blocks;
     if (rawBlocks !== undefined) {
       try {
@@ -2154,8 +1977,7 @@ export const updatePostBySlug = async (req, res, next) => {
             "UpdatePostBySlug"
           );
         }
-        delete req.body.blocks;
-      } catch (err) {
+      } catch {
         throw new AppError(
           "Invalid blocks format - must be valid JSON array",
           400,
@@ -2164,6 +1986,7 @@ export const updatePostBySlug = async (req, res, next) => {
       }
     }
 
+    // Basic input validation
     if (
       title !== undefined &&
       (!title || title.trim().length < 3 || title.length > 300)
@@ -2196,126 +2019,65 @@ export const updatePostBySlug = async (req, res, next) => {
       );
     }
 
+    // Fetch post with authorization
     const escapedSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const query =
       userRole === "admin"
         ? { slug: { $regex: `^${escapedSlug}$`, $options: "i" } }
         : {
             slug: { $regex: `^${escapedSlug}$`, $options: "i" },
-            author: new mongoose.Types.ObjectId(userId),
+            author: userId,
           };
-    const post = await PostModel.findOne(query)
-      .select(
-        "_id title category excerpt tags thumbnail isEmbed isFeatured isPinned language postType readTime readingTime blocked author"
-      )
-      .lean();
 
+    const post = await PostModel.findOne(query).lean();
     if (!post) {
-      const postExists = await PostModel.findOne({
+      const exists = await PostModel.findOne({
         slug: { $regex: `^${escapedSlug}$`, $options: "i" },
-      })
-        .select("author")
-        .lean();
+      }).lean();
       throw new AppError(
-        postExists ? "Unauthorized to update this post" : "Post not found",
-        postExists ? 403 : 404,
+        exists ? "Unauthorized to update this post" : "Post not found",
+        exists ? 403 : 404,
         "UpdatePostBySlug"
       );
     }
-    if (post.blocked) {
+
+    if (post.blocked)
       throw new AppError(
         "Post is blocked and cannot be updated",
         403,
         "UpdatePostBySlug"
       );
-    }
 
+    // Process blocks if provided
     let processedBlocks;
     if (blocks) {
-      const blockStart = Date.now();
-      const blockLimit = pLimit(3); // Process 3 blocks concurrently
-      const imageLimit = pLimit(2); // Process 2 images concurrently
-      const batchSize = 3;
-      const blocksWithIds = blocks.map((block, index) => {
-        if (!block || typeof block !== "object" || !block.type) {
-          throw new AppError(
-            `Invalid block at index ${index}`,
-            400,
-            "UpdatePostBySlug"
-          );
-        }
-        return {
-          id: block.id || uuidv4(),
-          type: block.type,
-          ...block,
-          blocked: false,
-        };
-      });
-      blocks = null;
-
-      const processedBatches = [];
-      for (let i = 0; i < blocksWithIds.length; i += batchSize) {
-        const batch = blocksWithIds.slice(i, i + batchSize);
-        const batchPromises = batch.map((block) =>
-          blockLimit(() => processBlock(block, blockLimit, imageLimit))
-        );
-        const batchResults = await Promise.allSettled(batchPromises);
-        batchResults.forEach((result, index) => {
-          if (result.status === "fulfilled") {
-            processedBatches.push(result.value);
-          } else {
-            console.error(
-              `[UpdatePostBySlug] Failed to process block ${batch[index].id}: ${result.reason.message}`
-            );
-            processedBatches.push(batch[index]); // Fallback: include unprocessed block
-          }
-        });
-        console.log(
-          `[UpdatePostBySlug] Processed batch ${Math.ceil(
-            (i + batchSize) / batchSize
-          )}/${Math.ceil(blocksWithIds.length / batchSize)}`
-        );
-      }
-      processedBlocks = processedBatches;
-      console.log(
-        `[UpdatePostBySlug] Block processing took ${Date.now() - blockStart}ms`
+      const blockLimit = pLimit(3);
+      const imageLimit = pLimit(2);
+      const blocksWithIds = blocks.map((b) => ({
+        id: b.id || uuidv4(),
+        blocked: false,
+        ...b,
+      }));
+      processedBlocks = await Promise.all(
+        blocksWithIds.map((b) =>
+          blockLimit(() => processBlock(b, blockLimit, imageLimit))
+        )
       );
     }
 
+    // Process thumbnail
     let processedThumbnail;
     if (rawThumbnail && !isThumbnailEmbed) {
-      try {
-        processedThumbnail = await Promise.race([
-          processImage(rawThumbnail, "thumbnail", "inkshaa/post/thumbnails/"),
-          new Promise((_, reject) =>
-            setTimeout(
-              () =>
-                reject(
-                  new AppError(
-                    "Thumbnail processing timeout",
-                    408,
-                    "UpdatePostBySlug"
-                  )
-                ),
-              10000
-            )
-          ),
-        ]);
-      } catch (error) {
-        console.error(
-          `[UpdatePostBySlug] Thumbnail processing failed: ${error.message}`
-        );
-        throw new AppError(
-          `Thumbnail processing failed: ${error.message}`,
-          400,
-          "UpdatePostBySlug"
-        );
-      }
+      processedThumbnail = await processImage(
+        rawThumbnail,
+        "thumbnail",
+        "inkshaa/post/thumbnails/"
+      );
     } else if (rawThumbnail && isThumbnailEmbed) {
       try {
         new URL(rawThumbnail);
         processedThumbnail = rawThumbnail;
-      } catch (err) {
+      } catch {
         throw new AppError(
           "Invalid thumbnail embed URL",
           400,
@@ -2324,31 +2086,27 @@ export const updatePostBySlug = async (req, res, next) => {
       }
     }
 
+    // Calculate read time
     let readTime, readingTime;
     if (processedBlocks) {
-      const readTimeResult = calculateReadTime(processedBlocks);
-      readTime = readTimeResult.readTime;
-      readingTime = readTimeResult.readingTime;
+      ({ readTime, readingTime } = calculateReadTime(processedBlocks));
     }
 
+    // Content moderation
     if (title || excerpt || processedBlocks) {
-      const blockTextContent = processedBlocks
-        ? processedBlocks
-            .slice(0, 20)
-            .flatMap((block) =>
-              [block.text, block.value, block.caption].filter(Boolean)
-            )
-            .join(" ")
-            .substring(0, 5000)
-        : "";
+      const blockTextContent =
+        processedBlocks
+          ?.flatMap((b) => [b.text, b.value, b.caption].filter(Boolean))
+          .join(" ")
+          .substring(0, 5000) || "";
       const fullText = `${title || post.title} ${
         excerpt || ""
       } ${blockTextContent}`.substring(0, 10000);
       const moderation = await moderateContent(fullText);
       if (moderation.isFlagged) {
-        const reasons = Object.entries(moderation.categories)
-          .filter(([_, flagged]) => flagged)
-          .map(([key]) => key);
+        const reasons = Object.keys(moderation.categories).filter(
+          (k) => moderation.categories[k]
+        );
         throw new AppError(
           `Content violates community guidelines: ${reasons.join(", ")}`,
           400,
@@ -2357,23 +2115,23 @@ export const updatePostBySlug = async (req, res, next) => {
       }
     }
 
+    // Prepare update object
     const updates = {};
-    if (title !== undefined && title.trim() !== post.title)
-      updates.title = title.trim();
-    if (category !== undefined && category.trim() !== post.category)
+    if (title && title.trim() !== post.title) updates.title = title.trim();
+    if (category && category.trim() !== post.category)
       updates.category = category.trim();
     if (excerpt !== undefined)
       updates.excerpt = excerpt ? excerpt.trim().substring(0, 500) : "";
-    if (tags !== undefined) updates.tags = tags;
+    if (tags) updates.tags = tags;
     if (processedThumbnail !== undefined)
       updates.thumbnail = processedThumbnail;
     if (thumbnailSize !== undefined) updates.thumbnailSize = thumbnailSize;
     if (isThumbnailEmbed !== undefined) updates.isEmbed = isThumbnailEmbed;
-    if (processedBlocks !== undefined) updates.blocks = processedBlocks;
+    if (processedBlocks) updates.blocks = processedBlocks;
     if (isFeatured !== undefined) updates.isFeatured = Boolean(isFeatured);
     if (isPinned !== undefined) updates.isPinned = Boolean(isPinned);
-    if (language !== undefined) updates.language = language.trim();
-    if (postType !== undefined) updates.postType = postType.trim();
+    if (language) updates.language = language.trim();
+    if (postType) updates.postType = postType.trim();
     if (readTime !== undefined) updates.readTime = readTime;
     if (readingTime !== undefined) updates.readingTime = readingTime;
     updates.isPublished = true;
@@ -2386,68 +2144,43 @@ export const updatePostBySlug = async (req, res, next) => {
         .json({ success: true, message: "No changes detected", post });
     }
 
+    // Update post within transaction
     session = await mongoose.startSession();
     let updatedPost;
-    await session.withTransaction(
-      async () => {
-        updatedPost = await PostModel.findOneAndUpdate(
-          { _id: post._id },
-          { $set: updates },
-          { new: true, runValidators: true, session }
-        );
-        if (!updatedPost) {
-          throw new AppError("Failed to update post", 500, "UpdatePostBySlug");
-        }
-        await recordActivity(
-          {
-            userId: new mongoose.Types.ObjectId(userId),
-            action: "POST_EDITED",
-            targetPost: updatedPost._id,
-            message: `Edited post: ${updatedPost.title}`,
-          },
-          { session }
-        );
-      },
-      {
-        readConcern: { level: "majority" },
-        writeConcern: { w: "majority" },
-        maxTimeMS: 15000,
-      }
-    );
+    await session.withTransaction(async () => {
+      updatedPost = await PostModel.findOneAndUpdate(
+        { _id: post._id },
+        { $set: updates },
+        { new: true, runValidators: true, session }
+      );
+      if (!updatedPost)
+        throw new AppError("Failed to update post", 500, "UpdatePostBySlug");
+
+      await recordActivity(
+        {
+          userId: userId,
+          action: "POST_EDITED",
+          targetPost: updatedPost._id,
+          message: `Edited post: ${updatedPost.title}`,
+        },
+        { session }
+      );
+    });
 
     const processingTime = Date.now() - startTime;
     res.status(200).json({
       success: true,
       message: "Post updated successfully",
-      post: {
-        _id: updatedPost._id,
-        title: updatedPost.title,
-        slug: updatedPost.slug,
-        category: updatedPost.category,
-        excerpt: updatedPost.excerpt,
-        thumbnail: updatedPost.thumbnail,
-        author: updatedPost.author,
-        isPublished: updatedPost.isPublished,
-        isPinned: updatedPost.isPinned,
-        isFeatured: updatedPost.isFeatured,
-        createdAt: updatedPost.createdAt,
-        lastEditedAt: updatedPost.lastEditedAt,
-        updatedAt: updatedPost.updatedAt,
-        postType: updatedPost.postType,
-        readTime: updatedPost.readTime,
-        readingTime: updatedPost.readingTime,
-        language: updatedPost.language,
-        tags: updatedPost.tags,
-      },
+      post: updatedPost,
       meta: {
         processingTime,
         fieldsUpdated: Object.keys(updates).length,
-        blocksProcessed: processedBlocks ? processedBlocks.length : 0,
+        blocksProcessed: processedBlocks?.length || 0,
       },
     });
 
-    // Move cache and socket operations to a separate async function
-    const postResponseOperations = async () => {
+    // Async post-response tasks (cache & socket)
+    process.nextTick(async () => {
       try {
         const cacheKeys = [
           `postCounts:${userId}`,
@@ -2456,31 +2189,22 @@ export const updatePostBySlug = async (req, res, next) => {
           `postId:${slug}`,
           `singlePost:${slug}:${userId}:${userRole || "none"}`,
         ];
-        await Promise.all(
-          cacheKeys.map(async (key) => {
-            try {
-              await cache.del(key);
-            } catch (e) {}
-          })
-        );
+        await Promise.all(cacheKeys.map((k) => cache.del(k)));
         await asyncRetry(
-          async () => {
+          () =>
             io.emit("postUpdated", {
               ...updatedPost.toObject(),
               authorId: userId,
-            });
-          },
-          { retries: 5, minTimeout: 1000, maxTimeout: 10000, factor: 2 }
+            }),
+          { retries: 5, minTimeout: 1000, maxTimeout: 10000 }
         );
-      } catch (e) {
+      } catch (err) {
         console.warn(
           "[UpdatePostBySlug] Post-response operations failed:",
-          e.message
+          err.message
         );
       }
-    };
-
-    process.nextTick(postResponseOperations);
+    });
   } catch (error) {
     console.error("[UpdatePostBySlug] Error:", error);
     if (!res.headersSent) {
@@ -2489,11 +2213,7 @@ export const updatePostBySlug = async (req, res, next) => {
           ? error
           : new AppError(
               error.message || "Failed to update post",
-              error.code === "ETIMEOUT"
-                ? 504
-                : error.code === "ERR_HTTP_HEADERS_SENT"
-                ? 500
-                : 500,
+              500,
               "UpdatePostBySlug"
             )
       );
