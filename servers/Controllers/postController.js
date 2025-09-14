@@ -2105,17 +2105,16 @@ export const updatePostBySlug = async (req, res, next) => {
       );
     }
 
-    // ✅ Send fast response
-    res.status(200).json({
+    // ✅ Fast response
+    res.status(202).json({
       success: true,
-      message: "Post update queued",
+      message: "Post update queued. Changes will apply shortly.",
       postId: post._id,
     });
 
-    // ✅ Do heavy work asynchronously
+    // ✅ Heavy work in background
     setImmediate(async () => {
       try {
-        // --- your existing block/thumbnail/tag logic ---
         const {
           title,
           category,
