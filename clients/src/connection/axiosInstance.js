@@ -166,4 +166,44 @@ export const retryQueuedRequests = () => {
   }
 };
 
+// Helper: Wake up sleeping server (Render free tier)
+export const wakeUpServer = async () => {
+  try {
+    console.log("🔔 Pinging server to wake up...");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+    await fetch(baseURL.replace("/api", "") + "/health", {
+      method: "HEAD",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    console.log("✅ Server is awake");
+    return true;
+  } catch (error) {
+    console.log("⚠️ Server ping failed, might still be sleeping");
+    return false;
+  }
+};
+
+// Helper: Smart request with server wake-up
+export const makeRequestWithWakeup = async (requestFn) => {
+  try {
+    return await requestFn();
+  } catch (error) {
+    // If 502 error, try waking up server and retry once
+    if (error.response?.status === 502 || error.type === "network") {
+      console.log("🔄 Request failed, attempting server wake-up...");
+      await wakeUpServer();
+
+      // Wait a bit for server to fully start
+      await new Promise((r) => setTimeout(r, 3000));
+
+      return await requestFn();
+    }
+    throw error;
+  }
+};
+
 export default axiosInstance;

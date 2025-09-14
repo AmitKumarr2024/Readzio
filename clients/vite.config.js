@@ -14,7 +14,6 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss({
-        // Add safelist to prevent purging of list-related classes
         safelist: ["list-disc", "list-decimal", "list-inside"],
       }),
     ],
@@ -31,7 +30,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         "/api": {
-          target: env.VITE_API_BASE_URL || "http://localhost:100000",
+          target: env.VITE_API_BASE_URL || "http://localhost:10000", // Fixed: removed extra zero
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path,
@@ -39,10 +38,17 @@ export default defineConfig(({ mode }) => {
             proxy.on("error", (err) => {
               console.error("[ViteConfig:Proxy] /api error:", err.message);
             });
+            proxy.on("proxyReq", (proxyReq, req) => {
+              console.log(
+                `[ViteProxy] ${req.method} ${req.url} -> ${proxyReq.getHeader(
+                  "host"
+                )}`
+              );
+            });
           },
         },
         "/socket.io": {
-          target: env.VITE_API_BASE_URL || "http://localhost:10000",
+          target: env.VITE_API_BASE_URL || "http://localhost:10000", // Fixed: removed extra zero
           ws: true,
           changeOrigin: true,
           configure: (proxy) => {
@@ -52,12 +58,28 @@ export default defineConfig(({ mode }) => {
                 err.message
               );
             });
+            proxy.on("proxyReq", (proxyReq, req) => {
+              console.log(
+                `[SocketProxy] ${req.method} ${req.url} -> ${proxyReq.getHeader(
+                  "host"
+                )}`
+              );
+            });
           },
         },
       },
     },
     build: {
       chunkSizeWarningLimit: 2500,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ["react", "react-dom"],
+            // Only include packages you actually have installed
+            // router: ['react-router-dom'], // Uncomment if you use react-router-dom
+          },
+        },
+      },
     },
   };
 });
