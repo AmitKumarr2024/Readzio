@@ -334,7 +334,7 @@ const EditPost = () => {
                       postType={postType}
                       category={selectedCategory?._id || ""}
                       title={title}
-                      setTitle={handleTitleChange}
+                      setTitle={setTitle}
                     />
                   </div>
                 </div>
