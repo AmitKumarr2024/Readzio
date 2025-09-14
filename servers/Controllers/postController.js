@@ -2053,6 +2053,23 @@ export const trackTimeSpent = async (req, res, next) => {
   }
 };
 
+const moderateContent = async (text) => {
+  // Basic content moderation: check for valid content and return moderation result
+  if (!text || typeof text !== "string" || text.trim().length === 0) {
+    return { isFlagged: true, categories: { invalid: true } };
+  }
+  const spamPatterns = [
+    /(.)\1{20,}/i, // Repeated characters
+    /http[s]?:\/\/[^\s]{100,}/i, // Very long URLs
+  ];
+  for (const pattern of spamPatterns) {
+    if (pattern.test(text)) {
+      return { isFlagged: true, categories: { spam: true } };
+    }
+  }
+  return { isFlagged: false, categories: {} };
+};
+
 export const updatePostBySlug = async (req, res, next) => {
   let session = null;
   const startTime = Date.now();
@@ -2330,25 +2347,7 @@ export const updatePostBySlug = async (req, res, next) => {
       const fullText = `${title || post.title} ${
         excerpt || ""
       } ${blockTextContent}`.substring(0, 10000);
-
-      const moderateContent = async (text) => {
-        // Add your content moderation logic here
-        // For now, just check for obvious spam patterns
-        const spamPatterns = [
-          /(.)\1{20,}/i, // Repeated characters
-          /http[s]?:\/\/[^\s]{100,}/i, // Very long URLs
-        ];
-
-        for (const pattern of spamPatterns) {
-          if (pattern.test(text)) {
-            return { isFlagged: true, categories: { spam: true } };
-          }
-        }
-
-        return { isFlagged: false, categories: {} };
-      };
-
-      const moderation = await moderateContent(fullText); // Use moderateContent from provided code
+      const moderation = await moderateContent(fullText);
       if (moderation.isFlagged) {
         const reasons = Object.entries(moderation.categories)
           .filter(([_, flagged]) => flagged)
@@ -2451,7 +2450,8 @@ export const updatePostBySlug = async (req, res, next) => {
       },
     });
 
-    process.nextTick(async () => {
+    // Move cache and socket operations to a separate async function to avoid response conflicts
+    const postResponseOperations = async () => {
       try {
         const cacheKeys = [
           `postCounts:${userId}`,
@@ -2472,7 +2472,7 @@ export const updatePostBySlug = async (req, res, next) => {
               authorId: userId,
             });
           },
-          { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
+          { retries: 5, minTimeout: 1000, maxTimeout: 10000, factor: 2 } // Increased retries and exponential backoff
         );
       } catch (e) {
         console.warn(
@@ -2480,18 +2480,26 @@ export const updatePostBySlug = async (req, res, next) => {
           e.message
         );
       }
-    });
+    };
+
+    process.nextTick(postResponseOperations); // Run post-response operations without affecting response
   } catch (error) {
     console.error("[UpdatePostBySlug] Error:", error);
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to update post",
-            error.code === "ETIMEOUT" ? 504 : 500,
-            "UpdatePostBySlug"
-          )
-    );
+    if (!res.headersSent) {
+      next(
+        error instanceof AppError
+          ? error
+          : new AppError(
+              error.message || "Failed to update post",
+              error.code === "ETIMEOUT"
+                ? 504
+                : error.code === "ERR_HTTP_HEADERS_SENT"
+                ? 500
+                : 500,
+              "UpdatePostBySlug"
+            )
+      );
+    }
   } finally {
     if (session) {
       try {
