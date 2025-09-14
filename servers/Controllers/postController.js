@@ -2256,23 +2256,20 @@ export const updatePostBySlug = async (req, res, next) => {
       const processedBatches = [];
       for (let i = 0; i < blocksWithIds.length; i += batchSize) {
         const batch = blocksWithIds.slice(i, i + batchSize);
-        for (const block of batch) {
-          try {
-            processedBatches.push(
-              await blockLimit(() =>
-                processBlock(block, blockLimit, imageLimit)
-              )
-            );
-            if (processedBatches.length % 10 === 0) {
-              await new Promise((resolve) => setImmediate(resolve));
-            }
-          } catch (error) {
+        const batchPromises = batch.map((block) =>
+          blockLimit(() => processBlock(block, blockLimit, imageLimit))
+        );
+        const batchResults = await Promise.allSettled(batchPromises);
+        batchResults.forEach((result, index) => {
+          if (result.status === "fulfilled") {
+            processedBatches.push(result.value);
+          } else {
             console.error(
-              `[UpdatePostBySlug] Failed to process block ${block.id}: ${error.message}`
+              `[UpdatePostBySlug] Failed to process block ${batch[index].id}: ${result.reason.message}`
             );
-            processedBatches.push(block); // Fallback: include unprocessed block
+            processedBatches.push(batch[index]); // Fallback: include unprocessed block
           }
-        }
+        });
         console.log(
           `[UpdatePostBySlug] Processed batch ${Math.ceil(
             (i + batchSize) / batchSize
@@ -2390,9 +2387,10 @@ export const updatePostBySlug = async (req, res, next) => {
     }
 
     session = await mongoose.startSession();
+    let updatedPost;
     await session.withTransaction(
       async () => {
-        const updatedPost = await PostModel.findOneAndUpdate(
+        updatedPost = await PostModel.findOneAndUpdate(
           { _id: post._id },
           { $set: updates },
           { new: true, runValidators: true, session }
@@ -2409,7 +2407,6 @@ export const updatePostBySlug = async (req, res, next) => {
           },
           { session }
         );
-        req.updatedPost = updatedPost;
       },
       {
         readConcern: { level: "majority" },
@@ -2418,7 +2415,6 @@ export const updatePostBySlug = async (req, res, next) => {
       }
     );
 
-    const updatedPost = req.updatedPost;
     const processingTime = Date.now() - startTime;
     res.status(200).json({
       success: true,
@@ -2450,7 +2446,7 @@ export const updatePostBySlug = async (req, res, next) => {
       },
     });
 
-    // Move cache and socket operations to a separate async function to avoid response conflicts
+    // Move cache and socket operations to a separate async function
     const postResponseOperations = async () => {
       try {
         const cacheKeys = [
@@ -2460,11 +2456,13 @@ export const updatePostBySlug = async (req, res, next) => {
           `postId:${slug}`,
           `singlePost:${slug}:${userId}:${userRole || "none"}`,
         ];
-        cacheKeys.forEach((key) => {
-          try {
-            cache.del(key);
-          } catch (e) {}
-        });
+        await Promise.all(
+          cacheKeys.map(async (key) => {
+            try {
+              await cache.del(key);
+            } catch (e) {}
+          })
+        );
         await asyncRetry(
           async () => {
             io.emit("postUpdated", {
@@ -2472,7 +2470,7 @@ export const updatePostBySlug = async (req, res, next) => {
               authorId: userId,
             });
           },
-          { retries: 5, minTimeout: 1000, maxTimeout: 10000, factor: 2 } // Increased retries and exponential backoff
+          { retries: 5, minTimeout: 1000, maxTimeout: 10000, factor: 2 }
         );
       } catch (e) {
         console.warn(
@@ -2482,7 +2480,7 @@ export const updatePostBySlug = async (req, res, next) => {
       }
     };
 
-    process.nextTick(postResponseOperations); // Run post-response operations without affecting response
+    process.nextTick(postResponseOperations);
   } catch (error) {
     console.error("[UpdatePostBySlug] Error:", error);
     if (!res.headersSent) {
@@ -2511,7 +2509,6 @@ export const updatePostBySlug = async (req, res, next) => {
         );
       }
     }
-    delete req.updatedPost;
     logMemory("🧹 Final cleanup");
   }
 };
