@@ -2054,16 +2054,32 @@ export const trackTimeSpent = async (req, res, next) => {
 };
 
 // Fixed updatePostBySlug controller with proper error handling and validation
-
 export const updatePostBySlug = async (req, res, next) => {
   let session = null;
   const startTime = Date.now();
 
   try {
+    // Early memory logging
+    const memoryUsage = process.memoryUsage();
+    console.log(
+      `[UpdatePostBySlug] Memory before: ${(
+        memoryUsage.heapUsed /
+        1024 /
+        1024
+      ).toFixed(2)}MB`
+    );
+
+    logMemory("✏️ Start updatePostBySlug");
+    console.log(
+      "[UpdatePostBySlug] Received request for slug:",
+      req.params.slug
+    );
+
     const { slug } = req.params;
     const userId = req.user?._id;
     const userRole = req.user?.role;
 
+    // Input validation
     if (!slug || typeof slug !== "string" || slug.trim().length === 0) {
       throw new AppError("Valid slug is required", 400, "UpdatePostBySlug");
     }
@@ -2078,25 +2094,292 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError("Account is blocked", 403, "UpdatePostBySlug");
     }
 
-    // Escape slug
+    // Enhanced payload size check with early rejection
+    const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
+    const payloadMB = payloadSize / 1024 / 1024;
+    console.log(`[UpdatePostBySlug] Payload size: ${payloadMB.toFixed(2)}MB`);
+
+    if (payloadSize > 40 * 1024 * 1024) {
+      throw new AppError(
+        `Payload exceeds 40MB limit: ${payloadMB.toFixed(2)}MB`,
+        413,
+        "UpdatePostBySlug"
+      );
+    }
+
+    // Check available memory before processing
+    const availableMemory = memoryUsage.heapTotal - memoryUsage.heapUsed;
+    if (availableMemory < payloadSize * 3) {
+      // Need 3x payload size for processing
+      console.warn(
+        `[UpdatePostBySlug] Low memory warning: ${(
+          availableMemory /
+          1024 /
+          1024
+        ).toFixed(2)}MB available`
+      );
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc();
+        console.log("[UpdatePostBySlug] Forced garbage collection");
+      }
+    }
+
+    // Extract request data
+    const {
+      title,
+      category,
+      excerpt,
+      tags: rawTags,
+      blocks: rawBlocks,
+      thumbnail: rawThumbnail,
+      thumbnailSize,
+      isEmbed: isThumbnailEmbed = false,
+      isFeatured,
+      isPinned,
+      language,
+      postType,
+    } = req.body;
+
+    // Parse and validate tags
+    let tags;
+    if (rawTags !== undefined) {
+      try {
+        tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags);
+        if (!Array.isArray(tags)) throw new Error("Tags must be an array");
+        tags = tags
+          .filter((tag) => tag && typeof tag === "string" && tag.trim())
+          .map((tag) => tag.trim())
+          .slice(0, 20);
+      } catch (err) {
+        console.error("[UpdatePostBySlug] Tags parsing error:", err);
+        throw new AppError("Invalid tags format", 400, "UpdatePostBySlug");
+      }
+    }
+
+    // Parse and validate blocks with memory management
+    let blocks;
+    if (rawBlocks !== undefined) {
+      try {
+        blocks = Array.isArray(rawBlocks) ? rawBlocks : JSON.parse(rawBlocks);
+        if (!Array.isArray(blocks) || blocks.length === 0) {
+          throw new AppError(
+            "Blocks must be a non-empty array",
+            400,
+            "UpdatePostBySlug"
+          );
+        }
+        if (blocks.length > 500) {
+          throw new AppError(
+            "Too many blocks (max 500)",
+            400,
+            "UpdatePostBySlug"
+          );
+        }
+
+        // Clear rawBlocks reference to free memory
+        delete req.body.blocks;
+      } catch (err) {
+        console.error("[UpdatePostBySlug] Blocks parsing error:", err);
+        throw new AppError("Invalid blocks format", 400, "UpdatePostBySlug");
+      }
+    }
+
+    // Additional validations
+    if (
+      title !== undefined &&
+      (!title ||
+        typeof title !== "string" ||
+        title.trim().length < 3 ||
+        title.length > 300)
+    ) {
+      throw new AppError(
+        "Title must be 3-300 characters",
+        400,
+        "UpdatePostBySlug"
+      );
+    }
+    if (
+      category !== undefined &&
+      (!category ||
+        typeof category !== "string" ||
+        category.trim().length === 0 ||
+        category.length > 100)
+    ) {
+      throw new AppError(
+        "Category must be 1-100 characters",
+        400,
+        "UpdatePostBySlug"
+      );
+    }
+    if (
+      excerpt !== undefined &&
+      typeof excerpt === "string" &&
+      excerpt.length > 1000
+    ) {
+      throw new AppError(
+        "Excerpt too long (max 1000 characters)",
+        400,
+        "UpdatePostBySlug"
+      );
+    }
+
+    // Process blocks with memory management
+    let processedBlocks;
+    if (blocks) {
+      // Reduce concurrency for memory management
+      const blockLimit = pLimit(2); // Reduced from 3
+      const blocksWithIds = blocks.map((block, index) => {
+        if (!block || typeof block !== "object" || !block.type) {
+          throw new AppError(
+            `Invalid block at index ${index} - must be object with type property`,
+            400,
+            "UpdatePostBySlug"
+          );
+        }
+        return {
+          id: block.id || uuidv4(),
+          type: block.type,
+          ...block,
+          blocked: false,
+        };
+      });
+
+      // Clear original blocks reference
+      blocks = null;
+
+      try {
+        // Process blocks in smaller batches to manage memory
+        const batchSize = 10;
+        const processedBatches = [];
+
+        for (let i = 0; i < blocksWithIds.length; i += batchSize) {
+          const batch = blocksWithIds.slice(i, i + batchSize);
+          const processedBatch = await Promise.all(
+            batch.map((block) =>
+              blockLimit(async () => {
+                try {
+                  return await processBlock(block, blockLimit, pLimit(1));
+                } catch (error) {
+                  console.error(
+                    `[UpdatePostBySlug] Error processing block ${block.id}:`,
+                    error
+                  );
+                  throw new AppError(
+                    `Failed to process block: ${error.message}`,
+                    400,
+                    "UpdatePostBySlug"
+                  );
+                }
+              })
+            )
+          );
+          processedBatches.push(...processedBatch);
+
+          // Memory check after each batch
+          const currentMemory = process.memoryUsage();
+          console.log(
+            `[UpdatePostBySlug] Memory after batch ${Math.ceil(
+              (i + batchSize) / batchSize
+            )}: ${(currentMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`
+          );
+        }
+
+        processedBlocks = processedBatches;
+      } catch (error) {
+        console.error("[UpdatePostBySlug] Block processing failed:", error);
+        throw new AppError(
+          `Block processing failed: ${error.message}`,
+          400,
+          "UpdatePostBySlug"
+        );
+      }
+    }
+
+    // Process thumbnail with timeout
+    let processedThumbnail;
+    if (rawThumbnail && !isThumbnailEmbed) {
+      try {
+        const thumbnailPromise = pLimit(1)(() =>
+          processImage(rawThumbnail, "thumbnail", "inkshaa/post/thumbnails/")
+        );
+
+        // Add timeout to prevent hanging
+        processedThumbnail = await Promise.race([
+          thumbnailPromise,
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Thumbnail processing timeout")),
+              30000
+            )
+          ),
+        ]);
+      } catch (error) {
+        console.error("[UpdatePostBySlug] Thumbnail processing error:", error);
+        throw new AppError(
+          `Thumbnail processing failed: ${error.message}`,
+          400,
+          "UpdatePostBySlug"
+        );
+      }
+    } else if (rawThumbnail && isThumbnailEmbed) {
+      try {
+        new URL(rawThumbnail);
+        processedThumbnail = rawThumbnail;
+      } catch (err) {
+        throw new AppError(
+          "Invalid thumbnail embed URL",
+          400,
+          "UpdatePostBySlug"
+        );
+      }
+    }
+
+    // Calculate read time
+    let readTime, readingTime;
+    if (processedBlocks) {
+      const readTimeResult = calculateReadTime(processedBlocks);
+      readTime = readTimeResult.readTime;
+      readingTime = readTimeResult.readingTime;
+    }
+
+    // Build query with proper escaping
     const escapedSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const query =
       userRole === "admin"
-        ? { slug: { $regex: `^${escapedSlug}$`, $options: "i" } }
+        ? {
+            slug: {
+              $regex: `^${escapedSlug}$`,
+              $options: "i",
+            },
+          }
         : {
-            slug: { $regex: `^${escapedSlug}$`, $options: "i" },
+            slug: {
+              $regex: `^${escapedSlug}$`,
+              $options: "i",
+            },
             author: new mongoose.Types.ObjectId(userId),
           };
 
     // Fetch existing post
     const post = await PostModel.findOne(query).lean();
+
     if (!post) {
+      const postExists = await PostModel.findOne({
+        slug: {
+          $regex: `^${escapedSlug}$`,
+          $options: "i",
+        },
+      })
+        .select("author")
+        .lean();
       throw new AppError(
-        "Post not found or unauthorized",
-        404,
+        postExists ? "Unauthorized to update this post" : "Post not found",
+        postExists ? 403 : 404,
         "UpdatePostBySlug"
       );
     }
+
     if (post.blocked) {
       throw new AppError(
         "Post is blocked and cannot be updated",
@@ -2105,130 +2388,108 @@ export const updatePostBySlug = async (req, res, next) => {
       );
     }
 
-    // ✅ Fast response
-    res.status(202).json({
-      success: true,
-      message: "Post update queued. Changes will apply shortly.",
-      postId: post._id,
-    });
+    // Lightweight content moderation
+    if (title || excerpt || processedBlocks) {
+      const moderateContent = (text) => {
+        try {
+          // Simple spam patterns - avoid heavy regex on large text
+          if (text.length > 50000) return { isFlagged: false, categories: {} };
 
-    // ✅ Heavy work in background
-    setImmediate(async () => {
-      try {
-        const {
-          title,
-          category,
-          excerpt,
-          tags: rawTags,
-          blocks: rawBlocks,
-          thumbnail: rawThumbnail,
-          thumbnailSize,
-          isEmbed: isThumbnailEmbed = false,
-          isFeatured,
-          isPinned,
-          language,
-          postType,
-        } = req.body;
-
-        // Tags
-        let tags;
-        if (rawTags !== undefined) {
-          try {
-            tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags);
-            tags = tags
-              .filter((tag) => tag && typeof tag === "string" && tag.trim())
-              .map((tag) => tag.trim())
-              .slice(0, 20);
-          } catch {
-            console.error("[UpdatePostBySlug] Invalid tags format");
+          const spamPatterns = [/(.)\1{50,}/i, /http[s]?:\/\/[^\s]{100,}/i];
+          for (const pattern of spamPatterns) {
+            if (pattern.test(text)) {
+              return { isFlagged: true, categories: { spam: true } };
+            }
           }
+          return { isFlagged: false, categories: {} };
+        } catch (error) {
+          console.error("[UpdatePostBySlug] Moderation error:", error);
+          return { isFlagged: false, categories: {} };
         }
+      };
 
-        // Blocks
-        let processedBlocks;
-        if (rawBlocks !== undefined) {
-          let blocks = Array.isArray(rawBlocks)
-            ? rawBlocks
-            : JSON.parse(rawBlocks);
-          const blockLimit = pLimit(2);
-          const blocksWithIds = blocks.map((block) => ({
-            id: block.id || uuidv4(),
-            type: block.type,
-            ...block,
-            blocked: false,
-          }));
+      // Limit text extraction to prevent memory issues
+      const blockTextContent = processedBlocks
+        ? processedBlocks
+            .slice(0, 50) // Limit blocks for moderation
+            .flatMap(
+              (block) =>
+                ["text", "value", "code", "caption", "question"]
+                  .map((field) => block[field])
+                  .filter(Boolean)
+                  .map((text) => text.substring(0, 1000)) // Limit field length
+            )
+            .join("\n")
+            .substring(0, 10000) // Limit total text
+        : "";
 
-          processedBlocks = [];
-          const batchSize = 10;
-          for (let i = 0; i < blocksWithIds.length; i += batchSize) {
-            const batch = blocksWithIds.slice(i, i + batchSize);
-            const processedBatch = await Promise.all(
-              batch.map((block) =>
-                blockLimit(async () =>
-                  processBlock(block, blockLimit, pLimit(1))
-                )
-              )
-            );
-            processedBlocks.push(...processedBatch);
-          }
-        }
+      const fullText = `${title || post.title}\n${
+        excerpt || post.excerpt || ""
+      }\n${blockTextContent}`.substring(0, 15000); // Overall limit
 
-        // Thumbnail
-        let processedThumbnail;
-        if (rawThumbnail && !isThumbnailEmbed) {
-          processedThumbnail = await Promise.race([
-            processImage(rawThumbnail, "thumbnail", "inkshaa/post/thumbnails/"),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error("Thumbnail timeout")), 30000)
-            ),
-          ]);
-        } else if (rawThumbnail && isThumbnailEmbed) {
-          processedThumbnail = rawThumbnail;
-        }
+      const moderation = moderateContent(fullText);
 
-        // Read time
-        let readTime, readingTime;
-        if (processedBlocks) {
-          const readTimeResult = calculateReadTime(processedBlocks);
-          readTime = readTimeResult.readTime;
-          readingTime = readTimeResult.readingTime;
-        }
+      if (moderation.isFlagged) {
+        const reasons = Object.entries(moderation.categories)
+          .filter(([_, flagged]) => flagged)
+          .map(([key]) => key);
+        throw new AppError(
+          `Content flagged for: ${reasons.join(", ")}`,
+          400,
+          "UpdatePostBySlug"
+        );
+      }
+    }
 
-        // Build updates
-        const updates = {};
-        if (title !== undefined && title.trim() !== post.title)
-          updates.title = title.trim();
-        if (category !== undefined && category.trim() !== post.category)
-          updates.category = category.trim();
-        if (excerpt !== undefined)
-          updates.excerpt = excerpt ? excerpt.trim() : "";
-        if (tags !== undefined) updates.tags = tags;
-        if (processedThumbnail !== undefined)
-          updates.thumbnail = processedThumbnail;
-        if (thumbnailSize !== undefined) updates.thumbnailSize = thumbnailSize;
-        if (isThumbnailEmbed !== undefined) updates.isEmbed = isThumbnailEmbed;
-        if (processedBlocks !== undefined) updates.blocks = processedBlocks;
-        if (isFeatured !== undefined) updates.isFeatured = Boolean(isFeatured);
-        if (isPinned !== undefined) updates.isPinned = Boolean(isPinned);
-        if (language !== undefined) updates.language = language.trim();
-        if (postType !== undefined) updates.postType = postType.trim();
-        if (readTime !== undefined) updates.readTime = readTime;
-        if (readingTime !== undefined) updates.readingTime = readingTime;
-        updates.isPublished = true;
-        updates.lastEditedAt = new Date();
-        updates.updatedAt = new Date();
+    // Prepare updates
+    const updates = {};
+    if (title !== undefined && title.trim() !== post.title)
+      updates.title = title.trim();
+    if (category !== undefined && category.trim() !== post.category)
+      updates.category = category.trim();
+    if (excerpt !== undefined) updates.excerpt = excerpt ? excerpt.trim() : "";
+    if (tags !== undefined) updates.tags = tags;
+    if (processedThumbnail !== undefined)
+      updates.thumbnail = processedThumbnail;
+    if (thumbnailSize !== undefined) updates.thumbnailSize = thumbnailSize;
+    if (isThumbnailEmbed !== undefined) updates.isEmbed = isThumbnailEmbed;
+    if (processedBlocks !== undefined) updates.blocks = processedBlocks;
+    if (isFeatured !== undefined) updates.isFeatured = Boolean(isFeatured);
+    if (isPinned !== undefined) updates.isPinned = Boolean(isPinned);
+    if (language !== undefined) updates.language = language.trim();
+    if (postType !== undefined) updates.postType = postType.trim();
+    if (readTime !== undefined) updates.readTime = readTime;
+    if (readingTime !== undefined) updates.readingTime = readingTime;
+    updates.isPublished = true;
+    updates.lastEditedAt = new Date();
+    updates.updatedAt = new Date();
 
-        if (Object.keys(updates).length <= 3) return;
+    // Check for substantial changes
+    if (Object.keys(updates).length <= 3) {
+      return res
+        .status(200)
+        .json({ success: true, message: "No changes detected", post });
+    }
 
-        // DB update in transaction
-        session = await mongoose.startSession();
-        await session.withTransaction(async () => {
+    // Database transaction with timeout
+    session = await mongoose.startSession();
+
+    try {
+      await session.withTransaction(
+        async () => {
           const updatedPost = await PostModel.findOneAndUpdate(
             { _id: post._id },
             { $set: updates },
             { new: true, runValidators: true, session, lean: false }
           );
-          if (!updatedPost) throw new Error("Failed to update post");
+
+          if (!updatedPost) {
+            throw new AppError(
+              "Failed to update post - document not found",
+              500,
+              "UpdatePostBySlug"
+            );
+          }
 
           await recordActivity(
             {
@@ -2240,68 +2501,160 @@ export const updatePostBySlug = async (req, res, next) => {
             { session }
           );
 
+          // Store updated post for response
           req.updatedPost = updatedPost;
-        });
+        },
+        {
+          readConcern: { level: "majority" },
+          writeConcern: { w: "majority" },
+          maxTimeMS: 30000, // 30 second timeout
+        }
+      );
 
-        // Cache invalidation async
-        setImmediate(async () => {
-          const cacheKeys = [
-            `postCounts:${userId}`,
-            `publicPosts:*`,
-            `countAllPosts`,
-            `countMyPosts:${userId}`,
-            `countFollowingPosts:${userId}`,
-            `postId:${slug}`,
-            `post:${slug}`,
-            `singlePost:${slug}:${userId || "guest"}:${userRole || "none"}`,
-            `userPosts:${userId}`,
-          ];
-          for (const key of cacheKeys) {
-            try {
-              if (cache && typeof cache.del === "function") {
-                await cache.del(key);
+      const updatedPost = req.updatedPost;
+
+      // Async cache invalidation (non-blocking)
+      setImmediate(async () => {
+        const cacheKeys = [
+          `postCounts:${userId}`,
+          `publicPosts:*`,
+          `countAllPosts`,
+          `countMyPosts:${userId}`,
+          `countFollowingPosts:${userId}`,
+          `postId:${slug}`,
+          `post:${slug}`,
+          `singlePost:${slug}:${userId || "guest"}:${userRole || "none"}`,
+          `userPosts:${userId}`,
+        ];
+
+        try {
+          await Promise.allSettled(
+            cacheKeys.map(async (key) => {
+              try {
+                if (cache && typeof cache.del === "function") {
+                  await cache.del(key);
+                }
+              } catch (cacheDelError) {
+                console.warn(
+                  `[UpdatePostBySlug] Cache deletion failed: ${key}`,
+                  cacheDelError.message
+                );
               }
-            } catch (e) {
-              console.warn("[UpdatePostBySlug] Cache delete failed:", key);
-            }
-          }
-        });
+            })
+          );
+        } catch (batchCacheError) {
+          console.warn(
+            "[UpdatePostBySlug] Batch cache deletion failed:",
+            batchCacheError
+          );
+        }
+      });
 
-        // Socket notify async
-        setImmediate(async () => {
-          try {
-            if (io && typeof io.emit === "function") {
-              io.emit("postUpdated", {
-                ...req.updatedPost.toObject(),
-                authorId: userId,
-              });
-            }
-          } catch (e) {
-            console.error("[UpdatePostBySlug] Socket emit failed:", e);
+      // Async socket emission (non-blocking)
+      setImmediate(async () => {
+        try {
+          if (io && typeof io.emit === "function") {
+            await asyncRetry(
+              async () => {
+                io.emit("postUpdated", {
+                  ...updatedPost.toObject(),
+                  authorId: userId,
+                });
+              },
+              { retries: 2, minTimeout: 500, maxTimeout: 2000 }
+            );
           }
-        });
+        } catch (emitError) {
+          console.error(
+            "[UpdatePostBySlug] Socket emission failed:",
+            emitError
+          );
+        }
+      });
 
-        const processingTime = Date.now() - startTime;
-        console.log(
-          `[UpdatePostBySlug] Finished async update in ${processingTime}ms`
-        );
-      } catch (err) {
-        console.error("[UpdatePostBySlug][async] Error:", err.message);
-      } finally {
-        if (session) await session.endSession();
-        delete req.updatedPost;
-      }
-    });
+      const processingTime = Date.now() - startTime;
+      const finalMemory = process.memoryUsage();
+      console.log(
+        `[UpdatePostBySlug] Final memory: ${(
+          finalMemory.heapUsed /
+          1024 /
+          1024
+        ).toFixed(2)}MB`
+      );
+
+      // Send response immediately
+      res.status(200).json({
+        success: true,
+        message: "Post updated successfully",
+        post: {
+          _id: updatedPost._id,
+          title: updatedPost.title,
+          slug: updatedPost.slug,
+          category: updatedPost.category,
+          excerpt: updatedPost.excerpt,
+          thumbnail: updatedPost.thumbnail,
+          author: updatedPost.author,
+          isPublished: updatedPost.isPublished,
+          isPinned: updatedPost.isPinned,
+          isFeatured: updatedPost.isFeatured,
+          createdAt: updatedPost.createdAt,
+          lastEditedAt: updatedPost.lastEditedAt,
+          updatedAt: updatedPost.updatedAt,
+          postType: updatedPost.postType,
+          readTime: updatedPost.readTime,
+          readingTime: updatedPost.readingTime,
+          language: updatedPost.language,
+          tags: updatedPost.tags,
+        },
+        meta: {
+          processingTime,
+          fieldsUpdated: Object.keys(updates).length,
+          blocksProcessed: processedBlocks ? processedBlocks.length : 0,
+        },
+      });
+    } catch (dbError) {
+      console.error("[UpdatePostBySlug] DB Error:", dbError);
+      throw new AppError(
+        dbError.message || "Database update failed",
+        500,
+        "UpdatePostBySlug"
+      );
+    }
   } catch (error) {
+    console.error("[UpdatePostBySlug] Error:", error);
+
     next(
       error instanceof AppError
         ? error
         : new AppError(
             error.message || "Failed to update post",
-            500,
+            error.code === "ETIMEOUT" ? 504 : 500,
             "UpdatePostBySlug"
           )
     );
+  } finally {
+    if (session) {
+      try {
+        await session.endSession();
+      } catch (sessionError) {
+        console.error(
+          "[UpdatePostBySlug] Session cleanup failed:",
+          sessionError
+        );
+      }
+    }
+
+    // Cleanup request references
+    delete req.updatedPost;
+
+    logMemory("🧹 Final cleanup");
+
+    // Force garbage collection if available and memory is high
+    const finalMemory = process.memoryUsage();
+    if (global.gc && finalMemory.heapUsed > 500 * 1024 * 1024) {
+      // > 500MB
+      global.gc();
+    }
   }
 };
 
