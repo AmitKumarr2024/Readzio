@@ -2330,6 +2330,24 @@ export const updatePostBySlug = async (req, res, next) => {
       const fullText = `${title || post.title} ${
         excerpt || ""
       } ${blockTextContent}`.substring(0, 10000);
+
+      const moderateContent = async (text) => {
+        // Add your content moderation logic here
+        // For now, just check for obvious spam patterns
+        const spamPatterns = [
+          /(.)\1{20,}/i, // Repeated characters
+          /http[s]?:\/\/[^\s]{100,}/i, // Very long URLs
+        ];
+
+        for (const pattern of spamPatterns) {
+          if (pattern.test(text)) {
+            return { isFlagged: true, categories: { spam: true } };
+          }
+        }
+
+        return { isFlagged: false, categories: {} };
+      };
+
       const moderation = await moderateContent(fullText); // Use moderateContent from provided code
       if (moderation.isFlagged) {
         const reasons = Object.entries(moderation.categories)
