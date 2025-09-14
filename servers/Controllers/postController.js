@@ -2060,14 +2060,20 @@ export const updatePostBySlug = async (req, res, next) => {
   const startTime = Date.now();
 
   try {
+    // Early memory logging
+    const memoryUsage = process.memoryUsage();
+    console.log(
+      `[UpdatePostBySlug] Memory before: ${(
+        memoryUsage.heapUsed /
+        1024 /
+        1024
+      ).toFixed(2)}MB`
+    );
+
     logMemory("✏️ Start updatePostBySlug");
     console.log(
       "[UpdatePostBySlug] Received request for slug:",
       req.params.slug
-    );
-    console.log(
-      "[UpdatePostBySlug] Request body:",
-      JSON.stringify(req.body, null, 2)
     );
 
     const { slug } = req.params;
@@ -2089,20 +2095,35 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError("Account is blocked", 403, "UpdatePostBySlug");
     }
 
-    // Payload size check
+    // Enhanced payload size check with early rejection
     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
-    // console.log(
-    //   "[UpdatePostBySlug] Payload size:",
-    //   `${(payloadSize / 1024 / 1024).toFixed(2)}MB`
-    // );
+    const payloadMB = payloadSize / 1024 / 1024;
+    console.log(`[UpdatePostBySlug] Payload size: ${payloadMB.toFixed(2)}MB`);
+
     if (payloadSize > 40 * 1024 * 1024) {
       throw new AppError(
-        `Payload exceeds 40MB limit: ${(payloadSize / 1024 / 1024).toFixed(
-          2
-        )}MB`,
+        `Payload exceeds 40MB limit: ${payloadMB.toFixed(2)}MB`,
         413,
         "UpdatePostBySlug"
       );
+    }
+
+    // Check available memory before processing
+    const availableMemory = memoryUsage.heapTotal - memoryUsage.heapUsed;
+    if (availableMemory < payloadSize * 3) {
+      // Need 3x payload size for processing
+      console.warn(
+        `[UpdatePostBySlug] Low memory warning: ${(
+          availableMemory /
+          1024 /
+          1024
+        ).toFixed(2)}MB available`
+      );
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc();
+        console.log("[UpdatePostBySlug] Forced garbage collection");
+      }
     }
 
     // Extract request data
@@ -2121,14 +2142,6 @@ export const updatePostBySlug = async (req, res, next) => {
       postType,
     } = req.body;
 
-    // console.log("[UpdatePostBySlug] Processing update for fields:", {
-    //   hasTitle: !!title,
-    //   hasCategory: !!category,
-    //   hasExcerpt: !!excerpt,
-    //   hasBlocks: !!rawBlocks,
-    //   hasThumbnail: !!rawThumbnail,
-    // });
-
     // Parse and validate tags
     let tags;
     if (rawTags !== undefined) {
@@ -2139,14 +2152,13 @@ export const updatePostBySlug = async (req, res, next) => {
           .filter((tag) => tag && typeof tag === "string" && tag.trim())
           .map((tag) => tag.trim())
           .slice(0, 20);
-        // console.log("[UpdatePostBySlug] Processed tags:", tags);
       } catch (err) {
         console.error("[UpdatePostBySlug] Tags parsing error:", err);
         throw new AppError("Invalid tags format", 400, "UpdatePostBySlug");
       }
     }
 
-    // Parse and validate blocks
+    // Parse and validate blocks with memory management
     let blocks;
     if (rawBlocks !== undefined) {
       try {
@@ -2165,10 +2177,9 @@ export const updatePostBySlug = async (req, res, next) => {
             "UpdatePostBySlug"
           );
         }
-        // console.log(
-        //   "[UpdatePostBySlug] Raw blocks:",
-        //   JSON.stringify(blocks, null, 2)
-        // );
+
+        // Clear rawBlocks reference to free memory
+        delete req.body.blocks;
       } catch (err) {
         console.error("[UpdatePostBySlug] Blocks parsing error:", err);
         throw new AppError("Invalid blocks format", 400, "UpdatePostBySlug");
@@ -2214,10 +2225,11 @@ export const updatePostBySlug = async (req, res, next) => {
       );
     }
 
-    // Process blocks
+    // Process blocks with memory management
     let processedBlocks;
     if (blocks) {
-      const blockLimit = pLimit(3);
+      // Reduce concurrency for memory management
+      const blockLimit = pLimit(2); // Reduced from 3
       const blocksWithIds = blocks.map((block, index) => {
         if (!block || typeof block !== "object" || !block.type) {
           throw new AppError(
@@ -2234,35 +2246,47 @@ export const updatePostBySlug = async (req, res, next) => {
         };
       });
 
-      // console.log(
-      //   "[UpdatePostBySlug] Blocks with IDs:",
-      //   JSON.stringify(blocksWithIds, null, 2)
-      // );
+      // Clear original blocks reference
+      blocks = null;
 
       try {
-        processedBlocks = await Promise.all(
-          blocksWithIds.map((block) =>
-            blockLimit(async () => {
-              try {
-                return await processBlock(block, blockLimit, pLimit(2));
-              } catch (error) {
-                console.error(
-                  `[UpdatePostBySlug] Error processing block ${block.id}:`,
-                  error
-                );
-                throw new AppError(
-                  `Failed to process block: ${error.message}`,
-                  400,
-                  "UpdatePostBySlug"
-                );
-              }
-            })
-          )
-        );
-        // console.log(
-        //   "[UpdatePostBySlug] Processed blocks:",
-        //   JSON.stringify(processedBlocks, null, 2)
-        // );
+        // Process blocks in smaller batches to manage memory
+        const batchSize = 10;
+        const processedBatches = [];
+
+        for (let i = 0; i < blocksWithIds.length; i += batchSize) {
+          const batch = blocksWithIds.slice(i, i + batchSize);
+          const processedBatch = await Promise.all(
+            batch.map((block) =>
+              blockLimit(async () => {
+                try {
+                  return await processBlock(block, blockLimit, pLimit(1));
+                } catch (error) {
+                  console.error(
+                    `[UpdatePostBySlug] Error processing block ${block.id}:`,
+                    error
+                  );
+                  throw new AppError(
+                    `Failed to process block: ${error.message}`,
+                    400,
+                    "UpdatePostBySlug"
+                  );
+                }
+              })
+            )
+          );
+          processedBatches.push(...processedBatch);
+
+          // Memory check after each batch
+          const currentMemory = process.memoryUsage();
+          console.log(
+            `[UpdatePostBySlug] Memory after batch ${Math.ceil(
+              (i + batchSize) / batchSize
+            )}: ${(currentMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`
+          );
+        }
+
+        processedBlocks = processedBatches;
       } catch (error) {
         console.error("[UpdatePostBySlug] Block processing failed:", error);
         throw new AppError(
@@ -2273,17 +2297,24 @@ export const updatePostBySlug = async (req, res, next) => {
       }
     }
 
-    // Process thumbnail
+    // Process thumbnail with timeout
     let processedThumbnail;
     if (rawThumbnail && !isThumbnailEmbed) {
       try {
-        processedThumbnail = await pLimit(2)(() =>
+        const thumbnailPromise = pLimit(1)(() =>
           processImage(rawThumbnail, "thumbnail", "inkshaa/post/thumbnails/")
         );
-        // console.log(
-        //   "[UpdatePostBySlug] Thumbnail processed:",
-        //   processedThumbnail
-        // );
+
+        // Add timeout to prevent hanging
+        processedThumbnail = await Promise.race([
+          thumbnailPromise,
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Thumbnail processing timeout")),
+              30000
+            )
+          ),
+        ]);
       } catch (error) {
         console.error("[UpdatePostBySlug] Thumbnail processing error:", error);
         throw new AppError(
@@ -2311,41 +2342,33 @@ export const updatePostBySlug = async (req, res, next) => {
       const readTimeResult = calculateReadTime(processedBlocks);
       readTime = readTimeResult.readTime;
       readingTime = readTimeResult.readingTime;
-      // console.log("[UpdatePostBySlug] Calculated read time:", readTime);
     }
 
-    // Build query
+    // Build query with proper escaping
+    const escapedSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const query =
       userRole === "admin"
         ? {
             slug: {
-              $regex: `^${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+              $regex: `^${escapedSlug}$`,
               $options: "i",
             },
           }
         : {
             slug: {
-              $regex: `^${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+              $regex: `^${escapedSlug}$`,
               $options: "i",
             },
             author: new mongoose.Types.ObjectId(userId),
           };
 
-    // console.log("[UpdatePostBySlug] Query:", JSON.stringify(query));
-
     // Fetch existing post
     const post = await PostModel.findOne(query).lean();
-    // console.log(
-    //   "[UpdatePostBySlug] Found post:",
-    //   post
-    //     ? { _id: post._id, title: post.title, slug: post.slug }
-    //     : "No post found"
-    // );
 
     if (!post) {
       const postExists = await PostModel.findOne({
         slug: {
-          $regex: `^${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+          $regex: `^${escapedSlug}$`,
           $options: "i",
         },
       })
@@ -2366,18 +2389,16 @@ export const updatePostBySlug = async (req, res, next) => {
       );
     }
 
-    // Content moderation
+    // Lightweight content moderation
     if (title || excerpt || processedBlocks) {
-      const moderateContent = async (text) => {
+      const moderateContent = (text) => {
         try {
+          // Simple spam patterns - avoid heavy regex on large text
+          if (text.length > 50000) return { isFlagged: false, categories: {} };
+
           const spamPatterns = [/(.)\1{50,}/i, /http[s]?:\/\/[^\s]{100,}/i];
-          // console.log("[UpdatePostBySlug] Moderating content:", text);
           for (const pattern of spamPatterns) {
             if (pattern.test(text)) {
-              // console.log(
-              //   "[UpdatePostBySlug] Content flagged by pattern:",
-              //   pattern
-              // );
               return { isFlagged: true, categories: { spam: true } };
             }
           }
@@ -2388,20 +2409,26 @@ export const updatePostBySlug = async (req, res, next) => {
         }
       };
 
+      // Limit text extraction to prevent memory issues
       const blockTextContent = processedBlocks
         ? processedBlocks
-            .flatMap((block) =>
-              ["text", "value", "code", "caption", "question"]
-                .map((field) => block[field])
-                .filter(Boolean)
+            .slice(0, 50) // Limit blocks for moderation
+            .flatMap(
+              (block) =>
+                ["text", "value", "code", "caption", "question"]
+                  .map((field) => block[field])
+                  .filter(Boolean)
+                  .map((text) => text.substring(0, 1000)) // Limit field length
             )
             .join("\n")
+            .substring(0, 10000) // Limit total text
         : "";
+
       const fullText = `${title || post.title}\n${
         excerpt || post.excerpt || ""
-      }\n${blockTextContent}`;
-      const moderation = await moderateContent(fullText);
-      // console.log("[UpdatePostBySlug] Moderation result:", moderation);
+      }\n${blockTextContent}`.substring(0, 15000); // Overall limit
+
+      const moderation = moderateContent(fullText);
 
       if (moderation.isFlagged) {
         const reasons = Object.entries(moderation.categories)
@@ -2438,109 +2465,125 @@ export const updatePostBySlug = async (req, res, next) => {
     updates.lastEditedAt = new Date();
     updates.updatedAt = new Date();
 
-    // console.log(
-    //   "[UpdatePostBySlug] Updates to apply:",
-    //   JSON.stringify(updates, null, 2)
-    // );
-
     // Check for substantial changes
     if (Object.keys(updates).length <= 3) {
-      // console.log("[UpdatePostBySlug] No substantial changes detected");
       return res
         .status(200)
         .json({ success: true, message: "No changes detected", post });
     }
 
-    // Database transaction
+    // Database transaction with timeout
     session = await mongoose.startSession();
-    session.startTransaction();
 
     try {
-      const updatedPost = await PostModel.findOneAndUpdate(
-        { _id: post._id },
-        { $set: updates },
-        { new: true, runValidators: true, session, lean: false }
-      );
-      // console.log(
-      //   "[UpdatePostBySlug] Database update result:",
-      //   updatedPost
-      //     ? {
-      //         _id: updatedPost._id,
-      //         title: updatedPost.title,
-      //         slug: updatedPost.slug,
-      //       }
-      //     : "Failed"
-      // );
+      await session.withTransaction(
+        async () => {
+          const updatedPost = await PostModel.findOneAndUpdate(
+            { _id: post._id },
+            { $set: updates },
+            { new: true, runValidators: true, session, lean: false }
+          );
 
-      if (!updatedPost) {
-        throw new AppError(
-          "Failed to update post - document not found",
-          500,
-          "UpdatePostBySlug"
-        );
-      }
+          if (!updatedPost) {
+            throw new AppError(
+              "Failed to update post - document not found",
+              500,
+              "UpdatePostBySlug"
+            );
+          }
 
-      await recordActivity(
-        {
-          userId: new mongoose.Types.ObjectId(userId),
-          action: "POST_EDITED",
-          targetPost: updatedPost._id,
-          message: `Edited post: ${updatedPost.title}`,
+          await recordActivity(
+            {
+              userId: new mongoose.Types.ObjectId(userId),
+              action: "POST_EDITED",
+              targetPost: updatedPost._id,
+              message: `Edited post: ${updatedPost.title}`,
+            },
+            { session }
+          );
+
+          // Store updated post for response
+          req.updatedPost = updatedPost;
         },
-        { session }
+        {
+          readConcern: { level: "majority" },
+          writeConcern: { w: "majority" },
+          maxTimeMS: 30000, // 30 second timeout
+        }
       );
-      await session.commitTransaction();
-      // console.log("[UpdatePostBySlug] Transaction committed successfully");
 
-      // Cache invalidation
-      const cacheKeys = [
-        `postCounts:${userId}`,
-        `publicPosts:*`,
-        `countAllPosts`,
-        `countMyPosts:${userId}`,
-        `countFollowingPosts:${userId}`,
-        `postId:${slug}`,
-        `post:${slug}`,
-        `singlePost:${slug}:${userId || "guest"}:${userRole || "none"}`,
-        `userPosts:${userId}`,
-      ];
-      cacheKeys.forEach((key) => {
+      const updatedPost = req.updatedPost;
+
+      // Async cache invalidation (non-blocking)
+      setImmediate(async () => {
+        const cacheKeys = [
+          `postCounts:${userId}`,
+          `publicPosts:*`,
+          `countAllPosts`,
+          `countMyPosts:${userId}`,
+          `countFollowingPosts:${userId}`,
+          `postId:${slug}`,
+          `post:${slug}`,
+          `singlePost:${slug}:${userId || "guest"}:${userRole || "none"}`,
+          `userPosts:${userId}`,
+        ];
+
         try {
-          cache.del(key);
-          // console.log("[UpdatePostBySlug] Cache deleted for key:", key);
-        } catch (cacheDelError) {
+          await Promise.allSettled(
+            cacheKeys.map(async (key) => {
+              try {
+                if (cache && typeof cache.del === "function") {
+                  await cache.del(key);
+                }
+              } catch (cacheDelError) {
+                console.warn(
+                  `[UpdatePostBySlug] Cache deletion failed: ${key}`,
+                  cacheDelError.message
+                );
+              }
+            })
+          );
+        } catch (batchCacheError) {
           console.warn(
-            "[UpdatePostBySlug] Failed to delete cache key:",
-            key,
-            cacheDelError.message
+            "[UpdatePostBySlug] Batch cache deletion failed:",
+            batchCacheError
           );
         }
       });
 
-      // Emit real-time update
-      try {
-        await asyncRetry(
-          async () =>
-            io.emit("postUpdated", {
-              ...updatedPost.toObject(),
-              authorId: userId,
-            }),
-          { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
-        );
-        // console.log("[UpdatePostBySlug] Socket event emitted");
-      } catch (emitError) {
-        console.error(
-          "[UpdatePostBySlug] Failed to emit postUpdated event:",
-          emitError
-        );
-      }
+      // Async socket emission (non-blocking)
+      setImmediate(async () => {
+        try {
+          if (io && typeof io.emit === "function") {
+            await asyncRetry(
+              async () => {
+                io.emit("postUpdated", {
+                  ...updatedPost.toObject(),
+                  authorId: userId,
+                });
+              },
+              { retries: 2, minTimeout: 500, maxTimeout: 2000 }
+            );
+          }
+        } catch (emitError) {
+          console.error(
+            "[UpdatePostBySlug] Socket emission failed:",
+            emitError
+          );
+        }
+      });
 
       const processingTime = Date.now() - startTime;
-      // console.log("[UpdatePostBySlug] Success:", {
-      //   slug,
-      //   time: `${processingTime}ms`,
-      // });
+      const finalMemory = process.memoryUsage();
+      console.log(
+        `[UpdatePostBySlug] Final memory: ${(
+          finalMemory.heapUsed /
+          1024 /
+          1024
+        ).toFixed(2)}MB`
+      );
 
+      // Send response immediately
       res.status(200).json({
         success: true,
         message: "Post updated successfully",
@@ -2551,7 +2594,6 @@ export const updatePostBySlug = async (req, res, next) => {
           category: updatedPost.category,
           excerpt: updatedPost.excerpt,
           thumbnail: updatedPost.thumbnail,
-
           author: updatedPost.author,
           isPublished: updatedPost.isPublished,
           isPinned: updatedPost.isPinned,
@@ -2573,30 +2615,47 @@ export const updatePostBySlug = async (req, res, next) => {
       });
     } catch (dbError) {
       console.error("[UpdatePostBySlug] DB Error:", dbError);
-      await session.abortOyTransaction();
       throw new AppError(
         dbError.message || "Database update failed",
         500,
         "UpdatePostBySlug"
       );
-    } finally {
-      if (session) await session.endSession();
     }
   } catch (error) {
     console.error("[UpdatePostBySlug] Error:", error);
-    if (session && session.inTransaction()) await session.abortTransaction();
+
     next(
       error instanceof AppError
         ? error
         : new AppError(
             error.message || "Failed to update post",
-            500,
+            error.code === "ETIMEOUT" ? 504 : 500,
             "UpdatePostBySlug"
           )
     );
   } finally {
-    if (session) await session.endSession();
+    if (session) {
+      try {
+        await session.endSession();
+      } catch (sessionError) {
+        console.error(
+          "[UpdatePostBySlug] Session cleanup failed:",
+          sessionError
+        );
+      }
+    }
+
+    // Cleanup request references
+    delete req.updatedPost;
+
     logMemory("🧹 Final cleanup");
+
+    // Force garbage collection if available and memory is high
+    const finalMemory = process.memoryUsage();
+    if (global.gc && finalMemory.heapUsed > 500 * 1024 * 1024) {
+      // > 500MB
+      global.gc();
+    }
   }
 };
 
