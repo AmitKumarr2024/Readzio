@@ -73,6 +73,25 @@ const CreatePost = () => {
     [] // Empty dependency array since setTitle is stable
   );
 
+  // ---- Debounced draft saver (for autosave / localStorage / backend)
+  const debouncedSaveDraft = useMemo(
+    () =>
+      debounce((draft) => {
+        console.log("[CreatePost] Debounced draft save:", draft);
+        // Example: localStorage.setItem("draftPost", JSON.stringify(draft));
+        // Or dispatch(saveDraft(draft)) if you want to persist in redux/backend
+      }, 500),
+    []
+  );
+
+  // ---- Watch title/blocks and trigger debounced save
+  useEffect(() => {
+    if (title || blocks.length > 0) {
+      debouncedSaveDraft({ title, blocks });
+    }
+    return () => debouncedSaveDraft.cancel();
+  }, [title, blocks, debouncedSaveDraft]);
+
   const debouncedBlocksChange = useCallback(
     debounce((value) => {
       console.log("[CreatePost] Debounced blocks change:", value);
@@ -330,18 +349,15 @@ const CreatePost = () => {
     [dispatch]
   );
 
-  const handleUpdateDraft = useCallback(
-    (draft) => {
-      console.log("[CreatePost] Updating draft:", draft);
-      if (draft.title !== undefined) {
-        debouncedTitleChange(draft.title);
-      }
-      if (draft.blocks !== undefined) {
-        debouncedBlocksChange(draft.blocks);
-      }
-    },
-    [debouncedTitleChange, debouncedBlocksChange]
-  );
+  const handleUpdateDraft = useCallback((draft) => {
+    console.log("[CreatePost] Updating draft:", draft);
+    if (draft.title !== undefined) {
+      setTitle(draft.title); // instant
+    }
+    if (draft.blocks !== undefined) {
+      setBlocks(draft.blocks); // instant
+    }
+  }, []);
 
   // ---- Render
   console.log("[CreatePost] Rendering, state:", {
@@ -427,9 +443,9 @@ const CreatePost = () => {
             <PostEditor
               size={55}
               title={title}
-              setTitle={debouncedTitleChange}
+              setTitle={setTitle}
               blocks={blocks}
-              setBlocks={debouncedBlocksChange}
+              setBlocks={setBlocks}
               postType={postType}
               category={selectedCategoryId}
               categoryName={
