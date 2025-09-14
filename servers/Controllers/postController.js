@@ -2056,15 +2056,12 @@ export const trackTimeSpent = async (req, res, next) => {
 export const updatePostBySlug = async (req, res, next) => {
   let session = null;
   const startTime = Date.now();
-
   try {
     logMemory("✏️ Start updatePostBySlug");
-
     const { slug } = req.params;
     const userId = req.user?._id;
     const userRole = req.user?.role;
 
-    // Quick validation first
     if (!slug?.trim() || !userId) {
       throw new AppError(
         !slug?.trim() ? "Valid slug is required" : "Authentication required",
@@ -2072,19 +2069,16 @@ export const updatePostBySlug = async (req, res, next) => {
         "UpdatePostBySlug"
       );
     }
-
     if (req.user.blocked) {
       throw new AppError("Account is blocked", 403, "UpdatePostBySlug");
     }
 
-    // Payload size check - reduce limit for better performance
     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
-    const payloadMB = payloadSize / 1024 / 1024;
-
-    if (payloadSize > 20 * 1024 * 1024) {
-      // Reduced from 40MB to 20MB
+    if (payloadSize > 10 * 1024 * 1024) {
       throw new AppError(
-        `Payload exceeds 20MB limit: ${payloadMB.toFixed(2)}MB`,
+        `Payload exceeds 10MB limit: ${(payloadSize / 1024 / 1024).toFixed(
+          2
+        )}MB`,
         413,
         "UpdatePostBySlug"
       );
@@ -2105,48 +2099,37 @@ export const updatePostBySlug = async (req, res, next) => {
       postType,
     } = req.body;
 
-    // Parse tags quickly
     let tags;
     if (rawTags !== undefined) {
-      try {
-        tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags);
-        if (!Array.isArray(tags)) throw new Error("Tags must be an array");
-        tags = tags
-          .filter((tag) => tag && typeof tag === "string" && tag.trim())
-          .map((tag) => tag.trim())
-          .slice(0, 20);
-      } catch (err) {
-        throw new AppError("Invalid tags format", 400, "UpdatePostBySlug");
-      }
+      tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags);
+      if (!Array.isArray(tags))
+        throw new AppError("Tags must be an array", 400, "UpdatePostBySlug");
+      tags = tags
+        .filter((tag) => tag && typeof tag === "string" && tag.trim())
+        .map((tag) => tag.trim())
+        .slice(0, 20);
     }
 
-    // Parse blocks with early validation
     let blocks;
     if (rawBlocks !== undefined) {
-      try {
-        blocks = Array.isArray(rawBlocks) ? rawBlocks : JSON.parse(rawBlocks);
-        if (!Array.isArray(blocks) || blocks.length === 0) {
-          throw new AppError(
-            "Blocks must be a non-empty array",
-            400,
-            "UpdatePostBySlug"
-          );
-        }
-        if (blocks.length > 200) {
-          // Reduced from 500 to 200 for better performance
-          throw new AppError(
-            "Too many blocks (max 200)",
-            400,
-            "UpdatePostBySlug"
-          );
-        }
-        delete req.body.blocks; // Free memory immediately
-      } catch (err) {
-        throw new AppError("Invalid blocks format", 400, "UpdatePostBySlug");
+      blocks = Array.isArray(rawBlocks) ? rawBlocks : JSON.parse(rawBlocks);
+      if (!Array.isArray(blocks) || blocks.length === 0) {
+        throw new AppError(
+          "Blocks must be a non-empty array",
+          400,
+          "UpdatePostBySlug"
+        );
       }
+      if (blocks.length > 100) {
+        throw new AppError(
+          "Too many blocks (max 100)",
+          400,
+          "UpdatePostBySlug"
+        );
+      }
+      delete req.body.blocks;
     }
 
-    // Quick field validations
     if (
       title !== undefined &&
       (!title || title.trim().length < 3 || title.length > 300)
@@ -2179,7 +2162,6 @@ export const updatePostBySlug = async (req, res, next) => {
       );
     }
 
-    // Fetch existing post first to avoid unnecessary processing
     const escapedSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const query =
       userRole === "admin"
@@ -2188,22 +2170,24 @@ export const updatePostBySlug = async (req, res, next) => {
             slug: { $regex: `^${escapedSlug}$`, $options: "i" },
             author: new mongoose.Types.ObjectId(userId),
           };
+    const post = await PostModel.findOne(query)
+      .select(
+        "_id title category excerpt tags thumbnail isEmbed isFeatured isPinned language postType readTime readingTime blocked author"
+      )
+      .lean();
 
-    const post = await PostModel.findOne(query).lean();
     if (!post) {
       const postExists = await PostModel.findOne({
         slug: { $regex: `^${escapedSlug}$`, $options: "i" },
       })
         .select("author")
         .lean();
-
       throw new AppError(
         postExists ? "Unauthorized to update this post" : "Post not found",
         postExists ? 403 : 404,
         "UpdatePostBySlug"
       );
     }
-
     if (post.blocked) {
       throw new AppError(
         "Post is blocked and cannot be updated",
@@ -2212,13 +2196,10 @@ export const updatePostBySlug = async (req, res, next) => {
       );
     }
 
-    // Process blocks with MUCH better performance
     let processedBlocks;
     if (blocks) {
-      // Use minimal concurrency to prevent memory issues
-      const blockLimit = pLimit(1); // Process one at a time
-      const imageLimit = pLimit(1); // One image at a time
-
+      const blockStart = Date.now();
+      const batchSize = 3;
       const blocksWithIds = blocks.map((block, index) => {
         if (!block || typeof block !== "object" || !block.type) {
           throw new AppError(
@@ -2234,92 +2215,45 @@ export const updatePostBySlug = async (req, res, next) => {
           blocked: false,
         };
       });
+      blocks = null;
 
-      blocks = null; // Free memory
-
-      try {
-        // Process in VERY small batches - 5 blocks at a time
-        const batchSize = 5;
-        const processedBatches = [];
-
-        for (let i = 0; i < blocksWithIds.length; i += batchSize) {
-          const batch = blocksWithIds.slice(i, i + batchSize);
-
-          // Process batch sequentially for memory management
-          for (const block of batch) {
-            const processedBlock = await processBlock(
-              block,
-              blockLimit,
-              imageLimit
-            );
-            processedBatches.push(processedBlock);
-
-            // Allow event loop to breathe
-            if (processedBatches.length % 10 === 0) {
-              await new Promise((resolve) => setImmediate(resolve));
-            }
+      const processedBatches = [];
+      for (let i = 0; i < blocksWithIds.length; i += batchSize) {
+        const batch = blocksWithIds.slice(i, i + batchSize);
+        for (const block of batch) {
+          processedBatches.push(await processBlock(block));
+          if (processedBatches.length % 10 === 0) {
+            await new Promise((resolve) => setImmediate(resolve));
           }
-
-          console.log(
-            `[UpdatePostBySlug] Processed batch ${Math.ceil(
-              (i + batchSize) / batchSize
-            )}/${Math.ceil(blocksWithIds.length / batchSize)}`
-          );
         }
-
-        processedBlocks = processedBatches;
-      } catch (error) {
-        console.error("[UpdatePostBySlug] Block processing failed:", error);
-        throw new AppError(
-          `Block processing failed: ${error.message}`,
-          400,
-          "UpdatePostBySlug"
+        console.log(
+          `[UpdatePostBySlug] Processed batch ${Math.ceil(
+            (i + batchSize) / batchSize
+          )}/${Math.ceil(blocksWithIds.length / batchSize)}`
         );
       }
+      processedBlocks = processedBatches;
+      console.log(
+        `[UpdatePostBySlug] Block processing took ${Date.now() - blockStart}ms`
+      );
     }
 
-    // Process thumbnail with shorter timeout
     let processedThumbnail;
     if (rawThumbnail && !isThumbnailEmbed) {
-      try {
-        const thumbnailPromise = processImage(
-          rawThumbnail,
-          "thumbnail",
-          "inkshaa/post/thumbnails/"
-        );
-
-        // Reduced timeout to 15 seconds
-        processedThumbnail = await Promise.race([
-          thumbnailPromise,
-          new Promise((_, reject) =>
-            setTimeout(
-              () => reject(new Error("Thumbnail processing timeout")),
-              15000
-            )
-          ),
-        ]);
-      } catch (error) {
-        console.error("[UpdatePostBySlug] Thumbnail processing error:", error);
-        throw new AppError(
-          `Thumbnail processing failed: ${error.message}`,
-          400,
-          "UpdatePostBySlug"
-        );
-      }
+      processedThumbnail = await Promise.race([
+        processImage(rawThumbnail, "thumbnail", "inkshaa/post/thumbnails/"),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Thumbnail processing timeout")),
+            10000
+          )
+        ),
+      ]);
     } else if (rawThumbnail && isThumbnailEmbed) {
-      try {
-        new URL(rawThumbnail);
-        processedThumbnail = rawThumbnail;
-      } catch (err) {
-        throw new AppError(
-          "Invalid thumbnail embed URL",
-          400,
-          "UpdatePostBySlug"
-        );
-      }
+      new URL(rawThumbnail);
+      processedThumbnail = rawThumbnail;
     }
 
-    // Quick read time calculation
     let readTime, readingTime;
     if (processedBlocks) {
       const readTimeResult = calculateReadTime(processedBlocks);
@@ -2327,23 +2261,19 @@ export const updatePostBySlug = async (req, res, next) => {
       readingTime = readTimeResult.readingTime;
     }
 
-    // Simplified content moderation (much faster)
     if (title || excerpt || processedBlocks) {
       const blockTextContent = processedBlocks
         ? processedBlocks
-            .slice(0, 20) // Only check first 20 blocks
+            .slice(0, 20)
             .flatMap((block) =>
               [block.text, block.value, block.caption].filter(Boolean)
             )
             .join(" ")
-            .substring(0, 5000) // Much smaller text sample
+            .substring(0, 5000)
         : "";
-
       const fullText = `${title || post.title} ${
         excerpt || ""
       } ${blockTextContent}`.substring(0, 10000);
-
-      // Super simple spam check
       if (
         /(.)\1{30,}/.test(fullText) ||
         /http[s]?:\/\/[^\s]{80,}/.test(fullText)
@@ -2356,7 +2286,6 @@ export const updatePostBySlug = async (req, res, next) => {
       }
     }
 
-    // Build updates object
     const updates = {};
     if (title !== undefined && title.trim() !== post.title)
       updates.title = title.trim();
@@ -2375,135 +2304,102 @@ export const updatePostBySlug = async (req, res, next) => {
     if (postType !== undefined) updates.postType = postType.trim();
     if (readTime !== undefined) updates.readTime = readTime;
     if (readingTime !== undefined) updates.readingTime = readingTime;
-
     updates.isPublished = true;
     updates.lastEditedAt = new Date();
     updates.updatedAt = new Date();
 
-    // Check for changes
     if (Object.keys(updates).length <= 3) {
-      return res.status(200).json({
-        success: true,
-        message: "No changes detected",
-        post,
-      });
+      return res
+        .status(200)
+        .json({ success: true, message: "No changes detected", post });
     }
 
-    // Database transaction with shorter timeout
     session = await mongoose.startSession();
-
-    try {
-      await session.withTransaction(
-        async () => {
-          const updatedPost = await PostModel.findOneAndUpdate(
-            { _id: post._id },
-            { $set: updates },
-            { new: true, runValidators: true, session }
-          );
-
-          if (!updatedPost) {
-            throw new AppError(
-              "Failed to update post",
-              500,
-              "UpdatePostBySlug"
-            );
-          }
-
-          await recordActivity(
-            {
-              userId: new mongoose.Types.ObjectId(userId),
-              action: "POST_EDITED",
-              targetPost: updatedPost._id,
-              message: `Edited post: ${updatedPost.title}`,
-            },
-            { session }
-          );
-
-          req.updatedPost = updatedPost;
-        },
-        {
-          readConcern: { level: "majority" },
-          writeConcern: { w: "majority" },
-          maxTimeMS: 15000, // Reduced to 15 seconds
+    await session.withTransaction(
+      async () => {
+        const updatedPost = await PostModel.findOneAndUpdate(
+          { _id: post._id },
+          { $set: updates },
+          { new: true, runValidators: true, session }
+        );
+        if (!updatedPost) {
+          throw new AppError("Failed to update post", 500, "UpdatePostBySlug");
         }
-      );
+        await recordActivity(
+          {
+            userId: new mongoose.Types.ObjectId(userId),
+            action: "POST_EDITED",
+            targetPost: updatedPost._id,
+            message: `Edited post: ${updatedPost.title}`,
+          },
+          { session }
+        );
+        req.updatedPost = updatedPost;
+      },
+      {
+        readConcern: { level: "majority" },
+        writeConcern: { w: "majority" },
+        maxTimeMS: 15000,
+      }
+    );
 
-      const updatedPost = req.updatedPost;
-      const processingTime = Date.now() - startTime;
+    const updatedPost = req.updatedPost;
+    const processingTime = Date.now() - startTime;
+    res.status(200).json({
+      success: true,
+      message: "Post updated successfully",
+      post: {
+        _id: updatedPost._id,
+        title: updatedPost.title,
+        slug: updatedPost.slug,
+        category: updatedPost.category,
+        excerpt: updatedPost.excerpt,
+        thumbnail: updatedPost.thumbnail,
+        author: updatedPost.author,
+        isPublished: updatedPost.isPublished,
+        isPinned: updatedPost.isPinned,
+        isFeatured: updatedPost.isFeatured,
+        createdAt: updatedPost.createdAt,
+        lastEditedAt: updatedPost.lastEditedAt,
+        updatedAt: updatedPost.updatedAt,
+        postType: updatedPost.postType,
+        readTime: updatedPost.readTime,
+        readingTime: updatedPost.readingTime,
+        language: updatedPost.language,
+        tags: updatedPost.tags,
+      },
+      meta: {
+        processingTime,
+        fieldsUpdated: Object.keys(updates).length,
+        blocksProcessed: processedBlocks ? processedBlocks.length : 0,
+      },
+    });
 
-      // Send response IMMEDIATELY - don't wait for cache/socket operations
-      res.status(200).json({
-        success: true,
-        message: "Post updated successfully",
-        post: {
-          _id: updatedPost._id,
-          title: updatedPost.title,
-          slug: updatedPost.slug,
-          category: updatedPost.category,
-          excerpt: updatedPost.excerpt,
-          thumbnail: updatedPost.thumbnail,
-          author: updatedPost.author,
-          isPublished: updatedPost.isPublished,
-          isPinned: updatedPost.isPinned,
-          isFeatured: updatedPost.isFeatured,
-          createdAt: updatedPost.createdAt,
-          lastEditedAt: updatedPost.lastEditedAt,
-          updatedAt: updatedPost.updatedAt,
-          postType: updatedPost.postType,
-          readTime: updatedPost.readTime,
-          readingTime: updatedPost.readingTime,
-          language: updatedPost.language,
-          tags: updatedPost.tags,
-        },
-        meta: {
-          processingTime,
-          fieldsUpdated: Object.keys(updates).length,
-          blocksProcessed: processedBlocks ? processedBlocks.length : 0,
-        },
-      });
-
-      // Do cache/socket operations AFTER response (non-blocking)
-      process.nextTick(async () => {
-        try {
-          // Quick cache invalidation
-          const cacheKeys = [
-            `postCounts:${userId}`,
-            `countAllPosts`,
-            `countMyPosts:${userId}`,
-            `postId:${slug}`,
-            `singlePost:${slug}:${userId}:${userRole || "none"}`,
-          ];
-
-          cacheKeys.forEach((key) => {
-            try {
-              cache.del(key);
-            } catch (e) {
-              /* ignore */
-            }
-          });
-
-          // Socket emission (don't await)
-          io.emit("postUpdated", {
-            ...updatedPost.toObject(),
-            authorId: userId,
-          }).catch(() => {
-            /* ignore socket errors */
-          });
-        } catch (e) {
-          console.warn(
-            "[UpdatePostBySlug] Post-response operations failed:",
-            e.message
-          );
-        }
-      });
-    } catch (dbError) {
-      console.error("[UpdatePostBySlug] DB Error:", dbError);
-      throw new AppError(
-        dbError.message || "Database update failed",
-        500,
-        "UpdatePostBySlug"
-      );
-    }
+    process.nextTick(async () => {
+      try {
+        const cacheKeys = [
+          `postCounts:${userId}`,
+          `countAllPosts`,
+          `countMyPosts:${userId}`,
+          `postId:${slug}`,
+          `singlePost:${slug}:${userId}:${userRole || "none"}`,
+        ];
+        cacheKeys.forEach((key) => {
+          try {
+            cache.del(key);
+          } catch (e) {}
+        });
+        io.emit("postUpdated", {
+          ...updatedPost.toObject(),
+          authorId: userId,
+        }).catch(() => {});
+      } catch (e) {
+        console.warn(
+          "[UpdatePostBySlug] Post-response operations failed:",
+          e.message
+        );
+      }
+    });
   } catch (error) {
     console.error("[UpdatePostBySlug] Error:", error);
     next(
@@ -2526,7 +2422,6 @@ export const updatePostBySlug = async (req, res, next) => {
         );
       }
     }
-
     delete req.updatedPost;
     logMemory("🧹 Final cleanup");
   }

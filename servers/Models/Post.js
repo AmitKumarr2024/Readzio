@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
 import slugify from "slugify";
 
-// Define blockSchema first
+// -----------------------
+// Block Schema
+// -----------------------
 const blockSchema = new mongoose.Schema(
   {
     id: { type: String, required: true },
@@ -24,6 +26,8 @@ const blockSchema = new mongoose.Schema(
       ],
     },
     blocked: { type: Boolean, default: false },
+
+    // Common fields
     value: String,
     level: Number,
     text: String,
@@ -36,6 +40,8 @@ const blockSchema = new mongoose.Schema(
     size: Number,
     ordered: Boolean,
     author: String,
+
+    // Poll-specific
     question: {
       type: String,
       required: function () {
@@ -62,14 +68,17 @@ const blockSchema = new mongoose.Schema(
       ],
       default: [],
     },
+
+    // List-specific
     items: { type: [String], default: [] },
+
+    // Table-specific
     data: {
       type: [[String]],
       default: [],
       validate: {
         validator: function (v) {
           if (this.type === "table") {
-            // console.log("[blockSchema] Validating table data:", v);
             return (
               Array.isArray(v) &&
               v.length > 0 &&
@@ -86,7 +95,9 @@ const blockSchema = new mongoose.Schema(
   { _id: false }
 );
 
-// Then define postSchema
+// -----------------------
+// Post Schema
+// -----------------------
 const postSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
@@ -98,22 +109,26 @@ const postSchema = new mongoose.Schema(
     },
     postType: {
       type: String,
-      required: true,
       enum: ["Article", "Blog"],
       default: "Blog",
     },
-    isSubscriberOnly: { type: Boolean, default: false },
+
     category: { type: String, required: true },
     tags: { type: [String], default: [] },
     thumbnail: String,
     excerpt: String,
+
+    // Access / Monetization
+    isSubscriberOnly: { type: Boolean, default: false },
     isPremium: { type: Boolean, default: false },
+
+    // Engagement
     readTime: String,
-    blocked: { type: Boolean, default: false },
-    message: String,
+    readingTime: Number,
     viewsCount: { type: Number, default: 0 },
     likesCount: { type: Number, default: 0 },
     commentsCount: { type: Number, default: 0 },
+    bookmarksCount: { type: Number, default: 0 },
     shareCount: { type: Number, default: 0 },
     sharedBy: [
       {
@@ -133,16 +148,21 @@ const postSchema = new mongoose.Schema(
         },
       },
     ],
-    timeSpent: { type: Number, default: 0 },
+
+    // Moderation
+    blocked: { type: Boolean, default: false },
+    message: String,
+    blockedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    blockedAt: Date,
+
+    // Content blocks
     blocks: {
       type: [blockSchema],
       default: [],
       validate: {
         validator: function (v) {
-          if (!Array.isArray(v)) {
-            return false;
-          }
-          return v.every((block, index) => {
+          if (!Array.isArray(v)) return false;
+          return v.every((block) => {
             if (!block || typeof block !== "object" || !block.type) {
               return false;
             }
@@ -159,23 +179,32 @@ const postSchema = new mongoose.Schema(
           "Blocks must be a valid array with required fields for each block type",
       },
     },
+
+    // Publication flags
     isPublished: { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false },
     isPinned: { type: Boolean, default: false },
-    readingTime: Number,
+    allowComments: { type: Boolean, default: true },
+
+    // SEO
     language: { type: String, default: "en" },
     metaTitle: String,
     metaDescription: String,
     metaKeywords: { type: [String], default: [] },
-    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    bookmarksCount: { type: Number, default: 0 },
-    lastEditedAt: Date,
-    allowComments: { type: Boolean, default: true },
     canonicalUrl: String,
+    ogImage: String,
+
+    // Misc
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    timeSpent: { type: Number, default: 0 },
+    lastEditedAt: Date,
   },
   { timestamps: true }
 );
 
+// -----------------------
+// Indexes
+// -----------------------
 postSchema.set("toObject", { virtuals: true });
 postSchema.set("toJSON", { virtuals: true });
 
@@ -183,9 +212,14 @@ postSchema.index({ author: 1 });
 postSchema.index({ category: 1 });
 postSchema.index({ slug: 1, isPublished: 1 });
 postSchema.index({ title: "text", excerpt: "text", tags: "text" });
+postSchema.index({ isPublished: 1, createdAt: -1 }); // For feed queries
 
+// -----------------------
+// Pre-Save Hooks
+// -----------------------
 postSchema.pre("save", async function (next) {
-  if (this.isModified("title") || !this.slug) {
+  // Generate slug only on creation
+  if (this.isNew || (this.isModified("title") && !this.slug)) {
     let baseSlug = slugify(this.title, { lower: true, strict: true }).slice(
       0,
       100
@@ -202,25 +236,20 @@ postSchema.pre("save", async function (next) {
     this.slug = slug;
   }
 
-  if (this.isModified("isPublished") && this.isPublished !== false) {
-    this.isPublished = true;
+  // Normalize isPublished
+  if (this.isModified("isPublished")) {
+    this.isPublished = !!this.isPublished;
   }
 
+  // Ensure blocks array
   if (!Array.isArray(this.blocks)) {
     this.blocks = [];
   }
 
-  // Ensure postType is set
+  // Ensure default postType
   if (!this.postType) {
     this.postType = "Blog";
-    // console.log(
-    //   `[postSchema] Set default postType to Blog for post: ${this._id}`
-    // );
   }
-
-  // console.log(
-  //   `[postSchema] Saving post: ${this._id}, postType: ${this.postType}`
-  // );
 
   next();
 });
