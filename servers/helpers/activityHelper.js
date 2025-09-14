@@ -102,7 +102,8 @@ export const VALID_ACTIONS = new Set([
   "PASSWORD_UPDATED",
   "RESET_USER_MILESTONES",
   "OVERRIDDEN_USER_MILESTONES",
-  "VIEWED_ACTIVITY"
+  "VIEWED_ACTIVITY",
+  "ECONNABORTED"
 ]);
 
 // Records user activity with validation

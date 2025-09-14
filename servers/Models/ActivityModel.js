@@ -136,6 +136,7 @@ const activitySchema = new mongoose.Schema(
         "PERMISSION_DENIED",
         "TIMEOUT",
         "POSITION_UNAVAILABLE",
+        "ECONNABORTED",
 
         // NOTIFICATIONS
         "CREATED_NOTIFICATION",
@@ -144,7 +145,7 @@ const activitySchema = new mongoose.Schema(
 
         // DEV/DEBUG
         "VITE_BACKEND_URL",
-        "VIEWED_ACTIVITY"
+        "VIEWED_ACTIVITY",
       ],
     },
 
