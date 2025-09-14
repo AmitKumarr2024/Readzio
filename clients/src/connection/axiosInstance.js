@@ -1,56 +1,54 @@
 import axios from "axios";
 import { getToken } from "../Utils/getToken";
 
-// Determine environment
+// Environment setup
 const isDev = import.meta.env.MODE === "development";
 const baseURL = isDev
   ? import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"
-  : "/api"; // Production relies on reverse proxy
+  : "/api";
 
-if (isDev && !import.meta.env.VITE_API_BASE_URL) {
-  console.warn(
-    "[AxiosInstance] ⚠️ VITE_API_BASE_URL is missing in .env for development. Defaulting to http://localhost:5000/api"
-  );
-}
-
-// Create Axios instance
+// Create fast, lightweight Axios instance
 const axiosInstance = axios.create({
   baseURL,
-  withCredentials: true, // include cookies (JWT, CSRF, etc.)
-  timeout: 20000, // prevent hanging requests
+  withCredentials: true,
+  timeout: 15000, // Shorter timeout for faster failures
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// 🔹 Attach token to every request if available
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// Minimal request interceptor
+axiosInstance.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
-// 🔹 Handle global responses/errors
+// Fast response handling
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    const { response } = error;
+    const { response, code } = error;
 
+    // Quick network error handling
     if (!response) {
-      console.error("[Axios] ❌ Network error or server not reachable.");
-      return Promise.reject({ message: "Network error" });
+      const message =
+        code === "ECONNABORTED" ? "Connection timeout" : "Network error";
+      return Promise.reject({ message, type: "network" });
     }
 
-    if (response.status === 401) {
-      console.warn("[Axios] 401 Unauthorized → consider logout/redirect.");
-      // Example: dispatch logout or redirect
-      // store.dispatch(logoutUser());
+    // Fast status handling
+    const status = response.status;
+    if (status === 401) {
+      localStorage.removeItem("token");
+      return Promise.reject({ message: "Authentication failed", status });
     }
 
-    if (response.status >= 500) {
-      console.error("[Axios] 🚨 Server error:", response.data?.message);
+    if (status >= 500) {
+      return Promise.reject({
+        message: "Server error - try again",
+        status,
+      });
     }
 
     return Promise.reject(error);
