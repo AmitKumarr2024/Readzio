@@ -424,6 +424,17 @@ const CreatePost = () => {
         </div>
       )}
 
+      {/* 🔹 Show loader while submitting */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex flex-col items-center justify-center">
+          <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
+          <p className="mt-4 text-white text-lg font-semibold">
+            Creating your post...
+          </p>
+        </div>
+      )}
+
+      {/* 🔹 Show editor only if not submitting */}
       {!showPostTypeModal && !showCategoryModal && !isSubmitting && (
         <div className="min-w-full flex container justify-around items-center flex-col flex-wrap md:flex-row">
           <div className="w-full flex justify-start px-4 pt-10 pl-11">
