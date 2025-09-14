@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         "/api": {
-          target: env.VITE_API_BASE_URL || "http://localhost:8001",
+          target: env.VITE_API_BASE_URL || "http://localhost:100000",
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path,
@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
           },
         },
         "/socket.io": {
-          target: env.VITE_API_BASE_URL || "http://localhost:8001",
+          target: env.VITE_API_BASE_URL || "http://localhost:10000",
           ws: true,
           changeOrigin: true,
           configure: (proxy) => {
