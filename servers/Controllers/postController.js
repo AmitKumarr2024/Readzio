@@ -2101,33 +2101,50 @@ export const updatePostBySlug = async (req, res, next) => {
 
     let tags;
     if (rawTags !== undefined) {
-      tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags);
-      if (!Array.isArray(tags))
-        throw new AppError("Tags must be an array", 400, "UpdatePostBySlug");
-      tags = tags
-        .filter((tag) => tag && typeof tag === "string" && tag.trim())
-        .map((tag) => tag.trim())
-        .slice(0, 20);
+      try {
+        tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags);
+        if (!Array.isArray(tags)) {
+          throw new AppError("Tags must be an array", 400, "UpdatePostBySlug");
+        }
+        tags = tags
+          .filter((tag) => tag && typeof tag === "string" && tag.trim())
+          .map((tag) => tag.trim())
+          .slice(0, 20);
+      } catch (err) {
+        throw new AppError(
+          "Invalid tags format - must be valid JSON array",
+          400,
+          "UpdatePostBySlug"
+        );
+      }
     }
 
     let blocks;
     if (rawBlocks !== undefined) {
-      blocks = Array.isArray(rawBlocks) ? rawBlocks : JSON.parse(rawBlocks);
-      if (!Array.isArray(blocks) || blocks.length === 0) {
+      try {
+        blocks = Array.isArray(rawBlocks) ? rawBlocks : JSON.parse(rawBlocks);
+        if (!Array.isArray(blocks) || blocks.length === 0) {
+          throw new AppError(
+            "Blocks must be a non-empty array",
+            400,
+            "UpdatePostBySlug"
+          );
+        }
+        if (blocks.length > 100) {
+          throw new AppError(
+            "Too many blocks (max 100)",
+            400,
+            "UpdatePostBySlug"
+          );
+        }
+        delete req.body.blocks;
+      } catch (err) {
         throw new AppError(
-          "Blocks must be a non-empty array",
+          "Invalid blocks format - must be valid JSON array",
           400,
           "UpdatePostBySlug"
         );
       }
-      if (blocks.length > 100) {
-        throw new AppError(
-          "Too many blocks (max 100)",
-          400,
-          "UpdatePostBySlug"
-        );
-      }
-      delete req.body.blocks;
     }
 
     if (
@@ -2199,6 +2216,8 @@ export const updatePostBySlug = async (req, res, next) => {
     let processedBlocks;
     if (blocks) {
       const blockStart = Date.now();
+      const blockLimit = pLimit(3); // Process 3 blocks concurrently
+      const imageLimit = pLimit(2); // Process 2 images concurrently
       const batchSize = 3;
       const blocksWithIds = blocks.map((block, index) => {
         if (!block || typeof block !== "object" || !block.type) {
@@ -2221,9 +2240,20 @@ export const updatePostBySlug = async (req, res, next) => {
       for (let i = 0; i < blocksWithIds.length; i += batchSize) {
         const batch = blocksWithIds.slice(i, i + batchSize);
         for (const block of batch) {
-          processedBatches.push(await processBlock(block));
-          if (processedBatches.length % 10 === 0) {
-            await new Promise((resolve) => setImmediate(resolve));
+          try {
+            processedBatches.push(
+              await blockLimit(() =>
+                processBlock(block, blockLimit, imageLimit)
+              )
+            );
+            if (processedBatches.length % 10 === 0) {
+              await new Promise((resolve) => setImmediate(resolve));
+            }
+          } catch (error) {
+            console.error(
+              `[UpdatePostBySlug] Failed to process block ${block.id}: ${error.message}`
+            );
+            processedBatches.push(block); // Fallback: include unprocessed block
           }
         }
         console.log(
@@ -2240,18 +2270,44 @@ export const updatePostBySlug = async (req, res, next) => {
 
     let processedThumbnail;
     if (rawThumbnail && !isThumbnailEmbed) {
-      processedThumbnail = await Promise.race([
-        processImage(rawThumbnail, "thumbnail", "inkshaa/post/thumbnails/"),
-        new Promise((_, reject) =>
-          setTimeout(
-            () => reject(new Error("Thumbnail processing timeout")),
-            10000
-          )
-        ),
-      ]);
+      try {
+        processedThumbnail = await Promise.race([
+          processImage(rawThumbnail, "thumbnail", "inkshaa/post/thumbnails/"),
+          new Promise((_, reject) =>
+            setTimeout(
+              () =>
+                reject(
+                  new AppError(
+                    "Thumbnail processing timeout",
+                    408,
+                    "UpdatePostBySlug"
+                  )
+                ),
+              10000
+            )
+          ),
+        ]);
+      } catch (error) {
+        console.error(
+          `[UpdatePostBySlug] Thumbnail processing failed: ${error.message}`
+        );
+        throw new AppError(
+          `Thumbnail processing failed: ${error.message}`,
+          400,
+          "UpdatePostBySlug"
+        );
+      }
     } else if (rawThumbnail && isThumbnailEmbed) {
-      new URL(rawThumbnail);
-      processedThumbnail = rawThumbnail;
+      try {
+        new URL(rawThumbnail);
+        processedThumbnail = rawThumbnail;
+      } catch (err) {
+        throw new AppError(
+          "Invalid thumbnail embed URL",
+          400,
+          "UpdatePostBySlug"
+        );
+      }
     }
 
     let readTime, readingTime;
@@ -2274,12 +2330,13 @@ export const updatePostBySlug = async (req, res, next) => {
       const fullText = `${title || post.title} ${
         excerpt || ""
       } ${blockTextContent}`.substring(0, 10000);
-      if (
-        /(.)\1{30,}/.test(fullText) ||
-        /http[s]?:\/\/[^\s]{80,}/.test(fullText)
-      ) {
+      const moderation = await moderateContent(fullText); // Use moderateContent from provided code
+      if (moderation.isFlagged) {
+        const reasons = Object.entries(moderation.categories)
+          .filter(([_, flagged]) => flagged)
+          .map(([key]) => key);
         throw new AppError(
-          "Content flagged for spam patterns",
+          `Content violates community guidelines: ${reasons.join(", ")}`,
           400,
           "UpdatePostBySlug"
         );
@@ -2291,7 +2348,8 @@ export const updatePostBySlug = async (req, res, next) => {
       updates.title = title.trim();
     if (category !== undefined && category.trim() !== post.category)
       updates.category = category.trim();
-    if (excerpt !== undefined) updates.excerpt = excerpt ? excerpt.trim() : "";
+    if (excerpt !== undefined)
+      updates.excerpt = excerpt ? excerpt.trim().substring(0, 500) : "";
     if (tags !== undefined) updates.tags = tags;
     if (processedThumbnail !== undefined)
       updates.thumbnail = processedThumbnail;
@@ -2389,10 +2447,15 @@ export const updatePostBySlug = async (req, res, next) => {
             cache.del(key);
           } catch (e) {}
         });
-        io.emit("postUpdated", {
-          ...updatedPost.toObject(),
-          authorId: userId,
-        }).catch(() => {});
+        await asyncRetry(
+          async () => {
+            io.emit("postUpdated", {
+              ...updatedPost.toObject(),
+              authorId: userId,
+            });
+          },
+          { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
+        );
       } catch (e) {
         console.warn(
           "[UpdatePostBySlug] Post-response operations failed:",
