@@ -72,7 +72,7 @@ const UserCardWrapper = ({ userId }) => {
           )
             .unwrap()
             .then((status) => {
-              console.log("Subscription Status:", status); // ✅ Debug log
+              // console.log("Subscription Status:", status); // ✅ Debug log
               setSubscriptionStatus(status);
             })
             .catch((err) => {

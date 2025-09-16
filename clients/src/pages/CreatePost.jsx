@@ -67,7 +67,7 @@ const CreatePost = () => {
   // ---- Stable debounced handlers (moved outside component or memoized properly)
   const debouncedTitleChange = useCallback(
     debounce((value) => {
-      console.log("[CreatePost] Debounced title change:", value);
+      // console.log("[CreatePost] Debounced title change:", value);
       setTitle(value);
     }, 300),
     [] // Empty dependency array since setTitle is stable
@@ -77,7 +77,7 @@ const CreatePost = () => {
   const debouncedSaveDraft = useMemo(
     () =>
       debounce((draft) => {
-        console.log("[CreatePost] Debounced draft save:", draft);
+        // console.log("[CreatePost] Debounced draft save:", draft);
         // Example: localStorage.setItem("draftPost", JSON.stringify(draft));
         // Or dispatch(saveDraft(draft)) if you want to persist in redux/backend
       }, 500),
@@ -94,7 +94,7 @@ const CreatePost = () => {
 
   const debouncedBlocksChange = useCallback(
     debounce((value) => {
-      console.log("[CreatePost] Debounced blocks change:", value);
+      // console.log("[CreatePost] Debounced blocks change:", value);
       setBlocks(value);
     }, 300),
     [] // Empty dependency array since setBlocks is stable
@@ -102,11 +102,11 @@ const CreatePost = () => {
 
   // ---- Cleanup debounced functions
   useEffect(() => {
-    console.log("[CreatePost] Component mounted");
+    // console.log("[CreatePost] Component mounted");
     return () => {
-      console.log(
-        "[CreatePost] Component unmounting, cancelling debounced functions"
-      );
+      // console.log(
+      //   "[CreatePost] Component unmounting, cancelling debounced functions"
+      // );
       debouncedTitleChange.cancel();
       debouncedBlocksChange.cancel();
     };
@@ -116,7 +116,7 @@ const CreatePost = () => {
   useEffect(() => {
     if (categoriesFetched) return;
 
-    console.log("[CreatePost] Fetching categories");
+    // console.log("[CreatePost] Fetching categories");
     setCategoriesFetched(true);
 
     dispatch(fetchCategories())
@@ -131,25 +131,25 @@ const CreatePost = () => {
   // ---- Handle saved postType and modal transitions (fixed dependencies)
   useEffect(() => {
     if (hasCheckedPostTypeRef.current) {
-      console.log("[CreatePost] Skipping postType check, already processed");
+      // console.log("[CreatePost] Skipping postType check, already processed");
       return;
     }
 
     if (postType) {
-      console.log("[CreatePost] PostType already exists:", postType);
+      // console.log("[CreatePost] PostType already exists:", postType);
       return;
     }
 
     const savedPostType = localStorage.getItem("postType");
-    console.log(
-      "[CreatePost] Checking saved postType:",
-      savedPostType,
-      "Categories length:",
-      categories?.length
-    );
+    // console.log(
+    //   "[CreatePost] Checking saved postType:",
+    //   savedPostType,
+    //   "Categories length:",
+    //   categories?.length
+    // );
 
     if (savedPostType && categories?.length > 0) {
-      console.log("[CreatePost] Setting postType and opening category modal");
+      // console.log("[CreatePost] Setting postType and opening category modal");
       dispatch(setPostType(savedPostType));
       setShowPostTypeModal(false);
       setShowCategoryModal(true);
@@ -165,7 +165,7 @@ const CreatePost = () => {
     categories.forEach((cat) => {
       map[cat._id] = cat.name;
     });
-    console.log("[CreatePost] Category map created:", map);
+    // console.log("[CreatePost] Category map created:", map);
     return map;
   }, [categories]); // Keep categories as dependency but check length inside
 
@@ -177,20 +177,20 @@ const CreatePost = () => {
     const filtered = selectedCategoryId
       ? posts.filter((p) => p.category === selectedCategoryId)
       : posts;
-    console.log("[CreatePost] Filtered posts:", filtered);
+    // console.log("[CreatePost] Filtered posts:", filtered);
     return filtered;
   }, [post, selectedCategoryId]);
 
   // ---- Stable validation function
   const validateBeforeSubmit = useCallback(
     async (metaData) => {
-      console.log("[CreatePost] Validating post data:", {
-        title,
-        blocksLength: blocks.length,
-        postType,
-        selectedCategoryId,
-        metaData,
-      });
+      // console.log("[CreatePost] Validating post data:", {
+      //   title,
+      //   blocksLength: blocks.length,
+      //   postType,
+      //   selectedCategoryId,
+      //   metaData,
+      // });
 
       if (!title.trim()) throw new Error("Please enter a title");
       if (title.trim().length < 3)
@@ -258,7 +258,7 @@ const CreatePost = () => {
         );
       }
 
-      console.log("[CreatePost] Validation passed");
+      // console.log("[CreatePost] Validation passed");
       return postData;
     },
     [title, blocks, postType, selectedCategoryId]
@@ -268,18 +268,18 @@ const CreatePost = () => {
   const handleCreatePost = useCallback(
     async (metaData) => {
       if (isSubmittingRef.current) {
-        console.log("[CreatePost] Submission blocked, already submitting");
+        // console.log("[CreatePost] Submission blocked, already submitting");
         return;
       }
 
       isSubmittingRef.current = true;
       setIsSubmitting(true);
-      console.log("[CreatePost] Creating post with metaData:", metaData);
+      // console.log("[CreatePost] Creating post with metaData:", metaData);
 
       try {
         const postData = await validateBeforeSubmit(metaData);
         const resultAction = await dispatch(createPosts(postData)).unwrap();
-        console.log("[CreatePost] Post created successfully:", resultAction);
+        // console.log("[CreatePost] Post created successfully:", resultAction);
 
         toast.success("Post created successfully!", { position: "top-right" });
         setTitle("");
@@ -298,7 +298,7 @@ const CreatePost = () => {
               { retries: 2, minTimeout: 1000 }
             );
             if (checkPost) {
-              console.log("[CreatePost] Post found after timeout:", checkPost);
+              // console.log("[CreatePost] Post found after timeout:", checkPost);
               toast.success("Post created successfully!", {
                 position: "top-right",
               });
@@ -324,7 +324,7 @@ const CreatePost = () => {
       } finally {
         isSubmittingRef.current = false;
         setIsSubmitting(false);
-        console.log("[CreatePost] Submission complete");
+        // console.log("[CreatePost] Submission complete");
       }
     },
     [dispatch, navigate, validateBeforeSubmit, title] // Added title for slug generation
@@ -332,11 +332,11 @@ const CreatePost = () => {
 
   const handleDeletePost = useCallback(
     (id) => {
-      console.log("[CreatePost] Deleting post with id:", id);
+      // console.log("[CreatePost] Deleting post with id:", id);
       dispatch(deletePost(id))
         .unwrap()
         .then(() => {
-          console.log("[CreatePost] Post deleted successfully");
+          // console.log("[CreatePost] Post deleted successfully");
           toast.success("Post deleted", { position: "top-right" });
         })
         .catch((err) => {
@@ -350,7 +350,7 @@ const CreatePost = () => {
   );
 
   const handleUpdateDraft = useCallback((draft) => {
-    console.log("[CreatePost] Updating draft:", draft);
+    // console.log("[CreatePost] Updating draft:", draft);
     if (draft.title !== undefined) {
       setTitle(draft.title); // instant
     }
@@ -360,13 +360,13 @@ const CreatePost = () => {
   }, []);
 
   // ---- Render
-  console.log("[CreatePost] Rendering, state:", {
-    showPostTypeModal,
-    showCategoryModal,
-    title,
-    blocksLength: blocks.length,
-    isSubmitting,
-  });
+  // console.log("[CreatePost] Rendering, state:", {
+  //   showPostTypeModal,
+  //   showCategoryModal,
+  //   title,
+  //   blocksLength: blocks.length,
+  //   isSubmitting,
+  // });
 
   return (
     <div className="flex flex-col md:flex-row bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
@@ -375,17 +375,17 @@ const CreatePost = () => {
           <PostTypeSelector
             postType={postType}
             setPostType={(value) => {
-              console.log("[CreatePost] Setting postType:", value);
+              // console.log("[CreatePost] Setting postType:", value);
               dispatch(setPostType(value));
               localStorage.setItem("postType", value);
             }}
             onContinue={() => {
-              console.log("[CreatePost] PostTypeSelector onContinue");
+              // console.log("[CreatePost] PostTypeSelector onContinue");
               setShowPostTypeModal(false);
               setShowCategoryModal(true);
             }}
             onClose={() => {
-              console.log("[CreatePost] PostTypeSelector onClose");
+              // console.log("[CreatePost] PostTypeSelector onClose");
               localStorage.removeItem("postType");
               navigate("/");
             }}
@@ -397,15 +397,15 @@ const CreatePost = () => {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
           <CategorySelector
             onBack={() => {
-              console.log("[CreatePost] CategorySelector onBack");
+              // console.log("[CreatePost] CategorySelector onBack");
               setShowCategoryModal(false);
               setShowPostTypeModal(true);
             }}
             onContinue={(selectedCategory) => {
-              console.log(
-                "[CreatePost] CategorySelector onContinue:",
-                selectedCategory
-              );
+              // console.log(
+              //   "[CreatePost] CategorySelector onContinue:",
+              //   selectedCategory
+              // );
               if (!selectedCategory?.id) {
                 toast.error("Please select a category", {
                   position: "top-right",
@@ -416,7 +416,7 @@ const CreatePost = () => {
               setShowCategoryModal(false);
             }}
             onClose={() => {
-              console.log("[CreatePost] CategorySelector onClose");
+              // console.log("[CreatePost] CategorySelector onClose");
               localStorage.removeItem("postType");
               navigate("/");
             }}
@@ -440,7 +440,7 @@ const CreatePost = () => {
           <div className="w-full flex justify-start px-4 pt-10 pl-11">
             <button
               onClick={() => {
-                console.log("[CreatePost] Cancel & Go Back clicked");
+                // console.log("[CreatePost] Cancel & Go Back clicked");
                 localStorage.removeItem("postType");
                 navigate("/");
               }}

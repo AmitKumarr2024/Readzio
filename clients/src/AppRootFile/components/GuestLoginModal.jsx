@@ -17,7 +17,7 @@ const GuestLoginModal = () => {
           console.warn("[GuestLoginModal] Guest limit exceeded");
           setTimeout(() => setShowModal(true), 30000); // show modal after 30s
         } else {
-          console.log("[GuestLoginModal] Guest visit OK:", action.payload);
+          // console.log("[GuestLoginModal] Guest visit OK:", action.payload);
         }
       } catch (err) {
         console.error("[GuestLoginModal] Unexpected error:", err);

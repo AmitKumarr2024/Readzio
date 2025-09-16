@@ -1354,10 +1354,10 @@ const adminSlice = createSlice({
       }
     },
     logSubscriptionCriteria: (state) => {
-      console.log(
-        "[logSubscriptionCriteria] Current subscriptionCriteria:",
-        state.subscriptionCriteria
-      );
+      // console.log(
+      //   "[logSubscriptionCriteria] Current subscriptionCriteria:",
+      //   state.subscriptionCriteria
+      // );
     },
     clearOverrideStatus: (state) => {
       state.loading = false;

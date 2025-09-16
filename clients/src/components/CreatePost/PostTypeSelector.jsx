@@ -16,17 +16,17 @@ const PostTypeSelector = ({ onContinue, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSelect = (type) => {
-    console.log(
-      "[PostTypeSelector] handleSelect called, type:",
-      type,
-      "hasSelected:",
-      hasSelected,
-      "isLoading:",
-      isLoading
-    );
+    // console.log(
+    //   "[PostTypeSelector] handleSelect called, type:",
+    //   type,
+    //   "hasSelected:",
+    //   hasSelected,
+    //   "isLoading:",
+    //   isLoading
+    // );
     if (hasSelected || isLoading) return;
     if (!["Article", "Blog"].includes(type)) {
-      console.log("[PostTypeSelector] Invalid post type:", type);
+      // console.log("[PostTypeSelector] Invalid post type:", type);
       toast.error("Invalid post type selected");
       return;
     }
@@ -34,18 +34,18 @@ const PostTypeSelector = ({ onContinue, onClose }) => {
     setHasSelected(true);
     dispatch(setPostType(type));
     localStorage.setItem("postType", type);
-    console.log("[PostTypeSelector] Set postType:", type);
+    // console.log("[PostTypeSelector] Set postType:", type);
     if (currentPost?.slug) {
-      console.log(
-        "[PostTypeSelector] Updating post with slug:",
-        currentPost.slug
-      );
+      // console.log(
+      //   "[PostTypeSelector] Updating post with slug:",
+      //   currentPost.slug
+      // );
       dispatch(
         updatePost({ slug: currentPost.slug, updateData: { postType: type } })
       )
         .unwrap()
         .then(() => {
-          console.log("[PostTypeSelector] Post type updated successfully");
+          // console.log("[PostTypeSelector] Post type updated successfully");
           toast.success(`Post type updated to ${type}`);
           setIsLoading(false);
           onContinue();
@@ -60,7 +60,7 @@ const PostTypeSelector = ({ onContinue, onClose }) => {
           setHasSelected(false);
         });
     } else {
-      console.log("[PostTypeSelector] No current post, continuing after delay");
+      // console.log("[PostTypeSelector] No current post, continuing after delay");
       toast.success(`Post type set to ${type}`);
       setTimeout(() => {
         setIsLoading(false);
@@ -70,17 +70,17 @@ const PostTypeSelector = ({ onContinue, onClose }) => {
   };
 
   const handleClose = () => {
-    console.log("[PostTypeSelector] handleClose called");
+    // console.log("[PostTypeSelector] handleClose called");
     localStorage.removeItem("postType");
     navigate("/");
   };
 
-  console.log("[PostTypeSelector] Rendering, state:", {
-    postType,
-    hasSelected,
-    isLoading,
-    currentPostSlug: currentPost?.slug,
-  });
+  // console.log("[PostTypeSelector] Rendering, state:", {
+  //   postType,
+  //   hasSelected,
+  //   isLoading,
+  //   currentPostSlug: currentPost?.slug,
+  // });
 
   return (
     <motion.div

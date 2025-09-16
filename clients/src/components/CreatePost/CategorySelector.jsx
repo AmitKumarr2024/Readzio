@@ -36,26 +36,26 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
 
   // FIXED: Load categories only once on mount
   useEffect(() => {
-    console.log("[CategorySelector] useEffect for loadCategories");
+    // console.log("[CategorySelector] useEffect for loadCategories");
 
     // Skip if already fetched or currently loading
     if (hasInitiatedFetch.current || status === "loading") {
-      console.log(
-        "[CategorySelector] Skipping fetch - already initiated or loading"
-      );
+      // console.log(
+      //   "[CategorySelector] Skipping fetch - already initiated or loading"
+      // );
       return;
     }
 
     // Skip if categories already exist
     if (categories && categories.length > 0) {
-      console.log(
-        "[CategorySelector] Categories already exist, marking as fetched"
-      );
+      // console.log(
+      //   "[CategorySelector] Categories already exist, marking as fetched"
+      // );
       hasInitiatedFetch.current = true;
       return;
     }
 
-    console.log("[CategorySelector] Initiating category fetch");
+    // console.log("[CategorySelector] Initiating category fetch");
     hasInitiatedFetch.current = true;
 
     dispatch(fetchCategories())
@@ -73,7 +73,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   // Handle errors - separate effect
   useEffect(() => {
     if (error) {
-      console.log("[CategorySelector] Error detected:", error);
+      // console.log("[CategorySelector] Error detected:", error);
       toast.error(error);
       dispatch(clearError());
     }
@@ -102,18 +102,18 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   );
 
   const handleCategorySelect = (category) => {
-    console.log("[CategorySelector] Selecting category:", category);
+    // console.log("[CategorySelector] Selecting category:", category);
     setSelectedCategory(category);
     dispatch(selectCategory(category));
     setTimeout(() => {
-      console.log("[CategorySelector] Continuing with category:", category);
+      // console.log("[CategorySelector] Continuing with category:", category);
       onContinue({ id: category._id, name: category.name });
     }, 300);
   };
 
   const handleNewCategoryChange = (e) => {
     const { name, value } = e.target;
-    console.log("[CategorySelector] New category change:", name, value);
+    // console.log("[CategorySelector] New category change:", name, value);
     setNewCategory((prev) => ({
       ...prev,
       [name]: value,
@@ -123,7 +123,7 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   };
 
   const handleAddCategory = async () => {
-    console.log("[CategorySelector] Adding new category:", newCategory);
+    // console.log("[CategorySelector] Adding new category:", newCategory);
     const { name, slug, description } = newCategory;
     const trimmedName = name.trim();
     const trimmedSlug = slug.trim();
@@ -159,15 +159,15 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
         })
       ).unwrap();
 
-      console.log("[CategorySelector] Category created:", result);
+      // console.log("[CategorySelector] Category created:", result);
       setNewCategory({ name: "", slug: "", description: "" });
       setShowAddCategory(false);
       toast.success("Category created successfully!");
       setTimeout(() => {
-        console.log(
-          "[CategorySelector] Continuing with new category:",
-          result.category
-        );
+        // console.log(
+        //   "[CategorySelector] Continuing with new category:",
+        //   result.category
+        // );
         onContinue({ id: result.category._id, name: result.category.name });
       }, 500);
     } catch (err) {
@@ -180,14 +180,14 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   };
 
   const handleRetryLoad = () => {
-    console.log("[CategorySelector] Retrying category load");
+    // console.log("[CategorySelector] Retrying category load");
     hasInitiatedFetch.current = false;
     dispatch(fetchCategories())
       .unwrap()
       .then(() => {
-        console.log(
-          "[CategorySelector] Categories loaded successfully on retry"
-        );
+        // console.log(
+        //   "[CategorySelector] Categories loaded successfully on retry"
+        // );
         hasInitiatedFetch.current = true;
       })
       .catch((err) => {
@@ -202,18 +202,18 @@ const CategorySelector = ({ onBack, onContinue, onClose }) => {
   const hasError = status === "failed";
   const isEmpty = categories.length === 0 && status === "succeeded";
 
-  console.log("[CategorySelector] Rendering, state:", {
-    selectedCategory,
-    searchTerm,
-    showAddCategory,
-    isCreatingCategory,
-    hasInitiatedFetch: hasInitiatedFetch.current,
-    isLoading,
-    hasError,
-    isEmpty,
-    categoriesLength: categories.length,
-    status,
-  });
+  // console.log("[CategorySelector] Rendering, state:", {
+  //   selectedCategory,
+  //   searchTerm,
+  //   showAddCategory,
+  //   isCreatingCategory,
+  //   hasInitiatedFetch: hasInitiatedFetch.current,
+  //   isLoading,
+  //   hasError,
+  //   isEmpty,
+  //   categoriesLength: categories.length,
+  //   status,
+  // });
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">

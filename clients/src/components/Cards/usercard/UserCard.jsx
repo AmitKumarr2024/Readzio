@@ -20,12 +20,12 @@ const UserCard = ({
   const { isEligible } = useSelector(
     (state) => state.subscription || { isEligible: false }
   );
-  console.log(
-    "UserCard - isEligible:",
-    isEligible,
-    "subscriptionStatus:",
-    subscriptionStatus
-  ); // ✅ Debug log
+  // console.log(
+  //   "UserCard - isEligible:",
+  //   isEligible,
+  //   "subscriptionStatus:",
+  //   subscriptionStatus
+  // ); // ✅ Debug log
 
   if (!user && !isLoading) return null;
 

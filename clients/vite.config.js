@@ -7,12 +7,12 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-console.log("🚀 Initializing Vite config, __dirname:", __dirname);
+// console.log("🚀 Initializing Vite config, __dirname:", __dirname);
 
 export default defineConfig(({ mode }) => {
-  console.log("⚙️ Loading Vite config for mode:", mode);
+  // console.log("⚙️ Loading Vite config for mode:", mode);
   const env = loadEnv(mode, process.cwd());
-  console.log("📚 Environment variables loaded:", Object.keys(env));
+  // console.log("📚 Environment variables loaded:", Object.keys(env));
 
   return {
     plugins: [
@@ -38,23 +38,23 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => {
-            console.log("🔄 API proxy rewriting path:", path);
+            // console.log("🔄 API proxy rewriting path:", path);
             return path;
           },
           configure: (proxy) => {
-            console.log(
-              "🔌 Setting up /api proxy to:",
-              env.VITE_API_BASE_URL || "http://localhost:10000"
-            );
+            // console.log(
+            //   "🔌 Setting up /api proxy to:",
+            //   env.VITE_API_BASE_URL || "http://localhost:10000"
+            // );
             proxy.on("error", (err) => {
               console.error("[ViteConfig:Proxy] ❌ /api error:", err.message);
             });
             proxy.on("proxyReq", (proxyReq, req) => {
-              console.log(
-                `[ViteProxy] 📤 ${req.method} ${
-                  req.url
-                } -> ${proxyReq.getHeader("host")}`
-              );
+              // console.log(
+              //   `[ViteProxy] 📤 ${req.method} ${
+              //     req.url
+              //   } -> ${proxyReq.getHeader("host")}`
+              // );
             });
           },
         },
@@ -63,10 +63,10 @@ export default defineConfig(({ mode }) => {
           ws: true,
           changeOrigin: true,
           configure: (proxy) => {
-            console.log(
-              "🔌 Setting up /socket.io proxy to:",
-              env.VITE_API_BASE_URL || "http://localhost:10000"
-            );
+            // console.log(
+            //   "🔌 Setting up /socket.io proxy to:",
+            //   env.VITE_API_BASE_URL || "http://localhost:10000"
+            // );
             proxy.on("error", (err) => {
               console.error(
                 "[ViteConfig:Proxy] ❌ /socket.io error:",
@@ -74,11 +74,11 @@ export default defineConfig(({ mode }) => {
               );
             });
             proxy.on("proxyReq", (proxyReq, req) => {
-              console.log(
-                `[SocketProxy] 📤 ${req.method} ${
-                  req.url
-                } -> ${proxyReq.getHeader("host")}`
-              );
+              // console.log(
+              //   `[SocketProxy] 📤 ${req.method} ${
+              //     req.url
+              //   } -> ${proxyReq.getHeader("host")}`
+              // );
             });
           },
         },
