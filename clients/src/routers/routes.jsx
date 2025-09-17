@@ -90,7 +90,7 @@ const routes = createBrowserRouter([
       { path: "tag/:tag", element: <TagWisePage /> },
       { path: "contact", element: <Contact /> },
       { path: "privacy", element: <PrivacyPage /> },
-      { path: "Terms-Conditions", element: <TermsAndConditionPage /> },
+      { path: "terms-conditions", element: <TermsAndConditionPage /> },
       
     ],
   },
