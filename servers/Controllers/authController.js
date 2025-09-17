@@ -487,10 +487,12 @@ export const Signup = async (req, res, next) => {
         )
       );
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const newUser = new UserModel({
       name: fullName,
       email: normalizedEmail,
-      password,
+      password: hashedPassword,
       authProvider: "local",
       role: "user",
       emailAttempts: 0,
@@ -734,6 +736,7 @@ export const checkAuth = async (req, res, next) => {
 };
 
 // Handles Google login
+// Handles Google login
 export const googleLogin = async (req, res, next) => {
   const { token, sendEmail } = req.body;
   const geoLocation = req.geoLocation;
@@ -763,10 +766,13 @@ export const googleLogin = async (req, res, next) => {
       );
 
     log("[GoogleLogin] Finding or creating user for email:", email);
+
+    // Check for existing user by googleId or email
     let user = await UserModel.findOne({ $or: [{ googleId }, { email }] });
     let isNewUser = false;
 
     if (user) {
+      // If user signed up with local password, block Google login
       if (user.authProvider === "local")
         throw new AppError(
           "Email registered with password-based account. Use password login.",
@@ -774,10 +780,17 @@ export const googleLogin = async (req, res, next) => {
           "GoogleLogin",
           "Email conflict with local account"
         );
+
+      // If user exists but doesn't have googleId, update it
+      if (!user.googleId) {
+        user.googleId = googleId;
+        await user.save();
+      }
     } else {
+      // Create a new Google user
       log("[GoogleLogin] Creating new user");
       user = new UserModel({
-        name: name || "Unnamed Author",
+        name: name || "Unnamed User",
         email,
         googleId,
         avatar: picture,
@@ -791,9 +804,11 @@ export const googleLogin = async (req, res, next) => {
           ? `${geoLocation.city}, ${geoLocation.country}`
           : "",
       });
+      await user.save(); // Save before using _id
       isNewUser = true;
     }
 
+    // Record user's location after ensuring user._id exists
     if (geoLocation && user._id) {
       await UserLocation.create({
         userId: user._id,
@@ -808,52 +823,51 @@ export const googleLogin = async (req, res, next) => {
       });
     }
 
-    if (isNewUser) {
-      log("[GoogleLogin] Saving new user");
-      await user.save();
-    }
-
     // Reset email attempts before sending welcome email
     await UserModel.updateOne(
       { _id: user._id },
       { stopEmailAttempts: false, emailStatus: "not_sent", emailAttempts: 0 }
     );
 
-    log("[GoogleLogin] Preparing welcome email for:", email);
-    const mailOption = createMailOption({
-      to: email,
-      subject: "Welcome to Our Platform!",
-      name: name || "User",
-      email,
-      message: `Thank you for signing up with Google! You're joining us from ${
-        user.location || "an unknown location"
-      }. We're excited to have you on board.`,
-      hasButton: true,
-      buttonText: "Get Started",
-      buttonUrl: "https://inksha-uedq.onrender.com",
-      isWelcome: true,
-      supportEmail: SENDER_EMAIL,
-    });
+    // Send welcome email only for new users
+    if (isNewUser) {
+      log("[GoogleLogin] Preparing welcome email for:", email);
+      const mailOption = createMailOption({
+        to: email,
+        subject: "Welcome to Our Platform!",
+        name: name || "User",
+        email,
+        message: `Thank you for signing up with Google! You're joining us from ${
+          user.location || "an unknown location"
+        }. We're excited to have you on board.`,
+        hasButton: true,
+        buttonText: "Get Started",
+        buttonUrl: "https://inksha-uedq.onrender.com",
+        isWelcome: true,
+        supportEmail: SENDER_EMAIL,
+      });
 
-    try {
-      log("[GoogleLogin] Sending welcome email");
-      const emailResult = await sendEmailWithRetries(
-        mailOption,
-        user._id,
-        "signup"
-      );
-      user.emailAttempts = emailResult.attempts;
-      user.emailStatus = "sent";
-      await user.save();
-      log("[GoogleLogin] Welcome email sent to:", email);
-    } catch (emailError) {
-      log("[GoogleLogin] Email sending failed:", emailError.message);
-      user.emailAttempts = emailError.attempts || 3;
-      user.emailStatus = "failed";
-      user.emailLastError = emailError.message;
-      await user.save();
+      try {
+        log("[GoogleLogin] Sending welcome email");
+        const emailResult = await sendEmailWithRetries(
+          mailOption,
+          user._id,
+          "signup"
+        );
+        user.emailAttempts = emailResult.attempts;
+        user.emailStatus = "sent";
+        await user.save();
+        log("[GoogleLogin] Welcome email sent to:", email);
+      } catch (emailError) {
+        log("[GoogleLogin] Email sending failed:", emailError.message);
+        user.emailAttempts = emailError.attempts || 3;
+        user.emailStatus = "failed";
+        user.emailLastError = emailError.message;
+        await user.save();
+      }
     }
 
+    // Record login activity
     log("[GoogleLogin] Recording login activity for userId:", user._id);
     await recordActivity({
       userId: user._id,
@@ -863,8 +877,10 @@ export const googleLogin = async (req, res, next) => {
       }`,
     });
 
+    // Generate JWT
     log("[GoogleLogin] Generating JWT token");
     const jwtToken = generateToken(user, res);
+
     res.status(200).json({
       message: isNewUser
         ? "Google signup successful"
