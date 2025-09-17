@@ -42,6 +42,7 @@ const EditPost = () => {
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState([]);
   const [isOpen, setIsOpen] = useState(true);
+  const [thumbnail, setThumbnail] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -94,6 +95,7 @@ const EditPost = () => {
     }
     if (!postType) dispatch(setPostType(currentPost.postType || "Article"));
     if (tags.length === 0) dispatch(setTags(currentPost.tags || []));
+    if (thumbnail === "") setThumbnail(currentPost.thumbnail || "");
 
     const category = categories.find((cat) => cat._id === currentPost.category);
     if (
@@ -150,6 +152,7 @@ const EditPost = () => {
       postType,
       tags,
       blocks: normalizedBlocks,
+      thumbnail,
     };
 
     try {
@@ -196,6 +199,16 @@ const EditPost = () => {
       toast.error(err.message || "Failed to update post type");
       dispatch(setPostType(currentPost.postType || "Article")); // Revert on failure
     }
+  };
+
+  const handleThumbnailChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setThumbnail(reader.result); // convert to base64
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleTitleChange = (e) => {
@@ -283,6 +296,24 @@ const EditPost = () => {
                     value={title}
                     onChange={handleTitleChange}
                   />
+                </div>
+
+                <div>
+                  <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    Thumbnail
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleThumbnailChange}
+                  />
+                  {thumbnail && (
+                    <img
+                      src={thumbnail}
+                      alt="Thumbnail preview"
+                      className="w-full max-w-full h-auto max-h-[500px] object-contain rounded-sm shadow-xl border border-gray-300 dark:border-gray-700 transition-transform duration-300 hover:scale-[1.02]"
+                    />
+                  )}
                 </div>
 
                 <div>
