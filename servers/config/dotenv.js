@@ -28,6 +28,8 @@ export const SENDER_EMAIL = process.env.SENDER_EMAIL;
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 export const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
 export const AUTO_EMAIL_DATE = process.env.AUTO_EMAIL_DATE;
+export const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL;
+export const SESSION_SECRET = process.env.SESSION_SECRET;
 
 // Validate required environment variables
 const requiredEnv = ["MONGO_URI", "JWT_SECRET", "CLIENT_URL"];
