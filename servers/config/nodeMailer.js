@@ -6,11 +6,10 @@ if (!SMTP_USER || !SMTP_PASS) {
 }
 
 const transporter = nodemailer.createTransport({
-  service: "gmail", // tells nodemailer to use Gmail settings internally
-  auth: {
-    user: SMTP_USER, // your full Gmail address
-    pass: SMTP_PASS, // your Gmail App Password (NOT your real password)
-  },
+  service: "gmail",
+  port: 465,
+  secure: true,
+  auth: { user: SMTP_USER, pass: SMTP_PASS },
 });
 
 export default transporter;
