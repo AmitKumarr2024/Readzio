@@ -7,14 +7,11 @@ if (!SMTP_USER || !SMTP_PASS) {
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587, // Use 587 for TLS
-  secure: false, // false for STARTTLS
+  port: 587, // STARTTLS
+  secure: false, // upgrade later with STARTTLS
   auth: {
     user: SMTP_USER,
     pass: SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false, // prevents some certificate issues
   },
 });
 
