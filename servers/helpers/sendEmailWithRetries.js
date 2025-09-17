@@ -1,5 +1,7 @@
-import transporter from "../config/nodeMailer.js";
-import EmailLog from "../Models/EmailLog.js";
+import mongoose from "mongoose";
+import transporter from "../../servers/config/nodeMailer.js";
+import EmailLog from "../../servers/Models/EmailLog.js";
+import Bounce from "../../servers/Models/BounceModel.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 
 // Defines valid email types for sending emails
@@ -12,7 +14,7 @@ const VALID_EMAIL_TYPES = [
   "daily_digest",
 ];
 
-// Sends an email with retry logic and logs the attempt
+// Sends an email with retry logic, logs, and bounce handling
 export const sendEmailWithRetries = async (
   mailOption,
   userId,
@@ -20,53 +22,47 @@ export const sendEmailWithRetries = async (
   maxAttempts = 3
 ) => {
   try {
-    // Validates inputs
+    // === Input validation ===
     if (!mailOption || typeof mailOption !== "object" || !mailOption.to) {
-      throw new AppError(
-        "Invalid mail options",
-        400,
-        "SendEmailWithRetries",
-        'mailOption must be a non-null object with a valid "to" field'
-      );
+      throw new AppError("Invalid mail options", 400, "SendEmailWithRetries");
     }
     if (!VALID_EMAIL_TYPES.includes(type)) {
       throw new AppError(
-        "Invalid email type",
+        `Invalid email type: ${type}`,
         400,
-        "SendEmailWithRetries",
-        `Type must be one of: ${VALID_EMAIL_TYPES.join(", ")}`
+        "SendEmailWithRetries"
       );
     }
     if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
-      throw new AppError(
-        "Invalid user ID",
-        400,
-        "SendEmailWithRetries",
-        "userId must be a valid MongoDB ObjectId"
-      );
+      throw new AppError("Invalid user ID", 400, "SendEmailWithRetries");
     }
     if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
-      throw new AppError(
-        "Invalid max attempts",
-        400,
-        "SendEmailWithRetries",
-        "maxAttempts must be a positive integer"
-      );
+      throw new AppError("Invalid maxAttempts", 400, "SendEmailWithRetries");
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mailOption.to)) {
       throw new AppError(
         "Invalid recipient email",
         400,
-        "SendEmailWithRetries",
-        "Recipient email must be a valid email address"
+        "SendEmailWithRetries"
       );
     }
 
     const email = mailOption.to.toLowerCase();
+
+    // === Check if email is already bounced ===
+    const bounced = await Bounce.findOne({ email });
+    if (bounced) {
+      throw new AppError(
+        `Email previously bounced: ${email}`,
+        400,
+        "SendEmailWithRetries"
+      );
+    }
+
     let attempts = 0;
     let lastError = null;
 
-    // Creates or updates email log entry
+    // === Create or update EmailLog ===
     const log = await EmailLog.findOneAndUpdate(
       { email, type, userId: userId || null },
       {
@@ -80,35 +76,36 @@ export const sendEmailWithRetries = async (
       { upsert: true, new: true }
     );
 
-    // Attempts to send email with retries
+    // === Try sending with retries ===
     while (attempts < maxAttempts && !log.stopEmailAttempts) {
       try {
         attempts++;
         await transporter.sendMail(mailOption);
-        // Updates log on successful send
+
         await EmailLog.findByIdAndUpdate(log._id, {
           emailStatus: "sent",
           emailAttempts: attempts,
           emailLastError: null,
           updatedAt: new Date(),
         });
+
         return { success: true, attempts };
       } catch (error) {
         lastError = error;
-        // Updates log with error details
+
         await EmailLog.findByIdAndUpdate(log._id, {
           emailAttempts: attempts,
           emailLastError: error.message,
           updatedAt: new Date(),
         });
+
         if (attempts < maxAttempts) {
-          // Waits before retrying, with increasing delay
           await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
         }
       }
     }
 
-    // Marks log as failed after max attempts
+    // === Mark as failed after retries ===
     await EmailLog.findByIdAndUpdate(log._id, {
       emailStatus: "failed",
       emailAttempts: attempts,
@@ -117,21 +114,22 @@ export const sendEmailWithRetries = async (
       updatedAt: new Date(),
     });
 
+    // === Add to Bounce list ===
+    await Bounce.create({
+      email,
+      error: lastError?.message || "Unknown error",
+      status: "permanent",
+    });
+
     throw new AppError(
-      "Failed to send email after maximum attempts",
+      `Email permanently failed: ${email}`,
       500,
       "SendEmailWithRetries",
-      lastError?.message || "Unknown error during email sending"
+      lastError?.message || "Unknown error"
     );
   } catch (error) {
-    // AppError with context for sending email with retries
     throw error instanceof AppError
       ? error
-      : new AppError(
-          error.message || "Failed to send email",
-          500,
-          "SendEmailWithRetries",
-          "Error in sendEmailWithRetries"
-        );
+      : new AppError(error.message || "Failed to send email", 500);
   }
 };
