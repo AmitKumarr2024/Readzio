@@ -10,14 +10,14 @@ import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPost
 
 // Sends daily post email to verified users with published posts
 export const sendDailyPostEmail = async (req, res, next) => {
-  // console.log("[Cron:sendDailyPostEmail] Function entered");
+  console.log("[Cron:sendDailyPostEmail] Function entered");
   try {
     const users = await UserModel.find({
       isAccountVerified: true,
       stopEmailAttempts: false,
     }).lean({ virtuals: true });
 
-    // console.log("[Cron:sendDailyPostEmail] Fetched users:", users.length);
+    console.log("[Cron:sendDailyPostEmail] Fetched users:", users.length);
 
     if (users.length === 0) {
       return res.status(200).json({
@@ -39,15 +39,15 @@ export const sendDailyPostEmail = async (req, res, next) => {
       .populate("author", "name avatar")
       .lean({ virtuals: true });
 
-    // console.log(
-    //   "[DailyEmail] Today's posts:",
-    //   posts.map((p) => ({
-    //     title: p.title,
-    //     readTime: p.readTime,
-    //     likes: p.likesCount,
-    //     comments: p.commentsCount,
-    //   }))
-    // );
+    console.log(
+      "[DailyEmail] Today's posts:",
+      posts.map((p) => ({
+        title: p.title,
+        readTime: p.readTime,
+        likes: p.likesCount,
+        comments: p.commentsCount,
+      }))
+    );
 
     // Step 2: If less than 10, fill with older random published posts
     if (posts.length < 10) {
@@ -195,9 +195,9 @@ export const getDailyPostEmailReport = async (req, res, next) => {
 
       query.sentAt = { $gte: startDate, $lte: endDate };
 
-      // console.log(
-      //   `[Report] Applying date filter: ${startDate.toISOString()} → ${endDate.toISOString()}`
-      // );
+      console.log(
+        `[Report] Applying date filter: ${startDate.toISOString()} → ${endDate.toISOString()}`
+      );
     }
 
     // Fetch paginated logs
@@ -213,7 +213,7 @@ export const getDailyPostEmailReport = async (req, res, next) => {
 
     const total = await EmailLog.countDocuments(query);
 
-    // console.log(`[Report] Email logs fetched: ${logs.length} / ${total} total`);
+    console.log(`[Report] Email logs fetched: ${logs.length} / ${total} total`);
 
     res.status(200).json({
       logs,
