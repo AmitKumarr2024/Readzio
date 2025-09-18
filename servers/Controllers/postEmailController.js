@@ -7,6 +7,7 @@ import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPostEmailReport.js";
+import transporter from "../config/nodeMailer.js";
 
 // Sends daily post email to verified users with published posts
 export const sendDailyPostEmail = async (req, res, next) => {
@@ -15,7 +16,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
   try {
     console.log("📧 [DailyEmail] Starting daily post email process");
 
-    // Enhanced user query with better filtering - removed lastActiveAt to ensure users are found
+    // Fetch eligible users
     const users = await UserModel.find({
       isAccountVerified: true,
       stopEmailAttempts: { $ne: true },
@@ -38,37 +39,39 @@ export const sendDailyPostEmail = async (req, res, next) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    // Enhanced post fetching with better error handling
+    // Debug: Check total published posts
+    const totalPublishedPosts = await PostModel.countDocuments({
+      isPublished: true,
+    });
+    console.log(
+      `📰 [DailyEmail] Total published posts in DB: ${totalPublishedPosts}`
+    );
+
+    // Fetch today's posts
     let posts = await PostModel.find({
       createdAt: { $gte: todayStart },
       isPublished: true,
-      // Additional quality filters
       title: { $exists: true, $ne: "" },
-      content: { $exists: true },
     })
       .select(
         "title slug thumbnail author readTime likesCount commentsCount createdAt"
       )
       .populate("author", "name avatar")
-      .sort({ likesCount: -1, commentsCount: -1 }) // Prioritize popular posts
-      .limit(15) // Get more to have fallback options
+      .sort({ likesCount: -1, commentsCount: -1 })
+      .limit(15)
       .lean({ virtuals: true });
 
     console.log(`📰 [DailyEmail] Found ${posts.length} posts from today`);
 
-    // Enhanced fallback strategy
+    // Fallback: Fetch any published posts (no time limit)
     if (posts.length < 10) {
       const needed = 10 - posts.length;
-
-      // Get high-quality fallback posts from the last 7 days
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
       const randomFallbackPosts = await PostModel.aggregate([
         {
           $match: {
-            createdAt: { $gte: sevenDaysAgo, $lt: todayStart },
+            createdAt: { $lt: todayStart },
             isPublished: true,
-            likesCount: { $gte: 1 }, // Only posts with some engagement
             title: { $exists: true, $ne: "" },
           },
         },
@@ -98,29 +101,173 @@ export const sendDailyPostEmail = async (req, res, next) => {
       );
     }
 
-    // Final check for posts
+    // If still no posts, create a fallback post or send generic email
     if (posts.length === 0) {
-      console.warn("⚠️ [DailyEmail] No posts available. Skipping email send.");
-      return res.status(200).json({
-        message: "No posts available to send. Skipped daily email.",
-        results: [],
-        postCount: 0,
-        processTime: Date.now() - startTime,
-      });
+      console.warn(
+        "⚠️ [DailyEmail] No posts available. Using fallback strategy."
+      );
+
+      if (totalPublishedPosts === 0) {
+        console.log("🛠️ [DailyEmail] Creating fallback post");
+        const admin = await UserModel.findOne({ role: "admin" });
+        if (admin) {
+          await PostModel.create({
+            title: "Explore Our Latest Content",
+            slug: `fallback-post-${Date.now()}`,
+            author: admin._id,
+            postType: "Blog",
+            category: "General",
+            blocks: [
+              {
+                id: "1",
+                type: "text",
+                text: "Check out our platform for the latest updates!",
+              },
+            ],
+            isPublished: true,
+            createdAt: new Date(),
+          });
+          console.log("✅ [DailyEmail] Fallback post created");
+
+          // Re-fetch the newly created post
+          posts = await PostModel.find({
+            isPublished: true,
+            title: "Explore Our Latest Content",
+          })
+            .select(
+              "title slug thumbnail author readTime likesCount commentsCount createdAt"
+            )
+            .populate("author", "name avatar")
+            .lean({ virtuals: true });
+        }
+      }
+
+      if (posts.length === 0) {
+        console.log("📧 [DailyEmail] Sending generic email without posts");
+        const results = [];
+        for (const user of users) {
+          try {
+            const subject = "Your inkshaa Daily Brief – Stay Connected!";
+            const genericMailOption = createMailOption({
+              to: user.email,
+              subject: subject,
+              name: user.name || "Reader",
+              email: user.email,
+              hasButton: true,
+              buttonText: "Explore inkshaa",
+              buttonUrl: "https://inksha-uedq.onrender.com/explore",
+              posts: [], // Empty posts array
+            });
+
+            console.log(
+              `📧 [DailyEmail] Sending generic email to ${user.email}`
+            );
+
+            await sendEmailWithRetries(
+              genericMailOption,
+              user._id,
+              "daily_digest",
+              3
+            );
+
+            await recordActivity({
+              userId: user._id,
+              action: "DAILY_EMAIL_SENT",
+              message: `Generic daily digest sent to ${user.email}`,
+              metadata: { postCount: 0 },
+            });
+
+            results.push({
+              email: user.email,
+              success: true,
+              userId: user._id,
+            });
+          } catch (error) {
+            console.error(
+              `❌ [DailyEmail] Generic email failed for ${user.email}:`,
+              error.message
+            );
+            await recordActivity({
+              userId: user._id,
+              action: "DAILY_EMAIL_FAILED",
+              message: `Generic daily digest failed for ${user.email}: ${error.message}`,
+              metadata: { postCount: 0, error: error.message },
+            });
+
+            results.push({
+              email: user.email,
+              success: false,
+              error: error.message,
+              userId: user._id,
+            });
+          }
+        }
+
+        const successCount = results.filter((r) => r.success).length;
+        const failedCount = results.filter((r) => !r.success).length;
+
+        // Admin report for generic email
+        const admin = await UserModel.findOne({ role: "admin" }).lean();
+        if (admin) {
+          try {
+            const failedUsers = results.filter((r) => !r.success).slice(0, 10);
+
+            const adminMailOption = createMailOption({
+              to: admin.email,
+              subject: `Daily Email Report - Generic Email Sent (${successCount}/${results.length})`,
+              name: admin.name || "Admin",
+              email: admin.email,
+              customTemplate: DAILY_POST_ADMIN_REPORT_TEMPLATE,
+              customData: {
+                totalUsers: results.length,
+                successCount,
+                failedCount,
+                failedUsers,
+                postCount: 0,
+                processTime: Math.round((Date.now() - startTime) / 1000),
+                topPosts: [],
+              },
+            });
+
+            await sendEmailWithRetries(adminMailOption, admin._id, "report", 3);
+            console.log("📊 [DailyEmail] Admin report sent for generic email");
+          } catch (adminError) {
+            console.error(
+              "❌ [DailyEmail] Failed to send admin report:",
+              adminError.message
+            );
+          }
+        }
+
+        return res.status(200).json({
+          message: "No posts available. Sent generic emails.",
+          results: {
+            total: results.length,
+            successful: successCount,
+            failed: failedCount,
+            failureRate:
+              ((failedCount / results.length) * 100).toFixed(2) + "%",
+          },
+          postCount: 0,
+          processTime: Date.now() - startTime,
+        });
+      }
     }
 
-    // Sort posts by engagement for better email content
+    // Sort posts by engagement
     posts = posts
       .sort(
         (a, b) =>
-          b.likesCount + b.commentsCount - (a.likesCount + a.commentsCount)
+          (b.likesCount || 0) +
+          (b.commentsCount || 0) -
+          ((a.likesCount || 0) + (a.commentsCount || 0))
       )
-      .slice(0, 10); // Limit to top 10 posts
+      .slice(0, 10);
 
     const postSlugs = posts.map((post) => post.slug);
     const results = [];
 
-    // Process users in batches to avoid overwhelming the email service
+    // Process users in batches
     const batchSize = 50;
     const userBatches = [];
     for (let i = 0; i < users.length; i += batchSize) {
@@ -141,7 +288,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
       const batchPromises = batch.map(async (user) => {
         try {
-          // Generate dynamic subject line
           const popularPost = posts[0];
           const subject = popularPost
             ? `${popularPost.title.substring(0, 50)}${
@@ -160,10 +306,10 @@ export const sendDailyPostEmail = async (req, res, next) => {
             posts,
           });
 
-          // Use the enhanced sendEmailWithRetries function
+          console.log(`📧 [DailyEmail] Sending to ${user.email}`);
+
           await sendEmailWithRetries(mailOption, user._id, "daily_digest", 3);
 
-          // Log success
           await recordActivity({
             userId: user._id,
             action: "DAILY_EMAIL_SENT",
@@ -182,7 +328,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
             error.message
           );
 
-          // Log failure
           await recordActivity({
             userId: user._id,
             action: "DAILY_EMAIL_FAILED",
@@ -201,7 +346,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
       const batchResults = await Promise.allSettled(batchPromises);
 
-      // Process batch results
       batchResults.forEach((result, index) => {
         if (result.status === "fulfilled") {
           results.push(result.value);
@@ -216,7 +360,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
         }
       });
 
-      // Add delay between batches to avoid rate limiting
       if (batchIndex < userBatches.length - 1) {
         console.log("⏳ [DailyEmail] Waiting between batches...");
         await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -230,11 +373,11 @@ export const sendDailyPostEmail = async (req, res, next) => {
       `✅ [DailyEmail] Completed: ${successCount} success, ${failedCount} failed`
     );
 
-    // Enhanced admin report
+    // Admin report
     const admin = await UserModel.findOne({ role: "admin" }).lean();
     if (admin) {
       try {
-        const failedUsers = results.filter((r) => !r.success).slice(0, 10); // Limit to first 10 failures
+        const failedUsers = results.filter((r) => !r.success).slice(0, 10);
 
         const adminMailOption = createMailOption({
           to: admin.email,
@@ -281,7 +424,8 @@ export const sendDailyPostEmail = async (req, res, next) => {
       postCount: posts.length,
       processTime: processingTime,
       performance: {
-        avgTimePerEmail: Math.round(processingTime / results.length),
+        avgTimePerEmail:
+          results.length > 0 ? Math.round(processingTime / results.length) : 0,
         totalBatches: userBatches.length,
         batchSize,
       },
