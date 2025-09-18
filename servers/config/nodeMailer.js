@@ -1,39 +1,33 @@
 import nodemailer from "nodemailer";
 import { SMTP_PASS, SMTP_USER, NODE_ENV } from "../../servers/config/dotenv.js";
 
-// ✅ Validate env variables
+// Validate env variables
 if (!SMTP_USER || !SMTP_PASS) {
   throw new Error("❌ SMTP_USER and SMTP_PASS must be defined in .env");
 }
 
-// ✅ Create transporter (corrected function)
+// Create transporter with Gmail as primary
 const transporter = nodemailer.createTransport({
-  service: "gmail", // Gmail with app password
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // Use SSL
   auth: {
     user: SMTP_USER,
-    pass: SMTP_PASS,
+    pass: SMTP_PASS, // Ensure this is a Gmail App Password
   },
-  pool: true, // Connection pooling for performance
+  pool: true,
   maxConnections: 5,
   maxMessages: 100,
-  secure: true, // Force TLS
-  requireTLS: true,
-  tls: {
-    rejectUnauthorized: NODE_ENV === "production",
-  },
-  // Timeouts (ms)
-  connectionTimeout: 60_000,
-  socketTimeout: 60_000,
-  greetingTimeout: 30_000,
-  // Rate limiting
-  rateDelta: 20_000, // per 20 seconds
-  rateLimit: 5, // max 5 emails
-  // Debug logs only in dev
+  connectionTimeout: 120_000, // Increased to 2 minutes
+  socketTimeout: 120_000,
+  greetingTimeout: 60_000,
+  rateDelta: 30_000, // Increased to 30 seconds
+  rateLimit: 10, // Allow more emails per window
   debug: NODE_ENV === "development",
   logger: NODE_ENV === "development",
 });
 
-// ✅ Verify transporter connection on startup
+// Verify transporter connection on startup
 const verifyConnection = async () => {
   try {
     await transporter.verify();
@@ -45,15 +39,10 @@ const verifyConnection = async () => {
       code: error.code,
       command: error.command,
     });
-
-    // Don't crash the app in production
-    if (NODE_ENV === "production") {
-      console.error(
-        "⚠️ Email service unavailable - continuing without email functionality"
-      );
-      return false;
-    }
-    throw error;
+    console.error(
+      "⚠️ Email service unavailable - continuing without email functionality"
+    );
+    return false;
   }
 };
 
