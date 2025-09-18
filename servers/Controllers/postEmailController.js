@@ -169,6 +169,24 @@ export const sendDailyPostEmail = async (req, res, next) => {
     // Skip email sending if SMTP is unavailable
     if (!isSmtpAvailable) {
       console.warn("⚠️ [DailyEmail] SMTP unavailable. Skipping email sending.");
+      for (const user of users) {
+        await EmailLog.create({
+          email: user.email,
+          type: "daily_digest",
+          userId: user._id,
+          emailStatus: "failed",
+          emailLastError: "SMTP service unavailable",
+          postSlugs,
+          updatedAt: new Date(),
+        });
+        results.push({
+          email: user.email,
+          success: false,
+          error: "SMTP service unavailable",
+          userId: user._id,
+        });
+      }
+
       return res.status(200).json({
         success: true,
         message: "SMTP unavailable. No emails sent.",
@@ -224,19 +242,25 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
           console.log(`📧 [DailyEmail] Sending to ${user.email}`);
 
-          await sendEmailWithRetries(mailOption, user._id, "daily_digest", 3);
+          const result = await sendEmailWithRetries(
+            mailOption,
+            user._id,
+            "daily_digest",
+            3
+          );
 
           await recordActivity({
             userId: user._id,
             action: "DAILY_EMAIL_SENT",
             message: `Daily digest sent successfully to ${user.email}`,
-            metadata: { postCount: posts.length },
+            metadata: { postCount: posts.length, messageId: result.messageId },
           });
 
           return {
             email: user.email,
             success: true,
             userId: user._id,
+            messageId: result.messageId,
           };
         } catch (error) {
           console.error(

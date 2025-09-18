@@ -1,144 +1,126 @@
 import mongoose from "mongoose";
 
-const emailLogSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    required: true,
-    lowercase: true,
-    index: true,
-    validate: {
-      validator: function (v) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const emailLogSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+      validate: {
+        validator: function (v) {
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+        },
+        message: "Invalid email format",
       },
-      message: "Invalid email format",
     },
-  },
-  type: {
-    type: String,
-    required: true,
-    enum: [
-      "signup",
-      "payout",
-      "subscription",
-      "contact_reply",
-      "report",
-      "daily_digest",
-    ],
-    index: true,
-  },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    index: true,
-    sparse: true, // Allow null values but index non-null ones
-  },
-  emailStatus: {
-    type: String,
-    enum: ["pending", "sent", "failed", "bounced", "suppressed"],
-    default: "pending",
-    index: true,
-  },
-  emailAttempts: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 10, // Prevent excessive attempts
-  },
-  emailLastError: {
-    type: String,
-    maxlength: 1000,
-    trim: true,
-  },
-  stopEmailAttempts: {
-    type: Boolean,
-    default: false,
-    index: true,
-  },
-
-  // Bounce handling fields
-  bounceType: {
-    type: String,
-    enum: ["hard", "soft", "spam", "reputation", null],
-    default: null,
-    index: true,
-  },
-  bounceReason: {
-    type: String,
-    maxlength: 200, // Increased for better error descriptions
-    trim: true,
-  },
-  bounceCode: {
-    type: String,
-    maxlength: 10,
-    trim: true,
-  },
-  lastBounceAt: {
-    type: Date,
-    index: true,
-  },
-  bounceCount: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 50, // Prevent excessive bounce counts
-  },
-  suppressedAt: {
-    type: Date,
-    index: true,
-  },
-
-  // Additional tracking fields for production
-  messageId: {
-    type: String,
-    trim: true,
-  },
-  sentAt: {
-    type: Date,
-    index: true,
-  },
-  postSlugs: [
-    {
+    type: {
+      type: String,
+      required: true,
+      enum: [
+        "signup",
+        "payout",
+        "subscription",
+        "contact_reply",
+        "report",
+        "daily_digest",
+      ],
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      sparse: true,
+    },
+    emailStatus: {
+      type: String,
+      enum: ["pending", "sent", "failed", "bounced", "suppressed"],
+      default: "pending",
+    },
+    emailAttempts: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 10,
+    },
+    emailLastError: {
+      type: String,
+      maxlength: 1000,
+      trim: true,
+    },
+    stopEmailAttempts: {
+      type: Boolean,
+      default: false,
+    },
+    bounceType: {
+      type: String,
+      enum: ["hard", "soft", "spam", "reputation", null],
+      default: null,
+    },
+    bounceReason: {
+      type: String,
+      maxlength: 200,
+      trim: true,
+    },
+    bounceCode: {
+      type: String,
+      maxlength: 10,
+      trim: true,
+    },
+    lastBounceAt: {
+      type: Date,
+    },
+    bounceCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 50,
+    },
+    suppressedAt: {
+      type: Date,
+    },
+    messageId: {
       type: String,
       trim: true,
     },
-  ],
-
-  // Metadata for analytics
-  metadata: {
-    type: Map,
-    of: mongoose.Schema.Types.Mixed,
-    default: new Map(),
+    sentAt: {
+      type: Date,
+    },
+    postSlugs: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    metadata: {
+      type: Map,
+      of: mongoose.Schema.Types.Mixed,
+      default: new Map(),
+    },
   },
+  {
+    timestamps: true, // Automatically adds createdAt and updatedAt
+  }
+);
 
-  createdAt: {
-    type: Date,
-    default: Date.now,
-    index: true,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-// Compound indexes for optimal query performance
-emailLogSchema.index({ email: 1, type: 1, userId: 1 }, { unique: false });
-emailLogSchema.index({ bounceType: 1, lastBounceAt: 1 });
-emailLogSchema.index({ emailStatus: 1, updatedAt: 1 });
-emailLogSchema.index({ type: 1, sentAt: 1 });
+// Define indexes explicitly (no duplicates)
+emailLogSchema.index({ userId: 1 }, { sparse: true });
+emailLogSchema.index({ type: 1 });
+emailLogSchema.index({ emailStatus: 1 });
+emailLogSchema.index({ createdAt: -1 }); // For sorting queries
 emailLogSchema.index({ suppressedAt: 1 }, { sparse: true });
+emailLogSchema.index({ email: 1, type: 1, userId: 1 }, { unique: false });
+emailLogSchema.index({ bounceType: 1, lastBounceAt: 1 }, { sparse: true });
+emailLogSchema.index({ emailStatus: 1, updatedAt: 1 });
+emailLogSchema.index({ type: 1, sentAt: 1 }, { sparse: true });
 
-// TTL index for cleanup (optional - remove old logs after 1 year)
+// TTL index for cleanup (1 year)
 emailLogSchema.index(
   { createdAt: 1 },
   { expireAfterSeconds: 365 * 24 * 60 * 60 }
 );
 
-// Update timestamp on save
+// Update timestamps and status
 emailLogSchema.pre("save", function (next) {
   this.updatedAt = new Date();
-
-  // Auto-set sentAt when status changes to sent
   if (
     this.isModified("emailStatus") &&
     this.emailStatus === "sent" &&
@@ -146,8 +128,6 @@ emailLogSchema.pre("save", function (next) {
   ) {
     this.sentAt = new Date();
   }
-
-  // Auto-set suppressedAt when bounce type is hard
   if (
     this.isModified("bounceType") &&
     this.bounceType === "hard" &&
@@ -156,11 +136,9 @@ emailLogSchema.pre("save", function (next) {
     this.suppressedAt = new Date();
     this.stopEmailAttempts = true;
   }
-
   next();
 });
 
-// Update timestamp on findOneAndUpdate
 emailLogSchema.pre(["findOneAndUpdate", "updateOne"], function () {
   this.set({ updatedAt: new Date() });
 });
@@ -170,7 +148,7 @@ emailLogSchema.virtual("ageInHours").get(function () {
   return Math.floor((Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60));
 });
 
-// Static methods for common queries
+// Static methods
 emailLogSchema.statics.findSuppressed = function () {
   return this.find({
     $or: [
@@ -220,7 +198,7 @@ emailLogSchema.methods.hasRecentSoftBounce = function (hours = 1) {
   return this.lastBounceAt >= cutoff;
 };
 
-// Error handling for validation
+// Error handling
 emailLogSchema.post("save", function (error, doc, next) {
   if (error.name === "MongoServerError" && error.code === 11000) {
     next(new Error("Duplicate email log entry"));
