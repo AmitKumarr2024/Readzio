@@ -1,38 +1,39 @@
 import nodemailer from "nodemailer";
 import { SMTP_PASS, SMTP_USER, NODE_ENV } from "../../servers/config/dotenv.js";
 
+// ✅ Validate env variables
 if (!SMTP_USER || !SMTP_PASS) {
   throw new Error("❌ SMTP_USER and SMTP_PASS must be defined in .env");
 }
 
-const transporter = nodemailer.createTransporter({
-  service: "gmail", // Use service instead of host/port for better reliability
+// ✅ Create transporter (corrected function)
+const transporter = nodemailer.createTransport({
+  service: "gmail", // Gmail with app password
   auth: {
     user: SMTP_USER,
     pass: SMTP_PASS,
   },
-  // Production-ready options
-  pool: true, // Use connection pooling
+  pool: true, // Connection pooling for performance
   maxConnections: 5,
   maxMessages: 100,
-  secure: true,
+  secure: true, // Force TLS
   requireTLS: true,
   tls: {
     rejectUnauthorized: NODE_ENV === "production",
   },
-  // Timeout settings
-  connectionTimeout: 60000,
-  socketTimeout: 60000,
-  greetingTimeout: 30000,
+  // Timeouts (ms)
+  connectionTimeout: 60_000,
+  socketTimeout: 60_000,
+  greetingTimeout: 30_000,
   // Rate limiting
-  rateDelta: 20000, // 20 seconds
-  rateLimit: 5, // Max 5 emails per 20 seconds
-  // Debug only in development
+  rateDelta: 20_000, // per 20 seconds
+  rateLimit: 5, // max 5 emails
+  // Debug logs only in dev
   debug: NODE_ENV === "development",
   logger: NODE_ENV === "development",
 });
 
-// ✅ Enhanced verification with error handling
+// ✅ Verify transporter connection on startup
 const verifyConnection = async () => {
   try {
     await transporter.verify();
@@ -56,7 +57,6 @@ const verifyConnection = async () => {
   }
 };
 
-// Verify connection on startup
 verifyConnection();
 
 export default transporter;
