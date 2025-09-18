@@ -2,10 +2,7 @@ import mongoose from "mongoose";
 import transporter from "../../servers/config/nodeMailer.js";
 import EmailLog from "../../servers/Models/EmailLog.js";
 import { AppError } from "../../servers/Utils/AppError.js";
-import {
-  classifyBounce,
-  extractSmtpCode,
-} from "../../servers/Utils/bounceClassifier.js";
+import { classifyBounce, extractSmtpCode } from "../../servers/Utils/bounceClassifier.js";
 
 // Defines valid email types for sending emails
 const VALID_EMAIL_TYPES = [
@@ -27,7 +24,7 @@ export const sendEmailWithRetries = async (
   const session = await mongoose.startSession();
 
   try {
-    // Enhanced input validation
+    // Validates inputs
     if (!mailOption || typeof mailOption !== "object" || !mailOption.to) {
       throw new AppError(
         "Invalid mail options",
@@ -69,11 +66,11 @@ export const sendEmailWithRetries = async (
       );
     }
 
-    const email = mailOption.to.toLowerCase().trim();
+    const email = mailOption.to.toLowerCase();
 
     session.startTransaction();
 
-    // Check if email is suppressed (hard bounced before)
+    // ✅ CHECK IF EMAIL IS SUPPRESSED (hard bounced before)
     const suppressedCheck = await EmailLog.findOne({
       email,
       $or: [
@@ -97,7 +94,7 @@ export const sendEmailWithRetries = async (
       );
     }
 
-    // Check for recent soft bounces (don't retry for 1 hour)
+    // ✅ Check for recent soft bounces (don't retry for 1 hour)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const recentSoftBounce = await EmailLog.findOne({
       email,
@@ -118,7 +115,7 @@ export const sendEmailWithRetries = async (
       );
     }
 
-    // Creates or updates email log entry with better error handling
+    // Creates or updates email log entry
     const log = await EmailLog.findOneAndUpdate(
       { email, type, userId: userId || null },
       {
@@ -134,17 +131,7 @@ export const sendEmailWithRetries = async (
         },
       },
       { upsert: true, new: true, session }
-    ).catch((error) => {
-      // Handle potential duplicate key errors gracefully
-      if (error.code === 11000) {
-        return EmailLog.findOne({
-          email,
-          type,
-          userId: userId || null,
-        }).session(session);
-      }
-      throw error;
-    });
+    );
 
     await session.commitTransaction();
 
@@ -156,23 +143,9 @@ export const sendEmailWithRetries = async (
       try {
         attempts++;
 
-        // Enhanced mail options with better headers
-        const enhancedMailOption = {
-          ...mailOption,
-          headers: {
-            ...mailOption.headers,
-            "X-Priority": "3",
-            "X-MSMail-Priority": "Normal",
-            "X-Mailer": "Inksha Production Mailer",
-            "Message-ID": `<${Date.now()}.${Math.random().toString(
-              36
-            )}@inksha.com>`,
-          },
-        };
+        const result = await transporter.sendMail(mailOption);
 
-        const result = await transporter.sendMail(enhancedMailOption);
-
-        // SUCCESS - Updates log on successful send
+        // ✅ SUCCESS - Updates log on successful send
         await EmailLog.findByIdAndUpdate(log._id, {
           emailStatus: "sent",
           emailAttempts: attempts,
@@ -180,16 +153,7 @@ export const sendEmailWithRetries = async (
           bounceType: null,
           bounceReason: null,
           bounceCode: null,
-          messageId: result.messageId,
-          sentAt: new Date(),
           updatedAt: new Date(),
-        });
-
-        console.log(`✅ Email sent successfully to ${email}:`, {
-          messageId: result.messageId,
-          attempts,
-          type,
-          userId: userId || "anonymous",
         });
 
         return {
@@ -201,19 +165,17 @@ export const sendEmailWithRetries = async (
       } catch (error) {
         lastError = error;
 
-        console.error(`❌ Email attempt ${attempts} failed for ${email}:`, {
+        console.error(`Email attempt ${attempts} failed for ${email}:`, {
           error: error.message,
           code: error.code,
           command: error.command,
-          responseCode: error.responseCode,
         });
 
-        // Enhanced bounce classification
-        const smtpCode =
-          extractSmtpCode(error.message) || error.code || error.responseCode;
+        // ✅ CLASSIFY THE BOUNCE
+        const smtpCode = extractSmtpCode(error.message) || error.code;
         const bounceInfo = classifyBounce(error.message, smtpCode);
 
-        // Updates log with bounce info
+        // ✅ Updates log with bounce info
         const updateData = {
           emailAttempts: attempts,
           emailLastError: error.message.substring(0, 1000), // Truncate long errors
@@ -225,7 +187,7 @@ export const sendEmailWithRetries = async (
           updatedAt: new Date(),
         };
 
-        // Handle different bounce types
+        // ✅ HANDLE DIFFERENT BOUNCE TYPES
         if (bounceInfo.type === "hard") {
           // Hard bounce - stop immediately and suppress
           updateData.emailStatus = "suppressed";
@@ -267,23 +229,23 @@ export const sendEmailWithRetries = async (
           await EmailLog.findByIdAndUpdate(log._id, updateData);
         }
 
-        // Enhanced exponential backoff with jitter and circuit breaker
+        // ✅ Exponential backoff with jitter
         if (attempts < maxAttempts) {
           const baseDelay = Math.min(1000 * Math.pow(2, attempts - 1), 30000); // Max 30s
           const jitter = Math.random() * 1000; // Add randomness
           const delay = baseDelay + jitter;
 
           console.log(
-            `⏳ Waiting ${Math.round(delay)}ms before retry ${
+            `Waiting ${Math.round(delay)}ms before retry ${
               attempts + 1
-            }/${maxAttempts} for ${email}`
+            }/${maxAttempts}`
           );
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
     }
 
-    // Final failure handling
+    // Marks log as failed after max attempts
     await EmailLog.findByIdAndUpdate(log._id, {
       emailStatus: "failed",
       emailAttempts: attempts,
@@ -296,24 +258,16 @@ export const sendEmailWithRetries = async (
       "Failed to send email after maximum attempts",
       500,
       "SendEmailWithRetries",
-      `${
-        lastError?.message || "Unknown error during email sending"
-      } (${attempts} attempts)`
+      lastError?.message || "Unknown error during email sending"
     );
   } catch (error) {
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
 
-    // Enhanced error logging for production debugging
+    // Proper error handling
     if (!(error instanceof AppError)) {
-      console.error("💥 Unexpected error in sendEmailWithRetries:", {
-        error: error.message,
-        stack: error.stack,
-        mailTo: mailOption?.to,
-        type,
-        userId,
-      });
+      console.error("Unexpected error in sendEmailWithRetries:", error);
     }
 
     throw error instanceof AppError
