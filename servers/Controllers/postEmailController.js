@@ -46,6 +46,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
     if (users.length === 0) {
       return res.status(200).json({
+        success: true,
         message: "No eligible users found for daily email",
         results: {
           total: 0,
@@ -169,6 +170,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     if (!isSmtpAvailable) {
       console.warn("⚠️ [DailyEmail] SMTP unavailable. Skipping email sending.");
       return res.status(200).json({
+        success: true,
         message: "SMTP unavailable. No emails sent.",
         results: {
           total: users.length,
@@ -327,10 +329,11 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
     const processingTime = Date.now() - startTime;
 
-    res.status(200).json({
+    return res.status(200).json({
+      success: true,
       message: isSmtpAvailable
         ? "Daily post emails processed successfully"
-        : "Daily post emails processed but SMTP unavailable",
+        : "SMTP unavailable. No emails sent.",
       results: {
         total: results.length || users.length,
         successful: successCount,
@@ -352,16 +355,12 @@ export const sendDailyPostEmail = async (req, res, next) => {
   } catch (error) {
     console.error("💥 [DailyEmail] Critical error:", error);
 
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to process daily post emails",
-            500,
-            "SendDailyPostEmail",
-            "Critical error in sendDailyPostEmail"
-          )
-    );
+    return res.status(500).json({
+      success: false,
+      message: "Failed to process daily post emails",
+      error: error.message || "Internal server error",
+      processTime: Date.now() - startTime,
+    });
   }
 };
 
@@ -381,11 +380,10 @@ export const getDailyPostEmailReport = async (req, res, next) => {
     if (date) {
       const istDate = new Date(date);
       if (isNaN(istDate.getTime())) {
-        throw new AppError(
-          "Invalid date format",
-          400,
-          "GetDailyPostEmailReport"
-        );
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date format",
+        });
       }
 
       const startDate = new Date(istDate);
@@ -457,7 +455,8 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       `📊 [EmailReport] Fetched ${logs.length} logs out of ${total} total`
     );
 
-    res.status(200).json({
+    return res.status(200).json({
+      success: true,
       logs,
       pagination: {
         total,
@@ -483,16 +482,11 @@ export const getDailyPostEmailReport = async (req, res, next) => {
   } catch (error) {
     console.error("❌ [EmailReport] Failed to fetch email report:", error);
 
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to fetch email report",
-            500,
-            "GetDailyPostEmailReport",
-            "Error in getDailyPostEmailReport"
-          )
-    );
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch email report",
+      error: error.message || "Internal server error",
+    });
   }
 };
 
@@ -515,24 +509,20 @@ export const deleteAllNotifications = async (req, res, next) => {
       metadata: { deletedCount: result.deletedCount, totalFound: countBefore },
     });
 
-    res.status(200).json({
+    return res.status(200).json({
+      success: true,
       message: `Successfully deleted ${result.deletedCount} notifications`,
-      deletedCount: results.deletedCount,
+      deletedCount: result.deletedCount,
       totalFound: countBefore,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
     console.error("❌ [Cleanup] Failed to delete notifications:", error);
 
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to delete notifications",
-            500,
-            "DeleteAllNotifications",
-            "Error in deleteAllNotifications"
-          )
-    );
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete notifications",
+      error: error.message || "Internal server error",
+    });
   }
 };

@@ -3,31 +3,32 @@ import { SMTP_PASS, SMTP_USER, NODE_ENV } from "../../servers/config/dotenv.js";
 
 // Validate env variables
 if (!SMTP_USER || !SMTP_PASS) {
-  throw new Error("❌ SMTP_USER and SMTP_PASS must be defined in .env");
+  console.error("❌ SMTP_USER and SMTP_PASS must be defined in .env");
+  throw new Error("SMTP credentials missing");
 }
 
-// Create transporter with Gmail as primary
+// Create transporter with Gmail
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
   secure: true, // Use SSL
   auth: {
     user: SMTP_USER,
-    pass: SMTP_PASS, // Ensure this is a Gmail App Password
+    pass: SMTP_PASS, // Must be a Gmail App Password
   },
   pool: true,
   maxConnections: 5,
   maxMessages: 100,
-  connectionTimeout: 120_000, // Increased to 2 minutes
-  socketTimeout: 120_000,
-  greetingTimeout: 60_000,
-  rateDelta: 30_000, // Increased to 30 seconds
-  rateLimit: 10, // Allow more emails per window
+  connectionTimeout: 180_000, // 3 minutes
+  socketTimeout: 180_000,
+  greetingTimeout: 90_000,
+  rateDelta: 60_000, // 1 minute
+  rateLimit: 10,
   debug: NODE_ENV === "development",
   logger: NODE_ENV === "development",
 });
 
-// Verify transporter connection on startup
+// Verify transporter connection
 const verifyConnection = async () => {
   try {
     await transporter.verify();
@@ -39,9 +40,7 @@ const verifyConnection = async () => {
       code: error.code,
       command: error.command,
     });
-    console.error(
-      "⚠️ Email service unavailable - continuing without email functionality"
-    );
+    console.warn("⚠️ Email service unavailable");
     return false;
   }
 };
