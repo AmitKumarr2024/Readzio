@@ -1,17 +1,12 @@
-// testEmail.js
 import nodemailer from "nodemailer";
-import dotenv from "dotenv";
-
-dotenv.config(); // load .env
-
-const { SMTP_USER, SMTP_PASS, SENDER_EMAIL } = process.env;
+import { SMTP_PASS, SMTP_USER } from "../../servers/config/dotenv.js";
 
 if (!SMTP_USER || !SMTP_PASS) {
   throw new Error("❌ SMTP_USER and SMTP_PASS must be defined in .env");
 }
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
+  host: "smtp.gmail.com", // ✅ Use Gmail SMTP host
   port: 465,
   secure: true,
   auth: {
@@ -20,8 +15,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ✅ Verify connection first
-transporter.verify(function (error, success) {
+// ✅ Verify transporter once on startup
+transporter.verify((error, success) => {
   if (error) {
     console.error("❌ SMTP Connection Error:", error);
   } else {
@@ -29,21 +24,4 @@ transporter.verify(function (error, success) {
   }
 });
 
-// ✅ Send a test mail
-async function sendTestMail() {
-  try {
-    let info = await transporter.sendMail({
-      from: `"Inkshaa Test" <${SENDER_EMAIL || SMTP_USER}>`,
-      to: "crazyone.amit@gmail.com", // 👈 change to your test email
-      subject: "Test Email from Inkshaa",
-      text: "This is a test email using Gmail App Password + Nodemailer",
-      html: "<p>This is a <b>test email</b> using Gmail App Password + Nodemailer</p>",
-    });
-
-    console.log("✅ Message sent:", info.messageId);
-  } catch (err) {
-    console.error("❌ Send failed:", err);
-  }
-}
-
-sendTestMail();
+export default transporter;

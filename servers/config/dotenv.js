@@ -1,5 +1,15 @@
 import dotenv from "dotenv";
 dotenv.config();
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from the project root (one level up from /servers)
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+
+console.log("[dotenv] Loaded keys:", Object.keys(process.env));
 
 export const PORT = process.env.PORT || 10000;
 export const MONGO_URI = process.env.MONGO_URI;
