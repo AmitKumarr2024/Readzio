@@ -1,24 +1,22 @@
-
-import EmailLog from "../Models/EmailLog.js";
+import EmailLog from "../../servers/Models/EmailLog.js";
 import UserModel from "../../servers/Models/User.js";
 import PostModel from "../../servers/Models/Post.js";
 import Notification from "../../servers/Models/Notification.js";
 import { AppError } from "../../servers/Utils/AppError.js";
-import transporter from "../config/nodeMailer.js";
+// ✅ IMPORT THE ENHANCED VERSION
+import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js"; // or wherever you put it
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPostEmailReport.js";
 
 // Sends daily post email to verified users with published posts
 export const sendDailyPostEmail = async (req, res, next) => {
-  // console.log("[Cron:sendDailyPostEmail] Function entered");
   try {
     const users = await UserModel.find({
       isAccountVerified: true,
-      stopEmailAttempts: false,
+      // ✅ REMOVE THIS - bounce system handles suppression
+      // stopEmailAttempts: false,
     }).lean({ virtuals: true });
-
-    // console.log("[Cron:sendDailyPostEmail] Fetched users:", users.length);
 
     if (users.length === 0) {
       return res.status(200).json({
@@ -39,16 +37,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
       .select("title slug thumbnail author readTime likesCount commentsCount")
       .populate("author", "name avatar")
       .lean({ virtuals: true });
-
-    // console.log(
-    //   "[DailyEmail] Today's posts:",
-    //   posts.map((p) => ({
-    //     title: p.title,
-    //     readTime: p.readTime,
-    //     likes: p.likesCount,
-    //     comments: p.commentsCount,
-    //   }))
-    // );
 
     // Step 2: If less than 10, fill with older random published posts
     if (posts.length < 10) {
@@ -77,7 +65,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
       });
     }
 
-    const postSlugs = posts.map((post) => post.slug);
     const results = [];
 
     // Step 4: Send email to each verified user
@@ -101,38 +88,45 @@ export const sendDailyPostEmail = async (req, res, next) => {
       });
 
       try {
-        const emailResult = await sendEmailWithRetries(mailOption, user._id);
-        const emailLog = new EmailLog({
+        // ✅ USE THE ENHANCED sendEmailWithRetries (it handles EmailLog automatically)
+        const emailResult = await sendEmailWithRetries(
+          mailOption,
+          user._id,
+          "daily_digest" // email type
+        );
+
+        // ✅ Record success activity
+        await recordActivity({
           userId: user._id,
-          email: user.email,
-          type: "daily_digest",
-          emailStatus: "sent",
-          emailAttempts: emailResult.attempts,
-          postSlugs,
-          sentAt: new Date(),
+          action: "EMAIL_SENT",
+          message: `Daily post email sent to ${user.email} after ${emailResult.attempts} attempt(s)`,
         });
-        await emailLog.save();
+
         results.push({
           email: user.email,
           success: true,
           attempts: emailResult.attempts,
+          logId: emailResult.logId,
         });
       } catch (error) {
-        const emailLog = new EmailLog({
+        // ✅ Enhanced error handling - EmailLog is already created by sendEmailWithRetries
+        console.error(
+          `Failed to send daily email to ${user.email}:`,
+          error.message
+        );
+
+        await recordActivity({
           userId: user._id,
-          email: user.email,
-          type: "daily_digest",
-          emailStatus: "failed",
-          emailAttempts: error.attempts || 3,
-          emailLastError: error.message,
-          postSlugs,
-          sentAt: new Date(),
+          action: "EMAIL_FAILED_ALL_ATTEMPTS",
+          message: `Daily post email failed for ${user.email}: ${error.message}`,
         });
-        await emailLog.save();
+
         results.push({
           email: user.email,
           success: false,
           error: error.message,
+          suppressed:
+            error.statusCode === 400 && error.message.includes("suppressed"),
         });
       }
     }
@@ -147,22 +141,33 @@ export const sendDailyPostEmail = async (req, res, next) => {
         email: admin.email,
         customTemplate: DAILY_POST_ADMIN_REPORT_TEMPLATE,
         customData: {
-          // ✅ pass the data the template needs
           totalUsers: results.length,
           successCount: results.filter((r) => r.success).length,
           failedCount: results.filter((r) => !r.success).length,
+          suppressedCount: results.filter((r) => r.suppressed).length,
           failedUsers: results.filter((r) => !r.success),
           postCount: posts.length,
+          date: new Date().toISOString().split("T")[0],
         },
       });
 
-      await sendEmailWithRetries(adminMailOption, admin._id);
+      try {
+        await sendEmailWithRetries(adminMailOption, admin._id, "report");
+      } catch (error) {
+        console.error("Failed to send admin report:", error.message);
+      }
     }
 
     res.status(200).json({
       message: "Daily post emails processed",
       results,
       postCount: posts.length,
+      summary: {
+        total: results.length,
+        successful: results.filter((r) => r.success).length,
+        failed: results.filter((r) => !r.success && !r.suppressed).length,
+        suppressed: results.filter((r) => r.suppressed).length,
+      },
     });
   } catch (error) {
     next(
@@ -179,10 +184,9 @@ export const sendDailyPostEmail = async (req, res, next) => {
 };
 
 // Retrieves daily post email report with pagination and optional date filter
-
 export const getDailyPostEmailReport = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, date } = req.query;
+    const { page = 1, limit = 10, date, status } = req.query;
 
     const query = { type: "daily_digest" };
 
@@ -194,33 +198,49 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       const endDate = new Date(istDate);
       endDate.setUTCHours(18 + 23, 30 + 59, 59, 999); // 23:59 IST
 
-      query.sentAt = { $gte: startDate, $lte: endDate };
+      query.createdAt = { $gte: startDate, $lte: endDate };
+    }
 
-      // console.log(
-      //   `[Report] Applying date filter: ${startDate.toISOString()} → ${endDate.toISOString()}`
-      // );
+    // ✅ Filter by email status if provided
+    if (status) {
+      query.emailStatus = status;
     }
 
     // Fetch paginated logs
     const logs = await EmailLog.find(query)
       .select(
-        "userId email type emailStatus emailAttempts emailLastError postSlugs sentAt"
+        "userId email emailStatus emailAttempts emailLastError bounceType bounceReason suppressedAt createdAt updatedAt"
       )
       .populate("userId", "name")
-      .sort({ sentAt: -1 })
+      .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit))
       .lean({ virtuals: true });
 
     const total = await EmailLog.countDocuments(query);
 
-    // console.log(`[Report] Email logs fetched: ${logs.length} / ${total} total`);
+    // ✅ Get summary stats
+    const stats = await EmailLog.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: "$emailStatus",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const summary = stats.reduce((acc, stat) => {
+      acc[stat._id] = stat.count;
+      return acc;
+    }, {});
 
     res.status(200).json({
       logs,
       total,
       currentPage: Number(page),
       totalPages: Math.ceil(total / limit),
+      summary,
     });
   } catch (error) {
     console.error("[Error] Failed to fetch email report:", error);
@@ -263,45 +283,5 @@ export const deleteAllNotifications = async (req, res, next) => {
   }
 };
 
-// Sends email with retry logic for reliability
-const sendEmailWithRetries = async (mailOption, userId, maxAttempts = 3) => {
-  let attempts = 0;
-  let lastError = null;
-
-  while (attempts < maxAttempts) {
-    try {
-      attempts++;
-      await transporter.sendMail(mailOption);
-      await recordActivity({
-        userId,
-        action: "EMAIL_SENT",
-        message: `Daily post email sent to ${mailOption.to} after ${attempts} attempt(s)`,
-      });
-      return { success: true, attempts };
-    } catch (error) {
-      lastError = error;
-      await recordActivity({
-        userId,
-        action: "EMAIL_FAILED",
-        message: `Daily post email failed for ${mailOption.to} on attempt ${attempts}: ${error.message}`,
-      });
-      if (attempts < maxAttempts) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, 1000 * attempts ** 2)
-        );
-      }
-    }
-  }
-
-  await recordActivity({
-    userId,
-    action: "EMAIL_FAILED_ALL_ATTEMPTS",
-    message: `All ${attempts} daily post email attempts failed for ${mailOption.to}: ${lastError.message}`,
-  });
-  throw new AppError(
-    `Failed to send email after ${attempts} attempts: ${lastError.message}`,
-    500,
-    "SendEmailWithRetries",
-    "All email attempts failed"
-  );
-};
+// ✅ REMOVE THE OLD sendEmailWithRetries FUNCTION COMPLETELY
+// The enhanced version should be imported from a separate file

@@ -1,84 +1,67 @@
 import mongoose from "mongoose";
 
-// Defines schema for tracking email sending attempts
-const EmailLogSchema = new mongoose.Schema(
-  {
-    // Optional user associated with the email
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: false,
-    },
-    // Recipient email address
-    email: {
-      type: String,
-      required: true,
-      lowercase: true,
-      trim: true,
-    },
-    // Type of email sent
-    type: {
-      type: String,
-      required: true,
-      enum: [
-        "signup",
-        "payout",
-        "subscription",
-        "contact_reply",
-        "report",
-        "daily_digest",
-      ],
-    },
-    // Current status of the email
-    emailStatus: {
-      type: String,
-      enum: ["not_sent", "sent", "failed", "pending", "skipped"], // Added "skipped"
-      default: "not_sent",
-    },
-    // Number of send attempts
-    emailAttempts: {
-      type: Number,
-      default: 0,
-    },
-    // Last error message if send failed
-    emailLastError: String,
-    // Flag to stop further send attempts
-    stopEmailAttempts: {
-      type: Boolean,
-      default: false,
-    },
-    // Slugs of posts included in daily digest
-    postSlugs: [
-      {
-        type: String,
-      },
-    ],
-    // Timestamp of successful send
-    sentAt: {
-      type: Date,
-      default: null,
-    },
-    // Creation and update timestamps
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
+const emailLogSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    required: true,
+    lowercase: true,
+    index: true,
   },
-  { timestamps: true } // Automatically updates createdAt and updatedAt
-);
+  type: {
+    type: String,
+    required: true,
+    enum: [
+      "signup",
+      "payout",
+      "subscription",
+      "contact_reply",
+      "report",
+      "daily_digest",
+    ],
+    index: true,
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    index: true,
+  },
+  emailStatus: {
+    type: String,
+    enum: ["pending", "sent", "failed", "bounced", "suppressed"],
+    default: "pending",
+    index: true,
+  },
+  emailAttempts: { type: Number, default: 0, min: 0 },
+  emailLastError: { type: String, maxlength: 1000 },
+  stopEmailAttempts: { type: Boolean, default: false, index: true },
 
-// Indexes for efficient querying
-EmailLogSchema.index({ email: 1, type: 1 }); // For email-type specific queries
-EmailLogSchema.index({ type: 1 }); // For type-based queries
-EmailLogSchema.index({ emailStatus: 1, stopEmailAttempts: 1 }); // For status-based queries
-EmailLogSchema.index({ sentAt: -1 }); // For sorting by send time
+  // ✅ NEW BOUNCE FIELDS
+  bounceType: {
+    type: String,
+    enum: ["hard", "soft", "spam", "reputation", null],
+    default: null,
+    index: true,
+  },
+  bounceReason: { type: String, maxlength: 100 },
+  bounceCode: { type: String, maxlength: 10 },
+  lastBounceAt: { type: Date, index: true },
+  bounceCount: { type: Number, default: 0, min: 0 },
+  suppressedAt: { type: Date },
 
-// Creates and exports the EmailLog model
-const EmailLogModel =
-  mongoose.models.EmailLog || mongoose.model("EmailLog", EmailLogSchema);
+  createdAt: { type: Date, default: Date.now, index: true },
+  updatedAt: { type: Date, default: Date.now },
+});
 
-export default EmailLogModel;
+// Compound indexes for performance
+emailLogSchema.index({ email: 1, type: 1, userId: 1 });
+emailLogSchema.index({ bounceType: 1, lastBounceAt: 1 });
+emailLogSchema.index({ emailStatus: 1, updatedAt: 1 });
+
+// Update timestamp on save
+emailLogSchema.pre("save", function (next) {
+  this.updatedAt = new Date();
+  next();
+});
+
+const EmailLog = mongoose.model("EmailLog", emailLogSchema);
+export default EmailLog;
