@@ -9,7 +9,7 @@ import { AppError } from "../../servers/Utils/AppError.js";
 import handlebars from "handlebars";
 import crypto from "crypto";
 import sanitizeHtml from "sanitize-html";
-import BounceLog from "../../servers/Models/BounceLog.js";
+import BounceLog from "../../servers/Models/BounceModel.js";
 
 // ✅ Simple, safe regexes
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
