@@ -39,6 +39,7 @@ export const AUTO_EMAIL_DATE = process.env.AUTO_EMAIL_DATE;
 export const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL;
 export const SESSION_SECRET = process.env.SESSION_SECRET;
 export const RESEND_API_KEY = process.env.RESEND_API_KEY;
+export const USE_DUMMY_EMAIL = process.env.USE_DUMMY_EMAIL;
 
 // Validate required environment variables
 const requiredEnv = ["MONGO_URI", "JWT_SECRET", "CLIENT_URL"];

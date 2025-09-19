@@ -201,14 +201,6 @@ const SearchInput = ({
 
         <button
           onClick={handleSearch}
-          Drug
-          Users:Alcohol
-          and
-          Other
-          Drugs
-          in
-          the
-          Workplace
           className="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white p-2.5 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
           aria-label="Search"
           type="button"
