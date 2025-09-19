@@ -1,4 +1,3 @@
-// EmailLog.js
 import mongoose from "mongoose";
 
 const emailLogSchema = new mongoose.Schema({
@@ -31,7 +30,7 @@ const emailLogSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     index: true,
-    sparse: true, // Allow null values but index non-null ones
+    sparse: true,
   },
   emailStatus: {
     type: String,
@@ -43,7 +42,7 @@ const emailLogSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0,
-    max: 10, // Prevent excessive attempts
+    max: 10,
   },
   emailLastError: {
     type: String,
@@ -55,8 +54,6 @@ const emailLogSchema = new mongoose.Schema({
     default: false,
     index: true,
   },
-
-  // Bounce handling fields
   bounceType: {
     type: String,
     enum: ["hard", "soft", "spam", "reputation", null],
@@ -65,7 +62,7 @@ const emailLogSchema = new mongoose.Schema({
   },
   bounceReason: {
     type: String,
-    maxlength: 200, // Increased for better error descriptions
+    maxlength: 200,
     trim: true,
   },
   bounceCode: {
@@ -81,14 +78,12 @@ const emailLogSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0,
-    max: 50, // Prevent excessive bounce counts
+    max: 50,
   },
   suppressedAt: {
     type: Date,
     index: true,
   },
-
-  // Additional tracking fields for production
   messageId: {
     type: String,
     trim: true,
@@ -103,14 +98,11 @@ const emailLogSchema = new mongoose.Schema({
       trim: true,
     },
   ],
-
-  // Metadata for analytics
   metadata: {
     type: Map,
     of: mongoose.Schema.Types.Mixed,
     default: new Map(),
   },
-
   createdAt: {
     type: Date,
     default: Date.now,
@@ -127,19 +119,14 @@ emailLogSchema.index({ email: 1, type: 1, userId: 1 }, { unique: false });
 emailLogSchema.index({ bounceType: 1, lastBounceAt: 1 });
 emailLogSchema.index({ emailStatus: 1, updatedAt: 1 });
 emailLogSchema.index({ type: 1, sentAt: 1 });
-emailLogSchema.index({ suppressedAt: 1 }, { sparse: true });
 
-// TTL index for cleanup (optional - remove old logs after 1 year)
-emailLogSchema.index(
-  { createdAt: 1 },
-  { expireAfterSeconds: 365 * 24 * 60 * 60 }
-);
+// Removed redundant indexes for suppressedAt and createdAt
+// emailLogSchema.index({ suppressedAt: 1 }, { sparse: true });
+// emailLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 365 * 24 * 60 * 60 });
 
 // Update timestamp on save
 emailLogSchema.pre("save", function (next) {
   this.updatedAt = new Date();
-
-  // Auto-set sentAt when status changes to sent
   if (
     this.isModified("emailStatus") &&
     this.emailStatus === "sent" &&
@@ -147,8 +134,6 @@ emailLogSchema.pre("save", function (next) {
   ) {
     this.sentAt = new Date();
   }
-
-  // Auto-set suppressedAt when bounce type is hard
   if (
     this.isModified("bounceType") &&
     this.bounceType === "hard" &&
@@ -157,7 +142,6 @@ emailLogSchema.pre("save", function (next) {
     this.suppressedAt = new Date();
     this.stopEmailAttempts = true;
   }
-
   next();
 });
 
