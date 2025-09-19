@@ -3,77 +3,390 @@ import UserModel from "../../servers/Models/User.js";
 import PostModel from "../../servers/Models/Post.js";
 import Notification from "../../servers/Models/Notification.js";
 import { AppError } from "../../servers/Utils/AppError.js";
-import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
+import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js"; 
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPostEmailReport.js";
 
 // Sends daily post email to verified users with published posts
 export const sendDailyPostEmail = async (req, res, next) => {
+  const startTime = Date.now();
+
   try {
-    console.log("📧 [DailyEmail] Starting simple daily post email...");
+    console.log("📧 [DailyEmail] Starting daily post email process");
 
-    // Find first verified user (for testing / simple send)
-    const user = await UserModel.findOne({
+    // Enhanced user query with better filtering
+    const users = await UserModel.find({
       isAccountVerified: true,
-      email: { $exists: true, $ne: "" },
-    }).lean();
+      stopEmailAttempts: { $ne: true },
+      email: { $exists: true, $ne: null, $ne: "" },
+      // Additional filters for better targeting
+      lastActiveAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, // Active in last 30 days
+    })
+      .select("_id name email lastActiveAt")
+      .lean({ virtuals: true });
 
-    if (!user) {
-      return res.status(404).json({ message: "No eligible user found" });
+    console.log(`📊 [DailyEmail] Found ${users.length} eligible users`);
+
+    if (users.length === 0) {
+      return res.status(200).json({
+        message: "No eligible users found for daily email",
+        results: [],
+        postCount: 0,
+        processTime: Date.now() - startTime,
+      });
     }
 
-    // Get some recent posts
-    const posts = await PostModel.find({ isPublished: true })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select("title slug thumbnail author createdAt")
-      .populate("author", "name")
-      .lean();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
+    // Enhanced post fetching with better error handling
+    let posts = await PostModel.find({
+      createdAt: { $gte: todayStart },
+      isPublished: true,
+      // Additional quality filters
+      title: { $exists: true, $ne: "" },
+      content: { $exists: true },
+    })
+      .select(
+        "title slug thumbnail author readTime likesCount commentsCount createdAt"
+      )
+      .populate("author", "name avatar")
+      .sort({ likesCount: -1, commentsCount: -1 }) // Prioritize popular posts
+      .limit(15) // Get more to have fallback options
+      .lean({ virtuals: true });
+
+    console.log(`📰 [DailyEmail] Found ${posts.length} posts from today`);
+
+    // Enhanced multi-tier fallback strategy for old posts
+    if (posts.length < 10) {
+      const needed = 10 - posts.length;
+      console.log(
+        `🔄 [DailyEmail] Need ${needed} more posts, searching for older posts...`
+      );
+
+      // Tier 1: Last 7 days with engagement
+      let fallbackPosts = [];
+      if (fallbackPosts.length < needed) {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+        const recentPosts = await PostModel.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: sevenDaysAgo, $lt: todayStart },
+              isPublished: true,
+              likesCount: { $gte: 1 }, // Posts with engagement
+              title: { $exists: true, $ne: "" },
+            },
+          },
+          { $sample: { size: needed } },
+          {
+            $project: {
+              title: 1,
+              slug: 1,
+              thumbnail: 1,
+              author: 1,
+              readTime: 1,
+              likesCount: 1,
+              commentsCount: 1,
+              createdAt: 1,
+            },
+          },
+        ]);
+
+        fallbackPosts = [...fallbackPosts, ...recentPosts];
+        console.log(
+          `📰 [DailyEmail] Found ${recentPosts.length} posts from last 7 days`
+        );
+      }
+
+      // Tier 2: Last 30 days (any published post)
+      if (fallbackPosts.length < needed) {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const stillNeeded = needed - fallbackPosts.length;
+
+        const olderPosts = await PostModel.aggregate([
+          {
+            $match: {
+              createdAt: {
+                $gte: thirtyDaysAgo,
+                $lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+              },
+              isPublished: true,
+              title: { $exists: true, $ne: "" },
+            },
+          },
+          { $sample: { size: stillNeeded } },
+          {
+            $project: {
+              title: 1,
+              slug: 1,
+              thumbnail: 1,
+              author: 1,
+              readTime: 1,
+              likesCount: 1,
+              commentsCount: 1,
+              createdAt: 1,
+            },
+          },
+        ]);
+
+        fallbackPosts = [...fallbackPosts, ...olderPosts];
+        console.log(
+          `📰 [DailyEmail] Found ${olderPosts.length} posts from last 30 days`
+        );
+      }
+
+      // Tier 3: Any time (best posts ever)
+      if (fallbackPosts.length < needed) {
+        const stillNeeded = needed - fallbackPosts.length;
+
+        const bestPosts = await PostModel.aggregate([
+          {
+            $match: {
+              createdAt: {
+                $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+              },
+              isPublished: true,
+              title: { $exists: true, $ne: "" },
+            },
+          },
+          { $sort: { likesCount: -1, commentsCount: -1 } }, // Best posts first
+          { $limit: stillNeeded * 3 }, // Get more to sample from
+          { $sample: { size: stillNeeded } },
+          {
+            $project: {
+              title: 1,
+              slug: 1,
+              thumbnail: 1,
+              author: 1,
+              readTime: 1,
+              likesCount: 1,
+              commentsCount: 1,
+              createdAt: 1,
+            },
+          },
+        ]);
+
+        fallbackPosts = [...fallbackPosts, ...bestPosts];
+        console.log(
+          `📰 [DailyEmail] Found ${bestPosts.length} best posts from all time`
+        );
+      }
+
+      // Populate author info for all fallback posts
+      if (fallbackPosts.length > 0) {
+        const populatedFallback = await PostModel.populate(fallbackPosts, {
+          path: "author",
+          select: "name avatar",
+        });
+
+        posts = [...posts, ...populatedFallback];
+        console.log(
+          `✅ [DailyEmail] Added ${populatedFallback.length} fallback posts (total: ${posts.length})`
+        );
+      }
+    }
+
+    // Final check for posts
     if (posts.length === 0) {
-      return res.status(200).json({ message: "No posts found to send" });
+      console.warn("⚠️ [DailyEmail] No posts available. Skipping email send.");
+      return res.status(200).json({
+        message: "No posts available to send. Skipped daily email.",
+        results: [],
+        postCount: 0,
+        processTime: Date.now() - startTime,
+      });
     }
 
-    // Build mail using helper
-    const mailOption = createMailOption({
-      to: user.email,
-      subject: `Your Inkshaa Daily Digest - ${posts.length} Posts`,
-      name: user.name || "Reader",
-      posts,
-      templateType: "DEFAULT",
-      templateData: {
-        buttonText: "Read More Posts",
-        buttonUrl: "https://inksha-uedq.onrender.com/explore",
-      },
-    });
+    // Sort posts by engagement for better email content
+    posts = posts
+      .sort(
+        (a, b) =>
+          b.likesCount + b.commentsCount - (a.likesCount + a.commentsCount)
+      )
+      .slice(0, 10); // Limit to top 10 posts
 
-    // Debug preview
+    const postSlugs = posts.map((post) => post.slug);
+    const results = [];
+
+    // Process users in batches to avoid overwhelming the email service
+    const batchSize = 50;
+    const userBatches = [];
+    for (let i = 0; i < users.length; i += batchSize) {
+      userBatches.push(users.slice(i, i + batchSize));
+    }
+
     console.log(
-      "📨 [DailyEmail] MailOption:",
-      JSON.stringify(mailOption, null, 2)
+      `🔄 [DailyEmail] Processing ${userBatches.length} batches of users`
     );
 
-    // Send email (with retry)
-    await sendEmailWithRetries(mailOption, user._id, "daily_digest", 2);
+    for (let batchIndex = 0; batchIndex < userBatches.length; batchIndex++) {
+      const batch = userBatches[batchIndex];
+      console.log(
+        `📦 [DailyEmail] Processing batch ${batchIndex + 1}/${
+          userBatches.length
+        } (${batch.length} users)`
+      );
 
-    console.log(`✅ [DailyEmail] Email sent to ${user.email}`);
+      const batchPromises = batch.map(async (user) => {
+        try {
+          // Generate dynamic subject line
+          const popularPost = posts[0];
+          const subject = popularPost
+            ? `${popularPost.title.substring(0, 50)}${
+                popularPost.title.length > 50 ? "..." : ""
+              } | inkshaa Daily Digest`
+            : `Your inkshaa Daily Brief – ${posts.length} Fresh Posts for You`;
+
+          const mailOption = createMailOption({
+            to: user.email,
+            subject: subject,
+            name: user.name || "Reader",
+            email: user.email,
+            hasButton: true,
+            buttonText: "Read Today's Posts",
+            buttonUrl: "https://inksha-uedq.onrender.com/explore",
+            posts,
+          });
+
+          // Use the enhanced sendEmailWithRetries function
+          await sendEmailWithRetries(mailOption, user._id, "daily_digest", 3);
+
+          // Log success
+          await recordActivity({
+            userId: user._id,
+            action: "DAILY_EMAIL_SENT",
+            message: `Daily digest sent successfully to ${user.email}`,
+            metadata: { postCount: posts.length },
+          });
+
+          return {
+            email: user.email,
+            success: true,
+            userId: user._id,
+          };
+        } catch (error) {
+          console.error(
+            `❌ [DailyEmail] Failed for ${user.email}:`,
+            error.message
+          );
+
+          // Log failure
+          await recordActivity({
+            userId: user._id,
+            action: "DAILY_EMAIL_FAILED",
+            message: `Daily digest failed for ${user.email}: ${error.message}`,
+            metadata: { postCount: posts.length, error: error.message },
+          });
+
+          return {
+            email: user.email,
+            success: false,
+            error: error.message,
+            userId: user._id,
+          };
+        }
+      });
+
+      const batchResults = await Promise.allSettled(batchPromises);
+
+      // Process batch results
+      batchResults.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          results.push(result.value);
+        } else {
+          const user = batch[index];
+          results.push({
+            email: user.email,
+            success: false,
+            error: result.reason?.message || "Unknown error",
+            userId: user._id,
+          });
+        }
+      });
+
+      // Add delay between batches to avoid rate limiting
+      if (batchIndex < userBatches.length - 1) {
+        console.log("⏳ [DailyEmail] Waiting between batches...");
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+    const failedCount = results.filter((r) => !r.success).length;
+
+    console.log(
+      `✅ [DailyEmail] Completed: ${successCount} success, ${failedCount} failed`
+    );
+
+    // Enhanced admin report
+    const admin = await UserModel.findOne({ role: "admin" }).lean();
+    if (admin) {
+      try {
+        const failedUsers = results.filter((r) => !r.success).slice(0, 10); // Limit to first 10 failures
+
+        const adminMailOption = createMailOption({
+          to: admin.email,
+          subject: `Daily Email Report - ${successCount}/${results.length} Sent Successfully`,
+          name: admin.name || "Admin",
+          email: admin.email,
+          customTemplate: DAILY_POST_ADMIN_REPORT_TEMPLATE,
+          customData: {
+            totalUsers: results.length,
+            successCount,
+            failedCount,
+            failedUsers,
+            postCount: posts.length,
+            processTime: Math.round((Date.now() - startTime) / 1000),
+            topPosts: posts.slice(0, 3).map((p) => ({
+              title: p.title,
+              author: p.author?.name || "Unknown",
+              likes: p.likesCount || 0,
+              comments: p.commentsCount || 0,
+            })),
+          },
+        });
+
+        await sendEmailWithRetries(adminMailOption, admin._id, "report", 3);
+        console.log("📊 [DailyEmail] Admin report sent successfully");
+      } catch (adminError) {
+        console.error(
+          "❌ [DailyEmail] Failed to send admin report:",
+          adminError.message
+        );
+      }
+    }
+
+    const processingTime = Date.now() - startTime;
 
     res.status(200).json({
-      message: "Daily post email sent successfully",
-      to: user.email,
+      message: "Daily post emails processed successfully",
+      results: {
+        total: results.length,
+        successful: successCount,
+        failed: failedCount,
+        failureRate: ((failedCount / results.length) * 100).toFixed(2) + "%",
+      },
       postCount: posts.length,
+      processTime: processingTime,
+      performance: {
+        avgTimePerEmail: Math.round(processingTime / results.length),
+        totalBatches: userBatches.length,
+        batchSize,
+      },
     });
   } catch (error) {
-    console.error("❌ [DailyEmail] Failed:", error);
+    console.error("💥 [DailyEmail] Critical error:", error);
 
     next(
       error instanceof AppError
         ? error
         : new AppError(
-            error.message || "Daily email send failed",
+            error.message || "Failed to process daily post emails",
             500,
-            "SendDailyPostEmail"
+            "SendDailyPostEmail",
+            "Critical error in sendDailyPostEmail"
           )
     );
   }
