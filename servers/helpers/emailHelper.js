@@ -7,7 +7,6 @@ import {
 import { CLIENT_URL, SMTP_USER } from "../../servers/config/dotenv.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import handlebars from "handlebars";
-import crypto from "crypto";
 import sanitizeHtml from "sanitize-html";
 import BounceLog from "../../servers/Models/BounceModel.js";
 
@@ -63,7 +62,7 @@ export default function createMailOption({
     ...templateData,
   };
 
-  const html = compiledTemplate(placeholders);
+  const html = `<html><body>${compiledTemplate(placeholders)}</body></html>`;
 
   // Cleaner text fallback
   const text = html
@@ -77,16 +76,16 @@ export default function createMailOption({
     subject: placeholders.subject,
     text,
     html,
-    messageId: `<${crypto.randomBytes(16).toString("hex")}@inkshaa.com>`,
+    // let Nodemailer auto-generate messageId
     headers: {
       "X-Inkshaa-Mailer": "Inkshaa-Mail-Service",
-      "List-Unsubscribe": `<${placeholders.unsubscribeUrl}>`,
+      // List-Unsubscribe can be added if using a proper email service
+      // "List-Unsubscribe": `<${placeholders.unsubscribeUrl}>`,
     },
   };
 }
 
 // ✅ Bounce handling helpers
-
 export async function logBounce(email, reason, messageId) {
   try {
     const log = new BounceLog({
