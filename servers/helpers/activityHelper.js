@@ -103,7 +103,8 @@ export const VALID_ACTIONS = new Set([
   "RESET_USER_MILESTONES",
   "OVERRIDDEN_USER_MILESTONES",
   "VIEWED_ACTIVITY",
-  "ECONNABORTED"
+  "ECONNABORTED",
+  "DAILY_EMAIL_FAILED"
 ]);
 
 // Records user activity with validation

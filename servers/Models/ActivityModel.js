@@ -137,6 +137,7 @@ const activitySchema = new mongoose.Schema(
         "TIMEOUT",
         "POSITION_UNAVAILABLE",
         "ECONNABORTED",
+        "DAILY_EMAIL_FAILED",
 
         // NOTIFICATIONS
         "CREATED_NOTIFICATION",
