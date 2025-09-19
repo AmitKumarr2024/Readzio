@@ -9,8 +9,6 @@ const __dirname = path.dirname(__filename);
 // Load .env from the project root (one level up from /servers)
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
-
-
 export const PORT = process.env.PORT || 10000;
 export const MONGO_URI = process.env.MONGO_URI;
 export const JWT_SECRET = process.env.JWT_SECRET || "default-secret";
@@ -40,6 +38,7 @@ export const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
 export const AUTO_EMAIL_DATE = process.env.AUTO_EMAIL_DATE;
 export const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL;
 export const SESSION_SECRET = process.env.SESSION_SECRET;
+export const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
 // Validate required environment variables
 const requiredEnv = ["MONGO_URI", "JWT_SECRET", "CLIENT_URL"];
