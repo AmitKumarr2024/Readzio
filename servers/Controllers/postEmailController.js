@@ -8,15 +8,7 @@ import createMailOption from "../../servers/helpers/emailHelper.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPostEmailReport.js";
 
-// servers/controllers/dailyEmailController.js
-import EmailLog from "../../servers/Models/EmailLog.js";
-import UserModel from "../../servers/Models/User.js";
-import PostModel from "../../servers/Models/Post.js";
-import { AppError } from "../../servers/Utils/AppError.js";
-import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
-import createMailOption from "../../servers/helpers/emailHelper.js";
-import { recordActivity } from "../../servers/helpers/activityHelper.js";
-import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPostEmailReport.js";
+
 
 export const sendDailyPostEmail = async (req, res, next) => {
   const startTime = Date.now();
