@@ -1,3 +1,4 @@
+// servers/Models/EmailLog.js
 import mongoose from "mongoose";
 
 const emailLogSchema = new mongoose.Schema({
@@ -5,11 +6,9 @@ const emailLogSchema = new mongoose.Schema({
     type: String,
     required: true,
     lowercase: true,
-    index: true,
+    index: true, // keep inline index
     validate: {
-      validator: function (v) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-      },
+      validator: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
       message: "Invalid email format",
     },
   },
@@ -30,7 +29,7 @@ const emailLogSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     index: true,
-    sparse: true, // Allow null values but index non-null ones
+    sparse: true, // allow null but index non-null
   },
   emailStatus: {
     type: String,
@@ -38,107 +37,51 @@ const emailLogSchema = new mongoose.Schema({
     default: "pending",
     index: true,
   },
-  emailAttempts: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 10, // Prevent excessive attempts
-  },
-  emailLastError: {
-    type: String,
-    maxlength: 1000,
-    trim: true,
-  },
-  stopEmailAttempts: {
-    type: Boolean,
-    default: false,
-    index: true,
-  },
+  emailAttempts: { type: Number, default: 0, min: 0, max: 10 },
+  emailLastError: { type: String, maxlength: 1000, trim: true },
+  stopEmailAttempts: { type: Boolean, default: false, index: true },
 
-  // Bounce handling fields
   bounceType: {
     type: String,
     enum: ["hard", "soft", "spam", "reputation", null],
     default: null,
     index: true,
   },
-  bounceReason: {
-    type: String,
-    maxlength: 200, // Increased for better error descriptions
-    trim: true,
-  },
-  bounceCode: {
-    type: String,
-    maxlength: 10,
-    trim: true,
-  },
-  lastBounceAt: {
-    type: Date,
-    index: true,
-  },
-  bounceCount: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 50, // Prevent excessive bounce counts
-  },
-  suppressedAt: {
-    type: Date,
-    index: true,
-  },
+  bounceReason: { type: String, maxlength: 200, trim: true },
+  bounceCode: { type: String, maxlength: 10, trim: true },
+  lastBounceAt: { type: Date, index: true },
+  bounceCount: { type: Number, default: 0, min: 0, max: 50 },
+  suppressedAt: { type: Date }, // ✅ remove inline index
 
-  // Additional tracking fields for production
-  messageId: {
-    type: String,
-    trim: true,
-  },
-  sentAt: {
-    type: Date,
-    index: true,
-  },
-  postSlugs: [
-    {
-      type: String,
-      trim: true,
-    },
-  ],
+  messageId: { type: String, trim: true },
+  sentAt: { type: Date, index: true },
+  postSlugs: [{ type: String, trim: true }],
 
-  // Metadata for analytics
-  metadata: {
-    type: Map,
-    of: mongoose.Schema.Types.Mixed,
-    default: new Map(),
-  },
+  metadata: { type: Map, of: mongoose.Schema.Types.Mixed, default: new Map() },
 
-  createdAt: {
-    type: Date,
-    default: Date.now,
-    index: true,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
+  createdAt: { type: Date, default: Date.now, index: true },
+  updatedAt: { type: Date, default: Date.now },
 });
 
-// Compound indexes for optimal query performance
-emailLogSchema.index({ email: 1, type: 1, userId: 1 }, { unique: false });
+// Compound indexes
+emailLogSchema.index({ email: 1, type: 1, userId: 1 });
 emailLogSchema.index({ bounceType: 1, lastBounceAt: 1 });
 emailLogSchema.index({ emailStatus: 1, updatedAt: 1 });
 emailLogSchema.index({ type: 1, sentAt: 1 });
+
+// Sparse index for suppressedAt (keep only here)
 emailLogSchema.index({ suppressedAt: 1 }, { sparse: true });
 
-// TTL index for cleanup (optional - remove old logs after 1 year)
+// TTL cleanup: remove after 1 year
 emailLogSchema.index(
   { createdAt: 1 },
   { expireAfterSeconds: 365 * 24 * 60 * 60 }
 );
 
-// Update timestamp on save
+// Pre-save: update timestamps and handle status changes
 emailLogSchema.pre("save", function (next) {
   this.updatedAt = new Date();
 
-  // Auto-set sentAt when status changes to sent
   if (
     this.isModified("emailStatus") &&
     this.emailStatus === "sent" &&
@@ -147,7 +90,6 @@ emailLogSchema.pre("save", function (next) {
     this.sentAt = new Date();
   }
 
-  // Auto-set suppressedAt when bounce type is hard
   if (
     this.isModified("bounceType") &&
     this.bounceType === "hard" &&
@@ -160,17 +102,16 @@ emailLogSchema.pre("save", function (next) {
   next();
 });
 
-// Update timestamp on findOneAndUpdate
 emailLogSchema.pre(["findOneAndUpdate", "updateOne"], function () {
   this.set({ updatedAt: new Date() });
 });
 
-// Virtual for age calculation
+// Virtual for age in hours
 emailLogSchema.virtual("ageInHours").get(function () {
   return Math.floor((Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60));
 });
 
-// Static methods for common queries
+// Static helpers
 emailLogSchema.statics.findSuppressed = function () {
   return this.find({
     $or: [
@@ -183,10 +124,7 @@ emailLogSchema.statics.findSuppressed = function () {
 
 emailLogSchema.statics.findRecentSoftBounces = function (hours = 1) {
   const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
-  return this.find({
-    bounceType: "soft",
-    lastBounceAt: { $gte: cutoff },
-  });
+  return this.find({ bounceType: "soft", lastBounceAt: { $gte: cutoff } });
 };
 
 emailLogSchema.statics.getEmailStats = function (email) {
@@ -205,7 +143,7 @@ emailLogSchema.statics.getEmailStats = function (email) {
   ]);
 };
 
-// Instance methods
+// Instance helpers
 emailLogSchema.methods.isSuppressed = function () {
   return (
     this.bounceType === "hard" ||
@@ -220,7 +158,7 @@ emailLogSchema.methods.hasRecentSoftBounce = function (hours = 1) {
   return this.lastBounceAt >= cutoff;
 };
 
-// Error handling for validation
+// Handle duplicate key errors
 emailLogSchema.post("save", function (error, doc, next) {
   if (error.name === "MongoServerError" && error.code === 11000) {
     next(new Error("Duplicate email log entry"));
