@@ -8,265 +8,57 @@ import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPostEmailReport.js";
+import { SMTP_USER } from "../config/dotenv.js";
 
 /**
  * Sends daily digest emails to eligible users in batches.
  * Uses createMailOption(...) to build mail options (which sets the correct 'from').
  */
-export const sendDailyPostEmail = async (req, res, next) => {
-  const startTime = Date.now();
-
+export const sendDailyPostEmail = async (req, res) => {
   try {
-    console.log("📧 [DailyEmail] Starting daily post email process");
+    console.log("📧 Sending daily email...");
 
-    // fetch eligible users
-    const users =
-      (await UserModel.find({
-        isAccountVerified: true,
-        blocked: { $ne: true },
-        stopEmailAttempts: { $ne: true },
-        email: { $exists: true, $ne: "" },
-      })
-        .select("_id name email")
-        .lean()) || [];
+    // Get one verified user (for testing)
+    const user = await UserModel.findOne({
+      isAccountVerified: true,
+      email: { $exists: true, $ne: "" },
+    }).lean();
 
-    console.log(`📊 [DailyEmail] Found ${users.length} eligible users`);
-
-    if (!users.length) {
-      return res.status(200).json({
-        message: "No eligible users found for daily email",
-        results: [],
-        postCount: 0,
-        processTime: Date.now() - startTime,
-      });
+    if (!user) {
+      return res.status(404).json({ message: "No user found with email" });
     }
 
-    // today's posts
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Get one post (for testing)
+    const post = await PostModel.findOne({ isPublished: true }).lean();
 
-    let posts =
-      (await PostModel.find({
-        isPublished: true,
-        createdAt: { $gte: todayStart },
-        title: { $exists: true, $ne: "" },
-      })
-        .select(
-          "title slug thumbnail author readTime likesCount commentsCount createdAt"
-        )
-        .populate("author", "name avatar")
-        .sort({ likesCount: -1, commentsCount: -1 })
-        .limit(15)
-        .lean()) || [];
+    const mailOptions = {
+      from: SMTP_USER, // your sender email
+      to: user.email,
+      subject: "Inksha Daily Digest (Test)",
+      html: `
+        <h2>Hello ${user.name || "Reader"},</h2>
+        <p>Here’s a test daily email from Inksha.</p>
+        ${
+          post
+            ? `<p>Featured post: <b>${post.title}</b></p>`
+            : `<p>No posts available today.</p>`
+        }
+        <a href="https://inksha-uedq.onrender.com/explore" 
+           style="display:inline-block;margin-top:10px;padding:8px 12px;background:#007bff;color:#fff;text-decoration:none;border-radius:4px;">
+           Read Posts
+        </a>
+      `,
+    };
 
-    console.log(`📰 [DailyEmail] Found ${posts.length} posts from today`);
+    await transporter.sendMail(mailOptions);
 
-    // fallback up-to-30-days if not enough posts
-    if (posts.length < 10) {
-      const needed = 10 - posts.length;
-      console.log(
-        `🔄 [DailyEmail] Need ${needed} more posts, searching older posts...`
-      );
-
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const recentPosts =
-        (await PostModel.find({
-          isPublished: true,
-          createdAt: { $gte: thirtyDaysAgo, $lt: todayStart },
-          title: { $exists: true, $ne: "" },
-        })
-          .sort({ likesCount: -1, commentsCount: -1 })
-          .limit(needed)
-          .populate("author", "name avatar")
-          .lean()) || [];
-
-      posts = posts.concat(recentPosts);
-      console.log(
-        `📰 [DailyEmail] Added ${recentPosts.length} posts from last 30 days`
-      );
-    }
-
-    if (!posts.length) {
-      console.warn("⚠️ [DailyEmail] No posts available. Skipping email send.");
-      return res.status(200).json({ message: "No posts available to send." });
-    }
-
-    // rank and limit to top 10
-    posts = posts
-      .sort(
-        (a, b) =>
-          (b.likesCount || 0) +
-          (b.commentsCount || 0) -
-          ((a.likesCount || 0) + (a.commentsCount || 0))
-      )
-      .slice(0, 10);
-
-    const results = [];
-    const batchSize = 50;
-    const batches = [];
-
-    for (let i = 0; i < users.length; i += batchSize) {
-      batches.push(users.slice(i, i + batchSize));
-    }
-
-    console.log(
-      `🔄 [DailyEmail] Processing ${batches.length} batches of users`
-    );
-
-    // process batches sequentially (so we can add delays/rate-limit easily)
-    for (let bi = 0; bi < batches.length; bi++) {
-      const batch = batches[bi];
-      console.log(
-        `📦 [DailyEmail] Processing batch ${bi + 1}/${batches.length} (${
-          batch.length
-        } users)`
-      );
-
-      // use Promise.allSettled so one failure doesn't reject the whole batch
-      const settled = await Promise.allSettled(
-        batch.map(async (user) => {
-          try {
-            const subject = posts[0]?.title
-              ? `${posts[0].title.substring(0, 50)}${
-                  posts[0].title.length > 50 ? "..." : ""
-                } | Inksha Daily Digest`
-              : "Inksha Daily Digest – Fresh Posts for You";
-
-            // IMPORTANT: do NOT override 'from' here — let createMailOption use SENDER_EMAIL
-            const mailOption = createMailOption({
-              to: user.email,
-              subject,
-              name: user.name || "Reader",
-              email: user.email,
-              hasButton: true,
-              buttonText: "Read Today's Posts",
-              buttonUrl: "https://inksha-uedq.onrender.com/explore",
-              posts,
-            });
-
-            // send with retries (sendEmailWithRetries logs SMTP errors)
-            await sendEmailWithRetries(mailOption, user._id, "daily_digest", 3);
-
-            // record activity for successful send
-            await recordActivity({
-              userId: user._id,
-              action: "DAILY_EMAIL_SENT",
-              message: `Daily digest sent successfully to ${user.email}`,
-              metadata: { postCount: posts.length },
-            });
-
-            return { email: user.email, success: true };
-          } catch (err) {
-            // log full error object for debugging
-            console.error(`❌ [DailyEmail] Failed for ${user.email}:`, {
-              message: err?.message,
-              stack: err?.stack,
-              name: err?.name,
-              // include additional properties if present
-              ...(err && typeof err === "object"
-                ? Object.keys(err).reduce((acc, k) => {
-                    acc[k] = err[k];
-                    return acc;
-                  }, {})
-                : {}),
-            });
-
-            // record failure activity
-            try {
-              await recordActivity({
-                userId: user._id,
-                action: "DAILY_EMAIL_FAILED",
-                message: `Daily digest failed for ${user.email}: ${
-                  err?.message || "unknown error"
-                }`,
-                metadata: { error: err?.message || JSON.stringify(err || {}) },
-              });
-            } catch (recordErr) {
-              console.error(
-                "⚠️ Failed to recordActivity for failed email:",
-                recordErr
-              );
-            }
-
-            return {
-              email: user.email,
-              success: false,
-              error: err?.message || String(err),
-            };
-          }
-        })
-      );
-
-      // collect results from this batch
-      settled.forEach((r) => {
-        if (r.status === "fulfilled") results.push(r.value);
-        else results.push({ success: false, error: r.reason });
-      });
-
-      // small delay between batches to reduce rate-limit risk
-      if (bi < batches.length - 1) {
-        console.log("⏳ [DailyEmail] Waiting 2s before next batch...");
-        await new Promise((r) => setTimeout(r, 2000));
-      }
-    }
-
-    const successCount = results.filter((r) => r.success).length;
-    const failedCount = results.length - successCount;
-
-    console.log(
-      `✅ [DailyEmail] Completed: ${successCount} success, ${failedCount} failed`
-    );
-
-    // Send admin report (use createMailOption — it will use SENDER_EMAIL as from)
-    try {
-      const adminUser = await UserModel.findOne({ role: "admin" }).lean();
-      const adminEmail = adminUser?.email || "inksha.official@gmail.com";
-
-      const adminMailOption = createMailOption({
-        to: adminEmail,
-        subject: `Daily Email Report - ${successCount}/${results.length} Sent`,
-        name: adminUser?.name || "Admin",
-        email: adminEmail,
-        customTemplate: DAILY_POST_ADMIN_REPORT_TEMPLATE,
-        customData: {
-          totalUsers: users.length,
-          successCount,
-          failedCount,
-          failedUsers: results.filter((r) => !r.success).slice(0, 10),
-          postCount: posts.length,
-          processTimeSeconds: Math.round((Date.now() - startTime) / 1000),
-        },
-      });
-
-      await sendEmailWithRetries(
-        adminMailOption,
-        adminUser?._id || null,
-        "report",
-        2
-      );
-      console.log("📊 [DailyEmail] Admin report sent successfully");
-    } catch (e) {
-      console.error("❌ [DailyEmail] Failed to send admin report:", e);
-    }
-
-    // reply
-    return res.status(200).json({
-      message: "Daily emails processed",
-      summary: { successCount, failedCount, total: results.length },
-      postCount: posts.length,
-      processTimeMs: Date.now() - startTime,
-    });
+    console.log("✅ Email sent successfully!");
+    res.status(200).json({ message: "Email sent successfully" });
   } catch (error) {
-    console.error("💥 [DailyEmail] Critical error:", error);
-    return next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error?.message || "Failed to send daily emails",
-            500,
-            "SendDailyPostEmail"
-          )
-    );
+    console.error("❌ Email sending failed:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to send email", error: error.message });
   }
 };
 
