@@ -1,46 +1,66 @@
-// sendEmailWithRetries.js
-import mongoose from "mongoose";
+// servers/helpers/sendEmailWithRetries.js
 import transporter from "../../servers/config/nodeMailer.js";
 import EmailLog from "../../servers/Models/EmailLog.js";
-import { AppError } from "../../servers/Utils/AppError.js";
-import {
-  classifyBounce,
-  extractSmtpCode,
-} from "../../servers/Utils/bounceClassifier.js";
 
-// Defines valid email types for sending emails
-const VALID_EMAIL_TYPES = [
-  "signup",
-  "payout",
-  "subscription",
-  "contact_reply",
-  "report",
-  "daily_digest",
-];
-
-// Sends an email with retry logic and logs the attempt
-export const sendEmailWithRetries = async (mailOptions, maxAttempts = 3) => {
-  let attempts = 0;
+export async function sendEmailWithRetries(
+  mailOptions,
+  userId,
+  type = "general",
+  maxAttempts = 3
+) {
   let lastError = null;
 
-  while (attempts < maxAttempts) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      attempts++;
-      console.log(`📤 Sending email (attempt ${attempts})...`);
-      const result = await transporter.sendMail(mailOptions);
-      console.log("✅ Email sent:", result.messageId);
-      return result;
+      console.log(
+        `📨 [Email] Attempt ${attempt}/${maxAttempts} → ${mailOptions.to}`
+      );
+
+      const info = await transporter.sendMail(mailOptions);
+
+      // ✅ Log success
+      await EmailLog.create({
+        userId,
+        email: mailOptions.to,
+        type,
+        emailStatus: "sent",
+        emailAttempts: attempt,
+        messageId: info.messageId,
+        sentAt: new Date(),
+      });
+
+      console.log(
+        `✅ [Email] Sent to ${mailOptions.to} (msgId: ${info.messageId})`
+      );
+      return info;
     } catch (err) {
       lastError = err;
-      console.error(`❌ Attempt ${attempts} failed:`, err.message);
 
-      if (attempts < maxAttempts) {
-        await new Promise((r) => setTimeout(r, 2000)); // wait 2s before retry
-      }
+      console.error(
+        `❌ [Email] Attempt ${attempt} failed:`,
+        err.message || err
+      );
+
+      // ✅ Log failure attempt
+      await EmailLog.create({
+        userId,
+        email: mailOptions.to,
+        type,
+        emailStatus: "failed",
+        emailAttempts: attempt,
+        emailLastError: err.message || JSON.stringify(err),
+        createdAt: new Date(),
+      });
+
+      // Small delay before retry (exponential backoff could be added)
+      await new Promise((res) => setTimeout(res, 1000 * attempt));
     }
   }
 
+  // ❌ If all attempts fail, throw detailed error
   throw new Error(
-    `Failed to send email after ${maxAttempts} attempts: ${lastError?.message}`
+    `Failed to send email after ${maxAttempts} attempts to ${mailOptions.to}: ${
+      lastError?.message || "Unknown error"
+    }`
   );
-};
+}

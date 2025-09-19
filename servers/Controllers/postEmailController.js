@@ -41,12 +41,18 @@ export const sendDailyPostEmail = async (req, res, next) => {
       subject: `Your Inkshaa Daily Digest - ${posts.length} Posts`,
       name: user.name || "Reader",
       posts,
-      templateType: "DEFAULT", // uses EMAIL_TEMPLATE
+      templateType: "DEFAULT",
       templateData: {
         buttonText: "Read More Posts",
         buttonUrl: "https://inksha-uedq.onrender.com/explore",
       },
     });
+
+    // Debug preview
+    console.log(
+      "📨 [DailyEmail] MailOption:",
+      JSON.stringify(mailOption, null, 2)
+    );
 
     // Send email (with retry)
     await sendEmailWithRetries(mailOption, user._id, "daily_digest", 2);
