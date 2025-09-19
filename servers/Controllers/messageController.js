@@ -1,3 +1,4 @@
+// messageController.js
 import { CLIENT_URL, SENDER_EMAIL } from "../config/dotenv.js";
 
 import { AppError } from "../../servers/Utils/AppError.js";
@@ -269,6 +270,7 @@ export const sendReportNotification = async (req, res, next) => {
       buttonUrl: `${CLIENT_URL}/acknowledge/${reportId}`,
     });
 
+    console.log("Sending report notification:", { mailOption, type: "report" });
     await sendEmailWithRetries(mailOption, null, "report");
 
     res
@@ -351,6 +353,10 @@ export const replyContactMessage = async (req, res, next) => {
       hasButton: false,
     });
 
+    console.log("Sending contact reply:", {
+      mailOption,
+      type: "contact_reply",
+    });
     await sendEmailWithRetries(mailOption, null, "contact_reply");
 
     // Marks message as handled

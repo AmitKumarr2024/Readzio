@@ -1,3 +1,4 @@
+// sendEmailWithRetries.js
 import mongoose from "mongoose";
 import transporter from "../../servers/config/nodeMailer.js";
 import EmailLog from "../../servers/Models/EmailLog.js";
@@ -170,6 +171,11 @@ export const sendEmailWithRetries = async (
           },
         };
 
+        console.log(
+          `Attempting to send email (attempt ${attempts}):`,
+          enhancedMailOption
+        );
+
         const result = await transporter.sendMail(enhancedMailOption);
 
         // SUCCESS - Updates log on successful send
@@ -204,8 +210,10 @@ export const sendEmailWithRetries = async (
         console.error(`❌ Email attempt ${attempts} failed for ${email}:`, {
           error: error.message,
           code: error.code,
-          command: error.command,
           responseCode: error.responseCode,
+          response: error.response,
+          command: error.command,
+          stack: error.stack,
         });
 
         // Enhanced bounce classification
