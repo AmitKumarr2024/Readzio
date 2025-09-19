@@ -4,7 +4,7 @@ import {
   WELCOME_EMAIL_TEMPLATE,
   INVOICE_EMAIL_TEMPLATE,
 } from "../../servers/config/emailTemplate.js";
-import { CLIENT_URL } from "../../servers/config/dotenv.js";
+import { CLIENT_URL, SMTP_USER } from "../../servers/config/dotenv.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import handlebars from "handlebars";
 import crypto from "crypto";
@@ -72,7 +72,7 @@ export default function createMailOption({
     .trim();
 
   return {
-    from: `"Inkshaa" <no-reply@inkshaa.com>`,
+    from: `"Inkshaa" <${SMTP_USER}>`, // ✅ must match Gmail SMTP_USER
     to: sanitizedTo,
     subject: placeholders.subject,
     text,
