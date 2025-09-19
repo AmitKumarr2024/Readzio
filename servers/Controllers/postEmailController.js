@@ -1,4 +1,3 @@
-// servers/controllers/dailyEmailController.js
 import EmailLog from "../../servers/Models/EmailLog.js";
 import UserModel from "../../servers/Models/User.js";
 import PostModel from "../../servers/Models/Post.js";
@@ -8,57 +7,69 @@ import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPostEmailReport.js";
-import { SMTP_USER } from "../config/dotenv.js";
 
-/**
- * Sends daily digest emails to eligible users in batches.
- * Uses createMailOption(...) to build mail options (which sets the correct 'from').
- */
-export const sendDailyPostEmail = async (req, res) => {
+// Sends daily post email to verified users with published posts
+export const sendDailyPostEmail = async (req, res, next) => {
   try {
-    console.log("📧 Sending daily email...");
+    console.log("📧 [DailyEmail] Starting simple daily post email...");
 
-    // Get one verified user (for testing)
+    // Find first verified user (for testing / simple send)
     const user = await UserModel.findOne({
       isAccountVerified: true,
       email: { $exists: true, $ne: "" },
     }).lean();
 
     if (!user) {
-      return res.status(404).json({ message: "No user found with email" });
+      return res.status(404).json({ message: "No eligible user found" });
     }
 
-    // Get one post (for testing)
-    const post = await PostModel.findOne({ isPublished: true }).lean();
+    // Get some recent posts
+    const posts = await PostModel.find({ isPublished: true })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("title slug thumbnail author createdAt")
+      .populate("author", "name")
+      .lean();
 
-    const mailOptions = {
-      from: SMTP_USER, // your sender email
+    if (posts.length === 0) {
+      return res.status(200).json({ message: "No posts found to send" });
+    }
+
+    // Build mail using helper
+    const mailOption = createMailOption({
       to: user.email,
-      subject: "Inksha Daily Digest (Test)",
-      html: `
-        <h2>Hello ${user.name || "Reader"},</h2>
-        <p>Here’s a test daily email from Inksha.</p>
-        ${
-          post
-            ? `<p>Featured post: <b>${post.title}</b></p>`
-            : `<p>No posts available today.</p>`
-        }
-        <a href="https://inksha-uedq.onrender.com/explore" 
-           style="display:inline-block;margin-top:10px;padding:8px 12px;background:#007bff;color:#fff;text-decoration:none;border-radius:4px;">
-           Read Posts
-        </a>
-      `,
-    };
+      subject: `Your Inkshaa Daily Digest - ${posts.length} Posts`,
+      name: user.name || "Reader",
+      posts,
+      templateType: "DEFAULT", // uses EMAIL_TEMPLATE
+      templateData: {
+        buttonText: "Read More Posts",
+        buttonUrl: "https://inksha-uedq.onrender.com/explore",
+      },
+    });
 
-    await transporter.sendMail(mailOptions);
+    // Send email (with retry)
+    await sendEmailWithRetries(mailOption, user._id, "daily_digest", 2);
 
-    console.log("✅ Email sent successfully!");
-    res.status(200).json({ message: "Email sent successfully" });
+    console.log(`✅ [DailyEmail] Email sent to ${user.email}`);
+
+    res.status(200).json({
+      message: "Daily post email sent successfully",
+      to: user.email,
+      postCount: posts.length,
+    });
   } catch (error) {
-    console.error("❌ Email sending failed:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to send email", error: error.message });
+    console.error("❌ [DailyEmail] Failed:", error);
+
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || "Daily email send failed",
+            500,
+            "SendDailyPostEmail"
+          )
+    );
   }
 };
 
