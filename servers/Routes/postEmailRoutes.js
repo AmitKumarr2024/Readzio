@@ -1,6 +1,6 @@
 // Enhanced Email Routes - Same structure, additional endpoints
 import express from "express";
-import { protectedRoute } from "../Middlewares/authMiddleware.js";
+import { protectedRoute } from "../../servers/Middlewares/authMiddleware.js";
 import {
   sendDailyPostEmail,
   getDailyPostEmailReport,
@@ -10,7 +10,7 @@ import {
   getBounceStatistics,
   removeEmailSuppression,
   testSingleEmail,
-} from "../Controllers/enhancedDailyEmailController.js";
+} from "../../servers/Controllers/postEmailController.js";
 
 const router = express.Router();
 
