@@ -116,9 +116,9 @@ router.post("/test-email", protectedRoute, (req, res, next) => {
 // Quick health check for email system
 router.get("/email-health", protectedRoute, async (req, res) => {
   try {
-    const { default: EmailLog } = await import("../Models/EmailLog.js");
-    const { default: Bounce } = await import("../Models/Bounce.js");
-    const { default: UserModel } = await import("../Models/User.js");
+    const { default: EmailLog } = await import("../../servers/Models/EmailLog.js");
+    const { default: Bounce } = await import("../../servers/Models/BounceModel.js");
+    const { default: UserModel } = await import("../../servers/Models/User.js");
 
     // Get basic stats
     const [recentEmails, totalBounces, verifiedUsers] = await Promise.all([
