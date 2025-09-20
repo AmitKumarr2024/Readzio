@@ -15,12 +15,12 @@ import PostManagement from "../../components/Admin/Post/PostManagement";
 import AdminMessageDashboard from "../../components/Admin/AdminMessageDashboard/AdminMessageDashboard";
 import PaymentDashboard from "../../components/Admin/PaymentDashbord/PaymentDashboard";
 import Insights from "../../components/Admin/Analytics/Insights";
-import AdminEmailDashboard from "../../components/Admin/Email/AdminEmailDashboard";
 import NotificationManager from "../../components/Admin/BannerNotification/NotificationManager";
 import { Bell, X, Download } from "lucide-react";
 import AdminSubscriptionControls from "../../components/Admin/subscriptionControl/AdminSubscriptionControls";
 import AdsDashboard from "../../components/Admin/Ads/AdsDashboard";
 import FeedbackDashboard from "../../components/Admin/Feedback/FeedbackDashboard";
+import EnhancedAdminEmailDashboard from "../../components/Admin/Email/EnhancedAdminEmailDashboard";
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -186,7 +186,7 @@ const AdminDashboard = () => {
           {activeTab === "acknowledgments" && <ReportAcknowledgments />}
           {activeTab === "notifications" && <AdminMessageDashboard />}
           {/* {activeTab === "payments" && <PaymentDashboard />} */}
-          {activeTab === "email-status" && <AdminEmailDashboard />}
+          {activeTab === "email-status" && <EnhancedAdminEmailDashboard />}
           {activeTab === "banner-notifications" && <NotificationManager />}
           {/* {activeTab === "subscriptions" && (
             <AdminSubscriptionControls userId={user?._id} user={user} />

@@ -523,106 +523,194 @@ export const clearError = createAsyncThunk("admin/clearError", async () => {
   return null;
 });
 
-// Check email status
-export const checkEmailStatus = createAsyncThunk(
-  "admin/checkEmailStatus",
-  async ({ email, type }, { rejectWithValue }) => {
+// Send enhanced daily post email (updated path)
+export const sendEnhancedDailyPostEmail = createAsyncThunk(
+  "admin/sendEnhancedDailyPostEmail",
+  async (
+    {
+      forceRun = false,
+      testMode = false,
+      maxUsers = null,
+      skipEligibilityCheck = false,
+    } = {},
+    { rejectWithValue }
+  ) => {
     try {
-      const response = await axiosInstance.get(
-        `/admin/email-status?email=${encodeURIComponent(
-          email
-        )}&type=${encodeURIComponent(type)}`,
+      const response = await axiosInstance.post(
+        "/dailyMail/daily-post",
+        {
+          forceRun,
+          testMode,
+          maxUsers,
+          skipEligibilityCheck,
+        },
         { withCredentials: true }
       );
       return response.data;
     } catch (error) {
-      console.error("[checkEmailStatus] Error:", {
+      console.error("[sendEnhancedDailyPostEmail] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Failed to send enhanced daily post emails"
+      );
+    }
+  }
+);
+
+// Check user eligibility for emails (NEW)
+export const checkUserEmailEligibility = createAsyncThunk(
+  "admin/checkUserEmailEligibility",
+  async (userId, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get(
+        `/dailyMail/check-user-eligibility/${userId}`,
+        { withCredentials: true }
+      );
+      return {
+        userId,
+        ...response.data,
+      };
+    } catch (error) {
+      console.error("[checkUserEmailEligibility] Error:", {
+        message: error.response?.data?.message || error.message,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Failed to check user email eligibility"
+      );
+    }
+  }
+);
+
+// Get bounce statistics (NEW)
+export const getBounceStatistics = createAsyncThunk(
+  "admin/getBounceStatistics",
+  async ({ days = 30 } = {}, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get(
+        `/dailyMail/bounce-stats?days=${days}`,
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("[getBounceStatistics] Error:", {
+        message: error.response?.data?.message || error.message,
+        days,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to get bounce statistics"
+      );
+    }
+  }
+);
+
+// Remove email from suppression list (NEW)
+export const removeEmailSuppression = createAsyncThunk(
+  "admin/removeEmailSuppression",
+  async ({ email }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        "/dailyMail/remove-suppression",
+        { email },
+        { withCredentials: true }
+      );
+      return {
+        email,
+        ...response.data,
+      };
+    } catch (error) {
+      console.error("[removeEmailSuppression] Error:", {
+        message: error.response?.data?.message || error.message,
+        email,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to remove email suppression"
+      );
+    }
+  }
+);
+
+// Test single email functionality (NEW)
+export const testSingleEmail = createAsyncThunk(
+  "admin/testSingleEmail",
+  async ({ email, type = "test" }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        "/dailyMail/test-email",
+        { email, type },
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("[testSingleEmail] Error:", {
         message: error.response?.data?.message || error.message,
         email,
         type,
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch email status"
+        error.response?.data?.message || "Failed to send test email"
       );
     }
   }
 );
 
-// Fetch all email statuses
-export const getAllEmailStatuses = createAsyncThunk(
-  "admin/getAllEmailStatuses",
-  async ({ page = 1, limit = 10, type }, { rejectWithValue }) => {
+// Get email system health (NEW)
+export const getEmailSystemHealth = createAsyncThunk(
+  "admin/getEmailSystemHealth",
+  async (_, { rejectWithValue }) => {
     try {
-      const query = type
-        ? `page=${page}&limit=${limit}&type=${encodeURIComponent(type)}`
-        : `page=${page}&limit=${limit}`;
-      const response = await axiosInstance.get(
-        `/admin/all-email-statuses?${query}`,
-        { withCredentials: true }
-      );
-      return {
-        emailStatuses: response.data.logs || [],
-        totalEmails: response.data.total || 0,
-        currentPage: page,
-        totalPages: Math.ceil(response.data.total / limit) || 1,
-      };
+      const response = await axiosInstance.get("/dailyMail/email-health", {
+        withCredentials: true,
+      });
+      return response.data;
     } catch (error) {
-      console.error("[getAllEmailStatuses] Error:", {
+      console.error("[getEmailSystemHealth] Error:", {
         message: error.response?.data?.message || error.message,
-        page,
-        limit,
-        type,
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch email statuses"
+        error.response?.data?.message || "Failed to get email system health"
       );
     }
   }
 );
 
-// Retry failed emails
-export const retryFailedEmails = createAsyncThunk(
-  "admin/retryFailedEmails",
-  async ({ type }, { rejectWithValue }) => {
-    try {
-      const response = await axiosInstance.post(
-        "/admin/retry-failed-emails",
-        { type },
-        { withCredentials: true }
-      );
-      return response.data.results || [];
-    } catch (error) {
-      console.error("[retryFailedEmails] Error:", {
-        message: error.response?.data?.message || error.message,
-        type,
-        timestamp: new Date().toISOString(),
-      });
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to retry failed emails"
-      );
-    }
-  }
-);
-
-// Fetch daily post email report
+// Enhanced daily post email report (UPDATED to use new path)
 export const getDailyPostEmailReport = createAsyncThunk(
   "admin/getDailyPostEmailReport",
-  async ({ page = 1, limit = 10, date }, { rejectWithValue }) => {
+  async (
+    { page = 1, limit = 10, date, status, includeStats = true },
+    { rejectWithValue }
+  ) => {
     try {
-      const query = date
-        ? `page=${page}&limit=${limit}&date=${encodeURIComponent(date)}`
-        : `page=${page}&limit=${limit}`;
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        includeStats: includeStats.toString(),
+      });
+
+      if (date) queryParams.append("date", date);
+      if (status) queryParams.append("status", status);
+
       const response = await axiosInstance.get(
-        `/dailyMail/daily-post-report?${query}`,
+        `/dailyMail/daily-post-report?${queryParams.toString()}`,
         { withCredentials: true }
       );
       return {
         emailReports: response.data.logs || [],
-        totalEmails: response.data.total || 0,
+        totalEmails: response.data.pagination?.total || 0,
         currentPage: page,
-        totalPages: Math.ceil(response.data.total / limit) || 1,
+        totalPages: response.data.pagination?.totalPages || 1,
+        stats: response.data.stats || {},
+        dailyStats: response.data.dailyStats || null,
       };
     } catch (error) {
       console.error("[getDailyPostEmailReport] Error:", {
@@ -635,6 +723,34 @@ export const getDailyPostEmailReport = createAsyncThunk(
       return rejectWithValue(
         error.response?.data?.message ||
           "Failed to fetch daily post email report"
+      );
+    }
+  }
+);
+
+// Batch check user eligibility (NEW)
+export const batchCheckEmailEligibility = createAsyncThunk(
+  "admin/batchCheckEmailEligibility",
+  async ({ userIds, eligibilityType = "dailyEmail" }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        "/dailyMail/batch-operations",
+        {
+          operation: "check-eligibility",
+          data: { userIds },
+        },
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("[batchCheckEmailEligibility] Error:", {
+        message: error.response?.data?.message || error.message,
+        userIds: userIds?.length,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Failed to batch check email eligibility"
       );
     }
   }
@@ -686,7 +802,6 @@ export const getReadingDetailsByPost = createAsyncThunk(
     }
   }
 );
-
 
 // Fetch all banner notifications (Admin view)
 export const fetchBannerNotifications = createAsyncThunk(
@@ -931,6 +1046,33 @@ export const deleteAllBannerNotifications = createAsyncThunk(
       return rejectWithValue("Failed to delete notifications");
     } catch (error) {
       console.error("[deleteAllBannerNotifications] Error:", {
+        message: error.response?.data?.message || error.message,
+        status: error.response?.status,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to delete all notifications"
+      );
+    }
+  }
+);
+
+export const deleteAllNotifications = createAsyncThunk(
+  "admin/deleteAllNotifications",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.delete("/notifications", {
+        withCredentials: true,
+      });
+      if (response.data.success) {
+        return {
+          deletedCount: response.data.data?.deletedCount || 0,
+          message: response.data.message,
+        };
+      }
+      return rejectWithValue("Failed to delete notifications");
+    } catch (error) {
+      console.error("[deleteAllNotifications] Error:", {
         message: error.response?.data?.message || error.message,
         status: error.response?.status,
         timestamp: new Date().toISOString(),
@@ -1236,6 +1378,91 @@ export const resetUserMilestones = createAsyncThunk(
   }
 );
 
+// Fetch all email statuses
+export const getAllEmailStatuses = createAsyncThunk(
+  "admin/getAllEmailStatuses",
+  async ({ page = 1, limit = 10, status = "" }, { rejectWithValue }) => {
+    try {
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      if (status) queryParams.append("status", status);
+      const response = await axiosInstance.get(
+        `/dailyMail/email-statuses?${queryParams.toString()}`,
+        { withCredentials: true }
+      );
+      return {
+        emailStatuses: response.data.statuses || [],
+        totalEmails: response.data.total || 0,
+        currentPage: page,
+        totalPages: response.data.totalPages || 1,
+      };
+    } catch (error) {
+      console.error("[getAllEmailStatuses] Error:", {
+        message: error.response?.data?.message || error.message,
+        page,
+        limit,
+        status,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch email statuses"
+      );
+    }
+  }
+);
+// Check email status
+export const checkEmailStatus = createAsyncThunk(
+  "admin/checkEmailStatus",
+  async ({ email, type = "dailyEmail" }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get(
+        `/dailyMail/email-status?email=${encodeURIComponent(
+          email
+        )}&type=${type}`,
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("[checkEmailStatus] Error:", {
+        message: error.response?.data?.message || error.message,
+        email,
+        type,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to check email status"
+      );
+    }
+  }
+);
+
+// Retry failed emails
+export const retryFailedEmails = createAsyncThunk(
+  "admin/retryFailedEmails",
+  async ({ emails, type = "dailyEmail" }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        "/dailyMail/retry-failed",
+        { emails, type },
+        { withCredentials: true }
+      );
+      return response.data.results || [];
+    } catch (error) {
+      console.error("[retryFailedEmails] Error:", {
+        message: error.response?.data?.message || error.message,
+        emails,
+        type,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to retry emails"
+      );
+    }
+  }
+);
+
 const adminSlice = createSlice({
   name: "admin",
   initialState: {
@@ -1281,6 +1508,16 @@ const adminSlice = createSlice({
       topPosts: [],
       topUsers: [],
     },
+    // NEW EMAIL MANAGEMENT STATE
+    bounceStatistics: null,
+    emailSystemHealth: null,
+    userEmailEligibility: {},
+    suppressedEmails: [],
+    dailyEmailStatus: null,
+    emailTestResult: null,
+    batchEligibilityResults: null,
+    emailReportStats: null,
+    // EXISTING STATE
     loading: false,
     error: null,
     notificationStatus: null,
@@ -1298,6 +1535,20 @@ const adminSlice = createSlice({
   reducers: {
     clearNotificationStatus: (state) => {
       state.notificationStatus = null;
+    },
+    setEmailError: (state, action) => {
+      state.emailError = action.payload;
+    },
+    // NEW EMAIL MANAGEMENT REDUCERS
+    clearEmailTestResult: (state) => {
+      state.emailTestResult = null;
+    },
+    clearBatchEligibilityResults: (state) => {
+      state.batchEligibilityResults = null;
+    },
+    updateUserEmailEligibility: (state, action) => {
+      const { userId, eligibility } = action.payload;
+      state.userEmailEligibility[userId] = eligibility;
     },
     socketNewContactMessage: (state, action) => {
       const newMessage = action.payload;
@@ -1706,6 +1957,113 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+
+      .addCase(sendEnhancedDailyPostEmail.pending, (state) => {
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(sendEnhancedDailyPostEmail.fulfilled, (state, action) => {
+        state.emailLoading = false;
+        state.dailyEmailStatus = action.payload;
+        state.notificationStatus = `Enhanced daily emails sent: ${
+          action.payload.results?.successful || 0
+        } successful, ${action.payload.results?.failed || 0} failed`;
+      })
+      .addCase(sendEnhancedDailyPostEmail.rejected, (state, action) => {
+        state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+
+      // checkUserEmailEligibility
+      .addCase(checkUserEmailEligibility.pending, (state) => {
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(checkUserEmailEligibility.fulfilled, (state, action) => {
+        state.emailLoading = false;
+        state.userEmailEligibility[action.payload.userId] = action.payload;
+      })
+      .addCase(checkUserEmailEligibility.rejected, (state, action) => {
+        state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+
+      // getBounceStatistics
+      .addCase(getBounceStatistics.pending, (state) => {
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(getBounceStatistics.fulfilled, (state, action) => {
+        state.emailLoading = false;
+        state.bounceStatistics = action.payload;
+      })
+      .addCase(getBounceStatistics.rejected, (state, action) => {
+        state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+
+      // removeEmailSuppression
+      .addCase(removeEmailSuppression.pending, (state) => {
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(removeEmailSuppression.fulfilled, (state, action) => {
+        state.emailLoading = false;
+        state.suppressedEmails = state.suppressedEmails.filter(
+          (email) => email !== action.payload.email
+        );
+        state.notificationStatus = `Email ${action.payload.email} removed from suppression list`;
+      })
+      .addCase(removeEmailSuppression.rejected, (state, action) => {
+        state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+
+      // testSingleEmail
+      .addCase(testSingleEmail.pending, (state) => {
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(testSingleEmail.fulfilled, (state, action) => {
+        state.emailLoading = false;
+        state.emailTestResult = action.payload;
+        state.notificationStatus = `Test email sent successfully to ${action.payload.email}`;
+      })
+      .addCase(testSingleEmail.rejected, (state, action) => {
+        state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+
+      // getEmailSystemHealth
+      .addCase(getEmailSystemHealth.pending, (state) => {
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(getEmailSystemHealth.fulfilled, (state, action) => {
+        state.emailLoading = false;
+        state.emailSystemHealth = action.payload;
+      })
+      .addCase(getEmailSystemHealth.rejected, (state, action) => {
+        state.emailLoading = false;
+        state.emailError = action.payload;
+      })
+
+      // batchCheckEmailEligibility
+      .addCase(batchCheckEmailEligibility.pending, (state) => {
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(batchCheckEmailEligibility.fulfilled, (state, action) => {
+        state.emailLoading = false;
+        state.batchEligibilityResults = action.payload;
+        state.notificationStatus = `Batch eligibility check completed: ${
+          action.payload.summary?.eligible || 0
+        } eligible, ${action.payload.summary?.ineligible || 0} ineligible`;
+      })
+      .addCase(batchCheckEmailEligibility.rejected, (state, action) => {
+        state.emailLoading = false;
+        state.emailError = action.payload;
+      })
       // getDailyPostEmailReport
       .addCase(getDailyPostEmailReport.pending, (state) => {
         state.emailLoading = true;
@@ -1717,6 +2075,9 @@ const adminSlice = createSlice({
         state.totalEmailReports = action.payload.totalEmails;
         state.currentPageEmailReports = action.payload.currentPage;
         state.totalPagesEmailReports = action.payload.totalPages;
+        // Store additional enhanced data
+        state.emailReportStats = action.payload.stats;
+        state.emailDailyStats = action.payload.dailyStats;
       })
       .addCase(getDailyPostEmailReport.rejected, (state, action) => {
         state.emailLoading = false;
@@ -2060,6 +2421,27 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+
+      .addCase(deleteAllNotifications.pending, (state) => {
+        state.deletingAll = true;
+        state.error = null;
+      })
+      .addCase(deleteAllNotifications.fulfilled, (state, action) => {
+        state.deletingAll = false;
+        state.bannerNotifications = [];
+        state.activeUserNotifications = [];
+        state.dismissedNotifications = new Set();
+        state.dismissalStatus = {};
+        const { deletedCount, message } = action.payload;
+        state.notificationStatus =
+          message ||
+          `All notifications deleted (${deletedCount} notifications)`;
+        state.error = null;
+      })
+      .addCase(deleteAllNotifications.rejected, (state, action) => {
+        state.deletingAll = false;
+        state.error = action.payload;
+      })
       // resetUserMilestones
       .addCase(resetUserMilestones.pending, (state) => {
         state.loading = true;
@@ -2103,6 +2485,9 @@ export const {
   updateSubscriptionPlanStatus,
   logSubscriptionCriteria,
   clearOverrideStatus,
+  clearEmailTestResult,
+  clearBatchEligibilityResults,
+  updateUserEmailEligibility,
 } = adminSlice.actions;
 
 export default adminSlice.reducer;
