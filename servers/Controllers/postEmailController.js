@@ -2,7 +2,7 @@ import EmailLog from "../../servers/Models/EmailLog.js";
 import UserModel from "../../servers/Models/User.js";
 import PostModel from "../../servers/Models/Post.js";
 import Notification from "../../servers/Models/Notification.js";
-import Bounce from "../../servers/Models/Bounce.js"; // Add this import
+import Bounce from "../../servers/Models/BounceModel.js"; // Add this import
 import { AppError } from "../../servers/Utils/AppError.js";
 import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
