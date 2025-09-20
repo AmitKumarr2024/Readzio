@@ -540,7 +540,7 @@ export const Signup = async (req, res, next) => {
       }. We're excited to have you on board.`,
       hasButton: true,
       buttonText: "Get Started",
-      buttonUrl: "https://inksha-uedq.onrender.com",
+      buttonUrl: "https://inkshaa.onrender.com",
       isWelcome: true,
       supportEmail: SENDER_EMAIL,
     });
@@ -842,7 +842,7 @@ export const googleLogin = async (req, res, next) => {
         }. We're excited to have you on board.`,
         hasButton: true,
         buttonText: "Get Started",
-        buttonUrl: "https://inksha-uedq.onrender.com",
+        buttonUrl: "https://inkshaa.onrender.com",
         isWelcome: true,
         supportEmail: SENDER_EMAIL,
       });
@@ -1035,7 +1035,7 @@ export const testWelcomeEmail = async (req, res, next) => {
       }. We're excited to have you on board.`,
       hasButton: true,
       buttonText: "Get Started",
-      buttonUrl: "https://inksha-uedq.onrender.com",
+      buttonUrl: "https://inkshaa.onrender.com",
       isWelcome: true,
       supportEmail: SENDER_EMAIL,
     });

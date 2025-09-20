@@ -73,7 +73,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
                 <table role="presentation" cellpadding="0" cellspacing="0" align="center">
                   <tr>
                     <td style="padding-right:10px;">
-                      <img src="https://inksha-uedq.onrender.com/public/logo1.png" alt="inkshaa Logo" width="40" height="40" style="border-radius:50%;">
+                      <img src="https://inkshaa.onrender.com/public/logo1.png" alt="inkshaa Logo" width="40" height="40" style="border-radius:50%;">
                     </td>
                     <td style="font-size:20px; font-weight:bold; color:#111827;">inkshaa</td>
                   </tr>
@@ -104,14 +104,14 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
                   {{/if}}
                   <tr>
                     <td style="padding:20px;">
-                      <a href="https://inksha-uedq.onrender.com/post/{{posts.[0].slug}}" class="featured-title">{{posts.[0].title}}</a>
+                      <a href="https://inkshaa.onrender.com/post/{{posts.[0].slug}}" class="featured-title">{{posts.[0].title}}</a>
                       <div style="font-size:14px; color:#6b7280; margin-bottom:10px;">
                         by {{posts.[0].author.name}} {{#if posts.[0].readTime}}&bull; {{posts.[0].readTime}}{{/if}}
                       </div>
                       {{#if posts.[0].excerpt}}
                       <p style="font-size:15px; color:#374151; margin-bottom:12px;">{{posts.[0].excerpt}}</p>
                       {{/if}}
-                      <a href="https://inksha-uedq.onrender.com/post/{{posts.[0].slug}}" style="display:inline-block; font-size:14px; font-weight:600; color:#10b981; border:1px solid #10b981; padding:8px 16px; border-radius:6px; text-decoration:none;">Read More</a>
+                      <a href="https://inkshaa.onrender.com/post/{{posts.[0].slug}}" style="display:inline-block; font-size:14px; font-weight:600; color:#10b981; border:1px solid #10b981; padding:8px 16px; border-radius:6px; text-decoration:none;">Read More</a>
                     </td>
                   </tr>
                 </table>
@@ -132,7 +132,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
                       </td>
                       {{/if}}
                       <td style="padding:10px;">
-                        <a href="https://inksha-uedq.onrender.com/post/{{this.slug}}" class="compact-title">{{this.title}}</a>
+                        <a href="https://inkshaa.onrender.com/post/{{this.slug}}" class="compact-title">{{this.title}}</a>
                         <div style="font-size:13px; color:#6b7280; margin-bottom:6px;">
                           by {{this.author.name}} {{#if this.readTime}}&bull; {{this.readTime}}{{/if}}
                         </div>
@@ -148,7 +148,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
             {{#unless posts.length}}
             <tr>
               <td style="padding:25px; font-size:14px; color:#6b7280; text-align:center;">
-                No new posts today — explore more at <a href="https://inksha-uedq.onrender.com" style="color:#2563eb; font-weight:600; text-decoration:none;">inkshaa</a>.
+                No new posts today — explore more at <a href="https://inkshaa.onrender.com" style="color:#2563eb; font-weight:600; text-decoration:none;">inkshaa</a>.
               </td>
             </tr>
             {{/unless}}

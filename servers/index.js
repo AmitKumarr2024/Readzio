@@ -71,7 +71,7 @@ const io = initializeSocket(server);
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain").send(`User-agent: *
 Allow: /
-Sitemap: https://inksha-uedq.onrender.com/sitemap.xml`);
+Sitemap: https://inkshaa.onrender.com/sitemap.xml`);
 });
 
 const setRouteTimeout = (timeoutMs) => (req, res, next) => {
@@ -146,7 +146,7 @@ app.use(
         CLIENT_URL?.replace(/\/$/, ""),
         "http://localhost:5173",
         "http://localhost:8001",
-        "https://inksha-uedq.onrender.com",
+        "https://inkshaa.onrender.com",
       ].filter(Boolean);
       if (!origin) return callback(null, true);
       const isAllowed = allowedOrigins.includes(origin);

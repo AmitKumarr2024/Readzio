@@ -606,6 +606,40 @@ export const retryFailedEmails = createAsyncThunk(
   }
 );
 
+// Fetch daily post email report
+export const getDailyPostEmailReport = createAsyncThunk(
+  "admin/getDailyPostEmailReport",
+  async ({ page = 1, limit = 10, date }, { rejectWithValue }) => {
+    try {
+      const query = date
+        ? `page=${page}&limit=${limit}&date=${encodeURIComponent(date)}`
+        : `page=${page}&limit=${limit}`;
+      const response = await axiosInstance.get(
+        `/dailyMail/daily-post-report?${query}`,
+        { withCredentials: true }
+      );
+      return {
+        emailReports: response.data.logs || [],
+        totalEmails: response.data.total || 0,
+        currentPage: page,
+        totalPages: Math.ceil(response.data.total / limit) || 1,
+      };
+    } catch (error) {
+      console.error("[getDailyPostEmailReport] Error:", {
+        message: error.response?.data?.message || error.message,
+        page,
+        limit,
+        date,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Failed to fetch daily post email report"
+      );
+    }
+  }
+);
+
 // Record reading time
 export const recordReadingTime = createAsyncThunk(
   "admin/recordReadingTime",
@@ -653,39 +687,6 @@ export const getReadingDetailsByPost = createAsyncThunk(
   }
 );
 
-// Fetch daily post email report
-export const getDailyPostEmailReport = createAsyncThunk(
-  "admin/getDailyPostEmailReport",
-  async ({ page = 1, limit = 10, date }, { rejectWithValue }) => {
-    try {
-      const query = date
-        ? `page=${page}&limit=${limit}&date=${encodeURIComponent(date)}`
-        : `page=${page}&limit=${limit}`;
-      const response = await axiosInstance.get(
-        `/dailyMail/daily-post-report?${query}`,
-        { withCredentials: true }
-      );
-      return {
-        emailReports: response.data.logs || [],
-        totalEmails: response.data.total || 0,
-        currentPage: page,
-        totalPages: Math.ceil(response.data.total / limit) || 1,
-      };
-    } catch (error) {
-      console.error("[getDailyPostEmailReport] Error:", {
-        message: error.response?.data?.message || error.message,
-        page,
-        limit,
-        date,
-        timestamp: new Date().toISOString(),
-      });
-      return rejectWithValue(
-        error.response?.data?.message ||
-          "Failed to fetch daily post email report"
-      );
-    }
-  }
-);
 
 // Fetch all banner notifications (Admin view)
 export const fetchBannerNotifications = createAsyncThunk(

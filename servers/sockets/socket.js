@@ -15,7 +15,7 @@ export const io = new Server({
         CLIENT_URL?.replace(/\/$/, ""),
         "http://localhost:5173",
         "http://localhost:8001",
-        "https://inksha-uedq.onrender.com", // ✅ Fixed: Removed duplicate
+        "https://inkshaa.onrender.com", // ✅ Fixed: Removed duplicate
         "null",
       ].filter(Boolean);
 
