@@ -1476,7 +1476,7 @@ export const sendDirectEmail = createAsyncThunk(
         return rejectWithValue("Email is required");
       }
       const response = await axiosInstance.post(
-        "/send-direct-email",
+        "/dailyMail/send-direct-email",
         { email },
         { withCredentials: true }
       );
