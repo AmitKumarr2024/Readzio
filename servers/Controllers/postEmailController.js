@@ -12,6 +12,8 @@ import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPost
 // Helper function to check if user is eligible
 async function isUserEligibleForEmail(user) {
   console.log(`[EligibilityCheck] Checking user: ${user.email}`);
+  if (!user.isAccountVerified)
+    return { eligible: false, reason: "Not verified" };
   if (user.stopEmailAttempts)
     return { eligible: false, reason: "Email stopped" };
   if (user.blocked) return { eligible: false, reason: "User blocked" };
@@ -56,6 +58,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
   try {
     const users = await UserModel.find({
+      isAccountVerified: true,
       stopEmailAttempts: { $ne: true },
       email: { $exists: true, $ne: null, $ne: "" },
       blocked: { $ne: true },
@@ -68,11 +71,15 @@ export const sendDailyPostEmail = async (req, res, next) => {
         { lastActiveAt: { $exists: false } },
       ],
     })
-      .select("_id name email lastActiveAt")
+      .select("_id name email lastActiveAt isAccountVerified")
       .lean({ virtuals: true });
     console.log(
       `📊 [DailyEmail] Found users:`,
-      users.map((u) => ({ id: u._id, email: u.email }))
+      users.map((u) => ({
+        id: u._id,
+        email: u.email,
+        isAccountVerified: u.isAccountVerified,
+      }))
     );
 
     if (users.length === 0) {
@@ -572,9 +579,10 @@ export const checkUserEligibilityForEmail = async (req, res, next) => {
     );
 
     const user = await UserModel.findById(userId).select(
-      "_id name email stopEmailAttempts blocked lastActiveAt"
+      "_id name email stopEmailAttempts blocked lastActiveAt isAccountVerified"
     );
     console.log(`[EligibilityCheck] Found user:`, user);
+
     if (!user) {
       throw new AppError("User not found", 404, "CheckUserEligibility");
     }
@@ -742,6 +750,7 @@ export const testSingleEmail = async (req, res, next) => {
       stopEmailAttempts: false,
       blocked: false,
       lastActiveAt: new Date(),
+      isAccountVerified: true, // Added for consistency with eligibility check
     };
     console.log(`[TestEmail] Test user created:`, testUser);
 
