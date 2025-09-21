@@ -25,7 +25,7 @@ router.post("/daily-post", protectedRoute, sendDailyPostEmail);
 router.get("/daily-post-report", protectedRoute, getDailyPostEmailReport);
 
 // Delete all notifications
-router.delete("/notifications", protectedRoute, deleteAllNotifications);
+// router.delete("/notifications", protectedRoute, deleteAllNotifications);
 
 // Manual test route to trigger email now (enhanced version)
 router.get("/test", protectedRoute, async (req, res) => {
@@ -67,35 +67,35 @@ router.get("/test", protectedRoute, async (req, res) => {
 // ================================
 
 // Check if a specific user is eligible for emails
-router.get(
-  "/check-user-eligibility/:userId",
-  protectedRoute,
-  checkUserEligibilityForEmail
-);
+// router.get(
+//   "/check-user-eligibility/:userId",
+//   protectedRoute,
+//   checkUserEligibilityForEmail
+// );
 
 // Get bounce statistics (admin only)
-router.get("/bounce-stats", protectedRoute, (req, res, next) => {
-  // Admin only check
-  if (req.user?.role !== "admin") {
-    return res.status(403).json({
-      success: false,
-      message: "Unauthorized: Admin access required",
-    });
-  }
-  getBounceStatistics(req, res, next);
-});
+// router.get("/bounce-stats", protectedRoute, (req, res, next) => {
+//   // Admin only check
+//   if (req.user?.role !== "admin") {
+//     return res.status(403).json({
+//       success: false,
+//       message: "Unauthorized: Admin access required",
+//     });
+//   }
+//   getBounceStatistics(req, res, next);
+// });
 
 // Remove email from suppression list (admin only)
-router.post("/remove-suppression", protectedRoute, (req, res, next) => {
-  // Admin only check
-  if (req.user?.role !== "admin") {
-    return res.status(403).json({
-      success: false,
-      message: "Unauthorized: Admin access required",
-    });
-  }
-  removeEmailSuppression(req, res, next);
-});
+// router.post("/remove-suppression", protectedRoute, (req, res, next) => {
+//   // Admin only check
+//   if (req.user?.role !== "admin") {
+//     return res.status(403).json({
+//       success: false,
+//       message: "Unauthorized: Admin access required",
+//     });
+//   }
+//   removeEmailSuppression(req, res, next);
+// });
 
 // Test single email functionality (admin only)
 router.post("/test-email", protectedRoute, (req, res, next) => {
@@ -155,130 +155,130 @@ router.get("/email-health", protectedRoute, async (req, res) => {
 });
 
 // Get email system configuration (admin only)
-router.get("/email-config", protectedRoute, async (req, res) => {
-  try {
-    // Admin only check
-    if (req.user?.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized: Admin access required",
-      });
-    }
+// router.get("/email-config", protectedRoute, async (req, res) => {
+//   try {
+//     // Admin only check
+//     if (req.user?.role !== "admin") {
+//       return res.status(403).json({
+//         success: false,
+//         message: "Unauthorized: Admin access required",
+//       });
+//     }
 
-    const { SENDER_EMAIL, SMTP_USER } = await import("../config/dotenv.js");
+//     const { SENDER_EMAIL, SMTP_USER } = await import("../config/dotenv.js");
 
-    res.status(200).json({
-      success: true,
-      config: {
-        senderEmail: SENDER_EMAIL || "Not configured",
-        smtpUser: SMTP_USER || "Not configured",
-        smtpConfigured: !!(SENDER_EMAIL && SMTP_USER),
-        environment: process.env.NODE_ENV || "development",
-      },
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to get email configuration",
-      error: error.message,
-    });
-  }
-});
+//     res.status(200).json({
+//       success: true,
+//       config: {
+//         senderEmail: SENDER_EMAIL || "Not configured",
+//         smtpUser: SMTP_USER || "Not configured",
+//         smtpConfigured: !!(SENDER_EMAIL && SMTP_USER),
+//         environment: process.env.NODE_ENV || "development",
+//       },
+//       timestamp: new Date().toISOString(),
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to get email configuration",
+//       error: error.message,
+//     });
+//   }
+// });
 
-// Batch operations for admin
-router.post("/batch-operations", protectedRoute, async (req, res) => {
-  try {
-    // Admin only check
-    if (req.user?.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized: Admin access required",
-      });
-    }
+// // Batch operations for admin
+// router.post("/batch-operations", protectedRoute, async (req, res) => {
+//   try {
+//     // Admin only check
+//     if (req.user?.role !== "admin") {
+//       return res.status(403).json({
+//         success: false,
+//         message: "Unauthorized: Admin access required",
+//       });
+//     }
 
-    const { operation, data } = req.body;
+//     const { operation, data } = req.body;
 
-    switch (operation) {
-      case "check-eligibility":
-        const { userIds } = data;
-        if (!Array.isArray(userIds) || userIds.length === 0) {
-          return res.status(400).json({
-            success: false,
-            message: "userIds array is required",
-          });
-        }
+//     switch (operation) {
+//       case "check-eligibility":
+//         const { userIds } = data;
+//         if (!Array.isArray(userIds) || userIds.length === 0) {
+//           return res.status(400).json({
+//             success: false,
+//             message: "userIds array is required",
+//           });
+//         }
 
-        const { default: UserModel } = await import("../Models/User.js");
-        const users = await UserModel.find({
-          _id: { $in: userIds },
-        }).select(
-          "_id name email isAccountVerified stopEmailAttempts blocked lastActiveAt"
-        );
+//         const { default: UserModel } = await import("../Models/User.js");
+//         const users = await UserModel.find({
+//           _id: { $in: userIds },
+//         }).select(
+//           "_id name email isAccountVerified stopEmailAttempts blocked lastActiveAt"
+//         );
 
-        // Import the eligibility function
-        const { isUserEligibleForEmail } = await import(
-          "../Controllers/enhancedDailyEmailController.js"
-        );
+//         // Import the eligibility function
+//         const { isUserEligibleForEmail } = await import(
+//           "../Controllers/enhancedDailyEmailController.js"
+//         );
 
-        const eligibilityResults = await Promise.all(
-          users.map(async (user) => {
-            const eligibility = await isUserEligibleForEmail(user);
-            return {
-              userId: user._id,
-              email: user.email,
-              name: user.name,
-              ...eligibility,
-            };
-          })
-        );
+//         const eligibilityResults = await Promise.all(
+//           users.map(async (user) => {
+//             const eligibility = await isUserEligibleForEmail(user);
+//             return {
+//               userId: user._id,
+//               email: user.email,
+//               name: user.name,
+//               ...eligibility,
+//             };
+//           })
+//         );
 
-        res.status(200).json({
-          success: true,
-          operation: "check-eligibility",
-          results: eligibilityResults,
-          summary: {
-            total: eligibilityResults.length,
-            eligible: eligibilityResults.filter((r) => r.eligible).length,
-            ineligible: eligibilityResults.filter((r) => !r.eligible).length,
-          },
-        });
-        break;
+//         res.status(200).json({
+//           success: true,
+//           operation: "check-eligibility",
+//           results: eligibilityResults,
+//           summary: {
+//             total: eligibilityResults.length,
+//             eligible: eligibilityResults.filter((r) => r.eligible).length,
+//             ineligible: eligibilityResults.filter((r) => !r.eligible).length,
+//           },
+//         });
+//         break;
 
-      case "cleanup-bounces":
-        const { default: Bounce } = await import("../Models/Bounce.js");
-        const { daysOld = 90 } = data;
-        const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
+//       case "cleanup-bounces":
+//         const { default: Bounce } = await import("../Models/Bounce.js");
+//         const { daysOld = 90 } = data;
+//         const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
 
-        const cleanupResult = await Bounce.deleteMany({
-          status: "resolved",
-          updatedAt: { $lt: cutoffDate },
-        });
+//         const cleanupResult = await Bounce.deleteMany({
+//           status: "resolved",
+//           updatedAt: { $lt: cutoffDate },
+//         });
 
-        res.status(200).json({
-          success: true,
-          operation: "cleanup-bounces",
-          deletedCount: cleanupResult.deletedCount,
-          cutoffDate: cutoffDate.toISOString(),
-        });
-        break;
+//         res.status(200).json({
+//           success: true,
+//           operation: "cleanup-bounces",
+//           deletedCount: cleanupResult.deletedCount,
+//           cutoffDate: cutoffDate.toISOString(),
+//         });
+//         break;
 
-      default:
-        res.status(400).json({
-          success: false,
-          message: `Unknown operation: ${operation}`,
-          availableOperations: ["check-eligibility", "cleanup-bounces"],
-        });
-    }
-  } catch (error) {
-    console.error("Batch operation error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Batch operation failed",
-      error: error.message,
-    });
-  }
-});
+//       default:
+//         res.status(400).json({
+//           success: false,
+//           message: `Unknown operation: ${operation}`,
+//           availableOperations: ["check-eligibility", "cleanup-bounces"],
+//         });
+//     }
+//   } catch (error) {
+//     console.error("Batch operation error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Batch operation failed",
+//       error: error.message,
+//     });
+//   }
+// });
 
 // ================================
 // LEGACY COMPATIBILITY
