@@ -1,29 +1,21 @@
 import nodemailer from "nodemailer";
-import { SMTP_PASS, SMTP_USER } from "../../servers/config/dotenv.js";
+import { SMTP_PASS, SMTP_USER } from "../config/dotenv.js";
 
-// Validate environment variables
 if (!SMTP_USER || !SMTP_PASS) {
   throw new Error("❌ SMTP_USER and SMTP_PASS must be defined in .env");
 }
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
   host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // Use TLS
+  port: 465, // or 587
+  secure: true, // true for 465, false for 587
   auth: {
-    user: SMTP_USER, // e.g., inksha.official@gmail.com
-    pass: SMTP_PASS, // App Password
+    user: SMTP_USER,
+    pass: SMTP_PASS,
   },
-});
-
-// Verify transporter configuration
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("❌ [SMTP] Transporter verification failed:", error.message);
-  } else {
-    console.log("✅ [SMTP] Transporter is ready");
-  }
+  tls: {
+    rejectUnauthorized: false, // helps in some container hosts
+  },
 });
 
 export default transporter;
