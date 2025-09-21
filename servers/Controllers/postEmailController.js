@@ -1,18 +1,17 @@
 import EmailLog from "../../servers/Models/EmailLog.js";
 import UserModel from "../../servers/Models/User.js";
 import PostModel from "../../servers/Models/Post.js";
-import Bounce from "../../servers/Models/BounceModel.js"; // Import Bounce model
+import Bounce from "../../servers/Models/BounceModel.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
-import transporter from "../../servers/config/nodeMailer.js"; // Import Nodemailer transporter
+import transporter from "../../servers/config/nodeMailer.js";
 
 export const sendDailyPostEmail = async (req, res, next) => {
   const startTime = Date.now();
   console.log("📧 [DailyEmail] Starting daily post email process");
 
   try {
-    // Get verified users who haven't opted out
     const users = await UserModel.find({
       isAccountVerified: true,
       stopEmailAttempts: { $ne: true },
@@ -20,7 +19,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
       email: { $exists: true, $ne: null, $ne: "" },
     })
       .select("_id name email")
-      .limit(50) // Limit for testing
+      .limit(50)
       .lean();
 
     console.log(`📊 [DailyEmail] Found ${users.length} eligible users`);
@@ -34,7 +33,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
       });
     }
 
-    // Get recent posts
     const posts = await PostModel.find({
       isPublished: true,
       title: { $exists: true, $ne: "" },
@@ -58,20 +56,17 @@ export const sendDailyPostEmail = async (req, res, next) => {
       });
     }
 
-    // Send emails to users
     const results = [];
 
     for (const user of users) {
       try {
         console.log(`[DailyEmail] Sending email to ${user.email}...`);
 
-        // Create email subject from first post
         const subject = `${posts[0].title.substring(
           0,
           50
         )}... | inkshaa Daily Digest`;
 
-        // Create mail options
         const mailOption = await createMailOption({
           to: user.email,
           subject: subject,
@@ -83,7 +78,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
           posts,
         });
 
-        // Send email
         const emailResult = await sendEmailWithRetries(
           mailOption,
           user._id,
@@ -115,7 +109,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
         });
       }
 
-      // Small delay between emails to avoid rate limits
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
@@ -139,7 +132,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
       },
       postCount: posts.length,
       processTime: Date.now() - startTime,
-      details: results, // Include all results for debugging
+      details: results,
     });
   } catch (error) {
     console.error("💥 [DailyEmail] Critical error:", error.message);
@@ -167,7 +160,6 @@ export const testSingleEmail = async (req, res, next) => {
       });
     }
 
-    // Create simple test mail
     const mailOption = await createMailOption({
       to: email,
       subject: "🧪 Test Email from inkshaa",
@@ -218,19 +210,12 @@ export const sendDirectEmail = async (req, res, next) => {
       });
     }
 
-    // Create mail options
-    const mailOption = await createMailOption({
+    const mailOption = {
       to: email,
-      subject: "🧪 Direct Test Email from inkshaa",
-      name: "Test User",
-      email: email,
-      message: "This is a direct test email sent via Nodemailer.",
-      hasButton: true,
-      buttonText: "Visit inkshaa",
-      buttonUrl: "https://inkshaa.onrender.com",
-    });
+      subject: "Message from inkshaa",
+      text: "hello world",
+    };
 
-    // Send email directly using transporter
     const emailResult = await transporter.sendMail(mailOption);
 
     console.log(
@@ -266,7 +251,6 @@ export const clearEmailFailures = async (req, res, next) => {
       });
     }
 
-    // Reset failure count in Bounce model
     const result = await Bounce.updateOne(
       { email },
       { $set: { failureCount: 0, status: "resolved", updatedAt: new Date() } },
