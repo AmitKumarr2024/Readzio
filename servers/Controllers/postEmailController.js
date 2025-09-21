@@ -12,8 +12,6 @@ import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPost
 // Helper function to check if user is eligible
 async function isUserEligibleForEmail(user) {
   console.log(`[EligibilityCheck] Checking user: ${user.email}`);
-  if (!user.isAccountVerified)
-    return { eligible: false, reason: "Not verified" };
   if (user.stopEmailAttempts)
     return { eligible: false, reason: "Email stopped" };
   if (user.blocked) return { eligible: false, reason: "User blocked" };
@@ -58,7 +56,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
   try {
     const users = await UserModel.find({
-      isAccountVerified: true,
       stopEmailAttempts: { $ne: true },
       email: { $exists: true, $ne: null, $ne: "" },
       blocked: { $ne: true },
@@ -129,11 +126,8 @@ export const sendDailyPostEmail = async (req, res, next) => {
       });
     }
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
+    // Fetch any 10 published posts, prioritizing recent and popular
     let posts = await PostModel.find({
-      createdAt: { $gte: todayStart },
       isPublished: true,
       title: { $exists: true, $ne: "" },
       content: { $exists: true },
@@ -142,57 +136,13 @@ export const sendDailyPostEmail = async (req, res, next) => {
         "title slug thumbnail author readTime likesCount commentsCount createdAt"
       )
       .populate("author", "name avatar")
-      .sort({ likesCount: -1, commentsCount: -1 })
-      .limit(15)
+      .sort({ createdAt: -1, likesCount: -1, commentsCount: -1 })
+      .limit(10)
       .lean({ virtuals: true });
     console.log(
       `📰 [DailyEmail] Found posts:`,
       posts.map((p) => ({ title: p.title, id: p._id }))
     );
-
-    if (posts.length < 10) {
-      const needed = 10 - posts.length;
-      console.log(
-        `🔄 [DailyEmail] Need ${needed} more posts, searching for older posts...`
-      );
-
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const recentPosts = await PostModel.aggregate([
-        {
-          $match: {
-            createdAt: { $gte: sevenDaysAgo, $lt: todayStart },
-            isPublished: true,
-            likesCount: { $gte: 1 },
-            title: { $exists: true, $ne: "" },
-          },
-        },
-        { $sample: { size: needed } },
-        {
-          $project: {
-            title: 1,
-            slug: 1,
-            thumbnail: 1,
-            author: 1,
-            readTime: 1,
-            likesCount: 1,
-            commentsCount: 1,
-            createdAt: 1,
-          },
-        },
-      ]);
-
-      if (recentPosts.length > 0) {
-        const populatedFallback = await PostModel.populate(recentPosts, {
-          path: "author",
-          select: "name avatar",
-        });
-        posts = [...posts, ...populatedFallback];
-        console.log(
-          `[DailyEmail] Added fallback posts:`,
-          populatedFallback.map((p) => ({ title: p.title, id: p._id }))
-        );
-      }
-    }
 
     if (posts.length === 0) {
       return res.status(200).json({
@@ -202,17 +152,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
         processTime: Date.now() - startTime,
       });
     }
-
-    posts = posts
-      .sort(
-        (a, b) =>
-          b.likesCount + b.commentsCount - (a.likesCount + a.commentsCount)
-      )
-      .slice(0, 10);
-    console.log(
-      `[DailyEmail] Final selected posts:`,
-      posts.map((p) => ({ title: p.title, id: p._id }))
-    );
 
     const results = [];
     const batchSize = 50;
@@ -633,7 +572,7 @@ export const checkUserEligibilityForEmail = async (req, res, next) => {
     );
 
     const user = await UserModel.findById(userId).select(
-      "_id name email isAccountVerified stopEmailAttempts blocked lastActiveAt"
+      "_id name email stopEmailAttempts blocked lastActiveAt"
     );
     console.log(`[EligibilityCheck] Found user:`, user);
     if (!user) {
@@ -800,7 +739,6 @@ export const testSingleEmail = async (req, res, next) => {
       _id: "test_user",
       name: "Test User",
       email: email,
-      isAccountVerified: true,
       stopEmailAttempts: false,
       blocked: false,
       lastActiveAt: new Date(),
