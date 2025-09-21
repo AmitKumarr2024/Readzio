@@ -145,7 +145,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
     const postQuery = {
       isPublished: true,
       title: { $exists: true, $ne: "" },
-      content: { $exists: true },
     };
     console.log(`[DailyEmail] Post query:`, JSON.stringify(postQuery, null, 2));
     console.log(
@@ -190,14 +189,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
       console.log(
         `[DailyEmail] Total published posts with title: ${postsWithTitleCount}`
       );
-      const postsWithContentCount = await PostModel.countDocuments({
-        isPublished: true,
-        title: { $exists: true, $ne: "" },
-        content: { $exists: true },
-      });
-      console.log(
-        `[DailyEmail] Total published posts with title and content: ${postsWithContentCount}`
-      );
 
       return res.status(200).json({
         message: "No posts available to send. Skipped daily email.",
@@ -208,7 +199,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
           totalPosts: allPostsCount,
           publishedPosts: publishedPostsCount,
           postsWithTitle: postsWithTitleCount,
-          postsWithTitleAndContent: postsWithContentCount,
         },
       });
     }
