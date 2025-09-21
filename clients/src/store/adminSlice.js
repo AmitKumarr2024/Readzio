@@ -1463,6 +1463,44 @@ export const retryFailedEmails = createAsyncThunk(
   }
 );
 
+// Send direct email
+export const sendDirectEmail = createAsyncThunk(
+  "admin/sendDirectEmail",
+  async ({ email }, { rejectWithValue }) => {
+    try {
+      if (!email) {
+        console.error("[sendDirectEmail] Error:", {
+          message: "Email is required",
+          timestamp: new Date().toISOString(),
+        });
+        return rejectWithValue("Email is required");
+      }
+      const response = await axiosInstance.post(
+        "/send-direct-email",
+        { email },
+        { withCredentials: true }
+      );
+      console.log("[sendDirectEmail] Success:", {
+        email,
+        messageId: response.data.messageId,
+        timestamp: new Date().toISOString(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error("[sendDirectEmail] Error:", {
+        message: error.response?.data?.message || error.message,
+        status: error.response?.status,
+        email,
+        errorDetails: error.response?.data?.errorDetails || {},
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to send direct email"
+      );
+    }
+  }
+);
+
 const adminSlice = createSlice({
   name: "admin",
   initialState: {
@@ -1616,6 +1654,9 @@ const adminSlice = createSlice({
       state.error = null;
       state.success = false;
       state.overrideInfo = null;
+    },
+    clearDirectEmailResult: (state) => {
+      state.directEmailResult = null;
     },
   },
   extraReducers: (builder) => {
@@ -2468,6 +2509,21 @@ const adminSlice = createSlice({
       .addCase(resetUserMilestones.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // sendDirectEmail
+      .addCase(sendDirectEmail.pending, (state) => {
+        state.emailLoading = true;
+        state.emailError = null;
+      })
+      .addCase(sendDirectEmail.fulfilled, (state, action) => {
+        state.emailLoading = false;
+        state.directEmailResult = action.payload;
+        state.notificationStatus = `Direct email sent successfully to ${action.payload.email}`;
+      })
+      .addCase(sendDirectEmail.rejected, (state, action) => {
+        state.emailLoading = false;
+        state.emailError = action.payload;
+        state.directEmailResult = { error: action.payload };
       });
   },
 });
@@ -2488,6 +2544,7 @@ export const {
   clearEmailTestResult,
   clearBatchEligibilityResults,
   updateUserEmailEligibility,
+  clearDirectEmailResult,
 } = adminSlice.actions;
 
 export default adminSlice.reducer;

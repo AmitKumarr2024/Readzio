@@ -42,7 +42,14 @@ export const RESEND_API_KEY = process.env.RESEND_API_KEY;
 export const USE_DUMMY_EMAIL = process.env.USE_DUMMY_EMAIL;
 
 // Validate required environment variables
-const requiredEnv = ["MONGO_URI", "JWT_SECRET", "CLIENT_URL"];
+const requiredEnv = [
+  "MONGO_URI",
+  "JWT_SECRET",
+  "CLIENT_URL",
+  "SMTP_USER",
+  "SMTP_PASS",
+  "SENDER_EMAIL",
+];
 requiredEnv.forEach((key) => {
   if (!process.env[key]) {
     console.error(`[dotenv] Missing required env variable: ${key}`);

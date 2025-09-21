@@ -15,6 +15,8 @@ import {
   getEmailSystemHealth,
   getBounceStatistics,
   clearNotificationStatus,
+  sendDirectEmail, // Added
+  clearDirectEmailResult, // Added
 } from "../../../store/adminSlice";
 
 export function EnhancedManualEmailSender() {
@@ -26,6 +28,7 @@ export function EnhancedManualEmailSender() {
     dailyEmailStatus,
     emailSystemHealth,
     bounceStatistics,
+    directEmailResult, // Added
   } = useSelector((state) => state.admin);
 
   const [options, setOptions] = useState({
@@ -35,6 +38,7 @@ export function EnhancedManualEmailSender() {
     skipEligibilityCheck: false,
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [directEmail, setDirectEmail] = useState(""); // Added
 
   useEffect(() => {
     dispatch(getEmailSystemHealth());
@@ -45,8 +49,17 @@ export function EnhancedManualEmailSender() {
     dispatch(sendEnhancedDailyPostEmail(options));
   };
 
+  const handleSendDirectEmail = async () => {
+    dispatch(sendDirectEmail({ email: directEmail }));
+  };
+
   const clearStatus = () => {
     dispatch(clearNotificationStatus());
+  };
+
+  const clearDirectEmailStatus = () => {
+    dispatch(clearDirectEmailResult());
+    setDirectEmail("");
   };
 
   return (
@@ -143,6 +156,31 @@ export function EnhancedManualEmailSender() {
           <p className="text-red-800 dark:text-red-200 font-medium">
             {emailError}
           </p>
+        </div>
+      )}
+
+      {/* Direct Email Result */}
+      {directEmailResult && (
+        <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <p
+              className={
+                directEmailResult.success
+                  ? "text-green-800 dark:text-green-200"
+                  : "text-red-800 dark:text-red-200"
+              }
+            >
+              {directEmailResult.success
+                ? `Direct email sent to ${directEmailResult.email} (ID: ${directEmailResult.messageId})`
+                : `Failed to send direct email: ${directEmailResult.error}`}
+            </p>
+            <button
+              onClick={clearDirectEmailStatus}
+              className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              ×
+            </button>
+          </div>
         </div>
       )}
 
@@ -283,8 +321,8 @@ export function EnhancedManualEmailSender() {
         </div>
       </div>
 
-      {/* Send Button */}
-      <div className="text-center">
+      {/* Send Buttons */}
+      <div className="text-center space-y-4">
         <button
           onClick={handleSendEmails}
           disabled={emailLoading}
@@ -312,6 +350,37 @@ export function EnhancedManualEmailSender() {
             Test mode enabled - emails will be simulated
           </p>
         )}
+
+        {/* Direct Email Input and Button */}
+        <div className="mt-6 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold mb-4 flex items-center">
+            <FaPaperPlane className="mr-2 text-blue-500" />
+            Send Direct Email
+          </h3>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <input
+              type="email"
+              value={directEmail}
+              onChange={(e) => setDirectEmail(e.target.value)}
+              placeholder="Enter email (e.g., codes.amitkumar@gmail.com)"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700"
+            />
+            <button
+              onClick={handleSendDirectEmail}
+              disabled={emailLoading || !directEmail}
+              className={`px-6 py-2 rounded-xl font-semibold text-white shadow-lg transition-all duration-200 ${
+                emailLoading || !directEmail
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 hover:scale-105"
+              }`}
+            >
+              <div className="flex items-center">
+                <FaPaperPlane className="mr-2" />
+                Send Direct
+              </div>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -198,6 +198,9 @@ export const testSingleEmail = async (req, res, next) => {
   }
 };
 
+
+import transporter from "../../servers/config/nodeMailer.js";
+
 export const sendDirectEmail = async (req, res, next) => {
   try {
     const { email } = req.body;
@@ -223,11 +226,14 @@ export const sendDirectEmail = async (req, res, next) => {
             errno: error.errno,
           }
         );
-        throw new AppError(
-          "SMTP transporter verification failed",
-          500,
-          "SendDirectEmail"
-        );
+        return res.status(500).json({
+          success: false,
+          message: "SMTP transporter verification failed",
+          errorDetails: {
+            code: error.code,
+            errno: error.errno,
+          },
+        });
       }
       console.log(`[DirectEmail] SMTP transporter verified successfully`);
     });
