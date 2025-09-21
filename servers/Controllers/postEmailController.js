@@ -1,9 +1,11 @@
 import EmailLog from "../../servers/Models/EmailLog.js";
 import UserModel from "../../servers/Models/User.js";
 import PostModel from "../../servers/Models/Post.js";
+import Bounce from "../../servers/Models/BounceModel.js"; // Import Bounce model
 import { AppError } from "../../servers/Utils/AppError.js";
 import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
+import transporter from "../../servers/config/nodeMailer.js"; // Import Nodemailer transporter
 
 export const sendDailyPostEmail = async (req, res, next) => {
   const startTime = Date.now();
@@ -199,6 +201,94 @@ export const testSingleEmail = async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: error.message || "Failed to send test email",
+      email: req.body.email,
+    });
+  }
+};
+
+export const sendDirectEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    console.log(`[DirectEmail] Sending email to ${email}...`);
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // Create mail options
+    const mailOption = await createMailOption({
+      to: email,
+      subject: "🧪 Direct Test Email from inkshaa",
+      name: "Test User",
+      email: email,
+      message: "This is a direct test email sent via Nodemailer.",
+      hasButton: true,
+      buttonText: "Visit inkshaa",
+      buttonUrl: "https://inkshaa.onrender.com",
+    });
+
+    // Send email directly using transporter
+    const emailResult = await transporter.sendMail(mailOption);
+
+    console.log(
+      `✅ [DirectEmail] Email sent to ${email}: ${emailResult.messageId}`
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Direct email sent successfully",
+      email: email,
+      messageId: emailResult.messageId,
+      sentAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error(`❌ [DirectEmail] Failed for ${email}:`, error.message);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to send direct email",
+      email: req.body.email,
+    });
+  }
+};
+
+export const clearEmailFailures = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    console.log(`[ClearEmailFailures] Clearing failures for ${email}...`);
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // Reset failure count in Bounce model
+    const result = await Bounce.updateOne(
+      { email },
+      { $set: { failureCount: 0, status: "resolved", updatedAt: new Date() } },
+      { upsert: true }
+    );
+
+    console.log(`✅ [ClearEmailFailures] Failures cleared for ${email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Failures cleared for ${email}`,
+      modifiedCount: result.modifiedCount,
+      upsertedCount: result.upsertedCount,
+    });
+  } catch (error) {
+    console.error(
+      `❌ [ClearEmailFailures] Failed for ${email}:`,
+      error.message
+    );
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to clear email failures",
       email: req.body.email,
     });
   }
