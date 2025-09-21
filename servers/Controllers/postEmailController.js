@@ -253,7 +253,7 @@ export const clearEmailFailures = async (req, res, next) => {
 
     const result = await Bounce.updateOne(
       { email },
-      { $set: { failureCount: 0, status: "resolved", updatedAt: new Date() } },
+      { $set: { bounceCount: 0, status: "resolved", updatedAt: new Date() } },
       { upsert: true }
     );
 
