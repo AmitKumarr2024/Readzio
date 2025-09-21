@@ -4,11 +4,11 @@ import { protectedRoute } from "../../servers/Middlewares/authMiddleware.js";
 import {
   sendDailyPostEmail,
   getDailyPostEmailReport,
-  deleteAllNotifications,
+  // deleteAllNotifications,
   // New enhanced functions
-  checkUserEligibilityForEmail,
-  getBounceStatistics,
-  removeEmailSuppression,
+  // checkUserEligibilityForEmail,
+  // getBounceStatistics,
+  // removeEmailSuppression,
   testSingleEmail,
 } from "../../servers/Controllers/postEmailController.js";
 
