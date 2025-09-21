@@ -199,7 +199,7 @@ export const testSingleEmail = async (req, res, next) => {
 };
 
 
-import transporter from "../../servers/config/nodeMailer.js";
+
 
 export const sendDirectEmail = async (req, res, next) => {
   try {
