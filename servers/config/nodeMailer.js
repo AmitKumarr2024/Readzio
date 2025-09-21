@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { SMTP_PASS, SMTP_USER } from "../";
+import { SMTP_PASS, SMTP_USER } from "../../servers/config/dotenv.js";
 
 // Validate environment variables
 if (!SMTP_USER || !SMTP_PASS) {
