@@ -2,16 +2,16 @@ import EmailLog from "../../servers/Models/EmailLog.js";
 import UserModel from "../../servers/Models/User.js";
 import PostModel from "../../servers/Models/Post.js";
 import Notification from "../../servers/Models/Notification.js";
-import Bounce from "../../servers/Models/BounceModel.js"; // Add this import
+import Bounce from "../../servers/Models/BounceModel.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPostEmailReport.js";
 
-// Helper function to check if user is eligible (simple version using your existing fields)
+// Helper function to check if user is eligible
 async function isUserEligibleForEmail(user) {
-  // Your existing checks
+  console.log(`[EligibilityCheck] Checking user: ${user.email}`);
   if (!user.isAccountVerified)
     return { eligible: false, reason: "Not verified" };
   if (user.stopEmailAttempts)
@@ -20,48 +20,48 @@ async function isUserEligibleForEmail(user) {
   if (!user.email || user.email.trim() === "")
     return { eligible: false, reason: "No email" };
 
-  // Enhanced checks (NEW - but simple)
-
-  // Check if email is bouncing
   const isSuppressed = await Bounce.isEmailSuppressed(user.email);
+  console.log(
+    `[EligibilityCheck] Email ${user.email} suppressed: ${isSuppressed}`
+  );
   if (isSuppressed)
     return { eligible: false, reason: "Email suppressed due to bounces" };
 
-  // Check recent activity (if lastActiveAt exists)
   if (user.lastActiveAt) {
     const daysSinceActive =
       (Date.now() - new Date(user.lastActiveAt).getTime()) /
       (1000 * 60 * 60 * 24);
+    console.log(
+      `[EligibilityCheck] Days since active for ${user.email}: ${daysSinceActive}`
+    );
     if (daysSinceActive > 60)
       return { eligible: false, reason: "Inactive for 60+ days" };
   }
 
-  // Check recent email count to prevent spam
   const recentEmails = await EmailLog.countDocuments({
     email: user.email,
     type: "daily_digest",
     createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
   });
+  console.log(
+    `[EligibilityCheck] Recent emails for ${user.email}: ${recentEmails}`
+  );
   if (recentEmails >= 2)
     return { eligible: false, reason: "Already sent today" };
 
   return { eligible: true, reason: "All checks passed" };
 }
 
-// Your existing function with enhancements
 export const sendDailyPostEmail = async (req, res, next) => {
   const startTime = Date.now();
+  console.log("📧 [DailyEmail] Starting daily post email process");
 
   try {
-    console.log("📧 [DailyEmail] Starting daily post email process");
-
-    // Your existing user query with small enhancement
     const users = await UserModel.find({
       isAccountVerified: true,
       stopEmailAttempts: { $ne: true },
       email: { $exists: true, $ne: null, $ne: "" },
-      blocked: { $ne: true }, // Add this
-      // Optional: Add activity filter
+      blocked: { $ne: true },
       $or: [
         {
           lastActiveAt: {
@@ -73,8 +73,10 @@ export const sendDailyPostEmail = async (req, res, next) => {
     })
       .select("_id name email lastActiveAt")
       .lean({ virtuals: true });
-
-    console.log(`📊 [DailyEmail] Found ${users.length} potential users`);
+    console.log(
+      `📊 [DailyEmail] Found users:`,
+      users.map((u) => ({ id: u._id, email: u.email }))
+    );
 
     if (users.length === 0) {
       return res.status(200).json({
@@ -85,10 +87,13 @@ export const sendDailyPostEmail = async (req, res, next) => {
       });
     }
 
-    // Enhanced eligibility checking (NEW)
     const eligibilityChecks = await Promise.all(
       users.map(async (user) => {
         const eligibility = await isUserEligibleForEmail(user);
+        console.log(
+          `[EligibilityCheck] Result for ${user.email}:`,
+          eligibility
+        );
         return { user, ...eligibility };
       })
     );
@@ -99,12 +104,10 @@ export const sendDailyPostEmail = async (req, res, next) => {
     const ineligibleUsers = eligibilityChecks.filter(
       (check) => !check.eligible
     );
-
     console.log(
-      `✅ [DailyEmail] ${eligibleUsers.length} users eligible out of ${users.length}`
+      `[DailyEmail] Eligible users: ${eligibleUsers.length}, Ineligible users: ${ineligibleUsers.length}`
     );
 
-    // Log ineligible reasons for debugging
     if (ineligibleUsers.length > 0) {
       const reasonCounts = {};
       ineligibleUsers.forEach((user) => {
@@ -126,7 +129,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
       });
     }
 
-    // Your existing post fetching logic (keeping exactly the same)
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
@@ -143,10 +145,11 @@ export const sendDailyPostEmail = async (req, res, next) => {
       .sort({ likesCount: -1, commentsCount: -1 })
       .limit(15)
       .lean({ virtuals: true });
+    console.log(
+      `📰 [DailyEmail] Found posts:`,
+      posts.map((p) => ({ title: p.title, id: p._id }))
+    );
 
-    console.log(`📰 [DailyEmail] Found ${posts.length} posts from today`);
-
-    // Your existing fallback logic (keeping the same)
     if (posts.length < 10) {
       const needed = 10 - posts.length;
       console.log(
@@ -184,6 +187,10 @@ export const sendDailyPostEmail = async (req, res, next) => {
           select: "name avatar",
         });
         posts = [...posts, ...populatedFallback];
+        console.log(
+          `[DailyEmail] Added fallback posts:`,
+          populatedFallback.map((p) => ({ title: p.title, id: p._id }))
+        );
       }
     }
 
@@ -202,34 +209,38 @@ export const sendDailyPostEmail = async (req, res, next) => {
           b.likesCount + b.commentsCount - (a.likesCount + a.commentsCount)
       )
       .slice(0, 10);
+    console.log(
+      `[DailyEmail] Final selected posts:`,
+      posts.map((p) => ({ title: p.title, id: p._id }))
+    );
 
     const results = [];
-
-    // Enhanced batch processing (same structure, better error handling)
     const batchSize = 50;
     const userBatches = [];
     for (let i = 0; i < eligibleUsers.length; i += batchSize) {
       userBatches.push(eligibleUsers.slice(i, i + batchSize));
     }
-
-    console.log(
-      `🔄 [DailyEmail] Processing ${userBatches.length} batches of users`
-    );
+    console.log(`[DailyEmail] Created ${userBatches.length} batches`);
 
     for (let batchIndex = 0; batchIndex < userBatches.length; batchIndex++) {
       const batch = userBatches[batchIndex];
+      console.log(
+        `[DailyEmail] Processing batch ${batchIndex + 1}:`,
+        batch.map((u) => u.email)
+      );
 
       const batchPromises = batch.map(async (user) => {
         try {
-          // Your existing subject generation
           const popularPost = posts[0];
           const subject = popularPost
             ? `${popularPost.title.substring(0, 50)}${
                 popularPost.title.length > 50 ? "..." : ""
               } | inkshaa Daily Digest`
             : `Your inkshaa Daily Brief – ${posts.length} Fresh Posts for You`;
+          console.log(
+            `[DailyEmail] Generated subject for ${user.email}: ${subject}`
+          );
 
-          // Create mail options (enhanced createMailOption will handle suppression)
           const mailOption = await createMailOption({
             to: user.email,
             subject: subject,
@@ -240,11 +251,14 @@ export const sendDailyPostEmail = async (req, res, next) => {
             buttonUrl: "https://inkshaa.onrender.com/explore",
             posts,
           });
+          console.log(
+            `[DailyEmail] Mail options for ${user.email}:`,
+            JSON.stringify(mailOption, null, 2)
+          );
 
-          // Send email (enhanced sendEmailWithRetries will handle bounces)
           await sendEmailWithRetries(mailOption, user._id, "daily_digest", 3);
+          console.log(`[DailyEmail] Email sent to ${user.email}`);
 
-          // Your existing activity logging
           await recordActivity({
             userId: user._id,
             action: "DAILY_EMAIL_SENT",
@@ -259,11 +273,11 @@ export const sendDailyPostEmail = async (req, res, next) => {
           };
         } catch (error) {
           console.error(
-            `❌ [DailyEmail] Failed for ${user.email}:`,
-            error.message
+            `[DailyEmail] Failed for ${user.email}:`,
+            error.message,
+            error.stack
           );
 
-          // Enhanced error logging
           await recordActivity({
             userId: user._id,
             action: "DAILY_EMAIL_FAILED",
@@ -271,7 +285,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
             metadata: { postCount: posts.length, error: error.message },
           });
 
-          // Record bounce if it's a delivery issue
           if (
             error.message.includes("user unknown") ||
             error.message.includes("domain not found") ||
@@ -284,6 +297,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
                 bounceType: "hard",
                 status: "suppressed",
               });
+              console.log(`[DailyEmail] Recorded bounce for ${user.email}`);
             } catch (bounceError) {
               console.error("Failed to record bounce:", bounceError.message);
             }
@@ -299,6 +313,13 @@ export const sendDailyPostEmail = async (req, res, next) => {
       });
 
       const batchResults = await Promise.allSettled(batchPromises);
+      console.log(
+        `[DailyEmail] Batch ${batchIndex + 1} results:`,
+        batchResults.map((r) => ({
+          status: r.status,
+          value: r.status === "fulfilled" ? r.value : r.reason,
+        }))
+      );
       batchResults.forEach((result) => {
         if (result.status === "fulfilled") {
           results.push(result.value);
@@ -310,7 +331,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
         }
       });
 
-      // Your existing delay between batches
       if (batchIndex < userBatches.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
@@ -318,16 +338,15 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
     const successCount = results.filter((r) => r.success).length;
     const failedCount = results.filter((r) => !r.success).length;
-
     console.log(
-      `✅ [DailyEmail] Completed: ${successCount} success, ${failedCount} failed`
+      `[DailyEmail] Final results: ${successCount} success, ${failedCount} failed`
     );
 
-    // Your existing admin report
     const admin = await UserModel.findOne({ role: "admin" }).lean();
     if (admin) {
       try {
         const failedUsers = results.filter((r) => !r.success).slice(0, 10);
+        console.log(`[DailyEmail] Admin report failed users:`, failedUsers);
 
         const adminMailOption = await createMailOption({
           to: admin.email,
@@ -348,7 +367,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
               likes: p.likesCount || 0,
               comments: p.commentsCount || 0,
             })),
-            // Add eligibility stats
             totalPotentialUsers: users.length,
             eligibleUsers: eligibleUsers.length,
             ineligibleReasons: ineligibleUsers.reduce((acc, user) => {
@@ -357,6 +375,10 @@ export const sendDailyPostEmail = async (req, res, next) => {
             }, {}),
           },
         });
+        console.log(
+          `[DailyEmail] Admin mail options:`,
+          JSON.stringify(adminMailOption, null, 2)
+        );
 
         await sendEmailWithRetries(adminMailOption, admin._id, "report", 3);
         console.log("📊 [DailyEmail] Admin report sent successfully");
@@ -368,7 +390,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
       }
     }
 
-    // Your existing response format (enhanced)
     res.status(200).json({
       message: "Daily post emails processed successfully",
       results: {
@@ -395,7 +416,11 @@ export const sendDailyPostEmail = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error("💥 [DailyEmail] Critical error:", error);
+    console.error(
+      "💥 [DailyEmail] Critical error:",
+      error.message,
+      error.stack
+    );
     next(
       error instanceof AppError
         ? error
@@ -408,7 +433,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
   }
 };
 
-// Your existing report function (keeping exactly the same)
 export const getDailyPostEmailReport = async (req, res, next) => {
   try {
     const {
@@ -418,9 +442,15 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       status,
       type = "daily_digest",
     } = req.query;
+    console.log(`[EmailReport] Query params:`, {
+      page,
+      limit,
+      date,
+      status,
+      type,
+    });
 
     const query = { type };
-
     if (date) {
       const istDate = new Date(date);
       if (isNaN(istDate.getTime())) {
@@ -437,6 +467,7 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       endDate.setUTCHours(18 + 23, 30 + 59, 59, 999);
 
       query.createdAt = { $gte: startDate, $lte: endDate };
+      console.log(`[EmailReport] Date filter:`, { startDate, endDate });
     }
 
     if (
@@ -444,12 +475,12 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       ["sent", "failed", "suppressed", "pending"].includes(status)
     ) {
       query.emailStatus = status;
+      console.log(`[EmailReport] Status filter: ${status}`);
     }
 
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
 
-    // Enhanced aggregation pipeline (keeping your existing structure but adding bounce info)
     const pipeline = [
       { $match: query },
       {
@@ -494,19 +525,24 @@ export const getDailyPostEmailReport = async (req, res, next) => {
         },
       },
     ];
+    console.log(
+      `[EmailReport] Aggregation pipeline:`,
+      JSON.stringify(pipeline, null, 2)
+    );
 
     const [result] = await EmailLog.aggregate(pipeline);
     const { logs, stats, totalCount } = result;
     const total = totalCount[0]?.count || 0;
+    console.log(`[EmailReport] Aggregation result:`, {
+      totalLogs: logs.length,
+      total,
+    });
 
     const statusStats = stats.reduce((acc, stat) => {
       acc[stat._id] = stat.count;
       return acc;
     }, {});
-
-    console.log(
-      `📊 [EmailReport] Fetched ${logs.length} logs out of ${total} total`
-    );
+    console.log(`[EmailReport] Status stats:`, statusStats);
 
     res.status(200).json({
       logs,
@@ -532,7 +568,11 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       filters: { date, status, type },
     });
   } catch (error) {
-    console.error("❌ [EmailReport] Failed to fetch email report:", error);
+    console.error(
+      "❌ [EmailReport] Failed to fetch email report:",
+      error.message,
+      error.stack
+    );
     next(
       error instanceof AppError
         ? error
@@ -545,16 +585,14 @@ export const getDailyPostEmailReport = async (req, res, next) => {
   }
 };
 
-// Your existing cleanup function (keeping exactly the same)
 export const deleteAllNotifications = async (req, res, next) => {
   try {
     console.log("🗑️ [Cleanup] Starting notification cleanup...");
     const countBefore = await Notification.countDocuments({});
-    const result = await Notification.deleteMany({});
+    console.log(`[Cleanup] Notifications before: ${countBefore}`);
 
-    console.log(
-      `✅ [Cleanup] Deleted ${result.deletedCount} notifications (${countBefore} total found)`
-    );
+    const result = await Notification.deleteMany({});
+    console.log(`[Cleanup] Delete result:`, result);
 
     await recordActivity({
       userId: req.user?._id || null,
@@ -570,7 +608,11 @@ export const deleteAllNotifications = async (req, res, next) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("❌ [Cleanup] Failed to delete notifications:", error);
+    console.error(
+      "❌ [Cleanup] Failed to delete notifications:",
+      error.message,
+      error.stack
+    );
     next(
       error instanceof AppError
         ? error
@@ -583,21 +625,23 @@ export const deleteAllNotifications = async (req, res, next) => {
   }
 };
 
-// NEW FUNCTIONS - Additional utility functions for bounce management
-
-// Check if user is eligible (can be called from frontend)
 export const checkUserEligibilityForEmail = async (req, res, next) => {
   try {
     const { userId } = req.params;
+    console.log(
+      `[EligibilityCheck] Checking eligibility for userId: ${userId}`
+    );
 
     const user = await UserModel.findById(userId).select(
       "_id name email isAccountVerified stopEmailAttempts blocked lastActiveAt"
     );
+    console.log(`[EligibilityCheck] Found user:`, user);
     if (!user) {
       throw new AppError("User not found", 404, "CheckUserEligibility");
     }
 
     const eligibility = await isUserEligibleForEmail(user);
+    console.log(`[EligibilityCheck] Eligibility result:`, eligibility);
 
     res.status(200).json({
       success: true,
@@ -607,6 +651,7 @@ export const checkUserEligibilityForEmail = async (req, res, next) => {
       checkedAt: new Date().toISOString(),
     });
   } catch (error) {
+    console.error("❌ [EligibilityCheck] Failed:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
@@ -619,14 +664,14 @@ export const checkUserEligibilityForEmail = async (req, res, next) => {
   }
 };
 
-// Get bounce statistics
 export const getBounceStatistics = async (req, res, next) => {
   try {
     const { days = 30 } = req.query;
+    console.log(`[BounceStats] Fetching stats for ${days} days`);
+
     const cutoffDate = new Date(
       Date.now() - parseInt(days) * 24 * 60 * 60 * 1000
     );
-
     const [totalBounces, hardBounces, softBounces, suppressedEmails] =
       await Promise.all([
         Bounce.countDocuments({ createdAt: { $gte: cutoffDate } }),
@@ -640,8 +685,13 @@ export const getBounceStatistics = async (req, res, next) => {
         }),
         Bounce.countDocuments({ status: "suppressed" }),
       ]);
+    console.log(`[BounceStats] Counts:`, {
+      totalBounces,
+      hardBounces,
+      softBounces,
+      suppressedEmails,
+    });
 
-    // Get top bouncing domains
     const topDomains = await Bounce.aggregate([
       { $match: { createdAt: { $gte: cutoffDate } } },
       {
@@ -653,6 +703,7 @@ export const getBounceStatistics = async (req, res, next) => {
       { $sort: { count: -1 } },
       { $limit: 10 },
     ]);
+    console.log(`[BounceStats] Top domains:`, topDomains);
 
     res.status(200).json({
       success: true,
@@ -671,6 +722,7 @@ export const getBounceStatistics = async (req, res, next) => {
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
+    console.error("❌ [BounceStats] Failed:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
@@ -683,10 +735,10 @@ export const getBounceStatistics = async (req, res, next) => {
   }
 };
 
-// Remove email from suppression list (admin only)
 export const removeEmailSuppression = async (req, res, next) => {
   try {
     const { email } = req.body;
+    console.log(`[BounceManagement] Removing suppression for email: ${email}`);
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new AppError(
@@ -697,12 +749,11 @@ export const removeEmailSuppression = async (req, res, next) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-
-    // Remove from bounce list or mark as resolved
     const bounce = await Bounce.findOne({
       email: normalizedEmail,
       status: "suppressed",
     });
+    console.log(`[BounceManagement] Bounce record:`, bounce);
 
     if (!bounce) {
       return res.status(404).json({
@@ -714,10 +765,7 @@ export const removeEmailSuppression = async (req, res, next) => {
     bounce.status = "resolved";
     bounce.updatedAt = new Date();
     await bounce.save();
-
-    console.log(
-      `📧 [BounceManagement] Removed ${normalizedEmail} from suppression list`
-    );
+    console.log(`[BounceManagement] Updated bounce record:`, bounce);
 
     res.status(200).json({
       success: true,
@@ -726,6 +774,7 @@ export const removeEmailSuppression = async (req, res, next) => {
       removedAt: new Date().toISOString(),
     });
   } catch (error) {
+    console.error("❌ [BounceManagement] Failed:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
@@ -738,16 +787,15 @@ export const removeEmailSuppression = async (req, res, next) => {
   }
 };
 
-// Test single email (for debugging)
 export const testSingleEmail = async (req, res, next) => {
   try {
     const { email, type = "test" } = req.body;
+    console.log(`[TestEmail] Testing email: ${email}, type: ${type}`);
 
     if (!email) {
       throw new AppError("Email is required", 400, "TestSingleEmail");
     }
 
-    // Check eligibility first
     const testUser = {
       _id: "test_user",
       name: "Test User",
@@ -757,8 +805,10 @@ export const testSingleEmail = async (req, res, next) => {
       blocked: false,
       lastActiveAt: new Date(),
     };
+    console.log(`[TestEmail] Test user created:`, testUser);
 
     const eligibility = await isUserEligibleForEmail(testUser);
+    console.log(`[TestEmail] Eligibility:`, eligibility);
 
     if (!eligibility.eligible) {
       return res.status(400).json({
@@ -768,7 +818,6 @@ export const testSingleEmail = async (req, res, next) => {
       });
     }
 
-    // Create and send test email
     const mailOption = await createMailOption({
       to: email,
       subject: "Test Email from inkshaa",
@@ -779,8 +828,13 @@ export const testSingleEmail = async (req, res, next) => {
       buttonText: "Visit Website",
       buttonUrl: "https://inkshaa.onrender.com",
     });
+    console.log(
+      `[TestEmail] Mail options:`,
+      JSON.stringify(mailOption, null, 2)
+    );
 
     const result = await sendEmailWithRetries(mailOption, "test_user", type, 1);
+    console.log(`[TestEmail] Email result:`, result);
 
     res.status(200).json({
       success: true,
@@ -790,7 +844,7 @@ export const testSingleEmail = async (req, res, next) => {
       sentAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Failed to send test email:", error);
+    console.error("❌ [TestEmail] Failed:", error.message, error.stack);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to send test email",
