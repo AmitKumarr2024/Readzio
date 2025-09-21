@@ -11,7 +11,9 @@ import { DAILY_POST_ADMIN_REPORT_TEMPLATE } from "../../servers/config/DailyPost
 
 // Helper function to check if user is eligible
 async function isUserEligibleForEmail(user) {
-  console.log(`[EligibilityCheck] Checking user: ${user.email}`);
+  console.log(
+    `[EligibilityCheck] Checking user: ${user.email}, ID: ${user._id}`
+  );
   if (!user.isAccountVerified)
     return { eligible: false, reason: "Not verified" };
   if (user.stopEmailAttempts)
@@ -133,12 +135,26 @@ export const sendDailyPostEmail = async (req, res, next) => {
       });
     }
 
-    // Fetch any 10 published posts, prioritizing recent and popular
-    let posts = await PostModel.find({
+    // Log before fetching posts
+    console.log(
+      `[DailyEmail] Fetching posts for eligible users:`,
+      eligibleUsers.map((u) => ({ id: u._id, email: u.email }))
+    );
+
+    // Log query details
+    const postQuery = {
       isPublished: true,
       title: { $exists: true, $ne: "" },
       content: { $exists: true },
-    })
+    };
+    console.log(`[DailyEmail] Post query:`, JSON.stringify(postQuery, null, 2));
+    console.log(
+      `[DailyEmail] Querying collection: ${PostModel.collection.name}`
+    );
+    console.log(`[DailyEmail] Database: ${PostModel.db.name}`);
+
+    // Fetch any 10 published posts, prioritizing recent and popular
+    let posts = await PostModel.find(postQuery)
       .select(
         "title slug thumbnail author readTime likesCount commentsCount createdAt"
       )
@@ -146,17 +162,54 @@ export const sendDailyPostEmail = async (req, res, next) => {
       .sort({ createdAt: -1, likesCount: -1, commentsCount: -1 })
       .limit(10)
       .lean({ virtuals: true });
+
+    // Log raw post results
     console.log(
-      `📰 [DailyEmail] Found posts:`,
-      posts.map((p) => ({ title: p.title, id: p._id }))
+      `[DailyEmail] Raw posts fetched:`,
+      posts.map((p) => ({
+        id: p._id,
+        title: p.title,
+        isPublished: p.isPublished,
+        createdAt: p.createdAt,
+      }))
     );
+    console.log(`[DailyEmail] Total posts found: ${posts.length}`);
 
     if (posts.length === 0) {
+      // Additional debug query to check all posts
+      const allPostsCount = await PostModel.countDocuments({});
+      console.log(`[DailyEmail] Total posts in collection: ${allPostsCount}`);
+      const publishedPostsCount = await PostModel.countDocuments({
+        isPublished: true,
+      });
+      console.log(`[DailyEmail] Total published posts: ${publishedPostsCount}`);
+      const postsWithTitleCount = await PostModel.countDocuments({
+        isPublished: true,
+        title: { $exists: true, $ne: "" },
+      });
+      console.log(
+        `[DailyEmail] Total published posts with title: ${postsWithTitleCount}`
+      );
+      const postsWithContentCount = await PostModel.countDocuments({
+        isPublished: true,
+        title: { $exists: true, $ne: "" },
+        content: { $exists: true },
+      });
+      console.log(
+        `[DailyEmail] Total published posts with title and content: ${postsWithContentCount}`
+      );
+
       return res.status(200).json({
         message: "No posts available to send. Skipped daily email.",
         results: [],
         postCount: 0,
         processTime: Date.now() - startTime,
+        debug: {
+          totalPosts: allPostsCount,
+          publishedPosts: publishedPostsCount,
+          postsWithTitle: postsWithTitleCount,
+          postsWithTitleAndContent: postsWithContentCount,
+        },
       });
     }
 
@@ -356,7 +409,8 @@ export const sendDailyPostEmail = async (req, res, next) => {
       postCount: posts.length,
       processTime: Date.now() - startTime,
       performance: {
-        avgTimePerEmail: Math.round((Date.now() - startTime) / results.length),
+        avgTimePerEmail:
+          Math.round((Date.now() - startTime) / results.length) || 0,
         totalBatches: userBatches.length,
         batchSize,
       },
@@ -750,7 +804,7 @@ export const testSingleEmail = async (req, res, next) => {
       stopEmailAttempts: false,
       blocked: false,
       lastActiveAt: new Date(),
-      isAccountVerified: true, // Added for consistency with eligibility check
+      isAccountVerified: true,
     };
     console.log(`[TestEmail] Test user created:`, testUser);
 
