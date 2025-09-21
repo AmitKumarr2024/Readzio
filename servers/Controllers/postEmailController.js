@@ -211,7 +211,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     }
     console.log(`[DailyEmail] Created ${userBatches.length} batches`);
 
-    for (let batchIndex = 0; batchIndex < userBatches.length; batchIndex++) {
+    for (let batchIndex = 0; bagtchIndex < userBatches.length; batchIndex++) {
       const batch = userBatches[batchIndex];
       console.log(
         `[DailyEmail] Processing batch ${batchIndex + 1}:`,
@@ -245,20 +245,33 @@ export const sendDailyPostEmail = async (req, res, next) => {
             JSON.stringify(mailOption, null, 2)
           );
 
-          await sendEmailWithRetries(mailOption, user._id, "daily_digest", 3);
-          console.log(`[DailyEmail] Email sent to ${user.email}`);
+          console.log(`[DailyEmail] Sending email to ${user.email}...`);
+          const emailResult = await sendEmailWithRetries(
+            mailOption,
+            user._id,
+            "daily_digest",
+            3
+          );
+          console.log(
+            `[DailyEmail] Email sent to ${user.email}:`,
+            emailResult.messageId
+          );
 
           await recordActivity({
             userId: user._id,
             action: "DAILY_EMAIL_SENT",
             message: `Daily digest sent successfully to ${user.email}`,
-            metadata: { postCount: posts.length },
+            metadata: {
+              postCount: posts.length,
+              messageId: emailResult.messageId,
+            },
           });
 
           return {
             email: user.email,
             success: true,
             userId: user._id,
+            messageId: emailResult.messageId,
           };
         } catch (error) {
           console.error(
@@ -369,6 +382,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
           JSON.stringify(adminMailOption, null, 2)
         );
 
+        console.log(`[DailyEmail] Sending admin report to ${admin.email}...`);
         await sendEmailWithRetries(adminMailOption, admin._id, "report", 3);
         console.log("📊 [DailyEmail] Admin report sent successfully");
       } catch (adminError) {
@@ -824,8 +838,9 @@ export const testSingleEmail = async (req, res, next) => {
       JSON.stringify(mailOption, null, 2)
     );
 
+    console.log(`[TestEmail] Sending test email to ${email}...`);
     const result = await sendEmailWithRetries(mailOption, "test_user", type, 1);
-    console.log(`[TestEmail] Email result:`, result);
+    console.log(`[TestEmail] Email sent to ${email}:`, result.messageId);
 
     res.status(200).json({
       success: true,
