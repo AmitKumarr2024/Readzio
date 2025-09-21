@@ -204,11 +204,33 @@ export const sendDirectEmail = async (req, res, next) => {
     console.log(`[DirectEmail] Sending email to ${email}...`);
 
     if (!email) {
+      console.log(`[DirectEmail] Error: Email is required`);
       return res.status(400).json({
         success: false,
         message: "Email is required",
       });
     }
+
+    console.log(`[DirectEmail] Verifying SMTP transporter configuration...`);
+    await transporter.verify((error, success) => {
+      if (error) {
+        console.error(
+          `[DirectEmail] SMTP verification failed:`,
+          error.message,
+          {
+            stack: error.stack,
+            code: error.code,
+            errno: error.errno,
+          }
+        );
+        throw new AppError(
+          "SMTP transporter verification failed",
+          500,
+          "SendDirectEmail"
+        );
+      }
+      console.log(`[DirectEmail] SMTP transporter verified successfully`);
+    });
 
     const mailOption = {
       to: email,
@@ -216,11 +238,21 @@ export const sendDirectEmail = async (req, res, next) => {
       text: "hello world",
     };
 
+    console.log(`[DirectEmail] Sending email with options:`, {
+      to: mailOption.to,
+      subject: mailOption.subject,
+      text: mailOption.text,
+    });
+
     const emailResult = await transporter.sendMail(mailOption);
 
-    console.log(
-      `✅ [DirectEmail] Email sent to ${email}: ${emailResult.messageId}`
-    );
+    console.log(`✅ [DirectEmail] Email sent to ${email}:`, {
+      messageId: emailResult.messageId,
+      response: emailResult.response,
+      accepted: emailResult.accepted,
+      rejected: emailResult.rejected,
+      envelope: emailResult.envelope,
+    });
 
     res.status(200).json({
       success: true,
@@ -230,11 +262,26 @@ export const sendDirectEmail = async (req, res, next) => {
       sentAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error(`❌ [DirectEmail] Failed for ${email}:`, error.message);
+    console.error(`❌ [DirectEmail] Failed for ${email}:`, {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      errno: error.errno,
+      response: error.response,
+      responseCode: error.responseCode,
+      command: error.command,
+    });
     res.status(500).json({
       success: false,
       message: error.message || "Failed to send direct email",
       email: req.body.email,
+      errorDetails: {
+        code: error.code,
+        errno: error.errno,
+        response: error.response,
+        responseCode: error.responseCode,
+        command: error.command,
+      },
     });
   }
 };
