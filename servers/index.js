@@ -35,7 +35,7 @@ import EarningRoutes from "./Routes/earningRoutes.js";
 import AchievementRoutes from "./Routes/AchievementRoutes.js";
 import CommentsRoutes from "./Routes/commentRoutes.js";
 import AdminRoutes from "./Routes/adminRoutes.js";
-import PostEmailRoutes from "./Routes/postEmailRoutes.js";
+// import PostEmailRoutes from "./Routes/postEmailRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
@@ -227,7 +227,7 @@ const routeConfigs = [
   },
   { path: "/api/comment", router: CommentsRoutes, name: "CommentsRoutes" },
   { path: "/api/admin", router: AdminRoutes, name: "AdminRoutes" },
-  { path: "/api/dailyMail", router: PostEmailRoutes, name: "PostEmailRoutes" },
+  // { path: "/api/dailyMail", router: PostEmailRoutes, name: "PostEmailRoutes" },
   {
     path: "/api/bannerNotification",
     router: BannerNotificationRoutes,
