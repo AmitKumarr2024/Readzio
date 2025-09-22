@@ -39,7 +39,7 @@ import AdminRoutes from "./Routes/adminRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
-import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
+// import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 import session from "express-session";
 const app = express();
 app.set("trust proxy", true);
@@ -482,7 +482,7 @@ const startServer = async () => {
     console.log("[Server:Startup] ✅ Database connected successfully");
     console.log("[Server:Startup] 🧹 Starting cleanup jobs...");
     startTempCleanup();
-    startDailyDigestJob();
+    // startDailyDigestJob();
     console.log("[Server:Startup] ✅ Background jobs started");
     const port = process.env.PORT || 10000;
     server.listen(port, "0.0.0.0", function () {
