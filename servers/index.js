@@ -40,7 +40,7 @@ import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 // import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
-import session from "express-session";
+// import session from "express-session";
 const app = express();
 app.set("trust proxy", true);
 
@@ -183,18 +183,18 @@ app.use(
 );
 
 app.use(cookieParser());
-app.use(
-  session({
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: NODE_ENV === "production", // true in prod
-      httpOnly: true,
-      sameSite: "strict",
-    },
-  })
-);
+// app.use(
+//   session({
+//     secret: SESSION_SECRET,
+//     resave: false,
+//     saveUninitialized: false,
+//     cookie: {
+//       secure: NODE_ENV === "production", // true in prod
+//       httpOnly: true,
+//       sameSite: "strict",
+//     },
+//   })
+// );
 
 const routeConfigs = [
   { path: "/api/auth", router: AuthRoutes, name: "AuthRoutes" },
