@@ -7,6 +7,7 @@ import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import transporter from "../../servers/config/nodeMailer.js";
 import { SMTP_USER } from "../../servers/config/dotenv.js";
+import { sendManualTestEmail } from "../helpers/manualEmailTest.js";
 
 const SENDER_EMAIL = SMTP_USER;
 
@@ -249,6 +250,9 @@ export const testSingleEmail = async (req, res, next) => {
 export const sendDirectEmail = async (req, res, next) => {
   let email = req.body?.email;
   logWithContext("DirectEmail", "Starting direct email process", { email });
+
+  sendManualTestEmail();
+  console.log("mannual", sendManualTestEmail);
 
   try {
     if (!email) {

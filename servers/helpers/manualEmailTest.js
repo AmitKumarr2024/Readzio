@@ -5,7 +5,7 @@ import { SMTP_USER } from "../config/dotenv.js";
 
 
 
-async function sendManualTestEmail() {
+export async function sendManualTestEmail() {
   try {
     const info = await transporter.sendMail({
       from: `"Inkshaa Test" <${SMTP_USER}>`,
