@@ -6,7 +6,9 @@ import { AppError } from "../../servers/Utils/AppError.js";
 import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import transporter from "../../servers/config/nodeMailer.js";
+import { SMTP_USER } from "../../servers/config/dotenv.js";
 
+const SENDER_EMAIL = SMTP_USER;
 export const sendDailyPostEmail = async (req, res, next) => {
   const startTime = Date.now();
   console.log("📧 [DailyEmail] Starting daily post email process");
@@ -200,93 +202,62 @@ export const testSingleEmail = async (req, res, next) => {
 };
 
 export const sendDirectEmail = async (req, res, next) => {
+  let email = req.body?.email; // define outside try
   try {
-    const { email } = req.body;
     console.log(`[DirectEmail] Sending email to ${email}...`);
 
     if (!email) {
-      console.log(`[DirectEmail] Error: Email is required`);
       return res.status(400).json({
         success: false,
         message: "Email is required",
       });
     }
 
-    console.log(`[DirectEmail] Verifying SMTP transporter configuration...`);
-    await transporter.verify((error, success) => {
-      if (error) {
-        console.error(
-          `[DirectEmail] SMTP verification failed:`,
-          error.message,
-          {
-            stack: error.stack,
-            code: error.code,
-            errno: error.errno,
-          }
-        );
-        return res.status(500).json({
-          success: false,
-          message: "SMTP transporter verification failed",
-          errorDetails: {
-            code: error.code,
-            errno: error.errno,
-          },
-        });
-      }
+    // Verify transporter
+    try {
+      await transporter.verify();
       console.log(`[DirectEmail] SMTP transporter verified successfully`);
-    });
+    } catch (verifyErr) {
+      console.error(
+        `[DirectEmail] SMTP verification failed:`,
+        verifyErr.message
+      );
+      return res.status(500).json({
+        success: false,
+        message: "SMTP transporter verification failed",
+        error: verifyErr.message,
+      });
+    }
 
     const mailOption = {
-      from: SENDER_EMAIL,
+      from: SENDER_EMAIL, // must be defined at top of file
       to: email,
       subject: "Message from inkshaa",
       text: "hello world",
     };
 
-    console.log(`[DirectEmail] Sending email with options:`, {
-      to: mailOption.to,
-      subject: mailOption.subject,
-      text: mailOption.text,
-    });
+    console.log(`[DirectEmail] Sending email with options:`, mailOption);
 
     const emailResult = await transporter.sendMail(mailOption);
 
-    console.log(`✅ [DirectEmail] Email sent to ${email}:`, {
-      messageId: emailResult.messageId,
-      response: emailResult.response,
-      accepted: emailResult.accepted,
-      rejected: emailResult.rejected,
-      envelope: emailResult.envelope,
-    });
+    console.log(
+      `✅ [DirectEmail] Email sent to ${email}:`,
+      emailResult.messageId
+    );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Direct email sent successfully",
-      email: email,
+      email,
       messageId: emailResult.messageId,
       sentAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error(`❌ [DirectEmail] Failed for ${email}:`, {
-      message: error.message,
-      stack: error.stack,
-      code: error.code,
-      errno: error.errno,
-      response: error.response,
-      responseCode: error.responseCode,
-      command: error.command,
-    });
-    res.status(500).json({
+    console.error(`❌ [DirectEmail] Failed for ${email}:`, error.message);
+    return res.status(500).json({
       success: false,
       message: error.message || "Failed to send direct email",
-      email: req.body.email,
-      errorDetails: {
-        code: error.code,
-        errno: error.errno,
-        response: error.response,
-        responseCode: error.responseCode,
-        command: error.command,
-      },
+      email,
     });
   }
 };
