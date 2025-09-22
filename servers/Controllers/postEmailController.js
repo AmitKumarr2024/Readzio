@@ -161,6 +161,7 @@ export const testSingleEmail = async (req, res, next) => {
     }
 
     const mailOption = await createMailOption({
+      from: SENDER_EMAIL,
       to: email,
       subject: "🧪 Test Email from inkshaa",
       name: "Test User",
@@ -197,9 +198,6 @@ export const testSingleEmail = async (req, res, next) => {
     });
   }
 };
-
-
-
 
 export const sendDirectEmail = async (req, res, next) => {
   try {
@@ -239,6 +237,7 @@ export const sendDirectEmail = async (req, res, next) => {
     });
 
     const mailOption = {
+      from: SENDER_EMAIL,
       to: email,
       subject: "Message from inkshaa",
       text: "hello world",
