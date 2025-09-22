@@ -7,7 +7,7 @@ import { DAILY_POST_EMAIL_TEMPLATE } from "../../servers/config/dailyPostEmailTe
 import { INVOICE_EMAIL_TEMPLATE } from "../../servers/config/emailTemplate.js";
 import { SENDER_EMAIL } from "../../servers/config/dotenv.js";
 import { AppError } from "../../servers/Utils/AppError.js";
-import Bounce from "../../servers/Models/BounceModel.js";
+// import Bounce from "../../servers/Models/BounceModel.js";
 
 export default async function createMailOption({
   to,
