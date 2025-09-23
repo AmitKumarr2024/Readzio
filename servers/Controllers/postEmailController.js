@@ -1,6 +1,6 @@
 import EmailLog from "../../servers/Models/EmailLog.js";
 import UserModel from "../../servers/Models/User.js";
-import PostModel from "../../servers/Models/BounceModel.js";
+import PostModel from "../../servers/Models/Post.js";
 import Bounce from "../../servers/Models/BounceModel.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";

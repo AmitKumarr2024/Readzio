@@ -11,9 +11,27 @@ const transporter = nodemailer.createTransport({
   secure: false, // TLS for 587
   auth: {
     user: SMTP_USER,
-    pass:"askpzmqpgsvjfvsv",
+    pass: SMTP_PASS, // Use environment variable
   },
-  logger: true,
+  connectionTimeout: 15000, // 15 seconds
+  greetingTimeout: 15000,
+  socketTimeout: 15000,
+  logger: true, // Enable debug logs
   debug: true,
 });
+
+// Verify SMTP connection on startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error(`[${new Date().toISOString()}] [SMTP] Verification failed:`, {
+      error: error.message,
+      stack: error.stack,
+    });
+  } else {
+    console.log(
+      `[${new Date().toISOString()}] [SMTP] Transporter verified successfully`
+    );
+  }
+});
+
 export default transporter;
