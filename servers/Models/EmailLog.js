@@ -1,210 +1,422 @@
+// models/EmailLog.js
 import mongoose from "mongoose";
 
-const emailLogSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    required: true,
-    lowercase: true,
-    validate: {
-      validator: function (v) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-      },
-      message: "Invalid email format",
-    },
-  },
-  type: {
-    type: String,
-    required: true,
-    enum: [
-      "signup",
-      "payout",
-      "subscription",
-      "contact_reply",
-      "report",
-      "daily_digest",
-    ],
-  },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    sparse: true, // allow null values
-  },
-  emailStatus: {
-    type: String,
-    enum: ["pending", "sent", "failed", "bounced", "suppressed"],
-    default: "pending",
-  },
-  emailAttempts: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 10,
-  },
-  emailLastError: {
-    type: String,
-    maxlength: 1000,
-    trim: true,
-  },
-  stopEmailAttempts: {
-    type: Boolean,
-    default: false,
-  },
-
-  bounceType: {
-    type: String,
-    enum: ["hard", "soft", "spam", "reputation", null],
-    default: null,
-  },
-  bounceReason: {
-    type: String,
-    maxlength: 200,
-    trim: true,
-  },
-  bounceCode: {
-    type: String,
-    maxlength: 10,
-    trim: true,
-  },
-  lastBounceAt: Date,
-  bounceCount: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 50,
-  },
-  suppressedAt: Date,
-
-  messageId: {
-    type: String,
-    trim: true,
-  },
-  sentAt: Date,
-  postSlugs: [
-    {
+const emailLogSchema = new mongoose.Schema(
+  {
+    to: {
       type: String,
+      required: [true, "Recipient email is required"],
       trim: true,
+      lowercase: true,
+      match: [
+        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+        "Please provide a valid email address",
+      ],
+      index: true,
     },
-  ],
-
-  metadata: {
-    type: Map,
-    of: mongoose.Schema.Types.Mixed,
-    default: new Map(),
+    from: {
+      type: String,
+      required: [true, "Sender email is required"],
+      trim: true,
+      lowercase: true,
+    },
+    subject: {
+      type: String,
+      required: [true, "Email subject is required"],
+      trim: true,
+      maxlength: [200, "Subject cannot exceed 200 characters"],
+    },
+    type: {
+      type: String,
+      required: [true, "Email type is required"],
+      enum: {
+        values: [
+          "verification",
+          "welcome",
+          "reset_password",
+          "invoice",
+          "daily_report",
+          "notification",
+          "bulk",
+          "custom",
+        ],
+        message: "Invalid email type: {VALUE}",
+      },
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: {
+        values: ["pending", "sent", "failed", "bounced", "delivered", "opened"],
+        message: "Invalid status: {VALUE}",
+      },
+      default: "pending",
+      index: true,
+    },
+    priority: {
+      type: String,
+      enum: ["low", "normal", "high", "urgent"],
+      default: "normal",
+    },
+    messageId: {
+      type: String,
+      default: null,
+      sparse: true,
+    },
+    templateData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    htmlContent: {
+      type: String,
+      default: null,
+    },
+    textContent: {
+      type: String,
+      default: null,
+    },
+    attachments: [
+      {
+        filename: String,
+        path: String,
+        size: Number,
+        mimetype: String,
+      },
+    ],
+    error: {
+      message: {
+        type: String,
+        default: null,
+      },
+      code: {
+        type: String,
+        default: null,
+      },
+      stack: {
+        type: String,
+        default: null,
+      },
+    },
+    retryCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    maxRetries: {
+      type: Number,
+      default: 3,
+      min: 0,
+      max: 10,
+    },
+    nextRetryAt: {
+      type: Date,
+      default: null,
+    },
+    sentAt: {
+      type: Date,
+      default: null,
+    },
+    deliveredAt: {
+      type: Date,
+      default: null,
+    },
+    openedAt: {
+      type: Date,
+      default: null,
+    },
+    clickedAt: {
+      type: Date,
+      default: null,
+    },
+    bouncedAt: {
+      type: Date,
+      default: null,
+    },
+    tracking: {
+      userAgent: String,
+      ipAddress: String,
+      location: {
+        country: String,
+        region: String,
+        city: String,
+      },
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    senderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    campaignId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "EmailCampaign",
+      default: null,
+      index: true,
+    },
+    scheduleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ScheduledEmail",
+      default: null,
+    },
+    analytics: {
+      opens: {
+        type: Number,
+        default: 0,
+      },
+      clicks: {
+        type: Number,
+        default: 0,
+      },
+      lastOpened: Date,
+      lastClicked: Date,
+    },
+    tags: [
+      {
+        type: String,
+        trim: true,
+        lowercase: true,
+      },
+    ],
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
   },
-
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-// -------------------
-// Indexes
-// -------------------
-emailLogSchema.index({ email: 1, type: 1, userId: 1 });
-emailLogSchema.index({ bounceType: 1, lastBounceAt: 1 });
-emailLogSchema.index({ emailStatus: 1, updatedAt: 1 });
-emailLogSchema.index({ type: 1, sentAt: 1 });
-emailLogSchema.index({ suppressedAt: 1 }, { sparse: true });
-emailLogSchema.index(
-  { createdAt: 1 },
-  { expireAfterSeconds: 365 * 24 * 60 * 60 }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
-// -------------------
-// Middleware
-// -------------------
-emailLogSchema.pre("save", function (next) {
-  this.updatedAt = new Date();
+// Indexes
+emailLogSchema.index({ createdAt: -1 });
+emailLogSchema.index({ to: 1, type: 1 });
+emailLogSchema.index({ status: 1, createdAt: -1 });
+emailLogSchema.index({ type: 1, status: 1 });
+emailLogSchema.index({ userId: 1, createdAt: -1 });
+emailLogSchema.index({ campaignId: 1, status: 1 });
+emailLogSchema.index({ nextRetryAt: 1 }, { sparse: true });
+emailLogSchema.index({ tags: 1 });
 
-  if (
-    this.isModified("emailStatus") &&
-    this.emailStatus === "sent" &&
-    !this.sentAt
-  ) {
-    this.sentAt = new Date();
-  }
-
-  if (
-    this.isModified("bounceType") &&
-    this.bounceType === "hard" &&
-    !this.suppressedAt
-  ) {
-    this.suppressedAt = new Date();
-    this.stopEmailAttempts = true;
-  }
-
-  next();
+// Virtual properties
+emailLogSchema.virtual("isDelivered").get(function () {
+  return this.status === "delivered" || this.status === "sent";
 });
 
-emailLogSchema.pre(["findOneAndUpdate", "updateOne"], function () {
-  this.set({ updatedAt: new Date() });
+emailLogSchema.virtual("isFailed").get(function () {
+  return this.status === "failed" || this.status === "bounced";
 });
 
-// Virtual
-emailLogSchema.virtual("ageInHours").get(function () {
-  return Math.floor((Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60));
+emailLogSchema.virtual("canRetry").get(function () {
+  return this.isFailed && this.retryCount < this.maxRetries;
 });
 
-// Statics
-emailLogSchema.statics.findSuppressed = function () {
-  return this.find({
-    $or: [
-      { bounceType: "hard" },
-      { emailStatus: "suppressed" },
-      { suppressedAt: { $exists: true } },
-    ],
-  });
+emailLogSchema.virtual("timeSinceSent").get(function () {
+  if (!this.sentAt) return null;
+  return Date.now() - this.sentAt.getTime();
+});
+
+// Instance methods
+emailLogSchema.methods.markAsSent = function (messageId, sentAt = new Date()) {
+  this.status = "sent";
+  this.messageId = messageId;
+  this.sentAt = sentAt;
+  this.error = { message: null, code: null, stack: null };
+  return this.save();
 };
 
-emailLogSchema.statics.findRecentSoftBounces = function (hours = 1) {
-  const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
-  return this.find({ bounceType: "soft", lastBounceAt: { $gte: cutoff } });
+emailLogSchema.methods.markAsDelivered = function (deliveredAt = new Date()) {
+  this.status = "delivered";
+  this.deliveredAt = deliveredAt;
+  return this.save();
 };
 
-emailLogSchema.statics.getEmailStats = function (email) {
+emailLogSchema.methods.markAsFailed = function (error, shouldRetry = true) {
+  this.status = "failed";
+  this.error = {
+    message: error.message || error,
+    code: error.code || null,
+    stack: error.stack || null,
+  };
+
+  if (shouldRetry && this.canRetry) {
+    this.retryCount += 1;
+    const backoffMinutes = Math.pow(2, this.retryCount) * 5;
+    this.nextRetryAt = new Date(Date.now() + backoffMinutes * 60 * 1000);
+  }
+
+  return this.save();
+};
+
+emailLogSchema.methods.markAsOpened = function (
+  openedAt = new Date(),
+  trackingData = {}
+) {
+  this.status = "opened";
+  this.openedAt = openedAt;
+  this.analytics.opens += 1;
+  this.analytics.lastOpened = openedAt;
+
+  if (trackingData) {
+    this.tracking = { ...this.tracking, ...trackingData };
+  }
+
+  return this.save();
+};
+
+emailLogSchema.methods.markAsClicked = function (clickedAt = new Date()) {
+  this.clickedAt = clickedAt;
+  this.analytics.clicks += 1;
+  this.analytics.lastClicked = clickedAt;
+  return this.save();
+};
+
+emailLogSchema.methods.markAsBounced = function (
+  bounceReason,
+  bouncedAt = new Date()
+) {
+  this.status = "bounced";
+  this.bouncedAt = bouncedAt;
+  this.error = {
+    ...this.error,
+    message: bounceReason,
+  };
+  return this.save();
+};
+
+// Static methods
+emailLogSchema.statics.getEmailStats = function (
+  startDate,
+  endDate,
+  filters = {}
+) {
+  const matchQuery = {
+    createdAt: {
+      $gte: startDate || new Date(Date.now() - 24 * 60 * 60 * 1000),
+      $lte: endDate || new Date(),
+    },
+    ...filters,
+  };
+
   return this.aggregate([
-    { $match: { email: email.toLowerCase() } },
+    { $match: matchQuery },
+    {
+      $group: {
+        _id: "$status",
+        count: { $sum: 1 },
+        avgRetryCount: { $avg: "$retryCount" },
+        totalRetries: { $sum: "$retryCount" },
+      },
+    },
     {
       $group: {
         _id: null,
-        totalAttempts: { $sum: "$emailAttempts" },
-        totalBounces: { $sum: "$bounceCount" },
-        lastStatus: { $last: "$emailStatus" },
-        lastBounceType: { $last: "$bounceType" },
-        lastActivity: { $max: "$updatedAt" },
+        stats: {
+          $push: {
+            status: "$_id",
+            count: "$count",
+            avgRetryCount: "$avgRetryCount",
+            totalRetries: "$totalRetries",
+          },
+        },
+        total: { $sum: "$count" },
       },
     },
   ]);
 };
 
-// Methods
-emailLogSchema.methods.isSuppressed = function () {
-  return (
-    this.bounceType === "hard" ||
-    this.emailStatus === "suppressed" ||
-    this.suppressedAt
-  );
+emailLogSchema.statics.getTypeStats = function (startDate, endDate) {
+  return this.aggregate([
+    {
+      $match: {
+        createdAt: {
+          $gte: startDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          $lte: endDate || new Date(),
+        },
+      },
+    },
+    {
+      $group: {
+        _id: "$type",
+        count: { $sum: 1 },
+        sent: { $sum: { $cond: [{ $eq: ["$status", "sent"] }, 1, 0] } },
+        failed: { $sum: { $cond: [{ $eq: ["$status", "failed"] }, 1, 0] } },
+        delivered: {
+          $sum: { $cond: [{ $eq: ["$status", "delivered"] }, 1, 0] },
+        },
+        opened: { $sum: { $cond: [{ $eq: ["$status", "opened"] }, 1, 0] } },
+        successRate: {
+          $multiply: [
+            {
+              $divide: [
+                {
+                  $sum: {
+                    $cond: [
+                      { $in: ["$status", ["sent", "delivered", "opened"]] },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+                "$count",
+              ],
+            },
+            100,
+          ],
+        },
+      },
+    },
+    { $sort: { count: -1 } },
+  ]);
 };
 
-emailLogSchema.methods.hasRecentSoftBounce = function (hours = 1) {
-  if (this.bounceType !== "soft" || !this.lastBounceAt) return false;
-  const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
-  return this.lastBounceAt >= cutoff;
+emailLogSchema.statics.getFailedEmails = function (limit = 100) {
+  return this.find({
+    status: "failed",
+    $expr: { $lt: ["$retryCount", "$maxRetries"] },
+  })
+    .sort({ nextRetryAt: 1 })
+    .limit(limit);
 };
 
-// Error handling
-emailLogSchema.post("save", function (error, doc, next) {
-  if (error.name === "MongoServerError" && error.code === 11000) {
-    next(new Error("Duplicate email log entry"));
-  } else {
-    next(error);
+emailLogSchema.statics.getPendingRetries = function () {
+  return this.find({
+    status: "failed",
+    nextRetryAt: { $lte: new Date() },
+    $expr: { $lt: ["$retryCount", "$maxRetries"] },
+  });
+};
+
+// Pre-save middleware
+emailLogSchema.pre("save", function (next) {
+  if (this.isModified("to")) {
+    this.to = this.to.toLowerCase();
+  }
+  if (this.isModified("from")) {
+    this.from = this.from.toLowerCase();
+  }
+
+  next();
+});
+
+// Post-save middleware
+emailLogSchema.post("save", function (doc) {
+  if (doc.status === "sent") {
+    console.log(`✅ Email sent successfully: ${doc._id} to ${doc.to}`);
+  } else if (doc.status === "failed") {
+    console.log(
+      `❌ Email failed: ${doc._id} to ${doc.to} - ${doc.error.message}`
+    );
   }
 });
 
 const EmailLog = mongoose.model("EmailLog", emailLogSchema);
+
 export default EmailLog;
