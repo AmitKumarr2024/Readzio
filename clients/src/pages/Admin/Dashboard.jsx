@@ -21,7 +21,6 @@ import AdminSubscriptionControls from "../../components/Admin/subscriptionContro
 import AdsDashboard from "../../components/Admin/Ads/AdsDashboard";
 import FeedbackDashboard from "../../components/Admin/Feedback/FeedbackDashboard";
 import EnhancedAdminEmailDashboard from "../../components/Admin/Email/EnhancedAdminEmailDashboard";
-import EmailDashboard from "../../components/Admin/Email/EmailDashboard";
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -187,7 +186,7 @@ const AdminDashboard = () => {
           {activeTab === "acknowledgments" && <ReportAcknowledgments />}
           {activeTab === "notifications" && <AdminMessageDashboard />}
           {/* {activeTab === "payments" && <PaymentDashboard />} */}
-          {activeTab === "email-status" && <EmailDashboard />}
+          {activeTab === "email-status" && <EnhancedAdminEmailDashboard />}
           {activeTab === "banner-notifications" && <NotificationManager />}
           {/* {activeTab === "subscriptions" && (
             <AdminSubscriptionControls userId={user?._id} user={user} />
