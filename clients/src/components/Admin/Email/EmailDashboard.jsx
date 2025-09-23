@@ -1,4 +1,3 @@
-// components/EmailDashboard.jsx
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -6,21 +5,29 @@ import {
   fetchEmailStats,
   setFilters,
   resetFilters,
-  clearEmailError, // Correct
+  clearEmailError,
   resendFailedEmails,
+  sendVerificationEmail,
 } from "../../../store/emailSlice";
 
 const EmailDashboard = () => {
   const dispatch = useDispatch();
-  const { logs, stats, loading, error, pagination, filters, sendingEmail } =
-    useSelector((state) => state.email);
-
+  const {
+    logs = [],
+    stats = null,
+    loading = false,
+    error = null,
+    pagination = { current: 1, total: 0, count: 0, totalRecords: 0 },
+    filters = { status: "", type: "", startDate: "", endDate: "" },
+    sendingEmail = false,
+  } = useSelector((state) => state.email || {});
   const [selectedEmails, setSelectedEmails] = useState([]);
+  const [emailForm, setEmailForm] = useState({ email: "", name: "" });
 
   useEffect(() => {
     dispatch(fetchEmailStats({}));
     dispatch(fetchEmailLogs({ page: 1, ...filters }));
-  }, [dispatch]);
+  }, [dispatch, filters]);
 
   const handleFilterChange = (key, value) => {
     dispatch(setFilters({ [key]: value }));
@@ -47,6 +54,16 @@ const EmailDashboard = () => {
         ? prev.filter((id) => id !== emailId)
         : [...prev, emailId]
     );
+  };
+
+  const handleEmailFormChange = (e) => {
+    setEmailForm({ ...emailForm, [e.target.name]: e.target.value });
+  };
+
+  const handleSendEmail = (e) => {
+    e.preventDefault();
+    dispatch(sendVerificationEmail(emailForm));
+    setEmailForm({ email: "", name: "" });
   };
 
   const getStatusBadge = (status) => {
@@ -79,13 +96,62 @@ const EmailDashboard = () => {
           </p>
         </div>
 
+        {/* Send Email Form */}
+        <div className="bg-white rounded-lg shadow mb-6 p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Send Verification Email
+          </h3>
+          <form
+            onSubmit={handleSendEmail}
+            className="grid grid-cols-1 md:grid-cols-3 gap-4"
+          >
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={emailForm.email}
+                onChange={handleEmailFormChange}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter email"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Name
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={emailForm.name}
+                onChange={handleEmailFormChange}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter name"
+                required
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                type="submit"
+                disabled={sendingEmail}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                {sendingEmail ? "Sending..." : "Send Email"}
+              </button>
+            </div>
+          </form>
+        </div>
+
         {/* Error Alert */}
         {error && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
             <div className="flex justify-between items-center">
               <span>{error}</span>
               <button
-                onClick={() => dispatch(clearEmailError())} // Change from clearError to clearEmailError
+                onClick={() => dispatch(clearEmailError())}
                 className="text-red-700 hover:text-red-900"
               >
                 ✕
@@ -114,7 +180,7 @@ const EmailDashboard = () => {
                     Total Emails
                   </p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    {stats.overview.total}
+                    {stats.overview?.total || 0}
                   </p>
                 </div>
               </div>
@@ -139,7 +205,7 @@ const EmailDashboard = () => {
                     Sent Successfully
                   </p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    {stats.overview.sent}
+                    {stats.overview?.sent || 0}
                   </p>
                 </div>
               </div>
@@ -162,7 +228,7 @@ const EmailDashboard = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Failed</p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    {stats.overview.failed}
+                    {stats.overview?.failed || 0}
                   </p>
                 </div>
               </div>
@@ -185,7 +251,7 @@ const EmailDashboard = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Pending</p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    {stats.overview.pending}
+                    {stats.overview?.pending || 0}
                   </p>
                 </div>
               </div>
