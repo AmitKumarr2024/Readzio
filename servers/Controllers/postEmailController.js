@@ -7,7 +7,7 @@ import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries
 import createMailOption from "../../servers/helpers/emailHelper.js";
 import transporter from "../../servers/config/nodeMailer.js";
 import { SMTP_USER } from "../../servers/config/dotenv.js";
-import { sendManualTestEmail } from "../helpers/manualEmailTest.js";
+import { sendManualTestEmail } from "../../servers/helpers/manualEmailTest.js"; // Fixed path
 
 const SENDER_EMAIL = SMTP_USER;
 
@@ -248,13 +248,14 @@ export const testSingleEmail = async (req, res, next) => {
 };
 
 export const sendDirectEmail = async (req, res, next) => {
-  let email = req.body?.email;
+  const { email } = req.body; // Fixed: Use destructuring for clarity
   logWithContext("DirectEmail", "Starting direct email process", { email });
 
-  sendManualTestEmail();
-  console.log("mannual", sendManualTestEmail);
-
   try {
+    // Call and log manual test email
+    const manualResult = await sendManualTestEmail(); // Fixed: Await the function call
+    logWithContext("DirectEmail", "Manual test email result", { manualResult });
+
     if (!email) {
       logWithContext("DirectEmail", "Email missing in request");
       return res.status(400).json({
