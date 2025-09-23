@@ -12,8 +12,8 @@ import {
   getEmailLogs,
   getEmailStats,
   resendFailedEmails,
-} from "../controllers/emailController.js";
-import { authenticate, authorize } from "../middleware/authMiddleware.js";
+} from "../../servers/Controllers/emailController.js";
+import { protectedRoute } from "../../servers/Middlewares/authMiddleware.js";
 
 const router = express.Router();
 
@@ -146,7 +146,7 @@ router.post(
 );
 
 // 🔹 AUTHENTICATED ROUTES (Require login)
-router.use(authenticate); // All routes below require authentication
+router.use(protectedRoute); // All routes below require authentication
 
 // Send welcome email
 router.post(
@@ -196,9 +196,6 @@ router.get(
   handleValidationErrors,
   getEmailStats
 );
-
-// 🔹 ADMIN ROUTES (Require admin privileges)
-router.use(authorize(["admin", "super_admin"])); // Admin/Super Admin only
 
 // Send bulk emails (Admin only)
 router.post(
