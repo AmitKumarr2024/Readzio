@@ -18,6 +18,8 @@ import notificationReducer from "../store/notificationSlice";
 import socketReducer from "../store/socketSlice";
 import themeReducer from "../store/themeSlice";
 import guestReducer from "../store/guestSlice";
+import emailReducer from "../store/emailSlice";
+
 
 const store = configureStore({
   reducer: {
@@ -38,6 +40,7 @@ const store = configureStore({
     admin: adminReducer,
     notifications: notificationReducer,
     socket: socketReducer,
+    email: emailReducer,
     theme: themeReducer,
      guest: guestReducer,
   },
