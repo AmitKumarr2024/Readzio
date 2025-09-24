@@ -8,10 +8,14 @@ import { sendEmail } from "../../servers/config/sendEmail.js"; // Resend-based s
 import { RESEND_API_KEY, SENDER_EMAIL } from "../../servers/config/dotenv.js";
 
 if (!RESEND_API_KEY) {
-  throw new Error("RESEND_API_KEY is missing in .env");
+  console.warn(
+    "⚠️ RESEND_API_KEY is missing - email functionality will be disabled"
+  );
 }
 if (!SENDER_EMAIL) {
-  throw new Error("SENDER_EMAIL is missing in .env");
+  console.warn(
+    "⚠️ SENDER_EMAIL is missing - email functionality will be disabled"
+  );
 }
 
 // Logging helpers
@@ -38,6 +42,26 @@ export const sendDailyPostEmail = async (req, res, next) => {
   });
 
   try {
+    // Check if email functionality is available
+    if (!RESEND_API_KEY) {
+      logWithContext(
+        "DailyEmail",
+        "Email functionality disabled - RESEND_API_KEY missing"
+      );
+      return res.status(200).json({
+        message:
+          "Email functionality is disabled - RESEND_API_KEY not configured",
+        results: {
+          total: 0,
+          successful: 0,
+          failed: 0,
+          successRate: "0%",
+        },
+        postCount: 0,
+        processTime: Date.now() - startTime,
+      });
+    }
+
     const users = await UserModel.find({
       isAccountVerified: true,
       stopEmailAttempts: { $ne: true },
@@ -104,9 +128,9 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
         results.push({
           email: user.email,
-          success: true,
+          success: emailResult.success !== false,
           userId: user._id,
-          messageId: emailResult.id,
+          messageId: emailResult.id || "no-id",
         });
       } catch (error) {
         logError("DailyEmail", `Failed to send email to ${user.email}`, error);
@@ -173,6 +197,15 @@ export const testSingleEmail = async (req, res) => {
       .status(400)
       .json({ success: false, message: "Email is required" });
 
+  if (!RESEND_API_KEY) {
+    return res.status(503).json({
+      success: false,
+      message:
+        "Email functionality is disabled - RESEND_API_KEY not configured",
+      email,
+    });
+  }
+
   try {
     const mailOption = await createMailOption({
       to: email,
@@ -187,21 +220,22 @@ export const testSingleEmail = async (req, res) => {
     const result = await sendEmail(mailOption);
 
     res.status(200).json({
-      success: true,
-      message: "Test email sent successfully",
+      success: result.success !== false,
+      message:
+        result.success !== false
+          ? "Test email sent successfully"
+          : "Email sending failed",
       email,
-      messageId: result.id,
+      messageId: result.id || "no-id",
       sentAt: new Date().toISOString(),
     });
   } catch (error) {
     logError("TestEmail", "Failed to send test email", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: error.message || "Failed to send test email",
-        email,
-      });
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to send test email",
+      email,
+    });
   }
 };
 
@@ -215,6 +249,15 @@ export const sendDirectEmail = async (req, res) => {
       .status(400)
       .json({ success: false, message: "Email is required" });
 
+  if (!RESEND_API_KEY) {
+    return res.status(503).json({
+      success: false,
+      message:
+        "Email functionality is disabled - RESEND_API_KEY not configured",
+      email,
+    });
+  }
+
   try {
     const mailOption = await createMailOption({
       to: email,
@@ -225,21 +268,22 @@ export const sendDirectEmail = async (req, res) => {
     const result = await sendEmail(mailOption);
 
     res.status(200).json({
-      success: true,
-      message: "Direct email sent successfully",
+      success: result.success !== false,
+      message:
+        result.success !== false
+          ? "Direct email sent successfully"
+          : "Email sending failed",
       email,
-      messageId: result.id,
+      messageId: result.id || "no-id",
       sentAt: new Date().toISOString(),
     });
   } catch (error) {
     logError("DirectEmail", `Failed to send direct email to ${email}`, error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: error.message || "Failed to send direct email",
-        email,
-      });
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to send direct email",
+      email,
+    });
   }
 };
 
@@ -272,13 +316,11 @@ export const clearEmailFailures = async (req, res) => {
       `Failed to clear failures for ${email}`,
       error
     );
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: error.message || "Failed to clear email failures",
-        email,
-      });
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to clear email failures",
+      email,
+    });
   }
 };
 
