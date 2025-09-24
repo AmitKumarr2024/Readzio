@@ -8,9 +8,7 @@ import { sendEmail } from "../../servers/config/sendEmail.js"; // Resend-based s
 import { RESEND_API_KEY, SENDER_EMAIL } from "../../servers/config/dotenv.js";
 
 if (!RESEND_API_KEY) {
-  console.warn(
-    "⚠️ RESEND_API_KEY is missing - email functionality will be disabled"
-  );
+  throw new Error("RESEND_API_KEY is missing in .env");
 }
 if (!SENDER_EMAIL) {
   console.warn(

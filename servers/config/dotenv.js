@@ -63,6 +63,8 @@ export const USE_DUMMY_EMAIL = process.env.USE_DUMMY_EMAIL;
 // Debug log to check if RESEND_API_KEY is loaded
 console.log("RESEND_API_KEY loaded:", RESEND_API_KEY ? "✅ Yes" : "❌ No");
 
+console.log("Loaded RESEND_API_KEY:", process.env.RESEND_API_KEY);
+
 // Validate required environment variables (comment out for debugging)
 const requiredEnv = [
   "MONGO_URI",
