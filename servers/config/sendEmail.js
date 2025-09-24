@@ -6,6 +6,10 @@ console.log(
   "RESEND_API_KEY in sendEmail.js:",
   RESEND_API_KEY ? "✅ Loaded" : "❌ Missing"
 );
+console.log(
+  "SENDER_EMAIL in sendEmail.js:",
+  SENDER_EMAIL ? "✅ Loaded" : "❌ Missing"
+);
 
 if (!RESEND_API_KEY) {
   console.warn(
@@ -13,7 +17,9 @@ if (!RESEND_API_KEY) {
   );
 }
 if (!SENDER_EMAIL) {
-  throw new Error("SENDER_EMAIL is required in .env");
+  console.warn(
+    "⚠️ SENDER_EMAIL is missing - email functionality will be disabled"
+  );
 }
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
@@ -30,9 +36,16 @@ export async function sendEmail(mailOptions) {
       throw new Error("Missing required email fields: to, subject, html");
     }
 
-    if (!resend) {
-      console.warn("⚠️ Resend not initialized - skipping email send");
-      return { id: "no-resend-api-key", success: false };
+    if (!resend || !SENDER_EMAIL) {
+      console.warn(
+        `⚠️ Cannot send email to ${to} - Resend not initialized or SENDER_EMAIL missing`
+      );
+      return {
+        id: "no-resend-config",
+        success: false,
+        error:
+          "Email functionality disabled - check RESEND_API_KEY and SENDER_EMAIL",
+      };
     }
 
     const response = await resend.emails.send({
@@ -43,9 +56,9 @@ export async function sendEmail(mailOptions) {
     });
 
     console.log(`✅ Email sent via Resend to ${to}, id: ${response.id}`);
-    return response;
+    return { id: response.id, success: true };
   } catch (err) {
-    console.error("❌ Resend email error:", err);
-    throw err;
+    console.error(`❌ Resend email error for ${mailOptions.to}:`, err);
+    return { id: "error", success: false, error: err.message };
   }
 }

@@ -45,9 +45,8 @@ export const RAZORPAY_API_URL =
   process.env.RAZORPAY_API_URL || "https://api.razorpay.com/v1";
 export const RAZORPAY_MODE = process.env.RAZORPAY_MODE || "test";
 
-export const SMTP_USER = process.env.SMTP_USER;
-export const SMTP_PASS = process.env.SMTP_PASS;
 export const SENDER_EMAIL = process.env.SENDER_EMAIL;
+export const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 export const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
@@ -55,28 +54,33 @@ export const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
 export const AUTO_EMAIL_DATE = process.env.AUTO_EMAIL_DATE;
 export const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL;
 export const SESSION_SECRET = process.env.SESSION_SECRET;
-
-export const RESEND_API_KEY = process.env.RESEND_API_KEY;
 export const USE_DUMMY_EMAIL = process.env.USE_DUMMY_EMAIL;
 
 // --- Debug logs ---
-console.log("RESEND_API_KEY loaded:", RESEND_API_KEY ? "✅ Yes" : "❌ No");
+console.log("Environment variables status:");
+const envVars = {
+  RESEND_API_KEY: RESEND_API_KEY ? "✅ Loaded" : "❌ Missing",
+  SENDER_EMAIL: SENDER_EMAIL ? "✅ Loaded" : "❌ Missing",
+  MONGO_URI: MONGO_URI ? "✅ Loaded" : "❌ Missing",
+  JWT_SECRET: JWT_SECRET ? "✅ Loaded" : "❌ Missing",
+  CLIENT_URL: CLIENT_URL ? "✅ Loaded" : "❌ Missing",
+};
 
-// Required env vars
+Object.entries(envVars).forEach(([key, value]) => {
+  console.log(`  ${key}: ${value}`);
+});
+
+// Required env vars (removed SMTP_USER and SMTP_PASS)
 const requiredEnv = [
   "MONGO_URI",
   "JWT_SECRET",
   "CLIENT_URL",
-  "SMTP_USER",
-  "SMTP_PASS",
+  "RESEND_API_KEY",
   "SENDER_EMAIL",
 ];
 
-console.log("Environment variables check:");
 requiredEnv.forEach((key) => {
-  const value = process.env[key];
-  console.log(`  ${key}: ${value ? "✅ Set" : "❌ Missing"}`);
-  if (!value) {
+  if (!process.env[key]) {
     console.warn(`[dotenv] Missing required env variable: ${key}`);
   }
 });
