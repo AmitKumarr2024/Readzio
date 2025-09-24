@@ -1,5 +1,5 @@
-import Resend from "@resendlabs/resend";
-import { RESEND_API_KEY, SENDER_EMAIL } from "./dotenv";
+import { Resend } from "resend";
+import { RESEND_API_KEY, SENDER_EMAIL } from "../../servers/config/dotenv.js";
 
 if (!RESEND_API_KEY) {
   throw new Error("RESEND_API_KEY is required in .env");
