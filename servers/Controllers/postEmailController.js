@@ -7,12 +7,15 @@ import createMailOption from "../../servers/helpers/emailHelper.js";
 import { sendEmail } from "../../servers/config/sendEmail.js"; // Resend-based sender
 import { RESEND_API_KEY, SENDER_EMAIL } from "../../servers/config/dotenv.js";
 
+// ✅ Do not crash app if missing, just warn
 if (!RESEND_API_KEY) {
-  throw new Error("RESEND_API_KEY is missing in .env");
+  console.warn(
+    "⚠️ RESEND_API_KEY is missing - email functionality will be disabled"
+  );
 }
 if (!SENDER_EMAIL) {
   console.warn(
-    "⚠️ SENDER_EMAIL is missing - email functionality will be disabled"
+    "⚠️ SENDER_EMAIL is missing - email functionality may be limited"
   );
 }
 
