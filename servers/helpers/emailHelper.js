@@ -1,14 +1,17 @@
+// server/helpers/emailHelper.js
 import Handlebars from "handlebars";
 import {
   EMAIL_TEMPLATE,
   WELCOME_EMAIL_TEMPLATE,
-} from "../../servers/config/emailTemplate.js";
-import { DAILY_POST_EMAIL_TEMPLATE } from "../../servers/config/dailyPostEmailTemplate.js";
-import { INVOICE_EMAIL_TEMPLATE } from "../../servers/config/emailTemplate.js";
-import { SENDER_EMAIL } from "../../servers/config/dotenv.js";
-import { AppError } from "../../servers/Utils/AppError.js";
-// import Bounce from "../../servers/Models/BounceModel.js";
+  INVOICE_EMAIL_TEMPLATE,
+} from "../config/emailTemplate.js";
+import { DAILY_POST_EMAIL_TEMPLATE } from "../config/dailyPostEmailTemplate.js";
+import { SENDER_EMAIL } from "../config/dotenv.js";
+import { AppError } from "../Utils/AppError.js";
 
+/**
+ * Creates the mail options for sending email
+ */
 export default async function createMailOption({
   to,
   subject,
@@ -38,13 +41,8 @@ export default async function createMailOption({
     if (!emailRegex.test(normalizedTo))
       throw new AppError("Invalid email format", 400, "CreateMailOption");
 
-    // Optional: check bounce/suppression
-    // const isEmailSuppressed = await Bounce.isEmailSuppressed(normalizedTo);
-    // if (isEmailSuppressed) throw new AppError(`Email ${normalizedTo} suppressed`, 400);
-
-    if (!message && posts.length === 0 && !otp && !invoice && !customTemplate) {
+    if (!message && posts.length === 0 && !otp && !invoice && !customTemplate)
       throw new AppError("Email content is required", 400, "CreateMailOption");
-    }
 
     if (!SENDER_EMAIL)
       throw new AppError(
@@ -53,13 +51,12 @@ export default async function createMailOption({
         "CreateMailOption"
       );
 
-    if (hasButton && (!buttonText || !buttonUrl)) {
+    if (hasButton && (!buttonText || !buttonUrl))
       throw new AppError(
         "Button text and URL required when hasButton is true",
         400,
         "CreateMailOption"
       );
-    }
 
     if (otp && !/^\d{4,8}$/.test(otp))
       throw new AppError("Invalid OTP format", 400, "CreateMailOption");
@@ -82,17 +79,21 @@ export default async function createMailOption({
       : [];
 
     const brand = "inkshaa";
-    let finalSubject = subject;
+    let finalSubject = subject || "";
+
     if (!finalSubject) {
       if (processedPosts.length > 0) {
         finalSubject = `${processedPosts[0].title.substring(
           0,
           40
         )}... | ${brand} Daily Digest`;
-      } else if (otp && isResetOtp)
+      } else if (otp && isResetOtp) {
         finalSubject = `[${brand}] Password Reset Verification Code`;
-      else if (otp) finalSubject = `[${brand}] Your Verification Code`;
-      else finalSubject = `[${brand}] Notification`;
+      } else if (otp) {
+        finalSubject = `[${brand}] Your Verification Code`;
+      } else {
+        finalSubject = `[${brand}] Notification`;
+      }
     }
 
     const templateSource =
