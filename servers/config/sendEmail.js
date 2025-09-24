@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { RESEND_API_KEY, SENDER_EMAIL } from "./dotenv";
+import { RESEND_API_KEY, SENDER_EMAIL } from "./dotenv.js";
 
 // Debug logging
 console.log(
