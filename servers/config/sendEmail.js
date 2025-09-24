@@ -1,5 +1,26 @@
 import { Resend } from "resend";
-import { RESEND_API_KEY, SENDER_EMAIL } from "./dotenv.js";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env file directly
+const envPath = path.resolve(__dirname, "../../.env");
+if (fs.existsSync(envPath)) {
+  console.log(`📄 Loading .env from: ${envPath}`);
+  dotenv.config({ path: envPath });
+} else {
+  console.log(
+    "🌐 No .env found, relying on host-provided environment variables"
+  );
+}
+
+// Fetch environment variables
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const SENDER_EMAIL = process.env.SENDER_EMAIL;
 
 // Debug logging
 console.log(
@@ -44,7 +65,7 @@ export async function sendEmail(mailOptions) {
         id: "no-resend-config",
         success: false,
         error:
-          "Email functionality disabled - check RESEND_API_KEY and SENDER_EMAIL",
+          "Email functionality disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
       };
     }
 
