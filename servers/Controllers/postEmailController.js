@@ -4,10 +4,10 @@ import PostModel from "../../servers/Models/Post.js";
 import Bounce from "../../servers/Models/BounceModel.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
-import { sendEmail } from "../../servers/config/sendEmail.js"; // Resend-based sender
+import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js"; // Resend-based sender with retries
 import { RESEND_API_KEY, SENDER_EMAIL } from "../../servers/config/dotenv.js";
 
-// ✅ Do not crash app if missing, just warn
+// Validate environment variables
 if (!RESEND_API_KEY) {
   console.warn(
     "⚠️ RESEND_API_KEY is missing - email functionality will be disabled"
@@ -15,7 +15,7 @@ if (!RESEND_API_KEY) {
 }
 if (!SENDER_EMAIL) {
   console.warn(
-    "⚠️ SENDER_EMAIL is missing - email functionality may be limited"
+    "⚠️ SENDER_EMAIL is missing - email functionality will be disabled"
   );
 }
 
@@ -44,14 +44,15 @@ export const sendDailyPostEmail = async (req, res, next) => {
 
   try {
     // Check if email functionality is available
-    if (!RESEND_API_KEY) {
+    if (!RESEND_API_KEY || !SENDER_EMAIL) {
       logWithContext(
         "DailyEmail",
-        "Email functionality disabled - RESEND_API_KEY missing"
+        "Email functionality disabled due to missing configuration"
       );
-      return res.status(200).json({
+      return res.status(503).json({
+        success: false,
         message:
-          "Email functionality is disabled - RESEND_API_KEY not configured",
+          "Email functionality is disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
         results: {
           total: 0,
           successful: 0,
@@ -76,6 +77,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     if (users.length === 0) {
       logWithContext("DailyEmail", "No eligible users found");
       return res.status(200).json({
+        success: true,
         message: "No eligible users found for daily email",
         results: [],
         postCount: 0,
@@ -98,6 +100,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     if (posts.length === 0) {
       logWithContext("DailyEmail", "No posts available");
       return res.status(200).json({
+        success: true,
         message: "No posts available to send",
         results: [],
         postCount: 0,
@@ -125,13 +128,29 @@ export const sendDailyPostEmail = async (req, res, next) => {
           posts,
         });
 
-        const emailResult = await sendEmail(mailOption);
+        const emailResult = await sendEmailWithRetries(
+          mailOption,
+          user._id,
+          "daily_digest",
+          3
+        );
 
         results.push({
           email: user.email,
-          success: emailResult.success !== false,
+          success: emailResult.success,
           userId: user._id,
           messageId: emailResult.id || "no-id",
+          attempts: emailResult.attempts,
+        });
+
+        await EmailLog.create({
+          userId: user._id,
+          email: user.email,
+          type: "daily_digest",
+          emailStatus: "sent",
+          emailAttempts: emailResult.attempts,
+          messageId: emailResult.id || null,
+          sentAt: new Date(),
         });
       } catch (error) {
         logError("DailyEmail", `Failed to send email to ${user.email}`, error);
@@ -141,9 +160,19 @@ export const sendDailyPostEmail = async (req, res, next) => {
           error: error.message,
           userId: user._id,
         });
+
+        await EmailLog.create({
+          userId: user._id,
+          email: user.email,
+          type: "daily_digest",
+          emailStatus: "failed",
+          emailAttempts: error.attempts || 1,
+          emailLastError: error.message,
+          createdAt: new Date(),
+        });
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // throttle
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Throttle
     }
 
     const successCount = results.filter((r) => r.success).length;
@@ -160,6 +189,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     });
 
     res.status(200).json({
+      success: true,
       message: "Daily post emails processed successfully",
       results: {
         total: results.length,
@@ -198,11 +228,15 @@ export const testSingleEmail = async (req, res) => {
       .status(400)
       .json({ success: false, message: "Email is required" });
 
-  if (!RESEND_API_KEY) {
+  if (!RESEND_API_KEY || !SENDER_EMAIL) {
+    logWithContext(
+      "TestEmail",
+      "Email functionality disabled due to missing configuration"
+    );
     return res.status(503).json({
       success: false,
       message:
-        "Email functionality is disabled - RESEND_API_KEY not configured",
+        "Email functionality is disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
       email,
     });
   }
@@ -218,20 +252,39 @@ export const testSingleEmail = async (req, res) => {
       buttonUrl: "https://inkshaa.onrender.com",
     });
 
-    const result = await sendEmail(mailOption);
+    const emailResult = await sendEmailWithRetries(mailOption, null, "test", 3);
+
+    await EmailLog.create({
+      userId: null,
+      email,
+      type: "test",
+      emailStatus: "sent",
+      emailAttempts: emailResult.attempts,
+      messageId: emailResult.id || null,
+      sentAt: new Date(),
+    });
 
     res.status(200).json({
-      success: result.success !== false,
-      message:
-        result.success !== false
-          ? "Test email sent successfully"
-          : "Email sending failed",
+      success: true,
+      message: "Test email sent successfully",
       email,
-      messageId: result.id || "no-id",
+      messageId: emailResult.id || "no-id",
+      attempts: emailResult.attempts,
       sentAt: new Date().toISOString(),
     });
   } catch (error) {
     logError("TestEmail", "Failed to send test email", error);
+
+    await EmailLog.create({
+      userId: null,
+      email,
+      type: "test",
+      emailStatus: "failed",
+      emailAttempts: error.attempts || 1,
+      emailLastError: error.message,
+      createdAt: new Date(),
+    });
+
     res.status(500).json({
       success: false,
       message: error.message || "Failed to send test email",
@@ -250,11 +303,15 @@ export const sendDirectEmail = async (req, res) => {
       .status(400)
       .json({ success: false, message: "Email is required" });
 
-  if (!RESEND_API_KEY) {
+  if (!RESEND_API_KEY || !SENDER_EMAIL) {
+    logWithContext(
+      "DirectEmail",
+      "Email functionality disabled due to missing configuration"
+    );
     return res.status(503).json({
       success: false,
       message:
-        "Email functionality is disabled - RESEND_API_KEY not configured",
+        "Email functionality is disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
       email,
     });
   }
@@ -266,20 +323,44 @@ export const sendDirectEmail = async (req, res) => {
       message: "Hello world",
     });
 
-    const result = await sendEmail(mailOption);
+    const emailResult = await sendEmailWithRetries(
+      mailOption,
+      null,
+      "direct",
+      3
+    );
+
+    await EmailLog.create({
+      userId: null,
+      email,
+      type: "direct",
+      emailStatus: "sent",
+      emailAttempts: emailResult.attempts,
+      messageId: emailResult.id || null,
+      sentAt: new Date(),
+    });
 
     res.status(200).json({
-      success: result.success !== false,
-      message:
-        result.success !== false
-          ? "Direct email sent successfully"
-          : "Email sending failed",
+      success: true,
+      message: "Direct email sent successfully",
       email,
-      messageId: result.id || "no-id",
+      messageId: emailResult.id || "no-id",
+      attempts: emailResult.attempts,
       sentAt: new Date().toISOString(),
     });
   } catch (error) {
     logError("DirectEmail", `Failed to send direct email to ${email}`, error);
+
+    await EmailLog.create({
+      userId: null,
+      email,
+      type: "direct",
+      emailStatus: "failed",
+      emailAttempts: error.attempts || 1,
+      emailLastError: error.message,
+      createdAt: new Date(),
+    });
+
     res.status(500).json({
       success: false,
       message: error.message || "Failed to send direct email",
@@ -307,14 +388,14 @@ export const clearEmailFailures = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Failures cleared for ${email}`,
+      message: `Email failures cleared for ${email}`,
       modifiedCount: result.modifiedCount,
       upsertedCount: result.upsertedCount,
     });
   } catch (error) {
     logError(
       "ClearEmailFailures",
-      `Failed to clear failures for ${email}`,
+      `Failed to clear email failures for ${email}`,
       error
     );
     res.status(500).json({
@@ -344,6 +425,7 @@ export const getDailyPostEmailReport = async (req, res, next) => {
     const total = await EmailLog.countDocuments({ type });
 
     res.status(200).json({
+      success: true,
       logs,
       pagination: {
         total,
@@ -358,7 +440,7 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       error instanceof AppError
         ? error
         : new AppError(
-            "Failed to fetch email report",
+            error.message || "Failed to fetch email report",
             500,
             "GetDailyPostEmailReport"
           )
