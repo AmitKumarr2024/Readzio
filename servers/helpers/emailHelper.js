@@ -13,7 +13,6 @@ export default async function createMailOption({
   to,
   subject,
   name = "User",
-  email,
   message,
   hasButton = false,
   buttonText = "",
@@ -27,47 +26,33 @@ export default async function createMailOption({
   customData = {},
 }) {
   try {
-    // Basic validation (keeping your original checks)
-    if (!to) {
+    if (!to)
       throw new AppError(
         "Recipient email is required",
         400,
         "CreateMailOption"
       );
-    }
 
     const normalizedTo = to.trim().toLowerCase();
-    const emailRegex =
-      /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-
-    if (!emailRegex.test(normalizedTo)) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedTo))
       throw new AppError("Invalid email format", 400, "CreateMailOption");
-    }
 
-    // Check if email is suppressed (NEW - but simple)
-    const isEmailSuppressed = await Bounce.isEmailSuppressed(normalizedTo);
-    if (isEmailSuppressed) {
-      throw new AppError(
-        `Email ${normalizedTo} is suppressed due to previous bounces`,
-        400,
-        "CreateMailOption"
-      );
-    }
+    // Optional: check bounce/suppression
+    // const isEmailSuppressed = await Bounce.isEmailSuppressed(normalizedTo);
+    // if (isEmailSuppressed) throw new AppError(`Email ${normalizedTo} suppressed`, 400);
 
-    // Your existing validation logic continues...
     if (!message && posts.length === 0 && !otp && !invoice && !customTemplate) {
       throw new AppError("Email content is required", 400, "CreateMailOption");
     }
 
-    if (!SENDER_EMAIL) {
+    if (!SENDER_EMAIL)
       throw new AppError(
         "Sender email not configured",
         500,
         "CreateMailOption"
       );
-    }
 
-    // Button validation (your existing logic)
     if (hasButton && (!buttonText || !buttonUrl)) {
       throw new AppError(
         "Button text and URL required when hasButton is true",
@@ -76,12 +61,9 @@ export default async function createMailOption({
       );
     }
 
-    // OTP validation (your existing logic)
-    if (otp && !/^\d{4,8}$/.test(otp)) {
+    if (otp && !/^\d{4,8}$/.test(otp))
       throw new AppError("Invalid OTP format", 400, "CreateMailOption");
-    }
 
-    // Process posts (enhanced but keeping your structure)
     const processedPosts = Array.isArray(posts)
       ? posts.slice(0, 20).map((post, index) => ({
           title: post.title || "Untitled Post",
@@ -99,29 +81,21 @@ export default async function createMailOption({
         }))
       : [];
 
-    // Your existing subject generation
-    const sanitizedName = (name || "User").toString().trim();
     const brand = "inkshaa";
-
     let finalSubject = subject;
     if (!finalSubject) {
       if (processedPosts.length > 0) {
-        const topPost = processedPosts[0];
-        finalSubject = `${topPost.title.substring(
+        finalSubject = `${processedPosts[0].title.substring(
           0,
           40
         )}... | ${brand} Daily Digest`;
-      } else if (otp && isResetOtp) {
+      } else if (otp && isResetOtp)
         finalSubject = `[${brand}] Password Reset Verification Code`;
-      } else if (otp) {
-        finalSubject = `[${brand}] Your Verification Code`;
-      } else {
-        finalSubject = `[${brand}] Notification`;
-      }
+      else if (otp) finalSubject = `[${brand}] Your Verification Code`;
+      else finalSubject = `[${brand}] Notification`;
     }
 
-    // Your existing template selection
-    let templateSource =
+    const templateSource =
       customTemplate ||
       (processedPosts.length > 0
         ? DAILY_POST_EMAIL_TEMPLATE
@@ -131,23 +105,18 @@ export default async function createMailOption({
         ? EMAIL_TEMPLATE
         : WELCOME_EMAIL_TEMPLATE);
 
-    if (!templateSource) {
-      throw new Error("No template source found");
-    }
+    if (!templateSource) throw new Error("No template source found");
 
-    // Compile template (your existing logic)
     const template = Handlebars.compile(templateSource);
-
-    // Template data (enhanced but keeping your structure)
     const templateData = {
       subject: finalSubject,
-      name: sanitizedName,
+      name,
       message: message || "",
       invoice: invoice || null,
       hasButton: Boolean(hasButton),
       buttonText: buttonText || "",
       buttonUrl: buttonUrl || "",
-      supportEmail: supportEmail || "support@inksha.com",
+      supportEmail: supportEmail || SENDER_EMAIL,
       otp: otp || null,
       isResetOtp: Boolean(isResetOtp),
       posts: processedPosts,
@@ -159,44 +128,22 @@ export default async function createMailOption({
       ...customData,
     };
 
-    // Render HTML
     const htmlContent = template(templateData);
-    if (!htmlContent || htmlContent.trim().length === 0) {
+    if (!htmlContent || htmlContent.trim().length === 0)
       throw new Error("Template rendered empty content");
-    }
 
-    // Create text version (simple)
     const textContent = htmlContent
       .replace(/<[^>]*>/g, "")
       .replace(/\s+/g, " ")
       .trim();
 
-    // Your existing mail options structure (enhanced headers)
-    const mailOptions = {
+    return {
       from: `"${brand} Team" <${SENDER_EMAIL}>`,
       to: normalizedTo,
       subject: finalSubject,
       html: htmlContent,
       text: textContent,
-      headers: {
-        "X-Priority": "3",
-        "X-MSMail-Priority": "Normal",
-        "X-Mailer": `${brand} Production Mailer v2.0`,
-        "List-Unsubscribe": `<https://inkshaa.onrender.com/unsubscribe?email=${encodeURIComponent(
-          normalizedTo
-        )}>`,
-        "Return-Path": SENDER_EMAIL,
-        "Reply-To": supportEmail || SENDER_EMAIL,
-      },
-      messageId: `<${Date.now()}.${Math.random()
-        .toString(36)
-        .substring(2)}@inksha.com>`,
     };
-
-    console.log(
-      `✅ [EmailHelper] Created mail options for ${normalizedTo}: ${finalSubject}`
-    );
-    return mailOptions;
   } catch (error) {
     console.error("❌ [EmailHelper] Error creating mail options:", {
       error: error.message,
