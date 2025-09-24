@@ -8,13 +8,15 @@ console.log(
 );
 
 if (!RESEND_API_KEY) {
-  throw new Error("RESEND_API_KEY is required in .env");
+  console.warn(
+    "⚠️ RESEND_API_KEY is missing - email functionality will be disabled"
+  );
 }
 if (!SENDER_EMAIL) {
   throw new Error("SENDER_EMAIL is required in .env");
 }
 
-const resend = new Resend(RESEND_API_KEY);
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 /**
  * Send an email via Resend
@@ -26,6 +28,11 @@ export async function sendEmail(mailOptions) {
 
     if (!to || !subject || !html) {
       throw new Error("Missing required email fields: to, subject, html");
+    }
+
+    if (!resend) {
+      console.warn("⚠️ Resend not initialized - skipping email send");
+      return { id: "no-resend-api-key", success: false };
     }
 
     const response = await resend.emails.send({
