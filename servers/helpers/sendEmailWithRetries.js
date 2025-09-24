@@ -1,29 +1,40 @@
 // servers/helpers/sendEmailWithRetries.js
-import transporter from "../../servers/config/nodeMailer.js";
 import EmailLog from "../../servers/Models/EmailLog.js";
+import { sendEmail } from "../../servers/config/sendEmail.js"; // Resend-based sender
+import { AppError } from "../Utils/AppError.js";
 
+/**
+ * Send email with retries using Resend API
+ * @param {Object} mailOptions - { to, subject, html, text }
+ * @param {String} userId
+ * @param {String} type
+ * @param {Number} maxAttempts
+ */
 export async function sendEmailWithRetries(
   mailOptions,
   userId,
   type = "general",
   maxAttempts = 3
 ) {
-  let lastError = null;
+  if (!mailOptions?.to) throw new AppError("Recipient email is required", 400);
   const email = mailOptions.to.toLowerCase().trim();
 
-  // Check if email should be stopped (enhanced check)
+  let lastError = null;
+
+  // Stop sending if too many recent failures
   const recentFailures = await EmailLog.countDocuments({
-    email: email,
+    email,
     emailStatus: "failed",
-    createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }, // last 24h
   });
 
   if (recentFailures >= 5) {
     console.log(
       `⚠️ [Email] Skipping ${email} due to recent failures (${recentFailures})`
     );
-    throw new Error(
-      `Email ${email} has too many recent failures (${recentFailures})`
+    throw new AppError(
+      `Email ${email} has too many recent failures (${recentFailures})`,
+      429
     );
   }
 
@@ -31,20 +42,21 @@ export async function sendEmailWithRetries(
     try {
       console.log(`📨 [Email] Attempt ${attempt}/${maxAttempts} → ${email}`);
 
-      const info = await transporter.sendMail(mailOptions);
+      // Send via Resend
+      const info = await sendEmail(mailOptions);
 
       // Log success
       await EmailLog.create({
         userId,
-        email: email,
+        email,
         type,
         emailStatus: "sent",
         emailAttempts: attempt,
-        messageId: info.messageId,
+        messageId: info.id || null,
         sentAt: new Date(),
       });
 
-      console.log(`✅ [Email] Sent to ${email} (msgId: ${info.messageId})`);
+      console.log(`✅ [Email] Sent to ${email} (msgId: ${info.id})`);
       return info;
     } catch (err) {
       lastError = err;
@@ -53,7 +65,7 @@ export async function sendEmailWithRetries(
       // Log failure
       await EmailLog.create({
         userId,
-        email: email,
+        email,
         type,
         emailStatus: "failed",
         emailAttempts: attempt,
@@ -61,8 +73,8 @@ export async function sendEmailWithRetries(
         createdAt: new Date(),
       });
 
-      // Check if it's a permanent failure (hard bounce)
-      const errorMsg = err.message.toLowerCase();
+      // Hard bounce detection (stop retries for permanent failures)
+      const errorMsg = (err.message || "").toLowerCase();
       if (
         errorMsg.includes("user unknown") ||
         errorMsg.includes("domain not found") ||
@@ -75,7 +87,7 @@ export async function sendEmailWithRetries(
         break;
       }
 
-      // Exponential backoff delay
+      // Exponential backoff before next attempt
       if (attempt < maxAttempts) {
         const delay = 1000 * Math.pow(2, attempt - 1);
         await new Promise((res) => setTimeout(res, delay));
@@ -83,9 +95,10 @@ export async function sendEmailWithRetries(
     }
   }
 
-  throw new Error(
+  throw new AppError(
     `Failed to send email after ${maxAttempts} attempts to ${email}: ${
       lastError?.message || "Unknown error"
-    }`
+    }`,
+    500
   );
 }

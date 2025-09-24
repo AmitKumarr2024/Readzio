@@ -1,4 +1,4 @@
-// server/helpers/emailHelper.js
+// servers/helpers/emailHelper.js
 import Handlebars from "handlebars";
 import {
   EMAIL_TEMPLATE,
@@ -10,7 +10,9 @@ import { SENDER_EMAIL } from "../config/dotenv.js";
 import { AppError } from "../Utils/AppError.js";
 
 /**
- * Creates the mail options for sending email
+ * Creates the mail options for sending email via Resend
+ * @param {Object} options
+ * @returns {Object} { from, to, subject, html, text }
  */
 export default async function createMailOption({
   to,
@@ -106,9 +108,10 @@ export default async function createMailOption({
         ? EMAIL_TEMPLATE
         : WELCOME_EMAIL_TEMPLATE);
 
-    if (!templateSource) throw new Error("No template source found");
+    if (!templateSource) throw new AppError("No template source found");
 
     const template = Handlebars.compile(templateSource);
+
     const templateData = {
       subject: finalSubject,
       name,
@@ -131,7 +134,11 @@ export default async function createMailOption({
 
     const htmlContent = template(templateData);
     if (!htmlContent || htmlContent.trim().length === 0)
-      throw new Error("Template rendered empty content");
+      throw new AppError(
+        "Template rendered empty content",
+        500,
+        "CreateMailOption"
+      );
 
     const textContent = htmlContent
       .replace(/<[^>]*>/g, "")
