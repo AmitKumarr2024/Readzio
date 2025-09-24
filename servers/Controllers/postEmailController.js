@@ -4,7 +4,7 @@ import PostModel from "../../servers/Models/Post.js";
 import Bounce from "../../servers/Models/BounceModel.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
-import { sendEmail } from "../../servers/helpers/sendEmail.js"; // Resend-based sender
+import { sendEmail } from "../../servers/config/sendEmail.js"; // Resend-based sender
 import { RESEND_API_KEY, SENDER_EMAIL } from "../../servers/config/dotenv.js";
 
 if (!RESEND_API_KEY) {
