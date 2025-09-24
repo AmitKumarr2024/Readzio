@@ -61,12 +61,9 @@ export async function sendEmail(mailOptions) {
       console.warn(
         `⚠️ Cannot send email to ${to} - Resend not initialized or SENDER_EMAIL missing`
       );
-      return {
-        id: "no-resend-config",
-        success: false,
-        error:
-          "Email functionality disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
-      };
+      throw new Error(
+        "Email functionality disabled - check RESEND_API_KEY and SENDER_EMAIL configuration"
+      );
     }
 
     const response = await resend.emails.send({
@@ -75,12 +72,20 @@ export async function sendEmail(mailOptions) {
       subject,
       html,
     });
-    console.log("Raw Resend response:", response); // Debug full response
+    console.log("Raw Resend response:", response);
 
-    console.log(`✅ Email sent via Resend to ${to}, id: ${response.id}`);
-    return { id: response.id, success: true };
+    if (response.error) {
+      throw new Error(response.error.message || "Resend API error");
+    }
+
+    if (!response.data?.id) {
+      throw new Error("No email ID returned from Resend");
+    }
+
+    console.log(`✅ Email sent via Resend to ${to}, id: ${response.data.id}`);
+    return { id: response.data.id, success: true };
   } catch (err) {
     console.error(`❌ Resend email error for ${mailOptions.to}:`, err);
-    return { id: "error", success: false, error: err.message };
+    throw err; // Throw error to be caught by caller
   }
 }

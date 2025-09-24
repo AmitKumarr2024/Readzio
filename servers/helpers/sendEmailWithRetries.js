@@ -13,7 +13,6 @@ export async function sendEmailWithRetries(
 
   let lastError = null;
 
-  // Stop sending if too many recent failures
   const recentFailures = await EmailLog.countDocuments({
     email,
     emailStatus: "failed",
@@ -35,7 +34,7 @@ export async function sendEmailWithRetries(
       console.log(`📨 [Email] Attempt ${attempt}/${maxAttempts} → ${email}`);
 
       const info = await sendEmail(mailOptions);
-      console.log("Resend response:", info); // Debug Resend response
+      console.log("Resend response:", info);
 
       await EmailLog.create({
         userId,
@@ -45,8 +44,8 @@ export async function sendEmailWithRetries(
         emailAttempts: attempt,
         messageId: info.id || null,
         sentAt: new Date(),
-        subject: mailOptions.subject,
-        from: mailOptions.from,
+        subject: mailOptions.subject || "N/A",
+        from: mailOptions.from || "N/A",
         to: email,
       });
 
@@ -69,16 +68,16 @@ export async function sendEmailWithRetries(
         to: email,
       });
 
-      // Hard bounce detection
       const errorMsg = (err.message || "").toLowerCase();
       if (
         errorMsg.includes("user unknown") ||
         errorMsg.includes("domain not found") ||
         errorMsg.includes("invalid address") ||
-        errorMsg.includes("mailbox unavailable")
+        errorMsg.includes("mailbox unavailable") ||
+        errorMsg.includes("domain is not verified")
       ) {
         console.log(
-          `🚫 [Email] Hard bounce detected for ${email}, stopping retries`
+          `🚫 [Email] Hard failure detected for ${email}, stopping retries`
         );
         break;
       }
