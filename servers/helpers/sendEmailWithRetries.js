@@ -1,6 +1,5 @@
-// servers/helpers/sendEmailWithRetries.js
 import EmailLog from "../../servers/Models/EmailLog.js";
-import { sendEmail } from "../../servers/config/sendEmail.js"; // Resend-based sender
+import { sendEmail } from "../../servers/config/sendEmail.js";
 import { AppError } from "../Utils/AppError.js";
 
 export async function sendEmailWithRetries(
@@ -35,10 +34,9 @@ export async function sendEmailWithRetries(
     try {
       console.log(`📨 [Email] Attempt ${attempt}/${maxAttempts} → ${email}`);
 
-      // Use Resend-based sendEmail function
       const info = await sendEmail(mailOptions);
+      console.log("Resend response:", info); // Debug Resend response
 
-      // Log success
       await EmailLog.create({
         userId,
         email,
@@ -47,6 +45,9 @@ export async function sendEmailWithRetries(
         emailAttempts: attempt,
         messageId: info.id || null,
         sentAt: new Date(),
+        subject: mailOptions.subject,
+        from: mailOptions.from,
+        to: email,
       });
 
       console.log(`✅ [Email] Sent to ${email} (msgId: ${info.id})`);
@@ -55,7 +56,6 @@ export async function sendEmailWithRetries(
       lastError = err;
       console.error(`❌ [Email] Attempt ${attempt} failed:`, err.message);
 
-      // Log failure
       await EmailLog.create({
         userId,
         email,
@@ -64,6 +64,9 @@ export async function sendEmailWithRetries(
         emailAttempts: attempt,
         emailLastError: err.message,
         createdAt: new Date(),
+        subject: mailOptions.subject || "N/A",
+        from: mailOptions.from || "N/A",
+        to: email,
       });
 
       // Hard bounce detection
@@ -80,7 +83,6 @@ export async function sendEmailWithRetries(
         break;
       }
 
-      // Exponential backoff
       if (attempt < maxAttempts) {
         const delay = 1000 * Math.pow(2, attempt - 1);
         await new Promise((res) => setTimeout(res, delay));

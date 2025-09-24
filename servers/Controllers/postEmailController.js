@@ -4,8 +4,39 @@ import PostModel from "../../servers/Models/Post.js";
 import Bounce from "../../servers/Models/BounceModel.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
-import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js"; // Resend-based sender with retries
-import { RESEND_API_KEY, SENDER_EMAIL } from "../../servers/config/dotenv.js";
+import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env file directly
+const envPath = path.resolve(__dirname, "../../.env");
+if (fs.existsSync(envPath)) {
+  console.log(`📄 Loading .env from: ${envPath}`);
+  dotenv.config({ path: envPath });
+} else {
+  console.log(
+    "🌐 No .env found, relying on host-provided environment variables"
+  );
+}
+
+// Fetch environment variables
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const SENDER_EMAIL = process.env.SENDER_EMAIL;
+
+// Debug logging
+console.log(
+  "RESEND_API_KEY in email.js:",
+  RESEND_API_KEY ? "✅ Loaded" : "❌ Missing"
+);
+console.log(
+  "SENDER_EMAIL in email.js:",
+  SENDER_EMAIL ? "✅ Loaded" : "❌ Missing"
+);
 
 // Validate environment variables
 if (!RESEND_API_KEY) {
@@ -43,7 +74,6 @@ export const sendDailyPostEmail = async (req, res, next) => {
   });
 
   try {
-    // Check if email functionality is available
     if (!RESEND_API_KEY || !SENDER_EMAIL) {
       logWithContext(
         "DailyEmail",
@@ -151,6 +181,9 @@ export const sendDailyPostEmail = async (req, res, next) => {
           emailAttempts: emailResult.attempts,
           messageId: emailResult.id || null,
           sentAt: new Date(),
+          subject: mailOption.subject,
+          from: mailOption.from,
+          to: user.email,
         });
       } catch (error) {
         logError("DailyEmail", `Failed to send email to ${user.email}`, error);
@@ -169,10 +202,15 @@ export const sendDailyPostEmail = async (req, res, next) => {
           emailAttempts: error.attempts || 1,
           emailLastError: error.message,
           createdAt: new Date(),
+          subject:
+            posts[0]?.title?.substring(0, 50) + "... | inkshaa Daily Digest" ||
+            "N/A",
+          from: SENDER_EMAIL || "N/A",
+          to: user.email,
         });
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Throttle
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     const successCount = results.filter((r) => r.success).length;
@@ -253,6 +291,7 @@ export const testSingleEmail = async (req, res) => {
     });
 
     const emailResult = await sendEmailWithRetries(mailOption, null, "test", 3);
+    console.log("Resend response:", emailResult);
 
     await EmailLog.create({
       userId: null,
@@ -262,6 +301,9 @@ export const testSingleEmail = async (req, res) => {
       emailAttempts: emailResult.attempts,
       messageId: emailResult.id || null,
       sentAt: new Date(),
+      subject: mailOption.subject,
+      from: mailOption.from,
+      to: email,
     });
 
     res.status(200).json({
@@ -283,6 +325,9 @@ export const testSingleEmail = async (req, res) => {
       emailAttempts: error.attempts || 1,
       emailLastError: error.message,
       createdAt: new Date(),
+      subject: "🧪 Test Email from inkshaa",
+      from: SENDER_EMAIL || "N/A",
+      to: email,
     });
 
     res.status(500).json({
@@ -329,6 +374,7 @@ export const sendDirectEmail = async (req, res) => {
       "direct",
       3
     );
+    console.log("Resend response:", emailResult);
 
     await EmailLog.create({
       userId: null,
@@ -338,6 +384,9 @@ export const sendDirectEmail = async (req, res) => {
       emailAttempts: emailResult.attempts,
       messageId: emailResult.id || null,
       sentAt: new Date(),
+      subject: mailOption.subject,
+      from: mailOption.from,
+      to: email,
     });
 
     res.status(200).json({
@@ -359,6 +408,9 @@ export const sendDirectEmail = async (req, res) => {
       emailAttempts: error.attempts || 1,
       emailLastError: error.message,
       createdAt: new Date(),
+      subject: "Message from inkshaa",
+      from: SENDER_EMAIL || "N/A",
+      to: email,
     });
 
     res.status(500).json({

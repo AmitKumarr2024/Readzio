@@ -1,4 +1,3 @@
-// servers/helpers/emailHelper.js
 import Handlebars from "handlebars";
 import {
   EMAIL_TEMPLATE,
@@ -6,8 +5,28 @@ import {
   INVOICE_EMAIL_TEMPLATE,
 } from "../config/emailTemplate.js";
 import { DAILY_POST_EMAIL_TEMPLATE } from "../config/dailyPostEmailTemplate.js";
-import { SENDER_EMAIL } from "../config/dotenv.js";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
 import { AppError } from "../Utils/AppError.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env file directly
+const envPath = path.resolve(__dirname, "../../.env");
+if (fs.existsSync(envPath)) {
+  console.log(`📄 Loading .env from: ${envPath}`);
+  dotenv.config({ path: envPath });
+} else {
+  console.log(
+    "🌐 No .env found, relying on host-provided environment variables"
+  );
+}
+
+// Fetch environment variables
+const SENDER_EMAIL = process.env.SENDER_EMAIL;
 
 /**
  * Creates the mail options for sending email via Resend

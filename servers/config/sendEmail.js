@@ -75,6 +75,7 @@ export async function sendEmail(mailOptions) {
       subject,
       html,
     });
+    console.log("Raw Resend response:", response); // Debug full response
 
     console.log(`✅ Email sent via Resend to ${to}, id: ${response.id}`);
     return { id: response.id, success: true };
