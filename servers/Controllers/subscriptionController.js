@@ -9,10 +9,9 @@ import crypto from "crypto";
 import { RAZORPAY_KEY_SECRET } from "../config/dotenv.js";
 import axiosInstance from "../Utils/axiosInstance.js";
 import mongoose from "mongoose";
-import transporter from "../config/nodeMailer.js";
+import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js"; // Updated import
 import { createNotification } from "../../servers/Utils/createNotification.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
-import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
 import UserSubscriptionPlan from "../Models/UserSubscriptionModel.js";
 import UserSubscription from "../../servers/Models/UserSubscription.js";
 
@@ -127,7 +126,6 @@ export const createSubscriptionPlan = asyncHandler(async (req, res, next) => {
       authorId,
     } = req.body;
 
-    // Validates authentication and author ID
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized",
@@ -157,14 +155,12 @@ export const createSubscriptionPlan = asyncHandler(async (req, res, next) => {
     validateDuration(durationDays);
     validatePlanType(type);
 
-    // Validates post IDs
     for (const postId of postIds) {
       validateObjectId(postId, "Post ID");
     }
     await checkPlanLimit(req.user._id);
     await checkExistingPlan(req.user._id, name);
 
-    // Creates new subscription plan
     const plan = await UserSubscriptionPlan.create({
       name,
       description,
@@ -176,7 +172,6 @@ export const createSubscriptionPlan = asyncHandler(async (req, res, next) => {
       status: "not_confirmed",
     });
 
-    // ✅ Update posts to premium
     if (postIds.length) {
       await PostModel.updateMany(
         { _id: { $in: postIds } },
@@ -184,7 +179,6 @@ export const createSubscriptionPlan = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Logs activity
     await recordActivity({
       userId: req.user._id.toString(),
       action: "CREATED_SUBSCRIPTION",
@@ -219,7 +213,6 @@ export const updateSubscriptionPlan = asyncHandler(async (req, res, next) => {
     const { name, description, price, postIds, durationDays, type, status } =
       req.body;
 
-    // Validates authentication and plan ID
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized",
@@ -230,7 +223,6 @@ export const updateSubscriptionPlan = asyncHandler(async (req, res, next) => {
     }
     validateObjectId(planId, "Plan ID");
 
-    // Fetches plan
     const plan = await UserSubscriptionPlan.findOne({
       _id: planId,
       author: req.user._id,
@@ -244,7 +236,6 @@ export const updateSubscriptionPlan = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Validates and updates fields
     if (name && name !== plan.name) {
       await checkExistingPlan(req.user._id, name, planId);
       plan.name = name;
@@ -292,7 +283,6 @@ export const updateSubscriptionPlan = asyncHandler(async (req, res, next) => {
 
     await plan.save();
 
-    // Logs activity
     await recordActivity({
       userId: req.user._id.toString(),
       action: "UPDATED_SUBSCRIPTION_PLAN",
@@ -312,7 +302,6 @@ export const updateSubscriptionPlan = asyncHandler(async (req, res, next) => {
       plan: { ...plan.toObject(), price: plan.price / 100 },
     });
   } catch (error) {
-    // AppError with context for updating subscription plan
     next(
       error instanceof AppError
         ? error
@@ -331,7 +320,6 @@ export const deleteSubscriptionPlan = asyncHandler(async (req, res, next) => {
   try {
     const { planId } = req.params;
 
-    // Validates authentication and plan ID
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized",
@@ -342,7 +330,6 @@ export const deleteSubscriptionPlan = asyncHandler(async (req, res, next) => {
     }
     validateObjectId(planId, "Plan ID");
 
-    // Fetches plan
     const plan = await UserSubscriptionPlan.findById(planId);
     if (!plan) {
       throw new AppError(
@@ -361,7 +348,6 @@ export const deleteSubscriptionPlan = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Deletes associated subscriptions and payments
     const subscriptions = await UserSubscription.find({ planId });
     const paymentIds = subscriptions
       .map((sub) => sub.paymentId)
@@ -372,7 +358,6 @@ export const deleteSubscriptionPlan = asyncHandler(async (req, res, next) => {
 
     await UserSubscriptionPlan.findByIdAndDelete(planId);
 
-    // Logs activity
     await recordActivity({
       userId: req.user._id.toString(),
       action: "DELETED_SUBSCRIPTION_PLAN",
@@ -386,7 +371,6 @@ export const deleteSubscriptionPlan = asyncHandler(async (req, res, next) => {
       plan: { name: plan.name, subscriptionPlanId: plan._id },
     });
   } catch (error) {
-    // AppError with context for deleting subscription plan
     next(
       error instanceof AppError
         ? error
@@ -405,7 +389,6 @@ export const activateSubscriptionPlan = asyncHandler(async (req, res, next) => {
   try {
     const { planId } = req.params;
 
-    // Validates authentication and plan ID
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized",
@@ -416,7 +399,6 @@ export const activateSubscriptionPlan = asyncHandler(async (req, res, next) => {
     }
     validateObjectId(planId, "Plan ID");
 
-    // Fetches plan
     const plan = await UserSubscriptionPlan.findOne({
       _id: planId,
       author: req.user._id,
@@ -449,7 +431,6 @@ export const activateSubscriptionPlan = asyncHandler(async (req, res, next) => {
     plan.status = "active";
     await plan.save();
 
-    // ✅ Update posts to premium
     if (plan.postIds.length) {
       await PostModel.updateMany(
         { _id: { $in: plan.postIds } },
@@ -457,7 +438,6 @@ export const activateSubscriptionPlan = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Logs activity
     await recordActivity({
       userId: req.user._id.toString(),
       action: "ACTIVATED_SUBSCRIPTION_PLAN",
@@ -479,6 +459,7 @@ export const activateSubscriptionPlan = asyncHandler(async (req, res, next) => {
     );
   }
 });
+
 // Subscribes a user to a plan with Razorpay payment verification
 export const subscribeToPlan = asyncHandler(async (req, res, next) => {
   try {
@@ -489,7 +470,6 @@ export const subscribeToPlan = asyncHandler(async (req, res, next) => {
       razorpay_signature,
     } = req.body;
 
-    // Validates authentication and required fields
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized",
@@ -513,7 +493,6 @@ export const subscribeToPlan = asyncHandler(async (req, res, next) => {
     }
     validateObjectId(planId, "Plan ID");
 
-    // Fetches plan
     const plan = await UserSubscriptionPlan.findById(planId);
     if (!plan) {
       throw new AppError(
@@ -548,7 +527,6 @@ export const subscribeToPlan = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Verifies Razorpay signature
     const generatedSignature = crypto
       .createHmac("sha256", RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -562,7 +540,6 @@ export const subscribeToPlan = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Manages payment record
     let payment = await PaymentModel.findOne({ orderId: razorpay_order_id });
     if (!payment) {
       payment = await PaymentModel.create({
@@ -581,7 +558,6 @@ export const subscribeToPlan = asyncHandler(async (req, res, next) => {
       await payment.save();
     }
 
-    // Creates subscription
     const expiryDate = new Date(
       Date.now() + plan.durationDays * 24 * 60 * 60 * 1000
     );
@@ -594,7 +570,6 @@ export const subscribeToPlan = asyncHandler(async (req, res, next) => {
       amountPaid: plan.price,
     });
 
-    // Sends confirmation email
     const mailOption = createMailOption({
       to: req.user.email,
       subject: "Subscription Confirmation",
@@ -609,7 +584,6 @@ export const subscribeToPlan = asyncHandler(async (req, res, next) => {
     });
     await sendEmailWithRetries(mailOption, req.user._id, "subscription");
 
-    // Sends notification to plan author
     const notification = await createNotification({
       user: plan.author,
       sender: { _id: req.user._id },
@@ -628,7 +602,6 @@ export const subscribeToPlan = asyncHandler(async (req, res, next) => {
       userId: req.user._id,
     });
 
-    // Logs activity
     await recordActivity({
       userId: req.user._id.toString(),
       action: "SUBSCRIBED_TO_PLAN",
@@ -652,7 +625,6 @@ export const subscribeToPlan = asyncHandler(async (req, res, next) => {
       },
     });
   } catch (error) {
-    // AppError with context for subscribing to plan
     next(
       error instanceof AppError
         ? error
@@ -671,7 +643,6 @@ export const cancelSubscription = asyncHandler(async (req, res, next) => {
   try {
     const { subscriptionId } = req.params;
 
-    // Validates authentication and subscription ID
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized",
@@ -682,7 +653,6 @@ export const cancelSubscription = asyncHandler(async (req, res, next) => {
     }
     validateObjectId(subscriptionId, "Subscription ID");
 
-    // Updates subscription status
     const subscription = await UserSubscription.findOneAndUpdate(
       { _id: subscriptionId, userId: req.user._id },
       { status: "cancelled" },
@@ -697,7 +667,6 @@ export const cancelSubscription = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Sends cancellation email
     const plan = await UserSubscriptionPlan.findById(subscription.planId);
     const mailOption = createMailOption({
       to: req.user.email,
@@ -707,9 +676,8 @@ export const cancelSubscription = asyncHandler(async (req, res, next) => {
       message: `Your subscription to "${plan.name}" has been successfully cancelled.`,
       hasButton: false,
     });
-    await transporter.sendMail(mailOption);
+    await sendEmailWithRetries(mailOption, req.user._id, "subscription");
 
-    // Logs activity
     await recordActivity({
       userId: req.user._id.toString(),
       action: "CANCELLED_SUBSCRIPTION",
@@ -719,7 +687,6 @@ export const cancelSubscription = asyncHandler(async (req, res, next) => {
 
     res.status(200).json({ success: true, subscription });
   } catch (error) {
-    // AppError with context for cancelling subscription
     next(
       error instanceof AppError
         ? error
@@ -738,7 +705,6 @@ export const refundSubscription = asyncHandler(async (req, res, next) => {
   try {
     const { subscriptionId } = req.params;
 
-    // Validates authentication and subscription ID
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized",
@@ -749,7 +715,6 @@ export const refundSubscription = asyncHandler(async (req, res, next) => {
     }
     validateObjectId(subscriptionId, "Subscription ID");
 
-    // Fetches subscription and payment
     const subscription = await UserSubscription.findOne({
       _id: subscriptionId,
       userId: req.user._id,
@@ -775,7 +740,6 @@ export const refundSubscription = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Checks refund eligibility
     const timeSincePayment =
       Date.now() - new Date(subscription.createdAt).getTime();
     if (timeSincePayment > 1 * 60 * 60 * 1000) {
@@ -807,7 +771,6 @@ export const refundSubscription = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Verifies payment with Razorpay
     try {
       await axiosInstance.get(`/payments/${payment.paymentId}`, {
         headers: { "X-Api-Type": "razorpay" },
@@ -821,7 +784,6 @@ export const refundSubscription = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Processes refund
     try {
       const refundResponse = await axiosInstance.post(
         `/payments/${payment.paymentId}/refund`,
@@ -835,7 +797,6 @@ export const refundSubscription = asyncHandler(async (req, res, next) => {
         { status: "refunded" }
       );
 
-      // Logs activity
       await recordActivity({
         userId: req.user._id.toString(),
         action: "REFUNDED_SUBSCRIPTION",
@@ -843,7 +804,6 @@ export const refundSubscription = asyncHandler(async (req, res, next) => {
         subscriptionId,
       });
 
-      // Sends refund confirmation email
       const plan = await UserSubscriptionPlan.findById(subscription.planId);
       const mailOption = createMailOption({
         to: req.user.email,
@@ -855,7 +815,7 @@ export const refundSubscription = asyncHandler(async (req, res, next) => {
         )} for the plan "${plan.name}" has been successfully processed.`,
         hasButton: false,
       });
-      await transporter.sendMail(mailOption);
+      await sendEmailWithRetries(mailOption, req.user._id, "refund");
 
       res.status(200).json({ success: true, refund: refundResponse.data });
     } catch (refundError) {
@@ -867,7 +827,6 @@ export const refundSubscription = asyncHandler(async (req, res, next) => {
       );
     }
   } catch (error) {
-    // AppError with context for refunding subscription
     next(
       error instanceof AppError
         ? error
@@ -887,7 +846,6 @@ export const getSubscriptionHistoryByAuthor = asyncHandler(
     try {
       const { authorId } = req.params;
 
-      // Validates authentication and author ID
       if (!req.user?._id) {
         throw new AppError(
           "Unauthorized",
@@ -906,7 +864,6 @@ export const getSubscriptionHistoryByAuthor = asyncHandler(
         );
       }
 
-      // Fetches plans for the author
       const plans = await UserSubscriptionPlan.find({
         author: authorId,
       }).select("_id");
@@ -918,7 +875,6 @@ export const getSubscriptionHistoryByAuthor = asyncHandler(
         });
       }
 
-      // Fetches subscriptions for the plans
       const subscriptions = await UserSubscription.find({
         planId: { $in: plans.map((p) => p._id) },
       })
@@ -926,7 +882,6 @@ export const getSubscriptionHistoryByAuthor = asyncHandler(
         .populate("planId", "name price durationDays")
         .lean();
 
-      // Enriches subscriptions with payment status and amount
       const enrichedSubscriptions = await Promise.all(
         subscriptions.map(async (sub) => ({
           ...sub,
@@ -949,7 +904,6 @@ export const getSubscriptionHistoryByAuthor = asyncHandler(
         count: enrichedSubscriptions.length,
       });
     } catch (error) {
-      // AppError with context for fetching subscription history
       next(
         error instanceof AppError
           ? error
@@ -969,7 +923,6 @@ export const getSubscriptionAnalytics = asyncHandler(async (req, res, next) => {
   try {
     const { planId } = req.params;
 
-    // Validates authentication and plan ID
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized",
@@ -980,7 +933,6 @@ export const getSubscriptionAnalytics = asyncHandler(async (req, res, next) => {
     }
     validateObjectId(planId, "Plan ID");
 
-    // Fetches plan
     const plan = await UserSubscriptionPlan.findById(planId);
     if (!plan) {
       throw new AppError(
@@ -999,7 +951,6 @@ export const getSubscriptionAnalytics = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Calculates analytics
     const subscriptions = await UserSubscription.find({ planId }).lean();
     const totalSubscribers = subscriptions.length;
     const activeSubscribers = subscriptions.filter(
@@ -1016,7 +967,6 @@ export const getSubscriptionAnalytics = asyncHandler(async (req, res, next) => {
       )
     ).reduce((sum, amount) => sum + amount, 0);
 
-    // Sends analytics email if requested
     if (req.query.sendEmail === "true") {
       const mailOption = createMailOption({
         to: req.user.email,
@@ -1030,7 +980,7 @@ export const getSubscriptionAnalytics = asyncHandler(async (req, res, next) => {
         ).toFixed(2)} in total revenue.`,
         hasButton: false,
       });
-      await transporter.sendMail(mailOption);
+      await sendEmailWithRetries(mailOption, req.user._id, "analytics");
     }
 
     res.status(200).json({
@@ -1041,7 +991,6 @@ export const getSubscriptionAnalytics = asyncHandler(async (req, res, next) => {
       totalRevenue: totalRevenue / 100,
     });
   } catch (error) {
-    // AppError with context for fetching subscription analytics
     next(
       error instanceof AppError
         ? error
@@ -1060,7 +1009,6 @@ export const sendRenewalReminders = asyncHandler(async (req, res, next) => {
   try {
     const { daysBeforeExpiry = 7 } = req.body;
 
-    // Validates days before expiry
     if (daysBeforeExpiry <= 0) {
       throw new AppError(
         "Days before expiry must be positive",
@@ -1070,7 +1018,6 @@ export const sendRenewalReminders = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Fetches subscriptions nearing expiry
     const subscriptions = await UserSubscription.find({
       status: "active",
       expiryDate: {
@@ -1079,7 +1026,6 @@ export const sendRenewalReminders = asyncHandler(async (req, res, next) => {
       lastReminderSent: { $exists: false },
     });
 
-    // Sends reminders for each subscription
     for (const sub of subscriptions) {
       const user = await UserModel.findById(sub.userId);
       const plan = await UserSubscriptionPlan.findById(sub.planId);
@@ -1095,11 +1041,10 @@ export const sendRenewalReminders = asyncHandler(async (req, res, next) => {
         buttonText: "Renew Now",
         buttonUrl: `https://yourapp.com/renew/${sub._id}`,
       });
-      await transporter.sendMail(mailOption);
+      await sendEmailWithRetries(mailOption, sub.userId, "renewal");
       sub.lastReminderSent = new Date();
       await sub.save();
 
-      // Logs activity
       await recordActivity({
         userId: sub.userId.toString(),
         action: "SENT_RENEWAL_REMINDER",
@@ -1113,7 +1058,6 @@ export const sendRenewalReminders = asyncHandler(async (req, res, next) => {
       message: `Sent reminders to ${subscriptions.length} users`,
     });
   } catch (error) {
-    // AppError with context for sending renewal reminders
     next(
       error instanceof AppError
         ? error
@@ -1131,7 +1075,6 @@ export const sendRenewalReminders = asyncHandler(async (req, res, next) => {
 export const getAllMySubscriptionPlans = asyncHandler(
   async (req, res, next) => {
     try {
-      // Validates authentication
       if (!req.user?._id) {
         throw new AppError(
           "Unauthorized",
@@ -1146,12 +1089,10 @@ export const getAllMySubscriptionPlans = asyncHandler(
         ...(req.query.includeDeleted !== "true" && { deletedAt: null }),
       };
 
-      // Fetches plans
       const plans = await UserSubscriptionPlan.find(filter).sort({
         createdAt: -1,
       });
 
-      // Enriches plans with subscription analytics
       const enrichedPlans = await Promise.all(
         plans.map(async (plan) => {
           const subscriptions = await UserSubscription.find({
@@ -1203,7 +1144,6 @@ export const getAllMySubscriptionPlans = asyncHandler(
         ),
       });
     } catch (error) {
-      // AppError with context for fetching all subscription plans
       next(
         error instanceof AppError
           ? error
@@ -1224,7 +1164,6 @@ export const getSubscriptionPlansByAuthor = asyncHandler(
     try {
       const { authorId } = req.params;
 
-      // Validates authentication and author ID
       if (!req.user?._id) {
         throw new AppError(
           "Unauthorized",
@@ -1235,7 +1174,6 @@ export const getSubscriptionPlansByAuthor = asyncHandler(
       }
       validateObjectId(authorId, "Author ID");
 
-      // Fetches active plans for the author
       const plans = await UserSubscriptionPlan.find({
         author: authorId,
         status: { $ne: "deleted" },
@@ -1243,7 +1181,6 @@ export const getSubscriptionPlansByAuthor = asyncHandler(
 
       res.status(200).json({ success: true, count: plans.length, plans });
     } catch (error) {
-      // AppError with context for fetching plans by author
       next(
         error instanceof AppError
           ? error
@@ -1263,7 +1200,6 @@ export const unsubscribeByAuthor = asyncHandler(async (req, res, next) => {
   try {
     const { authorId, userId } = req.body;
 
-    // Validates authentication and IDs
     if (!req.user?._id) {
       throw new AppError(
         "Unauthorized",
@@ -1283,7 +1219,6 @@ export const unsubscribeByAuthor = asyncHandler(async (req, res, next) => {
       );
     }
 
-    // Fetches plans by author
     const plans = await UserSubscriptionPlan.find({ author: authorId }).select(
       "_id"
     );
@@ -1293,14 +1228,12 @@ export const unsubscribeByAuthor = asyncHandler(async (req, res, next) => {
         .json({ success: true, message: "No subscriptions to cancel" });
     }
 
-    // Cancels active subscriptions
     const updatedSubscriptions = await UserSubscription.updateMany(
       { userId, planId: { $in: plans.map((p) => p._id) }, status: "active" },
       { status: "cancelled" },
       { new: true }
     );
 
-    // Logs activity if subscriptions were cancelled
     if (updatedSubscriptions.modifiedCount > 0) {
       await recordActivity({
         userId: req.user._id.toString(),
@@ -1317,7 +1250,6 @@ export const unsubscribeByAuthor = asyncHandler(async (req, res, next) => {
       userId,
     });
   } catch (error) {
-    // AppError with context for unsubscribing by author
     next(
       error instanceof AppError
         ? error
@@ -1338,7 +1270,6 @@ export const getSubscriptionStatusByAuthor = asyncHandler(
       const userId = req.user?._id.toString();
       const { authorId } = req.body;
 
-      // Validates authentication and author ID
       if (!userId) {
         throw new AppError(
           "Unauthorized",
@@ -1358,12 +1289,10 @@ export const getSubscriptionStatusByAuthor = asyncHandler(
         );
       }
 
-      // Fetches plans by author
       const authorPlanIds = await UserSubscriptionPlan.find({
         author: authorId,
       }).distinct("_id");
 
-      // Fetches active subscriptions
       const activeSubscriptions = await UserSubscription.find({
         userId,
         planId: { $in: authorPlanIds },
@@ -1381,7 +1310,6 @@ export const getSubscriptionStatusByAuthor = asyncHandler(
         },
       });
 
-      // Enriches subscriptions with additional details
       const subscriptions = await Promise.all(
         activeSubscriptions.map(async (sub) => {
           const subscriberCount = await UserSubscription.countDocuments({
@@ -1426,7 +1354,6 @@ export const getSubscriptionStatusByAuthor = asyncHandler(
         subscriptions,
       });
     } catch (error) {
-      // AppError with context for fetching subscription status
       next(
         error instanceof AppError
           ? error
@@ -1446,7 +1373,6 @@ export const getMySubscribedPlans = asyncHandler(async (req, res, next) => {
   try {
     const userId = req.user?._id?.toString();
 
-    // Validates authentication
     if (!userId) {
       throw new AppError(
         "Unauthorized",
@@ -1466,7 +1392,6 @@ export const getMySubscribedPlans = asyncHandler(async (req, res, next) => {
       }),
     };
 
-    // Fetches subscriptions
     const subscriptions = await UserSubscription.find(query)
       .populate({
         path: "planId",
@@ -1475,7 +1400,6 @@ export const getMySubscribedPlans = asyncHandler(async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // Enriches subscriptions with plan details
     const enriched = subscriptions
       .filter((sub) => sub.planId)
       .map((sub) => ({
@@ -1495,7 +1419,6 @@ export const getMySubscribedPlans = asyncHandler(async (req, res, next) => {
       .status(200)
       .json({ success: true, count: enriched.length, plans: enriched });
   } catch (error) {
-    // AppError with context for fetching subscribed plans
     next(
       error instanceof AppError
         ? error
@@ -1511,11 +1434,10 @@ export const getMySubscribedPlans = asyncHandler(async (req, res, next) => {
 
 // Checks eligibility for creating subscription plans
 export const checkEligibilityForSubscription = asyncHandler(
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const userId = req.user?._id;
 
-      // Validates authentication
       if (!userId) {
         throw new AppError(
           "Unauthorized",
@@ -1525,7 +1447,6 @@ export const checkEligibilityForSubscription = asyncHandler(
         );
       }
 
-      // Fetches user and subscription config
       const user = await UserModel.findById(userId).lean();
       if (!user) {
         throw new AppError(
@@ -1548,7 +1469,6 @@ export const checkEligibilityForSubscription = asyncHandler(
         );
       }
 
-      // Calculates eligibility criteria
       const followerCount = user.followers?.length || 0;
       const postCount = await PostModel.countDocuments({
         author: userId,
@@ -1590,7 +1510,6 @@ export const checkEligibilityForSubscription = asyncHandler(
             } days to enable subscriptions.`,
       });
     } catch (error) {
-      // AppError with context for checking subscription eligibility
       next(
         error instanceof AppError
           ? error

@@ -3,13 +3,6 @@ import EmailLog from "../../servers/Models/EmailLog.js";
 import { sendEmail } from "../../servers/config/sendEmail.js"; // Resend-based sender
 import { AppError } from "../Utils/AppError.js";
 
-/**
- * Send email with retries using Resend API
- * @param {Object} mailOptions - { to, subject, html, text }
- * @param {String} userId
- * @param {String} type
- * @param {Number} maxAttempts
- */
 export async function sendEmailWithRetries(
   mailOptions,
   userId,
@@ -25,7 +18,7 @@ export async function sendEmailWithRetries(
   const recentFailures = await EmailLog.countDocuments({
     email,
     emailStatus: "failed",
-    createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }, // last 24h
+    createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
   });
 
   if (recentFailures >= 5) {
@@ -42,7 +35,7 @@ export async function sendEmailWithRetries(
     try {
       console.log(`📨 [Email] Attempt ${attempt}/${maxAttempts} → ${email}`);
 
-      // Send via Resend
+      // Use Resend-based sendEmail function
       const info = await sendEmail(mailOptions);
 
       // Log success
@@ -57,7 +50,7 @@ export async function sendEmailWithRetries(
       });
 
       console.log(`✅ [Email] Sent to ${email} (msgId: ${info.id})`);
-      return info;
+      return { success: true, attempts: attempt, id: info.id };
     } catch (err) {
       lastError = err;
       console.error(`❌ [Email] Attempt ${attempt} failed:`, err.message);
@@ -73,7 +66,7 @@ export async function sendEmailWithRetries(
         createdAt: new Date(),
       });
 
-      // Hard bounce detection (stop retries for permanent failures)
+      // Hard bounce detection
       const errorMsg = (err.message || "").toLowerCase();
       if (
         errorMsg.includes("user unknown") ||
@@ -87,7 +80,7 @@ export async function sendEmailWithRetries(
         break;
       }
 
-      // Exponential backoff before next attempt
+      // Exponential backoff
       if (attempt < maxAttempts) {
         const delay = 1000 * Math.pow(2, attempt - 1);
         await new Promise((res) => setTimeout(res, delay));
