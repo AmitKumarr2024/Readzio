@@ -1,13 +1,35 @@
 import dotenv from "dotenv";
-dotenv.config();
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env from the project root (one level up from /servers)
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+// Try multiple possible .env locations
+const possibleEnvPaths = [
+  path.resolve(__dirname, "../../../.env"), // 3 levels up
+  path.resolve(__dirname, "../../.env"), // 2 levels up
+  path.resolve(__dirname, "../.env"), // 1 level up
+  path.resolve(process.cwd(), ".env"), // Current working directory
+];
+
+let envLoaded = false;
+for (const envPath of possibleEnvPaths) {
+  if (fs.existsSync(envPath)) {
+    console.log(`📄 Loading .env from: ${envPath}`);
+    dotenv.config({ path: envPath });
+    envLoaded = true;
+    break;
+  }
+}
+
+if (!envLoaded) {
+  console.error(
+    "❌ No .env file found in any of these locations:",
+    possibleEnvPaths
+  );
+}
 
 export const PORT = process.env.PORT || 10000;
 export const MONGO_URI = process.env.MONGO_URI;
@@ -41,7 +63,10 @@ export const SESSION_SECRET = process.env.SESSION_SECRET;
 export const RESEND_API_KEY = process.env.RESEND_API_KEY;
 export const USE_DUMMY_EMAIL = process.env.USE_DUMMY_EMAIL;
 
-// Validate required environment variables
+// Debug log to check if RESEND_API_KEY is loaded
+console.log("RESEND_API_KEY loaded:", RESEND_API_KEY ? "✅ Yes" : "❌ No");
+
+// Validate required environment variables (comment out for debugging)
 const requiredEnv = [
   "MONGO_URI",
   "JWT_SECRET",
@@ -50,9 +75,15 @@ const requiredEnv = [
   "SMTP_PASS",
   "SENDER_EMAIL",
 ];
+
+// Debug: Log all environment variables
+console.log("Environment variables check:");
 requiredEnv.forEach((key) => {
-  if (!process.env[key]) {
+  const value = process.env[key];
+  console.log(`  ${key}: ${value ? "✅ Set" : "❌ Missing"}`);
+  if (!value) {
     console.error(`[dotenv] Missing required env variable: ${key}`);
-    process.exit(1);
+    // Comment out the next line to continue without exiting
+    // process.exit(1);
   }
 });

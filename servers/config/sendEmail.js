@@ -1,6 +1,12 @@
 import { Resend } from "resend";
 import { RESEND_API_KEY, SENDER_EMAIL } from "../../servers/config/dotenv.js";
 
+// Debug logging
+console.log(
+  "RESEND_API_KEY in sendEmail.js:",
+  RESEND_API_KEY ? "✅ Loaded" : "❌ Missing"
+);
+
 if (!RESEND_API_KEY) {
   throw new Error("RESEND_API_KEY is required in .env");
 }
