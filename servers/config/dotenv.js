@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 // Try multiple possible .env locations
 const possibleEnvPaths = [
-  path.resolve(process.cwd(), ".env"), // Current working directory
+  path.resolve(__dirname, "../../.env"), // Current working directory
 ];
 
 let envLoaded = false;
