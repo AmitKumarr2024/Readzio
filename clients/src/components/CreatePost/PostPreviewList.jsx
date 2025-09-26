@@ -130,8 +130,8 @@ const PostPreviewList = ({
         return toast.error("Please add content blocks");
       if (!postType) return toast.error("Please select a post type");
       if (!category) return toast.error("Please select a category");
-      if (!language.match(/^[a-z]{2}$/i))
-        return toast.error("Invalid language code (e.g., 'en')");
+      if (!language.match(/^[a-z]{2}(-[A-Z]{2})?$/i))
+        return toast.error("Invalid language code (e.g., 'en' or 'en-US')");
 
       if (!isFeatured && !isPinned && !isPublished && language === "en") {
         toast.error(
@@ -325,6 +325,23 @@ const PostPreviewList = ({
         className: "relative my-4",
       };
 
+      const supportedLanguages = [
+        "javascript",
+        "typescript",
+        "python",
+        "java",
+        "c",
+        "cpp",
+        "ruby",
+        "go",
+        "html",
+        "css",
+        "bash",
+      ];
+      const language = supportedLanguages.includes(block.language)
+        ? block.language
+        : "text";
+      const codeToShow = block.code || ""; // only show actual code, not HTML
       switch (block.type) {
         case "code":
           console.log("Preview block:", block); // Add this debug
@@ -334,17 +351,16 @@ const PostPreviewList = ({
               className="relative my-4 bg-gray-800 dark:bg-gray-900 text-text-main-light dark:text-text-main-dark rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800"
             >
               <SyntaxHighlighter
-                language={block?.language}
+                language={language}
                 style={tomorrow}
                 showLineNumbers
                 wrapLines
               >
-                {block.code || block.value || ""}
+                {codeToShow}
               </SyntaxHighlighter>
+
               <button
-                onClick={() =>
-                  handleCopyCode(block.code || block.value || "", i)
-                }
+                onClick={() => handleCopyCode(codeToShow, i)}
                 className="absolute top-2 right-2 bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600 transition z-10"
               >
                 {copiedIndex === i ? "Copied!" : "Copy"}

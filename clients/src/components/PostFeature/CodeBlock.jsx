@@ -1,5 +1,5 @@
 import React from "react";
-import {  IoIosBackspace } from "react-icons/io";
+import { IoIosBackspace } from "react-icons/io";
 import { MdDeleteForever } from "react-icons/md";
 import { motion } from "framer-motion";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -12,11 +12,30 @@ const blockVariants = {
 };
 
 const supportedLanguages = [
-  "javascript", "python", "java", "c", "cpp", "go", "typescript", "bash", "html", "css", "json", "markdown"
+  "javascript",
+  "python",
+  "java",
+  "c",
+  "cpp",
+  "go",
+  "typescript",
+  "bash",
+  "html",
+  "css",
+  "json",
+  "markdown",
 ];
 
 const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
   if (!block || typeof block.code === "undefined") return null;
+
+  const getValidLanguage = (lang, code) => {
+    if (!lang || !supportedLanguages.includes(lang) || lang === "plaintext") {
+      if (code?.trim().startsWith("<")) return "html"; // detect HTML
+      return "javascript"; // fallback
+    }
+    return lang;
+  };
 
   return (
     <motion.div
@@ -47,7 +66,9 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
 
       <select
         value={block.language || "javascript"}
-        onChange={(e) => updateBlock(index, { ...block, language: e.target.value })}
+        onChange={(e) =>
+          updateBlock(index, { ...block, language: e.target.value })
+        }
         className="mb-4 bg-gray-800 text-white border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-40"
       >
         {supportedLanguages.map((lang) => (
@@ -67,7 +88,11 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
 
       {block.code && (
         <div className="mt-4 bg-gray-800 rounded-lg p-4 overflow-x-auto">
-          <SyntaxHighlighter language={block.language || "javascript"} style={oneDark} wrapLongLines>
+          <SyntaxHighlighter
+            language={getValidLanguage(block.language, block.code)}
+            style={oneDark}
+            wrapLongLines
+          >
             {block.code}
           </SyntaxHighlighter>
         </div>
@@ -76,7 +101,9 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
       <input
         placeholder="Caption (optional)"
         value={block.caption}
-        onChange={(e) => updateBlock(index, { ...block, caption: e.target.value })}
+        onChange={(e) =>
+          updateBlock(index, { ...block, caption: e.target.value })
+        }
         className="w-full mt-4 bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
     </motion.div>
