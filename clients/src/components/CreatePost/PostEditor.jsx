@@ -124,7 +124,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         : type === "heading"
         ? { id: uuidv4(), type, level: 2, text: "Heading Text" }
         : type === "code"
-        ? { id: uuidv4(), type, code: "", caption: "" }
+        ? { id: uuidv4(), type, code: "", caption: "", language: "javascript" }
         : type === "image"
         ? { id: uuidv4(), type, src: "", caption: "" }
         : type === "file"

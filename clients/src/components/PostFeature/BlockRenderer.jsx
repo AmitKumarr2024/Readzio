@@ -111,9 +111,24 @@ const BlockRenderer = ({
 
     if (block.type === "table") {
       const headers = Array.isArray(block.headers) ? block.headers : [];
-      const rows = Array.isArray(block.rows) ? block.rows.filter(row => Array.isArray(row) && row.length > 0) : [];
-      const data = block.data || (headers.length || rows.length ? [headers, ...rows] : [["Header 1", "Header 2"], ["Cell 1", "Cell 2"]]);
-      block = { ...block, data, caption: block.caption || "", headers: undefined, rows: undefined };
+      const rows = Array.isArray(block.rows)
+        ? block.rows.filter((row) => Array.isArray(row) && row.length > 0)
+        : [];
+      const data =
+        block.data ||
+        (headers.length || rows.length
+          ? [headers, ...rows]
+          : [
+              ["Header 1", "Header 2"],
+              ["Cell 1", "Cell 2"],
+            ]);
+      block = {
+        ...block,
+        data,
+        caption: block.caption || "",
+        headers: undefined,
+        rows: undefined,
+      };
     }
 
     switch (block.type) {
@@ -139,7 +154,7 @@ const BlockRenderer = ({
           <CodeBlockOutput
             key={i}
             code={block.code}
-            language={block.language || "javascript"}
+            language={block.language}
             caption={block.caption}
             className="my-6 bg-gray-800 dark:bg-gray-900 rounded-lg p-4"
           />
@@ -228,16 +243,23 @@ const BlockRenderer = ({
             options={block.options || []}
             caption={block.caption}
             className="my-6 p-4 bg-background-alt-light dark:bg-background-alt-dark rounded-lg"
-            />
+          />
         );
       case "ad":
         return (
           <div className="my-6 w-full">
-            <InArticleAd key={`ad-${i}`} postId={postId} adIndex={block.adIndex} />
+            <InArticleAd
+              key={`ad-${i}`}
+              postId={postId}
+              adIndex={block.adIndex}
+            />
           </div>
         );
       default:
-        console.warn(`[DEBUG] Unsupported block type at index ${i}:`, block.type);
+        console.warn(
+          `[DEBUG] Unsupported block type at index ${i}:`,
+          block.type
+        );
         return (
           <div key={i} className="text-red-500 italic my-6">
             Unsupported content block: {block.type}

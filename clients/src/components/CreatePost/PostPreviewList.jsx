@@ -333,7 +333,7 @@ const PostPreviewList = ({
               className="relative my-4 bg-gray-800 dark:bg-gray-900 text-text-main-light dark:text-text-main-dark rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800"
             >
               <SyntaxHighlighter
-                language={block.language || "javascript"}
+                language={block?.language}
                 style={tomorrow}
                 showLineNumbers
                 wrapLines

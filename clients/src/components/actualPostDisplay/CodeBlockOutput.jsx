@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import React, { useState } from "react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-const CodeBlockOutput = ({ code, language = 'javascript', caption }) => {
+const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -13,37 +13,122 @@ const CodeBlockOutput = ({ code, language = 'javascript', caption }) => {
   };
 
   return (
-    <div className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl overflow-hidden my-8">
-      <button
-        onClick={handleCopy}
-        className="absolute top-2 right-2 text-xs bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark px-2 py-1 rounded hover:bg-gray-600 transition select-none"
-        aria-label="Copy code"
-      >
-        {copied ? 'Copied!' : 'Copy'}
-      </button>
+    <div className="group relative my-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl shadow-2xl border border-gray-700/50 overflow-hidden backdrop-blur-sm">
+      {/* Header with language badge and copy button */}
+      <div className="flex items-center justify-between px-6 py-4 bg-gray-800/80 border-b border-gray-700/50 backdrop-blur-sm">
+        <div className="flex items-center space-x-3">
+          <div className="flex space-x-2">
+            <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+            <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+            <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+          </div>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/30 backdrop-blur-sm">
+            <span className="w-2 h-2 bg-blue-400 rounded-full mr-2 animate-pulse"></span>
+            {language.toUpperCase()}
+          </span>
+        </div>
 
-      <div className="absolute -bottom-3 right-3 mb-4 text-xs bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark px-2 py-1 rounded select-none uppercase font-semibold">
-        {language}
+        <button
+          onClick={handleCopy}
+          className={`
+            inline-flex items-center px-4 py-2 rounded-lg text-xs font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 select-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-gray-800
+            ${
+              copied
+                ? "bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-300 border border-green-500/30 shadow-lg shadow-green-500/20"
+                : "bg-gradient-to-r from-gray-700/50 to-gray-600/50 text-gray-300 border border-gray-600/50 hover:from-blue-600/20 hover:to-purple-600/20 hover:text-blue-300 hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/20"
+            }
+          `}
+          aria-label="Copy code"
+        >
+          <svg
+            className={`w-4 h-4 mr-2 transition-all duration-300 ${
+              copied ? "text-green-300" : "text-gray-400"
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            {copied ? (
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            ) : (
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+              />
+            )}
+          </svg>
+          <span className="font-mono">{copied ? "Copied!" : "Copy"}</span>
+        </button>
       </div>
 
-      <SyntaxHighlighter
-        language={language}
-        style={tomorrow}
-        customStyle={{
-          margin: 0,
-          padding: '1.25rem',
-          fontSize: '0.875rem',
-          backgroundColor: '#1a202c',
-        }}
-        wrapLongLines
-        showLineNumbers
-      >
-        {code}
-      </SyntaxHighlighter>
+      {/* Code content */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-purple-500/5"></div>
+        <SyntaxHighlighter
+          language={language}
+          style={tomorrow}
+          customStyle={{
+            margin: 0,
+            padding: "1.5rem",
+            fontSize: "0.875rem",
+            backgroundColor: "transparent",
+            fontFamily:
+              'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+            lineHeight: "1.7",
+          }}
+          wrapLongLines
+          showLineNumbers
+          lineNumberStyle={{
+            color: "#6B7280",
+            paddingRight: "1rem",
+            fontSize: "0.75rem",
+            minWidth: "2.5rem",
+            textAlign: "right",
+            userSelect: "none",
+            opacity: 0.6,
+          }}
+        >
+          {code}
+        </SyntaxHighlighter>
 
+        {/* Subtle gradient overlay for depth */}
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-gray-900/20 via-transparent to-transparent"></div>
+      </div>
+
+      {/* Caption */}
       {caption && (
-        <div className="text-xs  text-text-main-light dark:text-text-main-dark italic mt-1 px-5 pb-3">{caption}</div>
+        <div className="px-6 py-3 bg-gray-800/50 border-t border-gray-700/50 backdrop-blur-sm">
+          <p className="text-sm text-gray-400 italic flex items-center">
+            <svg
+              className="w-4 h-4 mr-2 text-gray-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+              />
+            </svg>
+            {caption}
+          </p>
+        </div>
       )}
+
+      {/* Hover effect border */}
+      <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-gradient-to-r group-hover:from-blue-500/30 group-hover:to-purple-500/30 transition-all duration-500 pointer-events-none"></div>
+
+      {/* Subtle glow effect */}
+      <div className="absolute -inset-1 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-700 -z-10"></div>
     </div>
   );
 };
