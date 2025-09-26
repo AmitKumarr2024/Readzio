@@ -161,9 +161,8 @@ const BlockRenderer = ({
           <CodeBlockOutput
             key={i}
             code={block.code}
-            language={block.language || "javascript"} // ensure fallback here
+            language={getValidLanguage(block.language, block.code)}
             caption={block.caption}
-            className="my-6 bg-gray-800 dark:bg-gray-900 rounded-lg p-4"
           />
         );
 

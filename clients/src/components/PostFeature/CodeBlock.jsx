@@ -29,11 +29,29 @@ const supportedLanguages = [
 
 // ✅ Normalizer
 const getValidLanguage = (lang, code) => {
-  if (!lang || !supportedLanguages.includes(lang) || lang === "plaintext") {
-    if (code?.trim().startsWith("<")) return "html"; // detect HTML
-    return "javascript"; // fallback
+  const supportedLanguages = [
+    "javascript",
+    "python",
+    "java",
+    "c",
+    "cpp",
+    "go",
+    "typescript",
+    "bash",
+    "html",
+    "css",
+    "json",
+    "markdown",
+  ];
+
+  // Detect HTML automatically if code starts with <
+  if (!lang || lang === "plaintext") {
+    if (code?.trim().startsWith("<")) return "html";
+    return "javascript"; // fallback to real language instead of 'text'
   }
-  return lang;
+
+  // Only return supported languages
+  return supportedLanguages.includes(lang) ? lang : "javascript";
 };
 
 const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
