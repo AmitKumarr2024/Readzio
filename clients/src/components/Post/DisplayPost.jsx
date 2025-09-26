@@ -75,6 +75,9 @@ const DisplayPost = () => {
   const activeLoading = isAuthenticated ? loading : guestLoading;
   const activeError = isAuthenticated ? error : guestError;
 
+  console.log("DisplayPost slug:", slug);
+  console.log("Active post:", activePost);
+
   const categoryMap = useMemo(() => {
     return categories.reduce((map, cat) => {
       map[cat._id] = cat.name;
@@ -186,6 +189,33 @@ const DisplayPost = () => {
     isAuthenticated,
     slug,
   ]);
+
+
+  // need delete in furture
+  console.log("URL slug:", useParams().slug);
+
+  useEffect(() => {
+    console.log("Authenticated:", isAuthenticated);
+    console.log("Dispatching fetch for slug:", slug);
+
+    if (isAuthenticated) {
+      dispatch(getSinglePost({ slug, isGuest: false }))
+        .unwrap()
+        .then((res) => console.log("Fetched post (auth):", res))
+        .catch((err) => console.error("Fetch error (auth):", err));
+    } else {
+      dispatch(fetchPublicPostBySlug(slug))
+        .unwrap()
+        .then((res) => console.log("Fetched post (guest):", res))
+        .catch((err) => console.error("Fetch error (guest):", err));
+    }
+  }, [slug, isAuthenticated]);
+
+
+  useEffect(() => {
+  console.log("Active post:", activePost);
+}, [activePost]);
+
 
   // Reading time tracking
   useEffect(() => {
