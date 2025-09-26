@@ -8,7 +8,9 @@ import Skeleton from "../Ui/Skeleton";
 const SinglePostView = () => {
   const { slug } = useParams();
   const dispatch = useDispatch();
-  const { singlePost, loading, error } = useSelector((state) => state.guest || {});
+  const { singlePost, loading, error } = useSelector(
+    (state) => state.guest || {}
+  );
 
   useEffect(() => {
     const loadPost = async () => {
@@ -50,7 +52,9 @@ const SinglePostView = () => {
   }
 
   if (!singlePost) {
-    return <div className="text-center text-gray-400 py-8">Post not found.</div>;
+    return (
+      <div className="text-center text-gray-400 py-8">Post not found.</div>
+    );
   }
 
   return (
@@ -64,17 +68,22 @@ const SinglePostView = () => {
           className="w-full h-64 object-cover rounded-lg mb-4"
         />
       )}
-      <div className="prose dark:prose-invert">
-        {singlePost.blocks.map((block, index) => (
+      {Array.isArray(singlePost.blocks) &&
+        singlePost.blocks.map((block, index) => (
           <div key={index}>
-            {block.type === "text" && <p>{block.content}</p>}
-            {block.type === "image" && (
-              <img src={block.content} alt="" className="w-full rounded-lg" />
+            {block.type === "text" && (
+              <p>{block.content || block.value || ""}</p>
             )}
-            {/* Add more block types as needed */}
+            {block.type === "image" && (
+              <img
+                src={block.content || block.src || ""}
+                alt=""
+                className="w-full rounded-lg"
+              />
+            )}
           </div>
         ))}
-      </div>
+
       <div className="mt-4 text-sm text-gray-500">
         By {singlePost.author?.name || "Unknown"} on{" "}
         {new Date(singlePost.createdAt).toLocaleDateString()}

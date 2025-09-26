@@ -510,16 +510,16 @@ export const getSinglePost = createAsyncThunk(
           },
         });
 
-        // console.log("[getSinglePost] Raw response:", response);
-        // console.log("[getSinglePost] Response data:", response.data);
+        console.log("[getSinglePost] Raw response:", response);
+        console.log("[getSinglePost] Response data:", response.data);
 
-        // console.log("[getSinglePost] Response summary:", {
-        //   success: response.data.success,
-        //   postExists: !!response.data.post,
-        //   postId: response.data.post?._id,
-        //   postSlug: response.data.post?.slug,
-        //   postTitle: response.data.post?.title,
-        // });
+        console.log("[getSinglePost] Response summary:", {
+          success: response.data.success,
+          postExists: !!response.data.post,
+          postId: response.data.post?._id,
+          postSlug: response.data.post?.slug,
+          postTitle: response.data.post?.title,
+        });
 
         if (!response.data.post) {
           console.error("[getSinglePost] Post not found for slug:", cleanSlug);
@@ -530,7 +530,7 @@ export const getSinglePost = createAsyncThunk(
         }
 
         const receivedPost = response.data.post;
-        // console.log("[getSinglePost] Full post object from backend:", receivedPost);
+        console.log("[getSinglePost] Full post object from backend:", receivedPost);
 
         // Validate slug consistency
         if (receivedPost.slug.toLowerCase() !== cleanSlug.toLowerCase()) {
