@@ -52,7 +52,7 @@ const AddBlockButtons = ({ addBlock = () => {} }) => (
           label: "Code",
           color: "from-purple-500 to-purple-600",
           icon: <Code size={18} />,
-          params: { code: "", language: "javascript", caption: "" },
+          params: { code: "", language: "", caption: "" },
         },
         {
           type: "file",

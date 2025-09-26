@@ -47,11 +47,11 @@ const getValidLanguage = (lang, code) => {
   // Detect HTML automatically if code starts with <
   if (!lang || lang === "plaintext") {
     if (code?.trim().startsWith("<")) return "html";
-    return "javascript"; // fallback to real language instead of 'text'
+    return "code"; // fallback to real language instead of 'text'
   }
 
   // Only return supported languages
-  return supportedLanguages.includes(lang) ? lang : "javascript";
+  return supportedLanguages.includes(lang) ? lang : "code";
 };
 
 const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {

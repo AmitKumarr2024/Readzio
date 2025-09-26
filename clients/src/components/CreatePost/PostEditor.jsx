@@ -129,7 +129,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
             type,
             code: options.code || "",
             caption: options.caption || "",
-            language: options.language || "javascript",
+            language: options.language || "",
           }
         : type === "image"
         ? { id: uuidv4(), type, src: "", caption: "" }

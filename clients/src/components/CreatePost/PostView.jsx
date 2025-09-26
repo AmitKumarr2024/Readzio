@@ -74,10 +74,10 @@ const PostView = ({ post }) => {
             className="relative bg-gray-800 dark:bg-gray-900 rounded-lg overflow-hidden my-4"
           >
             <div className="absolute bottom-0 right-1 text-xs bg-gray-600 text-white px-2 py-1 rounded uppercase font-semibold">
-              {block.language || "javascript"}
+              {block?.language}
             </div>
             <SyntaxHighlighter
-              language={block.language || "javascript"}
+              language={block?.language}
               style={tomorrow}
               customStyle={{
                 margin: 0,

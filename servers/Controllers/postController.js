@@ -570,11 +570,11 @@ const normalizeLanguage = (lang, code) => {
 
   // Fallback to plaintext instead of "null"
   console.log("⚠️ No language detected, using plaintext");
-  return "plaintext";
+  return "code";
 };
 
 // Improved block processing
-// Updated processBlock function with better debugging for code blocks
+
 const processBlock = async (block, blockLimit, imageLimit) => {
   logMemory(`🛠️ Start processBlock ${block.id || "unknown"}`);
 
