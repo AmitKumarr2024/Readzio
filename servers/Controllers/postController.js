@@ -415,6 +415,7 @@ const supportedLanguages = [
 ];
 
 // Function to normalize code block language
+// Function to normalize code block language
 const normalizeLanguage = (lang, code) => {
   // Trim and lower-case
   const normalized = lang?.trim().toLowerCase();
@@ -422,11 +423,12 @@ const normalizeLanguage = (lang, code) => {
   console.log("🔍 Language detection:", {
     original: lang,
     normalized,
-    codePreview: code?.substring(0, 50),
+    codePreview: code?.substring(0, 100),
   });
 
   // If we have a valid normalized language that's supported, return it
   if (normalized && supportedLanguages.includes(normalized)) {
+    console.log("✅ Using provided language:", normalized);
     return normalized;
   }
 
@@ -434,64 +436,145 @@ const normalizeLanguage = (lang, code) => {
   if (code?.trim()) {
     const codeContent = code.trim();
 
-    // HTML detection
-    if (codeContent.startsWith("<") && codeContent.includes(">")) {
-      return "html";
-    }
+    console.log(
+      "🔍 Auto-detecting language for code:",
+      codeContent.substring(0, 100)
+    );
 
-    // Java detection patterns
-    if (
-      codeContent.includes("public static void main") ||
-      codeContent.includes("public class") ||
-      codeContent.includes("import java.") ||
-      /\bSystem\.out\.print/.test(codeContent) ||
-      /\bpublic\s+static\s+void\s+main\s*\(\s*String\s*\[\s*\]\s*args\s*\)/.test(
-        codeContent
-      )
-    ) {
+    // Java detection patterns (FIXED - more comprehensive)
+    const javaPatterns = [
+      /\bpublic\s+static\s+void\s+main\s*\(\s*String\s*\[\s*\]\s*\w*\s*\)/i, // main method
+      /\bpublic\s+class\s+\w+/i, // class declaration
+      /\bimport\s+java\./i, // java imports
+      /\bSystem\.(out|err)\.print/i, // System.out.print
+      /\bnew\s+\w+\s*\(/i, // object instantiation (common in Java)
+      /\b(public|private|protected)\s+(static\s+)?(void|int|String|boolean)/i, // method declarations
+    ];
+
+    if (javaPatterns.some((pattern) => pattern.test(codeContent))) {
+      console.log("✅ Detected Java language");
       return "java";
     }
 
+    // HTML detection
+    if (codeContent.startsWith("<") && codeContent.includes(">")) {
+      console.log("✅ Detected HTML language");
+      return "html";
+    }
+
     // Python detection patterns
-    if (
-      codeContent.includes("def ") ||
-      codeContent.includes("import ") ||
-      codeContent.includes("print(") ||
-      /^\s*#.*python/i.test(codeContent)
-    ) {
+    const pythonPatterns = [
+      /\bdef\s+\w+\s*\(/i,
+      /\bimport\s+\w+/i,
+      /\bfrom\s+\w+\s+import/i,
+      /\bprint\s*\(/i,
+      /^\s*#.*python/i,
+    ];
+
+    if (pythonPatterns.some((pattern) => pattern.test(codeContent))) {
+      console.log("✅ Detected Python language");
       return "python";
     }
 
     // JavaScript detection patterns
-    if (
-      codeContent.includes("function ") ||
-      codeContent.includes("const ") ||
-      codeContent.includes("let ") ||
-      codeContent.includes("var ") ||
-      codeContent.includes("console.log") ||
-      /\=\>\s*{/.test(codeContent)
-    ) {
+    const jsPatterns = [
+      /\bfunction\s+\w+\s*\(/i,
+      /\b(const|let|var)\s+\w+/i,
+      /\bconsole\.log\s*\(/i,
+      /\=\>\s*\{/,
+      /\brequire\s*\(/i,
+      /\bexport\s+(default\s+)?/i,
+    ];
+
+    if (jsPatterns.some((pattern) => pattern.test(codeContent))) {
+      console.log("✅ Detected JavaScript language");
       return "javascript";
     }
 
+    // TypeScript detection patterns
+    const tsPatterns = [
+      /:\s*(string|number|boolean|object|any)\s*[=;,\)]/i,
+      /\binterface\s+\w+/i,
+      /\btype\s+\w+\s*=/i,
+      /\bas\s+\w+/i,
+    ];
+
+    if (tsPatterns.some((pattern) => pattern.test(codeContent))) {
+      console.log("✅ Detected TypeScript language");
+      return "typescript";
+    }
+
     // C/C++ detection patterns
+    const cPatterns = [
+      /#include\s*<\w+>/i,
+      /\bint\s+main\s*\(/i,
+      /\bprintf\s*\(/i,
+    ];
+
+    const cppPatterns = [
+      /\bstd::/i,
+      /\bcout\s*<</i,
+      /\bcin\s*>>/i,
+      /#include\s*<iostream>/i,
+    ];
+
+    if (cppPatterns.some((pattern) => pattern.test(codeContent))) {
+      console.log("✅ Detected C++ language");
+      return "cpp";
+    }
+
+    if (cPatterns.some((pattern) => pattern.test(codeContent))) {
+      console.log("✅ Detected C language");
+      return "c";
+    }
+
+    // Go detection patterns
+    const goPatterns = [
+      /\bpackage\s+main/i,
+      /\bfunc\s+main\s*\(\s*\)/i,
+      /\bimport\s+\(/i,
+      /\bfmt\.Print/i,
+    ];
+
+    if (goPatterns.some((pattern) => pattern.test(codeContent))) {
+      console.log("✅ Detected Go language");
+      return "go";
+    }
+
+    // CSS detection
     if (
-      codeContent.includes("#include") ||
-      codeContent.includes("int main(") ||
-      codeContent.includes("printf(") ||
-      codeContent.includes("std::")
+      /[\w-]+\s*:\s*[^;]+;/.test(codeContent) &&
+      /\{[\s\S]*\}/.test(codeContent)
     ) {
-      return codeContent.includes("std::") || codeContent.includes("cout")
-        ? "cpp"
-        : "c";
+      console.log("✅ Detected CSS language");
+      return "css";
+    }
+
+    // JSON detection
+    try {
+      JSON.parse(codeContent);
+      console.log("✅ Detected JSON language");
+      return "json";
+    } catch (e) {
+      // Not JSON, continue
+    }
+
+    // Bash/Shell detection
+    const bashPatterns = [/^#!/i, /\becho\s+/i, /\$\{?\w+\}?/, /\|\s*\w+/];
+
+    if (bashPatterns.some((pattern) => pattern.test(codeContent))) {
+      console.log("✅ Detected Bash language");
+      return "bash";
     }
   }
 
   // Fallback to plaintext instead of "null"
+  console.log("⚠️ No language detected, using plaintext");
   return "plaintext";
 };
 
 // Improved block processing
+// Updated processBlock function with better debugging for code blocks
 const processBlock = async (block, blockLimit, imageLimit) => {
   logMemory(`🛠️ Start processBlock ${block.id || "unknown"}`);
 
@@ -608,24 +691,57 @@ const processBlock = async (block, blockLimit, imageLimit) => {
         );
     }
 
-    // Process code blocks
+    // Process code blocks - ENHANCED DEBUGGING
     if (block.type === "code") {
-      // Normalize language
+      console.log("🔍 [ProcessBlock] BEFORE language normalization:", {
+        blockId: block.id,
+        originalLanguage: processedBlock.language,
+        codeLength: processedBlock.code?.length,
+        codePreview: processedBlock.code?.substring(0, 150),
+        hasJavaKeywords: {
+          hasImportJava: processedBlock.code?.includes("import java"),
+          hasMainMethod: processedBlock.code?.includes(
+            "public static void main"
+          ),
+          hasSystemOut: processedBlock.code?.includes("System.out"),
+        },
+      });
+
+      // Apply language normalization
+      const beforeNormalization = processedBlock.language;
       processedBlock.language = normalizeLanguage(
         processedBlock.language,
         processedBlock.code
       );
 
+      console.log("🔎 [ProcessBlock] AFTER language normalization:", {
+        blockId: block.id,
+        beforeNormalization: beforeNormalization,
+        afterNormalization: processedBlock.language,
+        wasChanged: beforeNormalization !== processedBlock.language,
+        finalLanguage: processedBlock.language,
+      });
+
+      // Code length validation
       if (processedBlock.code?.length > 50000) {
         processedBlock.code =
           processedBlock.code.substring(0, 50000) + "\n// ... truncated";
       }
 
-      console.log("🔎 Code block after normalization:", {
-        id: processedBlock.id,
-        language: processedBlock.language,
-        codePreview: processedBlock.code?.substring(0, 50),
-      });
+      // Final verification
+      if (
+        processedBlock.language === "plaintext" &&
+        processedBlock.code?.includes("import java")
+      ) {
+        console.error(
+          "🚨 [ProcessBlock] ERROR: Java code still detected as plaintext!",
+          {
+            blockId: block.id,
+            code: processedBlock.code,
+            finalLanguage: processedBlock.language,
+          }
+        );
+      }
     }
 
     // Filter allowed fields for security
