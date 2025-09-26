@@ -515,13 +515,11 @@ const processBlock = async (block, blockLimit, imageLimit) => {
     }
 
     // Process code blocks
-    // Process code blocks
-    if (block.type === "code" && processedBlock.code) {
-      // Default language if missing
+    if (block.type === "code") {
+      // Always set a safe language
       processedBlock.language = processedBlock.language || "plaintext";
 
-      // Limit code block size
-      if (processedBlock.code.length > 50000) {
+      if (processedBlock.code?.length > 50000) {
         processedBlock.code =
           processedBlock.code.substring(0, 50000) + "\n// ... truncated";
       }
@@ -529,9 +527,10 @@ const processBlock = async (block, blockLimit, imageLimit) => {
       console.log("🔎 Code block before filtering:", {
         id: processedBlock.id,
         language: processedBlock.language,
-        codePreview: processedBlock.code.substring(0, 50),
+        codePreview: processedBlock.code?.substring(0, 50),
       });
     }
+
     // Filter allowed fields for security
     const allowedFields = [
       "id",
