@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
+const CodeBlockOutput = ({ code, language, caption }) => {
+  console.log("CodeBlockOutput received language:", language);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
