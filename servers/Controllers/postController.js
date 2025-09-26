@@ -416,11 +416,79 @@ const supportedLanguages = [
 
 // Function to normalize code block language
 const normalizeLanguage = (lang, code) => {
-  if (!lang || !supportedLanguages.includes(lang) || lang === "plaintext") {
-    if (code?.trim().startsWith("<")) return "html"; // detect HTML
-    return "javascript"; // fallback
+  // Trim and lower-case
+  const normalized = lang?.trim().toLowerCase();
+
+  console.log("🔍 Language detection:", {
+    original: lang,
+    normalized,
+    codePreview: code?.substring(0, 50),
+  });
+
+  // If we have a valid normalized language that's supported, return it
+  if (normalized && supportedLanguages.includes(normalized)) {
+    return normalized;
   }
-  return lang;
+
+  // Auto-detect based on code content
+  if (code?.trim()) {
+    const codeContent = code.trim();
+
+    // HTML detection
+    if (codeContent.startsWith("<") && codeContent.includes(">")) {
+      return "html";
+    }
+
+    // Java detection patterns
+    if (
+      codeContent.includes("public static void main") ||
+      codeContent.includes("public class") ||
+      codeContent.includes("import java.") ||
+      /\bSystem\.out\.print/.test(codeContent) ||
+      /\bpublic\s+static\s+void\s+main\s*\(\s*String\s*\[\s*\]\s*args\s*\)/.test(
+        codeContent
+      )
+    ) {
+      return "java";
+    }
+
+    // Python detection patterns
+    if (
+      codeContent.includes("def ") ||
+      codeContent.includes("import ") ||
+      codeContent.includes("print(") ||
+      /^\s*#.*python/i.test(codeContent)
+    ) {
+      return "python";
+    }
+
+    // JavaScript detection patterns
+    if (
+      codeContent.includes("function ") ||
+      codeContent.includes("const ") ||
+      codeContent.includes("let ") ||
+      codeContent.includes("var ") ||
+      codeContent.includes("console.log") ||
+      /\=\>\s*{/.test(codeContent)
+    ) {
+      return "javascript";
+    }
+
+    // C/C++ detection patterns
+    if (
+      codeContent.includes("#include") ||
+      codeContent.includes("int main(") ||
+      codeContent.includes("printf(") ||
+      codeContent.includes("std::")
+    ) {
+      return codeContent.includes("std::") || codeContent.includes("cout")
+        ? "cpp"
+        : "c";
+    }
+  }
+
+  // Fallback to plaintext instead of "null"
+  return "plaintext";
 };
 
 // Improved block processing
