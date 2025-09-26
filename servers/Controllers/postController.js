@@ -515,14 +515,23 @@ const processBlock = async (block, blockLimit, imageLimit) => {
     }
 
     // Process code blocks
+    // Process code blocks
     if (block.type === "code" && processedBlock.code) {
+      // Default language if missing
+      processedBlock.language = processedBlock.language || "plaintext";
+
       // Limit code block size
       if (processedBlock.code.length > 50000) {
         processedBlock.code =
           processedBlock.code.substring(0, 50000) + "\n// ... truncated";
       }
-    }
 
+      console.log("🔎 Code block before filtering:", {
+        id: processedBlock.id,
+        language: processedBlock.language,
+        codePreview: processedBlock.code.substring(0, 50),
+      });
+    }
     // Filter allowed fields for security
     const allowedFields = [
       "id",
@@ -2475,8 +2484,6 @@ export const toggleBlockPost = async (req, res, next) => {
     );
   }
 };
-
-
 
 // Submit appeal
 export const submitAppeal = async (req, res, next) => {
