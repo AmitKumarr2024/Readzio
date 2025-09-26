@@ -542,11 +542,19 @@ export const getSinglePost = createAsyncThunk(
 
         // Normalize blocks
         if (receivedPost.blocks && Array.isArray(receivedPost.blocks)) {
-          // console.log("[getSinglePost] Normalizing blocks...");
-          receivedPost.blocks = receivedPost.blocks.map((block) => ({
-            ...block,
-            id: block.id || block._id || `block-${Date.now()}-${Math.random()}`,
-          }));
+          receivedPost.blocks = receivedPost.blocks.map((block) => {
+            const id =
+              block.id || block._id || `block-${Date.now()}-${Math.random()}`;
+            const normalizedBlock = { ...block, id };
+
+            // Ensure code block always has language
+            if (normalizedBlock.type === "code") {
+              normalizedBlock.language =
+                normalizedBlock.language || "plaintext";
+            }
+
+            return normalizedBlock;
+          });
         } else {
           console.warn("[getSinglePost] No blocks found in post");
         }
