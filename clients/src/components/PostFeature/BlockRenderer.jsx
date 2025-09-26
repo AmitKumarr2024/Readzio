@@ -150,6 +150,7 @@ const BlockRenderer = ({
           />
         );
       case "code":
+        console.log("BlockRenderer - block.language:", block.language);
         return (
           <CodeBlockOutput
             key={i}

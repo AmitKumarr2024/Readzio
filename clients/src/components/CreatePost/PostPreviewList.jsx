@@ -327,6 +327,7 @@ const PostPreviewList = ({
 
       switch (block.type) {
         case "code":
+          console.log("Preview block:", block); // Add this debug
           return (
             <div
               key={i}

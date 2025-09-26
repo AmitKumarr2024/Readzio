@@ -124,7 +124,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
         : type === "heading"
         ? { id: uuidv4(), type, level: 2, text: "Heading Text" }
         : type === "code"
-        ? { id: uuidv4(), type, code: "", caption: "", language: "javascript" }
+        ? {
+            id: uuidv4(),
+            type,
+            code: options.code || "",
+            caption: options.caption || "",
+            language: options.language || "javascript",
+          }
         : type === "image"
         ? { id: uuidv4(), type, src: "", caption: "" }
         : type === "file"
@@ -167,9 +173,11 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
   };
 
   const updateBlock = (index, newData) => {
+    console.log("Updating block:", { index, newData }); // Debug log
     const restoreScroll = preventScroll();
     const updated = [...blocks];
-    updated[index] = { ...updated[index], ...newData };
+    updated[index] = { ...updated[index], ...newData }; // This should preserve language
+    console.log("Updated block result:", updated[index]); // Debug log
     setBlocks(updated);
     restoreScroll();
   };
