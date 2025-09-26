@@ -41,6 +41,32 @@ const BlockRenderer = ({
     !isPostRestricted || canViewPost
   );
 
+  const getValidLanguage = (lang, code) => {
+    const supportedLanguages = [
+      "javascript",
+      "python",
+      "java",
+      "c",
+      "cpp",
+      "go",
+      "typescript",
+      "bash",
+      "html",
+      "css",
+      "json",
+      "markdown",
+    ];
+
+    // Detect HTML automatically if code starts with <
+    if (!lang || lang === "plaintext") {
+      if (code?.trim().startsWith("<")) return "html";
+      return "javascript"; // fallback to real language instead of 'text'
+    }
+
+    // Only return supported languages
+    return supportedLanguages.includes(lang) ? lang : "javascript";
+  };
+
   useEffect(() => {
     if (!isAuthenticated || !authorId || !user?._id || authorId === user?._id) {
       setSubscriptionStatus(null);
