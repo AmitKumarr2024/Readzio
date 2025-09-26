@@ -150,16 +150,23 @@ const BlockRenderer = ({
           />
         );
       case "code":
-        console.log("BlockRenderer - block.language:", block.language);
+        console.log("[DEBUG] Rendering code block:", {
+          index: i,
+          type: block.type,
+          codePreview: block.code?.slice(0, 30),
+          language: block.language,
+          caption: block.caption,
+        });
         return (
           <CodeBlockOutput
             key={i}
             code={block.code}
-            language={block.language}
+            language={block.language || "javascript"} // ensure fallback here
             caption={block.caption}
             className="my-6 bg-gray-800 dark:bg-gray-900 rounded-lg p-4"
           />
         );
+
       case "video":
         return (
           <VideoBlockOutput
