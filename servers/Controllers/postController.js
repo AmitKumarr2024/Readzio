@@ -397,6 +397,32 @@ const processImage = async (source, id, folder) => {
   }
 };
 
+// Supported languages list
+const supportedLanguages = [
+  "javascript",
+  "python",
+  "java",
+  "c",
+  "cpp",
+  "go",
+  "typescript",
+  "bash",
+  "html",
+  "css",
+  "json",
+  "markdown",
+  "text",
+];
+
+// Function to normalize code block language
+const normalizeLanguage = (lang, code) => {
+  if (!lang || !supportedLanguages.includes(lang) || lang === "plaintext") {
+    if (code?.trim().startsWith("<")) return "html"; // detect HTML
+    return "javascript"; // fallback
+  }
+  return lang;
+};
+
 // Improved block processing
 const processBlock = async (block, blockLimit, imageLimit) => {
   logMemory(`🛠️ Start processBlock ${block.id || "unknown"}`);
@@ -438,7 +464,7 @@ const processBlock = async (block, blockLimit, imageLimit) => {
               const trimmed = sanitizeContent(value.trim());
               return trimmed &&
                 trimmed.length >= 2 &&
-                trimmed.length <= 200 && // Add max length
+                trimmed.length <= 200 &&
                 trimmed.toLowerCase() !== "option"
                 ? {
                     option: trimmed,
@@ -516,15 +542,18 @@ const processBlock = async (block, blockLimit, imageLimit) => {
 
     // Process code blocks
     if (block.type === "code") {
-      // Always set a safe language
-      processedBlock.language = processedBlock.language || "plaintext";
+      // Normalize language
+      processedBlock.language = normalizeLanguage(
+        processedBlock.language,
+        processedBlock.code
+      );
 
       if (processedBlock.code?.length > 50000) {
         processedBlock.code =
           processedBlock.code.substring(0, 50000) + "\n// ... truncated";
       }
 
-      console.log("🔎 Code block before filtering:", {
+      console.log("🔎 Code block after normalization:", {
         id: processedBlock.id,
         language: processedBlock.language,
         codePreview: processedBlock.code?.substring(0, 50),

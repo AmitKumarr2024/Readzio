@@ -24,18 +24,22 @@ const supportedLanguages = [
   "css",
   "json",
   "markdown",
+  "text", // ✅ added safe fallback
 ];
+
+// ✅ Normalizer
+const getValidLanguage = (lang, code) => {
+  if (!lang || !supportedLanguages.includes(lang) || lang === "plaintext") {
+    if (code?.trim().startsWith("<")) return "html"; // detect HTML
+    return "javascript"; // fallback
+  }
+  return lang;
+};
 
 const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
   if (!block || typeof block.code === "undefined") return null;
 
-  const getValidLanguage = (lang, code) => {
-    if (!lang || !supportedLanguages.includes(lang) || lang === "plaintext") {
-      if (code?.trim().startsWith("<")) return "html"; // detect HTML
-      return "javascript"; // fallback
-    }
-    return lang;
-  };
+  const normalizedLang = getValidLanguage(block.language, block.code);
 
   return (
     <motion.div
@@ -47,6 +51,7 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
       exit="exit"
       layout
     >
+      {/* Action buttons */}
       <div className="absolute top-4 right-4 flex gap-2">
         <button
           onClick={() => updateBlock(index, { ...block, code: "" })}
@@ -64,8 +69,9 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
         </button>
       </div>
 
+      {/* Language selector */}
       <select
-        value={block.language || "javascript"}
+        value={normalizedLang} // ✅ always safe
         onChange={(e) =>
           updateBlock(index, { ...block, language: e.target.value })
         }
@@ -78,6 +84,7 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
         ))}
       </select>
 
+      {/* Code editor */}
       <textarea
         value={block.code}
         onChange={(e) => updateBlock(index, { ...block, code: e.target.value })}
@@ -86,10 +93,11 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
         className="w-full bg-gray-800 text-white rounded-lg p-4 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition resize-y"
       />
 
+      {/* Preview with syntax highlighting */}
       {block.code && (
         <div className="mt-4 bg-gray-800 rounded-lg p-4 overflow-x-auto">
           <SyntaxHighlighter
-            language={getValidLanguage(block.language, block.code)}
+            language={normalizedLang} // ✅ safe lang here too
             style={oneDark}
             wrapLongLines
           >
@@ -98,6 +106,7 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
         </div>
       )}
 
+      {/* Optional caption */}
       <input
         placeholder="Caption (optional)"
         value={block.caption}
