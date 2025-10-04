@@ -514,4 +514,10 @@ const startServer = async () => {
   }
 };
 
+if (NODE_ENV !== "production") {
+  app.get("/", (req, res) => {
+    res.send("Inkshaa API is running. Use /health or API endpoints.");
+  });
+}
+
 startServer();
