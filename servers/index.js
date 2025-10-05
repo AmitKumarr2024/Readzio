@@ -148,7 +148,6 @@ app.use(
         "http://localhost:8001",
         "https://inkshaa.onrender.com",
         "http://134.209.152.142:3000",
-        
       ].filter(Boolean);
 
       if (!origin) return callback(null, true);
@@ -406,7 +405,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use(/\/api\/(.*)/, (req, res) => {
+app.use("/api/*", (req, res) => {
   res.status(404).json({
     error: "API endpoint not found",
     path: req.path,
