@@ -404,7 +404,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use("/api/{*rest}", (req, res) => {
+app.use("/api/*", (req, res) => {
   res.status(404).json({
     error: "API endpoint not found",
     path: req.path,
