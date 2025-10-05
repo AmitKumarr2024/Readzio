@@ -147,8 +147,10 @@ app.use(
         "http://localhost:5173",
         "http://localhost:8001",
         "https://inkshaa.onrender.com",
+        "http://134.209.152.142",
       ].filter(Boolean);
 
+      callback(null, true);
       if (!origin) return callback(null, true);
       const isAllowed = allowedOrigins.includes(origin);
       if (isAllowed) return callback(null, true);
