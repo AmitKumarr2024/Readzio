@@ -355,7 +355,7 @@ if (NODE_ENV === "production") {
         },
       })
     );
-    app.get("*", (req, res, next) => {
+    app.get("/{*splat}", (req, res, next) => {
       const disallowed = [
         req.path.startsWith("/api"),
         req.path.startsWith("/public"),
@@ -377,7 +377,7 @@ if (NODE_ENV === "production") {
     });
   } else {
     console.error("❌ Client build not found:", clientIndexPath);
-    app.get("*", (req, res) => {
+    app.get("/{*splat}", (req, res) => {
       res.status(503).send("Service temporarily unavailable - build not found");
     });
   }
@@ -411,7 +411,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use("/api/*", (req, res) => {
+app.use("/api/{*splat}", (req, res) => {
   res.status(404).json({
     error: "API endpoint not found",
     path: req.path,
