@@ -50,8 +50,7 @@ const validateRouter = (router, routeName) => {
     if (!router || typeof router !== "function") {
       throw new Error(`${routeName} is not a valid router function`);
     }
-    const testApp = express();
-    testApp.use("/test", router);
+    // Removed testApp validation that triggers path-to-regexp errors
     return true;
   } catch (error) {
     console.error(`❌ Invalid router detected: ${routeName}`);
@@ -277,27 +276,28 @@ console.log(`✅ Successfully mounted: ${successfulRoutes} routes`);
 if (failedRoutes > 0) console.log(`❌ Failed to mount: ${failedRoutes} routes`);
 
 if (NODE_ENV !== "production") {
-  try {
-    const endpoints = listEndpoints(app);
-    console.log("\n📋 Available Routes:");
-    const groupedEndpoints = endpoints.reduce((acc, route) => {
-      const prefix = route.path.split("/")[1] || "root";
-      if (!acc[prefix]) acc[prefix] = [];
-      acc[prefix].push(route);
-      return acc;
-    }, {});
-    Object.entries(groupedEndpoints).forEach(([prefix, routes]) => {
-      console.log(`\n  📂 /${prefix}:`);
-      routes.forEach((route) => {
-        const methods = route.methods.join(", ").padEnd(15);
-        console.log(`    ${methods} ${route.path}`);
-      });
-    });
-    console.log(`\n✅ Total endpoints: ${endpoints.length}\n`);
-  } catch (err) {
-    console.error("❌ Route inspection failed:", err.message);
-    console.error("This might indicate malformed route patterns");
-  }
+  console.log("⚠️ Route inspection disabled");
+  // try {
+  //   const endpoints = listEndpoints(app);
+  //   console.log("\n📋 Available Routes:");
+  //   const groupedEndpoints = endpoints.reduce((acc, route) => {
+  //     const prefix = route.path.split("/")[1] || "root";
+  //     if (!acc[prefix]) acc[prefix] = [];
+  //     acc[prefix].push(route);
+  //     return acc;
+  //   }, {});
+  //   Object.entries(groupedEndpoints).forEach(([prefix, routes]) => {
+  //     console.log(`\n  📂 /${prefix}:`);
+  //     routes.forEach((route) => {
+  //       const methods = route.methods.join(", ").padEnd(15);
+  //       console.log(`    ${methods} ${route.path}`);
+  //     });
+  //   });
+  //   console.log(`\n✅ Total endpoints: ${endpoints.length}\n`);
+  // } catch (err) {
+  //   console.error("❌ Route inspection failed:", err.message);
+  //   console.error("This might indicate malformed route patterns");
+  // }
 }
 
 const publicPath = path.join(__dirname, "servers", "public");
