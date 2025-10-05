@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import http from "http";
 import mongoose from "mongoose";
-import listEndpoints from "express-list-endpoints";
+// import listEndpoints from "express-list-endpoints";
 
 import {
   CLIENT_URL,
@@ -254,8 +254,14 @@ routeConfigs.forEach(({ path, router, name, middleware }) => {
     }
     if (NODE_ENV !== "production")
       console.log(`🛤️ Mounting route: ${path} (${name})`);
+
+    console.log(`[DEBUG] About to mount: ${name} at ${path}`); // ADD THIS LINE
+
     if (middleware) app.use(path, middleware, router);
     else app.use(path, router);
+
+    console.log(`[DEBUG] Successfully mounted: ${name}`); // ADD THIS LINE
+
     successfulRoutes++;
   } catch (err) {
     console.error(`❌ Failed to mount route ${path} (${name}):`, err.message);
