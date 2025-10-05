@@ -16,6 +16,7 @@ export const io = new Server({
         "http://localhost:5173",
         "http://localhost:8001",
         "https://inkshaa.onrender.com", // ✅ Fixed: Removed duplicate
+        "http://134.209.152.142:10000",
         "null",
       ].filter(Boolean);
 

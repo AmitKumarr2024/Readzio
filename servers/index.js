@@ -146,7 +146,7 @@ app.use(
         "http://localhost:5173",
         "http://localhost:8001",
         "https://inkshaa.onrender.com",
-        "http://134.209.152.142:3000",
+        "http://134.209.152.142:10000",
       ].filter(Boolean);
 
       if (!origin) return callback(null, true);
