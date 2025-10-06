@@ -12,12 +12,12 @@ export const io = new Server({
     origin: (origin, callback) => {
       console.log("[Socket:CORS] Request from:", origin);
       const allowedOrigins = [
-        CLIENT_URL?.replace(/\/$/, ""),
-        "http://localhost:5173",
-        "http://localhost:8001",
-        "https://inkshaa.onrender.com", // ✅ Fixed: Removed duplicate
-        "http://134.209.152.142:10000",
-        "null",
+        CLIENT_URL?.replace(/\/$/, ""), // https://readzio.com
+        "https://readzio.com", // ensure explicit domain allowed
+        "https://www.readzio.com", // ensure explicit domain allowed
+        "http://localhost:5173", // for local dev
+        "http://localhost:8001", // for local dev
+        "null", // some dev tools send 'null' origin
       ].filter(Boolean);
 
       if (!origin || allowedOrigins.includes(origin) || origin === "null") {

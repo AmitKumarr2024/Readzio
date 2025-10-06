@@ -154,7 +154,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
           email: user.email,
           hasButton: true,
           buttonText: "Read Today's Posts",
-          buttonUrl: "https://inkshaa.onrender.com/explore",
+          buttonUrl: "https://readzio.com/explore",
           posts,
         });
 
@@ -287,7 +287,7 @@ export const testSingleEmail = async (req, res) => {
       message: "This is a test email to verify the system is working.",
       hasButton: true,
       buttonText: "Visit inkshaa",
-      buttonUrl: "https://inkshaa.onrender.com",
+      buttonUrl: "https://readzio.com",
     });
 
     const emailResult = await sendEmailWithRetries(mailOption, null, "test", 3);

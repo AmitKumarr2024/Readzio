@@ -145,7 +145,7 @@ export default async function createMailOption({
       posts: processedPosts,
       brand,
       currentYear: new Date().getFullYear(),
-      unsubscribeUrl: `https://inkshaa.onrender.com/unsubscribe?email=${encodeURIComponent(
+      unsubscribeUrl: `https://readzio.com/unsubscribe?email=${encodeURIComponent(
         normalizedTo
       )}`,
       ...customData,

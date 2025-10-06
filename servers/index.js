@@ -70,7 +70,7 @@ const io = initializeSocket(server);
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain").send(`User-agent: *
 Allow: /
-Sitemap: https://inkshaa.onrender.com/sitemap.xml`);
+Sitemap: https://readzio.com/sitemap.xml`);
 });
 
 const setRouteTimeout = (timeoutMs) => (req, res, next) => {
@@ -142,11 +142,12 @@ app.use(
     origin: (origin, callback) => {
       console.log("[Server:CORS] Request from:", origin);
       const allowedOrigins = [
-        CLIENT_URL?.replace(/\/$/, ""),
-        "http://localhost:5173",
-        "http://localhost:8001",
-        "https://inkshaa.onrender.com",
-        "http://134.209.152.142:10000",
+        CLIENT_URL?.replace(/\/$/, ""), // https://readzio.com
+        "https://readzio.com", // ensure explicit domain allowed
+        "https://www.readzio.com", // ensure explicit domain allowed
+        "http://localhost:5173", // for local dev
+        "http://localhost:8001", // for local dev
+        "null", // some dev tools send 'null' origin
       ].filter(Boolean);
 
       if (!origin) return callback(null, true);

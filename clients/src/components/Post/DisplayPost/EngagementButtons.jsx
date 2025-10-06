@@ -10,7 +10,7 @@ const EngagementButtons = ({ post }) => {
   }
 
   const postId = post._id;
-  const postUrl = `https://inkshaa.onrender.com/post/${
+  const postUrl = `https://readzio.com/post/${
     post.slug || postId
   }`;
 
