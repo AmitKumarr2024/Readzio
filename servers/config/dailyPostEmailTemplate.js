@@ -73,9 +73,9 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
                 <table role="presentation" cellpadding="0" cellspacing="0" align="center">
                   <tr>
                     <td style="padding-right:10px;">
-                      <img src="https://readzio.com/public/logo1.png" alt="inkshaa Logo" width="40" height="40" style="border-radius:50%;">
+                      <img src="https://readzio.com/public/logo1.png" alt="readzio Logo" width="40" height="40" style="border-radius:50%;">
                     </td>
-                    <td style="font-size:20px; font-weight:bold; color:#111827;">inkshaa</td>
+                    <td style="font-size:20px; font-weight:bold; color:#111827;">readzio</td>
                   </tr>
                 </table>
                 <h1 style="margin-top:15px; font-size:24px; font-weight:700; color:#0f172a;">{{subject}}</h1>
@@ -148,7 +148,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
             {{#unless posts.length}}
             <tr>
               <td style="padding:25px; font-size:14px; color:#6b7280; text-align:center;">
-                No new posts today — explore more at <a href="https://readzio.com" style="color:#2563eb; font-weight:600; text-decoration:none;">inkshaa</a>.
+                No new posts today — explore more at <a href="https://readzio.com" style="color:#2563eb; font-weight:600; text-decoration:none;">readzio</a>.
               </td>
             </tr>
             {{/unless}}
@@ -167,7 +167,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
             <!-- Footer -->
             <tr>
               <td style="background-color:#f9fafb; padding:20px; font-size:13px; color:#6b7280; text-align:center; border-top:1px solid #e5e7eb;">
-                You received this email as part of your inkshaa subscription.<br>
+                You received this email as part of your readzio subscription.<br>
                 Need help? Contact <a href="mailto:{{supportEmail}}" style="color:#2563eb; font-weight:600; text-decoration:none;">support</a>.
               </td>
             </tr>

@@ -11,14 +11,14 @@ const PrivacyPage = () => {
             Effective Date: May 24, 2025
           </p>
 
-          {/* ✅ inkshaa Definition + Content Type Explanation */}
+          {/* ✅ readzio Definition + Content Type Explanation */}
           <p className="mb-6 text-base text-gray-700 dark:text-gray-300">
-            <strong>inkshaa</strong> is a creative digital platform where
+            <strong>readzio</strong> is a creative digital platform where
             individuals can share, discover, and explore ideas through{" "}
             <strong>blogs, articles, thought pieces, and storytelling</strong>.
             We encourage meaningful expression — from personal experiences and
             how-to guides to opinion pieces and tutorials. Whether you're a
-            writer, reader, or learner, inkshaa offers a respectful and open
+            writer, reader, or learner, readzio offers a respectful and open
             space to grow and connect.
           </p>
 
@@ -42,7 +42,7 @@ const PrivacyPage = () => {
               3. Embedded Content & Links
             </h2>
             <p>
-              Some content on inkshaa may include embedded media (e.g., videos,
+              Some content on readzio may include embedded media (e.g., videos,
               articles) from other websites. Such content may behave as if you
               visited those external sites and may include their own tracking or
               cookies.
@@ -84,7 +84,7 @@ const PrivacyPage = () => {
           </div>
 
           <div className="mt-10 text-lg text-gray-500 text-center dark:text-gray-400">
-            © {new Date().getFullYear()} inkshaa. All rights reserved.
+            © {new Date().getFullYear()} readzio. All rights reserved.
           </div>
         </div>
       </div>

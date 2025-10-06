@@ -13,18 +13,18 @@ const AboutPage = () => {
   return (
     <SpaceBackground>
       <Helmet>
-        <title>About inkshaa | A Creative Publishing Platform from India</title>
+        <title>About readzio | A Creative Publishing Platform from India</title>
         <meta
           name="description"
-          content="Discover inkshaa – a modern publishing platform built in India for writers, readers, and digital creators seeking clarity, creativity, and community."
+          content="Discover readzio – a modern publishing platform built in India for writers, readers, and digital creators seeking clarity, creativity, and community."
         />
         <meta
           property="og:title"
-          content="About inkshaa | A Creative Publishing Platform from India"
+          content="About readzio | A Creative Publishing Platform from India"
         />
         <meta
           property="og:description"
-          content="Learn about inkshaa, its vision, and features — a clean, powerful space for publishing blogs, articles, and stories."
+          content="Learn about readzio, its vision, and features — a clean, powerful space for publishing blogs, articles, and stories."
         />
       </Helmet>
 
@@ -32,19 +32,19 @@ const AboutPage = () => {
         <div className="max-w-4xl mx-auto">
           <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-8 sm:p-12 transition-transform hover:scale-[1.02]">
             <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">
-              About inkshaa
+              About readzio
             </h1>
 
             <p className="text-lg leading-relaxed text-gray-700 dark:text-gray-300">
-              <strong>inkshaa</strong> is a creative publishing platform
+              <strong>readzio</strong> is a creative publishing platform
               designed for writers, bloggers, and curious minds. Whether you're
               here to express your ideas, share knowledge, or explore meaningful
-              content — inkshaa provides a clean, responsive space that
+              content — readzio provides a clean, responsive space that
               prioritizes clarity and reader engagement.
             </p>
 
             <p className="text-lg mt-6 leading-relaxed text-gray-700 dark:text-gray-300">
-              Based in <strong>India</strong>, inkshaa is developed with an
+              Based in <strong>India</strong>, readzio is developed with an
               emphasis on simplicity, speed, and accessibility — offering a
               seamless experience across all devices.
             </p>
@@ -97,7 +97,7 @@ const AboutPage = () => {
             </ul>
 
             <p className="text-lg mt-8 leading-relaxed font-medium text-gray-800 dark:text-gray-100">
-              inkshaa is independently built and maintained by{" "}
+              readzio is independently built and maintained by{" "}
               <strong>Amit</strong>, with a mission to make modern publishing
               simple, expressive, and enjoyable for everyone.
             </p>
@@ -109,19 +109,19 @@ const AboutPage = () => {
                 <strong>{releaseDate}</strong>
               </p>
               <p className="mt-2">
-                © {new Date().getFullYear()} inkshaa. All rights reserved.
+                © {new Date().getFullYear()} readzio. All rights reserved.
               </p>
 
               {/* Twitter/X Link */}
               <p className="mt-4 flex items-center justify-center gap-2">
                 <FaXTwitter className="text-xl text-blue-600 dark:text-blue-400" />
                 <a
-                  href="https://x.com/inkshaaOfficial"
+                  href="https://x.com/readzioOfficial"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:underline font-medium text-blue-600 dark:text-blue-400"
                 >
-                  Follow us on Twitter/X (@inkshaaOfficial)
+                  Follow us on Twitter/X (@readzioOfficial)
                 </a>
               </p>
             </div>

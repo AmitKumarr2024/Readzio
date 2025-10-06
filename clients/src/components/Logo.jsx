@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
-const letters = "inkshaa".split("");
+const letters = "readzio".split("");
 
 // Variants for each letter (initial bounce)
 const letterVariants = {
@@ -58,7 +58,7 @@ const Logo = () => {
         {/* Static Image Logo */}
         <img
           src="/logo.png"
-          alt="inkshaa Logo"
+          alt="readzio Logo"
           className="w-8 h-8 object-contain"
         />
 

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: inkshaa
+    name: readzio
     env: node
     buildCommand: npm run setup-client
     startCommand: npm start

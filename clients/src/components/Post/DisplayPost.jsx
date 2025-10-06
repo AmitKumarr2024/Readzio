@@ -414,19 +414,19 @@ const DisplayPost = () => {
         .map((b) => b.content || b.text || "")
         .join(" ")
         .slice(0, 150)
-        .replace(/\s+\S*$/, "") || "Read this post on inkshaa";
+        .replace(/\s+\S*$/, "") || "Read this post on readzio";
 
     const jsonLd = {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
-      headline: activePost.title || "inkshaa Post",
+      headline: activePost.title || "readzio Post",
       description: plainText,
       image: firstImage || "/default-og-image.jpg",
       author: {
         "@type": "Person",
-        name: activePost.author?.fullName || "inkshaa Author",
+        name: activePost.author?.fullName || "readzio Author",
       },
-      publisher: { "@type": "Organization", name: "inkshaa" },
+      publisher: { "@type": "Organization", name: "readzio" },
       url: `${BASE_URL}/post/${activePost.slug}`,
       datePublished: activePost.createdAt,
     };
@@ -436,15 +436,15 @@ const DisplayPost = () => {
         <Helmet>
           <title>
             {activePost?.title
-              ? `${activePost.title} | inkshaa`
-              : "Loading... | inkshaa"}
+              ? `${activePost.title} | readzio`
+              : "Loading... | readzio"}
           </title>
           <meta name="robots" content="index, follow" />
           <meta name="description" content={plainText} />
           <link rel="canonical" href={`${BASE_URL}/post/${activePost?.slug}`} />
           <meta
             property="og:title"
-            content={activePost?.title || "inkshaa Post"}
+            content={activePost?.title || "readzio Post"}
           />
           <meta property="og:description" content={plainText} />
           <meta
@@ -459,7 +459,7 @@ const DisplayPost = () => {
           <meta name="twitter:card" content="summary_large_image" />
           <meta
             name="twitter:title"
-            content={activePost?.title || "inkshaa Post"}
+            content={activePost?.title || "readzio Post"}
           />
           <meta
             name="twitter:image"

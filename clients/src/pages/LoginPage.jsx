@@ -82,7 +82,7 @@ const LoginPage = () => {
             <div className="relative text-center text-white z-10 mt-[450px]">
               <h2 className="text-2xl md:text-3xl font-bold mb-3 flex items-center justify-center">
                 <FaSignInAlt className="mr-2 text-indigo-400 text-2xl md:text-3xl" />
-                Welcome Back to Inkshaa
+                Welcome Back to readzio
               </h2>
               <p className="text-base md:text-lg font-medium">
                 Continue Your Story
@@ -94,7 +94,7 @@ const LoginPage = () => {
             <div className="w-full max-w-sm">
               <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-900 flex items-center justify-center">
                 <FaSignInAlt className="mr-2 text-indigo-600 text-2xl md:text-3xl" />
-                Login to Inkshaa
+                Login to readzio
               </h2>
               <form onSubmit={handleManualLogin} className="space-y-5">
                 {/* Email input */}

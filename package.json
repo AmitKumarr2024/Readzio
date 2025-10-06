@@ -1,7 +1,7 @@
 {
-  "name": "inkshaa-backend",
+  "name": "readzio-backend",
   "version": "1.0.0",
-  "description": "inkshaa: A full-featured blogging and publishing platform",
+  "description": "readzio: A full-featured blogging and publishing platform",
   "homepage": "https://readzio.com",
   "bugs": {
     "url": "https://github.com/AmitKumarr2024/My-Own-Blog-Project/issues"

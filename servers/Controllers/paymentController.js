@@ -1058,7 +1058,7 @@ export const handleRazorpayWebhook = asyncHandler(async (req, res, next) => {
           // 📧 Generate email options using existing utility
           const emailOptions = createMailOption({
             to: user.email,
-            subject: "Your inkshaa Invoice Receipt",
+            subject: "Your readzio Invoice Receipt",
             name: user.name,
             message: `Thank you for your payment. Here are your invoice details:\n\nInvoice ID: ${invoiceId}\nOrder ID: ${
               updatedPayment.orderId

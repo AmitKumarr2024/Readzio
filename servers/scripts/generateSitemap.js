@@ -28,7 +28,7 @@ if (!existsSync(distDir)) {
 async function generateSitemap() {
   try {
     // === Connect to DB ===
-    await mongoose.connect(MONGO_URI, { dbName: "InkshaApp" });
+    await mongoose.connect(MONGO_URI, { dbName: "readziopp" });
     console.log("✅ Connected to MongoDB");
 
     // === Setup sitemap stream ===

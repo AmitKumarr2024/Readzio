@@ -24,31 +24,31 @@ const HeroSection = () => {
   return (
     <>
       <Helmet>
-        <title>inkshaa — A Space to Express</title>
+        <title>readzio — A Space to Express</title>
         <meta
           name="description"
-          content="inkshaa is a platform for students, writers, and curious minds to explore, share, and grow through meaningful words and ideas."
+          content="readzio is a platform for students, writers, and curious minds to explore, share, and grow through meaningful words and ideas."
         />
         <meta
           name="keywords"
-          content="inkshaa, blog, student, writer, knowledge, platform, share, learn, express"
+          content="readzio, blog, student, writer, knowledge, platform, share, learn, express"
         />
-        <meta name="author" content="inkshaa Team" />
-        <meta property="og:title" content="inkshaa — A Space to Express" />
+        <meta name="author" content="readzio Team" />
+        <meta property="og:title" content="readzio — A Space to Express" />
         <meta
           property="og:description"
-          content="Join inkshaa to explore, write, and grow. A community of students, writers, and curious minds."
+          content="Join readzio to explore, write, and grow. A community of students, writers, and curious minds."
         />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://inkshaa.in" />
-        <meta property="og:image" content="https://inkshaa.in/preview.png" />
+        <meta property="og:url" content="https://readzio.in" />
+        <meta property="og:image" content="https://readzio.in/preview.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="inkshaa — A Space to Express" />
+        <meta name="twitter:title" content="readzio — A Space to Express" />
         <meta
           name="twitter:description"
-          content="Explore. Share. Grow. Join inkshaa now."
+          content="Explore. Share. Grow. Join readzio now."
         />
-        <meta name="twitter:image" content="https://inkshaa.in/preview.png" />
+        <meta name="twitter:image" content="https://readzio.in/preview.png" />
         <html lang="en" />
       </Helmet>
 
@@ -79,12 +79,12 @@ const HeroSection = () => {
               className="text-yellow-300 underline decoration-yellow-300 decoration-4 underline-offset-4 sm:underline-offset-8 notranslate"
               translate="no"
               lang="en"
-              aria-label="inkshaa logo"
+              aria-label="readzio logo"
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
             >
-              inkshaa
+              readzio
             </motion.span>
           </h1>
 

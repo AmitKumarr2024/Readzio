@@ -109,7 +109,7 @@ const SignupPage = () => {
             <div className="relative text-center text-slate-500 z-10 mt-[450px]">
               <h2 className="text-2xl md:text-3xl font-bold mb-3 flex items-center justify-center">
                 <FaUserPlus className="mr-2 text-indigo-400 text-2xl md:text-3xl" />
-                “Inkshaa: Born in India, built for the world — a space to share, learn, and grow together.”
+                “readzio: Born in India, built for the world — a space to share, learn, and grow together.”
               </h2>
               <p className="text-base md:text-lg font-medium">
                 Where Stories Ignite

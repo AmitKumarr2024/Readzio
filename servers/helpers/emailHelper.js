@@ -99,7 +99,7 @@ export default async function createMailOption({
         }))
       : [];
 
-    const brand = "inkshaa";
+    const brand = "readzio";
     let finalSubject = subject || "";
 
     if (!finalSubject) {

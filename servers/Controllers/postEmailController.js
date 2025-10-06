@@ -145,7 +145,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
         const subject = `${posts[0].title.substring(
           0,
           50
-        )}... | inkshaa Daily Digest`;
+        )}... | readzio Daily Digest`;
 
         const mailOption = await createMailOption({
           to: user.email,
@@ -203,7 +203,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
           emailLastError: error.message,
           createdAt: new Date(),
           subject:
-            posts[0]?.title?.substring(0, 50) + "... | inkshaa Daily Digest" ||
+            posts[0]?.title?.substring(0, 50) + "... | readzio Daily Digest" ||
             "N/A",
           from: SENDER_EMAIL || "N/A",
           to: user.email,
@@ -282,11 +282,11 @@ export const testSingleEmail = async (req, res) => {
   try {
     const mailOption = await createMailOption({
       to: email,
-      subject: "🧪 Test Email from inkshaa",
+      subject: "🧪 Test Email from readzio",
       name: "Test User",
       message: "This is a test email to verify the system is working.",
       hasButton: true,
-      buttonText: "Visit inkshaa",
+      buttonText: "Visit readzio",
       buttonUrl: "https://readzio.com",
     });
 
@@ -325,7 +325,7 @@ export const testSingleEmail = async (req, res) => {
       emailAttempts: error.attempts || 1,
       emailLastError: error.message,
       createdAt: new Date(),
-      subject: "🧪 Test Email from inkshaa",
+      subject: "🧪 Test Email from readzio",
       from: SENDER_EMAIL || "N/A",
       to: email,
     });
@@ -364,7 +364,7 @@ export const sendDirectEmail = async (req, res) => {
   try {
     const mailOption = await createMailOption({
       to: email,
-      subject: "Message from inkshaa",
+      subject: "Message from readzio",
       message: "Hello world",
     });
 
@@ -408,7 +408,7 @@ export const sendDirectEmail = async (req, res) => {
       emailAttempts: error.attempts || 1,
       emailLastError: error.message,
       createdAt: new Date(),
-      subject: "Message from inkshaa",
+      subject: "Message from readzio",
       from: SENDER_EMAIL || "N/A",
       to: email,
     });

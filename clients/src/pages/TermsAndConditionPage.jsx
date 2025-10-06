@@ -9,7 +9,7 @@ const TermsAndConditionPage = () => {
           <h1 className="text-4xl font-bold mb-6">Terms & Conditions</h1>
 
           <p className="mb-4">
-            Welcome to <strong>inkshaa</strong>. By using our website, services,
+            Welcome to <strong>readzio</strong>. By using our website, services,
             and platform, you agree to the following terms and conditions.
             Please read them carefully.
           </p>
@@ -18,7 +18,7 @@ const TermsAndConditionPage = () => {
             1. Using Our Service
           </h2>
           <p className="mb-4">
-            You agree to use inkshaa in ways that are respectful, legal, and
+            You agree to use readzio in ways that are respectful, legal, and
             constructive. Activities that hinder others’ experiences or violate
             laws are strictly prohibited.
           </p>
@@ -27,7 +27,7 @@ const TermsAndConditionPage = () => {
           <p className="mb-4">
             You are responsible for the content you post. While you retain
             ownership of your content, by posting it, you grant us a license to
-            display and promote it within inkshaa. We may remove content that
+            display and promote it within readzio. We may remove content that
             violates our community guidelines or legal obligations.
           </p>
 
@@ -35,7 +35,7 @@ const TermsAndConditionPage = () => {
             3. Content Restrictions
           </h2>
           <p className="mb-4">
-            To maintain a safe and inclusive environment, inkshaa prohibits:
+            To maintain a safe and inclusive environment, readzio prohibits:
           </p>
           <ul className="list-disc list-inside mb-4 space-y-2">
             <li>Pornographic, sexually explicit, or suggestive content.</li>
@@ -64,7 +64,7 @@ const TermsAndConditionPage = () => {
             4. Open Source & Free Use
           </h2>
           <p className="mb-4">
-            inkshaa is an open-source social platform. We do not charge any fees
+            readzio is an open-source social platform. We do not charge any fees
             for using the core services of the platform. All features are
             provided free of cost for personal and community use.
           </p>
@@ -76,7 +76,7 @@ const TermsAndConditionPage = () => {
 
           <h2 className="text-2xl font-semibold mt-6 mb-3">5. Our Liability</h2>
           <p className="mb-4">
-            While we aim to keep inkshaa accessible and secure, we are not
+            While we aim to keep readzio accessible and secure, we are not
             responsible for service interruptions, data loss, or damages caused
             by third-party services or technical failures.
           </p>
@@ -101,7 +101,7 @@ const TermsAndConditionPage = () => {
           </h2>
           <p className="mb-4">
             We may update these Terms & Conditions periodically. Continued use
-            of inkshaa after changes means you accept the revised terms.
+            of readzio after changes means you accept the revised terms.
           </p>
 
           <h2 className="text-2xl font-semibold mt-6 mb-3">9. Contact Us</h2>
@@ -117,7 +117,7 @@ const TermsAndConditionPage = () => {
           </p>
 
           <p className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
-            © {new Date().getFullYear()} inkshaa. All rights reserved.
+            © {new Date().getFullYear()} readzio. All rights reserved.
           </p>
         </div>
       </div>

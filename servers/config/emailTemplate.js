@@ -99,10 +99,10 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
               <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center;  justify-content: center; padding-top: 10px;">
                 <tr>
                   <td style="padding-right: 10px;">
-                    <img src="https://readzio.com/public/logo1.png" alt="inkshaa Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
+                    <img src="https://readzio.com/public/logo1.png" alt="readzio Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
                   </td>
                   <td>
-                    <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">inkshaa</span>
+                    <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">readzio</span>
                   </td>
                 </tr>
               </table>
@@ -167,17 +167,17 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
               <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center;  justify-content: center; padding-top: 10px;">
                 <tr>
                   <td style="padding-right: 10px;">
-                    <img src="https://readzio.com/public/logo1.png" alt="inkshaa Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
+                    <img src="https://readzio.com/public/logo1.png" alt="readzio Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
                   </td>
                   <td>
-                    <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">inkshaa</span>
+                    <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">readzio</span>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
         </table>
-                  Best regards,<br>inkshaa Team<br>
+                  Best regards,<br>readzio Team<br>
                   <a href="mailto:{{supportEmail}}" style="color: #000000; text-decoration: none;">Contact Support</a>
                 </td>
               </tr>
@@ -220,7 +220,7 @@ export const INVOICE_EMAIL_TEMPLATE = `<!DOCTYPE html>
         </table>
 
         <p>For any inquiries, please contact our support team.</p>
-        <p>— inkshaa Team</p>
+        <p>— readzio Team</p>
       </div>
     </div>
   </body>
@@ -253,17 +253,17 @@ export const WELCOME_EMAIL_TEMPLATE = `<!DOCTYPE html>
               <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center;  justify-content: center; padding-top: 10px;">
                 <tr>
                   <td style="padding-right: 10px;">
-                    <img src="https://readzio.com/public/logo1.png" alt="inkshaa Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
+                    <img src="https://readzio.com/public/logo1.png" alt="readzio Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
                   </td>
                   <td>
-                    <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">inkshaa</span>
+                    <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">readzio</span>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
         </table>
-                <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">Welcome to inkshaa, {{name}}!</h1>
+                <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">Welcome to readzio, {{name}}!</h1>
                 <p style="color: #e0e7ff; font-size: 16px; margin: 12px 0 0; line-height: 1.5;">{{message}}</p>
               </td>
             </tr>

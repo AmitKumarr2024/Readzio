@@ -388,7 +388,7 @@ app.get("/health", (req, res) => {
   const memUsage = process.memoryUsage();
   res.status(200).json({
     status: "OK",
-    message: "inkshaa API is running",
+    message: "readzio API is running",
     uptime: Math.floor(process.uptime()),
     database:
       mongoose.connection.readyState === 1 ? "connected" : "disconnected",
@@ -482,7 +482,7 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 const startServer = async () => {
   try {
-    console.log("[Server:Startup] 🚀 Starting inkshaa API server...");
+    console.log("[Server:Startup] 🚀 Starting readzio API server...");
     console.log("[Server:Startup] 📊 Environment:", NODE_ENV);
     console.log("[Server:Startup] 📊 Node version:", process.version);
     console.log("[Server:Startup] 📊 Platform:", process.platform);
@@ -497,7 +497,7 @@ const startServer = async () => {
     server.listen(port, "0.0.0.0", function () {
       const address = this.address();
       console.log(
-        `[Server:Startup] ✅ inkshaa API running on port ${address.port}`
+        `[Server:Startup] ✅ readzio API running on port ${address.port}`
       );
       console.log(
         `[Server:Startup] 🌐 Server URL: http://0.0.0.0:${address.port}`
@@ -524,7 +524,7 @@ const startServer = async () => {
 
 if (NODE_ENV !== "production") {
   app.get("/", (req, res) => {
-    res.send("Inkshaa API is running. Use /health or API endpoints.");
+    res.send("readzio API is running. Use /health or API endpoints.");
   });
 }
 
