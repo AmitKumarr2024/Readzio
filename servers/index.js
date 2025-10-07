@@ -6,7 +6,6 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import http from "http";
 import mongoose from "mongoose";
-// import listEndpoints from "express-list-endpoints";
 
 import {
   CLIENT_URL,
@@ -40,7 +39,7 @@ import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
-// import session from "express-session";
+
 const app = express();
 app.set("trust proxy", true);
 
@@ -50,7 +49,6 @@ const validateRouter = (router, routeName) => {
     if (!router || typeof router !== "function") {
       throw new Error(`${routeName} is not a valid router function`);
     }
-    // Removed testApp validation that triggers path-to-regexp errors
     return true;
   } catch (error) {
     console.error(`❌ Invalid router detected: ${routeName}`);
@@ -67,10 +65,57 @@ server.headersTimeout = 66000;
 const __dirname = path.resolve();
 const io = initializeSocket(server);
 
+// Static special routes first
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain").send(`User-agent: *
 Allow: /
 Sitemap: https://readzio.com/sitemap.xml`);
+});
+
+app.get("/sitemap.xml", (req, res) => {
+  const sitemapPath = path.resolve(process.cwd(), "clients/dist/sitemap.xml");
+  console.log("Serving sitemap from:", sitemapPath);
+  if (fs.existsSync(sitemapPath)) {
+    res.setHeader("Content-Type", "application/xml");
+    res.sendFile(sitemapPath);
+  } else {
+    console.warn("⚠️ Sitemap not found:", sitemapPath);
+    res.status(404).type("text/plain").send("Sitemap not found");
+  }
+});
+
+app.get("/ads.txt", (req, res) => {
+  res
+    .type("text/plain")
+    .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
+});
+
+app.get("/health", (req, res) => {
+  const memUsage = process.memoryUsage();
+  res.status(200).json({
+    status: "OK",
+    message: "readzio API is running",
+    uptime: Math.floor(process.uptime()),
+    database:
+      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    socket: {
+      status: io.engine.clientsCount > 0 ? "active" : "inactive",
+      clients: io.engine.clientsCount,
+    },
+    memory: {
+      rss: Math.round(memUsage.rss / 1024 / 1024) + "MB",
+      heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + "MB",
+      heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + "MB",
+    },
+    routes: {
+      successful: successfulRoutes,
+      failed: failedRoutes,
+      total: successfulRoutes + failedRoutes,
+    },
+    timestamp: new Date().toISOString(),
+    environment: NODE_ENV,
+    nodeVersion: process.version,
+  });
 });
 
 const setRouteTimeout = (timeoutMs) => (req, res, next) => {
@@ -95,33 +140,6 @@ requiredEnv.forEach((key) => {
   }
 });
 
-// app.post(
-//   "/api/razorpay/webhook",
-//   setRouteTimeout(60000),
-//   express.json({
-//     verify: (req, res, buf) => {
-//       req.rawBody = buf.toString();
-//     },
-//   }),
-//   async (req, res, next) => {
-//     const startTime = Date.now();
-//     logMemory("💸 Razorpay webhook start");
-//     try {
-//       await handleRazorpayWebhook(req, res, next);
-//       const duration = Date.now() - startTime;
-//       logMemory(`💸 Razorpay webhook completed in ${duration}ms`);
-//     } catch (err) {
-//       const duration = Date.now() - startTime;
-//       console.error(
-//         `[Server:Razorpay] ❌ Webhook error after ${duration}ms:`,
-//         err.message
-//       );
-//       if (!res.headersSent)
-//         res.status(500).json({ error: "Webhook processing failed" });
-//     }
-//   }
-// );
-
 app.use((req, res, next) => {
   req.io = io;
   next();
@@ -142,12 +160,12 @@ app.use(
     origin: (origin, callback) => {
       console.log("[Server:CORS] Request from:", origin);
       const allowedOrigins = [
-        CLIENT_URL?.replace(/\/$/, ""), // https://readzio.com
-        "https://readzio.com", // ensure explicit domain allowed
-        "https://www.readzio.com", // ensure explicit domain allowed
-        "http://localhost:5173", // for local dev
-        "http://localhost:8001", // for local dev
-        "null", // some dev tools send 'null' origin
+        CLIENT_URL?.replace(/\/$/, ""),
+        "https://readzio.com",
+        "https://www.readzio.com",
+        "http://localhost:5173",
+        "http://localhost:8001",
+        "null",
       ].filter(Boolean);
 
       if (!origin) return callback(null, true);
@@ -173,7 +191,7 @@ app.use(
 
 app.use(
   express.json({
-    limit: "50mb", // allow up to 50MB payloads
+    limit: "50mb",
     verify: (req, res, buf) => {
       if (req.path.includes("/webhook")) req.rawBody = buf;
     },
@@ -185,18 +203,6 @@ app.use(
 );
 
 app.use(cookieParser());
-// app.use(
-//   session({
-//     secret: SESSION_SECRET,
-//     resave: false,
-//     saveUninitialized: false,
-//     cookie: {
-//       secure: NODE_ENV === "production", // true in prod
-//       httpOnly: true,
-//       sameSite: "strict",
-//     },
-//   })
-// );
 
 const routeConfigs = [
   { path: "/api/auth", router: AuthRoutes, name: "AuthRoutes" },
@@ -256,12 +262,12 @@ routeConfigs.forEach(({ path, router, name, middleware }) => {
     if (NODE_ENV !== "production")
       console.log(`🛤️ Mounting route: ${path} (${name})`);
 
-    console.log(`[DEBUG] About to mount: ${name} at ${path}`); // ADD THIS LINE
+    console.log(`[DEBUG] About to mount: ${name} at ${path}`);
 
     if (middleware) app.use(path, middleware, router);
     else app.use(path, router);
 
-    console.log(`[DEBUG] Successfully mounted: ${name}`); // ADD THIS LINE
+    console.log(`[DEBUG] Successfully mounted: ${name}`);
 
     successfulRoutes++;
   } catch (err) {
@@ -284,27 +290,6 @@ if (failedRoutes > 0) console.log(`❌ Failed to mount: ${failedRoutes} routes`)
 
 if (NODE_ENV !== "production") {
   console.log("⚠️ Route inspection disabled");
-  // try {
-  //   const endpoints = listEndpoints(app);
-  //   console.log("\n📋 Available Routes:");
-  //   const groupedEndpoints = endpoints.reduce((acc, route) => {
-  //     const prefix = route.path.split("/")[1] || "root";
-  //     if (!acc[prefix]) acc[prefix] = [];
-  //     acc[prefix].push(route);
-  //     return acc;
-  //   }, {});
-  //   Object.entries(groupedEndpoints).forEach(([prefix, routes]) => {
-  //     console.log(`\n  📂 /${prefix}:`);
-  //     routes.forEach((route) => {
-  //       const methods = route.methods.join(", ").padEnd(15);
-  //       console.log(`    ${methods} ${route.path}`);
-  //     });
-  //   });
-  //   console.log(`\n✅ Total endpoints: ${endpoints.length}\n`);
-  // } catch (err) {
-  //   console.error("❌ Route inspection failed:", err.message);
-  //   console.error("This might indicate malformed route patterns");
-  // }
 }
 
 const publicPath = path.join(__dirname, "servers", "public");
@@ -320,25 +305,6 @@ if (fs.existsSync(publicPath)) {
 } else {
   console.warn("⚠️ Public directory not found:", publicPath);
 }
-
-app.get("/sitemap.xml", (req, res) => {
-  const sitemapPath = path.resolve(process.cwd(), "clients/dist/sitemap.xml");
-  console.log("Serving sitemap from:", sitemapPath);
-
-  if (fs.existsSync(sitemapPath)) {
-    res.setHeader("Content-Type", "application/xml");
-    res.sendFile(sitemapPath);
-  } else {
-    console.warn("⚠️ Sitemap not found:", sitemapPath);
-    res.status(404).type("text/plain").send("Sitemap not found");
-  }
-});
-
-app.get("/ads.txt", (req, res) => {
-  res
-    .type("text/plain")
-    .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
-});
 
 const clientPath = path.join(__dirname, "clients", "dist");
 const clientIndexPath = path.join(clientPath, "index.html");
@@ -359,7 +325,7 @@ if (NODE_ENV === "production") {
         },
       })
     );
-    app.get("/{*splat}", (req, res, next) => {
+    app.get("*", (req, res, next) => {
       const disallowed = [
         req.path.startsWith("/api"),
         req.path.startsWith("/public"),
@@ -381,41 +347,13 @@ if (NODE_ENV === "production") {
     });
   } else {
     console.error("❌ Client build not found:", clientIndexPath);
-    app.get("/{*splat}", (req, res) => {
+    app.get("*", (req, res) => {
       res.status(503).send("Service temporarily unavailable - build not found");
     });
   }
 }
 
-app.get("/health", (req, res) => {
-  const memUsage = process.memoryUsage();
-  res.status(200).json({
-    status: "OK",
-    message: "readzio API is running",
-    uptime: Math.floor(process.uptime()),
-    database:
-      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-    socket: {
-      status: io.engine.clientsCount > 0 ? "active" : "inactive",
-      clients: io.engine.clientsCount,
-    },
-    memory: {
-      rss: Math.round(memUsage.rss / 1024 / 1024) + "MB",
-      heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + "MB",
-      heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + "MB",
-    },
-    routes: {
-      successful: successfulRoutes,
-      failed: failedRoutes,
-      total: successfulRoutes + failedRoutes,
-    },
-    timestamp: new Date().toISOString(),
-    environment: NODE_ENV,
-    nodeVersion: process.version,
-  });
-});
-
-app.use("/api/{*splat}", (req, res) => {
+app.use("/api/*", (req, res) => {
   res.status(404).json({
     error: "API endpoint not found",
     path: req.path,
@@ -435,15 +373,19 @@ const gracefulShutdown = (signal) => {
       process.exit(1);
     }
     console.log("[Server:Shutdown] ✅ HTTP server closed");
-    mongoose.connection.close((err) => {
-      if (err)
+    mongoose.connection
+      .close()
+      .then(() => {
+        console.log("[Server:Shutdown] ✅ Database connection closed");
+        process.exit(0);
+      })
+      .catch((err) => {
         console.error(
           "[Server:Shutdown] ❌ Database close error:",
           err.message
         );
-      else console.log("[Server:Shutdown] ✅ Database connection closed");
-      process.exit(0);
-    });
+        process.exit(1);
+      });
   });
   setTimeout(() => {
     console.error("[Server:Shutdown] ⚠️ Forcing shutdown after timeout");
@@ -494,7 +436,6 @@ const startServer = async () => {
     console.log("[Server:Startup] ✅ Database connected successfully");
     console.log("[Server:Startup] 🧹 Starting cleanup jobs...");
     startTempCleanup();
-    // startDailyDigestJob();
     console.log("[Server:Startup] ✅ Background jobs started");
     const port = process.env.PORT || 10000;
     server.listen(port, "0.0.0.0", function () {
