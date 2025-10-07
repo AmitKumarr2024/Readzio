@@ -65,31 +65,6 @@ server.headersTimeout = 66000;
 const __dirname = path.resolve();
 const io = initializeSocket(server);
 
-// Static special routes first
-app.get("/robots.txt", (req, res) => {
-  res.type("text/plain").send(`User-agent: *
-Allow: /
-Sitemap: https://readzio.com/sitemap.xml`);
-});
-
-app.get("/sitemap.xml", (req, res) => {
-  const sitemapPath = path.resolve(process.cwd(), "clients/dist/sitemap.xml");
-  console.log("Serving sitemap from:", sitemapPath);
-  if (fs.existsSync(sitemapPath)) {
-    res.setHeader("Content-Type", "application/xml");
-    res.sendFile(sitemapPath);
-  } else {
-    console.warn("⚠️ Sitemap not found:", sitemapPath);
-    res.status(404).type("text/plain").send("Sitemap not found");
-  }
-});
-
-app.get("/ads.txt", (req, res) => {
-  res
-    .type("text/plain")
-    .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
-});
-
 const setRouteTimeout = (timeoutMs) => (req, res, next) => {
   const timeout = setTimeout(() => {
     if (!res.headersSent) {
@@ -283,6 +258,31 @@ const clientIndexPath = path.join(clientPath, "index.html");
 
 console.log("Client path:", clientPath);
 console.log("Index exists:", fs.existsSync(clientIndexPath));
+
+// Static special routes after API routes but before client serving
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain").send(`User-agent: *
+Allow: /
+Sitemap: https://readzio.com/sitemap.xml`);
+});
+
+app.get("/sitemap.xml", (req, res) => {
+  const sitemapPath = path.resolve(process.cwd(), "clients/dist/sitemap.xml");
+  console.log("Serving sitemap from:", sitemapPath);
+  if (fs.existsSync(sitemapPath)) {
+    res.setHeader("Content-Type", "application/xml");
+    res.sendFile(sitemapPath);
+  } else {
+    console.warn("⚠️ Sitemap not found:", sitemapPath);
+    res.status(404).type("text/plain").send("Sitemap not found");
+  }
+});
+
+app.get("/ads.txt", (req, res) => {
+  res
+    .type("text/plain")
+    .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
+});
 
 app.get("/health", (req, res) => {
   const memUsage = process.memoryUsage();
