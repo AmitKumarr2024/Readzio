@@ -343,6 +343,9 @@ app.get("/ads.txt", (req, res) => {
 const clientPath = path.join(__dirname, "clients", "dist");
 const clientIndexPath = path.join(clientPath, "index.html");
 
+console.log("Client path:", clientPath);
+console.log("Index exists:", fs.existsSync(clientIndexPath));
+
 if (NODE_ENV === "production") {
   if (fs.existsSync(clientIndexPath)) {
     app.use(
