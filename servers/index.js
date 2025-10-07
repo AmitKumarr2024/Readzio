@@ -356,7 +356,8 @@ if (NODE_ENV === "production") {
         },
       })
     );
-    app.get("/{*splat}", (req, res, next) => {
+    // Catch-all for React routes
+    app.get("*", (req, res, next) => {
       const disallowed = [
         req.path.startsWith("/api"),
         req.path.startsWith("/public"),
@@ -378,7 +379,7 @@ if (NODE_ENV === "production") {
     });
   } else {
     console.error("❌ Client build not found:", clientIndexPath);
-    app.get("/{*splat}", (req, res) => {
+    app.get("*", (req, res) => {
       res.status(503).send("Service temporarily unavailable - build not found");
     });
   }
