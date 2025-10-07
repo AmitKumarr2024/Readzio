@@ -90,34 +90,6 @@ app.get("/ads.txt", (req, res) => {
     .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
 });
 
-app.get("/health", (req, res) => {
-  const memUsage = process.memoryUsage();
-  res.status(200).json({
-    status: "OK",
-    message: "readzio API is running",
-    uptime: Math.floor(process.uptime()),
-    database:
-      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-    socket: {
-      status: io.engine.clientsCount > 0 ? "active" : "inactive",
-      clients: io.engine.clientsCount,
-    },
-    memory: {
-      rss: Math.round(memUsage.rss / 1024 / 1024) + "MB",
-      heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + "MB",
-      heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + "MB",
-    },
-    routes: {
-      successful: successfulRoutes,
-      failed: failedRoutes,
-      total: successfulRoutes + failedRoutes,
-    },
-    timestamp: new Date().toISOString(),
-    environment: NODE_ENV,
-    nodeVersion: process.version,
-  });
-});
-
 const setRouteTimeout = (timeoutMs) => (req, res, next) => {
   const timeout = setTimeout(() => {
     if (!res.headersSent) {
@@ -312,6 +284,34 @@ const clientIndexPath = path.join(clientPath, "index.html");
 console.log("Client path:", clientPath);
 console.log("Index exists:", fs.existsSync(clientIndexPath));
 
+app.get("/health", (req, res) => {
+  const memUsage = process.memoryUsage();
+  res.status(200).json({
+    status: "OK",
+    message: "readzio API is running",
+    uptime: Math.floor(process.uptime()),
+    database:
+      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    socket: {
+      status: io.engine.clientsCount > 0 ? "active" : "inactive",
+      clients: io.engine.clientsCount,
+    },
+    memory: {
+      rss: Math.round(memUsage.rss / 1024 / 1024) + "MB",
+      heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + "MB",
+      heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + "MB",
+    },
+    routes: {
+      successful: successfulRoutes,
+      failed: failedRoutes,
+      total: successfulRoutes + failedRoutes,
+    },
+    timestamp: new Date().toISOString(),
+    environment: NODE_ENV,
+    nodeVersion: process.version,
+  });
+});
+
 if (NODE_ENV === "production") {
   if (fs.existsSync(clientIndexPath)) {
     app.use(
@@ -325,7 +325,7 @@ if (NODE_ENV === "production") {
         },
       })
     );
-    app.get("*", (req, res, next) => {
+    app.get("/{*splat}", (req, res, next) => {
       const disallowed = [
         req.path.startsWith("/api"),
         req.path.startsWith("/public"),
@@ -347,13 +347,13 @@ if (NODE_ENV === "production") {
     });
   } else {
     console.error("❌ Client build not found:", clientIndexPath);
-    app.get("*", (req, res) => {
+    app.get("/{*splat}", (req, res) => {
       res.status(503).send("Service temporarily unavailable - build not found");
     });
   }
 }
 
-app.use("/api/*", (req, res) => {
+app.use("/api/{*splat}", (req, res) => {
   res.status(404).json({
     error: "API endpoint not found",
     path: req.path,

@@ -17,7 +17,7 @@
   "scripts": {
     "generate-sitemap": "node servers/scripts/generateSitemap.js",
     "server": "node servers/index.js",
-    "start": "NODE_OPTIONS='--max-old-space-size=512' node servers/index.js",
+    "start": "NODE_OPTIONS='--max-old-space-size=2048' node servers/index.js",
     "install-client": "cd clients && npm install --legacy-peer-deps",
     "build-client": "cd clients && npm run build",
     "setup-client": "npm run install-client && npm run build-client && npm run generate-sitemap"
