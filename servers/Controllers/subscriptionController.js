@@ -570,19 +570,19 @@ export const subscribeToPlan = asyncHandler(async (req, res, next) => {
       amountPaid: plan.price,
     });
 
-    const mailOption = createMailOption({
-      to: req.user.email,
-      subject: "Subscription Confirmation",
-      name: req.user.fullName || "User",
-      email: req.user.email,
-      message: `You have successfully subscribed to the plan "${
-        plan.name
-      }" for ₹${(plan.price / 100).toFixed(
-        2
-      )}. Your subscription will expire on ${expiryDate.toDateString()}.`,
-      hasButton: false,
-    });
-    await sendEmailWithRetries(mailOption, req.user._id, "subscription");
+    // const mailOption = createMailOption({
+    //   to: req.user.email,
+    //   subject: "Subscription Confirmation",
+    //   name: req.user.fullName || "User",
+    //   email: req.user.email,
+    //   message: `You have successfully subscribed to the plan "${
+    //     plan.name
+    //   }" for ₹${(plan.price / 100).toFixed(
+    //     2
+    //   )}. Your subscription will expire on ${expiryDate.toDateString()}.`,
+    //   hasButton: false,
+    // });
+    // await sendEmailWithRetries(mailOption, req.user._id, "subscription");
 
     const notification = await createNotification({
       user: plan.author,
@@ -668,15 +668,15 @@ export const cancelSubscription = asyncHandler(async (req, res, next) => {
     }
 
     const plan = await UserSubscriptionPlan.findById(subscription.planId);
-    const mailOption = createMailOption({
-      to: req.user.email,
-      subject: "Subscription Cancellation Confirmation",
-      name: req.user.fullName || "User",
-      email: req.user.email,
-      message: `Your subscription to "${plan.name}" has been successfully cancelled.`,
-      hasButton: false,
-    });
-    await sendEmailWithRetries(mailOption, req.user._id, "subscription");
+    // const mailOption = createMailOption({
+    //   to: req.user.email,
+    //   subject: "Subscription Cancellation Confirmation",
+    //   name: req.user.fullName || "User",
+    //   email: req.user.email,
+    //   message: `Your subscription to "${plan.name}" has been successfully cancelled.`,
+    //   hasButton: false,
+    // });
+    // await sendEmailWithRetries(mailOption, req.user._id, "subscription");
 
     await recordActivity({
       userId: req.user._id.toString(),
@@ -805,17 +805,17 @@ export const refundSubscription = asyncHandler(async (req, res, next) => {
       });
 
       const plan = await UserSubscriptionPlan.findById(subscription.planId);
-      const mailOption = createMailOption({
-        to: req.user.email,
-        subject: "Refund Processed Successfully",
-        name: req.user.fullName || "User",
-        email: req.user.email,
-        message: `Your refund of ₹${(payment.amount / 100).toFixed(
-          2
-        )} for the plan "${plan.name}" has been successfully processed.`,
-        hasButton: false,
-      });
-      await sendEmailWithRetries(mailOption, req.user._id, "refund");
+      // const mailOption = createMailOption({
+      //   to: req.user.email,
+      //   subject: "Refund Processed Successfully",
+      //   name: req.user.fullName || "User",
+      //   email: req.user.email,
+      //   message: `Your refund of ₹${(payment.amount / 100).toFixed(
+      //     2
+      //   )} for the plan "${plan.name}" has been successfully processed.`,
+      //   hasButton: false,
+      // });
+      // await sendEmailWithRetries(mailOption, req.user._id, "refund");
 
       res.status(200).json({ success: true, refund: refundResponse.data });
     } catch (refundError) {
@@ -967,21 +967,21 @@ export const getSubscriptionAnalytics = asyncHandler(async (req, res, next) => {
       )
     ).reduce((sum, amount) => sum + amount, 0);
 
-    if (req.query.sendEmail === "true") {
-      const mailOption = createMailOption({
-        to: req.user.email,
-        subject: "Subscription Analytics Report",
-        name: req.user.fullName || "User",
-        email: req.user.email,
-        message: `Your plan "${
-          plan.name
-        }" has ${activeSubscribers} active subscribers and has generated ₹${(
-          totalRevenue / 100
-        ).toFixed(2)} in total revenue.`,
-        hasButton: false,
-      });
-      await sendEmailWithRetries(mailOption, req.user._id, "analytics");
-    }
+    // if (req.query.sendEmail === "true") {
+    //   const mailOption = createMailOption({
+    //     to: req.user.email,
+    //     subject: "Subscription Analytics Report",
+    //     name: req.user.fullName || "User",
+    //     email: req.user.email,
+    //     message: `Your plan "${
+    //       plan.name
+    //     }" has ${activeSubscribers} active subscribers and has generated ₹${(
+    //       totalRevenue / 100
+    //     ).toFixed(2)} in total revenue.`,
+    //     hasButton: false,
+    //   });
+    //   await sendEmailWithRetries(mailOption, req.user._id, "analytics");
+    // }
 
     res.status(200).json({
       success: true,
@@ -1029,19 +1029,20 @@ export const sendRenewalReminders = asyncHandler(async (req, res, next) => {
     for (const sub of subscriptions) {
       const user = await UserModel.findById(sub.userId);
       const plan = await UserSubscriptionPlan.findById(sub.planId);
-      const mailOption = createMailOption({
-        to: user.email,
-        subject: "Subscription Renewal Reminder",
-        name: user.fullName || "User",
-        email: user.email,
-        message: `Your subscription to "${
-          plan.name
-        }" will expire on ${sub.expiryDate.toDateString()}. Renew now to continue enjoying premium content!`,
-        hasButton: true,
-        buttonText: "Renew Now",
-        buttonUrl: `https://yourapp.com/renew/${sub._id}`,
-      });
-      await sendEmailWithRetries(mailOption, sub.userId, "renewal");
+      // const mailOption = createMailOption({
+      //   to: user.email,
+      //   subject: "Subscription Renewal Reminder",
+      //   name: user.fullName || "User",
+      //   email: user.email,
+      //   message: `Your subscription to "${
+      //     plan.name
+      //   }" will expire on ${sub.expiryDate.toDateString()}. Renew now to continue enjoying premium content!`,
+      //   hasButton: true,
+      //   buttonText: "Renew Now",
+      //   buttonUrl: `https://yourapp.com/renew/${sub._id}`,
+      // });
+      // await sendEmailWithRetries(mailOption, sub.userId, "renewal");
+
       sub.lastReminderSent = new Date();
       await sub.save();
 

@@ -147,23 +147,23 @@ export const sendDailyPostEmail = async (req, res, next) => {
           50
         )}... | readzio Daily Digest`;
 
-        const mailOption = await createMailOption({
-          to: user.email,
-          subject,
-          name: user.name || "Reader",
-          email: user.email,
-          hasButton: true,
-          buttonText: "Read Today's Posts",
-          buttonUrl: "https://readzio.com/explore",
-          posts,
-        });
+        // const mailOption = await createMailOption({
+        //   to: user.email,
+        //   subject,
+        //   name: user.name || "Reader",
+        //   email: user.email,
+        //   hasButton: true,
+        //   buttonText: "Read Today's Posts",
+        //   buttonUrl: "https://readzio.com/explore",
+        //   posts,
+        // });
 
-        const emailResult = await sendEmailWithRetries(
-          mailOption,
-          user._id,
-          "daily_digest",
-          3
-        );
+        // const emailResult = await sendEmailWithRetries(
+        //   mailOption,
+        //   user._id,
+        //   "daily_digest",
+        //   3
+        // );
 
         results.push({
           email: user.email,
@@ -280,18 +280,18 @@ export const testSingleEmail = async (req, res) => {
   // }
 
   try {
-    const mailOption = await createMailOption({
-      to: email,
-      subject: "🧪 Test Email from readzio",
-      name: "Test User",
-      message: "This is a test email to verify the system is working.",
-      hasButton: true,
-      buttonText: "Visit readzio",
-      buttonUrl: "https://readzio.com",
-    });
+    // const mailOption = await createMailOption({
+    //   to: email,
+    //   subject: "🧪 Test Email from readzio",
+    //   name: "Test User",
+    //   message: "This is a test email to verify the system is working.",
+    //   hasButton: true,
+    //   buttonText: "Visit readzio",
+    //   buttonUrl: "https://readzio.com",
+    // });
 
-    const emailResult = await sendEmailWithRetries(mailOption, null, "test", 3);
-    console.log("Resend response:", emailResult);
+    // const emailResult = await sendEmailWithRetries(mailOption, null, "test", 3);
+    // console.log("Resend response:", emailResult);
 
     await EmailLog.create({
       userId: null,
@@ -362,19 +362,19 @@ export const sendDirectEmail = async (req, res) => {
   }
 
   try {
-    const mailOption = await createMailOption({
-      to: email,
-      subject: "Message from readzio",
-      message: "Hello world",
-    });
+    // const mailOption = await createMailOption({
+    //   to: email,
+    //   subject: "Message from readzio",
+    //   message: "Hello world",
+    // });
 
-    const emailResult = await sendEmailWithRetries(
-      mailOption,
-      null,
-      "direct",
-      3
-    );
-    console.log("Resend response:", emailResult);
+    // const emailResult = await sendEmailWithRetries(
+    //   mailOption,
+    //   null,
+    //   "direct",
+    //   3
+    // );
+    // console.log("Resend response:", emailResult);
 
     await EmailLog.create({
       userId: null,

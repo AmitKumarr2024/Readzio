@@ -258,18 +258,18 @@ export const sendReportNotification = async (req, res, next) => {
       );
 
     // Prepares and sends notification email
-    const mailOption = createMailOption({
-      to: report.post.author.email,
-      subject,
-      name: report.post.author.name || "User",
-      email: report.post.author.email,
-      message: finalMessage,
-      hasButton: true,
-      buttonText: "Acknowledge",
-      buttonUrl: `${CLIENT_URL}/acknowledge/${reportId}`,
-    });
+    // const mailOption = createMailOption({
+    //   to: report.post.author.email,
+    //   subject,
+    //   name: report.post.author.name || "User",
+    //   email: report.post.author.email,
+    //   message: finalMessage,
+    //   hasButton: true,
+    //   buttonText: "Acknowledge",
+    //   buttonUrl: `${CLIENT_URL}/acknowledge/${reportId}`,
+    // });
 
-    await sendEmailWithRetries(mailOption, null, "report");
+    // await sendEmailWithRetries(mailOption, null, "report");
 
     res
       .status(200)
@@ -342,16 +342,16 @@ export const replyContactMessage = async (req, res, next) => {
       );
 
     // Prepares and sends reply email
-    const mailOption = createMailOption({
-      to: contactMessage.email,
-      subject,
-      name: contactMessage.name || "User",
-      email: contactMessage.email,
-      message,
-      hasButton: false,
-    });
+    // const mailOption = createMailOption({
+    //   to: contactMessage.email,
+    //   subject,
+    //   name: contactMessage.name || "User",
+    //   email: contactMessage.email,
+    //   message,
+    //   hasButton: false,
+    // });
 
-    await sendEmailWithRetries(mailOption, null, "contact_reply");
+    // await sendEmailWithRetries(mailOption, null, "contact_reply");
 
     // Marks message as handled
     contactMessage.isHandled = true;

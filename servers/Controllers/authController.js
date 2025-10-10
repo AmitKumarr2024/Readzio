@@ -50,22 +50,22 @@ export const sendVerifyOtp = async (req, res, next) => {
     user.verifyOtpExpireAt = Date.now() + 60 * 60 * 1000; // 1 hour
     await user.save();
 
-    const mailOption = createMailOption({
-      to: user.email,
-      subject: "Account Verification OTP",
-      name: user.name || "User",
-      email: user.email,
-      message: "Please use the following OTP to verify your email address.",
-      otp,
-      supportEmail: SENDER_EMAIL,
-      isResetOtp: false,
-    });
+    // const mailOption = createMailOption({
+    //   to: user.email,
+    //   subject: "Account Verification OTP",
+    //   name: user.name || "User",
+    //   email: user.email,
+    //   message: "Please use the following OTP to verify your email address.",
+    //   otp,
+    //   supportEmail: SENDER_EMAIL,
+    //   isResetOtp: false,
+    // });
 
-    const emailResult = await sendEmailWithRetries(
-      mailOption,
-      user._id,
-      "verification"
-    );
+    // const emailResult = await sendEmailWithRetries(
+    //   mailOption,
+    //   user._id,
+    //   "verification"
+    // );
     user.emailAttempts = emailResult.attempts;
     user.emailStatus = "sent";
     await user.save();
@@ -212,25 +212,25 @@ export const sendResetOtp = async (req, res, next) => {
     user.resetOtpExpireAt = Date.now() + 15 * 60 * 1000; // 15 minutes
     await user.save();
 
-    const mailOption = createMailOption({
-      to: user.email,
-      subject: "Password Reset OTP",
-      name: user.name || "User",
-      email: user.email,
-      message: "Please use the following OTP to reset your password.",
-      otp,
-      supportEmail: SENDER_EMAIL,
-      isResetOtp: true,
-    });
+    // const mailOption = createMailOption({
+    //   to: user.email,
+    //   subject: "Password Reset OTP",
+    //   name: user.name || "User",
+    //   email: user.email,
+    //   message: "Please use the following OTP to reset your password.",
+    //   otp,
+    //   supportEmail: SENDER_EMAIL,
+    //   isResetOtp: true,
+    // });
 
-    log("Mail Option:", mailOption);
-    const emailResult = await sendEmailWithRetries(
-      mailOption,
-      user._id,
-      "reset"
-    );
-    user.emailAttempts = emailResult.attempts;
-    user.emailStatus = "sent";
+    // log("Mail Option:", mailOption);
+    // const emailResult = await sendEmailWithRetries(
+    //   mailOption,
+    //   user._id,
+    //   "reset"
+    // );
+    // user.emailAttempts = emailResult.attempts;
+    // user.emailStatus = "sent";
     await user.save();
 
     res.status(201).json({
@@ -447,29 +447,29 @@ export const Signup = async (req, res, next) => {
       { stopEmailAttempts: false, emailStatus: "not_sent", emailAttempts: 0 }
     );
 
-    const mailOption = createMailOption({
-      to: normalizedEmail,
-      subject: "Welcome to Our Platform!",
-      name: fullName,
-      email: normalizedEmail,
-      message: `Thank you for signing up! You're joining us from ${
-        newUser.location || "an unknown location"
-      }. We're excited to have you on board.`,
-      hasButton: true,
-      buttonText: "Get Started",
-      buttonUrl: "https://readzio.com",
-      isWelcome: true,
-      supportEmail: SENDER_EMAIL,
-    });
+    // const mailOption = createMailOption({
+    //   to: normalizedEmail,
+    //   subject: "Welcome to Our Platform!",
+    //   name: fullName,
+    //   email: normalizedEmail,
+    //   message: `Thank you for signing up! You're joining us from ${
+    //     newUser.location || "an unknown location"
+    //   }. We're excited to have you on board.`,
+    //   hasButton: true,
+    //   buttonText: "Get Started",
+    //   buttonUrl: "https://readzio.com",
+    //   isWelcome: true,
+    //   supportEmail: SENDER_EMAIL,
+    // });
     try {
-      const emailResult = await sendEmailWithRetries(
-        mailOption,
-        newUser._id,
-        "signup"
-      );
-      newUser.emailAttempts = emailResult.attempts;
-      newUser.emailStatus = "sent";
-      newUser.emailLastError = null;
+      // const emailResult = await sendEmailWithRetries(
+      //   mailOption,
+      //   newUser._id,
+      //   "signup"
+      // );
+      // newUser.emailAttempts = emailResult.attempts;
+      // newUser.emailStatus = "sent";
+      // newUser.emailLastError = null;
       await newUser.save();
     } catch (emailError) {
       console.error("[Signup] Email error:", emailError.message);
@@ -741,30 +741,30 @@ export const googleLogin = async (req, res, next) => {
     // Send welcome email only for new users
     if (isNewUser) {
       log("[GoogleLogin] Preparing welcome email for:", email);
-      const mailOption = createMailOption({
-        to: email,
-        subject: "Welcome to Our Platform!",
-        name: name || "User",
-        email,
-        message: `Thank you for signing up with Google! You're joining us from ${
-          user.location || "an unknown location"
-        }. We're excited to have you on board.`,
-        hasButton: true,
-        buttonText: "Get Started",
-        buttonUrl: "https://readzio.com",
-        isWelcome: true,
-        supportEmail: SENDER_EMAIL,
-      });
+      // const mailOption = createMailOption({
+      //   to: email,
+      //   subject: "Welcome to Our Platform!",
+      //   name: name || "User",
+      //   email,
+      //   message: `Thank you for signing up with Google! You're joining us from ${
+      //     user.location || "an unknown location"
+      //   }. We're excited to have you on board.`,
+      //   hasButton: true,
+      //   buttonText: "Get Started",
+      //   buttonUrl: "https://readzio.com",
+      //   isWelcome: true,
+      //   supportEmail: SENDER_EMAIL,
+      // });
 
       try {
         log("[GoogleLogin] Sending welcome email");
-        const emailResult = await sendEmailWithRetries(
-          mailOption,
-          user._id,
-          "signup"
-        );
-        user.emailAttempts = emailResult.attempts;
-        user.emailStatus = "sent";
+        // const emailResult = await sendEmailWithRetries(
+        //   mailOption,
+        //   user._id,
+        //   "signup"
+        // );
+        // user.emailAttempts = emailResult.attempts;
+        // user.emailStatus = "sent";
         await user.save();
         log("[GoogleLogin] Welcome email sent to:", email);
       } catch (emailError) {
@@ -934,25 +934,25 @@ export const testWelcomeEmail = async (req, res, next) => {
       { _id: userId },
       { stopEmailAttempts: false, emailStatus: "not_sent", emailAttempts: 0 }
     );
-    const mailOption = createMailOption({
-      to: email,
-      subject: "Welcome to Our Platform!",
-      name: user.name || "User",
-      email,
-      message: `Thank you for signing up! You're joining us from ${
-        user.location || "an unknown location"
-      }. We're excited to have you on board.`,
-      hasButton: true,
-      buttonText: "Get Started",
-      buttonUrl: "https://readzio.com",
-      isWelcome: true,
-      supportEmail: SENDER_EMAIL,
-    });
-    const emailResult = await sendEmailWithRetries(
-      mailOption,
-      user._id,
-      "test"
-    );
+    // const mailOption = createMailOption({
+    //   to: email,
+    //   subject: "Welcome to Our Platform!",
+    //   name: user.name || "User",
+    //   email,
+    //   message: `Thank you for signing up! You're joining us from ${
+    //     user.location || "an unknown location"
+    //   }. We're excited to have you on board.`,
+    //   hasButton: true,
+    //   buttonText: "Get Started",
+    //   buttonUrl: "https://readzio.com",
+    //   isWelcome: true,
+    //   supportEmail: SENDER_EMAIL,
+    // });
+    // const emailResult = await sendEmailWithRetries(
+    //   mailOption,
+    //   user._id,
+    //   "test"
+    // );
     await UserModel.updateOne(
       { _id: userId },
       {
