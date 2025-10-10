@@ -44,11 +44,11 @@ if (fs.existsSync(envPath)) {
 //     "⚠️ RESEND_API_KEY is missing - email functionality will be disabled"
 //   );
 // }
-if (!SENDER_EMAIL) {
-  console.warn(
-    "⚠️ SENDER_EMAIL is missing - email functionality will be disabled"
-  );
-}
+// if (!SENDER_EMAIL) {
+//   console.warn(
+//     "⚠️ SENDER_EMAIL is missing - email functionality will be disabled"
+//   );
+// }
 
 // Logging helpers
 const logWithContext = (context, message, data = {}) =>
@@ -194,20 +194,20 @@ export const sendDailyPostEmail = async (req, res, next) => {
           userId: user._id,
         });
 
-        await EmailLog.create({
-          userId: user._id,
-          email: user.email,
-          type: "daily_digest",
-          emailStatus: "failed",
-          emailAttempts: error.attempts || 1,
-          emailLastError: error.message,
-          createdAt: new Date(),
-          subject:
-            posts[0]?.title?.substring(0, 50) + "... | readzio Daily Digest" ||
-            "N/A",
-          from: SENDER_EMAIL || "N/A",
-          to: user.email,
-        });
+        // await EmailLog.create({
+        //   userId: user._id,
+        //   email: user.email,
+        //   type: "daily_digest",
+        //   emailStatus: "failed",
+        //   emailAttempts: error.attempts || 1,
+        //   emailLastError: error.message,
+        //   createdAt: new Date(),
+        //   subject:
+        //     posts[0]?.title?.substring(0, 50) + "... | readzio Daily Digest" ||
+        //     "N/A",
+        //   from: SENDER_EMAIL || "N/A",
+        //   to: user.email,
+        // });
       }
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -317,18 +317,18 @@ export const testSingleEmail = async (req, res) => {
   } catch (error) {
     logError("TestEmail", "Failed to send test email", error);
 
-    await EmailLog.create({
-      userId: null,
-      email,
-      type: "test",
-      emailStatus: "failed",
-      emailAttempts: error.attempts || 1,
-      emailLastError: error.message,
-      createdAt: new Date(),
-      subject: "🧪 Test Email from readzio",
-      from: SENDER_EMAIL || "N/A",
-      to: email,
-    });
+    // await EmailLog.create({
+    //   userId: null,
+    //   email,
+    //   type: "test",
+    //   emailStatus: "failed",
+    //   emailAttempts: error.attempts || 1,
+    //   emailLastError: error.message,
+    //   createdAt: new Date(),
+    //   subject: "🧪 Test Email from readzio",
+    //   from: SENDER_EMAIL || "N/A",
+    //   to: email,
+    // });
 
     res.status(500).json({
       success: false,
@@ -348,18 +348,18 @@ export const sendDirectEmail = async (req, res) => {
       .status(400)
       .json({ success: false, message: "Email is required" });
 
-  if (!RESEND_API_KEY || !SENDER_EMAIL) {
-    logWithContext(
-      "DirectEmail",
-      "Email functionality disabled due to missing configuration"
-    );
-    return res.status(503).json({
-      success: false,
-      message:
-        "Email functionality is disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
-      email,
-    });
-  }
+  // if (!RESEND_API_KEY || !SENDER_EMAIL) {
+  //   logWithContext(
+  //     "DirectEmail",
+  //     "Email functionality disabled due to missing configuration"
+  //   );
+  //   return res.status(503).json({
+  //     success: false,
+  //     message:
+  //       "Email functionality is disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
+  //     email,
+  //   });
+  // }
 
   try {
     // const mailOption = await createMailOption({
@@ -400,18 +400,18 @@ export const sendDirectEmail = async (req, res) => {
   } catch (error) {
     logError("DirectEmail", `Failed to send direct email to ${email}`, error);
 
-    await EmailLog.create({
-      userId: null,
-      email,
-      type: "direct",
-      emailStatus: "failed",
-      emailAttempts: error.attempts || 1,
-      emailLastError: error.message,
-      createdAt: new Date(),
-      subject: "Message from readzio",
-      from: SENDER_EMAIL || "N/A",
-      to: email,
-    });
+    // await EmailLog.create({
+    //   userId: null,
+    //   email,
+    //   type: "direct",
+    //   emailStatus: "failed",
+    //   emailAttempts: error.attempts || 1,
+    //   emailLastError: error.message,
+    //   createdAt: new Date(),
+    //   subject: "Message from readzio",
+    //   from: SENDER_EMAIL || "N/A",
+    //   to: email,
+    // });
 
     res.status(500).json({
       success: false,
