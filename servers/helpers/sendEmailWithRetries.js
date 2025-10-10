@@ -96,3 +96,26 @@
 //     500
 //   );
 // }
+
+
+export async function sendEmailWithRetries(
+  mailOptions,
+  userId,
+  type = "general",
+  maxAttempts = 3
+) {
+  try {
+    console.log("📭 Email sending temporarily disabled. Skipping actual send.");
+    console.log(`→ Pretending to send to: ${mailOptions?.to || "unknown"}`);
+    
+    // Simulate a small async delay (optional)
+    await new Promise((res) => setTimeout(res, 100));
+    
+    // Return a fake success so no controller crashes
+    return { success: true, attempts: 1, id: "dummy-message-id" };
+  } catch (err) {
+    console.error("Error in dummy sendEmailWithRetries:", err.message);
+    // Still return a safe fallback
+    return { success: false, attempts: 0, id: null };
+  }
+}
