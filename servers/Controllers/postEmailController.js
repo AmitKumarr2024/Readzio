@@ -3,8 +3,6 @@ import UserModel from "../../servers/Models/User.js";
 import PostModel from "../../servers/Models/Post.js";
 import Bounce from "../../servers/Models/BounceModel.js";
 import { AppError } from "../../servers/Utils/AppError.js";
-// import createMailOption from "../../servers/helpers/emailHelper.js";
-// import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";

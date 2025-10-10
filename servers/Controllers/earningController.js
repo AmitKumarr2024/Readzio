@@ -3,7 +3,6 @@ import asyncHandler from "express-async-handler";
 import { AppError } from "../../servers/Utils/AppError.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import PaymentModel from "../Models/PaymentModel.js";
-// import createMailOption from "../../servers/helpers/emailHelper.js";
 import axiosInstance from "../Utils/axiosInstance.js";
 import UserModel from "../../servers/Models/User.js";
 
