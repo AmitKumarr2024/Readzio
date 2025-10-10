@@ -437,7 +437,7 @@ const startServer = async () => {
     console.log("[Server:Startup] 🧹 Starting cleanup jobs...");
     startTempCleanup();
     console.log("[Server:Startup] ✅ Background jobs started");
-    const port = process.env.PORT || 10000;
+    const port = process.env.PORT ||  10002;
     server.listen(port, "0.0.0.0", function () {
       const address = this.address();
       console.log(

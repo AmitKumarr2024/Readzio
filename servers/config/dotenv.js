@@ -19,7 +19,7 @@ if (fs.existsSync(envPath)) {
 }
 
 // --- Export all env vars (with fallbacks where needed) ---
-export const PORT = process.env.PORT || 10000;
+export const PORT = process.env.PORT ||  10002;
 export const MONGO_URI = process.env.MONGO_URI;
 export const JWT_SECRET = process.env.JWT_SECRET || "default-secret";
 export const CLIENT_URL =
