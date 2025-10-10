@@ -95,7 +95,7 @@ const SignupPage = () => {
   };
 
   return (
-    <GoogleOAuthProvider clientId="44790425597-foad407541te4lpt84dbhk77v28m5hl7.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       {/* Main layout with gradient background */}
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-900 to-purple-900">
         <div className="max-w-4xl w-full bg-white rounded-xl shadow-2xl flex flex-col md:flex-row overflow-hidden">
@@ -109,7 +109,8 @@ const SignupPage = () => {
             <div className="relative text-center text-slate-500 z-10 mt-[450px]">
               <h2 className="text-2xl md:text-3xl font-bold mb-3 flex items-center justify-center">
                 <FaUserPlus className="mr-2 text-indigo-400 text-2xl md:text-3xl" />
-                “readzio: Born in India, built for the world — a space to share, learn, and grow together.”
+                “readzio: Born in India, built for the world — a space to share,
+                learn, and grow together.”
               </h2>
               <p className="text-base md:text-lg font-medium">
                 Where Stories Ignite
