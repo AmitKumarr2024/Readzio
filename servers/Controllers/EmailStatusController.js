@@ -153,36 +153,36 @@ export const retryFailedEmails = async (req, res, next) => {
     const results = [];
 
     // Retries sending each failed email
-    for (const log of failedLogs) {
-      try {
-        const mailOption = createMailOption({
-          to: log.email,
-          subject: `Retry: ${log.type} Notification`,
-          message: `Retrying email for ${log.type}.`,
-          hasButton: false,
-        });
+    // for (const log of failedLogs) {
+    //   try {
+    //     const mailOption = createMailOption({
+    //       to: log.email,
+    //       subject: `Retry: ${log.type} Notification`,
+    //       message: `Retrying email for ${log.type}.`,
+    //       hasButton: false,
+    //     });
 
-        const emailResult = await sendEmailWithRetries(
-          mailOption,
-          log.userId,
-          log.type
-        );
+    //     const emailResult = await sendEmailWithRetries(
+    //       mailOption,
+    //       log.userId,
+    //       log.type
+    //     );
 
-        results.push({
-          email: log.email,
-          type: log.type,
-          success: emailResult.success,
-          attempts: emailResult.attempts,
-        });
-      } catch (error) {
-        results.push({
-          email: log.email,
-          type: log.type,
-          success: false,
-          error: error.message,
-        });
-      }
-    }
+    //     results.push({
+    //       email: log.email,
+    //       type: log.type,
+    //       success: emailResult.success,
+    //       attempts: emailResult.attempts,
+    //     });
+    //   } catch (error) {
+    //     results.push({
+    //       email: log.email,
+    //       type: log.type,
+    //       success: false,
+    //       error: error.message,
+    //     });
+    //   }
+    // }
 
     res.status(200).json({ results });
   } catch (error) {

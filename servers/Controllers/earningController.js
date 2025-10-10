@@ -3,7 +3,7 @@ import asyncHandler from "express-async-handler";
 import { AppError } from "../../servers/Utils/AppError.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import PaymentModel from "../Models/PaymentModel.js";
-import createMailOption from "../../servers/helpers/emailHelper.js";
+// import createMailOption from "../../servers/helpers/emailHelper.js";
 import axiosInstance from "../Utils/axiosInstance.js";
 import UserModel from "../../servers/Models/User.js";
 
@@ -282,37 +282,37 @@ export const processBulkPayouts = asyncHandler(async (req, res, next) => {
       }
 
       // Sends payout confirmation email if required
-      if (shouldSendEmail) {
-        const mailOption = createMailOption({
-          to: user.email,
-          subject: "Payout Processed Successfully",
-          name: user.name || "User",
-          email: user.email,
-          message: `We have processed a payout of ₹${amount} to your account. Payout ID: ${payoutResponse.data.id}.`,
-          hasButton: false,
-        });
-        try {
-          await sendEmailWithRetries(mailOption, userId);
-          await recordActivity({
-            userId: req.user?._id.toString(),
-            action: "EMAIL_SENT",
-            message: `Payout email sent to ${user.email} for payout ${payoutResponse.data.id}`,
-          });
-        } catch (error) {
-          emailFailures.push({
-            userId,
-            email: user.email,
-            payoutId: payoutResponse.data.id,
-            error: error.message,
-            attempts: error.attempts || 3,
-          });
-          await recordActivity({
-            userId: req.user?._id.toString(),
-            action: "EMAIL_FAILED",
-            message: `Failed to send payout email to ${user.email}: ${error.message}`,
-          });
-        }
-      }
+      // if (shouldSendEmail) {
+      //   const mailOption = createMailOption({
+      //     to: user.email,
+      //     subject: "Payout Processed Successfully",
+      //     name: user.name || "User",
+      //     email: user.email,
+      //     message: `We have processed a payout of ₹${amount} to your account. Payout ID: ${payoutResponse.data.id}.`,
+      //     hasButton: false,
+      //   });
+      //   try {
+      //     await sendEmailWithRetries(mailOption, userId);
+      //     await recordActivity({
+      //       userId: req.user?._id.toString(),
+      //       action: "EMAIL_SENT",
+      //       message: `Payout email sent to ${user.email} for payout ${payoutResponse.data.id}`,
+      //     });
+      //   } catch (error) {
+      //     emailFailures.push({
+      //       userId,
+      //       email: user.email,
+      //       payoutId: payoutResponse.data.id,
+      //       error: error.message,
+      //       attempts: error.attempts || 3,
+      //     });
+      //     await recordActivity({
+      //       userId: req.user?._id.toString(),
+      //       action: "EMAIL_FAILED",
+      //       message: `Failed to send payout email to ${user.email}: ${error.message}`,
+      //     });
+      //   }
+      // }
 
       // Logs payout creation activity
       await recordActivity({
@@ -387,37 +387,37 @@ export const recordSubscriptionPayment = asyncHandler(async (req, res, next) => 
     await payment.save();
 
     // Sends confirmation email if required
-    if (sendEmail === "true" || isAutoEmailDate()) {
-      const mailOption = createMailOption({
-        to: user.email,
-        subject: "Subscription Payment Confirmation",
-        name: user.name || "User",
-        email: user.email,
-        message: `Your subscription payment of ₹${amount} has been successfully recorded.\nOrder ID: ${orderId}\nPayment ID: ${paymentId}\nThank you for your payment!`,
-        hasButton: false,
-      });
+    // if (sendEmail === "true" || isAutoEmailDate()) {
+    //   const mailOption = createMailOption({
+    //     to: user.email,
+    //     subject: "Subscription Payment Confirmation",
+    //     name: user.name || "User",
+    //     email: user.email,
+    //     message: `Your subscription payment of ₹${amount} has been successfully recorded.\nOrder ID: ${orderId}\nPayment ID: ${paymentId}\nThank you for your payment!`,
+    //     hasButton: false,
+    //   });
 
-      const emailResult = await sendEmailWithRetries(mailOption, userId);
-      await PaymentModel.findByIdAndUpdate(payment._id, {
-        emailAttempts: emailResult.attempts,
-        emailStatus: emailResult.success ? "sent" : "failed",
-        emailLastError: emailResult.success ? null : emailResult.lastError,
-      });
+    //   const emailResult = await sendEmailWithRetries(mailOption, userId);
+    //   await PaymentModel.findByIdAndUpdate(payment._id, {
+    //     emailAttempts: emailResult.attempts,
+    //     emailStatus: emailResult.success ? "sent" : "failed",
+    //     emailLastError: emailResult.success ? null : emailResult.lastError,
+    //   });
 
-      if (!emailResult.success) {
-        return res.status(200).json({
-          message: "Subscription payment recorded, but email failed to send after 3 attempts",
-          payment,
-          emailError: {
-            userId,
-            email: user.email,
-            paymentId,
-            error: emailResult.lastError,
-            attempts: emailResult.attempts,
-          },
-        });
-      }
-    }
+    //   if (!emailResult.success) {
+    //     return res.status(200).json({
+    //       message: "Subscription payment recorded, but email failed to send after 3 attempts",
+    //       payment,
+    //       emailError: {
+    //         userId,
+    //         email: user.email,
+    //         paymentId,
+    //         error: emailResult.lastError,
+    //         attempts: emailResult.attempts,
+    //       },
+    //     });
+    //   }
+    // }
 
     // Logs payment activity
     await recordActivity({
@@ -480,37 +480,37 @@ export const recordAdsPayment = asyncHandler(async (req, res, next) => {
     await payment.save();
 
     // Sends confirmation email if required
-    if (sendEmail === "true" || isAutoEmailDate()) {
-      const mailOption = createMailOption({
-        to: user.email,
-        subject: "Ads Payment Confirmation",
-        name: user.name || "User",
-        email: user.email,
-        message: `Your ads payment of ₹${amount} has been successfully recorded.\nOrder ID: ${orderId}\nPayment ID: ${paymentId}\nThank you for your payment!`,
-        hasButton: false,
-      });
+    // if (sendEmail === "true" || isAutoEmailDate()) {
+    //   const mailOption = createMailOption({
+    //     to: user.email,
+    //     subject: "Ads Payment Confirmation",
+    //     name: user.name || "User",
+    //     email: user.email,
+    //     message: `Your ads payment of ₹${amount} has been successfully recorded.\nOrder ID: ${orderId}\nPayment ID: ${paymentId}\nThank you for your payment!`,
+    //     hasButton: false,
+    //   });
 
-      const emailResult = await sendEmailWithRetries(mailOption, userId);
-      await PaymentModel.findByIdAndUpdate(payment._id, {
-        emailAttempts: emailResult.attempts,
-        emailStatus: emailResult.success ? "sent" : "failed",
-        emailLastError: emailResult.success ? null : emailResult.lastError,
-      });
+    //   const emailResult = await sendEmailWithRetries(mailOption, userId);
+    //   await PaymentModel.findByIdAndUpdate(payment._id, {
+    //     emailAttempts: emailResult.attempts,
+    //     emailStatus: emailResult.success ? "sent" : "failed",
+    //     emailLastError: emailResult.success ? null : emailResult.lastError,
+    //   });
 
-      if (!emailResult.success) {
-        return res.status(200).json({
-          message: "Ads payment recorded, but email failed to send after 3 attempts",
-          payment,
-          emailError: {
-            userId,
-            email: user.email,
-            paymentId,
-            error: emailResult.lastError,
-            attempts: emailResult.attempts,
-          },
-        });
-      }
-    }
+    //   if (!emailResult.success) {
+    //     return res.status(200).json({
+    //       message: "Ads payment recorded, but email failed to send after 3 attempts",
+    //       payment,
+    //       emailError: {
+    //         userId,
+    //         email: user.email,
+    //         paymentId,
+    //         error: emailResult.lastError,
+    //         attempts: emailResult.attempts,
+    //       },
+    //     });
+    //   }
+    // }
 
     // Logs payment activity
     await recordActivity({
