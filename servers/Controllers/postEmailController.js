@@ -25,25 +25,25 @@ if (fs.existsSync(envPath)) {
 }
 
 // Fetch environment variables
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const SENDER_EMAIL = process.env.SENDER_EMAIL;
+// const RESEND_API_KEY = process.env.RESEND_API_KEY;
+// const SENDER_EMAIL = process.env.SENDER_EMAIL;
 
-// Debug logging
-console.log(
-  "RESEND_API_KEY in email.js:",
-  RESEND_API_KEY ? "✅ Loaded" : "❌ Missing"
-);
-console.log(
-  "SENDER_EMAIL in email.js:",
-  SENDER_EMAIL ? "✅ Loaded" : "❌ Missing"
-);
+// // Debug logging
+// console.log(
+//   "RESEND_API_KEY in email.js:",
+//   RESEND_API_KEY ? "✅ Loaded" : "❌ Missing"
+// );
+// console.log(
+//   "SENDER_EMAIL in email.js:",
+//   SENDER_EMAIL ? "✅ Loaded" : "❌ Missing"
+// );
 
 // Validate environment variables
-if (!RESEND_API_KEY) {
-  console.warn(
-    "⚠️ RESEND_API_KEY is missing - email functionality will be disabled"
-  );
-}
+// if (!RESEND_API_KEY) {
+//   console.warn(
+//     "⚠️ RESEND_API_KEY is missing - email functionality will be disabled"
+//   );
+// }
 if (!SENDER_EMAIL) {
   console.warn(
     "⚠️ SENDER_EMAIL is missing - email functionality will be disabled"
@@ -74,25 +74,25 @@ export const sendDailyPostEmail = async (req, res, next) => {
   });
 
   try {
-    if (!RESEND_API_KEY || !SENDER_EMAIL) {
-      logWithContext(
-        "DailyEmail",
-        "Email functionality disabled due to missing configuration"
-      );
-      return res.status(503).json({
-        success: false,
-        message:
-          "Email functionality is disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
-        results: {
-          total: 0,
-          successful: 0,
-          failed: 0,
-          successRate: "0%",
-        },
-        postCount: 0,
-        processTime: Date.now() - startTime,
-      });
-    }
+    // if (!RESEND_API_KEY || !SENDER_EMAIL) {
+    //   logWithContext(
+    //     "DailyEmail",
+    //     "Email functionality disabled due to missing configuration"
+    //   );
+    //   return res.status(503).json({
+    //     success: false,
+    //     message:
+    //       "Email functionality is disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
+    //     results: {
+    //       total: 0,
+    //       successful: 0,
+    //       failed: 0,
+    //       successRate: "0%",
+    //     },
+    //     postCount: 0,
+    //     processTime: Date.now() - startTime,
+    //   });
+    // }
 
     const users = await UserModel.find({
       isAccountVerified: true,
@@ -266,18 +266,18 @@ export const testSingleEmail = async (req, res) => {
       .status(400)
       .json({ success: false, message: "Email is required" });
 
-  if (!RESEND_API_KEY || !SENDER_EMAIL) {
-    logWithContext(
-      "TestEmail",
-      "Email functionality disabled due to missing configuration"
-    );
-    return res.status(503).json({
-      success: false,
-      message:
-        "Email functionality is disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
-      email,
-    });
-  }
+  // if (!RESEND_API_KEY || !SENDER_EMAIL) {
+  //   logWithContext(
+  //     "TestEmail",
+  //     "Email functionality disabled due to missing configuration"
+  //   );
+  //   return res.status(503).json({
+  //     success: false,
+  //     message:
+  //       "Email functionality is disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
+  //     email,
+  //   });
+  // }
 
   try {
     const mailOption = await createMailOption({
