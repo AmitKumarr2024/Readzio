@@ -95,7 +95,7 @@ const SignupPage = () => {
   };
 
   return (
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+    <GoogleOAuthProvider clientId="854734042661-trj508ltvsvvanllt2hn307r13scbbgd.apps.googleusercontent.com">
       {/* Main layout with gradient background */}
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-900 to-purple-900">
         <div className="max-w-4xl w-full bg-white rounded-xl shadow-2xl flex flex-col md:flex-row overflow-hidden">

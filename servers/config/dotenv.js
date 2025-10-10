@@ -75,7 +75,7 @@ const requiredEnv = [
   "MONGO_URI",
   "JWT_SECRET",
   "CLIENT_URL",
-  "RESEND_API_KEY",
+  // "RESEND_API_KEY",
   // "SENDER_EMAIL",
 ];
 
