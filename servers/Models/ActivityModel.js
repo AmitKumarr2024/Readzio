@@ -104,7 +104,7 @@ const activitySchema = new mongoose.Schema(
         "EMAIL_FAILED",
         "EMAIL_SKIPPED",
         "EMAIL_FAILED_ALL_ATTEMPTS",
-        "SENDER_EMAIL",
+        // "SENDER_EMAIL",
         "EMAIL_SKIPPED",
         "APPROVED_EMAILS",
         "GENERATED_PENDING_EMAILS",
