@@ -1,5 +1,5 @@
 import EmailLog from "../../servers/Models/EmailLog.js";
-import { sendEmail } from "../../servers/config/sendEmail.js";
+// import { sendEmail } from "../../servers/config/sendEmail.js";
 import { AppError } from "../Utils/AppError.js";
 
 export async function sendEmailWithRetries(
@@ -33,7 +33,7 @@ export async function sendEmailWithRetries(
     try {
       console.log(`📨 [Email] Attempt ${attempt}/${maxAttempts} → ${email}`);
 
-      const info = await sendEmail(mailOptions);
+      const info = "await sendEmail(mailOptions)";
       console.log("Resend response:", info);
 
       await EmailLog.create({
