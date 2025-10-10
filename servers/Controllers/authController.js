@@ -4,11 +4,11 @@ import { OAuth2Client } from "google-auth-library";
 import {
   AUTO_EMAIL_DATE,
   GOOGLE_CLIENT_ID,
-  SENDER_EMAIL,
+  // SENDER_EMAIL,
 } from "../config/dotenv.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
-import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js"; // Resend-based import
+// import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js"; // Resend-based import
 import { generateToken } from "../Utils/generateToken.js";
 import UserLocation from "../Models/UserLocation.js";
 import UserModel from "../../servers/Models/User.js";

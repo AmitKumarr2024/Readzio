@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 import validator from "validator";
 import ContactMessage from "../../servers/Models/ContactMessage.js";
 import createMailOption from "../../servers/helpers/emailHelper.js";
-import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
+// import { sendEmailWithRetries } from "../../servers/helpers/sendEmailWithRetries.js";
 import ReportedPostModel from "../../servers/Models/ReportedPost.js";
 
 // Creates a new contact message
