@@ -17,7 +17,6 @@ import {
 import connectDb from "./config/mongodb.js";
 import initializeSocket from "./sockets/socket.js";
 import { startTempCleanup } from "./Utils/cleanupTemp.js";
-import { handleRazorpayWebhook } from "./Controllers/paymentController.js";
 import { logMemory } from "../servers/Utils/memoryLogger.js";
 
 // Routes
