@@ -82,4 +82,5 @@ requiredEnv.forEach((key) => {
 });
 
 dotenv.config();
-export const { SENDER_EMAIL, SMTP_USER, SMTP_PASS } = process.env;
+export const RESEND_API_KEY = process.env.RESEND_API_KEY;
+export const SENDER_EMAIL = process.env.SENDER_EMAIL;
