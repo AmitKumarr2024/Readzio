@@ -28,7 +28,6 @@ import CategoryRoutes from "./Routes/categoryRoutes.js";
 import BlockRoutes from "./Routes/blockRoutes.js";
 import FollowRoutes from "./Routes/userFollowRoutes.js";
 import NotificationRoutes from "./Routes/notificationRoutes.js";
-import RazorpayRoutes from "./Routes/paymentRoutes.js";
 import SubscriptionRoutes from "./Routes/subscriptionRoutes.js";
 import EarningRoutes from "./Routes/earningRoutes.js";
 import AchievementRoutes from "./Routes/AchievementRoutes.js";
@@ -168,7 +167,6 @@ const routeConfigs = [
     router: NotificationRoutes,
     name: "NotificationRoutes",
   },
-  { path: "/api/payment", router: RazorpayRoutes, name: "RazorpayRoutes" },
   {
     path: "/api/subscription",
     router: SubscriptionRoutes,
