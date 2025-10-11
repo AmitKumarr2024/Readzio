@@ -23,25 +23,17 @@ if (fs.existsSync(envPath)) {
 }
 
 // Fetch environment variables
-// const RESEND_API_KEY = process.env.RESEND_API_KEY;
 // const SENDER_EMAIL = process.env.SENDER_EMAIL;
 
 // // Debug logging
-// console.log(
-//   "RESEND_API_KEY in email.js:",
-//   RESEND_API_KEY ? "✅ Loaded" : "❌ Missing"
-// );
+
 // console.log(
 //   "SENDER_EMAIL in email.js:",
 //   SENDER_EMAIL ? "✅ Loaded" : "❌ Missing"
 // );
 
 // Validate environment variables
-// if (!RESEND_API_KEY) {
-//   console.warn(
-//     "⚠️ RESEND_API_KEY is missing - email functionality will be disabled"
-//   );
-// }
+
 // if (!SENDER_EMAIL) {
 //   console.warn(
 //     "⚠️ SENDER_EMAIL is missing - email functionality will be disabled"
@@ -72,25 +64,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
   });
 
   try {
-    // if (!RESEND_API_KEY || !SENDER_EMAIL) {
-    //   logWithContext(
-    //     "DailyEmail",
-    //     "Email functionality disabled due to missing configuration"
-    //   );
-    //   return res.status(503).json({
-    //     success: false,
-    //     message:
-    //       "Email functionality is disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
-    //     results: {
-    //       total: 0,
-    //       successful: 0,
-    //       failed: 0,
-    //       successRate: "0%",
-    //     },
-    //     postCount: 0,
-    //     processTime: Date.now() - startTime,
-    //   });
-    // }
+  
 
     const users = await UserModel.find({
       isAccountVerified: true,
@@ -145,23 +119,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
           50
         )}... | readzio Daily Digest`;
 
-        // const mailOption = await createMailOption({
-        //   to: user.email,
-        //   subject,
-        //   name: user.name || "Reader",
-        //   email: user.email,
-        //   hasButton: true,
-        //   buttonText: "Read Today's Posts",
-        //   buttonUrl: "https://readzio.com/explore",
-        //   posts,
-        // });
-
-        // const emailResult = await sendEmailWithRetries(
-        //   mailOption,
-        //   user._id,
-        //   "daily_digest",
-        //   3
-        // );
+        
 
         results.push({
           email: user.email,
@@ -264,32 +222,10 @@ export const testSingleEmail = async (req, res) => {
       .status(400)
       .json({ success: false, message: "Email is required" });
 
-  // if (!RESEND_API_KEY || !SENDER_EMAIL) {
-  //   logWithContext(
-  //     "TestEmail",
-  //     "Email functionality disabled due to missing configuration"
-  //   );
-  //   return res.status(503).json({
-  //     success: false,
-  //     message:
-  //       "Email functionality is disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
-  //     email,
-  //   });
-  // }
+  
 
   try {
-    // const mailOption = await createMailOption({
-    //   to: email,
-    //   subject: "🧪 Test Email from readzio",
-    //   name: "Test User",
-    //   message: "This is a test email to verify the system is working.",
-    //   hasButton: true,
-    //   buttonText: "Visit readzio",
-    //   buttonUrl: "https://readzio.com",
-    // });
-
-    // const emailResult = await sendEmailWithRetries(mailOption, null, "test", 3);
-    // console.log("Resend response:", emailResult);
+    
 
     await EmailLog.create({
       userId: null,
@@ -346,33 +282,10 @@ export const sendDirectEmail = async (req, res) => {
       .status(400)
       .json({ success: false, message: "Email is required" });
 
-  // if (!RESEND_API_KEY || !SENDER_EMAIL) {
-  //   logWithContext(
-  //     "DirectEmail",
-  //     "Email functionality disabled due to missing configuration"
-  //   );
-  //   return res.status(503).json({
-  //     success: false,
-  //     message:
-  //       "Email functionality is disabled - check RESEND_API_KEY and SENDER_EMAIL configuration",
-  //     email,
-  //   });
-  // }
+ 
 
   try {
-    // const mailOption = await createMailOption({
-    //   to: email,
-    //   subject: "Message from readzio",
-    //   message: "Hello world",
-    // });
-
-    // const emailResult = await sendEmailWithRetries(
-    //   mailOption,
-    //   null,
-    //   "direct",
-    //   3
-    // );
-    // console.log("Resend response:", emailResult);
+    
 
     await EmailLog.create({
       userId: null,

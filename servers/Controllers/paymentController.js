@@ -1054,18 +1054,7 @@ export const handleRazorpayWebhook = asyncHandler(async (req, res, next) => {
           const invoiceId =
             "INV-" + updatedPayment._id.toString().slice(-6).toUpperCase();
 
-          // 📧 Generate email options using existing utility
-          // const emailOptions = createMailOption({
-          //   to: user.email,
-          //   subject: "Your readzio Invoice Receipt",
-          //   name: user.name,
-          //   message: `Thank you for your payment. Here are your invoice details:\n\nInvoice ID: ${invoiceId}\nOrder ID: ${
-          //     updatedPayment.orderId
-          //   }\nAmount: ₹${(updatedPayment.amount / 100).toFixed(2)}`,
-          // });
-
-          // // 📤 Send invoice email with retries
-          // await sendEmailWithRetries(emailOptions, user._id, "subscription");
+          
         }
         break;
       }

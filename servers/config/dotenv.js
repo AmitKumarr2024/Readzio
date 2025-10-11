@@ -46,7 +46,6 @@ export const RAZORPAY_API_URL =
 export const RAZORPAY_MODE = process.env.RAZORPAY_MODE || "test";
 
 // export const SENDER_EMAIL = process.env.SENDER_EMAIL;
-// export const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 export const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
@@ -59,7 +58,6 @@ export const USE_DUMMY_EMAIL = process.env.USE_DUMMY_EMAIL;
 // --- Debug logs ---
 console.log("Environment variables status:");
 const envVars = {
-  // RESEND_API_KEY: RESEND_API_KEY ? "✅ Loaded" : "❌ Missing",
   // SENDER_EMAIL: SENDER_EMAIL ? "✅ Loaded" : "❌ Missing",
   MONGO_URI: MONGO_URI ? "✅ Loaded" : "❌ Missing",
   JWT_SECRET: JWT_SECRET ? "✅ Loaded" : "❌ Missing",
@@ -75,7 +73,6 @@ const requiredEnv = [
   "MONGO_URI",
   "JWT_SECRET",
   "CLIENT_URL",
-  // "RESEND_API_KEY",
   // "SENDER_EMAIL",
 ];
 

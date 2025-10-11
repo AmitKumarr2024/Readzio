@@ -257,20 +257,7 @@ export const sendReportNotification = async (req, res, next) => {
         "Missing author email"
       );
 
-    // Prepares and sends notification email
-    // const mailOption = createMailOption({
-    //   to: report.post.author.email,
-    //   subject,
-    //   name: report.post.author.name || "User",
-    //   email: report.post.author.email,
-    //   message: finalMessage,
-    //   hasButton: true,
-    //   buttonText: "Acknowledge",
-    //   buttonUrl: `${CLIENT_URL}/acknowledge/${reportId}`,
-    // });
-
-    // await sendEmailWithRetries(mailOption, null, "report");
-
+  
     res
       .status(200)
       .json({ success: true, message: "Notification sent successfully" });
@@ -341,18 +328,7 @@ export const replyContactMessage = async (req, res, next) => {
         "Invalid email format"
       );
 
-    // Prepares and sends reply email
-    // const mailOption = createMailOption({
-    //   to: contactMessage.email,
-    //   subject,
-    //   name: contactMessage.name || "User",
-    //   email: contactMessage.email,
-    //   message,
-    //   hasButton: false,
-    // });
-
-    // await sendEmailWithRetries(mailOption, null, "contact_reply");
-
+    
     // Marks message as handled
     contactMessage.isHandled = true;
     await contactMessage.save();
