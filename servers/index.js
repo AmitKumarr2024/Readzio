@@ -35,7 +35,7 @@ import AdminRoutes from "./Routes/adminRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
-import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
+// import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 
 const app = express();
 app.set("trust proxy", true);

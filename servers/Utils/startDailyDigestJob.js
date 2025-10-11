@@ -1,6 +1,6 @@
 // Utils/startDailyDigestJob.js
 import cron from "node-cron";
-import { sendDailyPostEmail } from "../../servers/Controllers/postEmailController.js";
+// import { sendDailyPostEmail } from "../../servers/Controllers/postEmailController.js";
 
 export function startDailyDigestJob() {
   // ✅ Production cron - Runs every day at 8:00 AM IST
