@@ -19,11 +19,10 @@ if (fs.existsSync(envPath)) {
 }
 
 // --- Export all env vars (with fallbacks where needed) ---
-export const PORT = process.env.PORT ||  10002;
+export const PORT = process.env.PORT || 10002;
 export const MONGO_URI = process.env.MONGO_URI;
 export const JWT_SECRET = process.env.JWT_SECRET || "default-secret";
-export const CLIENT_URL =
-  process.env.CLIENT_URL || "https://readzio.com";
+export const CLIENT_URL = process.env.CLIENT_URL || "https://readzio.com";
 export const NODE_ENV = process.env.NODE_ENV || "development";
 
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -81,3 +80,6 @@ requiredEnv.forEach((key) => {
     console.warn(`[dotenv] Missing required env variable: ${key}`);
   }
 });
+
+dotenv.config();
+export const { SENDER_EMAIL, SMTP_USER, SMTP_PASS } = process.env;

@@ -12,6 +12,13 @@ import UserLocation from "../Models/UserLocation.js";
 import UserModel from "../../servers/Models/User.js";
 import mongoose from "mongoose";
 
+import { sendEmail } from "../services/emailService.js";
+import {
+  verificationOtpTemplate,
+  resetOtpTemplate,
+  welcomeTemplate,
+} from "../services/emailTemplates.js";
+
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 const log = process.env.NODE_ENV === "production" ? () => {} : console.log;
 
@@ -46,6 +53,39 @@ export const sendVerifyOtp = async (req, res, next) => {
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     user.verifyOtp = otp;
     user.verifyOtpExpireAt = Date.now() + 60 * 60 * 1000; // 1 hour
+
+    // reset email attempt metadata before sending
+    user.stopEmailAttempts = false;
+    user.emailStatus = "not_sent";
+    user.emailAttempts = 0;
+    await user.save();
+
+    // send email
+    const emailResult = await sendEmail({
+      to: user.email,
+      subject: "Verify your Readzio account",
+      html: verificationOtpTemplate(otp, user.name),
+    });
+
+    if (!emailResult.success) {
+      // update user email metadata
+      user.emailAttempts = (user.emailAttempts || 0) + 1;
+      user.emailStatus = "failed";
+      user.emailLastError = emailResult.error;
+      await user.save();
+
+      // respond with success of OTP creation but mention email issue or treat as error — here we'll return 201 but include warning
+      return res.status(201).json({
+        success: true,
+        message:
+          "Verification OTP generated and saved. Sending email failed, check emailLastError for details.",
+      });
+    }
+
+    // success
+    user.emailAttempts = (user.emailAttempts || 0) + 1;
+    user.emailStatus = "sent";
+    user.emailLastError = null;
     await user.save();
 
     res
@@ -188,8 +228,37 @@ export const sendResetOtp = async (req, res, next) => {
     log("Generated OTP:", otp);
     user.resetOtp = otp;
     user.resetOtpExpireAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    // reset email metadata
+    user.stopEmailAttempts = false;
+    user.emailStatus = "not_sent";
+    user.emailAttempts = 0;
     await user.save();
 
+    // send reset OTP email
+    const emailResult = await sendEmail({
+      to: user.email,
+      subject: "Reset your Readzio password",
+      html: resetOtpTemplate(otp, user.name),
+    });
+
+    if (!emailResult.success) {
+      user.emailAttempts = (user.emailAttempts || 0) + 1;
+      user.emailStatus = "failed";
+      user.emailLastError = emailResult.error;
+      await user.save();
+
+      return res.status(201).json({
+        success: true,
+        message:
+          "Password reset OTP generated and saved. Sending email failed, check emailLastError for details.",
+      });
+    }
+
+    // mark sent
+    user.emailAttempts = (user.emailAttempts || 0) + 1;
+    user.emailStatus = "sent";
+    user.emailLastError = null;
     await user.save();
 
     res.status(201).json({
@@ -330,7 +399,7 @@ export const resetPassword = async (req, res, next) => {
 
 // Handles user signup
 export const Signup = async (req, res, next) => {
-  const { fullName, email, password, sendEmail } = req.body;
+  const { fullName, email, password, sendEmail: sendEmailFlag } = req.body;
   const geoLocation = req.geoLocation;
 
   try {
@@ -406,14 +475,33 @@ export const Signup = async (req, res, next) => {
       { stopEmailAttempts: false, emailStatus: "not_sent", emailAttempts: 0 }
     );
 
-    try {
-      await newUser.save();
-    } catch (emailError) {
-      console.error("[Signup] Email error:", emailError.message);
-      newUser.emailAttempts = emailError.attempts || 3;
-      newUser.emailStatus = "failed";
-      newUser.emailLastError = emailError.message;
-      await newUser.save();
+    // Send welcome email optionally (based on request or default true)
+    if (sendEmailFlag !== false) {
+      try {
+        const emailResult = await sendEmail({
+          to: newUser.email,
+          subject: "Welcome to Readzio 🎉",
+          html: welcomeTemplate(newUser.name),
+        });
+
+        if (!emailResult.success) {
+          newUser.emailAttempts = (newUser.emailAttempts || 0) + 1;
+          newUser.emailStatus = "failed";
+          newUser.emailLastError = emailResult.error;
+          await newUser.save();
+        } else {
+          newUser.emailAttempts = (newUser.emailAttempts || 0) + 1;
+          newUser.emailStatus = "sent";
+          newUser.emailLastError = null;
+          await newUser.save();
+        }
+      } catch (emailError) {
+        console.error("[Signup] Email error:", emailError.message);
+        newUser.emailAttempts = emailError.attempts || 3;
+        newUser.emailStatus = "failed";
+        newUser.emailLastError = emailError.message;
+        await newUser.save();
+      }
     }
 
     await recordActivity({
@@ -584,7 +672,7 @@ export const checkAuth = async (req, res, next) => {
 
 // Handles Google login
 export const googleLogin = async (req, res, next) => {
-  const { token, sendEmail } = req.body;
+  const { token, sendEmail: sendEmailFlag } = req.body;
   const geoLocation = req.geoLocation;
 
   try {
@@ -675,16 +763,30 @@ export const googleLogin = async (req, res, next) => {
       { stopEmailAttempts: false, emailStatus: "not_sent", emailAttempts: 0 }
     );
 
-    // Send welcome email only for new users
-    if (isNewUser) {
+    // Send welcome email only for new users (if not explicitly disabled)
+    if (isNewUser && sendEmailFlag !== false) {
       log("[GoogleLogin] Preparing welcome email for:", email);
-     
 
       try {
-        log("[GoogleLogin] Sending welcome email");
-        
-        await user.save();
-        log("[GoogleLogin] Welcome email sent to:", email);
+        const emailResult = await sendEmail({
+          to: email,
+          subject: "Welcome to Readzio 🎉",
+          html: welcomeTemplate(name),
+        });
+
+        if (!emailResult.success) {
+          log("[GoogleLogin] Email sending failed:", emailResult.error);
+          user.emailAttempts = (user.emailAttempts || 0) + 1;
+          user.emailStatus = "failed";
+          user.emailLastError = emailResult.error;
+          await user.save();
+        } else {
+          user.emailAttempts = (user.emailAttempts || 0) + 1;
+          user.emailStatus = "sent";
+          user.emailLastError = null;
+          await user.save();
+          log("[GoogleLogin] Welcome email sent to:", email);
+        }
       } catch (emailError) {
         log("[GoogleLogin] Email sending failed:", emailError.message);
         user.emailAttempts = emailError.attempts || 3;
@@ -848,20 +950,38 @@ export const testWelcomeEmail = async (req, res, next) => {
         "User does not exist"
       );
     }
+
+    // reset email attempts metadata
     await UserModel.updateOne(
       { _id: userId },
       { stopEmailAttempts: false, emailStatus: "not_sent", emailAttempts: 0 }
     );
-    
+
+    // send welcome email
+    const emailResult = await sendEmail({
+      to: email,
+      subject: "Welcome to Readzio 🎉",
+      html: welcomeTemplate(user.name),
+    });
+
+    // update DB based on send result
     await UserModel.updateOne(
       { _id: userId },
       {
-        emailAttempts: emailResult.attempts,
-        emailStatus: "sent",
-        emailLastError: null,
+        emailAttempts:
+          (user.emailAttempts || 0) + (emailResult.success ? 1 : 1),
+        emailStatus: emailResult.success ? "sent" : "failed",
+        emailLastError: emailResult.success ? null : emailResult.error,
       }
     );
-    res.status(200).json({ success: true, message: "Test welcome email sent" });
+
+    res.status(200).json({
+      success: emailResult.success,
+      message: emailResult.success
+        ? "Test welcome email sent"
+        : "Test welcome email failed to send",
+      error: emailResult.success ? null : emailResult.error,
+    });
   } catch (error) {
     console.error("[TestWelcomeEmail] Error:", error.message);
     next(
