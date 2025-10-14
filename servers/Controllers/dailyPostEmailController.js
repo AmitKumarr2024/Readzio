@@ -55,6 +55,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
           subject: "Your Daily Readzio Digest",
           html,
           text: `Hi ${user.name}, check out the latest posts on Readzio.`,
+          type: "daily_digest",
         });
 
         user.emailAttempts = (user.emailAttempts || 0) + 1;

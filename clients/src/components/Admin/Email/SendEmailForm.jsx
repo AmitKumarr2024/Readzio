@@ -1,39 +1,38 @@
-/ components/SendEmailForm.jsx
-import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   sendVerificationEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
   sendInvoiceEmail,
   clearError,
-} from '../store/slices/emailSlice';
+} from "../../../store/adminSlice";
 
 const SendEmailForm = () => {
   const dispatch = useDispatch();
-  const { sendingEmail, error } = useSelector((state) => state.email);
+  const { sendingEmail, error } = useSelector((state) => state.admin);
 
   const [formData, setFormData] = useState({
-    type: 'verification',
-    email: '',
-    name: '',
+    type: "verification",
+    email: "",
+    name: "",
     invoiceData: {
-      invoiceId: '',
-      orderId: '',
-      paymentId: '',
-      amount: '',
-      currency: 'INR',
-      date: new Date().toISOString().split('T')[0],
+      invoiceId: "",
+      orderId: "",
+      paymentId: "",
+      amount: "",
+      currency: "INR",
+      date: new Date().toISOString().split("T")[0],
     },
   });
 
-  const [success, setSuccess] = useState('');
+  const [success, setSuccess] = useState("");
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    if (name.startsWith('invoice.')) {
-      const field = name.split('.')[1];
-      setFormData(prev => ({
+    if (name.startsWith("invoice.")) {
+      const field = name.split(".")[1];
+      setFormData((prev) => ({
         ...prev,
         invoiceData: {
           ...prev.invoiceData,
@@ -41,13 +40,13 @@ const SendEmailForm = () => {
         },
       }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSuccess('');
+    setSuccess("");
     dispatch(clearError());
 
     try {
@@ -55,36 +54,40 @@ const SendEmailForm = () => {
       const { email, name, type, invoiceData } = formData;
 
       switch (type) {
-        case 'verification':
-          result = await dispatch(sendVerificationEmail({ email, name })).unwrap();
+        case "verification":
+          result = await dispatch(
+            sendVerificationEmail({ email, name })
+          ).unwrap();
           break;
-        case 'welcome':
+        case "welcome":
           result = await dispatch(sendWelcomeEmail({ email, name })).unwrap();
           break;
-        case 'reset_password':
+        case "reset_password":
           result = await dispatch(sendPasswordResetEmail({ email })).unwrap();
           break;
-        case 'invoice':
-          result = await dispatch(sendInvoiceEmail({ email, name, invoiceData })).unwrap();
+        case "invoice":
+          result = await dispatch(
+            sendInvoiceEmail({ email, name, invoiceData })
+          ).unwrap();
           break;
         default:
-          throw new Error('Invalid email type');
+          throw new Error("Invalid email type");
       }
 
-      setSuccess('Email sent successfully!');
-      
+      setSuccess("Email sent successfully!");
+
       // Reset form
       setFormData({
-        type: 'verification',
-        email: '',
-        name: '',
+        type: "verification",
+        email: "",
+        name: "",
         invoiceData: {
-          invoiceId: '',
-          orderId: '',
-          paymentId: '',
-          amount: '',
-          currency: 'INR',
-          date: new Date().toISOString().split('T')[0],
+          invoiceId: "",
+          orderId: "",
+          paymentId: "",
+          amount: "",
+          currency: "INR",
+          date: new Date().toISOString().split("T")[0],
         },
       });
     } catch (err) {
@@ -156,7 +159,7 @@ const SendEmailForm = () => {
           </div>
 
           {/* Name (not required for password reset) */}
-          {formData.type !== 'reset_password' && (
+          {formData.type !== "reset_password" && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Recipient Name
@@ -174,10 +177,12 @@ const SendEmailForm = () => {
           )}
 
           {/* Invoice Fields */}
-          {formData.type === 'invoice' && (
+          {formData.type === "invoice" && (
             <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-900">Invoice Details</h3>
-              
+              <h3 className="text-lg font-medium text-gray-900">
+                Invoice Details
+              </h3>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -286,7 +291,7 @@ const SendEmailForm = () => {
                   Sending...
                 </div>
               ) : (
-                'Send Email'
+                "Send Email"
               )}
             </button>
           </div>

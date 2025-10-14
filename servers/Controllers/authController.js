@@ -65,6 +65,7 @@ export const sendVerifyOtp = async (req, res, next) => {
       to: user.email,
       subject: "Verify your Readzio account",
       html: verificationOtpTemplate(otp, user.name),
+      type: "verification",
     });
 
     if (!emailResult.success) {
@@ -240,6 +241,7 @@ export const sendResetOtp = async (req, res, next) => {
       to: user.email,
       subject: "Reset your Readzio password",
       html: resetOtpTemplate(otp, user.name),
+      type: "reset",
     });
 
     if (!emailResult.success) {
@@ -482,6 +484,7 @@ export const Signup = async (req, res, next) => {
           to: newUser.email,
           subject: "Welcome to Readzio 🎉",
           html: welcomeTemplate(newUser.name),
+          type: "welcome",
         });
 
         if (!emailResult.success) {
@@ -772,6 +775,7 @@ export const googleLogin = async (req, res, next) => {
           to: email,
           subject: "Welcome to Readzio 🎉",
           html: welcomeTemplate(name),
+          type: "welcome",
         });
 
         if (!emailResult.success) {
