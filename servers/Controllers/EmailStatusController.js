@@ -1,6 +1,7 @@
 import EmailLog from "../Models/EmailLog.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import validator from "validator";
+import { sendEmail } from "../../servers/services/emailService.js";
 
 const VALID_EMAIL_TYPES = [
   "signup",
@@ -134,3 +135,4 @@ export const retryFailedEmails = async (req, res, next) => {
     );
   }
 };
+
