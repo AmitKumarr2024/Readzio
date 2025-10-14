@@ -1389,7 +1389,7 @@ export const getAllEmailStatuses = createAsyncThunk(
       });
       if (status) queryParams.append("status", status);
       const response = await axiosInstance.get(
-        `/dailyMail/email-statuses?${queryParams.toString()}`,
+        `/admin/all-email-statuses?${queryParams.toString()}`,
         { withCredentials: true }
       );
       return {
@@ -1418,9 +1418,7 @@ export const checkEmailStatus = createAsyncThunk(
   async ({ email, type = "dailyEmail" }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.get(
-        `/dailyMail/email-status?email=${encodeURIComponent(
-          email
-        )}&type=${type}`,
+        `/admin/email-status?email=${encodeURIComponent(email)}&type=${type}`,
         { withCredentials: true }
       );
       return response.data;
@@ -1444,7 +1442,7 @@ export const retryFailedEmails = createAsyncThunk(
   async ({ emails, type = "dailyEmail" }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.post(
-        "/dailyMail/retry-failed",
+        "/admin/retry-failed-emails",
         { emails, type },
         { withCredentials: true }
       );

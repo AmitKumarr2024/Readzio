@@ -47,7 +47,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
           hasButton: true,
           buttonText: "Visit Readzio",
           buttonUrl: "https://readzio.com",
-          supportEmail: "support@readzio.com",
+          supportEmail: "readzio.official@gmail.com",
         });
 
         const result = await sendEmail({
@@ -154,7 +154,7 @@ export const retryFailedEmails = async (req, res, next) => {
           hasButton: true,
           buttonText: "Visit Readzio",
           buttonUrl: "https://readzio.com",
-          supportEmail: "support@readzio.com",
+          supportEmail: "readzio.official@gmail.com",
         });
 
         const result = await sendEmail({
@@ -209,7 +209,7 @@ export const sendDirectEmail = async (req, res, next) => {
       hasButton: true,
       buttonText: "Visit Readzio",
       buttonUrl: "https://readzio.com",
-      supportEmail: "support@readzio.com",
+      supportEmail: "readzio.official@gmail.com",
     });
 
     const result = await sendEmail({
