@@ -102,6 +102,7 @@ app.use(
 const allowedOrigins = [
   "http://localhost:5173", // your dev frontend
   "https://readzio.com", // production frontend
+  "https://www.readzio.com",
 ];
 
 app.use(
