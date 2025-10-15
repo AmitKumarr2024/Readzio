@@ -16,6 +16,106 @@ const retryRequest = async (fn, retries = 2, delay = 1000) => {
   }
 };
 
+// ============== NEW EMAIL SENDING ACTIONS ==============
+
+// Send verification email
+export const sendVerificationEmail = createAsyncThunk(
+  "admin/sendVerificationEmail",
+  async ({ email, name }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        "/admin/send-verification-email",
+        { email, name },
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("[sendVerificationEmail] Error:", {
+        message: error.response?.data?.message || error.message,
+        email,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to send verification email"
+      );
+    }
+  }
+);
+
+// Send welcome email
+export const sendWelcomeEmail = createAsyncThunk(
+  "admin/sendWelcomeEmail",
+  async ({ email, name }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        "/admin/send-welcome-email",
+        { email, name },
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("[sendWelcomeEmail] Error:", {
+        message: error.response?.data?.message || error.message,
+        email,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to send welcome email"
+      );
+    }
+  }
+);
+
+// Send password reset email
+export const sendPasswordResetEmail = createAsyncThunk(
+  "admin/sendPasswordResetEmail",
+  async ({ email }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        "/admin/send-reset-password-email",
+        { email },
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("[sendPasswordResetEmail] Error:", {
+        message: error.response?.data?.message || error.message,
+        email,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to send password reset email"
+      );
+    }
+  }
+);
+
+// Send invoice email
+export const sendInvoiceEmail = createAsyncThunk(
+  "admin/sendInvoiceEmail",
+  async ({ email, name, invoiceData }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        "/admin/send-invoice-email",
+        { email, name, invoiceData },
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("[sendInvoiceEmail] Error:", {
+        message: error.response?.data?.message || error.message,
+        email,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to send invoice email"
+      );
+    }
+  }
+);
+
+// ============== EXISTING ACTIONS ==============
+
 // Fetch all users
 export const getAllUsers = createAsyncThunk(
   "admin/getAllUsers",
@@ -1412,6 +1512,7 @@ export const getAllEmailStatuses = createAsyncThunk(
     }
   }
 );
+
 // Check email status
 export const checkEmailStatus = createAsyncThunk(
   "admin/checkEmailStatus",
@@ -1553,6 +1654,8 @@ const adminSlice = createSlice({
     emailTestResult: null,
     batchEligibilityResults: null,
     emailReportStats: null,
+    // EMAIL SENDING STATE
+    sendingEmail: false,
     // EXISTING STATE
     loading: false,
     error: null,
@@ -1624,9 +1727,6 @@ const adminSlice = createSlice({
     setNotificationStatus: (state, action) => {
       state.notificationStatus = action.payload;
     },
-    setEmailError: (state, action) => {
-      state.emailError = action.payload;
-    },
     updatePostBlockStatus: (state, action) => {
       const { postId, blocked } = action.payload;
       const index = state.posts.findIndex((post) => post._id === postId);
@@ -1659,6 +1759,56 @@ const adminSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // ============== EMAIL SENDING REDUCERS ==============
+      .addCase(sendVerificationEmail.pending, (state) => {
+        state.sendingEmail = true;
+        state.error = null;
+      })
+      .addCase(sendVerificationEmail.fulfilled, (state) => {
+        state.sendingEmail = false;
+        state.notificationStatus = "Verification email sent successfully";
+      })
+      .addCase(sendVerificationEmail.rejected, (state, action) => {
+        state.sendingEmail = false;
+        state.error = action.payload;
+      })
+      .addCase(sendWelcomeEmail.pending, (state) => {
+        state.sendingEmail = true;
+        state.error = null;
+      })
+      .addCase(sendWelcomeEmail.fulfilled, (state) => {
+        state.sendingEmail = false;
+        state.notificationStatus = "Welcome email sent successfully";
+      })
+      .addCase(sendWelcomeEmail.rejected, (state, action) => {
+        state.sendingEmail = false;
+        state.error = action.payload;
+      })
+      .addCase(sendPasswordResetEmail.pending, (state) => {
+        state.sendingEmail = true;
+        state.error = null;
+      })
+      .addCase(sendPasswordResetEmail.fulfilled, (state) => {
+        state.sendingEmail = false;
+        state.notificationStatus = "Password reset email sent successfully";
+      })
+      .addCase(sendPasswordResetEmail.rejected, (state, action) => {
+        state.sendingEmail = false;
+        state.error = action.payload;
+      })
+      .addCase(sendInvoiceEmail.pending, (state) => {
+        state.sendingEmail = true;
+        state.error = null;
+      })
+      .addCase(sendInvoiceEmail.fulfilled, (state) => {
+        state.sendingEmail = false;
+        state.notificationStatus = "Invoice email sent successfully";
+      })
+      .addCase(sendInvoiceEmail.rejected, (state, action) => {
+        state.sendingEmail = false;
+        state.error = action.payload;
+      })
+      // ============== EXISTING REDUCERS ==============
       // getAllUsers
       .addCase(getAllUsers.pending, (state) => {
         state.loading = true;
@@ -1996,7 +2146,7 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-
+      // sendEnhancedDailyPostEmail
       .addCase(sendEnhancedDailyPostEmail.pending, (state) => {
         state.emailLoading = true;
         state.emailError = null;
@@ -2012,7 +2162,6 @@ const adminSlice = createSlice({
         state.emailLoading = false;
         state.emailError = action.payload;
       })
-
       // checkUserEmailEligibility
       .addCase(checkUserEmailEligibility.pending, (state) => {
         state.emailLoading = true;
@@ -2026,7 +2175,6 @@ const adminSlice = createSlice({
         state.emailLoading = false;
         state.emailError = action.payload;
       })
-
       // getBounceStatistics
       .addCase(getBounceStatistics.pending, (state) => {
         state.emailLoading = true;
@@ -2040,7 +2188,6 @@ const adminSlice = createSlice({
         state.emailLoading = false;
         state.emailError = action.payload;
       })
-
       // removeEmailSuppression
       .addCase(removeEmailSuppression.pending, (state) => {
         state.emailLoading = true;
@@ -2057,7 +2204,6 @@ const adminSlice = createSlice({
         state.emailLoading = false;
         state.emailError = action.payload;
       })
-
       // testSingleEmail
       .addCase(testSingleEmail.pending, (state) => {
         state.emailLoading = true;
@@ -2072,7 +2218,6 @@ const adminSlice = createSlice({
         state.emailLoading = false;
         state.emailError = action.payload;
       })
-
       // getEmailSystemHealth
       .addCase(getEmailSystemHealth.pending, (state) => {
         state.emailLoading = true;
@@ -2086,7 +2231,6 @@ const adminSlice = createSlice({
         state.emailLoading = false;
         state.emailError = action.payload;
       })
-
       // batchCheckEmailEligibility
       .addCase(batchCheckEmailEligibility.pending, (state) => {
         state.emailLoading = true;
@@ -2114,7 +2258,6 @@ const adminSlice = createSlice({
         state.totalEmailReports = action.payload.totalEmails;
         state.currentPageEmailReports = action.payload.currentPage;
         state.totalPagesEmailReports = action.payload.totalPages;
-        // Store additional enhanced data
         state.emailReportStats = action.payload.stats;
         state.emailDailyStats = action.payload.dailyStats;
       })
@@ -2136,7 +2279,6 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-
       // fetchActiveNotificationsForUser
       .addCase(fetchActiveNotificationsForUser.pending, (state) => {
         state.loadingUserNotifications = true;
@@ -2152,7 +2294,6 @@ const adminSlice = createSlice({
         state.loadingUserNotifications = false;
         state.error = action.payload;
       })
-
       // createBannerNotification
       .addCase(createBannerNotification.pending, (state) => {
         state.creating = true;
@@ -2171,7 +2312,6 @@ const adminSlice = createSlice({
         state.creating = false;
         state.error = action.payload;
       })
-
       // dismissBannerNotification
       .addCase(dismissBannerNotification.pending, (state) => {
         state.dismissing = true;
@@ -2180,24 +2320,18 @@ const adminSlice = createSlice({
       .addCase(dismissBannerNotification.fulfilled, (state, action) => {
         state.dismissing = false;
         const { id, alreadyDismissed } = action.payload;
-
-        // Remove from both lists regardless of whether it was already dismissed
         state.bannerNotifications = state.bannerNotifications.filter(
           (notification) => notification._id !== id
         );
-
         if (state.activeUserNotifications) {
           state.activeUserNotifications = state.activeUserNotifications.filter(
             (notification) => notification._id !== id
           );
         }
-
-        // Add to dismissed set for tracking
         if (!state.dismissedNotifications) {
           state.dismissedNotifications = new Set();
         }
         state.dismissedNotifications.add(id);
-
         state.notificationStatus = alreadyDismissed
           ? "Notification was already dismissed"
           : "Notification dismissed successfully";
@@ -2207,11 +2341,9 @@ const adminSlice = createSlice({
         state.dismissing = false;
         state.error = action.payload;
       })
-
       // checkDismissedNotification
       .addCase(checkDismissedNotification.fulfilled, (state, action) => {
         const { notificationId, dismissed } = action.payload;
-
         if (!state.dismissalStatus) {
           state.dismissalStatus = {};
         }
@@ -2220,7 +2352,6 @@ const adminSlice = createSlice({
       .addCase(checkDismissedNotification.rejected, (state, action) => {
         state.error = action.payload;
       })
-
       // deactivateBannerNotification
       .addCase(deactivateBannerNotification.pending, (state) => {
         state.deactivating = true;
@@ -2229,12 +2360,9 @@ const adminSlice = createSlice({
       .addCase(deactivateBannerNotification.fulfilled, (state, action) => {
         state.deactivating = false;
         const { id, alreadyDeactivated } = action.payload;
-
-        // Remove from notifications list or update isActive status
         state.bannerNotifications = state.bannerNotifications
           .map((n) => (n._id === id ? { ...n, isActive: false } : n))
-          .filter((n) => n.isActive); // Remove inactive ones from display
-
+          .filter((n) => n.isActive);
         state.notificationStatus = alreadyDeactivated
           ? "Notification was already deactivated"
           : "Notification deactivated successfully";
@@ -2244,7 +2372,6 @@ const adminSlice = createSlice({
         state.deactivating = false;
         state.error = action.payload;
       })
-
       // deleteAllBannerNotifications
       .addCase(deleteAllBannerNotifications.pending, (state) => {
         state.deletingAll = true;
@@ -2256,7 +2383,6 @@ const adminSlice = createSlice({
         state.activeUserNotifications = [];
         state.dismissedNotifications = new Set();
         state.dismissalStatus = {};
-
         const { deletedCount, message } = action.payload;
         state.notificationStatus =
           message ||
@@ -2264,6 +2390,27 @@ const adminSlice = createSlice({
         state.error = null;
       })
       .addCase(deleteAllBannerNotifications.rejected, (state, action) => {
+        state.deletingAll = false;
+        state.error = action.payload;
+      })
+      // deleteAllNotifications
+      .addCase(deleteAllNotifications.pending, (state) => {
+        state.deletingAll = true;
+        state.error = null;
+      })
+      .addCase(deleteAllNotifications.fulfilled, (state, action) => {
+        state.deletingAll = false;
+        state.bannerNotifications = [];
+        state.activeUserNotifications = [];
+        state.dismissedNotifications = new Set();
+        state.dismissalStatus = {};
+        const { deletedCount, message } = action.payload;
+        state.notificationStatus =
+          message ||
+          `All notifications deleted (${deletedCount} notifications)`;
+        state.error = null;
+      })
+      .addCase(deleteAllNotifications.rejected, (state, action) => {
         state.deletingAll = false;
         state.error = action.payload;
       })
@@ -2460,27 +2607,6 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-
-      .addCase(deleteAllNotifications.pending, (state) => {
-        state.deletingAll = true;
-        state.error = null;
-      })
-      .addCase(deleteAllNotifications.fulfilled, (state, action) => {
-        state.deletingAll = false;
-        state.bannerNotifications = [];
-        state.activeUserNotifications = [];
-        state.dismissedNotifications = new Set();
-        state.dismissalStatus = {};
-        const { deletedCount, message } = action.payload;
-        state.notificationStatus =
-          message ||
-          `All notifications deleted (${deletedCount} notifications)`;
-        state.error = null;
-      })
-      .addCase(deleteAllNotifications.rejected, (state, action) => {
-        state.deletingAll = false;
-        state.error = action.payload;
-      })
       // resetUserMilestones
       .addCase(resetUserMilestones.pending, (state) => {
         state.loading = true;
@@ -2528,20 +2654,20 @@ const adminSlice = createSlice({
 
 export const {
   clearNotificationStatus,
+  setEmailError,
+  clearEmailTestResult,
+  clearBatchEligibilityResults,
+  updateUserEmailEligibility,
   socketNewContactMessage,
   socketNewReport,
   socketReportReviewed,
   socketReportAcknowledged,
   socketContactMessageReplied,
   setNotificationStatus,
-  setEmailError,
   updatePostBlockStatus,
   updateSubscriptionPlanStatus,
   logSubscriptionCriteria,
   clearOverrideStatus,
-  clearEmailTestResult,
-  clearBatchEligibilityResults,
-  updateUserEmailEligibility,
   clearDirectEmailResult,
 } = adminSlice.actions;
 
