@@ -8,3 +8,6 @@
 {"error":"setCache(...).catch is not a function","level":"error","message":"Get follow status error","targetUserId":"683558568cd02366ec379c24","timestamp":"2025-06-30T16:21:20.491Z","userId":"6837510a68907d1f54db9b7f"}
 {"error":"setCache(...).catch is not a function","level":"error","message":"Get follow status error","targetUserId":"684d0b800bf006f74f615f57","timestamp":"2025-06-30T16:21:20.508Z","userId":"6837510a68907d1f54db9b7f"}
 {"error":"setCache(...).catch is not a function","level":"error","message":"Get follow status error","targetUserId":"6837510a68907d1f54db9b7f","timestamp":"2025-06-30T16:21:30.487Z","userId":"6837510a68907d1f54db9b7f"}
+{"level":"error","message":"[MongoDB] ❌ Failed to connect:","timestamp":"2025-10-15T04:55:07.717Z"}
+{"level":"error","message":"[MongoDB] ❌ Failed to connect:","timestamp":"2025-10-15T04:55:37.327Z"}
+{"level":"error","message":"[MongoDB] ❌ Failed to connect:","timestamp":"2025-10-15T04:59:07.077Z"}

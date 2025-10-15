@@ -1,13 +1,8 @@
-
-
-
 import axios from "axios";
 import { getToken } from "../Utils/getToken";
 
 const isDev = import.meta.env.MODE === "development";
-const baseURL = isDev
-  ? import.meta.env.VITE_API_BASE_URL || "http://localhost:10000/api"
-  : "/api";
+const baseURL = "/api"; // Fixed: Use relative path for proxy in both dev and prod
 
 // console.log("🚀 Initializing axios instance with baseURL:", baseURL);
 

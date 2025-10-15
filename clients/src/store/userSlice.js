@@ -438,31 +438,65 @@ export const getUserIPLocation = createAsyncThunk(
 export const trackUserIPLocation = createAsyncThunk(
   "user/trackUserIPLocation",
   async (_, { rejectWithValue, getState }) => {
-    // console.log("[UserSlice] trackUserIPLocation: Sending request");
     try {
       const state = getState();
       if (state.user.ipLocation.tracked) {
-        // console.log(
-        //   "[UserSlice] trackUserIPLocation: Already tracked, skipping"
-        // );
         return state.user.ipLocation.data;
       }
 
       const res = await axiosInstance.post(
         "/user/track-ip-location",
         {},
-        { withCredentials: true }
+        {
+          withCredentials: true,
+          timeout: 15000, // 15s
+        }
       );
-      // console.log("[UserSlice] trackUserIPLocation: Response", res.data);
+
+      if (!res.data?.location) {
+        throw new Error("No location returned");
+      }
+
       return res.data.location;
     } catch (err) {
       console.error("[UserSlice] trackUserIPLocation: Error", err);
       return rejectWithValue(
-        err.response?.data?.message || "Failed to track IP location"
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to track IP location"
       );
     }
   }
 );
+
+// export const trackUserIPLocation = createAsyncThunk(
+//   "user/trackUserIPLocation",
+//   async (_, { rejectWithValue, getState }) => {
+//     // console.log("[UserSlice] trackUserIPLocation: Sending request");
+//     try {
+//       const state = getState();
+//       if (state.user.ipLocation.tracked) {
+//         // console.log(
+//         //   "[UserSlice] trackUserIPLocation: Already tracked, skipping"
+//         // );
+//         return state.user.ipLocation.data;
+//       }
+
+//       const res = await axiosInstance.post(
+//         "/user/track-ip-location",
+//         {},
+//         { withCredentials: true }
+//       );
+//       // console.log("[UserSlice] trackUserIPLocation: Response", res.data);
+//       return res.data.location;
+//     } catch (err) {
+//       console.error("[UserSlice] trackUserIPLocation: Error", err);
+//       return rejectWithValue(
+//         err.response?.data?.message || "Failed to track IP location"
+//       );
+//     }
+//   }
+// );
 
 // Check if user should see feedback prompt
 export const shouldShowFeedbackPrompt = createAsyncThunk(

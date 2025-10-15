@@ -1168,3 +1168,27 @@
 {"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-09-19T08:02:41.134Z"}
 {"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-09-19T08:16:46.144Z"}
 {"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-09-26T07:13:20.344Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-10-15T04:40:46.730Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-10-15T04:43:18.733Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-10-15T04:43:25.818Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-10-15T04:54:50.404Z"}
+{"level":"error","message":"[MongoDB] ❌ Failed to connect:","timestamp":"2025-10-15T04:55:07.717Z"}
+{"level":"error","message":"[MongoDB] ❌ Failed to connect:","timestamp":"2025-10-15T04:55:37.327Z"}
+{"level":"error","message":"[MongoDB] ❌ Failed to connect:","timestamp":"2025-10-15T04:59:07.077Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-10-15T05:11:36.795Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-10-15T06:41:20.103Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-10-15T06:42:10.053Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-10-15T07:05:00.993Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-10-15T07:08:34.145Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-10-15T07:28:39.740Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-10-15T07:29:19.690Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-10-15T07:42:33.863Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-10-15T07:42:39.814Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-10-15T07:47:44.744Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-10-15T07:51:25.038Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-10-15T07:53:26.418Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-10-15T07:53:50.274Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-10-15T10:37:08.941Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-10-15T10:38:38.789Z"}
+{"level":"info","message":"[MongoDB] 🔌 Connection closed on app termination","timestamp":"2025-10-15T10:38:40.824Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-10-15T10:38:53.998Z"}

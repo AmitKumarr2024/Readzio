@@ -108,10 +108,10 @@ const TermsAndConditionPage = () => {
           <p className="mb-4">
             For questions or feedback about these terms, please contact us at{" "}
             <a
-              href="mailto:inksha.official@gmail.com"
+              href="mailto:readzio.official@gmail.com"
               className="text-blue-600 underline"
             >
-              inksha.official@gmail.com
+              readzio.official@gmail.com
             </a>
             .
           </p>

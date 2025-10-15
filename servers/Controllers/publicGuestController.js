@@ -1,346 +1,233 @@
-// publicGuestController.js
 import { v4 as uuidv4 } from "uuid";
+import NodeCache from "node-cache";
 import PostModel from "../../servers/Models/Post.js";
-import { AppError } from "../../servers/Utils/AppError.js";
 import GuestVisitModel from "../../servers/Models/GuestVisit.js";
 import GuestModel from "../../servers/Models/GuestModel.js";
 import AnalyticsModel from "../../servers/Models/AnalyticsModel.js";
-import mongoose from "mongoose";
-import { io } from "../../servers/sockets/socket.js";
+import { AppError } from "../../servers/Utils/AppError.js";
 import { recordActivity } from "../../servers/helpers/activityHelper.js";
-import NodeCache from "node-cache";
-import { logMemory } from "../../servers/Utils/memoryLogger.js";
+import { io } from "../../servers/sockets/socket.js";
 
-const cache = new NodeCache({ stdTTL: 3600 }); // Extended TTL to 1 hour
+const cache = new NodeCache({ stdTTL: 3600 });
 
-// Rate limiter for guest visits
+// ------------------ Rate limiter ------------------
 const guestVisitLimiter = new Map();
-const GUEST_VISIT_LIMIT = 100; // Max visits per minute per IP
+const GUEST_VISIT_LIMIT = 100;
 const GUEST_VISIT_WINDOW = 60 * 1000; // 1 minute
 
+// ===================================================
 // GET /public/posts
+// ===================================================
 export const getPublicPosts = async (req, res, next) => {
   try {
-    logMemory("Before getPublicPosts start");
-    const { page = 1, limit = 12, tag, after, blocked = false } = req.query;
+    const { page = 1, limit = 12, tag } = req.query;
     const pageNum = parseInt(page);
-    const limitNum = Math.min(parseInt(limit), 100);
-    const cacheKey = `publicPosts:${pageNum}:${limitNum}:${tag || "all"}:${
-      after || "none"
-    }:${blocked}`;
+    const limitNum = limit === "0" ? 0 : Math.min(parseInt(limit), 100);
+    const cacheKey = `posts:${pageNum}:${limitNum}:${tag || "all"}`;
 
-    console.log(
-      `Request params: page=${pageNum}, limit=${limitNum}, tag=${
-        tag || "none"
-      }, after=${after || "none"}, blocked=${blocked}`
-    );
-    logMemory(`Before checking cache: ${cacheKey}`);
-    const cachedPosts = cache.get(cacheKey);
-    if (cachedPosts) {
-      logMemory(`Cache hit: ${cacheKey}`);
-      console.log(`Returning cached posts: ${cachedPosts.posts.length} posts`);
-      return res.status(200).json({
-        success: true,
-        posts: cachedPosts.posts,
-        total: cachedPosts.total,
-        page: pageNum,
-        lastFetched: cachedPosts.lastFetched,
-      });
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return res.status(200).json({ success: true, ...cached });
     }
 
     const query = {
       isPublished: true,
-      blocked: blocked === "false" ? false : { $ne: true },
-      ...(tag ? { tags: { $in: [tag] } } : {}),
-      ...(after ? { createdAt: { $lt: new Date(after) } } : {}),
+      blocked: false,
+      ...(tag && { tags: { $in: [tag] } }),
     };
 
-    console.log("Query:", JSON.stringify(query));
-    logMemory("Before PostModel.find");
-    const posts = await PostModel.find(query)
-      .maxTimeMS(10000)
+    const postsQuery = PostModel.find(query)
       .sort({ createdAt: -1 })
-      .skip((pageNum - 1) * limitNum)
-      .limit(limitNum)
       .select(
-        "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks"
+        "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks postType isPremium"
       )
       .populate("author", "name avatar")
       .populate("category", "name slug")
       .lean();
 
-    console.log("Posts fetched:", posts.length);
-    logMemory("Before processing posts");
-    const processedPosts = posts.map((post) => ({
-      ...post,
-      blocks: Array.isArray(post.blocks) ? post.blocks : [],
-    }));
-
-    logMemory("Before PostModel.countDocuments");
-    const total = await PostModel.countDocuments(query).maxTimeMS(5000).lean();
-    console.log("Total posts:", total);
-
-    const lastFetched = posts.length ? posts[posts.length - 1].createdAt : null;
-
-    logMemory(`Before setting cache: ${cacheKey}`);
-    cache.set(cacheKey, { posts: processedPosts, total, lastFetched });
-    console.log(`Cached posts: ${processedPosts.length} posts`);
-
-    if (req.user?._id) {
-      logMemory("Before recordActivity");
-      await recordActivity({
-        userId: req.user._id,
-        action: "VIEWED_PUBLIC_POSTS",
-        message: `Viewed public posts (page: ${pageNum}, tag: ${
-          tag || "none"
-        })`,
-      });
-      console.log(`Activity recorded for user: ${req.user._id}`);
+    if (limitNum > 0) {
+      postsQuery.skip((pageNum - 1) * limitNum).limit(limitNum);
     }
 
-    logMemory("After getPublicPosts complete");
-    console.log("Returning response with posts:", processedPosts.length);
-    res.status(200).json({
-      success: true,
-      posts: processedPosts,
-      total,
+    const [posts, total] = await Promise.all([
+      postsQuery.maxTimeMS(10000),
+      limitNum > 0
+        ? PostModel.countDocuments(query).maxTimeMS(5000)
+        : Promise.resolve(0),
+    ]);
+
+    const result = {
+      posts: posts.map((p) => ({
+        ...p,
+        blocks: Array.isArray(p.blocks) ? p.blocks : [],
+      })),
+      total: limitNum > 0 ? total : posts.length,
       page: pageNum,
-      lastFetched,
-    });
+    };
+
+    cache.set(cacheKey, result);
+
+    if (req.user?._id) {
+      recordActivity({
+        userId: req.user._id,
+        action: "VIEWED_PUBLIC_POSTS",
+        message: `Viewed public posts`,
+      }).catch(() => {});
+    }
+
+    return res.status(200).json({ success: true, ...result });
   } catch (error) {
-    console.error("Error in getPublicPosts:", error.message, error.stack);
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to fetch public posts",
-            500,
-            "GetPublicPosts"
-          )
-    );
+    next(new AppError("Failed to fetch posts", 500, "GetPublicPosts"));
   }
 };
 
+// ===================================================
 // GET /public/post/:slug
+// ===================================================
 export const getPublicPostBySlug = async (req, res, next) => {
   try {
-    logMemory("Before getPublicPostBySlug start");
-    const { slug } = req.params;
-    const cacheKey = `publicPost:${slug.toLowerCase()}`;
+    const slug = req.params.slug.toLowerCase().trim();
+    const cacheKey = `post:${slug}`;
 
-    console.log(`Requesting post with slug: ${slug}`);
-    logMemory(`Before checking cache: ${cacheKey}`);
-    const cachedPost = cache.get(cacheKey);
-    if (cachedPost) {
-      logMemory(`Cache hit: ${cacheKey}`);
-      console.log(`Returning cached post: ${cachedPost.title}`);
-      return res.status(200).json({ success: true, post: cachedPost });
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return res.status(200).json({ success: true, post: cached });
     }
 
-    console.log("Queried slug:", slug);
-    logMemory("Before PostModel.findOne");
     const post = await PostModel.findOne({
-      slug: { $regex: slug, $options: "i" },
+      slug,
       isPublished: true,
       blocked: false,
     })
       .maxTimeMS(10000)
       .select(
-        "title slug category excerpt thumbnail author createdAt isPublished readTime tags language viewsCount shareCount blocks"
+        "title slug category excerpt thumbnail author createdAt readTime tags viewsCount shareCount blocks postType isPremium"
       )
       .populate("author", "name avatar")
       .populate("category", "name slug")
       .lean();
 
     if (!post) {
-      console.log("Post not found for slug:", slug);
-      throw new AppError(
-        "Post not found or has been deleted",
-        404,
-        "GetPublicPostBySlug"
-      );
+      throw new AppError("Post not found", 404, "GetPublicPostBySlug");
     }
 
-    console.log("Post fetched:", post.title);
-    logMemory("Before processing blocks");
     post.blocks = Array.isArray(post.blocks) ? post.blocks : [];
-
-    logMemory(`Before setting cache: ${cacheKey}`);
     cache.set(cacheKey, post);
-    console.log(`Cached post: ${post.title}`);
 
-    if (req.user?._id) {
-      logMemory("Before recordActivity");
-      await recordActivity({
-        userId: req.user._id,
-        action: "VIEWED_PUBLIC_POST",
-        targetPost: post._id,
-        message: `Viewed public post: ${post.title}`,
-      });
-      console.log(`Activity recorded for user: ${req.user._id}`);
-    }
-
-    logMemory("After getPublicPostBySlug complete");
-    console.log("Returning response with post:", post.title);
-    res.status(200).json({ success: true, post });
+    return res.status(200).json({ success: true, post });
   } catch (error) {
-    console.error("Error in getPublicPostBySlug:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
-        : new AppError(
-            error.message || "Failed to fetch public post",
-            500,
-            "GetPublicPostBySlug"
-          )
+        : new AppError("Failed to fetch post", 500)
     );
   }
 };
 
+// ===================================================
 // POST /public/post/:slug/view
+// ===================================================
 export const trackGuestView = async (req, res, next) => {
   try {
-    logMemory("Before trackGuestView start");
-    const { slug } = req.params;
-    console.log(`Tracking view for slug: ${slug}`);
+    const slug = req.params.slug.trim().toLowerCase();
 
-    logMemory("Before PostModel.findOneAndUpdate");
     const post = await PostModel.findOneAndUpdate(
-      {
-        slug: { $regex: `^${slug}$`, $options: "i" },
-        isPublished: true,
-        blocked: false,
-      },
+      { slug, isPublished: true, blocked: false },
       { $inc: { viewsCount: 1 } },
       { select: "_id title" }
-    )
-      .maxTimeMS(10000)
-      .lean();
+    ).lean();
 
     if (!post) {
-      console.log("Post not found for slug:", slug);
       throw new AppError("Post not found", 404, "TrackGuestView");
     }
 
-    console.log(`Incremented views for post: ${post.title}`);
-    logMemory("Before GuestVisitModel.create");
-    await GuestVisitModel.create({
+    // Background logging
+    GuestVisitModel.create({
       slug,
       ip: req.ip,
       userAgent: req.headers["user-agent"],
-    });
-    console.log("Guest visit recorded for IP:", req.ip);
+    }).catch(() => {});
 
-    logMemory("Before socket emit");
+    // ✅ Emit socket event only to admin room
     io.to("adminRoom").emit("guestViewUpdate", {
       postId: post._id,
       slug,
       ip: req.ip,
-      userAgent: req.headers["user-agent"],
-      location: req.headers["cf-ipcountry"] || null,
+      time: new Date(),
     });
-    console.log("Emitted guestViewUpdate to adminRoom");
 
-    logMemory("After trackGuestView complete");
-    console.log("Returning success response for guest view");
-    res.status(200).json({ success: true, message: "Guest view recorded" });
+    return res.status(200).json({ success: true, message: "View recorded" });
   } catch (error) {
-    console.error("Error in trackGuestView:", error.message, error.stack);
     next(
       error instanceof AppError
         ? error
-        : new AppError(
-            error.message || "Failed to record guest view",
-            500,
-            "TrackGuestView"
-          )
+        : new AppError("Failed to track view", 500)
     );
   }
 };
 
+// ===================================================
 // POST /public/guest/visit
+// ===================================================
 export const trackGuestVisit = async (req, res, next) => {
   try {
-    logMemory("Before trackGuestVisit start");
     const ip = req.ip;
     const now = Date.now();
-    const limiterEntry = guestVisitLimiter.get(ip) || {
-      count: 0,
-      lastReset: now,
-    };
 
-    console.log(`Checking rate limit for IP: ${ip}`);
-    if (now - limiterEntry.lastReset > GUEST_VISIT_WINDOW) {
-      limiterEntry.count = 0;
-      limiterEntry.lastReset = now;
+    // ---------------- Rate limit ----------------
+    const limiter = guestVisitLimiter.get(ip) || { count: 0, lastReset: now };
+    if (now - limiter.lastReset > GUEST_VISIT_WINDOW) {
+      limiter.count = 0;
+      limiter.lastReset = now;
     }
 
-    if (limiterEntry.count >= GUEST_VISIT_LIMIT) {
-      console.log(`Rate limit exceeded for IP: ${ip}`);
-      return res.status(429).json({
-        success: false,
-        message: "Too many guest visits, please try again later",
-      });
+    if (limiter.count >= GUEST_VISIT_LIMIT) {
+      return res
+        .status(429)
+        .json({ success: false, message: "Too many requests" });
     }
 
-    limiterEntry.count += 1;
-    guestVisitLimiter.set(ip, limiterEntry);
-    console.log(
-      `Updated rate limit: ${limiterEntry.count} visits for IP: ${ip}`
-    );
+    limiter.count += 1;
+    guestVisitLimiter.set(ip, limiter);
 
-    if (req.user && req.user._id) {
-      logMemory("Authenticated user detected");
-      console.log(`Authenticated user detected: ${req.user._id}`);
-      return res.status(200).json({
-        success: false,
-        message: "Authenticated user — guest tracking skipped",
-      });
+    // ---------------- Skip logged-in users ----------------
+    if (req.user?._id) {
+      return res
+        .status(200)
+        .json({ success: false, message: "Authenticated user" });
     }
 
+    // ---------------- Guest logic ----------------
     let guestId = req.cookies.guestId;
     const fingerprint = `${req.ip}-${req.headers["user-agent"]}`;
 
-    logMemory("Before checking guestId");
-    console.log(`Guest ID from cookie: ${guestId || "none"}`);
     if (!guestId) {
       guestId = uuidv4();
       res.cookie("guestId", guestId, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "Lax",
-        maxAge: 1000 * 60 * 60 * 24 * 30,
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       });
-      console.log(`Generated new guestId: ${guestId}`);
     }
 
     const fifteenMinutesAgo = new Date(now - 15 * 60 * 1000);
 
-    logMemory("Before GuestModel.findOne");
-    const existingGuest = await GuestModel.findOne({
+    const existing = await GuestModel.findOne({
       $or: [{ guestId }, { fingerprint }],
-    })
-      .maxTimeMS(10000)
-      .lean();
+    }).lean();
 
-    if (existingGuest && existingGuest.lastVisit > fifteenMinutesAgo) {
-      logMemory("Recent visit detected");
-      console.log(`Recent visit detected for guestId: ${guestId}`);
-      return res.status(200).json({
-        success: true,
-        message: "Visit already recorded recently",
-      });
+    if (existing?.lastVisit > fifteenMinutesAgo) {
+      return res
+        .status(200)
+        .json({ success: true, message: "Visit already recorded" });
     }
 
-    logMemory("Before GuestModel.findOneAndUpdate");
-    const updatedGuest = await GuestModel.findOneAndUpdate(
+    const isNew = !existing;
+    const guest = await GuestModel.findOneAndUpdate(
       { $or: [{ guestId }, { fingerprint }] },
       {
-        $setOnInsert: {
-          firstVisit: new Date(),
-          guestId,
-          fingerprint,
-        },
+        $setOnInsert: { firstVisit: new Date(), guestId, fingerprint },
         $set: {
           lastVisit: new Date(),
           ip: req.ip,
@@ -348,92 +235,62 @@ export const trackGuestVisit = async (req, res, next) => {
         },
         $inc: { visitCount: 1 },
       },
-      {
-        upsert: true,
-        new: true,
-        setDefaultsOnInsert: true,
-      }
-    )
-      .maxTimeMS(10000)
-      .lean();
+      { upsert: true, new: true }
+    ).lean();
 
-    console.log(
-      `Updated guest: ${updatedGuest.guestId}, visitCount: ${updatedGuest.visitCount}`
-    );
-    const isNewGuest = !existingGuest;
-
-    if (isNewGuest) {
-      logMemory("Before AnalyticsModel.findOneAndUpdate");
-      await AnalyticsModel.findOneAndUpdate(
+    // Background analytics increment
+    if (isNew) {
+      AnalyticsModel.findOneAndUpdate(
         { _id: "guest-analytics" },
         { $inc: { "traffic.guestUsersCount": 1 } },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      )
-        .maxTimeMS(10000)
-        .lean();
-      console.log("Incremented guestUsersCount in analytics");
+        { upsert: true }
+      ).catch(() => {});
     }
 
-    logMemory("Before socket emit");
+    // ✅ Socket event: real-time guest visit to admin panel
     io.to("adminRoom").emit("guestVisitUpdate", {
-      guestId: updatedGuest.guestId,
-      visitCount: updatedGuest.visitCount,
-      lastVisit: updatedGuest.lastVisit,
-      ip: updatedGuest.ip,
-      userAgent: updatedGuest.userAgent,
-      location: req.headers["cf-ipcountry"] || null,
+      guestId: guest.guestId,
+      visitCount: guest.visitCount,
+      lastVisit: guest.lastVisit,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+      time: new Date(),
     });
-    console.log("Emitted guestVisitUpdate to adminRoom");
 
-    logMemory("After trackGuestVisit complete");
-    console.log("Returning response for guest visit");
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "Guest visit tracked",
+      message: "Visit tracked",
       guest: {
-        guestId: updatedGuest.guestId,
-        visitCount: updatedGuest.visitCount,
-        lastVisit: updatedGuest.lastVisit,
-        ip: updatedGuest.ip,
-        userAgent: updatedGuest.userAgent,
-        location: req.headers["cf-ipcountry"] || null,
+        guestId: guest.guestId,
+        visitCount: guest.visitCount,
+        lastVisit: guest.lastVisit,
       },
     });
   } catch (error) {
-    console.error("Error in trackGuestVisit:", error.message, error.stack);
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError("Failed to track guest visit", 500, "TrackGuestVisit")
-    );
+    next(new AppError("Failed to track visit", 500));
   }
 };
 
+// ===================================================
 // GET /public/search-posts
+// ===================================================
 export const searchPublicPosts = async (req, res, next) => {
   try {
-    logMemory("Before searchPublicPosts start");
     const { query, page = 1, limit = 12 } = req.query;
+
+    if (!query?.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Query required" });
+    }
+
     const pageNum = parseInt(page);
     const limitNum = Math.min(parseInt(limit), 100);
-    const cacheKey = `searchPosts:${query.toLowerCase()}:${pageNum}:${limitNum}`;
+    const cacheKey = `search:${query.toLowerCase()}:${pageNum}:${limitNum}`;
 
-    console.log(
-      `Search params: query=${query}, page=${pageNum}, limit=${limitNum}`
-    );
-    logMemory(`Before checking cache: ${cacheKey}`);
-    const cachedPosts = cache.get(cacheKey);
-    if (cachedPosts) {
-      logMemory(`Cache hit: ${cacheKey}`);
-      console.log(
-        `Returning cached search results: ${cachedPosts.posts.length} posts`
-      );
-      return res.status(200).json({
-        success: true,
-        posts: cachedPosts.posts,
-        total: cachedPosts.total,
-        page: pageNum,
-      });
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return res.status(200).json({ success: true, ...cached });
     }
 
     const searchQuery = {
@@ -446,68 +303,32 @@ export const searchPublicPosts = async (req, res, next) => {
       ],
     };
 
-    console.log("Search query:", JSON.stringify(searchQuery));
-    logMemory("Before PostModel.find");
-    const posts = await PostModel.find(searchQuery)
-      .maxTimeMS(10000)
-      .sort({ createdAt: -1 })
-      .skip((pageNum - 1) * limitNum)
-      .limit(limitNum)
-      .select(
-        "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks"
-      )
-      .populate("author", "name avatar")
-      .populate("category", "name slug")
-      .lean();
+    const [posts, total] = await Promise.all([
+      PostModel.find(searchQuery)
+        .sort({ createdAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .select(
+          "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks"
+        )
+        .populate("author", "name avatar")
+        .lean(),
+      PostModel.countDocuments(searchQuery),
+    ]);
 
-    console.log("Posts fetched:", posts.length);
-    logMemory("Before processing posts");
-    const processedPosts = posts.map((post) => ({
-      ...post,
-      blocks: Array.isArray(post.blocks) ? post.blocks : [],
-    }));
-
-    logMemory("Before PostModel.countDocuments");
-    const total = await PostModel.countDocuments(searchQuery)
-      .maxTimeMS(5000)
-      .lean();
-    console.log("Total posts:", total);
-
-    logMemory(`Before setting cache: ${cacheKey}`);
-    cache.set(cacheKey, { posts: processedPosts, total });
-    console.log(`Cached search results: ${processedPosts.length} posts`);
-
-    if (req.user?._id) {
-      logMemory("Before recordActivity");
-      await recordActivity({
-        userId: req.user._id,
-        action: "SEARCHED_PUBLIC_POSTS",
-        message: `Searched public posts: ${query} (page: ${pageNum})`,
-      });
-      console.log(`Activity recorded for user: ${req.user._id}`);
-    }
-
-    logMemory("After searchPublicPosts complete");
-    console.log(
-      "Returning response with search results:",
-      processedPosts.length
-    );
-    res.status(200).json({
-      success: true,
-      posts: processedPosts,
+    const result = {
+      posts: posts.map((p) => ({
+        ...p,
+        blocks: Array.isArray(p.blocks) ? p.blocks : [],
+      })),
       total,
       page: pageNum,
-    });
+    };
+
+    cache.set(cacheKey, result);
+
+    return res.status(200).json({ success: true, ...result });
   } catch (error) {
-    console.error("Error in searchPublicPosts:", error.message, error.stack);
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to search public posts",
-            500,
-            "SearchPublicPosts"
-          )
-    );
+    next(new AppError("Search failed", 500));
   }
 };

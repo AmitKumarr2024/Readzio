@@ -66,10 +66,10 @@ const PrivacyPage = () => {
             <p className="text-lg">
               For privacy-related questions, reach out to us at{" "}
               <a
-                href="mailto:inksha.official@gmail.com"
+                href="mailto:readzio.official@gmail.com"
                 className="text-blue-600 underline"
               >
-                inksha.official@gmail.com
+                readzio.official@gmail.com
               </a>
               .
             </p>

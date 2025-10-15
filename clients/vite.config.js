@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         "/api": {
-          target: env.VITE_API_BASE_URL || "http://localhost:10000",
+          target: "http://localhost:10002",
           changeOrigin: true,
           secure: false,
           rewrite: (path) => {
@@ -44,7 +44,7 @@ export default defineConfig(({ mode }) => {
           configure: (proxy) => {
             // console.log(
             //   "🔌 Setting up /api proxy to:",
-            //   env.VITE_API_BASE_URL || "http://localhost:10000"
+            //   "http://localhost:10002"
             // );
             proxy.on("error", (err) => {
               console.error("[ViteConfig:Proxy] ❌ /api error:", err.message);
@@ -59,13 +59,13 @@ export default defineConfig(({ mode }) => {
           },
         },
         "/socket.io": {
-          target: env.VITE_API_BASE_URL || "http://localhost:10000",
+          target: "http://localhost:10002",
           ws: true,
           changeOrigin: true,
           configure: (proxy) => {
             // console.log(
             //   "🔌 Setting up /socket.io proxy to:",
-            //   env.VITE_API_BASE_URL || "http://localhost:10000"
+            //   "http://localhost:10002"
             // );
             proxy.on("error", (err) => {
               console.error(

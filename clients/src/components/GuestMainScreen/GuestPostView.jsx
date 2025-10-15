@@ -1,4 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
 import GuestCardOfPost from "../Cards/GuestCardOfPost";
@@ -6,130 +12,270 @@ import MultiplexAd from "../../Ads/MultiplexAd";
 import InFeedAd from "../../Ads/InFeedAd";
 import Skeleton from "../Ui/Skeleton";
 
+const POSTS_PER_PAGE = 20;
+const SKELETON_COUNT = 12;
+const AD_IN_FEED_INTERVAL = 5;
+const AD_MULTIPLEX_INTERVAL = 12;
+
 const GuestPostView = () => {
   const dispatch = useDispatch();
-  const [initialLoad, setInitialLoad] = useState(true);
 
+  // --- Local State ---
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
+  const observerTargetRef = useRef(null);
+  const isFetchingRef = useRef(false);
+  const abortControllerRef = useRef(null);
+  const didFetchRef = useRef(false); // ✅ Prevent initial useEffect infinite loop
+
+  // --- Redux ---
   const {
     posts = [],
     loading,
     error,
   } = useSelector((state) => state.guest || {});
   const isSidebarOpen = useSelector(
-    (state) => state.postMeta?.isSidebarOpen || false
+    (state) => state.postMeta?.isSidebarOpen ?? false
   );
 
-  // Load ALL posts at once
-  useEffect(() => {
-    const loadData = async () => {
+  // --- Grid Layout ---
+  const gridClass = useMemo(() => {
+    const base =
+      "grid gap-4 py-6 px-4 w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3";
+    const responsive = isSidebarOpen
+      ? "lg:grid-cols-3 xl:grid-cols-4"
+      : "lg:grid-cols-4 xl:grid-cols-5";
+    return `${base} ${responsive}`;
+  }, [isSidebarOpen]);
+
+  // --- Fetch Posts ---
+  const fetchPosts = useCallback(
+    async (pageToFetch) => {
+      if (isFetchingRef.current || !hasMore) return;
+      isFetchingRef.current = true;
+
+      // Cancel any pending fetch
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       try {
-        const guestId = localStorage.getItem("guestId");
-        if (!guestId) {
+        // Track guest visit only once
+        if (pageToFetch === 1 && !localStorage.getItem("guestId")) {
           await dispatch(trackGuestVisit()).unwrap();
         }
-        if (posts.length === 0) {
-          // limit=0 → backend should return all posts
-          await dispatch(fetchPublicPosts({ page: 1, limit: 0 })).unwrap();
+
+        const result = await dispatch(
+          fetchPublicPosts({
+            page: pageToFetch,
+            limit: POSTS_PER_PAGE,
+            signal: controller.signal,
+          })
+        ).unwrap();
+
+        const fetchedCount = result?.posts?.length ?? 0;
+
+        if (fetchedCount < POSTS_PER_PAGE) {
+          setHasMore(false);
+        }
+
+        if (fetchedCount > 0) {
+          setPage((prev) => prev + 1);
         }
       } catch (err) {
-        console.error("[GuestPostView] Error loading guest data:", err);
+        if (err.name === "AbortError") return;
+        console.error("GuestPostView fetch error:", err);
+        setHasMore(false);
       } finally {
-        setInitialLoad(false);
+        isFetchingRef.current = false;
+        setInitialLoaded(true);
       }
-    };
-    loadData();
-  }, [dispatch, posts.length]);
+    },
+    [dispatch, hasMore]
+  );
 
-  // Skeleton loading state
-  if (loading && initialLoad) {
+  // --- Initial Load (only once) ---
+  useEffect(() => {
+    if (didFetchRef.current) return; // ✅ prevent infinite loop
+    didFetchRef.current = true;
+
+    if (!loading && posts.length === 0) {
+      fetchPosts(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // --- Infinite Scroll ---
+  useEffect(() => {
+    if (!observerTargetRef.current || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && !isFetchingRef.current) {
+          isFetchingRef.current = true; // lock to prevent duplicate
+          fetchPosts(page).finally(() => {
+            isFetchingRef.current = false;
+          });
+        }
+      },
+      { rootMargin: "300px" }
+    );
+
+    observer.observe(observerTargetRef.current);
+    return () => observer.disconnect();
+    // Do NOT include fetchPosts or page to avoid infinite effect loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore]);
+
+  // --- Retry Handler ---
+  const handleRetry = useCallback(() => {
+    setPage(1);
+    setHasMore(true);
+    setInitialLoaded(false);
+    isFetchingRef.current = false;
+    didFetchRef.current = false; // allow re-fetch
+    fetchPosts(1);
+  }, [fetchPosts]);
+
+  // --- Posts + Ads Composition ---
+  const postsWithAds = useMemo(() => {
+    return posts.flatMap((post, index) => {
+      if (!post?._id) return [];
+      const elements = [<GuestCardOfPost key={post._id} post={post} />];
+
+      try {
+        if ((index + 1) % AD_IN_FEED_INTERVAL === 0) {
+          elements.push(
+            <div
+              key={`infeed-${post._id}-${index}`}
+              className="col-span-1 flex justify-center w-full p-3"
+            >
+              <div className="w-full max-w-[300px] bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 border border-gray-200 dark:border-gray-700">
+                <InFeedAd
+                  postId={post._id}
+                  testMode={process.env.NODE_ENV !== "production"}
+                />
+              </div>
+            </div>
+          );
+        }
+
+        if ((index + 1) % AD_MULTIPLEX_INTERVAL === 0) {
+          elements.push(
+            <div
+              key={`multiplex-${post._id}-${index}`}
+              className="col-span-full w-full border-b border-gray-300 dark:border-gray-600 my-2 py-4"
+            >
+              <MultiplexAd
+                postId={post._id}
+                testMode={process.env.NODE_ENV !== "production"}
+              />
+            </div>
+          );
+        }
+      } catch (adErr) {
+        console.warn("Ad render error:", adErr);
+      }
+
+      return elements;
+    });
+  }, [posts]);
+
+  // --- UI States ---
+  if (!initialLoaded && loading && posts.length === 0) {
     return (
-      <div
-        className={`grid gap-4 py-6 px-4 w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${
-          isSidebarOpen
-            ? "lg:grid-cols-3 xl:grid-cols-4"
-            : "lg:grid-cols-4 xl:grid-cols-5"
-        }`}
-      >
-        {Array.from({ length: 20 }).map((_, i) => (
-          <div
-            key={i}
-            className="bg-card-bg-light dark:bg-card-bg-dark rounded-lg p-4 shadow-md"
-          >
-            <Skeleton height="h-40" rounded="rounded-lg" className="mb-3" />
-            <Skeleton height="h-5" width="w-3/4" className="mb-2" />
-            <Skeleton height="h-4" width="w-1/2" />
-          </div>
+      <div className={gridClass} role="status" aria-label="Loading posts">
+        {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
+          <Skeleton key={`skeleton-${i}`} />
         ))}
       </div>
     );
   }
 
-  // Error state
-  if (error && !initialLoad) {
+  if (error && posts.length === 0) {
     return (
-      <div className="text-center text-red-500 py-4">
-        {error}
-        <button
-          onClick={() => dispatch(fetchPublicPosts({ page: 1, limit: 0 }))}
-          className="ml-2 text-blue-500 underline"
-        >
-          Retry
-        </button>
+      <div className="flex items-center justify-center min-h-[60vh] px-4">
+        <div className="max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 text-center">
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-3">
+            Connection Error
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            We couldn’t connect to the server. Please try again.
+          </p>
+          <button
+            onClick={handleRetry}
+            className="px-8 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition duration-150 ease-in-out"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
-  // Empty state
-  if (!initialLoad && (!Array.isArray(posts) || posts.length === 0)) {
+  if (!loading && posts.length === 0 && initialLoaded) {
     return (
-      <div className="text-center text-gray-400 py-8">
-        No posts available for guests.
+      <div className="flex items-center justify-center min-h-[60vh] px-4">
+        <div className="max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 text-center">
+          <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-3">
+            No Posts Available
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            There are currently no public posts.
+          </p>
+          <button
+            onClick={handleRetry}
+            className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition duration-150 ease-in-out"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
     );
   }
-
-  // Insert ads between posts
-  const postsWithAds = posts.flatMap((post, index) => {
-    if (!post?._id || !post?.slug) return [];
-
-    const items = [<GuestCardOfPost key={post._id} {...post} />];
-
-    if ((index + 1) % 5 === 0) {
-      items.push(
-        <div
-          key={`infeed-${index}`}
-          className="col-span-1 flex justify-center w-full p-3 min-w-[250px]"
-        >
-          <div className="w-full max-w-[300px] bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 border border-gray-200 dark:border-gray-700 transition-all duration-300">
-            <InFeedAd postId={post._id} testMode={false} />
-          </div>
-        </div>
-      );
-    }
-
-    if ((index + 1) % 12 === 0) {
-      items.push(
-        <div
-          key={`multiplex-${index}`}
-          className="col-span-full w-full border-b border-gray-300 dark:border-gray-600 my-2 flex items-center"
-        >
-          <MultiplexAd postId={post._id} testMode={false} />
-        </div>
-      );
-    }
-
-    return items;
-  });
 
   return (
-    <div
-      className={`grid gap-4 py-6 px-4 w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${
-        isSidebarOpen
-          ? "lg:grid-cols-3 xl:grid-cols-4"
-          : "lg:grid-cols-4 xl:grid-cols-5"
-      }`}
-    >
-      {postsWithAds}
+    <div className="w-full">
+      <div className={gridClass} role="region" aria-label="Public Posts Feed">
+        {postsWithAds}
+      </div>
+
+      <div className="text-center py-8">
+        {hasMore && (
+          <div ref={observerTargetRef} className="h-1 bg-transparent"></div>
+        )}
+
+        {loading && posts.length > 0 && (
+          <div className={gridClass}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={`skeleton-next-${i}`} />
+            ))}
+          </div>
+        )}
+
+        {!hasMore && !loading && posts.length > 0 && (
+          <p className="text-gray-500 dark:text-gray-400">
+            You’ve reached the end of the public feed.
+          </p>
+        )}
+
+        {error && posts.length > 0 && (
+          <div className="mt-4">
+            <p className="text-red-500 mb-3">Failed to load more posts.</p>
+            <button
+              onClick={handleRetry}
+              className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition duration-150 ease-in-out"
+            >
+              Load More
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

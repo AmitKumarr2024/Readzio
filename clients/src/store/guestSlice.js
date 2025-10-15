@@ -1,272 +1,287 @@
-
-// guestSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../connection/axiosInstance";
 
+// --- Logger ---
+const log = (level, message, ...optionalParams) => {
+  if (process.env.NODE_ENV !== "production") {
+    if (level === "error") console.error(message, ...optionalParams);
+    else if (level === "warn") console.warn(message, ...optionalParams);
+    else console.log(message, ...optionalParams);
+  }
+};
+
+// --- Error handler ---
+const handleAxiosError = (err, thunkAPI, defaultMsg) => {
+  if (err.code === "ECONNABORTED") {
+    return thunkAPI.rejectWithValue("Request timed out. Please try again.");
+  }
+  if (
+    err.message &&
+    (err.message.includes("Network Error") || err.message.includes("CORS"))
+  ) {
+    return thunkAPI.rejectWithValue(
+      "Network error. Please check your connection."
+    );
+  }
+
+  const errMsg = err.response?.data?.message || defaultMsg;
+
+  log(
+    "error",
+    `[guestSlice:${thunkAPI.action?.type || "unknown"}] Error:`,
+    errMsg,
+    err.response?.status
+  );
+
+  return thunkAPI.rejectWithValue(errMsg);
+};
+
+// --- Initial State ---
 const initialState = {
   posts: [],
+  totalPosts: 0,
+  currentPage: 1,
   singlePost: null,
   loading: false,
   error: null,
+  isEmpty: false,
   viewTracked: false,
+  lastTrackedGuest: null,
+  hasInitialized: false,
+  lastFetchedPage: null, // prevents infinite refetch
 };
 
-// 🔹 Fetch Public Posts
+// --- Async Thunks ---
+
 export const fetchPublicPosts = createAsyncThunk(
   "guest/fetchPublicPosts",
-  async ({ page = 1, limit = 0 } = {}, { rejectWithValue }) => {
+  async ({ page = 1, limit = 20 } = {}, thunkAPI) => {
     try {
       const res = await axiosInstance.get("/public/posts", {
         params: { page, limit },
+        timeout: 15000,
       });
 
-      const posts = (res.data?.posts || []).map((post) => ({
+      const receivedPosts = res.data?.posts || [];
+      const posts = receivedPosts.map((post) => ({
         ...post,
         blocks: Array.isArray(post.blocks) ? post.blocks : [],
       }));
 
+      const total = res.data?.total ?? posts.length;
+
       return {
         posts,
-        total: res.data?.total ?? posts.length,
-        page: res.data?.page ?? 1,
-        lastFetched: res.data?.lastFetched ?? null,
-        limit, // 👈 keep track of what we requested
+        total,
+        page: res.data?.page ?? page,
+        isEmpty: posts.length === 0 && page === 1,
       };
     } catch (err) {
-      const errMsg =
-        err.response?.data?.message || "Failed to fetch public posts";
-      console.error("[guestSlice:fetchPublicPosts] Error:", errMsg);
-      return rejectWithValue(errMsg);
+      return handleAxiosError(err, thunkAPI, "Failed to fetch public posts");
     }
+  },
+  {
+    condition: ({ page }, { getState }) => {
+      const { guest } = getState();
+      // Prevent repeated calls for the same page
+      if (guest.loading) return false;
+      if (guest.lastFetchedPage === page && guest.hasInitialized) return false;
+      return true;
+    },
   }
 );
 
-// 🔹 Fetch Public Post by Slug
 export const fetchPublicPostBySlug = createAsyncThunk(
   "guest/fetchPublicPostBySlug",
-  async (slug, { rejectWithValue }) => {
-    // console.log("[fetchPublicPostBySlug] Called with slug:", slug);
+  async (slug, thunkAPI) => {
     try {
-      const normalizedSlug = slug.toLowerCase();
-      // console.log("[fetchPublicPostBySlug] Normalized slug:", normalizedSlug);
+      if (!slug) return thunkAPI.rejectWithValue("Post slug is required.");
 
-      const res = await axiosInstance.get(`/public/post/${normalizedSlug}`);
-      // console.log("[fetchPublicPostBySlug] Raw API response:", res.data);
+      const normalizedSlug = String(slug).toLowerCase();
+      const res = await axiosInstance.get(`/public/post/${normalizedSlug}`, {
+        timeout: 10000,
+      });
 
-      const post = {
-        ...res.data.post,
-        blocks: Array.isArray(res.data.post.blocks) ? res.data.post.blocks : [],
-      };
-      // console.log("[fetchPublicPostBySlug] Final mapped post:", post);
+      const post = res.data?.post;
+      if (!post) return thunkAPI.rejectWithValue("Post not found");
 
-      return post;
+      return { ...post, blocks: Array.isArray(post.blocks) ? post.blocks : [] };
     } catch (err) {
-      const errMsg = err.response?.data?.message || "Post not found";
-      console.error("[guestSlice:fetchPublicPostBySlug] Error:", errMsg);
-      return rejectWithValue(errMsg);
+      return handleAxiosError(
+        err,
+        thunkAPI,
+        "Post not found or failed to load"
+      );
     }
   }
 );
 
-// 🔹 Track Guest View
 export const trackGuestView = createAsyncThunk(
   "guest/trackGuestView",
-  async (slug, { rejectWithValue }) => {
-    // console.log("[trackGuestView] Called with slug:", slug);
+  async (slug, thunkAPI) => {
     try {
-      const res = await axiosInstance.post(`/public/post/${slug}/view`);
-      // console.log("[trackGuestView] API Response:", res.data);
-      return res.data.message;
+      if (!slug)
+        return thunkAPI.rejectWithValue("Slug is required for view tracking.");
+      await axiosInstance.post(
+        `/public/post/${slug}/view`,
+        {},
+        { timeout: 5000 }
+      );
+      return true;
     } catch (err) {
-      const errMsg = err.response?.data?.message || "Failed to track view";
-      console.error("[guestSlice:trackGuestView] Error:", errMsg);
-      return rejectWithValue(errMsg);
+      log("warn", `[guestSlice:trackGuestView] Failed: ${err.message}`);
+      return thunkAPI.rejectWithValue(false);
     }
   }
 );
 
-// 🔹 Search Public Posts
 export const searchPublicPosts = createAsyncThunk(
   "guest/searchPublicPosts",
-  async ({ query, page = 1, limit = 12 }, { rejectWithValue }) => {
-    // console.log(
-    //   "[searchPublicPosts] Called with query:",
-    //   query,
-    //   "page:",
-    //   page,
-    //   "limit:",
-    //   limit
-    // );
+  async ({ query, page = 1, limit = 20 }, thunkAPI) => {
     try {
+      if (!query) return thunkAPI.rejectWithValue("Search query is required.");
+
       const res = await axiosInstance.get("/public/search-posts", {
         params: { query, page, limit },
-      });
-      // console.log("[searchPublicPosts] Raw API response:", res.data);
-
-      const posts = res.data.posts.map((post, idx) => {
-        // console.log(`[searchPublicPosts] Mapping post #${idx}:`, post);
-        return {
-          ...post,
-          blocks: Array.isArray(post.blocks) ? post.blocks : [],
-        };
+        timeout: 10000,
       });
 
-      // console.log("[searchPublicPosts] Final mapped posts:", posts);
-      return { posts, total: res.data.total, page: res.data.page };
+      const receivedPosts = res.data?.posts || [];
+      const posts = receivedPosts.map((post) => ({
+        ...post,
+        blocks: Array.isArray(post.blocks) ? post.blocks : [],
+      }));
+
+      const total = res.data?.total ?? posts.length;
+
+      return {
+        posts,
+        total,
+        page: res.data?.page ?? page,
+        isEmpty: posts.length === 0 && page === 1,
+      };
     } catch (err) {
-      const errMsg =
-        err.response?.data?.message || "Failed to search public posts";
-      console.error("[guestSlice:searchPublicPosts] Error:", errMsg);
-      return rejectWithValue(errMsg);
+      return handleAxiosError(err, thunkAPI, "Failed to search posts");
     }
   }
 );
 
-// 🔹 Track Guest Visit
 export const trackGuestVisit = createAsyncThunk(
   "guest/trackGuestVisit",
-  async (_, { rejectWithValue }) => {
-    // console.log("[trackGuestVisit] Called");
+  async (_, thunkAPI) => {
     try {
-      const res = await axiosInstance.post("/public/guest/visit");
-      // console.log("[trackGuestVisit] API Response:", res.data);
-
-      if (res.data.guest?.guestId) {
-        localStorage.setItem("guestId", res.data.guest.guestId);
-        // console.log(
-        //   "[trackGuestVisit] guestId stored in localStorage:",
-        //   res.data.guest.guestId
-        // );
+      const res = await axiosInstance.post(
+        "/public/guest/visit",
+        {},
+        { timeout: 5000 }
+      );
+      const guestData = res.data.guest;
+      if (guestData?.guestId) {
+        localStorage.setItem("guestId", guestData.guestId);
       }
-      return res.data.guest;
+      return guestData;
     } catch (err) {
-      const errMsg =
-        err.response?.data?.message || "Failed to track guest visit";
-      console.error("[guestSlice:trackGuestVisit] Error:", errMsg);
-      return rejectWithValue(errMsg);
+      log("warn", `[guestSlice:trackGuestVisit] ${err.message}`);
+      return null;
     }
   }
 );
 
+// --- Slice ---
 const guestSlice = createSlice({
   name: "guest",
   initialState,
   reducers: {
     clearGuestState(state) {
-      // console.log("[clearGuestState] Resetting guest state");
-      state.posts = [];
-      state.singlePost = null;
-      state.loading = false;
-      state.error = null;
-      state.viewTracked = false;
+      Object.assign(state, initialState);
     },
     clearGuestError(state) {
-      // console.log("[clearGuestError] Clearing guest error:", state.error);
       state.error = null;
     },
-    clearSinglePost: (state) => {
+    clearSinglePost(state) {
       state.singlePost = null;
+      state.viewTracked = false;
+    },
+    resetGuestInitialization(state) {
+      state.hasInitialized = false;
+      state.isEmpty = false;
+      state.error = null;
+      state.lastFetchedPage = null;
     },
   },
   extraReducers: (builder) => {
-    builder
-      // fetchPublicPosts
-      .addCase(fetchPublicPosts.pending, (state) => {
-        // console.log("[fetchPublicPosts.pending]");
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchPublicPosts.fulfilled, (state, action) => {
-        // console.log("[fetchPublicPosts.fulfilled] Payload:", action.payload);
-        state.loading = false;
-        state.posts = action.payload.posts;
-        state.total = action.payload.total;
-        state.page = action.payload.page;
-      })
-      .addCase(fetchPublicPosts.rejected, (state, action) => {
-        console.error("[fetchPublicPosts.rejected] Error:", action.payload);
-        state.loading = false;
-        state.error = action.payload;
-      })
+    const handlePending = (state) => {
+      state.loading = true;
+      state.error = null;
+    };
 
-      // fetchPublicPostBySlug
+    const handleListFulfilled = (state, action) => {
+      state.loading = false;
+      state.lastFetchedPage = action.payload.page;
+
+      if (action.payload.page === 1) {
+        state.posts = action.payload.posts;
+      } else {
+        const existingIds = new Set(state.posts.map((p) => p._id));
+        const newPosts = action.payload.posts.filter(
+          (p) => !existingIds.has(p._id)
+        );
+        state.posts = [...state.posts, ...newPosts];
+      }
+
+      state.totalPosts = action.payload.total;
+      state.currentPage = action.payload.page;
+      state.isEmpty = action.payload.isEmpty;
+      state.error = null;
+      state.hasInitialized = true;
+    };
+
+    const handleRejected = (state, action, defaultMsg) => {
+      state.loading = false;
+      state.error = action.payload || defaultMsg;
+      state.hasInitialized = true;
+    };
+
+    builder
+      .addCase(fetchPublicPosts.pending, handlePending)
+      .addCase(fetchPublicPosts.fulfilled, handleListFulfilled)
+      .addCase(fetchPublicPosts.rejected, (state, action) =>
+        handleRejected(state, action, "Failed to load public posts")
+      )
+
       .addCase(fetchPublicPostBySlug.pending, (state) => {
-        // console.log("[fetchPublicPostBySlug.pending]");
-        state.loading = true;
-        state.error = null;
+        handlePending(state);
         state.singlePost = null;
       })
       .addCase(fetchPublicPostBySlug.fulfilled, (state, action) => {
-        // console.log(
-        //   "[fetchPublicPostBySlug.fulfilled] Payload:",
-        //   action.payload
-        // );
         state.loading = false;
         state.singlePost = action.payload;
-      })
-      .addCase(fetchPublicPostBySlug.rejected, (state, action) => {
-        console.error(
-          "[fetchPublicPostBySlug.rejected] Error:",
-          action.payload
-        );
-        state.loading = false;
-        state.error = action.payload;
-      })
-
-      // trackGuestView
-      .addCase(trackGuestView.pending, (state) => {
-        // console.log("[trackGuestView.pending]");
-        state.loading = true;
         state.error = null;
       })
+      .addCase(fetchPublicPostBySlug.rejected, (state, action) =>
+        handleRejected(state, action, "Post not found")
+      )
+
+      .addCase(searchPublicPosts.pending, handlePending)
+      .addCase(searchPublicPosts.fulfilled, handleListFulfilled)
+      .addCase(searchPublicPosts.rejected, (state, action) =>
+        handleRejected(state, action, "Search failed")
+      )
+
       .addCase(trackGuestView.fulfilled, (state) => {
-        // console.log("[trackGuestView.fulfilled]");
-        state.loading = false;
         state.viewTracked = true;
       })
-      .addCase(trackGuestView.rejected, (state, action) => {
-        console.error("[trackGuestView.rejected] Error:", action.payload);
-        state.loading = false;
-        state.error = action.payload;
-      })
-
-      // searchPublicPosts
-      .addCase(searchPublicPosts.pending, (state) => {
-        // console.log("[searchPublicPosts.pending]");
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(searchPublicPosts.fulfilled, (state, action) => {
-        // console.log("[searchPublicPosts.fulfilled] Payload:", action.payload);
-        state.loading = false;
-        state.posts = action.payload.posts;
-        state.total = action.payload.total;
-        state.page = action.payload.page;
-      })
-      .addCase(searchPublicPosts.rejected, (state, action) => {
-        console.error("[searchPublicPosts.rejected] Error:", action.payload);
-        state.loading = false;
-        state.error = action.payload;
-      })
-
-      // trackGuestVisit
-      .addCase(trackGuestVisit.pending, (state) => {
-        // console.log("[trackGuestVisit.pending]");
-        state.loading = true;
-      })
       .addCase(trackGuestVisit.fulfilled, (state, action) => {
-        // console.log("[trackGuestVisit.fulfilled] Payload:", action.payload);
-        state.loading = false;
-        state.lastTrackedGuest = action.payload;
-      })
-      .addCase(trackGuestVisit.rejected, (state, action) => {
-        console.error("[trackGuestVisit.rejected] Error:", action.payload);
-        state.loading = false;
-        state.error = action.payload;
+        state.lastTrackedGuest = action.payload || null;
       });
   },
 });
 
-export const { clearGuestState, clearGuestError, clearSinglePost } =
-  guestSlice.actions;
+export const {
+  clearGuestState,
+  clearGuestError,
+  clearSinglePost,
+  resetGuestInitialization,
+} = guestSlice.actions;
+
 export default guestSlice.reducer;

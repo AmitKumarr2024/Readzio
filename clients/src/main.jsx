@@ -10,7 +10,7 @@ import store from "./store/store.js";
 
 // Renders app with Redux, Google OAuth, and routing
 createRoot(document.getElementById("root")).render(
-  <StrictMode>
+
     <Provider store={store}>
       {" "}
       {/* Redux store provider */}
@@ -33,5 +33,5 @@ createRoot(document.getElementById("root")).render(
         <RouterProvider router={routes} /> {/* App routes */}
       </GoogleOAuthProvider>
     </Provider>
-  </StrictMode>
+
 );

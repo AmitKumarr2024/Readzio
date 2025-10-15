@@ -99,37 +99,23 @@ app.use(
   })
 );
 
+const allowedOrigins = [
+  "http://localhost:5173", // your dev frontend
+  "https://readzio.com", // production frontend
+];
+
 app.use(
   cors({
-    origin: (origin, callback) => {
-      console.log("[Server:CORS] Request from:", origin);
-      const allowedOrigins = [
-        CLIENT_URL?.replace(/\/$/, ""),
-        "https://readzio.com",
-        "https://www.readzio.com",
-        "http://localhost:5173",
-        "http://localhost:8001",
-        "null",
-      ].filter(Boolean);
-
+    origin: function (origin, callback) {
+      // allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
-      const isAllowed = allowedOrigins.includes(origin);
-      if (isAllowed) return callback(null, true);
-      console.error("[Server:CORS] ❌ Blocked origin:", origin);
-      return callback(
-        new Error(`CORS policy violation: ${origin} not allowed`)
-      );
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
     },
-    credentials: true,
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-Requested-With",
-      "Accept",
-      "Origin",
-    ],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    optionsSuccessStatus: 200,
+    credentials: true, // if you need cookies/auth
   })
 );
 
@@ -320,6 +306,29 @@ if (NODE_ENV === "production") {
         },
       })
     );
+
+    // Serve index.html for all non-API/public paths
+    // app.get("*", (req, res, next) => {
+    //   const disallowed = [
+    //     req.path.startsWith("/api"),
+    //     req.path.startsWith("/public"),
+    //     req.path === "/health",
+    //     req.path === "/robots.txt",
+    //     req.path === "/sitemap.xml",
+    //     req.path === "/ads.txt",
+    //   ];
+    //   if (disallowed.some(Boolean)) return next();
+    //   res.sendFile(clientIndexPath, (err) => {
+    //     if (err) {
+    //       console.error(
+    //         "[Server:Static] ❌ Failed to serve index.html:",
+    //         err.message
+    //       );
+    //       if (!res.headersSent) res.status(500).send("Internal Server Error");
+    //     }
+    //   });
+    // });
+
     app.get("/{*splat}", (req, res, next) => {
       const disallowed = [
         req.path.startsWith("/api"),

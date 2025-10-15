@@ -177,17 +177,17 @@ export const checkAuth = createAsyncThunk(
   "auth/checkAuth",
   async (_, thunkAPI) => {
     try {
-      const token = getToken();
+      const token = getToken(); // ASSUMPTION: getToken() is defined and working
       const res = await axiosInstance.get("/auth/check", {
         headers: {
-          Authorization: token ? `Bearer ${token}` : "",
+          Authorization: token ? `Bearer ${token}` : "", // Handles missing token gracefully
         },
-        withCredentials: true,
+        withCredentials: true, // Necessary for cookie/session management
       });
-      return res.data;
+      return res.data; // Success payload
     } catch (err) {
       return thunkAPI.rejectWithValue({
-        message: err?.response?.data?.message || err.message,
+        message: err?.response?.data?.message || err.message, // Robust error handling
       });
     }
   }

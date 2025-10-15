@@ -274,9 +274,6 @@ export const initializeSocket = createAsyncThunk(
       try {
         await dispatch(checkAuth()).unwrap();
         token = getToken();
-        if (!token) {
-          throw new Error("Failed to get token after authentication");
-        }
       } catch (err) {
         console.warn("[socketSlice] checkAuth failed:", err.message);
         return Promise.reject("Authentication required for non-guest users");
@@ -313,7 +310,18 @@ export const initializeSocket = createAsyncThunk(
 
         log("[socketSlice] ✅ Socket connected successfully");
 
-        if (!isGuest && userId) {
+        if (isGuest) {
+          // 🔵 Generate a temporary guest ID (saved in localStorage)
+          let guestId = localStorage.getItem("guestId");
+          if (!guestId) {
+            guestId = "guest_" + Math.random().toString(36).substring(2, 10);
+            localStorage.setItem("guestId", guestId);
+          }
+
+          // Tell server about the guest
+          socket.emit("join", guestId);
+          log("[socketSlice] 🟢 Guest joined socket room:", guestId);
+        } else if (userId) {
           socket.emit("join", userId);
           socket.emit("join", "adminRoom");
           dispatch(fetchInitialPostCounts());

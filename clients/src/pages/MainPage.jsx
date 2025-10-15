@@ -2,7 +2,6 @@ import React, { useEffect, useLayoutEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Menu, X } from "lucide-react";
 import { toggleSidebar, setIsMobile } from "../store/Post/postMetaSlice";
-import { fetchPublicPosts } from "../store/guestSlice";
 import { getAllPosts } from "../store/postSlice";
 
 import HeroSection from "../components/HeroSection";
@@ -10,7 +9,6 @@ import RightSideBox from "../components/RightSideBar/RightSideBox";
 import TabbedPostSection from "../components/Tabs/TabbedPostSection";
 import GuestPostView from "../components/GuestMainScreen/GuestPostView";
 import Skeleton from "../components/Ui/Skeleton";
-// import FloatAd from "../Ads/FloatAd";
 
 const MainPage = () => {
   const dispatch = useDispatch();
@@ -21,12 +19,6 @@ const MainPage = () => {
     loading: authLoading,
   } = useSelector((state) => state.auth);
 
-  const {
-    posts: guestPosts = [],
-    loading: guestLoading,
-    error: guestError,
-  } = useSelector((state) => state.guest || {});
-
   const { posts: authPosts = [], loading: authPostLoading } = useSelector(
     (state) => state.post || {}
   );
@@ -35,28 +27,13 @@ const MainPage = () => {
 
   // Handle tab changes for TabbedPostSection
   const handleTabChange = useCallback((tab) => {
-    // console.log(`Tab changed to: ${tab}`);
-    // Add your tab-specific logic here
-    // Example:
-    // if (tab === "Following") {
-    //   dispatch(getFollowingPosts());
-    // } else if (tab === "My Posts") {
-    //   dispatch(getMyPosts());
-    // }
+    // Add your tab-specific logic here if needed
   }, []);
 
-  // Fetch posts on mount
+  // Fetch posts on mount for authenticated users only
   useEffect(() => {
-    try {
-      if (!authLoading) {
-        if (isAuthenticated) {
-          dispatch(getAllPosts({ page: 1, limit: 12 }));
-        } else {
-          dispatch(fetchPublicPosts({ page: 1, limit: 12 }));
-        }
-      }
-    } catch (e) {
-      console.error("[MainPage] Fetch error:", e);
+    if (!authLoading && isAuthenticated) {
+      dispatch(getAllPosts({ page: 1, limit: 12 }));
     }
   }, [dispatch, isAuthenticated, authLoading]);
 
@@ -137,22 +114,17 @@ const MainPage = () => {
                 loading={authPostLoading}
                 onTabChange={handleTabChange}
               />
-            ) : guestLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} height="h-48" />
-                ))}
-              </div>
             ) : (
-              <GuestPostView posts={guestPosts} loading={guestLoading} />
+              <GuestPostView />
             )}
           </div>
 
           {isSidebarOpen && (
             <aside
               className={`fixed top-0 right-0 h-full min-w-[400px] md:w-96 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-2xl z-50 overflow-y-auto transition-transform duration-300 ease-in-out
-              ${isMobile ? "translate-x-0" : ""}
-              lg:static lg:z-auto lg:shadow-none lg:w-96`}
+              ${
+                isMobile ? "translate-x-0" : ""
+              } lg:static lg:z-auto lg:shadow-none lg:w-96`}
             >
               <RightSideBox
                 user={user}
@@ -161,25 +133,6 @@ const MainPage = () => {
             </aside>
           )}
         </div>
-
-        {!isAuthenticated && !authLoading && guestError && (
-          <div className="text-center text-red-500 py-4">
-            <p>{guestError}</p>
-            <button
-              onClick={() =>
-                dispatch(
-                  fetchPublicPosts({
-                    page: 1,
-                    limit: 12,
-                  })
-                )
-              }
-              className="ml-2 text-blue-500 underline"
-            >
-              Retry
-            </button>
-          </div>
-        )}
       </div>
 
       {isMobile && isSidebarOpen && (
@@ -189,7 +142,6 @@ const MainPage = () => {
           aria-label="Close Sidebar"
         />
       )}
-      {/* <FloatAd /> */}
     </div>
   );
 };
