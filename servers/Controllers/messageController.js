@@ -5,7 +5,7 @@ import validator from "validator";
 import ContactMessage from "../../servers/Models/ContactMessage.js";
 import ReportedPostModel from "../../servers/Models/ReportedPost.js";
 import { sendEmail } from "../../servers/services/emailService.js";
-import { EMAIL_TEMPLATE } from "../../servers/config/emailTemplate.js";
+import { REPLY_EMAIL_TEMPLATE as EMAIL_TEMPLATE } from "../../servers/config/emailTemplate.js";
 
 // Creates a new contact message
 export const createContactMessage = async (req, res, next) => {
@@ -37,6 +37,43 @@ export const createContactMessage = async (req, res, next) => {
       message,
     });
     await contactMessage.save();
+
+    // Send notification to admin
+    const adminEmail = "support@readzio.com";
+    const emailSubject = `New Contact Message from ${name}: ${subject}`;
+    const emailMessage = `You have received a new contact message.
+
+From: ${name} (${email})
+Subject: ${subject}
+Message: ${message}`;
+
+    const htmlMessage = emailMessage.replace(/\n/g, "<br />");
+
+    const html = EMAIL_TEMPLATE.replace(/{{subject}}/g, emailSubject)
+      .replace(/{{name}}/g, "Admin")
+      .replace(/{{message}}/g, htmlMessage)
+      .replace(/{{supportEmail}}/g, adminEmail);
+
+    const text = `Dear Admin,
+
+${emailMessage}
+
+Best regards,
+readzio Team
+
+Contact Support: support@readzio.com`;
+
+    const result = await sendEmail({
+      to: adminEmail,
+      subject: emailSubject,
+      html,
+      text,
+      type: "direct",
+    });
+
+    if (!result.success) {
+      console.error("Failed to send contact notification:", result.error);
+    }
 
     res.status(201).json({ success: true, message: "Message sent" });
   } catch (error) {
@@ -256,9 +293,11 @@ export const sendReportNotification = async (req, res, next) => {
         "Missing author email"
       );
 
+    const htmlMessage = finalMessage.replace(/\n/g, "<br />");
+
     const html = EMAIL_TEMPLATE.replace(/{{subject}}/g, subject)
       .replace(/{{name}}/g, report.post.author.name || "User")
-      .replace(/{{message}}/g, finalMessage)
+      .replace(/{{message}}/g, htmlMessage)
       .replace(/{{supportEmail}}/g, "support@readzio.com");
 
     const text = `Dear ${report.post.author.name || "User"},
@@ -357,9 +396,11 @@ export const replyContactMessage = async (req, res, next) => {
         "Invalid email format"
       );
 
+    const htmlMessage = message.replace(/\n/g, "<br />");
+
     const html = EMAIL_TEMPLATE.replace(/{{subject}}/g, subject)
       .replace(/{{name}}/g, contactMessage.name)
-      .replace(/{{message}}/g, message)
+      .replace(/{{message}}/g, htmlMessage)
       .replace(/{{supportEmail}}/g, "support@readzio.com");
 
     const text = `Dear ${contactMessage.name},

@@ -292,3 +292,130 @@ export const WELCOME_EMAIL_TEMPLATE = `<!DOCTYPE html>
     </table>
   </body>
 </html>`;
+
+
+export const REPLY_EMAIL_TEMPLATE = `<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>{{subject}}</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet" type="text/css">
+  <style type="text/css">
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Lato', sans-serif;
+      background: #ffffff;
+      color: #000000;
+    }
+    table, td {
+      border-collapse: collapse;
+    }
+    .container {
+      width: 100%;
+      max-width: 650px;
+      margin: 40px auto;
+      background: #ffffff;
+      border: 1px solid #000000;
+      border-radius: 0;
+    }
+    .header {
+      padding: 25px;
+      text-align: center;
+      border-bottom: 1px solid #000000;
+    }
+    .main-content {
+      padding: 35px;
+    }
+    .footer {
+      padding: 25px;
+      text-align: center;
+      font-size: 13px;
+      color: #000000;
+      border-top: 1px solid #000000;
+    }
+    @media only screen and (max-width: 480px) {
+      .container {
+        width: 90% !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <table width="100%" cellspacing="0" cellpadding="0" border="0" align="center" bgcolor="#ffffff">
+    <tbody>
+      <tr>
+        <td valign="top" align="center">
+          <table class="container" width="600" cellspacing="0" cellpadding="0" border="0">
+            <tbody>
+              <tr>
+                <td class="header">
+                  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
+                    <tr>
+                      <td align="center">
+                        <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center; justify-content: center; padding-top: 10px;">
+                          <tr>
+                            <td style="padding-right: 10px;">
+                              <img src="https://readzio.com/logo.png" alt="readzio Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
+                            </td>
+                            <td>
+                              <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">readzio</span>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                  <h1 style="margin: 12px 0; font-size: 26px;">{{subject}}</h1>
+                </td>
+              </tr>
+              <tr>
+                <td class="main-content">
+                  <table width="100%" cellspacing="0" cellpadding="0" border="0">
+                    <tbody>
+                      <tr>
+                        <td style="padding: 0 0 18px; font-size: 16px; line-height: 150%;">
+                          Dear {{name}},
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 0 0 18px; font-size: 15px; line-height: 150%;">
+                          {{message}}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td class="footer">
+                  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
+                    <tr>
+                      <td align="center">
+                        <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center; justify-content: center; padding-top: 10px;">
+                          <tr>
+                            <td style="padding-right: 10px;">
+                              <img src="https://readzio.com/logo.png" alt="readzio Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
+                            </td>
+                            <td>
+                              <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">readzio</span>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                  Best regards,<br>readzio Team<br>
+                  <a href="mailto:{{supportEmail}}" style="color: #000000; text-decoration: none;">Contact Support</a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>`;
