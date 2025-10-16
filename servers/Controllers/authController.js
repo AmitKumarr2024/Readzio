@@ -17,7 +17,7 @@ import Handlebars from "handlebars";
 import {
   WELCOME_EMAIL_TEMPLATE,
   EMAIL_TEMPLATE,
-} from "../services/emailTemplates.js";
+} from "../../servers/config/emailTemplate.js";
 
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 const log = process.env.NODE_ENV === "production" ? () => {} : console.log;
