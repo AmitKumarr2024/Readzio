@@ -34,6 +34,7 @@ import CommentsRoutes from "./Routes/commentRoutes.js";
 import AdminRoutes from "./Routes/adminRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
+import DailyEmailRoutes from "./Routes/dailyMailRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 
@@ -165,6 +166,11 @@ const routeConfigs = [
   },
   { path: "/api/comment", router: CommentsRoutes, name: "CommentsRoutes" },
   { path: "/api/admin", router: AdminRoutes, name: "AdminRoutes" },
+  {
+    path: "/api/dailyMail",
+    router: DailyEmailRoutes,
+    name: "DailyEmailRoutes",
+  },
   {
     path: "/api/bannerNotification",
     router: BannerNotificationRoutes,
