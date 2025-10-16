@@ -14,7 +14,14 @@ const emailLogSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["welcome", "reset_password", "test", "daily_digest", "direct"], // Added daily_digest, direct
+    enum: [
+      "welcome",
+      "reset_password",
+      "verification", // ✅ added for verification/OTP emails
+      "test",
+      "daily_digest",
+      "direct",
+    ],
     required: true,
   },
   emailStatus: {
@@ -44,17 +51,17 @@ const emailLogSchema = new mongoose.Schema({
   },
   subject: {
     type: String,
-    required: false, // Made optional
+    required: false,
     trim: true,
   },
   from: {
     type: String,
-    required: false, // Made optional
+    required: false,
     trim: true,
   },
   to: {
     type: String,
-    required: false, // Made optional
+    required: false,
     trim: true,
   },
 });
