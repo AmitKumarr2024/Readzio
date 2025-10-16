@@ -46,6 +46,7 @@ export function EnhancedManualEmailSender() {
   }, [dispatch]);
 
   const handleSendEmails = async () => {
+    console.log("✅ Send Enhanced Daily Emails clicked", options);
     dispatch(sendEnhancedDailyPostEmail(options));
   };
 

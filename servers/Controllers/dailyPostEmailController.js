@@ -14,6 +14,114 @@ import { DAILY_POST_EMAIL_TEMPLATE } from "../config/dailyPostEmailTemplate.js";
  * 1️⃣ Send Daily Digest Emails (Bulk)
  * POST /api/dailyMail/daily-post
  */
+// old code
+// export const sendDailyPostEmail = async (req, res, next) => {
+//   console.log("📨 [sendDailyPostEmail] Request received:", {
+//     method: req.method,
+//     url: req.url,
+//     body: req.body,
+//     query: req.query,
+//   });
+//   try {
+//     const users = await UserModel.find({
+//       isAccountVerified: true,
+//       stopEmailAttempts: false,
+//     });
+
+//     if (!users.length) {
+//       console.log("📨 [sendDailyPostEmail] No users found");
+//       return res
+//         .status(200)
+//         .json({ success: true, message: "No users to send emails to." });
+//     }
+
+//     const since = dayjs().subtract(1, "day").toDate();
+//     const posts = await PostModel.find({
+//       isPublished: true,
+//       createdAt: { $gte: since },
+//       blocked: false,
+//     })
+//       .sort({ createdAt: -1 })
+//       .limit(20)
+//       .populate("author", "name");
+
+//     if (!posts.length) {
+//       console.log("📨 [sendDailyPostEmail] No posts found");
+//       return res
+//         .status(200)
+//         .json({ success: true, message: "No new posts to send." });
+//     }
+
+//     const template = Handlebars.compile(DAILY_POST_EMAIL_TEMPLATE);
+//     let successCount = 0;
+//     let failedCount = 0;
+
+//     for (const user of users) {
+//       try {
+//         const html = template({
+//           subject: "Your Daily Readzio Digest",
+//           name: user.name,
+//           posts,
+//           hasButton: true,
+//           buttonText: "Visit Readzio",
+//           buttonUrl: "https://readzio.com",
+//           supportEmail: "readzio.official@gmail.com",
+//         });
+
+//         const result = await sendEmail({
+//           to: user.email,
+//           subject: "Your Daily Readzio Digest",
+//           html,
+//           text: `Hi ${user.name}, check out the latest posts on Readzio.`,
+//           type: "daily_digest",
+//         });
+
+//         user.emailAttempts = (user.emailAttempts || 0) + 1;
+//         if (result.success) {
+//           user.emailStatus = "sent";
+//           user.emailLastError = null;
+//           successCount++;
+//         } else {
+//           user.emailStatus = "failed";
+//           user.emailLastError = result.error || "Unknown error";
+//           failedCount++;
+//         }
+//         await user.save();
+//       } catch (err) {
+//         console.error(
+//           `[DailyDigest] Failed for user ${user.email}:`,
+//           err.message
+//         );
+//         failedCount++;
+//       }
+//     }
+
+//     console.log("📨 [sendDailyPostEmail] Response sent:", {
+//       successCount,
+//       failedCount,
+//       total: users.length,
+//     });
+//     return res.status(200).json({
+//       success: true,
+//       message: "Daily digest emails sent.",
+//       results: {
+//         successful: successCount,
+//         failed: failedCount,
+//         total: users.length,
+//       },
+//     });
+//   } catch (err) {
+//     console.error("[DailyDigest] Controller error:", err.message);
+//     next(
+//       err instanceof AppError
+//         ? err
+//         : new AppError(err.message, 500, "SendDailyPostEmail")
+//     );
+//   }
+// };
+
+// new code
+
 export const sendDailyPostEmail = async (req, res, next) => {
   console.log("📨 [sendDailyPostEmail] Request received:", {
     method: req.method,
@@ -21,6 +129,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     body: req.body,
     query: req.query,
   });
+
   try {
     const users = await UserModel.find({
       isAccountVerified: true,
@@ -35,7 +144,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     }
 
     const since = dayjs().subtract(1, "day").toDate();
-    const posts = await PostModel.find({
+    let posts = await PostModel.find({
       isPublished: true,
       createdAt: { $gte: since },
       blocked: false,
@@ -44,11 +153,13 @@ export const sendDailyPostEmail = async (req, res, next) => {
       .limit(20)
       .populate("author", "name");
 
-    if (!posts.length) {
-      console.log("📨 [sendDailyPostEmail] No posts found");
-      return res
-        .status(200)
-        .json({ success: true, message: "No new posts to send." });
+    // If no posts found, fallback to sending an empty digest
+    const sendEmptyDigest = posts.length === 0;
+    if (sendEmptyDigest) {
+      console.log(
+        "📨 [sendDailyPostEmail] No posts found — sending fallback digest email."
+      );
+      posts = []; // ensure posts is empty array
     }
 
     const template = Handlebars.compile(DAILY_POST_EMAIL_TEMPLATE);
@@ -65,13 +176,16 @@ export const sendDailyPostEmail = async (req, res, next) => {
           buttonText: "Visit Readzio",
           buttonUrl: "https://readzio.com",
           supportEmail: "readzio.official@gmail.com",
+          noPosts: sendEmptyDigest, // flag to show fallback text in template
         });
 
         const result = await sendEmail({
           to: user.email,
           subject: "Your Daily Readzio Digest",
           html,
-          text: `Hi ${user.name}, check out the latest posts on Readzio.`,
+          text: sendEmptyDigest
+            ? `Hi ${user.name}, no new posts today — explore more at Readzio!`
+            : `Hi ${user.name}, check out the latest posts on Readzio.`,
           type: "daily_digest",
         });
 
@@ -85,6 +199,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
           user.emailLastError = result.error || "Unknown error";
           failedCount++;
         }
+
         await user.save();
       } catch (err) {
         console.error(
@@ -100,6 +215,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
       failedCount,
       total: users.length,
     });
+
     return res.status(200).json({
       success: true,
       message: "Daily digest emails sent.",
@@ -119,6 +235,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
   }
 };
 
+//-----------------------------------------------------------------------------------
 /**
  * 2️⃣ Send Direct Email (Manual)
  * POST /api/dailyMail/send-direct-email

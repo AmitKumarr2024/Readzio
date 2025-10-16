@@ -4,7 +4,7 @@ import { sendDailyPostEmail } from "../../servers/Controllers/dailyPostEmailCont
 
 export function startDailyDigestJob() {
   cron.schedule(
-    "0 9,21 * * *",
+    "0 10,22 * * *",
     async () => {
       try {
         const fakeRes = {
