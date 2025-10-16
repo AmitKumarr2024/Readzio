@@ -38,11 +38,15 @@ import {
   getAllEmailStatuses,
   retryFailedEmails,
 } from "../Controllers/EmailStatusController.js";
+import { sendInvoiceEmail, sendPasswordResetEmail, sendVerificationEmail, sendWelcomeEmail } from "../Controllers/formEmailController.js";
+// ✅ NEW IMPORT for form-based email sending
+
 
 const router = express.Router();
 
 // Protected routes for authenticated users
 router.use(protectedRoute);
+
 // POST /contact - Creates a contact message
 router.post("/contact", createContactMessage);
 // POST /reports - Creates a report for a post
@@ -57,7 +61,17 @@ router.get("/subscriptions/eligibility/:userId", checkUserEligibility);
 // Admin-only routes
 router.use(adminOnly);
 
-// User Management
+// ============ EMAIL SENDING ROUTES (FORM-BASED) ============
+// POST /send-verification-email - Send verification email manually
+router.post("/send-verification-email", sendVerificationEmail);
+// POST /send-welcome-email - Send welcome email manually
+router.post("/send-welcome-email", sendWelcomeEmail);
+// POST /send-reset-password-email - Send password reset email manually
+router.post("/send-reset-password-email", sendPasswordResetEmail);
+// POST /send-invoice-email - Send invoice email manually
+router.post("/send-invoice-email", sendInvoiceEmail);
+
+// ============ USER MANAGEMENT ============
 // PATCH /users/block/:userId - Toggles user block status
 router.patch("/users/block/:userId", toggleBlockUser);
 // PATCH /users/role/:userId - Toggles user role (user/admin)
@@ -65,7 +79,7 @@ router.patch("/users/role/:userId", toggleUserRole);
 // DELETE /users/:userId - Deletes a user
 router.delete("/users/:userId", deleteUser);
 
-// Post Management
+// ============ POST MANAGEMENT ============
 // GET /posts - Fetches all posts
 router.get("/posts", getAllPosts);
 // PATCH /posts/block/:postId - Toggles post block status
@@ -75,13 +89,13 @@ router.delete("/posts/:postId", deletePost);
 // POST /acknowledge-report/:reportId - Acknowledges a reported post
 router.post("/acknowledge-report/:reportId", acknowledgeReport);
 
-// Contact Message Management
+// ============ CONTACT MESSAGE MANAGEMENT ============
 // GET /contact-messages - Fetches all contact messages
 router.get("/contact-messages", viewContactMessages);
 // POST /reply-contact/:messageId - Replies to a contact message
 router.post("/reply-contact/:messageId", replyContactMessage);
 
-// Report Management
+// ============ REPORT MANAGEMENT ============
 // GET /reports - Fetches all reported posts
 router.get("/reports", getAllReportedPosts);
 // PATCH /reports/:reportId - Reviews a reported post
@@ -89,13 +103,13 @@ router.patch("/reports/:reportId", reviewReport);
 // POST /replies/send-notification - Sends notification for a report
 router.post("/replies/send-notification", sendReportNotification);
 
-// Email Status Management
+// ============ EMAIL STATUS MANAGEMENT ============
 // GET /all-email-statuses - Fetches all email statuses
 router.get("/all-email-statuses", getAllEmailStatuses);
 // POST /retry-failed-emails - Retries sending failed emails
 router.post("/retry-failed-emails", retryFailedEmails);
 
-// Traffic Tracking
+// ============ TRAFFIC TRACKING ============
 // POST /reading-time - Records reading time for a post
 router.post("/reading-time", recordReadingTime);
 // GET /reading-details/:postId - Fetches reading details for a post
@@ -103,11 +117,11 @@ router.get("/reading-details/:postId", getReadingDetailsByPost);
 // GET /analytics - Fetches site analytics
 router.get("/analytics", getSiteAnalytics);
 
-// Excel Download
+// ============ EXCEL DOWNLOAD ============
 // GET /download-csv - Downloads site data as CSV
 router.get("/download-csv", downloadAllDataCsv);
 
-// Subscription Management
+// ============ SUBSCRIPTION MANAGEMENT ============
 // GET /subscriptions/plans - Fetches all subscription plans
 router.get("/subscriptions/plans", getAllSubscriptionPlans);
 // POST /subscriptions/eligibility/toggle - Toggles user eligibility for subscriptions
@@ -123,17 +137,14 @@ router.patch(
   "/subscriptions/user-override/:userId",
   setUserEligibilityOverride
 );
-// ✅ Admin-only override
+// PATCH /subscriptions/user-milestone/:userId - Admin-only override
 router.patch(
   "/subscriptions/user-milestone/:userId",
-  protectedRoute,
   overrideUserMilestones
 );
-
-// ✅ Admin-only reset
+// PATCH /subscriptions/user-milestone-reset/:userId - Admin-only reset
 router.patch(
   "/subscriptions/user-milestone-reset/:userId",
-  protectedRoute,
   resetUserMilestones
 );
 
