@@ -13,14 +13,17 @@ import UserModel from "../../servers/Models/User.js";
 import mongoose from "mongoose";
 
 import { sendEmail } from "../services/emailService.js";
+import Handlebars from "handlebars";
 import {
-  verificationOtpTemplate,
-  resetOtpTemplate,
-  welcomeTemplate,
+  WELCOME_EMAIL_TEMPLATE,
+  EMAIL_TEMPLATE,
 } from "../services/emailTemplates.js";
 
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 const log = process.env.NODE_ENV === "production" ? () => {} : console.log;
+
+const renderTemplate = (template, data) => Handlebars.compile(template)(data);
+const supportEmail = process.env.SENDER_EMAIL || "support@readzio.com";
 
 // Sends OTP for email verification
 export const sendVerifyOtp = async (req, res, next) => {
@@ -64,7 +67,16 @@ export const sendVerifyOtp = async (req, res, next) => {
     const emailResult = await sendEmail({
       to: user.email,
       subject: "Verify your Readzio account",
-      html: verificationOtpTemplate(otp, user.name),
+      html: renderTemplate(EMAIL_TEMPLATE, {
+        subject: "Verify your Readzio account",
+        name: user.name,
+        message:
+          "Your verification code is below. Enter it to confirm your email.",
+        otp,
+        isResetOtp: false,
+        supportEmail,
+        hasButton: false,
+      }),
       type: "verification",
     });
 
@@ -240,7 +252,16 @@ export const sendResetOtp = async (req, res, next) => {
     const emailResult = await sendEmail({
       to: user.email,
       subject: "Reset your Readzio password",
-      html: resetOtpTemplate(otp, user.name),
+      html: renderTemplate(EMAIL_TEMPLATE, {
+        subject: "Reset your Readzio password",
+        name: user.name,
+        message:
+          "Use the code below to reset your password. If you didn't request this, ignore it.",
+        otp,
+        isResetOtp: true,
+        supportEmail,
+        hasButton: false,
+      }),
       type: "reset",
     });
 
@@ -483,7 +504,15 @@ export const Signup = async (req, res, next) => {
         const emailResult = await sendEmail({
           to: newUser.email,
           subject: "Welcome to Readzio 🎉",
-          html: welcomeTemplate(newUser.name),
+          html: renderTemplate(WELCOME_EMAIL_TEMPLATE, {
+            subject: "Welcome to Readzio 🎉",
+            name: newUser.name,
+            message: "We're excited to have you on board!",
+            hasButton: true,
+            buttonUrl: "https://readzio.com/dashboard",
+            buttonText: "Get Started",
+            supportEmail,
+          }),
           type: "welcome",
         });
 
@@ -774,7 +803,15 @@ export const googleLogin = async (req, res, next) => {
         const emailResult = await sendEmail({
           to: email,
           subject: "Welcome to Readzio 🎉",
-          html: welcomeTemplate(name),
+          html: renderTemplate(WELCOME_EMAIL_TEMPLATE, {
+            subject: "Welcome to Readzio 🎉",
+            name: name,
+            message: "We're excited to have you on board!",
+            hasButton: true,
+            buttonUrl: "https://readzio.com/dashboard",
+            buttonText: "Get Started",
+            supportEmail,
+          }),
           type: "welcome",
         });
 
@@ -965,7 +1002,15 @@ export const testWelcomeEmail = async (req, res, next) => {
     const emailResult = await sendEmail({
       to: email,
       subject: "Welcome to Readzio 🎉",
-      html: welcomeTemplate(user.name),
+      html: renderTemplate(WELCOME_EMAIL_TEMPLATE, {
+        subject: "Welcome to Readzio 🎉",
+        name: user.name,
+        message: "We're excited to have you on board!",
+        hasButton: true,
+        buttonUrl: "https://readzio.com/dashboard",
+        buttonText: "Get Started",
+        supportEmail,
+      }),
     });
 
     // update DB based on send result
