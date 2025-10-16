@@ -4,16 +4,14 @@ import { sendDailyPostEmail } from "../../servers/Controllers/dailyPostEmailCont
 
 export function startDailyDigestJob() {
   cron.schedule(
-    "0 8 * * *",
+    "0 8,20 * * *",
     async () => {
       try {
-        // Minimal mock for res to prevent errors
         const fakeRes = {
           status: () => fakeRes,
           json: (data) => console.log("[Cron:DailyDigest]", data),
         };
-
-        const fakeReq = {}; // not used in your controller
+        const fakeReq = {};
         const fakeNext = (err) =>
           console.error("[Cron:DailyDigest] Error:", err);
 
@@ -25,5 +23,7 @@ export function startDailyDigestJob() {
     { timezone: "Asia/Kolkata" }
   );
 
-  console.log("[Cron:DailyDigest] Job scheduled for 8:00 AM IST daily.");
+  console.log(
+    "[Cron:DailyDigest] Job scheduled for 8:00 AM and 8:00 PM IST daily."
+  );
 }
