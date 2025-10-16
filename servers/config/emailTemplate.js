@@ -99,7 +99,7 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
               <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center;  justify-content: center; padding-top: 10px;">
                 <tr>
                   <td style="padding-right: 10px;">
-                    <img src="https://readzio.com/logo1.png" alt="readzio Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
+                    <img src="https://readzio.com/logo.png" alt="readzio Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
                   </td>
                   <td>
                     <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">readzio</span>
@@ -167,7 +167,7 @@ export const EMAIL_TEMPLATE = `<!DOCTYPE html>
               <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center;  justify-content: center; padding-top: 10px;">
                 <tr>
                   <td style="padding-right: 10px;">
-                    <img src="https://readzio.com/logo1.png" alt="readzio Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
+                    <img src="https://readzio.com/logo.png" alt="readzio Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
                   </td>
                   <td>
                     <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">readzio</span>
@@ -253,7 +253,7 @@ export const WELCOME_EMAIL_TEMPLATE = `<!DOCTYPE html>
               <table role="presentation" cellpadding="0" cellspacing="0" style="display: inline-flex; align-items: center;  justify-content: center; padding-top: 10px;">
                 <tr>
                   <td style="padding-right: 10px;">
-                    <img src="https://readzio.com/logo1.png" alt="readzio Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
+                    <img src="https://readzio.com/logo.png" alt="readzio Logo" width="40" height="40" style="border-radius: 50%; object-fit: cover;" />
                   </td>
                   <td>
                     <span style="font-size: 20px; font-weight: bold; color: #111827; font-family: sans-serif;">readzio</span>

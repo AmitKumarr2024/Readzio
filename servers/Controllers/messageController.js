@@ -1,12 +1,11 @@
-import { CLIENT_URL, 
-  // SENDER_EMAIL 
-} from "../config/dotenv.js";
-
+import { CLIENT_URL } from "../config/dotenv.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 import mongoose from "mongoose";
 import validator from "validator";
 import ContactMessage from "../../servers/Models/ContactMessage.js";
 import ReportedPostModel from "../../servers/Models/ReportedPost.js";
+import { sendEmail } from "../services/emailService.js";
+import { EMAIL_TEMPLATE } from "../services/emailTemplate.js";
 
 // Creates a new contact message
 export const createContactMessage = async (req, res, next) => {
@@ -257,7 +256,37 @@ export const sendReportNotification = async (req, res, next) => {
         "Missing author email"
       );
 
-  
+    const html = EMAIL_TEMPLATE.replace(/{{subject}}/g, subject)
+      .replace(/{{name}}/g, report.post.author.name || "User")
+      .replace(/{{message}}/g, finalMessage)
+      .replace(/{{supportEmail}}/g, "support@readzio.com");
+
+    const text = `Dear ${report.post.author.name || "User"},
+
+${finalMessage}
+
+Best regards,
+readzio Team
+
+Contact Support: support@readzio.com`;
+
+    const result = await sendEmail({
+      to: report.post.author.email,
+      subject,
+      html,
+      text,
+      type: "direct",
+    });
+
+    if (!result.success) {
+      throw new AppError(
+        "Failed to send notification",
+        500,
+        "SendReportNotification",
+        result.error
+      );
+    }
+
     res
       .status(200)
       .json({ success: true, message: "Notification sent successfully" });
@@ -328,7 +357,37 @@ export const replyContactMessage = async (req, res, next) => {
         "Invalid email format"
       );
 
-    
+    const html = EMAIL_TEMPLATE.replace(/{{subject}}/g, subject)
+      .replace(/{{name}}/g, contactMessage.name)
+      .replace(/{{message}}/g, message)
+      .replace(/{{supportEmail}}/g, "support@readzio.com");
+
+    const text = `Dear ${contactMessage.name},
+
+${message}
+
+Best regards,
+readzio Team
+
+Contact Support: support@readzio.com`;
+
+    const result = await sendEmail({
+      to: contactMessage.email,
+      subject,
+      html,
+      text,
+      type: "direct",
+    });
+
+    if (!result.success) {
+      throw new AppError(
+        "Failed to send reply",
+        500,
+        "ReplyContactMessage",
+        result.error
+      );
+    }
+
     // Marks message as handled
     contactMessage.isHandled = true;
     await contactMessage.save();

@@ -66,4 +66,5 @@ const emailLogSchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model("EmailLog", emailLogSchema);
+export default mongoose.models.EmailLog ||
+  mongoose.model("EmailLog", emailLogSchema);

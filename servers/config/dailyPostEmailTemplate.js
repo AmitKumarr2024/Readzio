@@ -73,7 +73,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
                 <table role="presentation" cellpadding="0" cellspacing="0" align="center">
                   <tr>
                     <td style="padding-right:10px;">
-                      <img src="https://readzio.com/logo1.png" alt="readzio Logo" width="40" height="40" style="border-radius:50%;">
+                      <img src="https://readzio.com/logo.png" alt="readzio Logo" width="40" height="40" style="border-radius:50%;">
                     </td>
                     <td style="font-size:20px; font-weight:bold; color:#111827;">readzio</td>
                   </tr>
