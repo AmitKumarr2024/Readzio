@@ -20,6 +20,7 @@ const emailLogSchema = new mongoose.Schema({
       "verification", // ✅ added for verification/OTP emails
       "test",
       "daily_digest",
+      "reset",
       "direct",
     ],
     required: true,
