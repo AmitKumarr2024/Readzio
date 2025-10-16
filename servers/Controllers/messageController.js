@@ -4,8 +4,8 @@ import mongoose from "mongoose";
 import validator from "validator";
 import ContactMessage from "../../servers/Models/ContactMessage.js";
 import ReportedPostModel from "../../servers/Models/ReportedPost.js";
-import { sendEmail } from "../services/emailService.js";
-import { EMAIL_TEMPLATE } from "../services/emailTemplate.js";
+import { sendEmail } from "../../servers/services/emailService.js";
+import { EMAIL_TEMPLATE } from "../../servers/config/emailTemplate.js";
 
 // Creates a new contact message
 export const createContactMessage = async (req, res, next) => {
