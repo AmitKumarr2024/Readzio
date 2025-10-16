@@ -15,6 +15,12 @@ import { DAILY_POST_EMAIL_TEMPLATE } from "../config/dailyPostEmailTemplate.js";
  * POST /api/dailyMail/daily-post
  */
 export const sendDailyPostEmail = async (req, res, next) => {
+  console.log("📨 [sendDailyPostEmail] Request received:", {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query,
+  });
   try {
     const users = await UserModel.find({
       isAccountVerified: true,
@@ -22,6 +28,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     });
 
     if (!users.length) {
+      console.log("📨 [sendDailyPostEmail] No users found");
       return res
         .status(200)
         .json({ success: true, message: "No users to send emails to." });
@@ -38,6 +45,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
       .populate("author", "name");
 
     if (!posts.length) {
+      console.log("📨 [sendDailyPostEmail] No posts found");
       return res
         .status(200)
         .json({ success: true, message: "No new posts to send." });
@@ -87,6 +95,11 @@ export const sendDailyPostEmail = async (req, res, next) => {
       }
     }
 
+    console.log("📨 [sendDailyPostEmail] Response sent:", {
+      successCount,
+      failedCount,
+      total: users.length,
+    });
     return res.status(200).json({
       success: true,
       message: "Daily digest emails sent.",
@@ -111,14 +124,22 @@ export const sendDailyPostEmail = async (req, res, next) => {
  * POST /api/dailyMail/send-direct-email
  */
 export const sendDirectEmail = async (req, res, next) => {
+  console.log("📨 [sendDirectEmail] Request received:", {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query,
+  });
   try {
     const { email } = req.body;
     if (!email) {
+      console.log("📨 [sendDirectEmail] Missing email");
       throw new AppError("Email is required", 400, "SendDirectEmail");
     }
 
     const user = await UserModel.findOne({ email });
     if (!user) {
+      console.log("📨 [sendDirectEmail] User not found:", email);
       throw new AppError("User not found", 404, "SendDirectEmail");
     }
 
@@ -156,6 +177,10 @@ export const sendDirectEmail = async (req, res, next) => {
     }
     await user.save();
 
+    console.log("📨 [sendDirectEmail] Response sent:", {
+      success: result.success,
+      email: user.email,
+    });
     res.status(200).json({
       success: result.success,
       message: result.success
@@ -181,6 +206,12 @@ export const sendDirectEmail = async (req, res, next) => {
  * GET /api/dailyMail/email-statuses
  */
 export const getAllEmailStatuses = async (req, res, next) => {
+  console.log("📨 [getAllEmailStatuses] Request received:", {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query,
+  });
   try {
     const { page = 1, limit = 10, status } = req.query;
     const query = {};
@@ -193,6 +224,12 @@ export const getAllEmailStatuses = async (req, res, next) => {
       .limit(Number(limit))
       .lean();
 
+    console.log("📨 [getAllEmailStatuses] Response sent:", {
+      total,
+      page,
+      limit,
+      status,
+    });
     return res.status(200).json({
       success: true,
       statuses: users,
@@ -215,9 +252,16 @@ export const getAllEmailStatuses = async (req, res, next) => {
  * GET /api/dailyMail/email-status
  */
 export const checkEmailStatus = async (req, res, next) => {
+  console.log("📨 [checkEmailStatus] Request received:", {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query,
+  });
   try {
     const { email } = req.query;
     if (!email) {
+      console.log("📨 [checkEmailStatus] Missing email");
       throw new AppError("Email is required", 400, "CheckEmailStatus");
     }
 
@@ -226,9 +270,14 @@ export const checkEmailStatus = async (req, res, next) => {
     );
 
     if (!user) {
+      console.log("📨 [checkEmailStatus] User not found:", email);
       throw new AppError("User not found", 404, "CheckEmailStatus");
     }
 
+    console.log("📨 [checkEmailStatus] Response sent:", {
+      email,
+      status: user.emailStatus,
+    });
     res.status(200).json({
       success: true,
       email: user.email,
@@ -253,9 +302,16 @@ export const checkEmailStatus = async (req, res, next) => {
  * POST /api/dailyMail/retry-failed
  */
 export const retryFailedEmails = async (req, res, next) => {
+  console.log("📨 [retryFailedEmails] Request received:", {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query,
+  });
   try {
     const { emails } = req.body;
     if (!emails?.length) {
+      console.log("📨 [retryFailedEmails] Missing emails array");
       throw new AppError("Emails array is required", 400, "RetryFailedEmails");
     }
 
@@ -270,6 +326,7 @@ export const retryFailedEmails = async (req, res, next) => {
     for (const email of emails) {
       const user = await UserModel.findOne({ email });
       if (!user) {
+        console.log("📨 [retryFailedEmails] User not found:", email);
         results.push({ email, success: false, error: "User not found" });
         continue;
       }
@@ -309,6 +366,7 @@ export const retryFailedEmails = async (req, res, next) => {
       }
     }
 
+    console.log("📨 [retryFailedEmails] Response sent:", { results });
     res.status(200).json({
       success: true,
       message: "Retry process completed",
@@ -331,6 +389,12 @@ export const retryFailedEmails = async (req, res, next) => {
  * GET /api/dailyMail/email-health
  */
 export const getEmailSystemHealth = async (req, res, next) => {
+  console.log("📨 [getEmailSystemHealth] Request received:", {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query,
+  });
   try {
     // Get basic stats
     const totalUsers = await UserModel.countDocuments({
@@ -344,6 +408,11 @@ export const getEmailSystemHealth = async (req, res, next) => {
       emailStatus: "failed",
     });
 
+    console.log("📨 [getEmailSystemHealth] Response sent:", {
+      totalUsers,
+      activeUsers,
+      failedEmails,
+    });
     res.status(200).json({
       success: true,
       status: "operational",
@@ -371,6 +440,12 @@ export const getEmailSystemHealth = async (req, res, next) => {
  * GET /api/dailyMail/bounce-stats
  */
 export const getBounceStatistics = async (req, res, next) => {
+  console.log("📨 [getBounceStatistics] Request received:", {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query,
+  });
   try {
     const { days = 30 } = req.query;
     const since = dayjs().subtract(parseInt(days), "day").toDate();
@@ -385,6 +460,11 @@ export const getBounceStatistics = async (req, res, next) => {
       createdAt: { $gte: since },
     });
 
+    console.log("📨 [getBounceStatistics] Response sent:", {
+      days,
+      failedEmails,
+      totalEmails,
+    });
     res.status(200).json({
       success: true,
       stats: {
@@ -412,6 +492,12 @@ export const getBounceStatistics = async (req, res, next) => {
  * GET /api/dailyMail/daily-post-report
  */
 export const getDailyPostEmailReport = async (req, res, next) => {
+  console.log("📨 [getDailyPostEmailReport] Request received:", {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query,
+  });
   try {
     const {
       page = 1,
@@ -458,6 +544,12 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       };
     }
 
+    console.log("📨 [getDailyPostEmailReport] Response sent:", {
+      total,
+      page,
+      limit,
+      stats,
+    });
     res.status(200).json({
       success: true,
       logs,
@@ -483,6 +575,13 @@ export const getDailyPostEmailReport = async (req, res, next) => {
  * GET /api/dailyMail/check-user-eligibility/:userId
  */
 export const checkUserEmailEligibility = async (req, res, next) => {
+  console.log("📨 [checkUserEmailEligibility] Request received:", {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query,
+    params: req.params,
+  });
   try {
     const { userId } = req.params;
 
@@ -491,6 +590,7 @@ export const checkUserEmailEligibility = async (req, res, next) => {
     );
 
     if (!user) {
+      console.log("📨 [checkUserEmailEligibility] User not found:", userId);
       throw new AppError("User not found", 404, "CheckUserEmailEligibility");
     }
 
@@ -501,6 +601,10 @@ export const checkUserEmailEligibility = async (req, res, next) => {
       ? "Email attempts stopped"
       : "User is eligible";
 
+    console.log("📨 [checkUserEmailEligibility] Response sent:", {
+      userId,
+      eligible,
+    });
     res.status(200).json({
       success: true,
       userId,
@@ -524,6 +628,12 @@ export const checkUserEmailEligibility = async (req, res, next) => {
  * POST /api/dailyMail/batch-operations
  */
 export const batchOperations = async (req, res, next) => {
+  console.log("📨 [batchOperations] Request received:", {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query,
+  });
   try {
     const { operation, data } = req.body;
 
@@ -531,6 +641,7 @@ export const batchOperations = async (req, res, next) => {
       const { userIds } = data;
 
       if (!userIds || !Array.isArray(userIds)) {
+        console.log("📨 [batchOperations] Missing userIds array");
         throw new AppError("userIds array is required", 400, "BatchOperations");
       }
 
@@ -549,6 +660,7 @@ export const batchOperations = async (req, res, next) => {
         ineligible: results.filter((r) => !r.eligible).length,
       };
 
+      console.log("📨 [batchOperations] Response sent:", { summary });
       res.status(200).json({
         success: true,
         summary,
@@ -556,6 +668,7 @@ export const batchOperations = async (req, res, next) => {
         message: "Batch eligibility check completed",
       });
     } else {
+      console.log("📨 [batchOperations] Invalid operation:", operation);
       throw new AppError("Invalid operation", 400, "BatchOperations");
     }
   } catch (error) {
@@ -572,15 +685,23 @@ export const batchOperations = async (req, res, next) => {
  * POST /api/dailyMail/remove-suppression
  */
 export const removeEmailSuppression = async (req, res, next) => {
+  console.log("📨 [removeEmailSuppression] Request received:", {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query,
+  });
   try {
     const { email } = req.body;
 
     if (!email) {
+      console.log("📨 [removeEmailSuppression] Missing email");
       throw new AppError("Email is required", 400, "RemoveEmailSuppression");
     }
 
     const user = await UserModel.findOne({ email });
     if (!user) {
+      console.log("📨 [removeEmailSuppression] User not found:", email);
       throw new AppError("User not found", 404, "RemoveEmailSuppression");
     }
 
@@ -590,6 +711,7 @@ export const removeEmailSuppression = async (req, res, next) => {
     user.emailLastError = null;
     await user.save();
 
+    console.log("📨 [removeEmailSuppression] Response sent:", { email });
     res.status(200).json({
       success: true,
       email,
@@ -609,10 +731,17 @@ export const removeEmailSuppression = async (req, res, next) => {
  * POST /api/dailyMail/test-email
  */
 export const sendTestEmail = async (req, res, next) => {
+  console.log("📨 [sendTestEmail] Request received:", {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query,
+  });
   try {
     const { email, type = "test" } = req.body;
 
     if (!email) {
+      console.log("📨 [sendTestEmail] Missing email");
       throw new AppError("Email is required", 400, "SendTestEmail");
     }
 
@@ -624,6 +753,11 @@ export const sendTestEmail = async (req, res, next) => {
       type,
     });
 
+    console.log("📨 [sendTestEmail] Response sent:", {
+      success: result.success,
+      email,
+      type,
+    });
     res.status(200).json({
       success: result.success,
       email,
