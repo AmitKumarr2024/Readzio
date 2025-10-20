@@ -346,8 +346,8 @@ const bannerNotificationSlice = createSlice({
         state.error = null;
       })
       .addCase(deactivateBannerNotification.fulfilled, (state, action) => {
-        state.notifications = state.notifications.filter(
-          (n) => n._id !== action.payload
+        state.notifications = state.notifications.map((n) =>
+          n._id === action.payload ? { ...n, isActive: false } : n
         );
         state.loading = false;
       })
@@ -405,7 +405,7 @@ export const selectBannerNotifications = createSelector(
   (bannerNotifications) => {
     const now = new Date();
     return (bannerNotifications.notifications || []).filter(
-      (n) => !n.expiresAt || new Date(n.expiresAt) >= now
+      (n) => n.isActive && (!n.expiresAt || new Date(n.expiresAt) >= now)
     );
   }
 );
