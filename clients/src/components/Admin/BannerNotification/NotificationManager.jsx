@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchBannerNotifications } from "../../../store/adminSlice";
+import {
+  fetchAllBannerNotifications,
+  cleanupExpiredBannerNotifications,
+} from "../../../store/bannerNotificationSlice"; // Adjust path as needed
 import CreateBannerForm from "./CreateBannerForm";
 import NotificationHistory from "./NotificationHistory";
 import LoadingBar from "../../../Utils/LoadingBar";
@@ -8,12 +11,12 @@ import LoadingBar from "../../../Utils/LoadingBar";
 const NotificationManager = () => {
   const dispatch = useDispatch();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
-  const { loading } = useSelector((state) => state.admin);
+  const { loading } = useSelector((state) => state.bannerNotifications); // Adjust state path
   const [activeTab, setActiveTab] = useState("create");
 
   useEffect(() => {
     if (isAuthenticated && user?.role === "admin") {
-      dispatch(fetchBannerNotifications());
+      dispatch(fetchAllBannerNotifications());
     }
   }, [dispatch, isAuthenticated, user]);
 

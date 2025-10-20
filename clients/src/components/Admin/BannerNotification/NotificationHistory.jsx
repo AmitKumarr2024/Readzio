@@ -2,24 +2,29 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   deactivateBannerNotification,
   deleteAllBannerNotifications,
-  fetchBannerNotifications,
-} from "../../../store/adminSlice";
+  fetchAllBannerNotifications,
+  cleanupExpiredBannerNotifications,
+} from "../../../store/bannerNotificationSlice"; // Adjust path
 import { useEffect, useState } from "react";
 import Pagination from "../../../Utils/Pagination";
-import {toast} from "react-hot-toast";
-import { io } from "socket.io-client";
+import { toast } from "react-hot-toast";
 
 const NotificationHistory = () => {
   const dispatch = useDispatch();
-  const { bannerNotifications, loading } = useSelector((state) => state.admin);
+  const { notifications: bannerNotifications, loading } = useSelector(
+    (state) => state.bannerNotifications
+  ); // Use selectAll for history
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const totalPages = Math.ceil(bannerNotifications.length / itemsPerPage);
-  const activeCount = bannerNotifications.filter((n) => n.isActive).length;
+  const now = new Date();
+  const activeCount = bannerNotifications.filter(
+    (n) => n.isActive && (!n.expiresAt || new Date(n.expiresAt) >= now)
+  ).length;
 
   useEffect(() => {
-    dispatch(fetchBannerNotifications());
+    dispatch(fetchAllBannerNotifications());
   }, [dispatch]);
 
   useEffect(() => {
@@ -61,6 +66,17 @@ const NotificationHistory = () => {
     }
   };
 
+  const handleCleanupExpired = async () => {
+    if (window.confirm("Cleanup expired notifications?")) {
+      try {
+        await dispatch(cleanupExpiredBannerNotifications()).unwrap();
+        toast.success("Expired notifications cleaned up.");
+      } catch (err) {
+        toast.error(getErrorMessage(err));
+      }
+    }
+  };
+
   const paginatedNotifications = bannerNotifications.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -75,12 +91,20 @@ const NotificationHistory = () => {
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Total: {bannerNotifications.length} | Active: {activeCount}
         </p>
-        <button
-          onClick={handleDeleteAll}
-          className="text-red-600 text-sm font-medium hover:underline"
-        >
-          Delete All Notifications
-        </button>
+        <div className="space-x-2">
+          <button
+            onClick={handleCleanupExpired}
+            className="text-blue-600 text-sm font-medium hover:underline"
+          >
+            Cleanup Expired
+          </button>
+          <button
+            onClick={handleDeleteAll}
+            className="text-red-600 text-sm font-medium hover:underline"
+          >
+            Delete All
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -105,43 +129,51 @@ const NotificationHistory = () => {
               </tr>
             </thead>
             <tbody>
-              {paginatedNotifications.map((notification) => (
-                <tr
-                  key={notification._id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-600"
-                >
-                  <td className="p-3 text-sm">{notification.title}</td>
-                  <td className="p-3 text-sm">{notification.message}</td>
-                  <td className="p-3 text-sm">{notification.region}</td>
-                  <td className="p-3 text-sm">
-                    {new Date(notification.createdAt).toLocaleString()}
-                  </td>
-                  <td className="p-3 text-sm">
-                    {notification.expiresAt
-                      ? new Date(notification.expiresAt).toLocaleString()
-                      : "N/A"}
-                  </td>
-                  <td className="p-3 text-sm">
-                    {notification?.dismissedCount || 0} users
-                  </td>
-
-                  <td className="p-3 text-sm">
-                    {notification.isActive ? "Active" : "Inactive"}
-                  </td>
-                  <td className="p-3 text-sm">
-                    {notification.isActive ? (
-                      <button
-                        onClick={() => handleDeactivate(notification._id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Deactivate
-                      </button>
-                    ) : (
-                      <span className="text-gray-400 italic">Inactive</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {paginatedNotifications.map((notification) => {
+                const isExpired =
+                  notification.expiresAt &&
+                  new Date(notification.expiresAt) < now;
+                return (
+                  <tr
+                    key={notification._id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-600"
+                  >
+                    <td className="p-3 text-sm">{notification.title}</td>
+                    <td className="p-3 text-sm">{notification.message}</td>
+                    <td className="p-3 text-sm">{notification.region}</td>
+                    <td className="p-3 text-sm">
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </td>
+                    <td className="p-3 text-sm">
+                      {notification.expiresAt
+                        ? new Date(notification.expiresAt).toLocaleString()
+                        : "N/A"}
+                    </td>
+                    <td className="p-3 text-sm">
+                      {notification?.dismissedCount || 0} users
+                    </td>
+                    <td className="p-3 text-sm">
+                      {isExpired
+                        ? "Expired"
+                        : notification.isActive
+                        ? "Active"
+                        : "Inactive"}
+                    </td>
+                    <td className="p-3 text-sm">
+                      {!isExpired && notification.isActive ? (
+                        <button
+                          onClick={() => handleDeactivate(notification._id)}
+                          className="text-red-600 hover:underline"
+                        >
+                          Deactivate
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 italic">Inactive</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <Pagination

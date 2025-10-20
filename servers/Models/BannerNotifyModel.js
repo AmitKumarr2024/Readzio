@@ -15,13 +15,14 @@ const bannerNotificationSchema = new mongoose.Schema({
   // Type of notification (info, warning, error)
   type: {
     type: String,
-    enum: ["info", "warning", "error"],
+    enum: ["info", "warning", "error", "success"],
     default: "info",
   },
   // Indicates if the notification is active
   isActive: {
     type: Boolean,
     default: true,
+    index: true,
   },
   // Optional link for notification action
   link: {
@@ -32,10 +33,13 @@ const bannerNotificationSchema = new mongoose.Schema({
   region: {
     type: String,
     default: "global",
+    index: true,
   },
   // Optional expiration date for the notification
   expiresAt: {
     type: Date,
+    default: null,
+    index: true,
   },
   // User who created the notification
   createdBy: {
@@ -43,13 +47,6 @@ const bannerNotificationSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  // Users who dismissed the notification
-  dismissedBy: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-  ],
   // Timestamp of notification creation
   createdAt: {
     type: Date,
@@ -57,8 +54,12 @@ const bannerNotificationSchema = new mongoose.Schema({
   },
 });
 
+// Compound index for efficient active notification queries
+bannerNotificationSchema.index({ isActive: 1, expiresAt: 1, region: 1 });
+
 // Creates and exports the Banner-Notification model
 export const BannerNotifyModel =
   mongoose.models.Banner_Notification ||
   mongoose.model("Banner_Notification", bannerNotificationSchema);
+
 export default BannerNotifyModel;

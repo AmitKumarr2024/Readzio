@@ -9,8 +9,14 @@ import { getToken } from "../Utils/getToken";
 import { checkAuth } from "./authSlice";
 import { addNotification, updateUnreadCount } from "./notificationSlice";
 import { debounce } from "lodash";
-import { fetchBannerNotifications } from "./adminSlice";
 import { toast } from "react-hot-toast";
+import {
+  addBannerNotification,
+  removeBannerNotification,
+  resetBannerNotifications,
+  fetchActiveBannerNotifications,
+  fetchAllBannerNotifications,
+} from "./bannerNotificationSlice";
 
 const isDev = import.meta.env.MODE === "development";
 const MAX_USER_LOCATIONS = 500;
@@ -27,40 +33,6 @@ const log = (...args) => {
     console.error(...args);
   }
 };
-
-export const fetchActiveNotifications = createAsyncThunk(
-  "socket/fetchActiveNotifications",
-  async (_, { rejectWithValue, getState }) => {
-    try {
-      const { user } = getState().auth;
-      log("[socketSlice] Fetching notifications for user:", user?._id);
-      if (!user?._id) throw new Error("User not authenticated");
-
-      const response = await axiosInstance.get(
-        "/bannerNotification/get-Notification",
-        { withCredentials: true }
-      );
-
-      const notifications = response.data.notifications || [];
-      const activeNotification = notifications.find(
-        (notif) =>
-          notif.isActive &&
-          (!notif.expiresAt || new Date(notif.expiresAt) > new Date()) &&
-          (notif.region === "global" || notif.region === user?.region) &&
-          !notif.dismissedBy?.includes(user._id)
-      );
-
-      log("[socketSlice] Active notification:", activeNotification);
-      return activeNotification || null;
-    } catch (err) {
-      console.error(
-        "[socketSlice] fetchActiveNotifications Error:",
-        err.message
-      );
-      return rejectWithValue(err.message || "Failed to fetch notifications");
-    }
-  }
-);
 
 export const fetchInitialPostCounts = createAsyncThunk(
   "socket/fetchInitialPostCounts",
@@ -102,8 +74,8 @@ const setupEventListeners = (socket, dispatch, getState) => {
     "newAppeal",
     "newBroadcastNotification",
     "postCountsUpdated",
-    "broadcastNotificationDismissed",
     "broadcastNotificationDeactivated",
+    "broadcastNotificationDismissed",
     "broadcastNotificationDeletedAll",
     "postBlockToggled",
     "guestVisitUpdate",
@@ -136,8 +108,6 @@ const setupEventListeners = (socket, dispatch, getState) => {
     const userId = getState().auth.user?._id?.toString();
     if (notification?.user?.toString() === userId) {
       dispatch(addNotification(notification));
-      dispatch(newNotificationReceived(notification));
-      dispatch(setNotificationDismissReason("deactivated"));
     }
   });
 
@@ -163,7 +133,7 @@ const setupEventListeners = (socket, dispatch, getState) => {
     const isAdmin = getState().auth.user?.role === "admin";
     if (isAdmin) {
       dispatch(
-        newNotificationReceived({
+        addNotification({
           _id: appeal.postId,
           message: `New appeal for post: ${appeal.postTitle}`,
           type: "appeal",
@@ -178,25 +148,34 @@ const setupEventListeners = (socket, dispatch, getState) => {
       notification.region === "global" ||
       notification.region === user?.region
     ) {
-      axiosInstance
-        .get(`/bannerNotification/dismissed/${notification._id}`, {
-          withCredentials: true,
-        })
-        .then((res) => {
+      const checkDismissed = async () => {
+        try {
+          const res = await axiosInstance.get(
+            `/bannerNotification/dismissed/${notification._id}`,
+            { withCredentials: true }
+          );
           if (!res.data.dismissed) {
+            dispatch(addBannerNotification(notification));
             dispatch(newNotificationReceived(notification));
-            dispatch(setNotificationDismissReason("deactivated"));
           }
-        })
-        .catch((err) => {
+        } catch (err) {
           if (err.response?.status === 403) {
-            console.warn(
-              "⚠️ Admin not allowed to fetch banner dismissal status"
-            );
+            // Admin: add without check
+            dispatch(addBannerNotification(notification));
+            dispatch(newNotificationReceived(notification));
           } else {
             console.error("Error checking dismissed status:", err.message);
           }
-        });
+        }
+      };
+
+      if (user?._id) {
+        checkDismissed();
+      } else {
+        // Guest: assume not dismissed
+        dispatch(addBannerNotification(notification));
+        dispatch(newNotificationReceived(notification));
+      }
     }
   });
 
@@ -213,26 +192,27 @@ const setupEventListeners = (socket, dispatch, getState) => {
     }
   );
 
-  const handleDeactivationOrDismissal = ({ id }) => {
+  const handleBannerRemoval = (id, reason = "deactivated") => {
+    dispatch(removeBannerNotification(id));
     const current = getState().socket.newNotification;
     if (current?._id === id) {
       dispatch(newNotificationReceived(null));
-      dispatch(setNotificationDismissReason("deactivated"));
-    }
-    const isAdmin = getState().auth.user?.role === "admin";
-    if (isAdmin) {
-      dispatch(fetchBannerNotifications());
+      dispatch(setNotificationDismissReason(reason));
     }
   };
 
-  socket.on("broadcastNotificationDismissed", handleDeactivationOrDismissal);
-  socket.on("broadcastNotificationDeactivated", handleDeactivationOrDismissal);
+  socket.on("broadcastNotificationDeactivated", ({ id }) => {
+    handleBannerRemoval(id, "deactivated");
+  });
+
+  socket.on("broadcastNotificationDismissed", ({ id }) => {
+    handleBannerRemoval(id, "dismissed");
+  });
 
   socket.on("broadcastNotificationDeletedAll", () => {
-    const isAdmin = getState().auth.user?.role === "admin";
-    if (isAdmin) {
-      dispatch(fetchBannerNotifications());
-    }
+    dispatch(resetBannerNotifications());
+    dispatch(newNotificationReceived(null));
+    dispatch(setNotificationDismissReason("deleted"));
   });
 
   socket.on("postBlockToggled", ({ postId, blocked }) => {
@@ -303,7 +283,7 @@ export const initializeSocket = createAsyncThunk(
 
       let connectionTimeout;
 
-      socket.on("connect", () => {
+      socket.on("connect", async () => {
         if (connectionTimeout) {
           clearTimeout(connectionTimeout);
         }
@@ -323,9 +303,34 @@ export const initializeSocket = createAsyncThunk(
           log("[socketSlice] 🟢 Guest joined socket room:", guestId);
         } else if (userId) {
           socket.emit("join", userId);
-          socket.emit("join", "adminRoom");
-          dispatch(fetchInitialPostCounts());
+          const isAdmin = user?.role === "admin";
+          if (isAdmin) {
+            socket.emit("join", "adminRoom");
+          }
+
+          const fetchThunk = isAdmin
+            ? fetchAllBannerNotifications
+            : fetchActiveBannerNotifications;
+          const region = user?.region ? { region: user.region } : {};
+          const result = await dispatch(fetchThunk(region)).unwrap();
+
+          // Set initial newNotification matching old logic
+          let activeNotification = null;
+          if (result.length > 0) {
+            activeNotification = result.find(
+              (notif) =>
+                notif.isActive &&
+                (!notif.expiresAt || new Date(notif.expiresAt) > new Date()) &&
+                (notif.region === "global" || notif.region === user.region) &&
+                !notif.dismissedBy?.includes(user._id)
+            );
+          }
+          if (activeNotification) {
+            dispatch(newNotificationReceived(activeNotification));
+          }
         }
+
+        dispatch(fetchInitialPostCounts());
 
         // ✅ Fixed: Set up event listeners properly
         setupEventListeners(socket, dispatch, getState);
@@ -526,18 +531,6 @@ const socketSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchActiveNotifications.pending, (state) => {
-        state.status = "loading";
-        state.error = null;
-      })
-      .addCase(fetchActiveNotifications.fulfilled, (state, action) => {
-        state.status = "connected";
-        state.newNotification = action.payload;
-      })
-      .addCase(fetchActiveNotifications.rejected, (state, action) => {
-        state.status = "error";
-        state.error = action.payload;
-      })
       .addCase(fetchInitialPostCounts.pending, (state) => {
         state.status = "loading";
         state.error = null;

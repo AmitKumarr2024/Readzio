@@ -7,25 +7,34 @@ const dismissedBannerNotificationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
+    index: true,
   },
-  // Dismissed notification
+  // Notification that was dismissed
   notificationId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Banner-Notification",
+    ref: "Banner_Notification",
     required: true,
+    index: true,
   },
-  // Timestamp of dismissal
+  // Timestamp when notification was dismissed
   dismissedAt: {
     type: Date,
     default: Date.now,
   },
 });
 
-// Creates and exports the DismissedBannerNotification model
-export const DismissedBannerNotification =
-  mongoose.models.DismissedBannerNotification ||
+// Compound index for efficient queries
+dismissedBannerNotificationSchema.index(
+  { userId: 1, notificationId: 1 },
+  { unique: true }
+);
+
+// Creates and exports the Dismissed Banner Notification model
+export const DismissedBannerNotificationModel =
+  mongoose.models.Dismissed_Banner_Notification ||
   mongoose.model(
-    "DismissedBannerNotification",
+    "Dismissed_Banner_Notification",
     dismissedBannerNotificationSchema
   );
-export default DismissedBannerNotification;
+
+export default DismissedBannerNotificationModel;

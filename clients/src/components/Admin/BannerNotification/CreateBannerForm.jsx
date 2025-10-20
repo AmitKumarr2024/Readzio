@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { createBannerNotification } from "../../../store/adminSlice";
-import {toast} from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { Send, Globe, MapPin } from "lucide-react";
+import { createBannerNotification } from "../../../store/bannerNotificationSlice";
 
 const CreateBannerForm = () => {
   const dispatch = useDispatch();
@@ -22,7 +22,9 @@ const CreateBannerForm = () => {
       return;
     }
     try {
-      await dispatch(createBannerNotification({ title, message, region, expiresAt, link })).unwrap();
+      await dispatch(
+        createBannerNotification({ title, message, region, expiresAt, link })
+      ).unwrap();
       toast.success("Notification sent!");
       setTitle("");
       setMessage("");

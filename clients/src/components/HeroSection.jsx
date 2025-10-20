@@ -24,7 +24,7 @@ const HeroSection = () => {
   return (
     <>
       <Helmet>
-        <title>readzio — A Space to Express</title>
+        <title>Readzio — A Space to Express</title>
         <meta
           name="description"
           content="readzio is a platform for students, writers, and curious minds to explore, share, and grow through meaningful words and ideas."
@@ -34,7 +34,7 @@ const HeroSection = () => {
           content="readzio, blog, student, writer, knowledge, platform, share, learn, express"
         />
         <meta name="author" content="readzio Team" />
-        <meta property="og:title" content="readzio — A Space to Express" />
+        <meta property="og:title" content="Readzio — A Space to Express" />
         <meta
           property="og:description"
           content="Join readzio to explore, write, and grow. A community of students, writers, and curious minds."
@@ -43,7 +43,7 @@ const HeroSection = () => {
         <meta property="og:url" content="https://readzio.in" />
         <meta property="og:image" content="https://readzio.in/preview.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="readzio — A Space to Express" />
+        <meta name="twitter:title" content="Readzio — A Space to Express" />
         <meta
           name="twitter:description"
           content="Explore. Share. Grow. Join readzio now."

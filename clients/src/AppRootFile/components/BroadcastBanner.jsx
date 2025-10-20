@@ -10,7 +10,7 @@ export default function BroadcastBanner({ newNotification, handleDismiss }) {
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100  p-4 text-sm text-center shadow-md w-full"
+      className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 p-4 text-sm text-center shadow-md w-full"
     >
       {newNotification.link ? (
         <a

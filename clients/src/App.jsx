@@ -15,7 +15,6 @@ import { useGoogleLoginPopup } from "./AppRootFile/hook/useGoogleLoginPopup";
 import { useClearUserError } from "./AppRootFile/hook/useClearUserError";
 import { useBannerExpiration } from "./AppRootFile/hook/useBannerExpiration";
 import { useSelector, useDispatch } from "react-redux";
-import { dismissBannerNotification } from "./store/adminSlice";
 import {
   newNotificationReceived,
   setFeedbackPrompt,
@@ -27,6 +26,7 @@ import CookieConsentBanner from "./AppRootFile/components/CookieConsentBanner";
 import FeedbackModal from "./AppRootFile/components/FeedbackModal";
 import VerifyBanner from "./AppRootFile/components/VerifyBanner";
 import AppTour from "./AppRootFile/components/AppTour";
+import { dismissBannerNotification } from "./store/bannerNotificationSlice";
 
 export default function App() {
   const navigation = useNavigation();

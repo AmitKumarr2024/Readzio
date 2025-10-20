@@ -10,9 +10,9 @@ import {
   replyToNotification,
   deleteNotification,
   getUserNotificationHistory,
-} from "../Controllers/notificationsController.js";
-import { protectedRoute } from "../Middlewares/authMiddleware.js";
-import { adminOnly } from "../Middlewares/AdminMiddleware.js";
+} from "../../servers/Controllers/notificationsController.js";
+import { protectedRoute } from "../../servers/Middlewares/authMiddleware.js";
+import { adminOnly } from "../../servers/Middlewares/AdminMiddleware.js";
 
 const router = express.Router();
 

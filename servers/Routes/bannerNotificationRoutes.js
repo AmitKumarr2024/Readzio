@@ -7,7 +7,8 @@ import {
   checkDismissedNotification,
   deactivateNotification,
   deleteAllNotifications,
-  getActiveNotificationsForUser, // ADD THIS IMPORT
+  getActiveNotificationsForUser,
+  cleanupExpiredBannerNotifications, // ADD THIS IMPORT
 } from "../Controllers/bannerNotificationController.js";
 import { verifyUser } from "../Middlewares/verifyUser.js";
 import { adminOnly } from "../Middlewares/AdminMiddleware.js";
@@ -28,7 +29,7 @@ router.get("/get-Notification", getNotifications);
 // Fetches a single banner notification by ID
 // - Validates `:id` as MongoDB ObjectId in `getNotificationById`
 // - Queries `BannerNotifyModel` by `_id`; returns 404 if not found
-// - Public access; no You must be signed in to access this feature.
+// - Public access; no authentication required
 // - Test with invalid ObjectId and non-existent IDs
 // - Security: Ensure no sensitive fields (e.g., `createdBy`) are exposed
 router.get("/get-Notification/:id", getNotificationById);
@@ -58,6 +59,7 @@ router.get("/dismissed/:id", verifyUser, checkDismissedNotification);
 // - Requires `verifyUser` and `adminOnly` middleware to ensure admin access
 // - Validates input (e.g., `message`, `title`, `type`) against `BannerNotifyModel` schema
 // - Stores `createdBy` as authenticated admin's user ID
+// - Optional: Set expiration via `expiresIn` (in days, default: 7)
 // - Test with invalid inputs (e.g., missing required fields, invalid `type`)
 // - Security: Sanitize `message` and `title` to prevent XSS
 // - Logs creation in `ActivityModel` with action `CREATED_NOTIFICATION`
@@ -91,5 +93,20 @@ router.patch("/dismiss/:id", verifyUser, dismissNotification);
 // - Logs deletion in `ActivityModel` with action `DELETED_ALL_NOTIFICATIONS`
 // - Consider adding confirmation mechanism to prevent accidental deletion
 router.delete("/delete-all", verifyUser, adminOnly, deleteAllNotifications);
+
+// POST /cleanup-expired
+// NEW ROUTE: Cleans up expired banner notifications (admin-only)
+// - Requires `verifyUser` and `adminOnly` middleware
+// - Deletes notifications where `expiresAt` is in the past
+// - Also removes orphaned dismissal records (dismissals for non-existent notifications)
+// - Can be called manually via API or scheduled via cron job
+// - Returns count of deleted notifications and dismissals
+// - Use this route in a cron job for automatic cleanup (e.g., daily at midnight)
+router.post(
+  "/cleanup-expired",
+  verifyUser,
+  adminOnly,
+  cleanupExpiredBannerNotifications
+);
 
 export default router;

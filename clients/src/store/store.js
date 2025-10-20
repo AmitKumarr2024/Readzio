@@ -18,6 +18,7 @@ import notificationReducer from "../store/notificationSlice";
 import socketReducer from "../store/socketSlice";
 import themeReducer from "../store/themeSlice";
 import guestReducer from "../store/guestSlice";
+import bannerNotificationReducer from "../store/bannerNotificationSlice";
 
 const store = configureStore({
   reducer: {
@@ -37,9 +38,10 @@ const store = configureStore({
     suggestedPosts: suggestReducer,
     admin: adminReducer,
     notifications: notificationReducer,
+    bannerNotifications: bannerNotificationReducer,
     socket: socketReducer,
     theme: themeReducer,
-     guest: guestReducer,
+    guest: guestReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
