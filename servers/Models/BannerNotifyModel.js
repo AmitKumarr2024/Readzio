@@ -41,6 +41,12 @@ const bannerNotificationSchema = new mongoose.Schema({
     default: null,
     index: true,
   },
+  // Number of users who dismissed the notification
+  dismissedCount: {
+    type: Number,
+    default: 0,
+    index: true,
+  },
   // User who created the notification
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

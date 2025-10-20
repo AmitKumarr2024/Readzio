@@ -42,6 +42,7 @@ export const createNotification = async (req, res, next) => {
       link: link || "",
       region: region || "global",
       expiresAt,
+      dismissedCount: 0,
       createdBy: req.user._id,
       isActive: true,
     });
@@ -73,14 +74,14 @@ export const createNotification = async (req, res, next) => {
   }
 };
 
-// Fetches all active banner notifications (public route)
+// Fetches all banner notifications (active for public, all for admin)
 export const getNotifications = async (req, res, next) => {
   try {
     const { region } = req.query;
+    const isAdmin = req.user && req.user.role === "admin";
 
-    // Build query for active, non-expired notifications
-    const query = {
-      isActive: true,
+    // Build base query for non-expired notifications
+    let query = {
       $or: [
         { expiresAt: { $exists: false } },
         { expiresAt: null },
@@ -88,9 +89,21 @@ export const getNotifications = async (req, res, next) => {
       ],
     };
 
+    // For admin, fetch all (including inactive and expired)
+    if (isAdmin) {
+      query = {};
+    } else {
+      query.isActive = true;
+    }
+
     // Add region filter if specified
     if (region && region !== "global") {
-      query.$or = [{ region }, { region: "global" }];
+      const regionQuery = { $in: [region, "global"] };
+      if (isAdmin) {
+        query.$or = [{ region: regionQuery }, { region: "global" }];
+      } else {
+        query.region = regionQuery;
+      }
     }
 
     const notifications = await BannerNotifyModel.find(query)
@@ -284,6 +297,14 @@ export const dismissNotification = async (req, res, next) => {
 
     await dismissal.save();
 
+    // Increment dismissedCount in notification
+    await BannerNotifyModel.findByIdAndUpdate(id, {
+      $inc: { dismissedCount: 1 },
+    });
+
+    // Emit socket event to admin room (assuming io is available in route handler)
+    // req.app.get('io').to('adminRoom').emit('broadcastNotificationDismissed', { id });
+
     res.status(200).json({
       success: true,
       message: "Notification dismissed successfully",
@@ -386,6 +407,9 @@ export const deactivateNotification = async (req, res, next) => {
         "Notification does not exist"
       );
 
+    // Emit socket event to admin room (assuming io is available)
+    // req.app.get('io').to('adminRoom').emit('broadcastNotificationDeactivated', { id });
+
     res.status(200).json({
       success: true,
       message: "Notification deactivated successfully",
@@ -422,6 +446,9 @@ export const deleteAllNotifications = async (req, res, next) => {
     const dismissalResult = await DismissedBannerNotificationModel.deleteMany(
       {}
     );
+
+    // Emit socket event to admin room (assuming io is available)
+    // req.app.get('io').to('adminRoom').emit('broadcastNotificationDeletedAll');
 
     res.status(200).json({
       success: true,
