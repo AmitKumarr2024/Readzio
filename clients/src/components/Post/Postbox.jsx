@@ -74,8 +74,6 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   const observer = useRef(null);
   const lastPostElementRef = useRef(null);
 
-  const [sortedPostsState, setSortedPostsState] = useState([]);
-
   // --- Component Setup Effects ---
 
   // 1. Clear stuck post state on mount
@@ -313,13 +311,10 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   );
 
   const itemsWithAds = useMemo(
-    () => insertAdsIntoPosts(sortedPostsState),
-    [sortedPostsState, insertAdsIntoPosts]
+    () => insertAdsIntoPosts(selectedPosts),
+    [selectedPosts, insertAdsIntoPosts]
   );
 
-  useEffect(() => {
-    setSortedPostsState(filteredPosts);
-  }, [filteredPosts]);
   // Load More Posts
   // The `hasMore` logic is *flawed* if your Redux slice doesn't clear the array
   // when a new filter is selected. It should ideally compare post count to total count.
@@ -455,10 +450,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   return (
     <ErrorBoundary>
       <div className="w-full px-4 py-4">
-        <Sorted
-          posts={filteredPosts}
-          onSortChange={(newPosts) => setSortedPostsState(newPosts)}
-        />
+        <Sorted posts={filteredPosts} onSortChange={() => {}} />
 
         {/* 1. INITIAL LOADING STATE */}
         {shouldShowInitialLoader && renderSkeletonGrid()}
