@@ -74,7 +74,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   const observer = useRef(null);
   const lastPostElementRef = useRef(null);
 
-  const [sortedPostsState, setSortedPostsState] = useState(filteredPosts);
+  const [sortedPostsState, setSortedPostsState] = useState([]);
 
   // --- Component Setup Effects ---
 
