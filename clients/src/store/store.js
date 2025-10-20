@@ -42,6 +42,7 @@ const store = configureStore({
     socket: socketReducer,
     theme: themeReducer,
     guest: guestReducer,
+    
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

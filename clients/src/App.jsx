@@ -130,6 +130,7 @@ export default function App() {
       <AppTour />
       <Navbar />
       <VerifyBanner />
+
       {showGooglePopup && <GoogleLoginPopup />}
       {newNotification && newNotification._id && (
         <BroadcastBanner
