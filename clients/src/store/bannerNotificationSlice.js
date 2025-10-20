@@ -108,8 +108,10 @@ export const dismissBannerNotification = createAsyncThunk(
       return rejectWithValue("Notification ID is required");
     }
     try {
-      await axiosInstance.patch(`/bannerNotification/dismiss/${id}`);
-      return id;
+      const response = await axiosInstance.patch(
+        `/bannerNotification/dismiss/${id}`
+      );
+      return { id, ...response.data };
     } catch (err) {
       const errorMsg =
         err.response?.data?.message || "Failed to dismiss banner notification";
@@ -156,8 +158,10 @@ export const deactivateBannerNotification = createAsyncThunk(
       return rejectWithValue("Notification ID is required");
     }
     try {
-      await axiosInstance.patch(`/bannerNotification/deactivate/${id}`);
-      return id;
+      const response = await axiosInstance.patch(
+        `/bannerNotification/deactivate/${id}`
+      );
+      return { id, ...response.data };
     } catch (err) {
       const errorMsg =
         err.response?.data?.message ||
@@ -319,12 +323,11 @@ const bannerNotificationSlice = createSlice({
         state.error = null;
       })
       .addCase(dismissBannerNotification.fulfilled, (state, action) => {
-        if (!state.dismissedIds.includes(action.payload)) {
-          state.dismissedIds.push(action.payload);
+        const { id } = action.payload;
+        if (!state.dismissedIds.includes(id)) {
+          state.dismissedIds.push(id);
         }
-        state.notifications = state.notifications.filter(
-          (n) => n._id !== action.payload
-        );
+        state.notifications = state.notifications.filter((n) => n._id !== id);
         state.loading = false;
       })
       .addCase(dismissBannerNotification.rejected, (state, action) => {
@@ -346,8 +349,9 @@ const bannerNotificationSlice = createSlice({
         state.error = null;
       })
       .addCase(deactivateBannerNotification.fulfilled, (state, action) => {
+        const { id } = action.payload;
         state.notifications = state.notifications.map((n) =>
-          n._id === action.payload ? { ...n, isActive: false } : n
+          n._id === id ? { ...n, isActive: false } : n
         );
         state.loading = false;
       })

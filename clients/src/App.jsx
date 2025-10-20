@@ -27,6 +27,7 @@ import FeedbackModal from "./AppRootFile/components/FeedbackModal";
 import VerifyBanner from "./AppRootFile/components/VerifyBanner";
 import AppTour from "./AppRootFile/components/AppTour";
 import { dismissBannerNotification } from "./store/bannerNotificationSlice";
+import { toast } from "react-hot-toast";
 
 export default function App() {
   const navigation = useNavigation();
@@ -91,12 +92,24 @@ export default function App() {
   }, [newNotification]);
 
   const handleDismiss = async (notificationId) => {
+    // Optimistic update
+    dispatch(newNotificationReceived(null));
+    localStorage.removeItem("newNotification");
+
     try {
       await dispatch(dismissBannerNotification(notificationId)).unwrap();
-      dispatch(newNotificationReceived(null));
-      localStorage.removeItem("newNotification");
+      toast.success("Notification dismissed");
     } catch (err) {
       console.error("[App] Dismiss error:", err);
+      toast.error("Failed to dismiss notification");
+      // Revert on error
+      if (newNotification) {
+        dispatch(newNotificationReceived(newNotification));
+        localStorage.setItem(
+          "newNotification",
+          JSON.stringify(newNotification)
+        );
+      }
     }
   };
 
