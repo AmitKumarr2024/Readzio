@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { fetchSuggestedPosts } from "../../store/suggestedPostsSlice";
@@ -7,11 +7,14 @@ import TimeAgo from "../../Utils/TimeAgo";
 import Skeleton from "@/components/Ui/Skeleton";
 import HorizontalBannerAd from "../../Ads/HorizontalBannerAd";
 import SafeInFeedAd from "../../Ads/SafeInFeedAd";
+import { Clock, User, TrendingUp } from "lucide-react";
 
 const SuggestedPosts = ({ postId, className }) => {
   const dispatch = useDispatch();
   const hasFetched = useRef(false);
   const lastPostId = useRef(null);
+  const observerTarget = useRef(null);
+  const [displayLimit, setDisplayLimit] = useState(12);
 
   const {
     posts = [],
@@ -20,37 +23,25 @@ const SuggestedPosts = ({ postId, className }) => {
   } = useSelector((state) => state.suggestedPosts || {});
 
   useEffect(() => {
-    // Reset fetch status if postId changes
     if (lastPostId.current !== postId) {
       hasFetched.current = false;
       lastPostId.current = postId;
+      setDisplayLimit(12);
     }
 
     if (status === "idle" && !hasFetched.current) {
       hasFetched.current = true;
-      // console.log(
-      //   "[SuggestedPosts] Fetching suggested posts, limit: 30, exclude:",
-      //   postId
-      // );
 
       dispatch(
         fetchSuggestedPosts({
           limit: 30,
-          exclude: postId || "", // Exclude current post from suggestions
+          exclude: postId || "",
         })
       )
         .unwrap()
-        .then((result) => {
-          // console.log(
-          //   "[SuggestedPosts] Fetch successful:",
-          //   result?.length,
-          //   "posts"
-          // );
-        })
         .catch((error) => {
           console.error("[SuggestedPosts] Fetch error:", error);
 
-          // More specific error handling
           if (error.includes("Network") || error.includes("connection")) {
             toast.error("Network error. Please check your connection.");
           } else if (error.includes("404") || error.includes("not found")) {
@@ -64,169 +55,291 @@ const SuggestedPosts = ({ postId, className }) => {
     }
   }, [dispatch, status, postId]);
 
-  const displayedPosts = posts.slice(0, 30);
-  const adPositions =
-    displayedPosts.length >= 4 ? [2, 4, 8, 12, 16, 20, 24, 28] : [];
-  const multiplexAdPositions = displayedPosts.length >= 8 ? [8] : [];
+  // Infinite scroll logic
+  const loadMore = useCallback(() => {
+    if (displayLimit < posts.length) {
+      setDisplayLimit((prev) => Math.min(prev + 12, posts.length));
+    }
+  }, [displayLimit, posts.length]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && status === "succeeded") {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [loadMore, status]);
+
+  const displayedPosts = posts.slice(0, displayLimit);
   const fallbackImage = "https://placehold.co/600x400?text=No+Image";
 
   const handleRetry = () => {
     hasFetched.current = false;
-    dispatch({ type: "suggestedPosts/resetStatus" }); // You'll need to add this action
+    dispatch({ type: "suggestedPosts/resetStatus" });
   };
 
+  // Calculate ad positions - every 6 posts for in-feed, every 12 for banner
+  const shouldShowAd = (index) => (index + 1) % 6 === 0;
+  const shouldShowBannerAd = (index) => (index + 1) % 12 === 0;
+
   return (
-    <div className="py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900">
-      <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-8 text-center">
-        Explore More Stories
-      </h2>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 py-16 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+            Discover More Stories
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">
+            Handpicked articles just for you
+          </p>
+        </div>
 
-      {status === "loading" && (
-        <div
-          className={
-            className ||
-            "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-full mx-auto"
-          }
-        >
-          {[...Array(30)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-white dark:bg-gray-800 rounded-md shadow-md overflow-hidden"
-            >
-              <Skeleton
-                width="w-full"
-                height="h-48"
-                className="rounded-t-md bg-gray-200 dark:bg-gray-700"
-              />
-              <div className="p-4 space-y-2">
+        {/* Loading State */}
+        {status === "loading" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(12)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden"
+              >
                 <Skeleton
-                  width="w-3/4"
-                  height="h-6"
+                  width="w-full"
+                  height="h-56"
                   className="bg-gray-200 dark:bg-gray-700"
                 />
-                <table className="w-full">
-                  <tbody>
-                    <tr>
-                      <td>
-                        <Skeleton className="h-4 w-24 bg-gray-200 dark:bg-gray-700" />
-                      </td>
-                      <td>
-                        <Skeleton className="h-4 w-24 bg-gray-200 dark:bg-gray-700" />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table className="w-full">
-                  <tbody>
-                    <tr>
-                      <td>
-                        <Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" />
-                      </td>
-                      <td>
-                        <Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" />
-                      </td>
-                      <td>
-                        <Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" />
-                      </td>
-                      <td>
-                        <Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" />
-                      </td>
-                      <td>
-                        <Skeleton className="h-4 w-12 bg-gray-200 dark:bg-gray-700" />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <Skeleton
-                  width="w-16"
-                  height="h-4"
-                  className="bg-gray-200 dark:bg-gray-700"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {status === "failed" && (
-        <div className="text-center space-y-4">
-          <div className="text-lg text-gray-900 dark:text-gray-100 bg-red-100 dark:bg-red-800 py-4 px-6 rounded-md max-w-2xl mx-auto shadow-md">
-            <p className="font-medium">Unable to load suggested posts</p>
-            <p className="text-sm mt-1 opacity-80">{error}</p>
-          </div>
-          <button
-            onClick={handleRetry}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 shadow-md"
-          >
-            Try Again
-          </button>
-        </div>
-      )}
-
-      {status === "succeeded" && displayedPosts.length === 0 && (
-        <p className="text-lg text-center text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 py-4 rounded-md max-w-2xl mx-auto shadow-md">
-          No suggested posts available.
-        </p>
-      )}
-
-      {status === "succeeded" && displayedPosts.length > 0 && (
-        <>
-          <div
-            className={
-              className ||
-              "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 max-w-8xl mx-auto"
-            }
-          >
-            {displayedPosts.map((post, index) => (
-              <React.Fragment key={post._id || `post-${index}`}>
-                <Link
-                  to={`/post/${post.slug}`}
-                  className="group bg-white dark:bg-gray-800 rounded-xs shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
-                >
-                  <div className="relative">
-                    <img
-                      src={post.thumbnail || fallbackImage}
-                      alt={post.title || "Post"}
-                      className="w-full h-48 object-cover rounded-t-md transition-transform duration-300 group-hover:scale-105"
-                      onError={(e) => {
-                        console.warn(
-                          `[SuggestedPosts] Thumbnail failed for post ${post._id}:`,
-                          post.thumbnail
-                        );
-                        e.target.src = fallbackImage;
-                      }}
+                <div className="p-6 space-y-4">
+                  <Skeleton
+                    width="w-full"
+                    height="h-6"
+                    className="bg-gray-200 dark:bg-gray-700"
+                  />
+                  <Skeleton
+                    width="w-3/4"
+                    height="h-6"
+                    className="bg-gray-200 dark:bg-gray-700"
+                  />
+                  <div className="flex gap-4 pt-2">
+                    <Skeleton
+                      width="w-20"
+                      height="h-4"
+                      className="bg-gray-200 dark:bg-gray-700"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <Skeleton
+                      width="w-24"
+                      height="h-4"
+                      className="bg-gray-200 dark:bg-gray-700"
+                    />
                   </div>
-                  <div className="p-4">
-                    <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 mb-2">
-                      {post.title || "Untitled"}
-                    </h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                      <span>{post.author?.name || "Unknown"}</span>
-                      <span className="text-gray-400">•</span>
-                      <TimeAgo date={post.createdAt} />
-                    </p>
-                  </div>
-                </Link>
-
-                {adPositions.includes(index + 1) && (
-                  <div className="w-full max-w-full overflow-hidden px-2 sm:px-0">
-                    <div className="mx-auto w-full max-w-[728px]">
-                      <SafeInFeedAd postId={post._id} />
-                    </div>
-                  </div>
-                )}
-                {multiplexAdPositions.includes(index + 1) && (
-                  <div className="col-span-full w-full border-t border-b border-gray-300 dark:border-gray-600 my-4">
-                    <HorizontalBannerAd postId={post._id} />
-                  </div>
-                )}
-              </React.Fragment>
+                </div>
+              </div>
             ))}
           </div>
-        </>
-      )}
+        )}
+
+        {/* Error State */}
+        {status === "failed" && (
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center space-y-6">
+              <div className="w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto">
+                <svg
+                  className="w-10 h-10 text-red-600 dark:text-red-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  Unable to Load Posts
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">{error}</p>
+              </div>
+              <button
+                onClick={handleRetry}
+                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {status === "succeeded" && displayedPosts.length === 0 && (
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 text-center">
+              <div className="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg
+                  className="w-12 h-12 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                No Posts Available
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Check back later for more content
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Posts Grid */}
+        {status === "succeeded" && displayedPosts.length > 0 && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {displayedPosts.map((post, index) => (
+                <React.Fragment key={post._id || `post-${index}`}>
+                  {/* Post Card */}
+                  <Link
+                    to={`/post/${post.slug}`}
+                    className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 flex flex-col"
+                  >
+                    <div className="relative overflow-hidden h-56">
+                      <img
+                        src={post.thumbnail || fallbackImage}
+                        alt={post.title || "Post"}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        onError={(e) => {
+                          e.target.src = fallbackImage;
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                      {/* Floating badge */}
+                      <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        New
+                      </div>
+                    </div>
+
+                    <div className="p-6 flex flex-col flex-grow">
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 line-clamp-2 mb-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {post.title || "Untitled"}
+                      </h3>
+
+                      <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 font-medium">
+                            <User className="w-4 h-4" />
+                            <span>{post.author?.name || "Unknown"}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-500">
+                            <Clock className="w-4 h-4" />
+                            <TimeAgo date={post.createdAt} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+
+                  {/* In-feed Ad Card - Same styling as posts */}
+                  {shouldShowAd(index) && (
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden flex flex-col">
+                      <div className="relative h-56 flex items-center justify-center p-4">
+                        <div className="w-full h-full">
+                          <SafeInFeedAd postId={post._id} />
+                        </div>
+                      </div>
+                      <div className="p-6 flex flex-col flex-grow">
+                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                          <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-500 rounded-md font-semibold">
+                            Sponsored
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Banner Ad - Full width */}
+                  {shouldShowBannerAd(index) && (
+                    <div className="col-span-full">
+                      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden p-6">
+                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-4">
+                          <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-500 rounded-md font-semibold">
+                            Advertisement
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-center min-h-[250px] rounded-xl overflow-hidden">
+                          <HorizontalBannerAd postId={post._id} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+
+            {/* Infinite Scroll Trigger */}
+            {displayLimit < posts.length && (
+              <div ref={observerTarget} className="flex justify-center py-12">
+                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+                  <div
+                    className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  />
+                  <div
+                    className="w-2 h-2 bg-purple-600 rounded-full animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  />
+                  <div
+                    className="w-2 h-2 bg-pink-600 rounded-full animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  />
+                  <span className="ml-2 font-medium">Loading more...</span>
+                </div>
+              </div>
+            )}
+
+            {/* End Message */}
+            {displayLimit >= posts.length && posts.length > 0 && (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-6 py-3 rounded-full shadow-md">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <span className="font-medium">You've reached the end</span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };

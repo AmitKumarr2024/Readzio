@@ -47,30 +47,67 @@ const HorizontalBannerAd = ({ postId }) => {
   }, [postId, isAdBlocked, socketInstance]);
 
   return (
-    <div className="flex justify-center w-full">
-      <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-md shadow-sm p-3 overflow-hidden">
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-1 text-center uppercase tracking-wide font-medium">
-          Sponsored
-        </p>
-        {isAdBlocked ? (
-          <div className="w-full h-[90px] bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded">
-            <img
-              src="https://placehold.co/728x90?text=Ad+Blocked"
-              alt="Ad Blocked"
-              className="w-full h-full object-cover"
-            />
+    <div className="w-full px-2 sm:px-4 lg:px-6">
+      <div className="mx-auto max-w-full">
+        {/* Container with responsive padding and background */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-700">
+          {/* Sponsored Label */}
+          <div className="px-4 pt-3 pb-2">
+            <span className="inline-block px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-500 text-xs font-semibold rounded-md uppercase tracking-wide">
+              Sponsored
+            </span>
           </div>
-        ) : (
-          <ins
-            ref={adRef}
-            className="adsbygoogle"
-            style={{ display: "block", width: "100%" }}
-            data-ad-client="ca-pub-8408980890451581"
-            data-ad-slot="2355207118"
-            data-ad-format="auto"
-            data-full-width-responsive="true"
-          />
-        )}
+
+          {/* Ad Container - Responsive for all screen sizes */}
+          <div className="px-4 pb-4">
+            {isAdBlocked ? (
+              // Ad Blocked Placeholder - Responsive
+              <div className="w-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600">
+                <div className="py-12 sm:py-16 md:py-20 text-center px-4">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                    <svg
+                      className="w-8 h-8 text-gray-500 dark:text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                    Ad Blocked
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    Please disable your ad blocker to support us
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // Google AdSense - Fully Responsive
+              <div className="w-full overflow-hidden rounded-lg">
+                <ins
+                  ref={adRef}
+                  className="adsbygoogle"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    minHeight: "90px",
+                    maxHeight: "250px",
+                  }}
+                  data-ad-client="ca-pub-8408980890451581"
+                  data-ad-slot="2355207118"
+                  data-ad-format="auto"
+                  data-full-width-responsive="true"
+                />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
