@@ -55,6 +55,11 @@ const compressImage = async (file) => {
   });
 };
 
+console.log("[UpdateUser] FormData entries:");
+for (let [key, value] of formData.entries()) {
+  console.log(key, value);
+}
+
 export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
   const dispatch = useDispatch();
   const { updateLoading, updateSuccess, updateError } = useSelector(
@@ -67,8 +72,8 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
     location: user?.location || "",
     profession: user?.profession || "",
     blocked: user?.blocked || false,
-    avatarFile: null,
-    bannerFile: null,
+    avatar: null,
+    banner: null,
     bio: user?.bio || "",
   });
   const toastRef = useRef(false);
@@ -157,13 +162,8 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
     }
 
     // Only append files if user selected new ones
-    if (form.avatarFile) {
-      formData.append("avatar", form.avatarFile);
-    }
-
-    if (form.bannerFile) {
-      formData.append("banner", form.bannerFile);
-    }
+    if (form.avatar) formData.append("avatar", form.avatar);
+    if (form.banner) formData.append("banner", form.banner);
 
     try {
       await dispatch(updateUser(formData)).unwrap();
@@ -326,7 +326,7 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
           <input
             id="avatarFile"
             type="file"
-            name="avatarFile"
+            name="avatar"
             accept="image/*"
             onChange={handleFile}
             disabled={updateLoading}
@@ -344,7 +344,7 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
           <input
             id="bannerFile"
             type="file"
-            name="bannerFile"
+            name="banner"
             accept="image/*"
             onChange={handleFile}
             disabled={updateLoading}
