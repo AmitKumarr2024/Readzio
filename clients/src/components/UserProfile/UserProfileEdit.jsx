@@ -7,51 +7,89 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 const compressImage = async (file) => {
   if (!file) return null;
-  if (file.size <= MAX_FILE_SIZE) return file;
 
-  const image = new Image();
-  const reader = new FileReader();
-  reader.readAsDataURL(file);
-  return new Promise((resolve) => {
+  // Return original file if it's already under the size limit
+  if (file.size <= MAX_FILE_SIZE) {
+    console.log("[Compress] File already under size limit:", file.name);
+    return file;
+  }
+
+  console.log(
+    "[Compress] Starting compression for:",
+    file.name,
+    "Size:",
+    file.size
+  );
+
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error("Failed to read file"));
     reader.onload = (e) => {
       image.src = e.target.result;
+
+      image.onerror = () => reject(new Error("Failed to load image"));
       image.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const maxWidth = 800;
-        const maxHeight = 800;
-        let width = image.width;
-        let height = image.height;
+        try {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          const maxWidth = 800;
+          const maxHeight = 800;
+          let width = image.width;
+          let height = image.height;
 
-        if (width > height) {
-          if (width > maxWidth) {
-            height *= maxWidth / width;
-            width = maxWidth;
+          if (width > height) {
+            if (width > maxWidth) {
+              height *= maxWidth / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width *= maxHeight / height;
+              height = maxHeight;
+            }
           }
-        } else {
-          if (height > maxHeight) {
-            width *= maxHeight / height;
-            height = maxHeight;
-          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(image, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                console.error("[Compress] Failed to create blob");
+                resolve(file); // Fallback to original
+                return;
+              }
+
+              // Create a proper File object from the blob
+              const compressedFile = new File([blob], file.name, {
+                type: file.type || "image/jpeg",
+                lastModified: Date.now(),
+              });
+
+              console.log("[Compress] Compressed successfully:", {
+                original: file.size,
+                compressed: compressedFile.size,
+                reduction:
+                  ((1 - compressedFile.size / file.size) * 100).toFixed(1) +
+                  "%",
+              });
+
+              resolve(compressedFile);
+            },
+            file.type || "image/jpeg",
+            0.7 // Quality
+          );
+        } catch (err) {
+          console.error("[Compress] Error during compression:", err);
+          resolve(file); // Fallback to original on error
         }
-
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(image, 0, 0, width, height);
-        canvas.toBlob(
-          (blob) => {
-            // Create a proper File object from the blob with metadata
-            const compressedFile = new File([blob], file.name, {
-              type: file.type,
-              lastModified: Date.now(),
-            });
-            resolve(compressedFile);
-          },
-          file.type,
-          0.7 // Quality
-        );
       };
     };
+
+    reader.readAsDataURL(file);
   });
 };
 
@@ -126,16 +164,52 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
     const file = files[0];
     if (!file) return;
 
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error("File size exceeds 2MB");
+    console.log("[HandleFile] Processing file:", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
+
+    // Check file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
       return;
     }
 
-    const compressedFile = await compressImage(file);
-    setForm((prev) => ({
-      ...prev,
-      [name]: compressedFile || file,
-    }));
+    // Check initial size
+    if (file.size > MAX_FILE_SIZE * 5) {
+      // 10MB absolute max
+      toast.error("File is too large. Maximum size is 10MB");
+      return;
+    }
+
+    try {
+      const compressedFile = await compressImage(file);
+
+      if (compressedFile.size > MAX_FILE_SIZE) {
+        toast.warning(
+          `File compressed to ${(compressedFile.size / 1024 / 1024).toFixed(
+            2
+          )}MB but still over 2MB limit`
+        );
+      }
+
+      console.log("[HandleFile] File ready:", {
+        name: compressedFile.name,
+        size: compressedFile.size,
+        type: compressedFile.type,
+      });
+
+      setForm((prev) => ({
+        ...prev,
+        [name]: compressedFile,
+      }));
+
+      toast.success(`${name === "avatar" ? "Avatar" : "Banner"} selected`);
+    } catch (error) {
+      console.error("[HandleFile] Error:", error);
+      toast.error("Failed to process image");
+    }
   };
 
   const handleSubmit = async () => {
@@ -143,6 +217,15 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
       toast.error("Name and Email are required");
       return;
     }
+
+    console.log("[Submit] Starting submission with form:", {
+      name: form.name,
+      email: form.email,
+      hasAvatar: !!form.avatar,
+      hasBanner: !!form.banner,
+      avatarSize: form.avatar?.size,
+      bannerSize: form.banner?.size,
+    });
 
     const formData = new FormData();
     formData.append("name", form.name);
@@ -158,17 +241,42 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
 
     // Only append files if user selected new ones
     if (form.avatar) {
-      formData.append("avatar", form.avatar);
+      console.log("[Submit] Appending avatar:", {
+        name: form.avatar.name,
+        size: form.avatar.size,
+        type: form.avatar.type,
+      });
+      formData.append("avatar", form.avatar, form.avatar.name);
     }
 
     if (form.banner) {
-      formData.append("banner", form.banner);
+      console.log("[Submit] Appending banner:", {
+        name: form.banner.name,
+        size: form.banner.size,
+        type: form.banner.type,
+      });
+      formData.append("banner", form.banner, form.banner.name);
+    }
+
+    // Log FormData contents
+    console.log("[Submit] FormData contents:");
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`  ${key}:`, {
+          name: value.name,
+          size: value.size,
+          type: value.type,
+        });
+      } else {
+        console.log(`  ${key}:`, value);
+      }
     }
 
     try {
       await dispatch(updateUser(formData)).unwrap();
+      console.log("[Submit] Update successful");
     } catch (error) {
-      console.error("[UserProfileEdit] Update failed:", error);
+      console.error("[Submit] Update failed:", error);
     }
   };
 
@@ -332,6 +440,11 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
             disabled={updateLoading}
             className="w-full file:bg-blue-50 dark:file:bg-blue-900 file:text-blue-600 dark:file:text-blue-300 file:px-4 file:py-2 file:rounded-lg file:border-0 text-text-main-light dark:text-text-main-dark"
           />
+          {form.avatar && (
+            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+              ✓ {form.avatar.name} ({(form.avatar.size / 1024).toFixed(1)} KB)
+            </p>
+          )}
         </div>
 
         <div>
@@ -350,6 +463,11 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
             disabled={updateLoading}
             className="w-full file:bg-blue-50 dark:file:bg-blue-900 file:text-blue-600 dark:file:text-blue-300 file:px-4 file:py-2 file:rounded-lg file:border-0 text-text-main-light dark:text-text-main-dark"
           />
+          {form.banner && (
+            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+              ✓ {form.banner.name} ({(form.banner.size / 1024).toFixed(1)} KB)
+            </p>
+          )}
         </div>
 
         {isAdmin && (
