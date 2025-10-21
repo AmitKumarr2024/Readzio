@@ -55,11 +55,6 @@ const compressImage = async (file) => {
   });
 };
 
-console.log("[UpdateUser] FormData entries:");
-for (let [key, value] of formData.entries()) {
-  console.log(key, value);
-}
-
 export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
   const dispatch = useDispatch();
   const { updateLoading, updateSuccess, updateError } = useSelector(
@@ -162,8 +157,13 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
     }
 
     // Only append files if user selected new ones
-    if (form.avatar) formData.append("avatar", form.avatar);
-    if (form.banner) formData.append("banner", form.banner);
+    if (form.avatar) {
+      formData.append("avatar", form.avatar);
+    }
+
+    if (form.banner) {
+      formData.append("banner", form.banner);
+    }
 
     try {
       await dispatch(updateUser(formData)).unwrap();
