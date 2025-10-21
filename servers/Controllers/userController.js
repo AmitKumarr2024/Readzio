@@ -470,11 +470,16 @@ export const getAllUser = async (req, res, next) => {
   }
 };
 
-
+// Updates user profile with avatar and banner upload to Cloudinary
 // Updates user profile with avatar and banner upload to Cloudinary
 export const updateProfile = async (req, res, next) => {
+  console.log("🔍 updateProfile started:", {
+    userId: req.user?._id,
+    hasFiles: !!req.files,
+  });
   try {
     if (!req.user?._id) {
+      console.log("❌ Unauthorized - No user found");
       throw new AppError(
         "Unauthorized - No user found",
         401,
@@ -484,7 +489,9 @@ export const updateProfile = async (req, res, next) => {
     }
 
     const user = await UserModel.findById(req.user._id);
+    console.log("✅ User found:", { userId: user?._id, name: user?.name });
     if (!user) {
+      console.log("❌ User not found");
       throw new AppError(
         "User not found",
         404,
@@ -505,19 +512,29 @@ export const updateProfile = async (req, res, next) => {
       "tourCompleted",
     ];
 
+    const updatedFields = [];
     updatableFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         user[field] = req.body[field];
+        updatedFields.push(`${field}: ${req.body[field]}`);
       }
     });
+    console.log("📝 Text fields updated:", updatedFields);
 
     // Handle file uploads separately
     if (req.files) {
+      console.log("📁 Files received:", Object.keys(req.files));
+
       // ---------- Avatar ----------
       if (req.files.avatar?.[0]) {
+        console.log("🖼️ Processing avatar upload");
         const file = req.files.avatar[0];
 
         if (!file.buffer || !file.mimetype.startsWith("image/")) {
+          console.log("❌ Invalid avatar file:", {
+            mimetype: file.mimetype,
+            hasBuffer: !!file.buffer,
+          });
           throw new AppError(
             "Invalid avatar file",
             400,
@@ -553,9 +570,14 @@ export const updateProfile = async (req, res, next) => {
 
       // ---------- Banner ----------
       if (req.files.banner?.[0]) {
+        console.log("🖼️ Processing banner upload");
         const file = req.files.banner[0];
 
         if (!file.buffer || !file.mimetype.startsWith("image/")) {
+          console.log("❌ Invalid banner file:", {
+            mimetype: file.mimetype,
+            hasBuffer: !!file.buffer,
+          });
           throw new AppError(
             "Invalid banner file",
             400,
@@ -592,6 +614,7 @@ export const updateProfile = async (req, res, next) => {
 
     // Save user
     await user.save();
+    console.log("💾 User saved successfully");
 
     // Record activity
     await recordActivity({
@@ -599,6 +622,7 @@ export const updateProfile = async (req, res, next) => {
       action: "UPDATED_PROFILE",
       message: "Updated their profile",
     });
+    console.log("📊 Activity recorded");
 
     const profileUpdateData = {
       _id: user._id,
@@ -616,10 +640,15 @@ export const updateProfile = async (req, res, next) => {
     };
 
     // Emit updates via Socket.IO
+    console.log("📡 Emitting updates to:", [
+      "adminRoom",
+      ...user.followers.map((f) => f.toString()),
+    ]);
     io.to("adminRoom").emit("userProfileUpdate", profileUpdateData);
     user.followers.forEach((followerId) => {
       io.to(followerId.toString()).emit("userProfileUpdate", profileUpdateData);
     });
+    console.log("✅ Emits sent");
 
     res.status(200).json({
       success: true,
@@ -636,7 +665,12 @@ export const updateProfile = async (req, res, next) => {
         blockedUsers: user.blockedUsers,
       },
     });
+    console.log("✅ Response sent: 200 OK");
   } catch (error) {
+    console.error("💥 updateProfile error:", {
+      message: error.message,
+      stack: error.stack,
+    });
     next(
       error instanceof AppError
         ? error
