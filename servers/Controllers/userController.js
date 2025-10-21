@@ -471,6 +471,7 @@ export const getAllUser = async (req, res, next) => {
 };
 
 // Updates user profile with avatar and banner compression
+// Updates user profile with avatar and banner compression
 export const updateProfile = async (req, res, next) => {
   try {
     if (!req.user?._id) {
@@ -492,6 +493,8 @@ export const updateProfile = async (req, res, next) => {
       );
     }
 
+    // FIXED: Exclude avatar and banner from updatableFields
+    // They should ONLY be updated via file uploads in req.files
     const updatableFields = [
       "name",
       "bio",
@@ -499,20 +502,19 @@ export const updateProfile = async (req, res, next) => {
       "location",
       "profession",
       "email",
-      "avatar",
-      "banner",
       "blocked",
       "tourCompleted",
     ];
 
+    // Update text fields only
     updatableFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         user[field] = req.body[field];
       }
     });
 
+    // Handle file uploads separately
     if (req.files) {
-      // console.log("req.files:", req.files); // Debug log
       if (req.files.avatar?.[0]) {
         const file = req.files.avatar[0];
         if (!file.buffer || file.buffer.length === 0) {
@@ -586,11 +588,6 @@ export const updateProfile = async (req, res, next) => {
             "Banner file exceeds 10MB limit"
           );
         }
-        // console.log("Banner file details:", {
-        //   size: file.size,
-        //   mimetype: file.mimetype,
-        //   bufferLength: file.buffer?.length,
-        // });
         try {
           const uploadedBanner = await uploadToCloudinary({
             buffer: file.buffer,
