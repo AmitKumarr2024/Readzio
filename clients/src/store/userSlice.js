@@ -120,12 +120,12 @@ export const getAllUsers = createAsyncThunk(
 export const updateUser = createAsyncThunk(
   "user/updateUser",
   async (formData, { rejectWithValue }) => {
-    // console.log("[UserSlice] updateUser: Starting request", formData);
+    console.log("[UserSlice] updateUser: Starting request", formData);
     try {
       const res = await axiosInstance.patch("/user/update-user", formData, {
         withCredentials: true,
       });
-      // console.log("[UserSlice] updateUser: Response received", res.data);
+      console.log("[UserSlice] updateUser: Response received", res.data);
       return res.data.data;
     } catch (err) {
       console.error("[UserSlice] updateUser: Error", err.message);
