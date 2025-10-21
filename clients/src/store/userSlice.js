@@ -121,7 +121,7 @@ export const updateUser = createAsyncThunk(
   "user/updateUser",
   async (formData, { rejectWithValue }) => {
     console.log("[UserSlice] updateUser: Starting request");
-
+    
     // Log FormData contents
     console.log("[UserSlice] FormData entries:");
     for (let [key, value] of formData.entries()) {
@@ -130,32 +130,27 @@ export const updateUser = createAsyncThunk(
           name: value.name,
           size: value.size,
           type: value.type,
-          lastModified: value.lastModified,
+          lastModified: value.lastModified
         });
       } else {
         console.log(`  ${key}:`, value);
       }
     }
-
+    
     try {
-      // IMPORTANT: Don't set Content-Type header manually - let browser set it with boundary
+      // Now axios will work correctly with FormData because we fixed the interceptor
       const res = await axiosInstance.patch("/user/update-user", formData, {
         withCredentials: true,
-        headers: {
-          // Let axios/browser set Content-Type automatically for FormData
-          // This ensures the multipart/form-data boundary is included
-        },
-        // Increase timeout for file uploads
-        timeout: 60000, // 60 seconds
+        timeout: 60000, // 60 seconds for file uploads
       });
-
+      
       console.log("[UserSlice] updateUser: Response received", res.data);
       return res.data.data;
     } catch (err) {
       console.error("[UserSlice] updateUser: Error", {
         message: err.message,
         response: err.response?.data,
-        status: err.response?.status,
+        status: err.response?.status
       });
       return rejectWithValue(
         err.response?.data?.message || err.message || "Failed to update user"
@@ -163,6 +158,7 @@ export const updateUser = createAsyncThunk(
     }
   }
 );
+
 
 export const deleteUser = createAsyncThunk(
   "user/deleteUser",
