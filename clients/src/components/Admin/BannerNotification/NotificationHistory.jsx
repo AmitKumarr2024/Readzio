@@ -49,6 +49,21 @@ const NotificationHistory = () => {
     dispatch(fetchAllBannerNotifications());
   }, [dispatch]);
 
+  // Debug: Log notifications to see what's coming from backend
+  useEffect(() => {
+    if (bannerNotifications.length > 0) {
+      console.log("📋 Notifications from backend:", bannerNotifications);
+      bannerNotifications.forEach((n, i) => {
+        console.log(`Notification ${i + 1}:`, {
+          title: n.title,
+          expiresAt: n.expiresAt,
+          expiresAtType: typeof n.expiresAt,
+          isExpired: isExpired(n.expiresAt),
+        });
+      });
+    }
+  }, [bannerNotifications]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [bannerNotifications]);
