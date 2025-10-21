@@ -85,8 +85,8 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
       location: user?.location || "",
       profession: user?.profession || "",
       blocked: user?.blocked || false,
-      avatarFile: null,
-      bannerFile: null,
+      avatar: null,
+      banner: null,
       bio: user?.bio || "",
     });
   }, [user]);
