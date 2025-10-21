@@ -49,16 +49,32 @@ routes.delete("/activity/clear", protectedRoute, clearUserActivity);
 routes.delete("/activity/clear-old", protectedRoute, clearOldActivity);
 
 // 🧑‍🎨 Profile update with image upload
-// 🧑‍🎨 Profile update with image upload
 routes.patch(
   "/update-user",
   protectedRoute,
   (req, res, next) => {
-    // 👇 Tell multer to use memory storage (for Cloudinary uploads)
     req.useMemoryStorage = true;
     next();
   },
   upload.fields([{ name: "avatar" }, { name: "banner" }]),
+  (req, res, next) => {
+    console.log("🔍 [DEBUG] After multer:");
+    console.log("  req.body:", req.body);
+    console.log("  req.files:", req.files);
+    if (req.files) {
+      Object.keys(req.files).forEach((key) => {
+        console.log(`  ${key}:`, {
+          fieldname: req.files[key][0].fieldname,
+          originalname: req.files[key][0].originalname,
+          mimetype: req.files[key][0].mimetype,
+          size: req.files[key][0].size,
+          hasBuffer: !!req.files[key][0].buffer,
+          bufferLength: req.files[key][0].buffer?.length,
+        });
+      });
+    }
+    next();
+  },
   updateProfile
 );
 

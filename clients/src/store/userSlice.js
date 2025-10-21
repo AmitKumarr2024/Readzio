@@ -120,15 +120,43 @@ export const getAllUsers = createAsyncThunk(
 export const updateUser = createAsyncThunk(
   "user/updateUser",
   async (formData, { rejectWithValue }) => {
-    console.log("[UserSlice] updateUser: Starting request", formData);
+    console.log("[UserSlice] updateUser: Starting request");
+
+    // Log FormData contents
+    console.log("[UserSlice] FormData entries:");
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`  ${key}:`, {
+          name: value.name,
+          size: value.size,
+          type: value.type,
+          lastModified: value.lastModified,
+        });
+      } else {
+        console.log(`  ${key}:`, value);
+      }
+    }
+
     try {
+      // IMPORTANT: Don't set Content-Type header manually - let browser set it with boundary
       const res = await axiosInstance.patch("/user/update-user", formData, {
         withCredentials: true,
+        headers: {
+          // Let axios/browser set Content-Type automatically for FormData
+          // This ensures the multipart/form-data boundary is included
+        },
+        // Increase timeout for file uploads
+        timeout: 60000, // 60 seconds
       });
+
       console.log("[UserSlice] updateUser: Response received", res.data);
       return res.data.data;
     } catch (err) {
-      console.error("[UserSlice] updateUser: Error", err.message);
+      console.error("[UserSlice] updateUser: Error", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+      });
       return rejectWithValue(
         err.response?.data?.message || err.message || "Failed to update user"
       );

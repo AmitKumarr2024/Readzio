@@ -273,10 +273,12 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
     }
 
     try {
-      await dispatch(updateUser(formData)).unwrap();
-      console.log("[Submit] Update successful");
+      console.log("[Submit] Dispatching updateUser action");
+      const result = await dispatch(updateUser(formData)).unwrap();
+      console.log("[Submit] Update successful, result:", result);
     } catch (error) {
       console.error("[Submit] Update failed:", error);
+      toast.error("Failed to update profile. Please try again.");
     }
   };
 
