@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {toast} from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { updateUser, resetUpdateStatus } from "../../store/userSlice";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
@@ -9,7 +9,6 @@ const compressImage = async (file) => {
   if (!file) return null;
   if (file.size <= MAX_FILE_SIZE) return file;
 
-  // console.log("[UserProfileEdit] Compressing image:", file.name, file.size);
   const image = new Image();
   const reader = new FileReader();
   reader.readAsDataURL(file);
@@ -41,8 +40,12 @@ const compressImage = async (file) => {
         ctx.drawImage(image, 0, 0, width, height);
         canvas.toBlob(
           (blob) => {
-            // console.log("[UserProfileEdit] Image compressed:", blob.size);
-            resolve(blob);
+            // Create a proper File object from the blob with metadata
+            const compressedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
           },
           file.type,
           0.7 // Quality
@@ -54,7 +57,9 @@ const compressImage = async (file) => {
 
 export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
   const dispatch = useDispatch();
-  const { updateLoading, updateSuccess, updateError } = useSelector((state) => state.user);
+  const { updateLoading, updateSuccess, updateError } = useSelector(
+    (state) => state.user
+  );
   const [form, setForm] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -65,20 +70,14 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
     avatarFile: null,
     bannerFile: null,
     bio: user?.bio || "",
-    banner: user?.banner || "",
   });
-  const toastRef = useRef(false); // Track toast display
-
-  // console.log("[UserProfileEdit] Props:", { user, isAdmin, updateLoading, updateSuccess, updateError });
-  // console.log("[UserProfileEdit] Initial form state:", form);
+  const toastRef = useRef(false);
 
   useEffect(() => {
-    // console.log("[UserProfileEdit] Resetting update status on mount");
     dispatch(resetUpdateStatus());
   }, [dispatch]);
 
   useEffect(() => {
-    // console.log("[UserProfileEdit] Syncing form with user prop:", user);
     setForm({
       name: user?.name || "",
       email: user?.email || "",
@@ -89,26 +88,22 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
       avatarFile: null,
       bannerFile: null,
       bio: user?.bio || "",
-      banner: user?.banner || "",
     });
   }, [user]);
 
   useEffect(() => {
     if (updateSuccess && !toastRef.current) {
-      // console.log("[UserProfileEdit] Update successful");
       toastRef.current = true;
       toast.success("Profile updated successfully!");
       dispatch(resetUpdateStatus());
       onClose?.();
     }
     if (updateError && !toastRef.current) {
-      // console.log("[UserProfileEdit] Update error:", updateError);
       toastRef.current = true;
       toast.error(`Error: ${updateError}`);
       dispatch(resetUpdateStatus());
     }
     return () => {
-      // console.log("[UserProfileEdit] Cleaning up useEffect");
       toastRef.current = false;
       dispatch(resetUpdateStatus());
     };
@@ -117,11 +112,9 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (name === "bio" && value.length > 200) {
-      // console.log("[UserProfileEdit] Bio exceeds 200 characters:", value.length);
       toast.error("Bio cannot exceed 200 characters");
       return;
     }
-    // console.log("[UserProfileEdit] Form change:", { name, value: type === "checkbox" ? checked : value });
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -131,13 +124,14 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
   const handleFile = async (e) => {
     const { name, files } = e.target;
     const file = files[0];
-    if (file && file.size > MAX_FILE_SIZE) {
-      // console.log("[UserProfileEdit] File too large:", file.size);
+    if (!file) return;
+
+    if (file.size > MAX_FILE_SIZE) {
       toast.error("File size exceeds 2MB");
       return;
     }
+
     const compressedFile = await compressImage(file);
-    // console.log("[UserProfileEdit] File selected:", { name, file: compressedFile || file });
     setForm((prev) => ({
       ...prev,
       [name]: compressedFile || file,
@@ -146,12 +140,10 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
 
   const handleSubmit = async () => {
     if (!form.name || !form.email) {
-      // console.log("[UserProfileEdit] Missing required fields:", { name: form.name, email: form.email });
       toast.error("Name and Email are required");
       return;
     }
 
-    // console.log("[UserProfileEdit] Submitting form:", form);
     const formData = new FormData();
     formData.append("name", form.name);
     formData.append("email", form.email);
@@ -164,19 +156,17 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
       formData.append("blocked", form.blocked);
     }
 
+    // Only append files if user selected new ones
     if (form.avatarFile) {
       formData.append("avatar", form.avatarFile);
     }
 
     if (form.bannerFile) {
       formData.append("banner", form.bannerFile);
-    } else if (form.banner) {
-      formData.append("banner", form.banner);
     }
 
     try {
       await dispatch(updateUser(formData)).unwrap();
-      // console.log("[UserProfileEdit] Update dispatched successfully");
     } catch (error) {
       console.error("[UserProfileEdit] Update failed:", error);
     }
@@ -210,7 +200,9 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
       )}
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Edit Profile</h1>
-        <p className="text-text-secondary-light dark:text-text-secondary-dark mt-2">Update your profile details below</p>
+        <p className="text-text-secondary-light dark:text-text-secondary-dark mt-2">
+          Update your profile details below
+        </p>
       </div>
 
       {updateError && (
@@ -221,7 +213,9 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
 
       <div className="space-y-6">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium mb-1">Name *</label>
+          <label htmlFor="name" className="block text-sm font-medium mb-1">
+            Name *
+          </label>
           <input
             id="name"
             name="name"
@@ -235,7 +229,9 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium mb-1">Email *</label>
+          <label htmlFor="email" className="block text-sm font-medium mb-1">
+            Email *
+          </label>
           <input
             id="email"
             name="email"
@@ -250,7 +246,9 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
         </div>
 
         <div>
-          <label htmlFor="gender" className="block text-sm font-medium mb-1">Gender</label>
+          <label htmlFor="gender" className="block text-sm font-medium mb-1">
+            Gender
+          </label>
           <select
             id="gender"
             name="gender"
@@ -266,7 +264,9 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
         </div>
 
         <div>
-          <label htmlFor="location" className="block text-sm font-medium mb-1">Location</label>
+          <label htmlFor="location" className="block text-sm font-medium mb-1">
+            Location
+          </label>
           <input
             id="location"
             name="location"
@@ -278,7 +278,12 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
         </div>
 
         <div>
-          <label htmlFor="profession" className="block text-sm font-medium mb-1">Profession</label>
+          <label
+            htmlFor="profession"
+            className="block text-sm font-medium mb-1"
+          >
+            Profession
+          </label>
           <input
             id="profession"
             name="profession"
@@ -290,7 +295,9 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
         </div>
 
         <div>
-          <label htmlFor="bio" className="block text-sm font-medium mb-1">Bio (max 200 chars)</label>
+          <label htmlFor="bio" className="block text-sm font-medium mb-1">
+            Bio (max 200 chars)
+          </label>
           <textarea
             id="bio"
             name="bio"
@@ -301,13 +308,21 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
             className="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition"
             aria-describedby="bio-counter"
           />
-          <p id="bio-counter" className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
+          <p
+            id="bio-counter"
+            className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1"
+          >
             {form.bio.length}/200
           </p>
         </div>
 
         <div>
-          <label htmlFor="avatarFile" className="block text-sm font-medium mb-1">Avatar Image (max 2MB)</label>
+          <label
+            htmlFor="avatarFile"
+            className="block text-sm font-medium mb-1"
+          >
+            Avatar Image (max 2MB)
+          </label>
           <input
             id="avatarFile"
             type="file"
@@ -320,7 +335,12 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
         </div>
 
         <div>
-          <label htmlFor="bannerFile" className="block text-sm font-medium mb-1">Banner Image (max 2MB)</label>
+          <label
+            htmlFor="bannerFile"
+            className="block text-sm font-medium mb-1"
+          >
+            Banner Image (max 2MB)
+          </label>
           <input
             id="bannerFile"
             type="file"
@@ -343,7 +363,9 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
               disabled={updateLoading}
               className="h-4 w-4 text-blue-600 dark:text-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400"
             />
-            <label htmlFor="blocked" className="text-sm font-medium">Blocked (Admin only)</label>
+            <label htmlFor="blocked" className="text-sm font-medium">
+              Blocked (Admin only)
+            </label>
           </div>
         )}
 
@@ -384,7 +406,6 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
           </button>
           <button
             onClick={() => {
-              // console.log("[UserProfileEdit] Cancel button clicked");
               toast("Changes discarded", { icon: "ℹ️" });
               onClose?.();
             }}
