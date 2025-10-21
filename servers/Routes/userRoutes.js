@@ -49,9 +49,15 @@ routes.delete("/activity/clear", protectedRoute, clearUserActivity);
 routes.delete("/activity/clear-old", protectedRoute, clearOldActivity);
 
 // 🧑‍🎨 Profile update with image upload
+// 🧑‍🎨 Profile update with image upload
 routes.patch(
   "/update-user",
   protectedRoute,
+  (req, res, next) => {
+    // 👇 Tell multer to use memory storage (for Cloudinary uploads)
+    req.useMemoryStorage = true;
+    next();
+  },
   upload.fields([{ name: "avatar" }, { name: "banner" }]),
   updateProfile
 );
