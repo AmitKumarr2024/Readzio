@@ -471,12 +471,9 @@ export const getAllUser = async (req, res, next) => {
 };
 
 // Updates user profile with avatar and banner upload to Cloudinary
-// Updates user profile with avatar and banner upload to Cloudinary
+
 export const updateProfile = async (req, res, next) => {
-  console.log("🔍 updateProfile started:", {
-    userId: req.user?._id,
-    hasFiles: !!req.files,
-  });
+  console.log("🔍 updateProfile started:", { userId: req.user?._id, hasFiles: !!req.files });
   try {
     if (!req.user?._id) {
       console.log("❌ Unauthorized - No user found");
@@ -529,12 +526,10 @@ export const updateProfile = async (req, res, next) => {
       if (req.files.avatar?.[0]) {
         console.log("🖼️ Processing avatar upload");
         const file = req.files.avatar[0];
+        console.log("📄 Avatar file details:", { originalname: file.originalname, mimetype: file.mimetype, size: file.size, hasBuffer: !!file.buffer });
 
         if (!file.buffer || !file.mimetype.startsWith("image/")) {
-          console.log("❌ Invalid avatar file:", {
-            mimetype: file.mimetype,
-            hasBuffer: !!file.buffer,
-          });
+          console.log("❌ Invalid avatar file:", { mimetype: file.mimetype, hasBuffer: !!file.buffer });
           throw new AppError(
             "Invalid avatar file",
             400,
@@ -543,22 +538,25 @@ export const updateProfile = async (req, res, next) => {
           );
         }
 
+        console.log("☁️ Calling uploadToCloudinary for avatar");
         try {
-          const uploadedAvatar = await uploadToCloudinary({
+          const uploadParams = {
             buffer: file.buffer,
             folder: "readzio/users/avatar",
             transformation: [
               { width: 800, height: 800, crop: "limit" },
               { quality: "auto:good", fetch_format: "auto" },
             ],
-          });
+          };
+          console.log("📤 Upload params (sans buffer):", { folder: uploadParams.folder, transformation: uploadParams.transformation });
+
+          const uploadedAvatar = await uploadToCloudinary(uploadParams);
+          console.log("📥 Cloudinary response:", { public_id: uploadedAvatar.public_id, secure_url: uploadedAvatar.secure_url, version: uploadedAvatar.version });
+
           user.avatar = uploadedAvatar.secure_url;
-          console.log(
-            "✅ Avatar uploaded successfully:",
-            uploadedAvatar.secure_url
-          );
+          console.log("✅ Avatar uploaded successfully:", uploadedAvatar.secure_url);
         } catch (err) {
-          console.error("Cloudinary avatar upload error:", err);
+          console.error("💥 Cloudinary avatar upload error:", { message: err.message, code: err.code, statusCode: err.http_code });
           throw new AppError(
             "Failed to upload avatar",
             500,
@@ -566,18 +564,18 @@ export const updateProfile = async (req, res, next) => {
             `Cloudinary error: ${err.message}`
           );
         }
+      } else {
+        console.log("ℹ️ No avatar file provided");
       }
 
       // ---------- Banner ----------
       if (req.files.banner?.[0]) {
         console.log("🖼️ Processing banner upload");
         const file = req.files.banner[0];
+        console.log("📄 Banner file details:", { originalname: file.originalname, mimetype: file.mimetype, size: file.size, hasBuffer: !!file.buffer });
 
         if (!file.buffer || !file.mimetype.startsWith("image/")) {
-          console.log("❌ Invalid banner file:", {
-            mimetype: file.mimetype,
-            hasBuffer: !!file.buffer,
-          });
+          console.log("❌ Invalid banner file:", { mimetype: file.mimetype, hasBuffer: !!file.buffer });
           throw new AppError(
             "Invalid banner file",
             400,
@@ -586,22 +584,25 @@ export const updateProfile = async (req, res, next) => {
           );
         }
 
+        console.log("☁️ Calling uploadToCloudinary for banner");
         try {
-          const uploadedBanner = await uploadToCloudinary({
+          const uploadParams = {
             buffer: file.buffer,
             folder: "readzio/users/banner",
             transformation: [
               { width: 1200, height: 400, crop: "limit" },
               { quality: "auto:good", fetch_format: "auto" },
             ],
-          });
+          };
+          console.log("📤 Upload params (sans buffer):", { folder: uploadParams.folder, transformation: uploadParams.transformation });
+
+          const uploadedBanner = await uploadToCloudinary(uploadParams);
+          console.log("📥 Cloudinary response:", { public_id: uploadedBanner.public_id, secure_url: uploadedBanner.secure_url, version: uploadedBanner.version });
+
           user.banner = uploadedBanner.secure_url;
-          console.log(
-            "✅ Banner uploaded successfully:",
-            uploadedBanner.secure_url
-          );
+          console.log("✅ Banner uploaded successfully:", uploadedBanner.secure_url);
         } catch (err) {
-          console.error("Cloudinary banner upload error:", err);
+          console.error("💥 Cloudinary banner upload error:", { message: err.message, code: err.code, statusCode: err.http_code });
           throw new AppError(
             "Failed to upload banner",
             500,
@@ -609,7 +610,11 @@ export const updateProfile = async (req, res, next) => {
             `Cloudinary error: ${err.message}`
           );
         }
+      } else {
+        console.log("ℹ️ No banner file provided");
       }
+    } else {
+      console.log("ℹ️ No files provided");
     }
 
     // Save user
@@ -640,10 +645,7 @@ export const updateProfile = async (req, res, next) => {
     };
 
     // Emit updates via Socket.IO
-    console.log("📡 Emitting updates to:", [
-      "adminRoom",
-      ...user.followers.map((f) => f.toString()),
-    ]);
+    console.log("📡 Emitting updates to:", ["adminRoom", ...user.followers.map(f => f.toString())]);
     io.to("adminRoom").emit("userProfileUpdate", profileUpdateData);
     user.followers.forEach((followerId) => {
       io.to(followerId.toString()).emit("userProfileUpdate", profileUpdateData);
@@ -667,10 +669,7 @@ export const updateProfile = async (req, res, next) => {
     });
     console.log("✅ Response sent: 200 OK");
   } catch (error) {
-    console.error("💥 updateProfile error:", {
-      message: error.message,
-      stack: error.stack,
-    });
+    console.error("💥 updateProfile error:", { message: error.message, stack: error.stack });
     next(
       error instanceof AppError
         ? error
