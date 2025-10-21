@@ -471,7 +471,6 @@ export const getAllUser = async (req, res, next) => {
 };
 
 // Updates user profile with avatar and banner compression
-// Updates user profile with avatar and banner compression
 export const updateProfile = async (req, res, next) => {
   try {
     if (!req.user?._id) {
@@ -550,6 +549,10 @@ export const updateProfile = async (req, res, next) => {
               { quality: "auto:good", fetch_format: "auto" },
             ],
           });
+          console.log(
+            "✅ Avatar uploaded successfully:",
+            uploadedAvatar.secure_url
+          );
           user.avatar = uploadedAvatar.secure_url;
         } catch (err) {
           console.error("Cloudinary upload error:", err);
