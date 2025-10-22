@@ -5,10 +5,9 @@ import { AppError } from "../Utils/AppError.js";
 import mongoose from "mongoose";
 
 // Creates a new banner notification
-// Creates a new banner notification
 export const createNotification = async (req, res, next) => {
   try {
-    const { message, title, type, link, region, expiresIn } = req.body;
+    const { message, title, type, link, region, expiresAt } = req.body;
 
     // ✅ Validate admin access
     if (!req.user || req.user.role !== "admin") {
@@ -30,24 +29,35 @@ export const createNotification = async (req, res, next) => {
       );
     }
 
-    // ✅ Calculate expiration date (clearer & more consistent)
-    let expiresAt;
-    const expiresValue = Number(expiresIn);
+    // ✅ Calculate expiration date
+    let expiresAtDate;
+    const expiresAtStr = expiresAt?.trim();
 
-    if (!isNaN(expiresValue) && expiresValue > 0) {
-      // If expiresIn < 1000 → treat as days, else milliseconds or seconds
-      const durationMs =
-        expiresValue <= 30
-          ? expiresValue * 24 * 60 * 60 * 1000 // assume days
-          : expiresValue * 1000; // assume seconds
-      expiresAt = new Date(Date.now() + durationMs);
+    if (expiresAtStr) {
+      expiresAtDate = new Date(expiresAtStr);
+      if (isNaN(expiresAtDate.getTime())) {
+        throw new AppError(
+          "Invalid expiration date",
+          400,
+          "CreateBannerNotification",
+          "Invalid expiresAt format (use YYYY-MM-DDTHH:MM)"
+        );
+      }
+      if (expiresAtDate <= new Date()) {
+        throw new AppError(
+          "Expiration date must be in the future",
+          400,
+          "CreateBannerNotification",
+          "expiresAt must be after now"
+        );
+      }
     } else {
       // Default: expires in 1 day
-      expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      expiresAtDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
     }
 
     // ✅ Ensure valid Date object
-    if (isNaN(expiresAt.getTime())) {
+    if (isNaN(expiresAtDate.getTime())) {
       throw new AppError(
         "Invalid expiration date generated",
         400,
@@ -63,7 +73,7 @@ export const createNotification = async (req, res, next) => {
       type: type || "info",
       link: link || "",
       region: region || "global",
-      expiresAt, // ⚡ MUST be a Date
+      expiresAt: expiresAtDate, // ⚡ Use parsed Date
       dismissedCount: 0,
       createdBy: req.user._id,
       isActive: true,

@@ -68,10 +68,11 @@ export const fetchAllBannerNotifications = createAsyncThunk(
 );
 
 // Create a new banner notification (admin only)
+// Create a new banner notification (admin only)
 export const createBannerNotification = createAsyncThunk(
   "bannerNotifications/create",
   async (
-    { message, title, type, link, region, expiresIn },
+    { message, title, type, link, region, expiresAt }, // Changed: expiresAt
     { rejectWithValue }
   ) => {
     if (!message || !title) {
@@ -84,7 +85,7 @@ export const createBannerNotification = createAsyncThunk(
         type,
         link,
         region,
-        expiresIn,
+        expiresAt, // Changed: send expiresAt
       });
       return response.data.notification;
     } catch (err) {
