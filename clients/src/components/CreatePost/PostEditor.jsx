@@ -173,11 +173,11 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
   };
 
   const updateBlock = (index, newData) => {
-    console.log("Updating block:", { index, newData }); // Debug log
+    // console.log("Updating block:", { index, newData }); // Debug log
     const restoreScroll = preventScroll();
     const updated = [...blocks];
     updated[index] = { ...updated[index], ...newData }; // This should preserve language
-    console.log("Updated block result:", updated[index]); // Debug log
+    // console.log("Updated block result:", updated[index]); // Debug log
     setBlocks(updated);
     restoreScroll();
   };

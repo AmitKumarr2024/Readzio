@@ -120,22 +120,22 @@ export const getAllUsers = createAsyncThunk(
 export const updateUser = createAsyncThunk(
   "user/updateUser",
   async (formData, { rejectWithValue }) => {
-    console.log("[UserSlice] updateUser: Starting request");
+    // console.log("[UserSlice] updateUser: Starting request");
     
     // Log FormData contents
-    console.log("[UserSlice] FormData entries:");
-    for (let [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`  ${key}:`, {
-          name: value.name,
-          size: value.size,
-          type: value.type,
-          lastModified: value.lastModified
-        });
-      } else {
-        console.log(`  ${key}:`, value);
-      }
-    }
+    // console.log("[UserSlice] FormData entries:");
+    // for (let [key, value] of formData.entries()) {
+    //   if (value instanceof File) {
+    //     console.log(`  ${key}:`, {
+    //       name: value.name,
+    //       size: value.size,
+    //       type: value.type,
+    //       lastModified: value.lastModified
+    //     });
+    //   } else {
+    //     console.log(`  ${key}:`, value);
+    //   }
+    // }
     
     try {
       // Now axios will work correctly with FormData because we fixed the interceptor

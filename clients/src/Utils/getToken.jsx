@@ -11,7 +11,7 @@ export const getToken = () => {
 export const removeToken = () => {
   try {
     localStorage.removeItem("jwt");
-    console.log("[removeToken] Token removed from localStorage");
+    // console.log("[removeToken] Token removed from localStorage");
   } catch (error) {
     console.error("[removeToken] Failed to remove token:", error);
   }

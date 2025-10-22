@@ -10,16 +10,16 @@ const compressImage = async (file) => {
 
   // Return original file if it's already under the size limit
   if (file.size <= MAX_FILE_SIZE) {
-    console.log("[Compress] File already under size limit:", file.name);
+    // console.log("[Compress] File already under size limit:", file.name);
     return file;
   }
 
-  console.log(
-    "[Compress] Starting compression for:",
-    file.name,
-    "Size:",
-    file.size
-  );
+  // console.log(
+  //   "[Compress] Starting compression for:",
+  //   file.name,
+  //   "Size:",
+  //   file.size
+  // );
 
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -69,13 +69,13 @@ const compressImage = async (file) => {
                 lastModified: Date.now(),
               });
 
-              console.log("[Compress] Compressed successfully:", {
-                original: file.size,
-                compressed: compressedFile.size,
-                reduction:
-                  ((1 - compressedFile.size / file.size) * 100).toFixed(1) +
-                  "%",
-              });
+              // console.log("[Compress] Compressed successfully:", {
+              //   original: file.size,
+              //   compressed: compressedFile.size,
+              //   reduction:
+              //     ((1 - compressedFile.size / file.size) * 100).toFixed(1) +
+              //     "%",
+              // });
 
               resolve(compressedFile);
             },
@@ -164,11 +164,11 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
     const file = files[0];
     if (!file) return;
 
-    console.log("[HandleFile] Processing file:", {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-    });
+    // console.log("[HandleFile] Processing file:", {
+    //   name: file.name,
+    //   size: file.size,
+    //   type: file.type,
+    // });
 
     // Check file type
     if (!file.type.startsWith("image/")) {
@@ -194,11 +194,11 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
         );
       }
 
-      console.log("[HandleFile] File ready:", {
-        name: compressedFile.name,
-        size: compressedFile.size,
-        type: compressedFile.type,
-      });
+      // console.log("[HandleFile] File ready:", {
+      //   name: compressedFile.name,
+      //   size: compressedFile.size,
+      //   type: compressedFile.type,
+      // });
 
       setForm((prev) => ({
         ...prev,
@@ -218,14 +218,14 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
       return;
     }
 
-    console.log("[Submit] Starting submission with form:", {
-      name: form.name,
-      email: form.email,
-      hasAvatar: !!form.avatar,
-      hasBanner: !!form.banner,
-      avatarSize: form.avatar?.size,
-      bannerSize: form.banner?.size,
-    });
+    // console.log("[Submit] Starting submission with form:", {
+    //   name: form.name,
+    //   email: form.email,
+    //   hasAvatar: !!form.avatar,
+    //   hasBanner: !!form.banner,
+    //   avatarSize: form.avatar?.size,
+    //   bannerSize: form.banner?.size,
+    // });
 
     const formData = new FormData();
     formData.append("name", form.name);
@@ -241,41 +241,41 @@ export default function UserProfileEdit({ user, isAdmin = false, onClose }) {
 
     // Only append files if user selected new ones
     if (form.avatar) {
-      console.log("[Submit] Appending avatar:", {
-        name: form.avatar.name,
-        size: form.avatar.size,
-        type: form.avatar.type,
-      });
+      // console.log("[Submit] Appending avatar:", {
+      //   name: form.avatar.name,
+      //   size: form.avatar.size,
+      //   type: form.avatar.type,
+      // });
       formData.append("avatar", form.avatar, form.avatar.name);
     }
 
     if (form.banner) {
-      console.log("[Submit] Appending banner:", {
-        name: form.banner.name,
-        size: form.banner.size,
-        type: form.banner.type,
-      });
+      // console.log("[Submit] Appending banner:", {
+      //   name: form.banner.name,
+      //   size: form.banner.size,
+      //   type: form.banner.type,
+      // });
       formData.append("banner", form.banner, form.banner.name);
     }
 
     // Log FormData contents
-    console.log("[Submit] FormData contents:");
-    for (let [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`  ${key}:`, {
-          name: value.name,
-          size: value.size,
-          type: value.type,
-        });
-      } else {
-        console.log(`  ${key}:`, value);
-      }
-    }
+    // console.log("[Submit] FormData contents:");
+    // for (let [key, value] of formData.entries()) {
+    //   if (value instanceof File) {
+    //     console.log(`  ${key}:`, {
+    //       name: value.name,
+    //       size: value.size,
+    //       type: value.type,
+    //     });
+    //   } else {
+    //     console.log(`  ${key}:`, value);
+    //   }
+    // }
 
     try {
-      console.log("[Submit] Dispatching updateUser action");
+      // console.log("[Submit] Dispatching updateUser action");
       const result = await dispatch(updateUser(formData)).unwrap();
-      console.log("[Submit] Update successful, result:", result);
+      // console.log("[Submit] Update successful, result:", result);
     } catch (error) {
       console.error("[Submit] Update failed:", error);
       toast.error("Failed to update profile. Please try again.");

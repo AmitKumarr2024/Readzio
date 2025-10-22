@@ -75,8 +75,8 @@ const DisplayPost = () => {
   const activeLoading = isAuthenticated ? loading : guestLoading;
   const activeError = isAuthenticated ? error : guestError;
 
-  console.log("DisplayPost slug:", slug);
-  console.log("Active post:", activePost);
+  // console.log("DisplayPost slug:", slug);
+  // console.log("Active post:", activePost);
 
   const categoryMap = useMemo(() => {
     return categories.reduce((map, cat) => {
@@ -192,11 +192,11 @@ const DisplayPost = () => {
 
 
   // need delete in furture
-  console.log("URL slug:", useParams().slug);
+  // console.log("URL slug:", useParams().slug);
 
   useEffect(() => {
-    console.log("Authenticated:", isAuthenticated);
-    console.log("Dispatching fetch for slug:", slug);
+    // console.log("Authenticated:", isAuthenticated);
+    // console.log("Dispatching fetch for slug:", slug);
 
     if (isAuthenticated) {
       dispatch(getSinglePost({ slug, isGuest: false }))
