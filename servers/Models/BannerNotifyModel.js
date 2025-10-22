@@ -62,6 +62,12 @@ const bannerNotificationSchema = new mongoose.Schema({
 
 // Compound index for efficient active notification queries
 bannerNotificationSchema.index({ isActive: 1, expiresAt: 1, region: 1 });
+bannerNotificationSchema.pre("save", function (next) {
+  if (!this.expiresAt) {
+    this.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // default 1 day
+  }
+  next();
+});
 
 // Creates and exports the Banner-Notification model
 export const BannerNotifyModel =

@@ -5,43 +5,55 @@ import { AppError } from "../Utils/AppError.js";
 import mongoose from "mongoose";
 
 // Creates a new banner notification
+// Creates a new banner notification
 export const createNotification = async (req, res, next) => {
   try {
     const { message, title, type, link, region, expiresIn } = req.body;
 
     // Validates admin access
-    if (!req.user || req.user.role !== "admin")
+    if (!req.user || req.user.role !== "admin") {
       throw new AppError(
         "Only admins can create banner notifications",
         403,
         "CreateBannerNotification",
         "Admin privileges required"
       );
+    }
 
     // Validates input
-    if (!message || !title)
+    if (!message || !title) {
       throw new AppError(
         "Message and title are required",
         400,
         "CreateBannerNotification",
         "Missing required fields"
       );
-
-    // Calculate expiry date if provided (in days)
-    let expiresAt = null;
-    if (expiresIn && Number(expiresIn) > 0) {
-      expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + Number(expiresIn));
     }
 
-    // Creates banner notification
+    // 🕒 Calculate expiration date (supports days, hours, or seconds)
+    const expiresValue = Number(expiresIn);
+    let expiresAt = null;
+
+    if (!isNaN(expiresValue) && expiresValue > 0) {
+      // Interpret small numbers (<10) as days, large numbers as seconds
+      const durationMs =
+        expiresValue < 10
+          ? expiresValue * 24 * 60 * 60 * 1000 // assume days
+          : expiresValue * 1000; // assume seconds if large
+      expiresAt = new Date(Date.now() + durationMs);
+    } else {
+      // Default expiry: 1 day from now
+      expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    }
+
+    // Create banner notification
     const notification = new BannerNotifyModel({
       message,
       title,
       type: type || "info",
       link: link || "",
       region: region || "global",
-      expiresAt,
+      expiresAt, // ✅ always set now
       dismissedCount: 0,
       createdBy: req.user._id,
       isActive: true,
@@ -49,7 +61,7 @@ export const createNotification = async (req, res, next) => {
 
     await notification.save();
 
-    // Populates creator details
+    // Populate creator details
     const populatedNotification = await BannerNotifyModel.findById(
       notification._id
     )

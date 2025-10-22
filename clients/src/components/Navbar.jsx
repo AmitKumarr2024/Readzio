@@ -212,7 +212,9 @@ const Navbar = () => {
               >
                 {onlineUsersCount || 0}
               </motion.span>
-              <span className="hidden sm:inline">online</span>
+              <span className="hidden sm:inline" translate="no">
+                online
+              </span>
             </Link>
           </div>
 

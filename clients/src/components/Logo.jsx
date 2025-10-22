@@ -72,6 +72,7 @@ const Logo = () => {
           {letters.map((letter, index) => (
             <motion.span
               key={index}
+              translate="no"
               variants={letterVariants}
               initial="initial"
               animate="animate"
