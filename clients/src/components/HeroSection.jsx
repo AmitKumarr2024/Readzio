@@ -1,5 +1,4 @@
 import React from "react";
-import { Helmet } from "react-helmet";
 import { motion } from "framer-motion";
 
 const containerVariants = {
@@ -22,86 +21,89 @@ const itemVariants = {
 
 const HeroSection = () => {
   return (
-    <>
-      <Helmet>
-        <title>Readzio — A Space to Express</title>
-        <meta
-          name="description"
-          content="readzio is a platform for students, writers, and curious minds to explore, share, and grow through meaningful words and ideas."
-        />
-        <meta
-          name="keywords"
-          content="readzio, blog, student, writer, knowledge, platform, share, learn, express"
-        />
-        <meta name="author" content="readzio Team" />
-        <meta property="og:title" content="Readzio — A Space to Express" />
-        <meta
-          property="og:description"
-          content="Join readzio to explore, write, and grow. A community of students, writers, and curious minds."
-        />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://readzio.in" />
-        <meta property="og:image" content="https://readzio.in/preview.png" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Readzio — A Space to Express" />
-        <meta
-          name="twitter:description"
-          content="Explore. Share. Grow. Join readzio now."
-        />
-        <meta name="twitter:image" content="https://readzio.in/preview.png" />
-        <html lang="en" />
-      </Helmet>
+    <section
+      className="relative bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 
+      dark:from-slate-900 dark:via-slate-800 dark:to-indigo-950 
+      min-h-[200px] sm:min-h-[250px] md:min-h-[300px] 
+      flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 py-10 sm:py-14
+      overflow-hidden"
+    >
+      {/* Animated background orbs */}
+      <div
+        aria-hidden="true"
+        className="absolute top-6 left-6 sm:top-10 sm:left-10 
+           w-16 sm:w-24 h-16 sm:h-24 bg-pink-400/40 dark:bg-pink-500/30
+           rounded-full animate-pulse blur-3xl"
+      ></div>
 
-      <section
-        className="relative bg-gradient-to-r from-background-light to-gray-200 
-        dark:from-background-dark dark:to-gray-800 text-text-main-light 
-        dark:text-text-main-dark min-h-[200px] sm:min-h-[250px] md:min-h-[300px] 
-        flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 py-10 sm:py-14"
+      <div
+        aria-hidden="true"
+        className="absolute bottom-10 right-6 sm:bottom-20 sm:right-20 
+        w-20 sm:w-32 h-20 sm:h-32 bg-indigo-400/40 dark:bg-indigo-500/30 
+        rounded-full animate-pulse blur-3xl"
+      ></div>
+
+      <div
+        aria-hidden="true"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+        w-32 sm:w-48 h-32 sm:h-48 bg-yellow-300/20 dark:bg-yellow-500/20 
+        rounded-full blur-3xl"
+      ></div>
+
+      <motion.div
+        className="max-w-2xl sm:max-w-3xl text-center z-10 relative"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
       >
-        <div
-          aria-hidden="true"
-          className="absolute top-6 left-6 sm:top-10 sm:left-10 
-             w-16 sm:w-24 h-16 sm:h-24 bg-pink-400 
-             rounded-full opacity-30 animate-pulse blur-3xl"
-        ></div>
-
-        <div className="absolute bottom-10 right-6 sm:bottom-20 sm:right-20 w-20 sm:w-32 h-20 sm:h-32 bg-indigo-400 rounded-full opacity-30 animate-pulse blur-3xl"></div>
-
-        <motion.div
-          className="max-w-2xl sm:max-w-3xl text-center z-10"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <h1 className="text-3xl sm:text-5xl md:text-7xl font-extrabold mb-4 sm:mb-6 leading-tight font-sans">
-            <span translate="no">Welcome to </span>
-            <motion.span
-              className="text-yellow-300 underline decoration-yellow-300 decoration-4 underline-offset-4 sm:underline-offset-8 notranslate"
-              translate="no"
-              lang="en"
-              aria-label="readzio logo"
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-            >
-              readzio
-            </motion.span>
-          </h1>
-
-          <motion.p
-            className="text-base sm:text-lg md:text-2xl max-w-md sm:max-w-xl mx-auto text-center"
-            variants={itemVariants}
+        <h1 className="text-3xl sm:text-5xl md:text-7xl font-extrabold mb-4 sm:mb-6 leading-tight">
+          <span className="text-slate-800 dark:text-slate-100" translate="no">
+            Welcome to{" "}
+          </span>
+          <motion.span
+            className="text-yellow-500 dark:text-yellow-400 
+            relative inline-block notranslate"
+            translate="no"
+            lang="en"
+            aria-label="readzio logo"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
           >
-            A space where students and young minds share, learn, and grow —
-            alongside writers from all walks of life.
-            <br />
-            <span className="font-semibold text-yellow-400">
-              Born in India. Built for the world.
-            </span>
-          </motion.p>
-        </motion.div>
-      </section>
-    </>
+            readzio
+            <span
+              className="absolute bottom-0 left-0 w-full h-1 sm:h-1.5 
+            bg-yellow-500 dark:bg-yellow-400 -mb-1 sm:-mb-2"
+            ></span>
+          </motion.span>
+        </h1>
+
+        <motion.p
+          className="text-base sm:text-lg md:text-2xl max-w-md sm:max-w-xl mx-auto 
+          text-slate-700 dark:text-slate-300 leading-relaxed"
+          variants={itemVariants}
+        >
+          A space where students and young minds share, learn, and grow —
+          alongside writers from all walks of life.
+        </motion.p>
+
+        <motion.p
+          className="mt-4 text-lg sm:text-xl md:text-2xl font-semibold 
+          bg-gradient-to-r from-yellow-600 to-amber-600 
+          dark:from-yellow-400 dark:to-amber-400
+          bg-clip-text text-transparent"
+          variants={itemVariants}
+        >
+          Born in India. Built for the world.
+        </motion.p>
+      </motion.div>
+
+      {/* Decorative elements */}
+      <div
+        className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r 
+      from-transparent via-yellow-500/50 to-transparent"
+      ></div>
+    </section>
   );
 };
 
