@@ -5,58 +5,92 @@ import { AppError } from "../Utils/AppError.js";
 import mongoose from "mongoose";
 
 // Creates a new banner notification
+// Creates a new banner notification
 export const createNotification = async (req, res, next) => {
   try {
-    const { title, message, region, expiresIn } = req.body;
+    const { message, title, type, link, region, expiresIn } = req.body;
 
-    if (!title || !message) {
-      throw new AppError("Title and message are required", 400);
+    // ✅ Validate admin access
+    if (!req.user || req.user.role !== "admin") {
+      throw new AppError(
+        "Only admins can create banner notifications",
+        403,
+        "CreateBannerNotification",
+        "Admin privileges required"
+      );
     }
 
-    // 🕒 Parse duration (supports "h" or "d")
-    let durationMs;
+    // ✅ Validate required fields
+    if (!message?.trim() || !title?.trim()) {
+      throw new AppError(
+        "Message and title are required",
+        400,
+        "CreateBannerNotification",
+        "Missing required fields"
+      );
+    }
 
-    if (typeof expiresIn === "string") {
-      const lower = expiresIn.toLowerCase();
+    // ✅ Calculate expiration date (clearer & more consistent)
+    let expiresAt;
+    const expiresValue = Number(expiresIn);
 
-      if (lower.endsWith("h")) {
-        durationMs = parseInt(lower) * 60 * 60 * 1000; // hours
-      } else if (lower.endsWith("d")) {
-        durationMs = parseInt(lower) * 24 * 60 * 60 * 1000; // days
-      } else {
-        durationMs = 24 * 60 * 60 * 1000; // default 1 day
-      }
-    } else if (typeof expiresIn === "number" && !isNaN(expiresIn)) {
-      // if numeric, treat as days
-      durationMs = expiresIn * 24 * 60 * 60 * 1000;
+    if (!isNaN(expiresValue) && expiresValue > 0) {
+      // If expiresIn < 1000 → treat as days, else milliseconds or seconds
+      const durationMs =
+        expiresValue <= 30
+          ? expiresValue * 24 * 60 * 60 * 1000 // assume days
+          : expiresValue * 1000; // assume seconds
+      expiresAt = new Date(Date.now() + durationMs);
     } else {
-      durationMs = 24 * 60 * 60 * 1000; // default 1 day
+      // Default: expires in 1 day
+      expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     }
 
-    const expiresAt = new Date(Date.now() + durationMs);
+    // ✅ Ensure valid Date object
+    if (isNaN(expiresAt.getTime())) {
+      throw new AppError(
+        "Invalid expiration date generated",
+        400,
+        "CreateBannerNotification",
+        "Invalid expiresAt calculation"
+      );
+    }
 
-    // 🧠 Create notification
-    const newNotification = await BannerNotification.create({
-      title,
-      message,
+    // ✅ Create and save notification
+    const notification = await BannerNotifyModel.create({
+      message: message.trim(),
+      title: title.trim(),
+      type: type || "info",
+      link: link || "",
       region: region || "global",
-      expiresAt,
+      expiresAt, // ⚡ MUST be a Date
+      dismissedCount: 0,
+      createdBy: req.user._id,
+      isActive: true,
     });
 
-    // 🔔 Emit real-time event
-    req.io.emit("newBroadcastNotification", newNotification);
-
-    console.log(
-      `🕒 Notification created. Expires at: ${expiresAt.toISOString()}`
-    );
+    // ✅ Populate creator info before returning
+    const populatedNotification = await BannerNotifyModel.findById(
+      notification._id
+    )
+      .populate("createdBy", "name email")
+      .lean();
 
     res.status(201).json({
       success: true,
-      message: "Banner notification created successfully",
-      notification: newNotification,
+      notification: populatedNotification,
     });
   } catch (err) {
-    next(err);
+    next(
+      err instanceof AppError
+        ? err
+        : new AppError(
+            err.message || "Failed to create banner notification",
+            500,
+            "CreateBannerNotification",
+            "Failed to create notification"
+          )
+    );
   }
 };
 
