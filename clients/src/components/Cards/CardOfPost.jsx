@@ -45,9 +45,6 @@ const CardOfPost = ({
   } = useSelector((state) => state.subscription || {});
   const currentUser = useSelector((state) => state.auth.user);
 
-  console.log("category", category);
-  console.log("categoryMap", categoryMap);
-
   const authorId = author?._id || "";
   const isPostPremium = isPremium;
   const isSubscribedToAuthor = isSubscribed[authorId];
