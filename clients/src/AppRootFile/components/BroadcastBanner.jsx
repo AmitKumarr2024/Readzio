@@ -1,5 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { X } from "lucide-react";
 
 export default function BroadcastBanner({ newNotification, handleDismiss }) {
   if (!newNotification) return null;
@@ -7,17 +8,18 @@ export default function BroadcastBanner({ newNotification, handleDismiss }) {
   return (
     <motion.div
       key={newNotification.timestamp}
-      initial={{ opacity: 0, y: -10 }}
+      initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 p-4 text-sm text-center shadow-md w-full"
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3 }}
+      className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-lg font-medium px-6 py-4 text-center shadow-lg w-full flex justify-center items-center gap-2 relative"
     >
       {newNotification.link ? (
         <a
           href={newNotification.link}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline font-semibold hover:text-blue-600 dark:hover:text-blue-300"
+          className="underline hover:text-yellow-200"
         >
           <strong>{newNotification.title}</strong>: {newNotification.message}
         </a>
@@ -26,11 +28,13 @@ export default function BroadcastBanner({ newNotification, handleDismiss }) {
           <strong>{newNotification.title}</strong>: {newNotification.message}
         </>
       )}
+
       <button
-        className="ml-4 text-sm underline"
+        className="absolute right-4 text-white hover:text-yellow-200 transition"
         onClick={() => handleDismiss(newNotification._id)}
+        aria-label="Dismiss notification"
       >
-        Dismiss
+        <X size={22} />
       </button>
     </motion.div>
   );
