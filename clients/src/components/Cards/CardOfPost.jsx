@@ -219,12 +219,29 @@ const CardOfPost = ({
                 {author.name || "Anonymous"}
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {category?.name ||
-                  categoryMap[category?._id] ||
-                  categoryMap[category] ||
-                  (typeof category === "string" && category !== "Uncategorized"
-                    ? category
-                    : "General")}
+                {(() => {
+                  // If category object has name directly
+                  if (category?.name) return category.name;
+
+                  // If categoryMap is array, find by matching _id
+                  if (Array.isArray(categoryMap) && category?._id) {
+                    const matched = categoryMap.find(
+                      (c) => c._id === category._id
+                    );
+                    if (matched) return matched.name;
+                  }
+
+                  // If categoryMap is object (fallback)
+                  if (!Array.isArray(categoryMap)) {
+                    return (
+                      categoryMap[category?._id] ||
+                      categoryMap[category] ||
+                      (typeof category === "string" ? category : "General")
+                    );
+                  }
+
+                  return "General";
+                })()}
               </span>
             </div>
           </div>
