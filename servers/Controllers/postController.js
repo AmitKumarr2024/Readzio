@@ -878,6 +878,285 @@ const validateCreatePostInput = (input) => {
 };
 
 // Main create post function
+// export const createPost = async (req, res, next) => {
+//   let session = null;
+//   const startTime = Date.now();
+
+//   try {
+//     logMemory("📝 Start createPost");
+//     console.log("[CreatePost] Request initiated by user:", req.user?._id);
+
+//     if (!req.user?._id) {
+//       throw new AppError(
+//         "You must be signed in to create posts.",
+//         401,
+//         "CreatePost"
+//       );
+//     }
+
+//     // Rate limiting
+//     checkRateLimit(req.user._id, cache);
+
+//     // Payload size validation
+//     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
+//     if (payloadSize > 40 * 1024 * 1024) {
+//       throw new AppError(
+//         `Payload exceeds 40MB limit: ${(payloadSize / 1024 / 1024).toFixed(
+//           2
+//         )}MB`,
+//         413,
+//         "CreatePost"
+//       );
+//     }
+
+//     const {
+//       title,
+//       category,
+//       excerpt,
+//       tags: rawTags,
+//       blocks: rawBlocks = [],
+//       thumbnail: rawThumbnail,
+//       thumbnailSize,
+//       isEmbed: isThumbnailEmbed = false,
+//       isFeatured = false,
+//       isPinned = false,
+//       language = "en",
+//       postType = "Blog",
+//     } = req.body;
+
+//     // Parse tags & blocks
+//     let tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags || "[]");
+//     let blocks = Array.isArray(rawBlocks)
+//       ? rawBlocks
+//       : JSON.parse(rawBlocks || "[]");
+
+//     validateCreatePostInput({ title, category, language, tags, blocks });
+
+//     // Duplicate post check (last 2 minutes)
+//     const recentPost = await PostModel.findOne({
+//       title: title.trim(),
+//       author: req.user._id,
+//       createdAt: { $gte: new Date(Date.now() - 2 * 60 * 1000) },
+//     }).lean();
+//     if (recentPost) {
+//       throw new AppError(
+//         "A post with this title was recently created. Please wait before creating another.",
+//         429,
+//         "CreatePost"
+//       );
+//     }
+
+//     logMemory("📦 After input validation");
+
+//     // Process blocks with IDs
+//     const validBlockTypes = [
+//       "header",
+//       "paragraph",
+//       "list",
+//       "image",
+//       "quote",
+//       "code",
+//       "delimiter",
+//       "table",
+//       "embed",
+//       "poll",
+//       "checklist",
+//       "warning",
+//     ];
+//     const blocksWithIds = blocks.map((block, i) => {
+//       if (!block || typeof block !== "object" || !block.type)
+//         throw new AppError(`Invalid block at index ${i}`, 400, "CreatePost");
+//       if (!validBlockTypes.includes(block.type))
+//         console.warn(`[CreatePost] Unknown block type: ${block.type}`);
+//       return { id: block.id || uuidv4(), blocked: false, ...block };
+//     });
+
+//     blocksWithIds.forEach((block, i) => {
+//       if (block.type === "table") {
+//         if (
+//           !block.data ||
+//           !Array.isArray(block.data) ||
+//           !block.data.every((r) => Array.isArray(r) && r.length)
+//         ) {
+//           throw new AppError(
+//             `Table block at index ${i} has invalid data`,
+//             400,
+//             "CreatePost"
+//           );
+//         }
+//       }
+//     });
+
+//     // Concurrency limits
+//     const blockLimit = pLimit(3);
+//     const imageLimit = pLimit(2);
+
+//     logMemory("🖼️ Before processing blocks");
+//     const processedBlocks = await Promise.all(
+//       blocksWithIds.map((block) =>
+//         blockLimit(() => processBlock(block, blockLimit, imageLimit))
+//       )
+//     );
+//     logMemory("🖼️ After processing blocks");
+
+//     // Reading time
+//     const { readTime, readingTime } = calculateReadTime(processedBlocks);
+
+//     // Thumbnail processing
+//     let processedThumbnail = null;
+//     if (rawThumbnail) {
+//       if (isThumbnailEmbed) {
+//         try {
+//           new URL(rawThumbnail);
+//           processedThumbnail = rawThumbnail;
+//         } catch {
+//           throw new AppError("Invalid thumbnail embed URL", 400, "CreatePost");
+//         }
+//       } else {
+//         logMemory("🖼️ Before processing thumbnail");
+//         processedThumbnail = await imageLimit(() =>
+//           processImage(rawThumbnail, "thumbnail", "readzio/post/thumbnails/")
+//         );
+//         logMemory("🖼️ After processing thumbnail");
+//       }
+//     }
+
+//     // Content moderation
+//     const moderateContent = async (text) => {
+//       const spamPatterns = [/(.)\1{20,}/i, /http[s]?:\/\/[^\s]{100,}/i];
+//       for (const p of spamPatterns)
+//         if (p.test(text))
+//           return { isFlagged: true, categories: { spam: true } };
+//       return { isFlagged: false, categories: {} };
+//     };
+//     const blockTextContent = processedBlocks
+//       .flatMap((b) =>
+//         ["text", "value", "code", "caption", "question"]
+//           .map((f) => b[f])
+//           .filter(Boolean)
+//       )
+//       .join("\n");
+//     const fullText = `${title}\n${excerpt || ""}\n${blockTextContent}`;
+//     const moderation = await moderateContent(fullText);
+//     if (moderation.isFlagged)
+//       throw new AppError(`Content violates guidelines`, 400, "CreatePost");
+
+//     // DB transaction
+//     session = await mongoose.startSession();
+//     session.startTransaction();
+
+//     try {
+//       // Generate unique slug inside transaction
+//       const slug = await generateSafeSlug(title);
+
+//       const postData = {
+//         title: title.trim(),
+//         slug,
+//         category: category.trim(),
+//         tags: tags.filter((t) => t && typeof t === "string").slice(0, 20),
+//         thumbnail: processedThumbnail,
+//         thumbnailSize,
+//         isEmbed: isThumbnailEmbed,
+//         excerpt: excerpt ? excerpt.trim().substring(0, 500) : undefined,
+//         blocks: processedBlocks,
+//         author: req.user._id,
+//         isFeatured: Boolean(isFeatured),
+//         isPinned: Boolean(isPinned),
+//         isPublished: true,
+//         language: language.trim(),
+//         readTime,
+//         readingTime,
+//         postType: postType.trim(),
+//         createdAt: new Date(),
+//         updatedAt: new Date(),
+//       };
+
+//       const [newPost] = await asyncRetry(
+//         () => PostModel.create([postData], { session }),
+//         { retries: 3, minTimeout: 2000 }
+//       );
+
+//       await recordActivity(
+//         {
+//           userId: req.user._id,
+//           action: "POST_CREATED",
+//           targetPost: newPost._id,
+//           message: `Created post: ${title.substring(0, 100)}`,
+//         },
+//         { session }
+//       );
+
+//       await session.commitTransaction();
+//       logMemory("💾 Transaction committed");
+
+//       // Non-blocking post-transaction tasks
+//       (async () => {
+//         try {
+//           await new Promise((r) => setTimeout(r, 1000));
+//           await asyncRetry(
+//             () =>
+//               io.emit("postCreated", {
+//                 ...newPost.toObject(),
+//                 authorId: req.user._id,
+//                 timestamp: new Date(),
+//               }),
+//             { retries: 2, minTimeout: 500 }
+//           );
+//           const cacheKeys = [
+//             `postCounts:${req.user._id}`,
+//             `post:${slug}`,
+//             `userPosts:${req.user._id}`,
+//           ];
+//           cacheKeys.forEach((k) => cache.del(k));
+//         } catch (err) {
+//           console.warn(
+//             "[CreatePost] Post-transaction tasks failed:",
+//             err.message
+//           );
+//         }
+//       })();
+
+//       const processingTime = Date.now() - startTime;
+//       logMemory("🎉 End createPost");
+//       res.status(201).json({
+//         success: true,
+//         message: "Post created successfully",
+//         post: newPost,
+//         meta: {
+//           processingTime,
+//           blocksProcessed: processedBlocks.length,
+//           imagesProcessed: processedBlocks.filter((b) => b.type === "image")
+//             .length,
+//         },
+//       });
+//     } catch (dbError) {
+//       await session.abortTransaction();
+//       if (dbError.code === 11000)
+//         throw new AppError("Duplicate title exists", 409, "CreatePost");
+//       throw new AppError(
+//         dbError.message || "Failed to save post",
+//         500,
+//         "CreatePost"
+//       );
+//     }
+//   } catch (error) {
+//     if (session && session.inTransaction()) await session.abortTransaction();
+//     next(
+//       error instanceof AppError
+//         ? error
+//         : new AppError(
+//             error.message || "Unexpected error",
+//             error.status || 500,
+//             "CreatePost"
+//           )
+//     );
+//   } finally {
+//     if (session) await session.endSession();
+//     logMemory("🧹 Final cleanup");
+//   }
+// };
+
+// Main create post function
 export const createPost = async (req, res, next) => {
   let session = null;
   const startTime = Date.now();
@@ -897,13 +1176,16 @@ export const createPost = async (req, res, next) => {
     // Rate limiting
     checkRateLimit(req.user._id, cache);
 
-    // Payload size validation
+    // ✅ FIXED: Unified payload size validation (15MB)
     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
-    if (payloadSize > 40 * 1024 * 1024) {
+    const MAX_PAYLOAD_SIZE = 15 * 1024 * 1024; // 15MB
+
+    if (payloadSize > MAX_PAYLOAD_SIZE) {
       throw new AppError(
-        `Payload exceeds 40MB limit: ${(payloadSize / 1024 / 1024).toFixed(
+        `Payload exceeds 15MB limit: ${(payloadSize / 1024 / 1024).toFixed(
           2
-        )}MB`,
+        )}MB. ` +
+          `Please reduce image quality, remove unnecessary images, or split into multiple posts.`,
         413,
         "CreatePost"
       );
@@ -929,6 +1211,44 @@ export const createPost = async (req, res, next) => {
     let blocks = Array.isArray(rawBlocks)
       ? rawBlocks
       : JSON.parse(rawBlocks || "[]");
+
+    // ✅ ADDED: Validate blocks and images count
+    if (blocks.length > 100) {
+      throw new AppError(
+        `Too many blocks (${blocks.length}). Maximum allowed: 100`,
+        413,
+        "CreatePost"
+      );
+    }
+
+    const imageBlocks = blocks.filter((b) => b.type === "image");
+    if (imageBlocks.length > 50) {
+      throw new AppError(
+        `Too many images (${imageBlocks.length}). Maximum allowed: 50. ` +
+          `Consider using external image hosting or splitting into multiple posts.`,
+        413,
+        "CreatePost"
+      );
+    }
+
+    // ✅ ADDED: Validate individual image sizes
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
+    imageBlocks.forEach((block, idx) => {
+      if (block.data?.file && typeof block.data.file === "string") {
+        const imgSize = Buffer.byteLength(block.data.file, "utf8") * 0.75; // Account for base64
+        if (imgSize > MAX_IMAGE_SIZE) {
+          throw new AppError(
+            `Image at block ${idx} exceeds 5MB limit (${(
+              imgSize /
+              1024 /
+              1024
+            ).toFixed(2)}MB). ` + `Please compress or resize the image.`,
+            413,
+            "CreatePost"
+          );
+        }
+      }
+    });
 
     validateCreatePostInput({ title, category, language, tags, blocks });
 
@@ -1118,17 +1438,36 @@ export const createPost = async (req, res, next) => {
 
       const processingTime = Date.now() - startTime;
       logMemory("🎉 End createPost");
-      res.status(201).json({
+
+      // ✅ ADDED: Enhanced response with size info
+      const response = {
         success: true,
         message: "Post created successfully",
         post: newPost,
         meta: {
           processingTime,
+          payloadSize: `${(payloadSize / 1024 / 1024).toFixed(2)}MB`,
           blocksProcessed: processedBlocks.length,
           imagesProcessed: processedBlocks.filter((b) => b.type === "image")
             .length,
         },
-      });
+      };
+
+      // ✅ ADDED: Optimization suggestions for large posts
+      if (payloadSize > 10 * 1024 * 1024) {
+        response.meta.suggestions = [
+          "Consider compressing images to reduce post size",
+          "For better performance, keep posts under 10MB when possible",
+        ];
+      }
+      if (imageBlocks.length > 30) {
+        response.meta.suggestions = response.meta.suggestions || [];
+        response.meta.suggestions.push(
+          "Consider using image galleries for large collections"
+        );
+      }
+
+      res.status(201).json(response);
     } catch (dbError) {
       await session.abortTransaction();
       if (dbError.code === 11000)
@@ -2134,12 +2473,16 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError("Account is blocked", 403, "UpdatePostBySlug");
     }
 
+    // ✅ FIXED: Unified payload size validation (15MB, same as create)
     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
-    if (payloadSize > 10 * 1024 * 1024) {
+    const MAX_PAYLOAD_SIZE = 15 * 1024 * 1024; // 15MB
+
+    if (payloadSize > MAX_PAYLOAD_SIZE) {
       throw new AppError(
-        `Payload exceeds 10MB limit: ${(payloadSize / 1024 / 1024).toFixed(
+        `Payload exceeds 15MB limit: ${(payloadSize / 1024 / 1024).toFixed(
           2
-        )}MB`,
+        )}MB. ` +
+          `Please reduce image quality, remove unnecessary images, or split into multiple posts.`,
         413,
         "UpdatePostBySlug"
       );
@@ -2191,14 +2534,48 @@ export const updatePostBySlug = async (req, res, next) => {
             "UpdatePostBySlug"
           );
         }
+
+        // ✅ FIXED: Increased block limit to match create (was missing before)
         if (blocks.length > 100) {
           throw new AppError(
-            "Too many blocks (max 100)",
-            400,
+            `Too many blocks (${blocks.length}). Maximum allowed: 100`,
+            413,
             "UpdatePostBySlug"
           );
         }
-      } catch {
+
+        // ✅ ADDED: Validate image count
+        const imageBlocks = blocks.filter((b) => b.type === "image");
+        if (imageBlocks.length > 50) {
+          throw new AppError(
+            `Too many images (${imageBlocks.length}). Maximum allowed: 50. ` +
+              `Consider using external image hosting or splitting into multiple posts.`,
+            413,
+            "UpdatePostBySlug"
+          );
+        }
+
+        // ✅ ADDED: Validate individual image sizes
+        const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
+        imageBlocks.forEach((block, idx) => {
+          if (block.data?.file && typeof block.data.file === "string") {
+            const imgSize = Buffer.byteLength(block.data.file, "utf8") * 0.75; // Account for base64
+            if (imgSize > MAX_IMAGE_SIZE) {
+              throw new AppError(
+                `Image at block ${idx} exceeds 5MB limit (${(
+                  imgSize /
+                  1024 /
+                  1024
+                ).toFixed(2)}MB). ` + `Please compress or resize the image.`,
+                413,
+                "UpdatePostBySlug"
+              );
+            }
+          }
+        });
+      } catch (error) {
+        // Re-throw AppError as-is, wrap other errors
+        if (error instanceof AppError) throw error;
         throw new AppError(
           "Invalid blocks format - must be valid JSON array",
           400,
@@ -2389,16 +2766,35 @@ export const updatePostBySlug = async (req, res, next) => {
     });
 
     const processingTime = Date.now() - startTime;
-    res.status(200).json({
+
+    // ✅ ADDED: Enhanced response with size info
+    const response = {
       success: true,
       message: "Post updated successfully",
       post: updatedPost,
       meta: {
         processingTime,
+        payloadSize: `${(payloadSize / 1024 / 1024).toFixed(2)}MB`,
         fieldsUpdated: Object.keys(updates).length,
         blocksProcessed: processedBlocks?.length || 0,
       },
-    });
+    };
+
+    // ✅ ADDED: Optimization suggestions for large posts
+    if (payloadSize > 10 * 1024 * 1024) {
+      response.meta.suggestions = [
+        "Consider compressing images to reduce post size",
+        "For better performance, keep posts under 10MB when possible",
+      ];
+    }
+    if (blocks && blocks.filter((b) => b.type === "image").length > 30) {
+      response.meta.suggestions = response.meta.suggestions || [];
+      response.meta.suggestions.push(
+        "Consider using image galleries for large collections"
+      );
+    }
+
+    res.status(200).json(response);
 
     // Async post-response tasks (cache & socket)
     process.nextTick(async () => {
@@ -2453,6 +2849,348 @@ export const updatePostBySlug = async (req, res, next) => {
     logMemory("🧹 Final cleanup");
   }
 };
+
+// export const updatePostBySlug = async (req, res, next) => {
+//   let session = null;
+//   const startTime = Date.now();
+
+//   try {
+//     logMemory("✏️ Start updatePostBySlug");
+//     const { slug } = req.params;
+//     const userId = req.user?._id;
+//     const userRole = req.user?.role;
+
+//     if (!slug?.trim() || !userId) {
+//       throw new AppError(
+//         !slug?.trim() ? "Valid slug is required" : "Authentication required",
+//         !slug?.trim() ? 400 : 401,
+//         "UpdatePostBySlug"
+//       );
+//     }
+
+//     if (req.user.blocked) {
+//       throw new AppError("Account is blocked", 403, "UpdatePostBySlug");
+//     }
+
+//     const payloadSize = Buffer.byteLength(JSON.stringify(req.body), "utf8");
+//     if (payloadSize > 10 * 1024 * 1024) {
+//       throw new AppError(
+//         `Payload exceeds 10MB limit: ${(payloadSize / 1024 / 1024).toFixed(
+//           2
+//         )}MB`,
+//         413,
+//         "UpdatePostBySlug"
+//       );
+//     }
+
+//     const {
+//       title,
+//       category,
+//       excerpt,
+//       tags: rawTags,
+//       blocks: rawBlocks,
+//       thumbnail: rawThumbnail,
+//       thumbnailSize,
+//       isEmbed: isThumbnailEmbed = false,
+//       isFeatured,
+//       isPinned,
+//       language,
+//       postType,
+//     } = req.body;
+
+//     // Parse and validate tags
+//     let tags;
+//     if (rawTags !== undefined) {
+//       try {
+//         tags = Array.isArray(rawTags) ? rawTags : JSON.parse(rawTags);
+//         if (!Array.isArray(tags)) throw new Error("Tags must be an array");
+//         tags = tags
+//           .filter((t) => t && typeof t === "string")
+//           .map((t) => t.trim())
+//           .slice(0, 20);
+//       } catch {
+//         throw new AppError(
+//           "Invalid tags format - must be valid JSON array",
+//           400,
+//           "UpdatePostBySlug"
+//         );
+//       }
+//     }
+
+//     // Parse and validate blocks
+//     let blocks;
+//     if (rawBlocks !== undefined) {
+//       try {
+//         blocks = Array.isArray(rawBlocks) ? rawBlocks : JSON.parse(rawBlocks);
+//         if (!Array.isArray(blocks) || blocks.length === 0) {
+//           throw new AppError(
+//             "Blocks must be a non-empty array",
+//             400,
+//             "UpdatePostBySlug"
+//           );
+//         }
+//         if (blocks.length > 100) {
+//           throw new AppError(
+//             "Too many blocks (max 100)",
+//             400,
+//             "UpdatePostBySlug"
+//           );
+//         }
+//       } catch {
+//         throw new AppError(
+//           "Invalid blocks format - must be valid JSON array",
+//           400,
+//           "UpdatePostBySlug"
+//         );
+//       }
+//     }
+
+//     // Basic input validation
+//     if (
+//       title !== undefined &&
+//       (!title || title.trim().length < 3 || title.length > 300)
+//     ) {
+//       throw new AppError(
+//         "Title must be 3-300 characters",
+//         400,
+//         "UpdatePostBySlug"
+//       );
+//     }
+//     if (
+//       category !== undefined &&
+//       (!category || category.trim().length === 0 || category.length > 100)
+//     ) {
+//       throw new AppError(
+//         "Category must be 1-100 characters",
+//         400,
+//         "UpdatePostBySlug"
+//       );
+//     }
+//     if (
+//       excerpt !== undefined &&
+//       typeof excerpt === "string" &&
+//       excerpt.length > 1000
+//     ) {
+//       throw new AppError(
+//         "Excerpt too long (max 1000 characters)",
+//         400,
+//         "UpdatePostBySlug"
+//       );
+//     }
+
+//     // Fetch post with authorization
+//     const escapedSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+//     const query =
+//       userRole === "admin"
+//         ? { slug: { $regex: `^${escapedSlug}$`, $options: "i" } }
+//         : {
+//             slug: { $regex: `^${escapedSlug}$`, $options: "i" },
+//             author: userId,
+//           };
+
+//     const post = await PostModel.findOne(query).lean();
+//     if (!post) {
+//       const exists = await PostModel.findOne({
+//         slug: { $regex: `^${escapedSlug}$`, $options: "i" },
+//       }).lean();
+//       throw new AppError(
+//         exists ? "Unauthorized to update this post" : "Post not found",
+//         exists ? 403 : 404,
+//         "UpdatePostBySlug"
+//       );
+//     }
+
+//     if (post.blocked)
+//       throw new AppError(
+//         "Post is blocked and cannot be updated",
+//         403,
+//         "UpdatePostBySlug"
+//       );
+
+//     // Process blocks if provided
+//     let processedBlocks;
+//     if (blocks) {
+//       const blockLimit = pLimit(3);
+//       const imageLimit = pLimit(2);
+//       const blocksWithIds = blocks.map((b) => ({
+//         id: b.id || uuidv4(),
+//         blocked: false,
+//         ...b,
+//       }));
+//       processedBlocks = await Promise.all(
+//         blocksWithIds.map((b) =>
+//           blockLimit(() => processBlock(b, blockLimit, imageLimit))
+//         )
+//       );
+//     }
+
+//     // Process thumbnail
+//     let processedThumbnail;
+//     if (rawThumbnail && !isThumbnailEmbed) {
+//       processedThumbnail = await processImage(
+//         rawThumbnail,
+//         "thumbnail",
+//         "readzio/post/thumbnails/"
+//       );
+//     } else if (rawThumbnail && isThumbnailEmbed) {
+//       try {
+//         new URL(rawThumbnail);
+//         processedThumbnail = rawThumbnail;
+//       } catch {
+//         throw new AppError(
+//           "Invalid thumbnail embed URL",
+//           400,
+//           "UpdatePostBySlug"
+//         );
+//       }
+//     }
+
+//     // Calculate read time
+//     let readTime, readingTime;
+//     if (processedBlocks) {
+//       ({ readTime, readingTime } = calculateReadTime(processedBlocks));
+//     }
+
+//     // Content moderation
+//     if (title || excerpt || processedBlocks) {
+//       const blockTextContent =
+//         processedBlocks
+//           ?.flatMap((b) => [b.text, b.value, b.caption].filter(Boolean))
+//           .join(" ")
+//           .substring(0, 5000) || "";
+//       const fullText = `${title || post.title} ${
+//         excerpt || ""
+//       } ${blockTextContent}`.substring(0, 10000);
+//       const moderation = await moderateContent(fullText);
+//       if (moderation.isFlagged) {
+//         const reasons = Object.keys(moderation.categories).filter(
+//           (k) => moderation.categories[k]
+//         );
+//         throw new AppError(
+//           `Content violates community guidelines: ${reasons.join(", ")}`,
+//           400,
+//           "UpdatePostBySlug"
+//         );
+//       }
+//     }
+
+//     // Prepare update object
+//     const updates = {};
+//     if (title && title.trim() !== post.title) updates.title = title.trim();
+//     if (category && category.trim() !== post.category)
+//       updates.category = category.trim();
+//     if (excerpt !== undefined)
+//       updates.excerpt = excerpt ? excerpt.trim().substring(0, 500) : "";
+//     if (tags) updates.tags = tags;
+//     if (processedThumbnail !== undefined)
+//       updates.thumbnail = processedThumbnail;
+//     if (thumbnailSize !== undefined) updates.thumbnailSize = thumbnailSize;
+//     if (isThumbnailEmbed !== undefined) updates.isEmbed = isThumbnailEmbed;
+//     if (processedBlocks) updates.blocks = processedBlocks;
+//     if (isFeatured !== undefined) updates.isFeatured = Boolean(isFeatured);
+//     if (isPinned !== undefined) updates.isPinned = Boolean(isPinned);
+//     if (language) updates.language = language.trim();
+//     if (postType) updates.postType = postType.trim();
+//     if (readTime !== undefined) updates.readTime = readTime;
+//     if (readingTime !== undefined) updates.readingTime = readingTime;
+//     updates.isPublished = true;
+//     updates.lastEditedAt = new Date();
+//     updates.updatedAt = new Date();
+
+//     if (Object.keys(updates).length <= 3) {
+//       return res
+//         .status(200)
+//         .json({ success: true, message: "No changes detected", post });
+//     }
+
+//     // Update post within transaction
+//     session = await mongoose.startSession();
+//     let updatedPost;
+//     await session.withTransaction(async () => {
+//       updatedPost = await PostModel.findOneAndUpdate(
+//         { _id: post._id },
+//         { $set: updates },
+//         { new: true, runValidators: true, session }
+//       );
+//       if (!updatedPost)
+//         throw new AppError("Failed to update post", 500, "UpdatePostBySlug");
+
+//       await recordActivity(
+//         {
+//           userId: userId,
+//           action: "POST_EDITED",
+//           targetPost: updatedPost._id,
+//           message: `Edited post: ${updatedPost.title}`,
+//         },
+//         { session }
+//       );
+//     });
+
+//     const processingTime = Date.now() - startTime;
+//     res.status(200).json({
+//       success: true,
+//       message: "Post updated successfully",
+//       post: updatedPost,
+//       meta: {
+//         processingTime,
+//         fieldsUpdated: Object.keys(updates).length,
+//         blocksProcessed: processedBlocks?.length || 0,
+//       },
+//     });
+
+//     // Async post-response tasks (cache & socket)
+//     process.nextTick(async () => {
+//       try {
+//         const cacheKeys = [
+//           `postCounts:${userId}`,
+//           `countAllPosts`,
+//           `countMyPosts:${userId}`,
+//           `postId:${slug}`,
+//           `singlePost:${slug}:${userId}:${userRole || "none"}`,
+//         ];
+//         await Promise.all(cacheKeys.map((k) => cache.del(k)));
+//         await asyncRetry(
+//           () =>
+//             io.emit("postUpdated", {
+//               ...updatedPost.toObject(),
+//               authorId: userId,
+//             }),
+//           { retries: 5, minTimeout: 1000, maxTimeout: 10000 }
+//         );
+//       } catch (err) {
+//         console.warn(
+//           "[UpdatePostBySlug] Post-response operations failed:",
+//           err.message
+//         );
+//       }
+//     });
+//   } catch (error) {
+//     console.error("[UpdatePostBySlug] Error:", error);
+//     if (!res.headersSent) {
+//       next(
+//         error instanceof AppError
+//           ? error
+//           : new AppError(
+//               error.message || "Failed to update post",
+//               500,
+//               "UpdatePostBySlug"
+//             )
+//       );
+//     }
+//   } finally {
+//     if (session) {
+//       try {
+//         await session.endSession();
+//       } catch (sessionError) {
+//         console.error(
+//           "[UpdatePostBySlug] Session cleanup failed:",
+//           sessionError
+//         );
+//       }
+//     }
+//     logMemory("🧹 Final cleanup");
+//   }
+// };
 
 export const deletePost = async (req, res, next) => {
   let session = null;

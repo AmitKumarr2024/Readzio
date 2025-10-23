@@ -9,7 +9,7 @@ const initialState = {
   followingPosts: [],
   lastFetched: null,
   currentPost: null,
-  currentPostSlug: null, // Track which slug is currently being loaded
+  currentPostSlug: null,
   createLoading: false,
   createError: null,
   updateLoading: false,
@@ -35,7 +35,7 @@ const initialState = {
   isTracking: false,
   appealLoading: false,
   appealError: null,
-  recentTitles: [], // Track recent titles for deduplication
+  recentTitles: [],
 };
 
 // Simplified Blob URL check
@@ -48,7 +48,7 @@ const containsBlobUrl = (data) => {
   return false;
 };
 
-// Async retry with exponential backoff
+// ✅ FIXED: Async retry with exponential backoff (removed for create/update to prevent loops)
 const asyncRetry = async (
   fn,
   retries = 3,
@@ -66,6 +66,59 @@ const asyncRetry = async (
     }
   }
   throw lastError;
+};
+
+// ✅ ADDED: Estimate payload size before sending
+const estimatePayloadSize = (data) => {
+  try {
+    const jsonString = JSON.stringify(data);
+    const sizeInBytes = new Blob([jsonString]).size;
+    const sizeInMB = sizeInBytes / (1024 * 1024);
+    return { sizeInBytes, sizeInMB };
+  } catch (error) {
+    console.error("[estimatePayloadSize] Error:", error);
+    return { sizeInBytes: 0, sizeInMB: 0 };
+  }
+};
+
+// ✅ ADDED: Validate payload before sending
+const validatePayload = (postData, context = "create") => {
+  const MAX_SIZE_MB = 15;
+  const MAX_BLOCKS = 100;
+  const MAX_IMAGES = 50;
+
+  const { sizeInMB } = estimatePayloadSize(postData);
+
+  // Size check
+  if (sizeInMB > MAX_SIZE_MB) {
+    throw new Error(
+      `Post data is too large (${sizeInMB.toFixed(2)}MB). Maximum allowed: ${MAX_SIZE_MB}MB. ` +
+      `Please compress images or reduce content.`
+    );
+  }
+
+  // Blocks count check
+  if (postData.blocks && postData.blocks.length > MAX_BLOCKS) {
+    throw new Error(
+      `Too many blocks (${postData.blocks.length}). Maximum allowed: ${MAX_BLOCKS}`
+    );
+  }
+
+  // Images count check
+  const imageBlocks = postData.blocks?.filter(b => b.type === 'image') || [];
+  if (imageBlocks.length > MAX_IMAGES) {
+    throw new Error(
+      `Too many images (${imageBlocks.length}). Maximum allowed: ${MAX_IMAGES}`
+    );
+  }
+
+  console.log(`[${context}Post] Payload validated:`, {
+    sizeMB: sizeInMB.toFixed(2),
+    blocks: postData.blocks?.length || 0,
+    images: imageBlocks.length
+  });
+
+  return true;
 };
 
 export const fetchFollowingPosts = createAsyncThunk(
@@ -132,6 +185,7 @@ export const fetchPublicPosts = createAsyncThunk(
   }
 );
 
+// ✅ FIXED: createPosts with better large content handling
 export const createPosts = createAsyncThunk(
   "post/createPost",
   async (postData, { rejectWithValue, getState }) => {
@@ -167,18 +221,27 @@ export const createPosts = createAsyncThunk(
     }
 
     try {
+      // ✅ ADDED: Validate payload size before sending
+      validatePayload(postData, "create");
+
       const { auth } = getState();
 
-      // FIXED: Increased timeout to 60 seconds for large posts with images
+      // ✅ FIXED: Increased timeout to 90 seconds for large posts
+      // ✅ FIXED: Added progress tracking capability
       const response = await axiosInstance.post("/post/post-create", postData, {
-        timeout: 60000, // 60 seconds instead of 15
-        // Add these headers for better handling
+        timeout: 90000, // 90 seconds for very large posts
         headers: {
           "Content-Type": "application/json",
         },
+        // ✅ ADDED: Track upload progress (if needed in UI)
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          console.log(`[createPost] Upload progress: ${percentCompleted}%`);
+        },
       });
 
-      // FIXED: Better error handling - check if response has expected structure
       if (!response.data || !response.data.post) {
         throw new Error("Invalid server response format");
       }
@@ -189,31 +252,43 @@ export const createPosts = createAsyncThunk(
         title,
       };
     } catch (error) {
-      // FIXED: Better error detection and logging
       console.error("[createPosts] Full error:", error);
       console.error("[createPosts] Response:", error.response?.data);
       console.error("[createPosts] Status:", error.response?.status);
 
-      // Handle specific error cases
+      // ✅ IMPROVED: Better error messages for large content
       if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
         return rejectWithValue({
           message:
-            "Request timed out - but post may have been created. Please check your posts.",
+            "Upload timed out. Your post may be too large or connection is slow. " +
+            "Try: 1) Compress images, 2) Reduce content size, 3) Check your internet connection.",
           isTimeout: true,
         });
       }
 
       if (error.response?.status === 413) {
+        const suggestions = error.response?.data?.meta?.suggestions || [];
         return rejectWithValue({
-          message: "Post data too large. Please reduce image sizes or content.",
+          message: 
+            error.response?.data?.message || 
+            "Post data too large. Please reduce image sizes or split content into multiple posts.",
+          suggestions,
         });
       }
 
       if (error.response?.status >= 500) {
         return rejectWithValue({
           message:
-            "Server error - post may have been created. Please refresh and check.",
+            "Server error occurred. Your post may have been created - please check your posts before trying again.",
           isServerError: true,
+        });
+      }
+
+      // ✅ ADDED: Handle client-side validation errors
+      if (error.message && !error.response) {
+        return rejectWithValue({
+          message: error.message,
+          isValidationError: true,
         });
       }
 
@@ -356,133 +431,20 @@ export const getSearchPosts = createAsyncThunk(
   }
 );
 
-// Add this at the top of your slice file
-const activeRequests = new Map(); // Track active requests globally
+const activeRequests = new Map();
 
-// Enhanced getSinglePost with proper loop prevention
-// export const getSinglePost = createAsyncThunk(
-//   "post/getSinglePost",
-//   async ({ slug, isGuest = false }, { rejectWithValue, getState }) => {
-//     try {
-//       // Input validation
-//       if (!slug || typeof slug !== "string" || slug.trim() === "") {
-//         console.error("[getSinglePost] Invalid slug:", slug);
-//         return rejectWithValue({ message: "Invalid post slug" });
-//       }
-
-//       const cleanSlug = slug.trim();
-//       console.log("[getSinglePost] Fetching post with slug:", cleanSlug);
-
-//       // FIXED: Better duplicate request prevention using Map
-//       const requestKey = `${cleanSlug}-${isGuest}`;
-//       if (activeRequests.has(requestKey)) {
-//         console.log("[getSinglePost] Already loading this slug, skipping");
-//         return rejectWithValue({
-//           slug: cleanSlug,
-//           message: "Already loading this post",
-//         });
-//       }
-
-//       // Mark this request as active
-//       activeRequests.set(requestKey, true);
-
-//       const endpoint = isGuest
-//         ? `/post/public/${cleanSlug}`
-//         : `/post/${cleanSlug}`;
-//       console.log("[getSinglePost] Request endpoint:", endpoint);
-
-//       try {
-//         // REMOVED: asyncRetry to prevent retry loops
-//         const response = await axiosInstance.get(endpoint, {
-//           timeout: 15000,
-//           headers: {
-//             "Cache-Control": "no-cache",
-//             Pragma: "no-cache",
-//           },
-//         });
-
-//         console.log("[getSinglePost] Response received:", {
-//           success: response.data.success,
-//           postTitle: response.data.post?.title,
-//           postSlug: response.data.post?.slug,
-//           postId: response.data.post?._id,
-//         });
-
-//         if (!response.data.post) {
-//           console.error("[getSinglePost] Post not found for slug:", cleanSlug);
-//           return rejectWithValue({
-//             message: "Post not found",
-//             slug: cleanSlug,
-//           });
-//         }
-
-//         // Validate that we got the correct post
-//         const receivedPost = response.data.post;
-//         if (receivedPost.slug.toLowerCase() !== cleanSlug.toLowerCase()) {
-//           console.warn("[getSinglePost] Slug mismatch:", {
-//             requested: cleanSlug,
-//             received: receivedPost.slug,
-//           });
-//         }
-
-//         // Ensure blocks have proper IDs
-//         if (receivedPost.blocks && Array.isArray(receivedPost.blocks)) {
-//           receivedPost.blocks = receivedPost.blocks.map((block) => ({
-//             ...block,
-//             id: block.id || block._id || `block-${Date.now()}-${Math.random()}`,
-//           }));
-//         }
-
-//         return {
-//           post: receivedPost,
-//           slug: cleanSlug,
-//           timestamp: Date.now(),
-//         };
-//       } finally {
-//         // CRITICAL: Always clean up the active request
-//         activeRequests.delete(requestKey);
-//       }
-//     } catch (error) {
-//       // FIXED: Clean up active request on error
-//       const requestKey = `${slug}-${isGuest}`;
-//       activeRequests.delete(requestKey);
-
-//       const errMsg =
-//         error.response?.data?.message ||
-//         error.message ||
-//         "Failed to fetch post";
-//       console.error("[getSinglePost] Error:", {
-//         slug,
-//         message: errMsg,
-//         status: error.response?.status,
-//         statusText: error.response?.statusText,
-//       });
-//       return rejectWithValue({
-//         message: errMsg,
-//         slug,
-//         status: error.response?.status,
-//       });
-//     }
-//   }
-// );
-
-// new code
+// ✅ FIXED: getSinglePost with better timeout for large posts
 export const getSinglePost = createAsyncThunk(
   "post/getSinglePost",
   async ({ slug, isGuest = false }, { rejectWithValue }) => {
     try {
-      // console.log("[getSinglePost] Incoming params:", { slug, isGuest });
-
-      // Input validation
       if (!slug || typeof slug !== "string" || slug.trim() === "") {
         console.error("[getSinglePost] Invalid slug:", slug);
         return rejectWithValue({ message: "Invalid post slug" });
       }
 
       const cleanSlug = slug.trim();
-      // console.log("[getSinglePost] Clean slug:", cleanSlug);
 
-      // Prevent duplicate request
       const requestKey = `${cleanSlug}-${isGuest}`;
       if (activeRequests.has(requestKey)) {
         console.warn("[getSinglePost] Duplicate request detected:", requestKey);
@@ -494,32 +456,19 @@ export const getSinglePost = createAsyncThunk(
 
       activeRequests.set(requestKey, true);
 
-      // Endpoint selection
       const endpoint = isGuest
         ? `/post/public/${cleanSlug}`
         : `/post/${cleanSlug}`;
-      // console.log("[getSinglePost] Request endpoint:", endpoint);
 
       try {
-        // console.log("[getSinglePost] Sending GET request...");
+        // ✅ FIXED: Increased timeout to 30 seconds for large posts with many images
         const response = await axiosInstance.get(endpoint, {
-          timeout: 15000,
+          timeout: 30000, // 30 seconds for large posts
           headers: {
             "Cache-Control": "no-cache",
             Pragma: "no-cache",
           },
         });
-
-        // console.log("[getSinglePost] Raw response:", response);
-        // console.log("[getSinglePost] Response data:", response.data);
-
-        // console.log("[getSinglePost] Response summary:", {
-        //   success: response.data.success,
-        //   postExists: !!response.data.post,
-        //   postId: response.data.post?._id,
-        //   postSlug: response.data.post?.slug,
-        //   postTitle: response.data.post?.title,
-        // });
 
         if (!response.data.post) {
           console.error("[getSinglePost] Post not found for slug:", cleanSlug);
@@ -530,9 +479,7 @@ export const getSinglePost = createAsyncThunk(
         }
 
         const receivedPost = response.data.post;
-        // console.log("[getSinglePost] Full post object from backend:", receivedPost);
 
-        // Validate slug consistency
         if (receivedPost.slug.toLowerCase() !== cleanSlug.toLowerCase()) {
           console.warn("[getSinglePost] Slug mismatch:", {
             requested: cleanSlug,
@@ -547,7 +494,6 @@ export const getSinglePost = createAsyncThunk(
               block.id || block._id || `block-${Date.now()}-${Math.random()}`;
             const normalizedBlock = { ...block, id };
 
-            // Ensure code block always has language
             if (normalizedBlock.type === "code") {
               normalizedBlock.language =
                 normalizedBlock.language || "plaintext";
@@ -555,11 +501,7 @@ export const getSinglePost = createAsyncThunk(
 
             return normalizedBlock;
           });
-        } else {
-          console.warn("[getSinglePost] No blocks found in post");
         }
-
-        // console.log("[getSinglePost] Final normalized post:", receivedPost);
 
         return {
           post: receivedPost,
@@ -572,6 +514,15 @@ export const getSinglePost = createAsyncThunk(
     } catch (error) {
       activeRequests.delete(`${slug}-${isGuest}`);
 
+      // ✅ ADDED: Better timeout error handling
+      if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+        return rejectWithValue({
+          message: "Post loading timed out. This post may be very large. Please try again.",
+          slug,
+          isTimeout: true,
+        });
+      }
+
       const errMsg =
         error.response?.data?.message ||
         error.message ||
@@ -581,8 +532,6 @@ export const getSinglePost = createAsyncThunk(
         slug,
         message: errMsg,
         status: error.response?.status,
-        statusText: error.response?.statusText,
-        error: error,
       });
 
       return rejectWithValue({
@@ -594,28 +543,66 @@ export const getSinglePost = createAsyncThunk(
   }
 );
 
+// ✅ FIXED: updatePost with better large content handling
 export const updatePost = createAsyncThunk(
   "post/updatePost",
   async ({ slug, updateData }, { rejectWithValue }) => {
     try {
-      // console.log("[updatePost] Updating post:", slug);
+      // ✅ ADDED: Validate payload before update
+      if (updateData.blocks) {
+        validatePayload(updateData, "update");
+      }
 
-      const response = await asyncRetry(() =>
-        axiosInstance.patch(`/post/update/${slug}`, updateData, {
-          timeout: 30000, // Increased timeout for updates
-        })
+      // ✅ FIXED: Increased timeout and no retry to prevent loops
+      const response = await axiosInstance.patch(
+        `/post/update/${slug}`, 
+        updateData, 
+        {
+          timeout: 90000, // 90 seconds for large updates
+          headers: {
+            "Content-Type": "application/json",
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            console.log(`[updatePost] Upload progress: ${percentCompleted}%`);
+          },
+        }
       );
-
-      // console.log("[updatePost] Update response:", {
-      //   success: response.data.success,
-      //   postTitle: response.data.post?.title,
-      //   postSlug: response.data.post?.slug,
-      // });
 
       return response.data;
     } catch (error) {
+      console.error("[updatePost] Error:", error);
+
+      // ✅ IMPROVED: Better error messages
+      if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+        return rejectWithValue({
+          message:
+            "Update timed out. Changes may be too large. Try compressing images or reducing content.",
+          isTimeout: true,
+        });
+      }
+
+      if (error.response?.status === 413) {
+        const suggestions = error.response?.data?.meta?.suggestions || [];
+        return rejectWithValue({
+          message: 
+            error.response?.data?.message || 
+            "Updated data too large. Please reduce image sizes or content.",
+          suggestions,
+        });
+      }
+
+      // Handle client-side validation errors
+      if (error.message && !error.response) {
+        return rejectWithValue({
+          message: error.message,
+          isValidationError: true,
+        });
+      }
+
       const errMsg = error.response?.data?.message || "Failed to update post";
-      console.error("[updatePost] Error:", errMsg);
       return rejectWithValue({ message: errMsg });
     }
   }
@@ -701,7 +688,7 @@ export const submitReadingTime = createAsyncThunk(
         async () => {
           return axiosInstance.post(
             `/post/time-spent/${postId}`,
-            { duration: timeSpent }, // Ensure backend expects `duration`
+            { duration: timeSpent },
             { timeout: 8000 }
           );
         },
@@ -787,18 +774,15 @@ const postSlice = createSlice({
       }
     },
     clearCurrentPost: (state) => {
-      // console.log("[clearCurrentPost] Clearing current post");
       state.currentPost = null;
       state.currentPostSlug = null;
       state.error = null;
-      state.loading = false; // ADDED: Reset loading state
+      state.loading = false;
     },
-    // FIXED: Better slug management
     setLoadingSlug: (state, action) => {
       state.currentPostSlug = action.payload;
       state.error = null;
     },
-    // NEW: Force clear active requests (for debugging)
     clearActiveRequests: (state) => {
       activeRequests.clear();
       state.loading = false;
@@ -869,12 +853,10 @@ const postSlice = createSlice({
         state.createLoading = false;
         state.posts.unshift(action.payload.post);
         state.followingPosts.unshift(action.payload.post);
-        // Add title to recentTitles with timestamp
         state.recentTitles.push({
           title: action.payload.title,
           timestamp: Date.now(),
         });
-        // Clean up titles older than 60 seconds
         state.recentTitles = state.recentTitles.filter(
           (rt) => Date.now() - rt.timestamp < 60 * 1000
         );
