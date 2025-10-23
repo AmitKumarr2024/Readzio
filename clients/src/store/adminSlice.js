@@ -1325,11 +1325,11 @@ export const sendDirectEmail = createAsyncThunk(
         { email },
         { withCredentials: true }
       );
-      console.log("[sendDirectEmail] Success:", {
-        email,
-        messageId: response.data.messageId,
-        timestamp: new Date().toISOString(),
-      });
+      // console.log("[sendDirectEmail] Success:", {
+      //   email,
+      //   messageId: response.data.messageId,
+      //   timestamp: new Date().toISOString(),
+      // });
       return response.data;
     } catch (error) {
       console.error("[sendDirectEmail] Error:", {

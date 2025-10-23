@@ -112,11 +112,11 @@ const validatePayload = (postData, context = "create") => {
     );
   }
 
-  console.log(`[${context}Post] Payload validated:`, {
-    sizeMB: sizeInMB.toFixed(2),
-    blocks: postData.blocks?.length || 0,
-    images: imageBlocks.length
-  });
+  // console.log(`[${context}Post] Payload validated:`, {
+  //   sizeMB: sizeInMB.toFixed(2),
+  //   blocks: postData.blocks?.length || 0,
+  //   images: imageBlocks.length
+  // });
 
   return true;
 };
@@ -238,7 +238,7 @@ export const createPosts = createAsyncThunk(
           const percentCompleted = Math.round(
             (progressEvent.loaded * 100) / progressEvent.total
           );
-          console.log(`[createPost] Upload progress: ${percentCompleted}%`);
+          // console.log(`[createPost] Upload progress: ${percentCompleted}%`);
         },
       });
 
@@ -566,7 +566,7 @@ export const updatePost = createAsyncThunk(
             const percentCompleted = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total
             );
-            console.log(`[updatePost] Upload progress: ${percentCompleted}%`);
+            // console.log(`[updatePost] Upload progress: ${percentCompleted}%`);
           },
         }
       );
