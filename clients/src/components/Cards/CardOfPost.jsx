@@ -216,7 +216,12 @@ const CardOfPost = ({
                 {author.name || "Anonymous"}
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {categoryMap[category._id] || "Uncategorized"}
+                {category?.name ||
+                  categoryMap[category?._id] ||
+                  categoryMap[category] ||
+                  (typeof category === "string" && category !== "Uncategorized"
+                    ? category
+                    : "General")}
               </span>
             </div>
           </div>
