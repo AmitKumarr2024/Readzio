@@ -1,22 +1,26 @@
+// GuestCardOfPost.jsx (fixed: destructure from post prop)
 import React from "react";
 import { Link } from "react-router-dom";
 import { MessageCircle, Eye, Heart, Bookmark, Share2 } from "lucide-react";
 
-const GuestCardOfPost = ({
-  _id,
-  slug,
-  thumbnail,
-  title,
-  createdAt,
-  viewsCount = 0,
-  shareCount = 0,
-  tags = [],
-  author = { name: "Anonymous" },
-  category = { name: "Uncategorized" },
-  readTime,
-  postType,
-  isPremium,
-}) => {
+const GuestCardOfPost = ({ post }) => {
+  console.log("GuestCardOfPost: Rendering", post?.title || "Untitled");
+  const {
+    _id,
+    slug,
+    thumbnail,
+    title,
+    createdAt,
+    viewsCount = 0,
+    shareCount = 0,
+    tags = [],
+    author = { name: "Anonymous" },
+    category = { name: "Uncategorized" },
+    readTime,
+    postType,
+    isPremium,
+  } = post || {};
+
   const formattedDate = new Date(createdAt || new Date()).toLocaleDateString(
     "en-US",
     {
@@ -64,7 +68,7 @@ const GuestCardOfPost = ({
           {title || "Untitled"}
         </h3>
         <div className="flex flex-col sm:flex-row sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400 justify-between">
-          <span className="truncate">{category?.name }</span>
+          <span className="truncate">{category?.name}</span>
           <span className="truncate font-bold text-gray-700 dark:text-gray-200">
             {author.name || "Anonymous"}
           </span>

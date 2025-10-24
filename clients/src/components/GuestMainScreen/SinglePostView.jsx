@@ -1,4 +1,4 @@
-// SinglePostView.jsx (new component for single post rendering)
+// SinglePostView.jsx (added logs)
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
@@ -6,17 +6,26 @@ import { fetchPublicPostBySlug, trackGuestView } from "../../store/guestSlice";
 import Skeleton from "../Ui/Skeleton";
 
 const SinglePostView = () => {
+  console.log("SinglePostView: Mounted/updated");
   const { slug } = useParams();
   const dispatch = useDispatch();
   const { singlePost, loading, error } = useSelector(
     (state) => state.guest || {}
   );
+  console.log("SinglePostView: State", {
+    slug,
+    singlePost: !!singlePost,
+    loading,
+    error,
+  });
 
   useEffect(() => {
+    console.log("SinglePostView useEffect: Loading post for slug", slug);
     const loadPost = async () => {
       try {
         await dispatch(fetchPublicPostBySlug(slug)).unwrap();
         await dispatch(trackGuestView(slug)).unwrap();
+        console.log("SinglePostView: Load complete");
       } catch (err) {
         console.error("Failed to fetch post:", err);
       }
@@ -25,6 +34,7 @@ const SinglePostView = () => {
   }, [dispatch, slug]);
 
   if (loading) {
+    console.log("SinglePostView: Rendering loading");
     return (
       <div className="p-4 max-w-4xl mx-auto">
         <Skeleton height="h-8" width="w-3/4" className="mb-4" />
@@ -38,6 +48,7 @@ const SinglePostView = () => {
   }
 
   if (error) {
+    console.log("SinglePostView: Rendering error", error);
     return (
       <div className="text-center text-red-500 py-4">
         {error}
@@ -52,11 +63,13 @@ const SinglePostView = () => {
   }
 
   if (!singlePost) {
+    console.log("SinglePostView: Post not found");
     return (
       <div className="text-center text-gray-400 py-8">Post not found.</div>
     );
   }
 
+  console.log("SinglePostView: Rendering post", singlePost.title);
   return (
     <div className="p-4 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-4">{singlePost.title}</h1>
