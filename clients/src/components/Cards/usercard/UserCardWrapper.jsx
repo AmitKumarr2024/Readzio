@@ -15,6 +15,7 @@ import {
   getSubscriptionStatusByAuthor,
   checkEligibilityForSubscription,
 } from "../../../store/subscriptionSlice";
+import { selectSocketState } from "../../../store/socketSlice"; // Add this import
 
 const UserCardWrapper = ({ userId }) => {
   const dispatch = useDispatch();
@@ -26,6 +27,7 @@ const UserCardWrapper = ({ userId }) => {
   );
   const posts = useSelector((state) => state.post?.posts || []);
   const followError = useSelector((state) => state.follow?.error);
+  const { userStatus = {} } = useSelector(selectSocketState); // Add socket selector
 
   const [fetchedUser, setFetchedUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(false);
@@ -53,7 +55,7 @@ const UserCardWrapper = ({ userId }) => {
     setLoadingUser(true);
     Promise.all([
       dispatch(getUserById(userId)),
-      dispatch(checkEligibilityForSubscription()), // ✅ Ensure eligibility check
+      dispatch(checkEligibilityForSubscription()),
     ])
       .then(([userRes]) => {
         if (userRes.payload?._id) {
@@ -72,7 +74,6 @@ const UserCardWrapper = ({ userId }) => {
           )
             .unwrap()
             .then((status) => {
-              // console.log("Subscription Status:", status); // ✅ Debug log
               setSubscriptionStatus(status);
             })
             .catch((err) => {
@@ -135,10 +136,11 @@ const UserCardWrapper = ({ userId }) => {
     userId && currentUser?._id && currentUser._id !== userToShow._id;
   const followersCount = userToShow.followers?.length || 0;
   const followingCount = userToShow.following?.length || 0;
+  const isOnline = userStatus[userToShow._id]?.isOnline || false; // Realtime online status
 
   return (
     <UserCard
-      user={userToShow}
+      user={{ ...userToShow, isOnline }} // Pass realtime online status
       posts={posts}
       followers={userToShow.followers || []}
       following={userToShow.following || []}

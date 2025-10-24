@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import useAdBlockDetector from "./useAdBlockDetector";
 import { useSelector } from "react-redux";
 import { selectSocketState } from "../store/socketSlice";
@@ -6,6 +6,7 @@ import { selectSocketState } from "../store/socketSlice";
 const InArticleAd = ({ postId }) => {
   const adRef = useRef(null);
   const impressionSent = useRef(false);
+  const [adLoaded, setAdLoaded] = useState(false); // Track if ad loaded
   const isAdBlocked = useAdBlockDetector();
   const { socketInstance } = useSelector(selectSocketState);
 
@@ -18,6 +19,15 @@ const InArticleAd = ({ postId }) => {
     } catch (err) {
       console.warn("[InArticleAd] Initial ad push failed", err);
     }
+
+    // Check if ad actually rendered after 500ms
+    const timeout = setTimeout(() => {
+      if (adRef.current && adRef.current.offsetHeight > 0) {
+        setAdLoaded(true);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeout);
   }, [isAdBlocked]);
 
   // Track impressions via IntersectionObserver
@@ -46,43 +56,31 @@ const InArticleAd = ({ postId }) => {
     return () => observer.disconnect();
   }, [isAdBlocked, socketInstance, postId]);
 
+  // Only show if ad loaded
+  if (isAdBlocked || !adLoaded) return null;
+
   return (
     <div className="in-article-ad w-full my-6 flex justify-center">
       <div className="w-full max-w-[728px] flex flex-col items-center">
-        {isAdBlocked ? (
-          <div className="w-full h-[90px] bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded">
-            <img
-              src="https://placehold.co/728x90?text=Ad+Blocked"
-              alt="Ad Blocked"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        ) : (
-          <>
-            <div className="w-full h-[90px] overflow-hidden flex justify-center items-center">
-              <ins
-                ref={adRef}
-                className="adsbygoogle"
-                style={{
-                  display: "block",
-                  position: "static",
-                  width: "100%",
-                  height: "90px",
-                  textAlign: "center",
-                  overflow: "hidden",
-                }}
-                data-ad-client="ca-pub-8408980890451581"
-                data-ad-slot="4935470124"
-                data-ad-format="auto"
-                data-ad-layout="in-article"
-                data-full-width-responsive="false"
-              />
-            </div>
-            <p className="mt-1 text-xs text-start italic text-gray-500 dark:text-gray-400">
-              Sponsored
-            </p>
-          </>
-        )}
+        <div className="w-full overflow-hidden flex justify-center items-center min-h-[90px]">
+          <ins
+            ref={adRef}
+            className="adsbygoogle"
+            style={{
+              display: "block",
+              width: "100%", // flexible width
+              height: "auto", // flexible height
+              textAlign: "center",
+            }}
+            data-ad-client="ca-pub-8408980890451581"
+            data-ad-slot="4935470124"
+            data-ad-format="auto" // auto format
+            data-full-width-responsive="true"
+          />
+        </div>
+        <p className="mt-1 text-xs text-start italic text-gray-500 dark:text-gray-400">
+          Sponsored
+        </p>
       </div>
     </div>
   );

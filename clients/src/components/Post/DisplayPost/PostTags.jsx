@@ -1,9 +1,31 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Tag } from "lucide-react"; // optional icon
+import { Tag, LogIn } from "lucide-react";
+import { useSelector } from "react-redux";
 
 const PostTags = ({ tags = [] }) => {
+  const { isAuthenticated } = useSelector((state) => state.auth);
+
   if (!tags.length) return null;
+
+  if (!isAuthenticated) {
+    return (
+      <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <div className="flex items-center gap-2">
+          <LogIn className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            Log in to explore tags
+          </p>
+          <Link
+            to="/login"
+            className="ml-auto text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Sign in
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-8">

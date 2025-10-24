@@ -1,4 +1,3 @@
-// SinglePostView.jsx (added logs)
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
@@ -6,35 +5,52 @@ import { fetchPublicPostBySlug, trackGuestView } from "../../store/guestSlice";
 import Skeleton from "../Ui/Skeleton";
 
 const SinglePostView = () => {
-  console.log("SinglePostView: Mounted/updated");
   const { slug } = useParams();
   const dispatch = useDispatch();
   const { singlePost, loading, error } = useSelector(
     (state) => state.guest || {}
   );
-  console.log("SinglePostView: State", {
-    slug,
-    singlePost: !!singlePost,
-    loading,
-    error,
-  });
 
   useEffect(() => {
-    console.log("SinglePostView useEffect: Loading post for slug", slug);
+    console.log("🟦 [SinglePostView] useEffect triggered for slug:", slug);
     const loadPost = async () => {
       try {
-        await dispatch(fetchPublicPostBySlug(slug)).unwrap();
+        const result = await dispatch(fetchPublicPostBySlug(slug)).unwrap();
+        console.log("🟩 [SinglePostView] Post fetch complete:", result);
         await dispatch(trackGuestView(slug)).unwrap();
-        console.log("SinglePostView: Load complete");
       } catch (err) {
-        console.error("Failed to fetch post:", err);
+        console.error("🟥 [SinglePostView] Failed to fetch post:", err);
       }
     };
     loadPost();
   }, [dispatch, slug]);
 
+  // Deep log after post data available
+  useEffect(() => {
+    if (singlePost) {
+      console.group("🟨 [Post Data Debug]");
+      console.log("Title:", singlePost.title);
+      console.log("Thumbnail:", singlePost.thumbnail);
+      console.log("Excerpt:", singlePost.excerpt);
+      console.log("Blocks present:", Array.isArray(singlePost.blocks));
+      if (Array.isArray(singlePost.blocks)) {
+        console.log("Blocks length:", singlePost.blocks.length);
+        singlePost.blocks.forEach((block, i) => {
+          console.log(`  🧱 Block #${i}`, {
+            type: block.type,
+            data: block.data,
+            content: block.content,
+            value: block.value,
+            src: block.src,
+          });
+        });
+      }
+      console.groupEnd();
+    }
+  }, [singlePost]);
+
   if (loading) {
-    console.log("SinglePostView: Rendering loading");
+    console.log("⏳ [SinglePostView] Rendering loading state");
     return (
       <div className="p-4 max-w-4xl mx-auto">
         <Skeleton height="h-8" width="w-3/4" className="mb-4" />
@@ -48,7 +64,7 @@ const SinglePostView = () => {
   }
 
   if (error) {
-    console.log("SinglePostView: Rendering error", error);
+    console.error("🟥 [SinglePostView] Error:", error);
     return (
       <div className="text-center text-red-500 py-4">
         {error}
@@ -63,43 +79,101 @@ const SinglePostView = () => {
   }
 
   if (!singlePost) {
-    console.log("SinglePostView: Post not found");
+    console.warn("⚠️ [SinglePostView] No post found for slug:", slug);
     return (
       <div className="text-center text-gray-400 py-8">Post not found.</div>
     );
   }
 
-  console.log("SinglePostView: Rendering post", singlePost.title);
+  console.log("✅ [SinglePostView] Rendering post:", singlePost.title);
+
   return (
     <div className="p-4 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-4">{singlePost.title}</h1>
-      <p className="text-gray-600 mb-4">{singlePost.excerpt}</p>
+      {singlePost.excerpt && (
+        <p className="text-gray-600 mb-4">{singlePost.excerpt}</p>
+      )}
+
       {singlePost.thumbnail && (
         <img
           src={singlePost.thumbnail}
           alt={singlePost.title}
-          className="w-full h-64 object-cover rounded-lg mb-4"
+          className="w-full h-64 object-cover rounded-lg mb-6"
         />
       )}
-      {Array.isArray(singlePost.blocks) &&
-        singlePost.blocks.map((block, index) => (
-          <div key={index}>
-            {block.type === "text" && (
-              <p>{block.content || block.value || ""}</p>
-            )}
-            {block.type === "image" && (
-              <img
-                src={block.content || block.src || ""}
-                alt=""
-                className="w-full rounded-lg"
-              />
-            )}
-          </div>
-        ))}
 
-      <div className="mt-4 text-sm text-gray-500">
-        By {singlePost.author?.name || "Unknown"} on{" "}
-        {new Date(singlePost.createdAt).toLocaleDateString()}
+      {/* ✅ Render blocks */}
+      {Array.isArray(singlePost.blocks) && singlePost.blocks.length > 0 ? (
+        singlePost.blocks.map((block, index) => {
+          const type = block.type || "";
+          const data = block.data || {};
+          console.log(`🔍 Rendering block #${index} | type: ${type}`, block);
+
+          switch (type) {
+            case "paragraph":
+            case "text":
+              console.log(`📝 Rendering paragraph block #${index}`, data.text);
+              return (
+                <p
+                  key={index}
+                  className="text-lg leading-relaxed mb-3"
+                  dangerouslySetInnerHTML={{
+                    __html: data.text || block.content || block.value || "",
+                  }}
+                />
+              );
+
+            case "header":
+              const level = data.level || 2;
+              const HeaderTag = `h${Math.min(level, 6)}`;
+              console.log(`🔠 Rendering header block #${index}`, data.text);
+              return (
+                <HeaderTag key={index} className="font-semibold text-xl my-3">
+                  {data.text}
+                </HeaderTag>
+              );
+
+            case "image":
+              const url =
+                data.file?.url || data.url || block.content || block.src;
+              console.log(`🖼️ Rendering image block #${index}`, url);
+              return (
+                <div key={index} className="my-4">
+                  <img
+                    src={url}
+                    alt={data.caption || ""}
+                    className="w-full rounded-lg"
+                  />
+                  {data.caption && (
+                    <p className="text-sm text-gray-500 mt-1">{data.caption}</p>
+                  )}
+                </div>
+              );
+
+            case "list":
+              console.log(`📋 Rendering list block #${index}`, data.items);
+              return (
+                <ul key={index} className="list-disc list-inside mb-3">
+                  {Array.isArray(data.items) &&
+                    data.items.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+              );
+
+            default:
+              console.warn(`⚪ Unrecognized block type [${type}]`, block);
+              return null;
+          }
+        })
+      ) : (
+        <p className="text-gray-500">No content available for this post.</p>
+      )}
+
+      <div className="mt-6 text-sm text-gray-500">
+        By{" "}
+        <span className="font-medium">
+          {singlePost.author?.name || "Unknown"}
+        </span>{" "}
+        on {new Date(singlePost.createdAt).toLocaleDateString()}
       </div>
     </div>
   );

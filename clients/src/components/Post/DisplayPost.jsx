@@ -36,6 +36,7 @@ const DisplayPost = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
+  // Redux state
   const {
     currentPost: post,
     loading,
@@ -55,8 +56,9 @@ const DisplayPost = () => {
   );
   const { categories } = useSelector((state) => state.categories);
   const viewsData = useSelector((state) => selectPostViews(state, slug));
-  const { views } = viewsData;
+  const { views } = viewsData || {};
 
+  // Local state
   const [sessionTime, setSessionTime] = useState(0);
   const [localStartTime, setLocalStartTime] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -68,43 +70,74 @@ const DisplayPost = () => {
   const [hasShownSubscriptionToast, setHasShownSubscriptionToast] =
     useState(false);
 
+  // Refs
   const hasFetchedStatus = useRef(false);
   const componentMountedRef = useRef(true);
+  const readingTimeSubmitted = useRef(false);
 
+  // Determine active post and loading state
   const activePost = isAuthenticated ? post : guestPost;
   const activeLoading = isAuthenticated ? loading : guestLoading;
   const activeError = isAuthenticated ? error : guestError;
 
-  // console.log("DisplayPost slug:", slug);
-  // console.log("Active post:", activePost);
-
+  // Memoized values
   const categoryMap = useMemo(() => {
+    if (!Array.isArray(categories)) return {};
     return categories.reduce((map, cat) => {
-      map[cat._id] = cat.name;
+      if (cat?._id && cat?.name) {
+        map[cat._id] = cat.name;
+      }
       return map;
     }, {});
   }, [categories]);
 
   const restrictedPostIds = useMemo(() => {
-    return plans?.flatMap((plan) => plan.postIds || []) || [];
+    if (!Array.isArray(plans)) return [];
+    return plans.flatMap((plan) => plan?.postIds || []);
   }, [plans]);
 
   const isAuthor = useMemo(() => {
-    return currentUser && activePost?.author?._id === currentUser?._id;
+    return Boolean(
+      currentUser?._id &&
+        activePost?.author?._id &&
+        currentUser._id === activePost.author._id
+    );
   }, [currentUser, activePost]);
 
   const isPostRestricted = useMemo(() => {
-    return activePost?._id && restrictedPostIds.includes(activePost._id);
-  }, [activePost, restrictedPostIds]);
+    // Guests cannot see restrictions - they see public version
+    if (!isAuthenticated) return false;
+    if (!activePost?._id) return false;
+    return restrictedPostIds.includes(activePost._id);
+  }, [activePost?._id, restrictedPostIds, isAuthenticated]);
 
   const canViewPost = useMemo(() => {
-    return (
-      isAuthor || !isPostRestricted || isSubscribed[activePost?.author?._id]
-    );
-  }, [isAuthor, isPostRestricted, isSubscribed, activePost]);
+    // Guests can always view public posts
+    if (!isAuthenticated) return true;
 
-  const isUserSubscribed =
-    activePost?.author?._id && isSubscribed[activePost?.author?._id];
+    // Authors can always view their own posts
+    if (isAuthor) return true;
+
+    // If post is not restricted, anyone can view
+    if (!isPostRestricted) return true;
+
+    // If post is restricted, check subscription
+    return Boolean(
+      activePost?.author?._id && isSubscribed?.[activePost.author._id]
+    );
+  }, [
+    isAuthor,
+    isPostRestricted,
+    isSubscribed,
+    activePost?.author?._id,
+    isAuthenticated,
+  ]);
+
+  const isUserSubscribed = useMemo(() => {
+    return Boolean(
+      activePost?.author?._id && isSubscribed?.[activePost.author._id]
+    );
+  }, [activePost?.author?._id, isSubscribed]);
 
   // Set component mounted status
   useEffect(() => {
@@ -116,29 +149,41 @@ const DisplayPost = () => {
 
   // Main fetch effect - Reset and fetch post data when slug changes
   useEffect(() => {
-    if (!slug) return;
+    if (!slug) {
+      console.warn("[DisplayPost] No slug provided");
+      return;
+    }
 
-    // Clear old data and reset ALL local state
+    // Reset all state when slug changes
+    const resetState = () => {
+      setFetchAttempted(false);
+      setPostReady(false);
+      setSessionTime(0);
+      setLocalStartTime(null);
+      setShowSeeMore(false);
+      setShowAnyway(false);
+      setHasShownSubscriptionToast(false);
+      hasFetchedStatus.current = false;
+      readingTimeSubmitted.current = false;
+    };
+
+    resetState();
+
+    // Clear old post data from store
     if (isAuthenticated) {
-      dispatch({ type: "post/clearCurrentPost" });
+      dispatch(clearCurrentPost());
     } else {
       dispatch({ type: "guest/clearSinglePost" });
     }
-
-    // Reset ALL local state
-    setFetchAttempted(false);
-    setPostReady(false);
-    setSessionTime(0);
-    setLocalStartTime(null);
-    setShowSeeMore(false);
-    setShowAnyway(false);
-    setHasShownSubscriptionToast(false);
-    hasFetchedStatus.current = false;
 
     const fetchData = async () => {
       try {
         if (isAuthenticated) {
           await dispatch(getSinglePost({ slug, isGuest: false })).unwrap();
+          // Fetch categories for authenticated users
+          dispatch(fetchCategories()).catch((err) =>
+            console.warn("[DisplayPost] Categories fetch failed:", err)
+          );
         } else {
           await dispatch(fetchPublicPostBySlug(slug)).unwrap();
         }
@@ -146,14 +191,12 @@ const DisplayPost = () => {
         if (componentMountedRef.current) {
           setFetchAttempted(true);
           setPostReady(true);
-          if (isAuthenticated) {
-            dispatch(fetchCategories());
-          }
         }
       } catch (err) {
         console.error("[DisplayPost] Failed to fetch post:", err);
         if (componentMountedRef.current) {
-          toast.error(err?.message || "Post not found");
+          const errorMessage = err?.message || "Failed to load post";
+          toast.error(errorMessage);
           setFetchAttempted(true);
           setPostReady(false);
         }
@@ -163,92 +206,72 @@ const DisplayPost = () => {
     fetchData();
   }, [dispatch, slug, isAuthenticated]);
 
-  // Fetch bookmark/like status and subscription plans
+  // Fetch bookmark/like status and subscription plans (authenticated users only)
   useEffect(() => {
-    if (
-      !isAuthenticated ||
-      !activePost?._id ||
-      !activePost?.author?._id ||
-      hasFetchedStatus.current
-    )
+    if (!isAuthenticated || !activePost?._id || !activePost?.author?._id) {
       return;
+    }
+
+    if (hasFetchedStatus.current) {
+      return;
+    }
 
     hasFetchedStatus.current = true;
 
-    dispatch(fetchBookmarkAndLikeStatus(activePost._id)).catch(() =>
-      toast.error("Failed to fetch interaction status")
-    );
+    // Fetch interaction status
+    dispatch(fetchBookmarkAndLikeStatus(activePost._id))
+      .unwrap()
+      .catch((err) => {
+        console.warn("[DisplayPost] Failed to fetch interaction status:", err);
+      });
 
-    dispatch(fetchSubscriptionPlansByAuthor(activePost.author._id)).catch(
-      (err) => console.error("Subscription fetch error:", err)
-    );
-  }, [
-    dispatch,
-    activePost?._id,
-    activePost?.author?._id,
-    isAuthenticated,
-    slug,
-  ]);
+    // Fetch subscription plans
+    dispatch(fetchSubscriptionPlansByAuthor(activePost.author._id))
+      .unwrap()
+      .catch((err) => {
+        console.warn("[DisplayPost] Failed to fetch subscription plans:", err);
+      });
+  }, [dispatch, activePost?._id, activePost?.author?._id, isAuthenticated]);
 
-
-  // need delete in furture
-  // console.log("URL slug:", useParams().slug);
-
+  // Reading time tracking (authenticated users only)
   useEffect(() => {
-    // console.log("Authenticated:", isAuthenticated);
-    // console.log("Dispatching fetch for slug:", slug);
-
-    if (isAuthenticated) {
-      dispatch(getSinglePost({ slug, isGuest: false }))
-        .unwrap()
-        .then((res) => console.log("Fetched post (auth):", res))
-        .catch((err) => console.error("Fetch error (auth):", err));
-    } else {
-      dispatch(fetchPublicPostBySlug(slug))
-        .unwrap()
-        .then((res) => console.log("Fetched post (guest):", res))
-        .catch((err) => console.error("Fetch error (guest):", err));
+    if (!isAuthenticated || !activePost?._id || !activePost?.slug) {
+      return;
     }
-  }, [slug, isAuthenticated]);
 
-
-  useEffect(() => {
-  console.log("Active post:", activePost);
-}, [activePost]);
-
-
-  // Reading time tracking
-  useEffect(() => {
-    if (activePost?.slug && isAuthenticated && !isTracking && !localStartTime) {
+    // Start tracking if not already tracking
+    if (!isTracking && !localStartTime) {
       dispatch(startReading(activePost._id));
       setLocalStartTime(Date.now());
     }
 
+    // Cleanup function to submit reading time
     return () => {
       if (
-        isAuthenticated &&
         isTracking &&
-        activePost?._id &&
         localStartTime &&
         !activeError &&
+        !readingTimeSubmitted.current &&
         componentMountedRef.current
       ) {
         const timeSpent = Math.floor((Date.now() - localStartTime) / 1000);
+
+        // Only submit if user spent more than 3 seconds
         if (timeSpent > 3) {
+          readingTimeSubmitted.current = true;
           dispatch(submitReadingTime({ postId: activePost._id, timeSpent }))
             .unwrap()
             .catch((error) => {
-              if (
-                error?.status !== 404 &&
-                error?.message !== "Post not found"
-              ) {
-                console.error(
+              // Ignore 404 errors (post might have been deleted)
+              if (error?.status !== 404) {
+                console.warn(
                   "[DisplayPost] Failed to record reading time:",
                   error
                 );
               }
             });
         }
+
         dispatch(stopReading());
       }
     };
@@ -264,7 +287,9 @@ const DisplayPost = () => {
 
   // Session time counter
   useEffect(() => {
-    if (!isTracking || !localStartTime) return;
+    if (!isTracking || !localStartTime) {
+      return;
+    }
 
     const interval = setInterval(() => {
       if (localStartTime && componentMountedRef.current) {
@@ -275,16 +300,11 @@ const DisplayPost = () => {
     return () => clearInterval(interval);
   }, [isTracking, localStartTime]);
 
-  // Show "See More" for restricted posts
-  useEffect(() => {
-    if (!isAuthenticated && isPostRestricted && activePost && !showSeeMore) {
-      setShowSeeMore(true);
-    }
-  }, [isAuthenticated, isPostRestricted, activePost, showSeeMore]);
-
   // Handle 404 navigation with delay
   useEffect(() => {
-    if (!fetchAttempted) return;
+    if (!fetchAttempted) {
+      return;
+    }
 
     const timeoutId = setTimeout(() => {
       if (
@@ -295,51 +315,54 @@ const DisplayPost = () => {
       ) {
         navigate("/404", { replace: true });
       }
-    }, 500); // Give some time for data to load
+    }, 1000); // Give 1 second for data to load
 
     return () => clearTimeout(timeoutId);
   }, [fetchAttempted, postReady, activeLoading, navigate]);
 
-  // Handle error messages
-  useEffect(() => {
-    if (activeError && !activeLoading && fetchAttempted) {
-      toast.error(activeError || "An error occurred");
-    }
-  }, [activeError, activeLoading, fetchAttempted]);
-
-  // Handle subscription toast (show only once)
+  // Handle subscription toast (authenticated users only, show once)
   useEffect(() => {
     if (
-      postReady &&
-      !activeLoading &&
-      activePost &&
-      isPostRestricted &&
-      !canViewPost &&
-      isAuthenticated &&
-      fetchAttempted &&
-      !hasShownSubscriptionToast
+      !isAuthenticated ||
+      hasShownSubscriptionToast ||
+      !postReady ||
+      activeLoading ||
+      !activePost?._id ||
+      !fetchAttempted
     ) {
-      toast("This is a paid post. Subscribe to view.", { icon: "🔒" });
+      return;
+    }
+
+    if (isPostRestricted && !canViewPost && !isAuthor) {
+      toast("This is a paid post. Subscribe to view full content.", {
+        icon: "🔒",
+        duration: 4000,
+      });
       setHasShownSubscriptionToast(true);
     }
   }, [
     postReady,
     activeLoading,
-    activePost,
+    activePost?._id,
     isPostRestricted,
     canViewPost,
     isAuthenticated,
     fetchAttempted,
     hasShownSubscriptionToast,
+    isAuthor,
   ]);
 
-  const BASE_URL =
-    import.meta.env.VITE_API_URL || "https://readzio.com";
+  // Constants
+  const BASE_URL = import.meta.env.VITE_API_URL || "https://readzio.com";
 
+  // Helper functions
   const formatTime = (seconds) => {
+    if (!seconds || typeof seconds !== "number") return "0 sec";
+
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
+
     return `${hrs ? `${hrs} hr ` : ""}${mins ? `${mins} min ` : ""}${
       secs || (!hrs && !mins) ? `${secs} sec` : ""
     }`.trim();
@@ -352,40 +375,9 @@ const DisplayPost = () => {
       <div className="space-y-2">
         <Skeleton height="h-32" width="w-full" className="rounded-lg" />
         <Skeleton height="h-6" width="w-3/4" />
-        <table className="w-full">
-          <tbody>
-            <tr>
-              <td>
-                <Skeleton className="h-4 w-24" />
-              </td>
-              <td>
-                <Skeleton className="h-4 w-24" />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table className="w-full">
-          <tbody>
-            <tr>
-              <td>
-                <Skeleton className="h-4 w-12" />
-              </td>
-              <td>
-                <Skeleton className="h-4 w-12" />
-              </td>
-              <td>
-                <Skeleton className="h-4 w-12" />
-              </td>
-              <td>
-                <Skeleton className="h-4 w-12" />
-              </td>
-              <td>
-                <Skeleton className="h-4 w-12" />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <Skeleton height="h-4" width="w-16" />
+        <Skeleton height="h-4" width="w-full" />
+        <Skeleton height="h-4" width="w-full" />
+        <Skeleton height="h-4" width="w-2/3" />
       </div>
     </div>
   );
@@ -406,14 +398,18 @@ const DisplayPost = () => {
       return <PostNotFound message="Post not found" />;
     }
 
+    // Extract metadata for SEO
     const firstImage =
-      activePost.blocks?.find((b) => b.type === "image")?.src || "";
+      activePost.blocks?.find((b) => b?.type === "image")?.src ||
+      activePost.thumbnail ||
+      "/default-og-image.jpg";
+
     const plainText =
       activePost.blocks
-        ?.filter((b) => b.type === "text")
-        .map((b) => b.content || b.text || "")
+        ?.filter((b) => b?.type === "text")
+        .map((b) => b?.content || b?.text || "")
         .join(" ")
-        .slice(0, 150)
+        .slice(0, 160)
         .replace(/\s+\S*$/, "") || "Read this post on readzio";
 
     const jsonLd = {
@@ -421,59 +417,63 @@ const DisplayPost = () => {
       "@type": "BlogPosting",
       headline: activePost.title || "readzio Post",
       description: plainText,
-      image: firstImage || "/default-og-image.jpg",
+      image: firstImage,
       author: {
         "@type": "Person",
         name: activePost.author?.fullName || "readzio Author",
       },
-      publisher: { "@type": "Organization", name: "readzio" },
+      publisher: {
+        "@type": "Organization",
+        name: "readzio",
+        logo: {
+          "@type": "ImageObject",
+          url: `${BASE_URL}/logo.png`,
+        },
+      },
       url: `${BASE_URL}/post/${activePost.slug}`,
       datePublished: activePost.createdAt,
+      dateModified: activePost.updatedAt || activePost.createdAt,
     };
 
     return (
       <>
         <Helmet>
           <title>
-            {activePost?.title
+            {activePost.title
               ? `${activePost.title} | readzio`
               : "Loading... | readzio"}
           </title>
           <meta name="robots" content="index, follow" />
           <meta name="description" content={plainText} />
-          <link rel="canonical" href={`${BASE_URL}/post/${activePost?.slug}`} />
+          <link rel="canonical" href={`${BASE_URL}/post/${activePost.slug}`} />
+
+          {/* Open Graph */}
           <meta
             property="og:title"
-            content={activePost?.title || "readzio Post"}
+            content={activePost.title || "readzio Post"}
           />
           <meta property="og:description" content={plainText} />
-          <meta
-            property="og:image"
-            content={activePost?.thumbnail || "/default-og-image.jpg"}
-          />
+          <meta property="og:image" content={firstImage} />
           <meta property="og:type" content="article" />
           <meta
             property="og:url"
-            content={`${BASE_URL}/post/${activePost?.slug}`}
+            content={`${BASE_URL}/post/${activePost.slug}`}
           />
+
+          {/* Twitter Card */}
           <meta name="twitter:card" content="summary_large_image" />
           <meta
             name="twitter:title"
-            content={activePost?.title || "readzio Post"}
+            content={activePost.title || "readzio Post"}
           />
-          <meta
-            name="twitter:image"
-            content={activePost?.thumbnail || "/default-og-image.jpg"}
-          />
+          <meta name="twitter:description" content={plainText} />
+          <meta name="twitter:image" content={firstImage} />
 
           {/* JSON-LD structured data */}
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-          />
+          <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
         </Helmet>
 
-        <article className="space-y-6">
+        <article className="space-y-8 prose prose-lg max-w-none text-gray-700 dark:text-gray-300 leading-relaxed">
           <PostHeader post={activePost} />
           <PostMetaSection
             post={activePost}
@@ -496,12 +496,19 @@ const DisplayPost = () => {
               userId === activePost.author?._id ? activePost.author : null
             }
           />
-          <SubscriptionBanner showSeeMore={showSeeMore} post={activePost} />
-          <EngagementButtons post={activePost} />
-          <CommentBox
-            postId={activePost._id}
-            postAuthorId={activePost.author._id}
+          <SubscriptionBanner
+            showSeeMore={showSeeMore}
+            post={activePost}
+            isPostRestricted={isPostRestricted}
+            canViewPost={canViewPost}
           />
+          <EngagementButtons post={activePost} />
+          {activePost._id && activePost.author?._id && (
+            <CommentBox
+              postId={activePost._id}
+              postAuthorId={activePost.author._id}
+            />
+          )}
         </article>
       </>
     );
@@ -510,62 +517,72 @@ const DisplayPost = () => {
   return (
     <ErrorBoundary>
       <HelmetProvider>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-          <div className="max-w-7xl mx-auto px-8 sm:px-6 lg:px-8 py-8">
-            <div className="lg:grid lg:grid-cols-3 lg:gap-8">
-              <div className="lg:col-span-2 space-y-6">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 font-sans antialiased">
+          <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="lg:grid lg:grid-cols-3 lg:gap-10">
+              <div className="lg:col-span-2 space-y-8">
                 {renderPostContent()}
-                <MultiplexAd postId={activePost?._id} testMode={false} />
+                {activePost?._id && (
+                  <MultiplexAd postId={activePost._id} testMode={false} />
+                )}
               </div>
-              <div className="hidden lg:block lg:col-span-1 space-y-6">
-                <div className="sticky top-6 space-y-6">
-                  <div className="author-wrapper transition-all duration-300">
-                    <AuthorSidebar
-                      authorId={activePost?.author?._id || null}
-                      isLoading={
-                        activeLoading || subscriptionLoading || !fetchAttempted
-                      }
-                      className="h-full rounded-md bg-white dark:bg-gray-800 shadow-md p-6"
-                    />
-                    <div className="ad-wrapper sticky top-11">
-                      <DisplayAd postId={activePost?._id} testMode={false} />
+
+              <div className="hidden lg:block lg:col-span-1 space-y-8">
+                <div className="sticky -top-80 space-y-8">
+                  <AuthorSidebar
+                    authorId={activePost?.author?._id || null}
+                    isLoading={
+                      activeLoading || subscriptionLoading || !fetchAttempted
+                    }
+                    className="rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6"
+                  />
+                  {activePost?._id && (
+                    <div className="sticky top-[calc(100vh-200px)]">
+                      <DisplayAd postId={activePost._id} testMode={false} />
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="w-full min-h-screen bg-gray-100 dark:bg-gray-800 py-16">
-            <ErrorBoundary>
-              <SuggestedPosts
-                postId={activePost?._id}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-full"
+          {activePost?._id && (
+            <div className="w-full min-h-screen bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 py-16">
+              <ErrorBoundary>
+                <SuggestedPosts
+                  postId={activePost._id}
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-full"
+                />
+              </ErrorBoundary>
+            </div>
+          )}
+
+          {activePost?.author?._id && (
+            <>
+              <UserModal
+                isOpen={isUserModalOpen}
+                onClose={() => setIsUserModalOpen(false)}
+                authorId={activePost.author._id}
               />
-            </ErrorBoundary>
-          </div>
 
-          <UserModal
-            isOpen={isUserModalOpen}
-            onClose={() => setIsUserModalOpen(false)}
-            authorId={activePost?.author?._id || null}
-          />
+              <button
+                className="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-full shadow-xl hover:shadow-2xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 z-50 border border-blue-500/30"
+                onClick={() => setIsUserModalOpen(true)}
+                aria-label="View author information"
+              >
+                Author
+              </button>
+            </>
+          )}
 
-          {isAuthor && (
+          {isAuthor && activePost?._id && activePost?.slug && (
             <DeleteModal
               isOpen={isDeleteModalOpen}
               onClose={() => setIsDeleteModalOpen(false)}
               postId={activePost._id}
-              slug={activePost?.slug}
+              slug={activePost.slug}
             />
           )}
-
-          <button
-            className="fixed bottom-4 right-4 lg:hidden bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-200"
-            onClick={() => setIsUserModalOpen(true)}
-          >
-            Author
-          </button>
         </div>
       </HelmetProvider>
     </ErrorBoundary>

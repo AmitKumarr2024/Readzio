@@ -93,7 +93,7 @@ const SuggestedPosts = ({ postId, className }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-full mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
@@ -213,7 +213,7 @@ const SuggestedPosts = ({ postId, className }) => {
         {/* Posts Grid */}
         {status === "succeeded" && displayedPosts.length > 0 && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {displayedPosts.map((post, index) => (
                 <React.Fragment key={post._id || `post-${index}`}>
                   {/* Post Card */}

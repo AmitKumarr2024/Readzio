@@ -78,6 +78,71 @@ axiosInstance.interceptors.request.use((config) => {
 });
 
 // Production-grade response interceptor
+// axiosInstance.interceptors.response.use(
+//   (response) => {
+//     return response;
+//   },
+//   async (error) => {
+//     console.error("❌ Response error:", error.message);
+//     const { config, response, code } = error;
+
+//     // Handle network errors (no response)
+//     if (!response) {
+//       if (!isOnline && config.method !== "get") {
+//         return new Promise((resolve, reject) => {
+//           requestQueue.push({ config, resolve, reject });
+//         });
+//       }
+
+//       if (code === "ECONNABORTED" || code === "ERR_NETWORK") {
+//         if (!config._retried && config.method !== "get") {
+//           config._retried = true;
+//           await new Promise((r) => setTimeout(r, 2000));
+//           return axiosInstance(config);
+//         }
+//       }
+
+//       return Promise.reject({
+//         message: "Connection failed. Please check your internet.",
+//         type: "network",
+//       });
+//     }
+
+//     // Handle HTTP errors
+//     const status = response.status;
+
+//     if (status === 401) {
+//       localStorage.removeItem("token");
+//       return Promise.reject({
+//         message: "Session expired. Please log in again.",
+//         type: "auth",
+//       });
+//     }
+
+//     if (status >= 502 && status <= 504 && !config._serverRetried) {
+//       config._serverRetried = true;
+//       const delay = status === 502 ? 5000 : 2000;
+//       await new Promise((r) => setTimeout(r, delay));
+//       return axiosInstance(config);
+//     }
+
+//     if (status === 429) {
+//       return Promise.reject({
+//         message: "Too many requests. Please wait a moment.",
+//         type: "rate_limit",
+//       });
+//     }
+
+//     return Promise.reject({
+//       message: response.data?.message || `Server error (${status})`,
+//       status,
+//       type: "server",
+//     });
+//   }
+// );
+
+// new code
+// Production-grade response interceptor
 axiosInstance.interceptors.response.use(
   (response) => {
     return response;
@@ -110,6 +175,16 @@ axiosInstance.interceptors.response.use(
 
     // Handle HTTP errors
     const status = response.status;
+    const errMsg = response.data?.message;
+
+    // Handle JWT expired (even on 500)
+    if (errMsg === "jwt expired") {
+      localStorage.removeItem("token");
+      return Promise.reject({
+        message: "Session expired. Please log in again.",
+        type: "auth",
+      });
+    }
 
     if (status === 401) {
       localStorage.removeItem("token");
@@ -134,7 +209,7 @@ axiosInstance.interceptors.response.use(
     }
 
     return Promise.reject({
-      message: response.data?.message || `Server error (${status})`,
+      message: errMsg || `Server error (${status})`,
       status,
       type: "server",
     });
