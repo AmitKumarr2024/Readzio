@@ -203,6 +203,7 @@ async function generateSitemap() {
     console.log(`\n✅ Valid posts: ${validPosts.length}`);
     console.log(`❌ Invalid posts: ${invalidPosts.length}`);
 
+    let postWritten = 0;
     // Add post URLs
     if (validPosts.length > 0) {
       console.log("\n📝 Adding post URLs...");
@@ -214,6 +215,7 @@ async function generateSitemap() {
           lastmod: (post.updatedAt || post.createdAt)?.toISOString(),
         };
         const success = sitemap.write(entry);
+        if (success) postWritten++;
         if (!success) {
           console.log(`   ✗ Skipped post: ${entry.url}`);
         }
@@ -224,20 +226,31 @@ async function generateSitemap() {
         }
       });
       console.log(`   ✓ Added all ${validPosts.length} posts`);
-      totalWritten += validPosts.length;
     } else {
       console.warn("⚠️  No valid posts found to add to sitemap");
     }
+    totalWritten += postWritten;
 
     if (totalWritten === 0) {
       console.warn("⚠️  No entries written to sitemap");
-      sitemap.write({ url: `${CONFIG.BASE_URL}/` }); // Ensure at least one entry
-      totalWritten = 1;
+      const success = sitemap.write({ url: `${CONFIG.BASE_URL}/` });
+      if (success) totalWritten = 1;
     }
 
     // Finalize sitemap
     sitemap.end();
-    await streamToPromise(sitemap);
+
+    // Wait for the write stream to finish
+    await new Promise((resolve, reject) => {
+      writeStream.on("finish", () => {
+        console.log("📝 Sitemap stream finished writing");
+        resolve();
+      });
+      writeStream.on("error", (err) => {
+        console.error("❌ Write stream error:", err);
+        reject(err);
+      });
+    });
 
     // Verify output file
     if (!existsSync(outputPath)) {
