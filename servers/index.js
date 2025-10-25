@@ -1,5 +1,6 @@
 import path from "path";
-import fs from "fs";
+import fs from "fs/promises";
+import fsSync from "fs";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -10,14 +11,13 @@ import mongoose from "mongoose";
 import {
   CLIENT_URL,
   NODE_ENV,
-  SESSION_SECRET,
   MONGO_URI,
   JWT_SECRET,
 } from "./config/dotenv.js";
 import connectDb from "./config/mongodb.js";
 import initializeSocket from "./sockets/socket.js";
 import { startTempCleanup } from "./Utils/cleanupTemp.js";
-import { logMemory } from "../servers/Utils/memoryLogger.js";
+import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 
 // Routes
 import AuthRoutes from "./Routes/authRoutes.js";
@@ -36,32 +36,57 @@ import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
 import DailyEmailRoutes from "./Routes/dailyMailRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
-import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 
 const app = express();
 app.set("trust proxy", true);
 
-// Route validation helper
+const __dirname = path.resolve();
+
+// =============================================================================
+// CONFIGURATION & CONSTANTS
+// =============================================================================
+
+const PORT = process.env.PORT || 10002;
+const SITEMAP_PATH = path.resolve(process.cwd(), "clients/dist/sitemap.xml");
+const CLIENT_PATH = path.join(__dirname, "clients", "dist");
+const CLIENT_INDEX_PATH = path.join(CLIENT_PATH, "index.html");
+const PUBLIC_PATH = path.join(__dirname, "servers", "public");
+
+const ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "https://readzio.com",
+  "https://www.readzio.com",
+];
+
+const REQUIRED_ENV = ["MONGO_URI", "JWT_SECRET", "CLIENT_URL"];
+
+// =============================================================================
+// ENVIRONMENT VALIDATION
+// =============================================================================
+
+function validateEnvironment() {
+  const missing = REQUIRED_ENV.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    console.error(
+      "❌ Missing required environment variables:",
+      missing.join(", ")
+    );
+    process.exit(1);
+  }
+  console.log("✅ Environment variables validated");
+}
+
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
+
 const validateRouter = (router, routeName) => {
-  try {
-    if (!router || typeof router !== "function") {
-      throw new Error(`${routeName} is not a valid router function`);
-    }
-    return true;
-  } catch (error) {
-    console.error(`❌ Invalid router detected: ${routeName}`);
-    console.error(`Error: ${error.message}`);
+  if (!router || typeof router !== "function") {
+    console.error(`❌ Invalid router: ${routeName}`);
     return false;
   }
+  return true;
 };
-
-const server = http.createServer(app);
-server.setTimeout(120000);
-server.keepAliveTimeout = 65000;
-server.headersTimeout = 66000;
-
-const __dirname = path.resolve();
-const io = initializeSocket(server);
 
 const setRouteTimeout = (timeoutMs) => (req, res, next) => {
   const timeout = setTimeout(() => {
@@ -77,19 +102,28 @@ const setRouteTimeout = (timeoutMs) => (req, res, next) => {
   next();
 };
 
-const requiredEnv = ["MONGO_URI", "JWT_SECRET", "CLIENT_URL"];
-requiredEnv.forEach((key) => {
-  if (!process.env[key]) {
-    console.error(`[dotenv] Missing required env variable: ${key}`);
-    process.exit(1);
-  }
-});
+// =============================================================================
+// SERVER INITIALIZATION
+// =============================================================================
 
+const server = http.createServer(app);
+server.setTimeout(120000);
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
+
+const io = initializeSocket(server);
+
+// =============================================================================
+// MIDDLEWARE SETUP
+// =============================================================================
+
+// Socket.io middleware
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
+// Compression
 app.use(
   compression({
     filter: (req, res) => {
@@ -100,27 +134,19 @@ app.use(
   })
 );
 
-const allowedOrigins = [
-  "http://localhost:5173", // your dev frontend
-  "https://readzio.com", // production frontend
-  "https://www.readzio.com",
-];
-
+// CORS
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (like mobile apps or curl)
+    origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) === -1) {
-        const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
-        return callback(new Error(msg), false);
-      }
-      return callback(null, true);
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+      callback(new Error("Not allowed by CORS policy"), false);
     },
-    credentials: true, // if you need cookies/auth
+    credentials: true,
   })
 );
 
+// Body parsing
 app.use(
   express.json({
     limit: "50mb",
@@ -131,10 +157,18 @@ app.use(
 );
 
 app.use(
-  express.urlencoded({ extended: true, limit: "50mb", parameterLimit: 50000 })
+  express.urlencoded({
+    extended: true,
+    limit: "50mb",
+    parameterLimit: 50000,
+  })
 );
 
 app.use(cookieParser());
+
+// =============================================================================
+// ROUTE CONFIGURATION
+// =============================================================================
 
 const routeConfigs = [
   { path: "/api/auth", router: AuthRoutes, name: "AuthRoutes" },
@@ -184,85 +218,119 @@ const routeConfigs = [
   },
 ];
 
-let successfulRoutes = 0;
-let failedRoutes = 0;
+function mountRoutes() {
+  let successfulRoutes = 0;
+  let failedRoutes = 0;
 
-routeConfigs.forEach(({ path, router, name, middleware }) => {
-  try {
-    if (!validateRouter(router, name)) {
-      console.error(`❌ Skipping invalid router: ${name} at ${path}`);
+  routeConfigs.forEach(({ path, router, name, middleware }) => {
+    try {
+      if (!validateRouter(router, name)) {
+        failedRoutes++;
+        app.use(path, (req, res) => {
+          res.status(503).json({
+            error: `Service unavailable: ${name} failed to load`,
+            path: req.path,
+            method: req.method,
+          });
+        });
+        return;
+      }
+
+      if (middleware) {
+        app.use(path, middleware, router);
+      } else {
+        app.use(path, router);
+      }
+
+      successfulRoutes++;
+      if (NODE_ENV !== "production") {
+        console.log(`✅ Mounted: ${path} (${name})`);
+      }
+    } catch (err) {
+      console.error(`❌ Failed to mount ${path} (${name}):`, err.message);
       failedRoutes++;
-      return;
-    }
-    if (NODE_ENV !== "production")
-      console.log(`🛤️ Mounting route: ${path} (${name})`);
 
-    console.log(`[DEBUG] About to mount: ${name} at ${path}`);
-
-    if (middleware) app.use(path, middleware, router);
-    else app.use(path, router);
-
-    console.log(`[DEBUG] Successfully mounted: ${name}`);
-
-    successfulRoutes++;
-  } catch (err) {
-    console.error(`❌ Failed to mount route ${path} (${name}):`, err.message);
-    console.error(`Stack trace:`, err.stack);
-    failedRoutes++;
-    app.use(path, (req, res) => {
-      res.status(503).json({
-        error: `Service temporarily unavailable: ${name} failed to load`,
-        path: req.path,
-        method: req.method,
+      app.use(path, (req, res) => {
+        res.status(503).json({
+          error: `Service unavailable: ${name} initialization failed`,
+          path: req.path,
+          method: req.method,
+        });
       });
-    });
-  }
-});
+    }
+  });
 
-console.log(`\n📊 Route mounting summary:`);
-console.log(`✅ Successfully mounted: ${successfulRoutes} routes`);
-if (failedRoutes > 0) console.log(`❌ Failed to mount: ${failedRoutes} routes`);
-
-if (NODE_ENV !== "production") {
-  console.log("⚠️ Route inspection disabled");
+  console.log(
+    `\n📊 Routes: ✅ ${successfulRoutes} mounted, ❌ ${failedRoutes} failed`
+  );
+  return { successfulRoutes, failedRoutes };
 }
 
-const publicPath = path.join(__dirname, "servers", "public");
-if (fs.existsSync(publicPath)) {
+const routeStats = mountRoutes();
+
+// =============================================================================
+// STATIC FILE SERVING
+// =============================================================================
+
+// Public directory
+if (fsSync.existsSync(PUBLIC_PATH)) {
   app.use(
     "/public",
-    express.static(publicPath, {
+    express.static(PUBLIC_PATH, {
       maxAge: NODE_ENV === "production" ? "1d" : 0,
       etag: true,
       lastModified: true,
     })
   );
+  console.log("✅ Public directory mounted");
 } else {
-  console.warn("⚠️ Public directory not found:", publicPath);
+  console.warn("⚠️  Public directory not found:", PUBLIC_PATH);
 }
 
-const clientPath = path.join(__dirname, "clients", "dist");
-const clientIndexPath = path.join(clientPath, "index.html");
+// =============================================================================
+// SPECIAL ROUTES (robots.txt, sitemap.xml, ads.txt)
+// =============================================================================
 
-console.log("Client path:", clientPath);
-console.log("Index exists:", fs.existsSync(clientIndexPath));
-
-// Static special routes after API routes but before client serving
 app.get("/robots.txt", (req, res) => {
-  res.type("text/plain").send(`User-agent: *
+  res.type("text/plain").send(
+    `User-agent: *
 Allow: /
-Sitemap: https://readzio.com/sitemap.xml`);
+Sitemap: https://www.readzio.com/sitemap.xml
+
+# Disallow admin and API routes
+Disallow: /api/
+Disallow: /admin/`
+  );
 });
 
-app.get("/sitemap.xml", (req, res) => {
-  const sitemapPath = path.resolve(process.cwd(), "clients/dist/sitemap.xml");
-  console.log("Serving sitemap from:", sitemapPath);
-  if (fs.existsSync(sitemapPath)) {
-    res.setHeader("Content-Type", "application/xml");
-    res.sendFile(sitemapPath);
-  } else {
-    console.warn("⚠️ Sitemap not found:", sitemapPath);
-    res.status(404).type("text/plain").send("Sitemap not found");
+app.get("/sitemap.xml", async (req, res) => {
+  try {
+    // Check if sitemap exists
+    if (!fsSync.existsSync(SITEMAP_PATH)) {
+      console.error("❌ Sitemap not found at:", SITEMAP_PATH);
+      return res.status(404).type("text/plain").send("Sitemap not found");
+    }
+
+    // Read and serve sitemap
+    const sitemapContent = await fs.readFile(SITEMAP_PATH, "utf-8");
+
+    // Validate XML structure (basic check)
+    if (
+      !sitemapContent.includes("<?xml") ||
+      !sitemapContent.includes("<urlset")
+    ) {
+      console.error("❌ Invalid sitemap XML structure");
+      return res.status(500).type("text/plain").send("Invalid sitemap format");
+    }
+
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+    res.send(sitemapContent);
+
+    console.log("✅ Sitemap served successfully");
+  } catch (error) {
+    console.error("❌ Error serving sitemap:", error.message);
+    res.status(500).type("text/plain").send("Error loading sitemap");
   }
 });
 
@@ -272,12 +340,21 @@ app.get("/ads.txt", (req, res) => {
     .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
 });
 
+// =============================================================================
+// HEALTH CHECK
+// =============================================================================
+
 app.get("/health", (req, res) => {
   const memUsage = process.memoryUsage();
+  const sitemapExists = fsSync.existsSync(SITEMAP_PATH);
+
   res.status(200).json({
     status: "OK",
     message: "readzio API is running",
     uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    environment: NODE_ENV,
+    nodeVersion: process.version,
     database:
       mongoose.connection.readyState === 1 ? "connected" : "disconnected",
     socket: {
@@ -285,124 +362,113 @@ app.get("/health", (req, res) => {
       clients: io.engine.clientsCount,
     },
     memory: {
-      rss: Math.round(memUsage.rss / 1024 / 1024) + "MB",
-      heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + "MB",
-      heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + "MB",
+      rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+      heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+      heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
     },
     routes: {
-      successful: successfulRoutes,
-      failed: failedRoutes,
-      total: successfulRoutes + failedRoutes,
+      successful: routeStats.successfulRoutes,
+      failed: routeStats.failedRoutes,
+      total: routeStats.successfulRoutes + routeStats.failedRoutes,
     },
-    timestamp: new Date().toISOString(),
-    environment: NODE_ENV,
-    nodeVersion: process.version,
+    sitemap: {
+      exists: sitemapExists,
+      path: sitemapExists ? SITEMAP_PATH : null,
+    },
   });
 });
 
+// =============================================================================
+// CLIENT SERVING (PRODUCTION)
+// =============================================================================
+
 if (NODE_ENV === "production") {
-  if (fs.existsSync(clientIndexPath)) {
+  if (fsSync.existsSync(CLIENT_INDEX_PATH)) {
+    // Serve static files
     app.use(
-      express.static(clientPath, {
+      express.static(CLIENT_PATH, {
         maxAge: "1d",
         etag: true,
         lastModified: true,
-        setHeaders: (res, path) => {
-          if (path.endsWith(".html"))
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith(".html")) {
             res.setHeader("Cache-Control", "no-cache");
+          }
         },
       })
     );
 
-    // Serve index.html for all non-API/public paths
-    // app.get("*", (req, res, next) => {
-    //   const disallowed = [
-    //     req.path.startsWith("/api"),
-    //     req.path.startsWith("/public"),
-    //     req.path === "/health",
-    //     req.path === "/robots.txt",
-    //     req.path === "/sitemap.xml",
-    //     req.path === "/ads.txt",
-    //   ];
-    //   if (disallowed.some(Boolean)) return next();
-    //   res.sendFile(clientIndexPath, (err) => {
-    //     if (err) {
-    //       console.error(
-    //         "[Server:Static] ❌ Failed to serve index.html:",
-    //         err.message
-    //       );
-    //       if (!res.headersSent) res.status(500).send("Internal Server Error");
-    //     }
-    //   });
-    // });
-
-    app.get("/{*splat}", (req, res, next) => {
-      const disallowed = [
-        req.path.startsWith("/api"),
-        req.path.startsWith("/public"),
-        req.path === "/health",
-        req.path === "/robots.txt",
-        req.path === "/sitemap.xml",
-        req.path === "/ads.txt",
+    // SPA fallback - serve index.html for all non-API routes
+    app.get("*", (req, res, next) => {
+      // Skip API and special routes
+      const skipRoutes = [
+        "/api",
+        "/public",
+        "/health",
+        "/robots.txt",
+        "/sitemap.xml",
+        "/ads.txt",
       ];
-      if (disallowed.some(Boolean)) return next();
-      res.sendFile(clientIndexPath, (err) => {
+
+      if (skipRoutes.some((route) => req.path.startsWith(route))) {
+        return next();
+      }
+
+      // Serve index.html
+      res.sendFile(CLIENT_INDEX_PATH, (err) => {
         if (err) {
-          console.error(
-            "[Server:Static] ❌ Failed to serve index.html:",
-            err.message
-          );
-          if (!res.headersSent) res.status(500).send("Internal Server Error");
+          console.error("❌ Failed to serve index.html:", err.message);
+          if (!res.headersSent) {
+            res.status(500).send("Internal Server Error");
+          }
         }
       });
     });
+
+    console.log("✅ Client app mounted (production mode)");
   } else {
-    console.error("❌ Client build not found:", clientIndexPath);
-    app.get("/{*splat}", (req, res) => {
-      res.status(503).send("Service temporarily unavailable - build not found");
+    console.error("❌ Client build not found:", CLIENT_INDEX_PATH);
+    app.get("*", (req, res) => {
+      res.status(503).send("Service unavailable - client build not found");
     });
   }
+} else {
+  // Development mode - simple API response
+  app.get("/", (req, res) => {
+    res.json({
+      message: "readzio API is running in development mode",
+      endpoints: {
+        health: "/health",
+        api: "/api/*",
+        sitemap: "/sitemap.xml",
+        robots: "/robots.txt",
+      },
+    });
+  });
 }
 
-app.use("/api/{*splat}", (req, res) => {
+// =============================================================================
+// 404 HANDLER FOR API ROUTES
+// =============================================================================
+
+app.use("/api/*", (req, res) => {
   res.status(404).json({
     error: "API endpoint not found",
     path: req.path,
     method: req.method,
+    timestamp: new Date().toISOString(),
   });
 });
 
+// =============================================================================
+// ERROR HANDLER
+// =============================================================================
+
 app.use(errorHandler);
 
-const gracefulShutdown = (signal) => {
-  console.log(
-    `\n[Server:Shutdown] 🛑 Received ${signal}, starting graceful shutdown...`
-  );
-  server.close((err) => {
-    if (err) {
-      console.error("[Server:Shutdown] ❌ Error during shutdown:", err.message);
-      process.exit(1);
-    }
-    console.log("[Server:Shutdown] ✅ HTTP server closed");
-    mongoose.connection
-      .close()
-      .then(() => {
-        console.log("[Server:Shutdown] ✅ Database connection closed");
-        process.exit(0);
-      })
-      .catch((err) => {
-        console.error(
-          "[Server:Shutdown] ❌ Database close error:",
-          err.message
-        );
-        process.exit(1);
-      });
-  });
-  setTimeout(() => {
-    console.error("[Server:Shutdown] ⚠️ Forcing shutdown after timeout");
-    process.exit(1);
-  }, 30000);
-};
+// =============================================================================
+// ERROR HANDLERS
+// =============================================================================
 
 io.on("error", (err) => {
   console.error("[Socket.IO] ❌ Error:", err.message);
@@ -411,14 +477,16 @@ io.on("error", (err) => {
 server.on("error", (err) => {
   console.error("[HTTP Server] ❌ Error:", err.message);
   if (err.code === "EADDRINUSE") {
-    console.error(`❌ Port ${err.port} is already in use`);
+    console.error(`❌ Port ${PORT} is already in use`);
     process.exit(1);
   }
 });
 
 server.on("clientError", (err, socket) => {
   console.error("[HTTP Server] ❌ Client error:", err.message);
-  if (!socket.destroyed) socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
+  if (!socket.destroyed) {
+    socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
+  }
 });
 
 process.on("uncaughtException", (err) => {
@@ -429,61 +497,110 @@ process.on("uncaughtException", (err) => {
 
 process.on("unhandledRejection", (reason, promise) => {
   console.error("[UnhandledRejection] ❌", reason);
-  console.error("Unhandled Rejection at:", promise);
+  console.error("Promise:", promise);
   process.exit(1);
 });
+
+// =============================================================================
+// GRACEFUL SHUTDOWN
+// =============================================================================
+
+function gracefulShutdown(signal) {
+  console.log(
+    `\n[Shutdown] 🛑 Received ${signal}, starting graceful shutdown...`
+  );
+
+  const shutdownTimeout = setTimeout(() => {
+    console.error("[Shutdown] ⚠️  Forcing shutdown after timeout");
+    process.exit(1);
+  }, 30000);
+
+  server.close((err) => {
+    clearTimeout(shutdownTimeout);
+
+    if (err) {
+      console.error("[Shutdown] ❌ Error closing server:", err.message);
+      process.exit(1);
+    }
+
+    console.log("[Shutdown] ✅ HTTP server closed");
+
+    mongoose.connection
+      .close()
+      .then(() => {
+        console.log("[Shutdown] ✅ Database connection closed");
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error("[Shutdown] ❌ Database close error:", err.message);
+        process.exit(1);
+      });
+  });
+}
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-const startServer = async () => {
+// =============================================================================
+// SERVER STARTUP
+// =============================================================================
+
+async function startServer() {
   try {
-    console.log("[Server:Startup] 🚀 Starting readzio API server...");
-    console.log("[Server:Startup] 📊 Environment:", NODE_ENV);
-    console.log("[Server:Startup] 📊 Node version:", process.version);
-    console.log("[Server:Startup] 📊 Platform:", process.platform);
-    console.log("[Server:Startup] 🔌 Connecting to MongoDB...");
+    console.log("\n🚀 Starting readzio API server...");
+    console.log(`📊 Environment: ${NODE_ENV}`);
+    console.log(`📊 Node: ${process.version}`);
+    console.log(`📊 Platform: ${process.platform}`);
+
+    // Validate environment
+    validateEnvironment();
+
+    // Connect to database
+    console.log("🔌 Connecting to MongoDB...");
     await connectDb();
-    console.log("[Server:Startup] ✅ Database connected successfully");
-    console.log("[Server:Startup] 🧹 Starting cleanup jobs...");
+    console.log("✅ Database connected");
+
+    // Start background jobs
+    console.log("🧹 Starting background jobs...");
     startTempCleanup();
-    console.log("[Server:Startup] ✅ Background jobs started");
-    // ✅ Start daily digest emails
-    console.log("[Server:Startup] 🕒 Starting daily digest email job...");
     startDailyDigestJob();
-    const port = process.env.PORT || 10002;
-    server.listen(port, "0.0.0.0", function () {
+    console.log("✅ Background jobs started");
+
+    // Check sitemap existence
+    if (fsSync.existsSync(SITEMAP_PATH)) {
+      const stats = fsSync.statSync(SITEMAP_PATH);
+      console.log(`✅ Sitemap found: ${(stats.size / 1024).toFixed(2)}KB`);
+    } else {
+      console.warn("⚠️  Sitemap not found - run sitemap generator");
+    }
+
+    // Start server
+    server.listen(PORT, "0.0.0.0", function () {
       const address = this.address();
-      console.log(
-        `[Server:Startup] ✅ readzio API running on port ${address.port}`
-      );
-      console.log(
-        `[Server:Startup] 🌐 Server URL: http://0.0.0.0:${address.port}`
-      );
-      console.log(
-        `[Server:Startup] 🔗 Health check: http://0.0.0.0:${address.port}/health`
-      );
-      if (NODE_ENV === "production")
-        console.log(
-          "[Server:Startup] 🎯 Production mode: Client app will be served"
-        );
-      else console.log("[Server:Startup] 🔧 Development mode: API only");
-      if (failedRoutes > 0)
+      console.log(`\n✅ Server running on port ${address.port}`);
+      console.log(`🌐 URL: http://0.0.0.0:${address.port}`);
+      console.log(`🔗 Health: http://0.0.0.0:${address.port}/health`);
+      console.log(`🗺️  Sitemap: http://0.0.0.0:${address.port}/sitemap.xml`);
+
+      if (NODE_ENV === "production") {
+        console.log("🎯 Mode: Production (serving client app)");
+      } else {
+        console.log("🔧 Mode: Development (API only)");
+      }
+
+      if (routeStats.failedRoutes > 0) {
         console.warn(
-          `[Server:Startup] ⚠️ Warning: ${failedRoutes} routes failed to mount`
+          `⚠️  Warning: ${routeStats.failedRoutes} routes failed to mount`
         );
+      }
+
+      console.log("\n✨ Server ready!\n");
     });
   } catch (err) {
-    console.error("[Server:Startup] ❌ Failed to start server:", err.message);
+    console.error("\n❌ Failed to start server:", err.message);
     console.error(err.stack);
     process.exit(1);
   }
-};
-
-if (NODE_ENV !== "production") {
-  app.get("/", (req, res) => {
-    res.send("readzio API is running. Use /health or API endpoints.");
-  });
 }
 
 startServer();
