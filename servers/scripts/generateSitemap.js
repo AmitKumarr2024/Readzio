@@ -183,9 +183,16 @@ async function generateSitemap() {
 
     // Add static routes
     console.log("\n📝 Adding static routes...");
+    let totalWritten = 0;
     STATIC_ROUTES.forEach((route) => {
-      sitemap.write(route);
-      console.log(`   ✓ ${route.url}`);
+      const entry = {
+        url: `${CONFIG.BASE_URL}${route.url}`,
+        changefreq: route.changefreq,
+        priority: route.priority,
+      };
+      const success = sitemap.write(entry);
+      console.log(`   ${success ? "✓" : "✗ (skipped)"} ${entry.url}`);
+      if (success) totalWritten++;
     });
 
     // Fetch and validate posts
@@ -200,12 +207,16 @@ async function generateSitemap() {
     if (validPosts.length > 0) {
       console.log("\n📝 Adding post URLs...");
       validPosts.forEach((post, index) => {
-        sitemap.write({
-          url: `/post/${post.slug}`,
+        const entry = {
+          url: `${CONFIG.BASE_URL}/post/${post.slug}`,
           changefreq: "weekly",
           priority: 0.8,
           lastmod: (post.updatedAt || post.createdAt)?.toISOString(),
-        });
+        };
+        const success = sitemap.write(entry);
+        if (!success) {
+          console.log(`   ✗ Skipped post: ${entry.url}`);
+        }
 
         // Log progress every 100 posts
         if ((index + 1) % 100 === 0) {
@@ -213,8 +224,15 @@ async function generateSitemap() {
         }
       });
       console.log(`   ✓ Added all ${validPosts.length} posts`);
+      totalWritten += validPosts.length;
     } else {
       console.warn("⚠️  No valid posts found to add to sitemap");
+    }
+
+    if (totalWritten === 0) {
+      console.warn("⚠️  No entries written to sitemap");
+      sitemap.write({ url: `${CONFIG.BASE_URL}/` }); // Ensure at least one entry
+      totalWritten = 1;
     }
 
     // Finalize sitemap
@@ -231,9 +249,10 @@ async function generateSitemap() {
 
     console.log("\n✅ Sitemap generated successfully!");
     console.log(`📊 Statistics:`);
-    console.log(`   - Total URLs: ${STATIC_ROUTES.length + validPosts.length}`);
+    console.log(`   - Total URLs: ${totalWritten}`);
     console.log(`   - Static routes: ${STATIC_ROUTES.length}`);
     console.log(`   - Post URLs: ${validPosts.length}`);
+    console.log(`   - Invalid posts: ${invalidPosts.length}`);
     console.log(`   - File size: ${(stats.size / 1024).toFixed(2)} KB`);
     console.log(`   - Generation time: ${duration}s`);
     console.log(`   - Output: ${outputPath}`);
@@ -242,7 +261,7 @@ async function generateSitemap() {
       success: true,
       path: outputPath,
       stats: {
-        totalUrls: STATIC_ROUTES.length + validPosts.length,
+        totalUrls: totalWritten,
         staticRoutes: STATIC_ROUTES.length,
         postUrls: validPosts.length,
         invalidPosts: invalidPosts.length,
