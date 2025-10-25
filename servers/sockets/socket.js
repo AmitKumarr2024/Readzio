@@ -176,7 +176,7 @@ function cleanupUserConnection(socket) {
 // SOCKET.IO SERVER INITIALIZATION
 // =============================================================================
 
-export const io = new Server(SOCKET_CONFIG);
+const io = new Server(SOCKET_CONFIG);
 
 // =============================================================================
 // AUTHENTICATION MIDDLEWARE
@@ -545,19 +545,6 @@ io.on("connection", async (socket) => {
 });
 
 // =============================================================================
-// ENGINE ERROR HANDLERS
-// =============================================================================
-
-io.engine.on("connection_error", (err) => {
-  console.error("[Socket:Engine] Connection error:", {
-    origin: err.req?.headers?.origin,
-    code: err.code,
-    message: err.message,
-    context: err.context,
-  });
-});
-
-// =============================================================================
 // INITIALIZATION FUNCTION
 // =============================================================================
 
@@ -565,6 +552,16 @@ export default function initializeSocket(server) {
   try {
     io.attach(server);
     console.log("✅ Socket.IO server initialized");
+
+    // Engine error handlers (after attachment)
+    io.engine.on("connection_error", (err) => {
+      console.error("[Socket:Engine] Connection error:", {
+        origin: err.req?.headers?.origin,
+        code: err.code,
+        message: err.message,
+        context: err.context,
+      });
+    });
 
     // Periodic cleanup (every 5 minutes)
     setInterval(() => {
@@ -595,6 +592,9 @@ export default function initializeSocket(server) {
     throw error;
   }
 }
+
+// Export io for external use
+export { io };
 
 // =============================================================================
 // UTILITY FUNCTIONS FOR EXTERNAL USE

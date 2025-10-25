@@ -399,7 +399,7 @@ if (NODE_ENV === "production") {
     );
 
     // SPA fallback - serve index.html for all non-API routes
-    app.get("*", (req, res, next) => {
+    app.get("/{*splat}", (req, res, next) => {
       // Skip API and special routes
       const skipRoutes = [
         "/api",
@@ -428,7 +428,7 @@ if (NODE_ENV === "production") {
     console.log("✅ Client app mounted (production mode)");
   } else {
     console.error("❌ Client build not found:", CLIENT_INDEX_PATH);
-    app.get("*", (req, res) => {
+    app.get("/{*splat}", (req, res) => {
       res.status(503).send("Service unavailable - client build not found");
     });
   }
@@ -451,7 +451,7 @@ if (NODE_ENV === "production") {
 // 404 HANDLER FOR API ROUTES
 // =============================================================================
 
-app.use("/api/*", (req, res) => {
+app.use("/api/{*splat}", (req, res) => {
   res.status(404).json({
     error: "API endpoint not found",
     path: req.path,
@@ -566,12 +566,14 @@ async function startServer() {
     startDailyDigestJob();
     console.log("✅ Background jobs started");
 
-    // Check sitemap existence
-    if (fsSync.existsSync(SITEMAP_PATH)) {
-      const stats = fsSync.statSync(SITEMAP_PATH);
-      console.log(`✅ Sitemap found: ${(stats.size / 1024).toFixed(2)}KB`);
-    } else {
-      console.warn("⚠️  Sitemap not found - run sitemap generator");
+    // Check sitemap existence only in production
+    if (NODE_ENV === "production") {
+      if (fsSync.existsSync(SITEMAP_PATH)) {
+        const stats = fsSync.statSync(SITEMAP_PATH);
+        console.log(`✅ Sitemap found: ${(stats.size / 1024).toFixed(2)}KB`);
+      } else {
+        console.warn("⚠️  Sitemap not found - run sitemap generator");
+      }
     }
 
     // Start server
