@@ -1,3 +1,5 @@
+// config/dailyPostEmailTemplate.js
+
 export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,6 +49,13 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
       text-decoration:none;
       display:block;
     }
+    .no-posts-section {
+      padding:40px 25px;
+      text-align:center;
+      background-color:#fefce8;
+      border-radius:8px;
+      margin:0 25px 20px 25px;
+    }
     @media only screen and (max-width:620px) {
       body, table, td, p, a {
         font-size:16px !important;
@@ -59,7 +68,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
 <body>
   <!-- Hidden preview text -->
   <span style="display:none; visibility:hidden; opacity:0; max-height:0; overflow:hidden;">
-    {{#if posts.[0].excerpt}}{{posts.[0].excerpt}}{{else}}Your daily dose of fresh posts.{{/if}}
+    {{#if noPosts}}No new posts today, but explore more at Readzio!{{else}}{{#if posts.[0].excerpt}}{{posts.[0].excerpt}}{{else}}Your daily dose of fresh posts.{{/if}}{{/if}}
   </span>
 
   <center>
@@ -86,10 +95,30 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
             <tr>
               <td style="padding:25px 25px 10px 25px; font-size:16px; line-height:1.6; color:#374151;">
                 <p style="margin:0 0 16px;">Hi {{name}},</p>
-                <p style="margin:0 0 20px;">Here’s your daily curated list of top posts — starting with today’s highlight:</p>
+                {{#if noPosts}}
+                <p style="margin:0 0 20px;">No new posts were published in the last 24 hours, but there's still plenty to explore on Readzio!</p>
+                {{else}}
+                <p style="margin:0 0 20px;">Here's your daily curated list of {{posts.length}} top post{{#if posts.[1]}}s{{/if}} — starting with today's highlight:</p>
+                {{/if}}
               </td>
             </tr>
 
+            {{#if noPosts}}
+            <!-- No Posts Fallback Section -->
+            <tr>
+              <td>
+                <div class="no-posts-section">
+                  <h2 style="margin:0 0 15px; font-size:20px; font-weight:700; color:#92400e;">📚 No New Posts Today</h2>
+                  <p style="margin:0 0 20px; font-size:15px; color:#78350f; line-height:1.6;">
+                    We're working on bringing you fresh content! In the meantime, explore our archive of amazing stories and articles.
+                  </p>
+                  <a href="https://readzio.com/explore" style="display:inline-block; background:#eab308; color:#fff; padding:12px 24px; font-size:15px; font-weight:600; text-decoration:none; border-radius:8px;">
+                    Explore Archive
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {{else}}
             <!-- Featured Post -->
             {{#if posts.[0]}}
             <tr>
@@ -127,15 +156,18 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
                   <table class="post-card" width="100%" cellpadding="0" cellspacing="0" role="presentation">
                     <tr>
                       {{#if this.thumbnail}}
-                      <td style="width:120px;">
-                        <img src="{{this.thumbnail}}" alt="{{this.title}}" width="120" height="80" style="display:block; object-fit:cover;">
+                      <td style="width:120px; vertical-align:top;">
+                        <img src="{{this.thumbnail}}" alt="{{this.title}}" width="120" height="80" style="display:block; object-fit:cover; border-radius:8px 0 0 8px;">
                       </td>
                       {{/if}}
-                      <td style="padding:10px;">
+                      <td style="padding:15px; vertical-align:top;">
                         <a href="https://readzio.com/post/{{this.slug}}" class="compact-title">{{this.title}}</a>
                         <div style="font-size:13px; color:#6b7280; margin-bottom:6px;">
                           by {{this.author.name}} {{#if this.readTime}}&bull; {{this.readTime}}{{/if}}
                         </div>
+                        {{#if this.excerpt}}
+                        <p style="font-size:14px; color:#6b7280; margin:0; line-height:1.4;">{{this.excerpt}}</p>
+                        {{/if}}
                       </td>
                     </tr>
                   </table>
@@ -143,15 +175,7 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
               </tr>
               {{/unless}}
             {{/each}}
-
-            <!-- No Posts Fallback -->
-            {{#unless posts.length}}
-            <tr>
-              <td style="padding:25px; font-size:14px; color:#6b7280; text-align:center;">
-                No new posts today — explore more at <a href="https://readzio.com" style="color:#2563eb; font-weight:600; text-decoration:none;">readzio</a>.
-              </td>
-            </tr>
-            {{/unless}}
+            {{/if}}
 
             <!-- CTA -->
             {{#if hasButton}}
@@ -167,8 +191,12 @@ export const DAILY_POST_EMAIL_TEMPLATE = `<!DOCTYPE html>
             <!-- Footer -->
             <tr>
               <td style="background-color:#f9fafb; padding:20px; font-size:13px; color:#6b7280; text-align:center; border-top:1px solid #e5e7eb;">
-                You received this email as part of your readzio subscription.<br>
-                Need help? Contact <a href="mailto:{{supportEmail}}" style="color:#2563eb; font-weight:600; text-decoration:none;">support</a>.
+                <p style="margin:0 0 10px;">You received this email as part of your readzio subscription.</p>
+                <p style="margin:0 0 10px;">Need help? Contact <a href="mailto:{{supportEmail}}" style="color:#2563eb; font-weight:600; text-decoration:none;">support</a>.</p>
+                <p style="margin:0; font-size:12px; color:#9ca3af;">
+                  <a href="https://readzio.com/unsubscribe" style="color:#6b7280; text-decoration:none;">Unsubscribe</a> | 
+                  <a href="https://readzio.com/preferences" style="color:#6b7280; text-decoration:none;">Email Preferences</a>
+                </p>
               </td>
             </tr>
           </table>

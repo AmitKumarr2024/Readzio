@@ -11,222 +11,78 @@ import { DAILY_POST_EMAIL_TEMPLATE } from "../config/dailyPostEmailTemplate.js";
 // ============ EMAIL SENDING CONTROLLERS ============
 
 /**
- * 1️⃣ Send Daily Digest Emails (Bulk)
+ * 1️⃣ Send Daily Digest Emails (Bulk) - PRODUCTION READY
  * POST /api/dailyMail/daily-post
+ * Features:
+ * - Sends up to 10 posts (min 0)
+ * - Tries both recent (24h) and older posts
+ * - Single retry per user on failure
+ * - Comprehensive logging
  */
-// old code
-// export const sendDailyPostEmail = async (req, res, next) => {
-//   console.log("📨 [sendDailyPostEmail] Request received:", {
-//     method: req.method,
-//     url: req.url,
-//     body: req.body,
-//     query: req.query,
-//   });
-//   try {
-//     const users = await UserModel.find({
-//       isAccountVerified: true,
-//       stopEmailAttempts: false,
-//     });
-
-//     if (!users.length) {
-//       console.log("📨 [sendDailyPostEmail] No users found");
-//       return res
-//         .status(200)
-//         .json({ success: true, message: "No users to send emails to." });
-//     }
-
-//     const since = dayjs().subtract(1, "day").toDate();
-//     const posts = await PostModel.find({
-//       isPublished: true,
-//       createdAt: { $gte: since },
-//       blocked: false,
-//     })
-//       .sort({ createdAt: -1 })
-//       .limit(20)
-//       .populate("author", "name");
-
-//     if (!posts.length) {
-//       console.log("📨 [sendDailyPostEmail] No posts found");
-//       return res
-//         .status(200)
-//         .json({ success: true, message: "No new posts to send." });
-//     }
-
-//     const template = Handlebars.compile(DAILY_POST_EMAIL_TEMPLATE);
-//     let successCount = 0;
-//     let failedCount = 0;
-
-//     for (const user of users) {
-//       try {
-//         const html = template({
-//           subject: "Your Daily Readzio Digest",
-//           name: user.name,
-//           posts,
-//           hasButton: true,
-//           buttonText: "Visit Readzio",
-//           buttonUrl: "https://readzio.com",
-//           supportEmail: "readzio.official@gmail.com",
-//         });
-
-//         const result = await sendEmail({
-//           to: user.email,
-//           subject: "Your Daily Readzio Digest",
-//           html,
-//           text: `Hi ${user.name}, check out the latest posts on Readzio.`,
-//           type: "daily_digest",
-//         });
-
-//         user.emailAttempts = (user.emailAttempts || 0) + 1;
-//         if (result.success) {
-//           user.emailStatus = "sent";
-//           user.emailLastError = null;
-//           successCount++;
-//         } else {
-//           user.emailStatus = "failed";
-//           user.emailLastError = result.error || "Unknown error";
-//           failedCount++;
-//         }
-//         await user.save();
-//       } catch (err) {
-//         console.error(
-//           `[DailyDigest] Failed for user ${user.email}:`,
-//           err.message
-//         );
-//         failedCount++;
-//       }
-//     }
-
-//     console.log("📨 [sendDailyPostEmail] Response sent:", {
-//       successCount,
-//       failedCount,
-//       total: users.length,
-//     });
-//     return res.status(200).json({
-//       success: true,
-//       message: "Daily digest emails sent.",
-//       results: {
-//         successful: successCount,
-//         failed: failedCount,
-//         total: users.length,
-//       },
-//     });
-//   } catch (err) {
-//     console.error("[DailyDigest] Controller error:", err.message);
-//     next(
-//       err instanceof AppError
-//         ? err
-//         : new AppError(err.message, 500, "SendDailyPostEmail")
-//     );
-//   }
-// };
-
-// new code
-
 export const sendDailyPostEmail = async (req, res, next) => {
   console.log("📨 [sendDailyPostEmail] Request received:", {
     method: req.method,
     url: req.url,
-    body: req.body,
-    query: req.query,
+    timestamp: new Date().toISOString(),
   });
 
   try {
+    // Fetch eligible users
     const users = await UserModel.find({
       isAccountVerified: true,
       stopEmailAttempts: false,
     });
 
     if (!users.length) {
-      console.log("📨 [sendDailyPostEmail] No users found");
-      return res
-        .status(200)
-        .json({ success: true, message: "No users to send emails to." });
+      console.log("📨 [sendDailyPostEmail] No eligible users found");
+      return res.status(200).json({
+        success: true,
+        message: "No users to send emails to.",
+        results: { successful: 0, failed: 0, total: 0 },
+      });
     }
 
-    const since = dayjs().subtract(1, "day").toDate();
-    let posts = await PostModel.find({
-      isPublished: true,
-      createdAt: { $gte: since },
-      blocked: false,
-    })
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .populate("author", "name");
+    console.log(`📨 [sendDailyPostEmail] Found ${users.length} eligible users`);
 
-    // If no posts found, fallback to sending an empty digest
-    const sendEmptyDigest = posts.length === 0;
-    if (sendEmptyDigest) {
-      console.log(
-        "📨 [sendDailyPostEmail] No posts found — sending fallback digest email."
-      );
-      posts = []; // ensure posts is empty array
-    }
+    // Fetch posts (with fallback logic)
+    const posts = await fetchPostsForDigest();
+    const noPosts = posts.length === 0;
 
+    console.log(`📨 [sendDailyPostEmail] Found ${posts.length} posts to send`);
+
+    // Compile template
     const template = Handlebars.compile(DAILY_POST_EMAIL_TEMPLATE);
+
     let successCount = 0;
     let failedCount = 0;
+    let skippedCount = 0;
 
+    // Send emails to all users
     for (const user of users) {
-      try {
-        const html = template({
-          subject: "Your Daily Readzio Digest",
-          name: user.name,
-          posts,
-          hasButton: true,
-          buttonText: "Visit Readzio",
-          buttonUrl: "https://readzio.com",
-          supportEmail: "readzio.official@gmail.com",
-          noPosts: sendEmptyDigest, // flag to show fallback text in template
-        });
+      const result = await sendEmailToUser(user, posts, template, noPosts);
 
-        const result = await sendEmail({
-          to: user.email,
-          subject: "Your Daily Readzio Digest",
-          html,
-          text: sendEmptyDigest
-            ? `Hi ${user.name}, no new posts today — explore more at Readzio!`
-            : `Hi ${user.name}, check out the latest posts on Readzio.`,
-          type: "daily_digest",
-        });
-
-        user.emailAttempts = (user.emailAttempts || 0) + 1;
-        if (result.success) {
-          user.emailStatus = "sent";
-          user.emailLastError = null;
-          successCount++;
-        } else {
-          user.emailStatus = "failed";
-          user.emailLastError = result.error || "Unknown error";
-          failedCount++;
-        }
-
-        await user.save();
-      } catch (err) {
-        console.error(
-          `[DailyDigest] Failed for user ${user.email}:`,
-          err.message
-        );
-        failedCount++;
-      }
+      if (result === "success") successCount++;
+      else if (result === "failed") failedCount++;
+      else skippedCount++;
     }
 
-    console.log("📨 [sendDailyPostEmail] Response sent:", {
-      successCount,
-      failedCount,
+    const summary = {
+      successful: successCount,
+      failed: failedCount,
+      skipped: skippedCount,
       total: users.length,
-    });
+      postsIncluded: posts.length,
+    };
+
+    console.log("📨 [sendDailyPostEmail] Batch complete:", summary);
 
     return res.status(200).json({
       success: true,
       message: "Daily digest emails sent.",
-      results: {
-        successful: successCount,
-        failed: failedCount,
-        total: users.length,
-      },
+      results: summary,
     });
   } catch (err) {
-    console.error("[DailyDigest] Controller error:", err.message);
+    console.error("[sendDailyPostEmail] Controller error:", err.message);
     next(
       err instanceof AppError
         ? err
@@ -235,45 +91,187 @@ export const sendDailyPostEmail = async (req, res, next) => {
   }
 };
 
-//-----------------------------------------------------------------------------------
+/**
+ * Fetch posts for digest with intelligent fallback
+ * Priority: Recent posts (24h) → Older posts (7d) → Empty digest
+ * @returns {Array} Up to 10 posts
+ */
+async function fetchPostsForDigest() {
+  const MAX_POSTS = 10;
+
+  try {
+    // Try recent posts first (last 24 hours)
+    const recentPosts = await PostModel.find({
+      isPublished: true,
+      blocked: false,
+      createdAt: { $gte: dayjs().subtract(1, "day").toDate() },
+    })
+      .sort({ createdAt: -1 })
+      .limit(MAX_POSTS)
+      .populate("author", "name")
+      .lean();
+
+    if (recentPosts.length >= 1) {
+      console.log(`✅ Found ${recentPosts.length} recent posts (24h)`);
+      return recentPosts;
+    }
+
+    // Fallback: Try posts from last 7 days
+    const olderPosts = await PostModel.find({
+      isPublished: true,
+      blocked: false,
+      createdAt: { $gte: dayjs().subtract(7, "day").toDate() },
+    })
+      .sort({ createdAt: -1 })
+      .limit(MAX_POSTS)
+      .populate("author", "name")
+      .lean();
+
+    if (olderPosts.length >= 1) {
+      console.log(`⚠️ Found ${olderPosts.length} older posts (7d)`);
+      return olderPosts;
+    }
+
+    // Final fallback: Get any recent published posts
+    const anyPosts = await PostModel.find({
+      isPublished: true,
+      blocked: false,
+    })
+      .sort({ createdAt: -1 })
+      .limit(MAX_POSTS)
+      .populate("author", "name")
+      .lean();
+
+    if (anyPosts.length >= 1) {
+      console.log(`⚠️ Found ${anyPosts.length} posts (all time)`);
+      return anyPosts;
+    }
+
+    // No posts available
+    console.log("❌ No posts found - sending empty digest");
+    return [];
+  } catch (error) {
+    console.error("❌ Error fetching posts:", error.message);
+    return []; // Return empty array on error
+  }
+}
+
+/**
+ * Send email to a single user with retry logic
+ * @param {Object} user - User document
+ * @param {Array} posts - Posts to include
+ * @param {Function} template - Compiled Handlebars template
+ * @param {Boolean} noPosts - Whether there are no posts
+ * @returns {String} "success" | "failed" | "skipped"
+ */
+async function sendEmailToUser(user, posts, template, noPosts) {
+  const MAX_RETRIES = 1; // Single retry on failure
+  let attempts = 0;
+  let lastError = null;
+
+  while (attempts <= MAX_RETRIES) {
+    try {
+      const html = template({
+        subject: "Your Daily Readzio Digest",
+        name: user.name,
+        posts: posts.slice(0, 10), // Ensure max 10 posts
+        hasButton: true,
+        buttonText: noPosts ? "Explore Readzio" : "Visit Readzio",
+        buttonUrl: "https://readzio.com",
+        supportEmail: "readzio.official@gmail.com",
+        noPosts,
+      });
+
+      const result = await sendEmail({
+        to: user.email,
+        subject: "Your Daily Readzio Digest",
+        html,
+        text: noPosts
+          ? `Hi ${user.name}, no new posts today — explore more at Readzio!`
+          : `Hi ${user.name}, check out today's ${posts.length} curated posts on Readzio.`,
+        type: "daily_digest",
+      });
+
+      // Update user record
+      user.emailAttempts = (user.emailAttempts || 0) + 1;
+
+      if (result.success) {
+        user.emailStatus = "sent";
+        user.emailLastError = null;
+        await user.save();
+
+        console.log(`✅ Email sent to ${user.email} (attempt ${attempts + 1})`);
+        return "success";
+      } else {
+        lastError = result.error || "Unknown error";
+        attempts++;
+
+        if (attempts > MAX_RETRIES) {
+          // Final failure
+          user.emailStatus = "failed";
+          user.emailLastError = lastError;
+          await user.save();
+
+          console.error(
+            `❌ Email failed for ${user.email} after ${attempts} attempts: ${lastError}`
+          );
+          return "failed";
+        }
+
+        // Wait before retry (exponential backoff)
+        console.warn(`⚠️ Retry ${attempts}/${MAX_RETRIES} for ${user.email}`);
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
+      }
+    } catch (err) {
+      lastError = err.message;
+      attempts++;
+
+      if (attempts > MAX_RETRIES) {
+        user.emailStatus = "failed";
+        user.emailLastError = lastError;
+        await user.save();
+
+        console.error(`❌ Exception for ${user.email}:`, err.message);
+        return "failed";
+      }
+
+      console.warn(`⚠️ Exception on attempt ${attempts}, retrying...`);
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
+    }
+  }
+
+  return "failed";
+}
+
 /**
  * 2️⃣ Send Direct Email (Manual)
  * POST /api/dailyMail/send-direct-email
  */
 export const sendDirectEmail = async (req, res, next) => {
-  console.log("📨 [sendDirectEmail] Request received:", {
-    method: req.method,
-    url: req.url,
-    body: req.body,
-    query: req.query,
-  });
+  console.log("📨 [sendDirectEmail] Request received");
   try {
     const { email } = req.body;
     if (!email) {
-      console.log("📨 [sendDirectEmail] Missing email");
       throw new AppError("Email is required", 400, "SendDirectEmail");
     }
 
     const user = await UserModel.findOne({ email });
     if (!user) {
-      console.log("📨 [sendDirectEmail] User not found:", email);
       throw new AppError("User not found", 404, "SendDirectEmail");
     }
 
+    const posts = await fetchPostsForDigest();
     const template = Handlebars.compile(DAILY_POST_EMAIL_TEMPLATE);
-    const posts = await PostModel.find({ isPublished: true, blocked: false })
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .populate("author", "name");
 
     const html = template({
       subject: "Your Readzio Digest",
       name: user.name,
-      posts,
+      posts: posts.slice(0, 10),
       hasButton: true,
       buttonText: "Visit Readzio",
       buttonUrl: "https://readzio.com",
       supportEmail: "readzio.official@gmail.com",
+      noPosts: posts.length === 0,
     });
 
     const result = await sendEmail({
@@ -285,19 +283,12 @@ export const sendDirectEmail = async (req, res, next) => {
     });
 
     user.emailAttempts = (user.emailAttempts || 0) + 1;
-    if (result.success) {
-      user.emailStatus = "sent";
-      user.emailLastError = null;
-    } else {
-      user.emailStatus = "failed";
-      user.emailLastError = result.error || "Unknown error";
-    }
+    user.emailStatus = result.success ? "sent" : "failed";
+    user.emailLastError = result.success
+      ? null
+      : result.error || "Unknown error";
     await user.save();
 
-    console.log("📨 [sendDirectEmail] Response sent:", {
-      success: result.success,
-      email: user.email,
-    });
     res.status(200).json({
       success: result.success,
       message: result.success
@@ -307,7 +298,6 @@ export const sendDirectEmail = async (req, res, next) => {
       messageId: result.messageId || null,
     });
   } catch (err) {
-    console.error("[sendDirectEmail] Error:", err.message);
     next(
       err instanceof AppError
         ? err
@@ -318,17 +308,7 @@ export const sendDirectEmail = async (req, res, next) => {
 
 // ============ EMAIL STATUS CONTROLLERS ============
 
-/**
- * 3️⃣ Get All Email Statuses (with pagination + optional status filter)
- * GET /api/dailyMail/email-statuses
- */
 export const getAllEmailStatuses = async (req, res, next) => {
-  console.log("📨 [getAllEmailStatuses] Request received:", {
-    method: req.method,
-    url: req.url,
-    body: req.body,
-    query: req.query,
-  });
   try {
     const { page = 1, limit = 10, status } = req.query;
     const query = {};
@@ -341,12 +321,6 @@ export const getAllEmailStatuses = async (req, res, next) => {
       .limit(Number(limit))
       .lean();
 
-    console.log("📨 [getAllEmailStatuses] Response sent:", {
-      total,
-      page,
-      limit,
-      status,
-    });
     return res.status(200).json({
       success: true,
       statuses: users,
@@ -355,30 +329,14 @@ export const getAllEmailStatuses = async (req, res, next) => {
       currentPage: parseInt(page),
     });
   } catch (err) {
-    console.error("[getAllEmailStatuses] Error:", err.message);
-    next(
-      err instanceof AppError
-        ? err
-        : new AppError(err.message, 500, "GetAllEmailStatuses")
-    );
+    next(new AppError(err.message, 500, "GetAllEmailStatuses"));
   }
 };
 
-/**
- * 4️⃣ Check Single Email Status
- * GET /api/dailyMail/email-status
- */
 export const checkEmailStatus = async (req, res, next) => {
-  console.log("📨 [checkEmailStatus] Request received:", {
-    method: req.method,
-    url: req.url,
-    body: req.body,
-    query: req.query,
-  });
   try {
     const { email } = req.query;
     if (!email) {
-      console.log("📨 [checkEmailStatus] Missing email");
       throw new AppError("Email is required", 400, "CheckEmailStatus");
     }
 
@@ -387,14 +345,9 @@ export const checkEmailStatus = async (req, res, next) => {
     );
 
     if (!user) {
-      console.log("📨 [checkEmailStatus] User not found:", email);
       throw new AppError("User not found", 404, "CheckEmailStatus");
     }
 
-    console.log("📨 [checkEmailStatus] Response sent:", {
-      email,
-      status: user.emailStatus,
-    });
     res.status(200).json({
       success: true,
       email: user.email,
@@ -405,115 +358,56 @@ export const checkEmailStatus = async (req, res, next) => {
       stopEmailAttempts: user.stopEmailAttempts,
     });
   } catch (err) {
-    console.error("[checkEmailStatus] Error:", err.message);
-    next(
-      err instanceof AppError
-        ? err
-        : new AppError(err.message, 500, "CheckEmailStatus")
-    );
+    next(new AppError(err.message, 500, "CheckEmailStatus"));
   }
 };
 
-/**
- * 5️⃣ Retry Failed Emails
- * POST /api/dailyMail/retry-failed
- */
 export const retryFailedEmails = async (req, res, next) => {
-  console.log("📨 [retryFailedEmails] Request received:", {
-    method: req.method,
-    url: req.url,
-    body: req.body,
-    query: req.query,
-  });
   try {
     const { emails } = req.body;
     if (!emails?.length) {
-      console.log("📨 [retryFailedEmails] Missing emails array");
       throw new AppError("Emails array is required", 400, "RetryFailedEmails");
     }
 
-    const results = [];
+    const posts = await fetchPostsForDigest();
     const template = Handlebars.compile(DAILY_POST_EMAIL_TEMPLATE);
-
-    const posts = await PostModel.find({ isPublished: true, blocked: false })
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .populate("author", "name");
+    const results = [];
 
     for (const email of emails) {
       const user = await UserModel.findOne({ email });
       if (!user) {
-        console.log("📨 [retryFailedEmails] User not found:", email);
         results.push({ email, success: false, error: "User not found" });
         continue;
       }
 
-      try {
-        const html = template({
-          subject: "Your Daily Readzio Digest",
-          name: user.name,
-          posts,
-          hasButton: true,
-          buttonText: "Visit Readzio",
-          buttonUrl: "https://readzio.com",
-          supportEmail: "readzio.official@gmail.com",
-        });
+      const result = await sendEmailToUser(
+        user,
+        posts,
+        template,
+        posts.length === 0
+      );
 
-        const result = await sendEmail({
-          to: user.email,
-          subject: "Your Daily Readzio Digest",
-          html,
-          text: `Hi ${user.name}, check out the latest posts on Readzio.`,
-          type: "daily_digest",
-        });
-
-        user.emailAttempts = (user.emailAttempts || 0) + 1;
-        if (result.success) {
-          user.emailStatus = "sent";
-          user.emailLastError = null;
-        } else {
-          user.emailStatus = "failed";
-          user.emailLastError = result.error || "Unknown error";
-        }
-        await user.save();
-        results.push({ email: user.email, success: result.success });
-      } catch (err) {
-        console.error(`[retryFailedEmails] Failed for ${email}:`, err.message);
-        results.push({ email, success: false, error: err.message });
-      }
+      results.push({
+        email: user.email,
+        success: result === "success",
+        status: result,
+      });
     }
 
-    console.log("📨 [retryFailedEmails] Response sent:", { results });
     res.status(200).json({
       success: true,
       message: "Retry process completed",
       results,
     });
   } catch (err) {
-    console.error("[retryFailedEmails] Error:", err.message);
-    next(
-      err instanceof AppError
-        ? err
-        : new AppError(err.message, 500, "RetryFailedEmails")
-    );
+    next(new AppError(err.message, 500, "RetryFailedEmails"));
   }
 };
 
 // ============ HEALTH & REPORTING CONTROLLERS ============
 
-/**
- * 6️⃣ Get Email System Health
- * GET /api/dailyMail/email-health
- */
 export const getEmailSystemHealth = async (req, res, next) => {
-  console.log("📨 [getEmailSystemHealth] Request received:", {
-    method: req.method,
-    url: req.url,
-    body: req.body,
-    query: req.query,
-  });
   try {
-    // Get basic stats
     const totalUsers = await UserModel.countDocuments({
       isAccountVerified: true,
     });
@@ -525,11 +419,6 @@ export const getEmailSystemHealth = async (req, res, next) => {
       emailStatus: "failed",
     });
 
-    console.log("📨 [getEmailSystemHealth] Response sent:", {
-      totalUsers,
-      activeUsers,
-      failedEmails,
-    });
     res.status(200).json({
       success: true,
       status: "operational",
@@ -544,30 +433,15 @@ export const getEmailSystemHealth = async (req, res, next) => {
       message: "Email system is running normally",
     });
   } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(error.message, 500, "GetEmailSystemHealth")
-    );
+    next(new AppError(error.message, 500, "GetEmailSystemHealth"));
   }
 };
 
-/**
- * 7️⃣ Get Bounce Statistics
- * GET /api/dailyMail/bounce-stats
- */
 export const getBounceStatistics = async (req, res, next) => {
-  console.log("📨 [getBounceStatistics] Request received:", {
-    method: req.method,
-    url: req.url,
-    body: req.body,
-    query: req.query,
-  });
   try {
     const { days = 30 } = req.query;
     const since = dayjs().subtract(parseInt(days), "day").toDate();
 
-    // Get failed emails in the time period
     const failedEmails = await EmailLog.countDocuments({
       emailStatus: "failed",
       createdAt: { $gte: since },
@@ -577,17 +451,12 @@ export const getBounceStatistics = async (req, res, next) => {
       createdAt: { $gte: since },
     });
 
-    console.log("📨 [getBounceStatistics] Response sent:", {
-      days,
-      failedEmails,
-      totalEmails,
-    });
     res.status(200).json({
       success: true,
       stats: {
         totalBounces: failedEmails,
-        hardBounces: 0, // TODO: Implement if tracking bounce types
-        softBounces: 0, // TODO: Implement if tracking bounce types
+        hardBounces: 0,
+        softBounces: 0,
         totalEmails,
         bounceRate:
           totalEmails > 0 ? ((failedEmails / totalEmails) * 100).toFixed(2) : 0,
@@ -596,25 +465,11 @@ export const getBounceStatistics = async (req, res, next) => {
       message: "Bounce statistics retrieved successfully",
     });
   } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(error.message, 500, "GetBounceStatistics")
-    );
+    next(new AppError(error.message, 500, "GetBounceStatistics"));
   }
 };
 
-/**
- * 8️⃣ Get Daily Post Email Report
- * GET /api/dailyMail/daily-post-report
- */
 export const getDailyPostEmailReport = async (req, res, next) => {
-  console.log("📨 [getDailyPostEmailReport] Request received:", {
-    method: req.method,
-    url: req.url,
-    body: req.body,
-    query: req.query,
-  });
   try {
     const {
       page = 1,
@@ -661,12 +516,6 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       };
     }
 
-    console.log("📨 [getDailyPostEmailReport] Response sent:", {
-      total,
-      page,
-      limit,
-      stats,
-    });
     res.status(200).json({
       success: true,
       logs,
@@ -679,26 +528,11 @@ export const getDailyPostEmailReport = async (req, res, next) => {
       message: "Daily post report retrieved successfully",
     });
   } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(error.message, 500, "GetDailyPostEmailReport")
-    );
+    next(new AppError(error.message, 500, "GetDailyPostEmailReport"));
   }
 };
 
-/**
- * 9️⃣ Check User Email Eligibility
- * GET /api/dailyMail/check-user-eligibility/:userId
- */
 export const checkUserEmailEligibility = async (req, res, next) => {
-  console.log("📨 [checkUserEmailEligibility] Request received:", {
-    method: req.method,
-    url: req.url,
-    body: req.body,
-    query: req.query,
-    params: req.params,
-  });
   try {
     const { userId } = req.params;
 
@@ -707,7 +541,6 @@ export const checkUserEmailEligibility = async (req, res, next) => {
     );
 
     if (!user) {
-      console.log("📨 [checkUserEmailEligibility] User not found:", userId);
       throw new AppError("User not found", 404, "CheckUserEmailEligibility");
     }
 
@@ -718,10 +551,6 @@ export const checkUserEmailEligibility = async (req, res, next) => {
       ? "Email attempts stopped"
       : "User is eligible";
 
-    console.log("📨 [checkUserEmailEligibility] Response sent:", {
-      userId,
-      eligible,
-    });
     res.status(200).json({
       success: true,
       userId,
@@ -732,25 +561,11 @@ export const checkUserEmailEligibility = async (req, res, next) => {
       message: "User eligibility checked successfully",
     });
   } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(error.message, 500, "CheckUserEmailEligibility")
-    );
+    next(new AppError(error.message, 500, "CheckUserEmailEligibility"));
   }
 };
 
-/**
- * 🔟 Batch Operations (Check Eligibility)
- * POST /api/dailyMail/batch-operations
- */
 export const batchOperations = async (req, res, next) => {
-  console.log("📨 [batchOperations] Request received:", {
-    method: req.method,
-    url: req.url,
-    body: req.body,
-    query: req.query,
-  });
   try {
     const { operation, data } = req.body;
 
@@ -758,7 +573,6 @@ export const batchOperations = async (req, res, next) => {
       const { userIds } = data;
 
       if (!userIds || !Array.isArray(userIds)) {
-        console.log("📨 [batchOperations] Missing userIds array");
         throw new AppError("userIds array is required", 400, "BatchOperations");
       }
 
@@ -777,7 +591,6 @@ export const batchOperations = async (req, res, next) => {
         ineligible: results.filter((r) => !r.eligible).length,
       };
 
-      console.log("📨 [batchOperations] Response sent:", { summary });
       res.status(200).json({
         success: true,
         summary,
@@ -785,40 +598,23 @@ export const batchOperations = async (req, res, next) => {
         message: "Batch eligibility check completed",
       });
     } else {
-      console.log("📨 [batchOperations] Invalid operation:", operation);
       throw new AppError("Invalid operation", 400, "BatchOperations");
     }
   } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(error.message, 500, "BatchOperations")
-    );
+    next(new AppError(error.message, 500, "BatchOperations"));
   }
 };
 
-/**
- * 1️⃣1️⃣ Remove Email from Suppression List
- * POST /api/dailyMail/remove-suppression
- */
 export const removeEmailSuppression = async (req, res, next) => {
-  console.log("📨 [removeEmailSuppression] Request received:", {
-    method: req.method,
-    url: req.url,
-    body: req.body,
-    query: req.query,
-  });
   try {
     const { email } = req.body;
 
     if (!email) {
-      console.log("📨 [removeEmailSuppression] Missing email");
       throw new AppError("Email is required", 400, "RemoveEmailSuppression");
     }
 
     const user = await UserModel.findOne({ email });
     if (!user) {
-      console.log("📨 [removeEmailSuppression] User not found:", email);
       throw new AppError("User not found", 404, "RemoveEmailSuppression");
     }
 
@@ -828,37 +624,21 @@ export const removeEmailSuppression = async (req, res, next) => {
     user.emailLastError = null;
     await user.save();
 
-    console.log("📨 [removeEmailSuppression] Response sent:", { email });
     res.status(200).json({
       success: true,
       email,
       message: "Email removed from suppression list successfully",
     });
   } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(error.message, 500, "RemoveEmailSuppression")
-    );
+    next(new AppError(error.message, 500, "RemoveEmailSuppression"));
   }
 };
 
-/**
- * 1️⃣2️⃣ Send Test Email
- * POST /api/dailyMail/test-email
- */
 export const sendTestEmail = async (req, res, next) => {
-  console.log("📨 [sendTestEmail] Request received:", {
-    method: req.method,
-    url: req.url,
-    body: req.body,
-    query: req.query,
-  });
   try {
     const { email, type = "test" } = req.body;
 
     if (!email) {
-      console.log("📨 [sendTestEmail] Missing email");
       throw new AppError("Email is required", 400, "SendTestEmail");
     }
 
@@ -870,11 +650,6 @@ export const sendTestEmail = async (req, res, next) => {
       type,
     });
 
-    console.log("📨 [sendTestEmail] Response sent:", {
-      success: result.success,
-      email,
-      type,
-    });
     res.status(200).json({
       success: result.success,
       email,
@@ -886,10 +661,6 @@ export const sendTestEmail = async (req, res, next) => {
       error: result.success ? null : result.error,
     });
   } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(error.message, 500, "SendTestEmail")
-    );
+    next(new AppError(error.message, 500, "SendTestEmail"));
   }
 };
