@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import PostModel from "../../servers/Models/Post.js";
-import { MONGO_URI } from "../../servers/config/dotenv.js";
+import connectDb from "../../servers/config/mongodb.js"; // Import server's connect function
 
 dotenv.config();
 
@@ -17,10 +17,7 @@ const CONFIG = {
   BASE_URL: process.env.BASE_URL || "https://www.readzio.com",
   OUTPUT_DIR: path.resolve(process.cwd(), "clients/dist"),
   SITEMAP_FILENAME: "sitemap.xml",
-  DB_NAME: process.env.DB_NAME || "readziopp",
   BATCH_SIZE: 1000,
-  MAX_RETRIES: 3,
-  RETRY_DELAY: 2000,
 };
 
 // Static routes configuration
@@ -35,48 +32,11 @@ const STATIC_ROUTES = [
   { url: "/post", changefreq: "daily", priority: 0.8 },
 ];
 
-// Utility: Sleep function for retries
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 // Utility: Validate URL slug
 const isValidSlug = (slug) => {
   if (!slug || typeof slug !== "string") return false;
-  // Check for valid URL characters
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
 };
-
-// Utility: Connect to database with retry logic
-async function connectWithRetry(retries = CONFIG.MAX_RETRIES) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      if (mongoose.connection.readyState === 1) {
-        console.log("✅ Already connected to MongoDB");
-        return;
-      }
-
-      await mongoose.connect(MONGO_URI, {
-        dbName: CONFIG.DB_NAME,
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
-      });
-      console.log("✅ Connected to MongoDB successfully");
-      return;
-    } catch (error) {
-      console.error(
-        `❌ MongoDB connection attempt ${i + 1}/${retries} failed:`,
-        error.message
-      );
-      if (i < retries - 1) {
-        console.log(`⏳ Retrying in ${CONFIG.RETRY_DELAY / 1000}s...`);
-        await sleep(CONFIG.RETRY_DELAY);
-      } else {
-        throw new Error(
-          `Failed to connect to MongoDB after ${retries} attempts`
-        );
-      }
-    }
-  }
-}
 
 // Fetch posts in batches to handle large datasets
 async function fetchPostsInBatches() {
@@ -85,13 +45,55 @@ async function fetchPostsInBatches() {
   let hasMore = true;
 
   try {
+    console.log("📚 [Fetch Posts] Starting fetch process...");
+    console.log("📚 [Fetch Posts] Model loaded:", !!PostModel);
+    console.log(
+      "📚 [Fetch Posts] Connection readyState:",
+      mongoose.connection.readyState
+    );
+
+    // Debug: Count all posts without filter
+    const allCount = await PostModel.countDocuments({});
+    console.log(`📊 [Fetch Posts] Total posts (no filter): ${allCount}`);
+
+    // Debug: Sample unpublished posts
+    const sampleUnpublished = await PostModel.find({ isPublished: false })
+      .select("title slug isPublished")
+      .limit(3)
+      .lean();
+    console.log(
+      `📊 [Fetch Posts] Sample unpublished (first 3):`,
+      JSON.stringify(sampleUnpublished, null, 2)
+    );
+
     const totalCount = await PostModel.countDocuments({ isPublished: true });
-    console.log(`📊 Total published posts in database: ${totalCount}`);
+    console.log(
+      `📊 [Fetch Posts] Total published posts (isPublished: true): ${totalCount}`
+    );
+
+    if (totalCount === 0) {
+      console.warn(
+        "⚠️ [Fetch Posts] No published posts! All isPublished=false?"
+      );
+      const publishedSample = await PostModel.find({ isPublished: true })
+        .select("title slug isPublished")
+        .limit(3)
+        .lean();
+      console.log(
+        `📊 [Fetch Posts] Sample published (should be 0):`,
+        JSON.stringify(publishedSample, null, 2)
+      );
+    }
 
     while (hasMore) {
+      console.log(
+        `📦 [Fetch Posts] Fetching batch #${
+          Math.floor(skip / CONFIG.BATCH_SIZE) + 1
+        }, skip: ${skip}`
+      );
       const batch = await PostModel.find(
         { isPublished: true },
-        "slug updatedAt createdAt"
+        "slug updatedAt createdAt title _id" // Added title and _id for debug
       )
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -99,48 +101,93 @@ async function fetchPostsInBatches() {
         .lean()
         .exec();
 
+      console.log(`📦 [Fetch Posts] Batch fetched, length: ${batch.length}`);
+      if (batch.length > 0) {
+        console.log(
+          `📦 [Fetch Posts] Sample batch post:`,
+          JSON.stringify(batch[0], null, 2)
+        );
+      }
+
       if (batch.length === 0) {
         hasMore = false;
+        console.log("📦 [Fetch Posts] No more data, fetch complete");
       } else {
         posts.push(...batch);
         skip += CONFIG.BATCH_SIZE;
-        console.log(`📦 Fetched batch: ${posts.length}/${totalCount} posts`);
+        console.log(
+          `📦 [Fetch Posts] Cumulative fetched: ${posts.length}/${totalCount}`
+        );
       }
     }
 
+    console.log(`📚 [Fetch Posts] Final total fetched: ${posts.length}`);
     return posts;
   } catch (error) {
-    console.error("❌ Error fetching posts:", error.message);
+    console.error(
+      "❌ [Fetch Posts] Error in fetchPostsInBatches:",
+      error.message
+    );
+    console.error("❌ [Fetch Posts] Stack:", error.stack);
     throw error;
   }
 }
 
 // Validate and sanitize posts
 function validatePosts(posts) {
+  console.log(
+    `🔍 [Validate Posts] Starting validation on ${posts.length} fetched posts...`
+  );
+
   const validPosts = [];
   const invalidPosts = [];
 
   posts.forEach((post, index) => {
+    console.log(
+      `🔍 [Validate Posts] Processing post ${index + 1}/${posts.length}: ID=${
+        post._id
+      }, Title="${post.title?.substring(0, 50)}...", Slug="${
+        post.slug
+      }", Published=${post.isPublished}`
+    );
+
     if (!post.slug) {
+      console.warn(
+        `🔍 [Validate Posts] ❌ Missing slug for post ${post._id}:`,
+        JSON.stringify(post, null, 2)
+      );
       invalidPosts.push({ index, reason: "Missing slug", post });
       return;
     }
 
     if (!isValidSlug(post.slug)) {
+      console.warn(
+        `🔍 [Validate Posts] ❌ Invalid slug '${post.slug}' for post ${post._id}:`,
+        JSON.stringify(post, null, 2)
+      );
       invalidPosts.push({ index, reason: "Invalid slug format", post });
       return;
     }
 
+    console.log(`🔍 [Validate Posts] ✅ Valid: ${post.slug}`);
     validPosts.push(post);
   });
 
+  console.log(
+    `🔍 [Validate Posts] Validation done: ${validPosts.length} valid, ${invalidPosts.length} invalid`
+  );
+
   if (invalidPosts.length > 0) {
-    console.warn(`⚠️  Found ${invalidPosts.length} invalid posts:`);
-    invalidPosts.slice(0, 5).forEach((item) => {
-      console.warn(`   - ${item.reason}: ${JSON.stringify(item.post)}`);
+    console.warn(`⚠️ [Validate Posts] Details on first 3 invalid:`);
+    invalidPosts.slice(0, 3).forEach((item) => {
+      console.warn(
+        `   - ${item.reason}: ID=${
+          item.post._id
+        }, Title="${item.post.title?.substring(0, 30)}..."`
+      );
     });
-    if (invalidPosts.length > 5) {
-      console.warn(`   ... and ${invalidPosts.length - 5} more`);
+    if (invalidPosts.length > 3) {
+      console.warn(`   ... and ${invalidPosts.length - 3} more`);
     }
   }
 
@@ -150,21 +197,26 @@ function validatePosts(posts) {
 // Generate sitemap
 async function generateSitemap() {
   const startTime = Date.now();
-  console.log("\n🚀 Starting sitemap generation...");
-  console.log(`📍 Base URL: ${CONFIG.BASE_URL}`);
-  console.log(
-    `📁 Output: ${path.join(CONFIG.OUTPUT_DIR, CONFIG.SITEMAP_FILENAME)}`
-  );
+  console.log("\n🚀 [Sitemap Gen] Starting sitemap generation...");
+  console.log(`📍 [Sitemap Gen] Base URL: ${CONFIG.BASE_URL}`);
+  console.log(`📁 [Sitemap Gen] Output dir: ${CONFIG.OUTPUT_DIR}`);
 
   try {
     // Ensure output directory exists
     if (!existsSync(CONFIG.OUTPUT_DIR)) {
-      console.log(`📁 Creating output directory: ${CONFIG.OUTPUT_DIR}`);
+      console.log(
+        `📁 [Sitemap Gen] Creating output directory: ${CONFIG.OUTPUT_DIR}`
+      );
       mkdirSync(CONFIG.OUTPUT_DIR, { recursive: true });
     }
 
-    // Connect to database
-    await connectWithRetry();
+    // Connect to database using server's method
+    console.log("🔌 [Sitemap Gen] Connecting to DB via connectDb...");
+    await connectDb();
+    console.log(
+      "🔌 [Sitemap Gen] DB connected, readyState:",
+      mongoose.connection.readyState
+    );
 
     // Initialize sitemap stream
     const outputPath = path.join(CONFIG.OUTPUT_DIR, CONFIG.SITEMAP_FILENAME);
@@ -182,7 +234,7 @@ async function generateSitemap() {
     sitemap.pipe(writeStream);
 
     // Add static routes
-    console.log("\n📝 Adding static routes...");
+    console.log("\n📝 [Sitemap Gen] Adding static routes...");
     let totalWritten = 0;
     STATIC_ROUTES.forEach((route) => {
       const entry = {
@@ -194,19 +246,20 @@ async function generateSitemap() {
       console.log(`   ${success ? "✓" : "✗ (skipped)"} ${entry.url}`);
       if (success) totalWritten++;
     });
+    console.log(`📝 [Sitemap Gen] Static routes added: ${totalWritten}`);
 
     // Fetch and validate posts
-    console.log("\n📚 Fetching posts from database...");
+    console.log("\n📚 [Sitemap Gen] Fetching and validating posts...");
     const posts = await fetchPostsInBatches();
     const { validPosts, invalidPosts } = validatePosts(posts);
 
-    console.log(`\n✅ Valid posts: ${validPosts.length}`);
-    console.log(`❌ Invalid posts: ${invalidPosts.length}`);
+    console.log(`\n✅ [Sitemap Gen] Valid posts ready: ${validPosts.length}`);
+    console.log(`❌ [Sitemap Gen] Invalid posts: ${invalidPosts.length}`);
 
     let postWritten = 0;
     // Add post URLs
     if (validPosts.length > 0) {
-      console.log("\n📝 Adding post URLs...");
+      console.log("\n📝 [Sitemap Gen] Adding post URLs to sitemap...");
       validPosts.forEach((post, index) => {
         const entry = {
           url: `${CONFIG.BASE_URL}/post/${post.slug}`,
@@ -215,39 +268,48 @@ async function generateSitemap() {
           lastmod: (post.updatedAt || post.createdAt)?.toISOString(),
         };
         const success = sitemap.write(entry);
-        if (success) postWritten++;
-        if (!success) {
+        if (success) {
+          postWritten++;
+          if (index < 3) console.log(`   ✓ Added first few: ${entry.url}`);
+        } else {
           console.log(`   ✗ Skipped post: ${entry.url}`);
         }
 
         // Log progress every 100 posts
         if ((index + 1) % 100 === 0) {
-          console.log(`   ✓ Added ${index + 1}/${validPosts.length} posts`);
+          console.log(
+            `   📈 Progress: ${index + 1}/${validPosts.length} posts added`
+          );
         }
       });
-      console.log(`   ✓ Added all ${validPosts.length} posts`);
+      console.log(
+        `   ✓ [Sitemap Gen] All ${validPosts.length} post URLs processed, ${postWritten} written`
+      );
     } else {
-      console.warn("⚠️  No valid posts found to add to sitemap");
+      console.warn("⚠️ [Sitemap Gen] No valid posts found to add to sitemap");
     }
     totalWritten += postWritten;
 
     if (totalWritten === 0) {
-      console.warn("⚠️  No entries written to sitemap");
+      console.warn(
+        "⚠️ [Sitemap Gen] No entries written, adding homepage fallback"
+      );
       const success = sitemap.write({ url: `${CONFIG.BASE_URL}/` });
       if (success) totalWritten = 1;
     }
 
     // Finalize sitemap
+    console.log("📄 [Sitemap Gen] Finalizing sitemap stream...");
     sitemap.end();
 
     // Wait for the write stream to finish
     await new Promise((resolve, reject) => {
       writeStream.on("finish", () => {
-        console.log("📝 Sitemap stream finished writing");
+        console.log("📝 [Sitemap Gen] Sitemap stream finished writing");
         resolve();
       });
       writeStream.on("error", (err) => {
-        console.error("❌ Write stream error:", err);
+        console.error("❌ [Sitemap Gen] Write stream error:", err);
         reject(err);
       });
     });
@@ -260,15 +322,16 @@ async function generateSitemap() {
     const stats = await import("fs/promises").then((fs) => fs.stat(outputPath));
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
-    console.log("\n✅ Sitemap generated successfully!");
-    console.log(`📊 Statistics:`);
+    console.log("\n✅ [Sitemap Gen] Sitemap generated successfully!");
+    console.log(`📊 [Sitemap Gen] Final Statistics:`);
     console.log(`   - Total URLs: ${totalWritten}`);
     console.log(`   - Static routes: ${STATIC_ROUTES.length}`);
-    console.log(`   - Post URLs: ${validPosts.length}`);
-    console.log(`   - Invalid posts: ${invalidPosts.length}`);
+    console.log(
+      `   - Post URLs added: ${postWritten} (valid: ${validPosts.length}, invalid: ${invalidPosts.length})`
+    );
     console.log(`   - File size: ${(stats.size / 1024).toFixed(2)} KB`);
     console.log(`   - Generation time: ${duration}s`);
-    console.log(`   - Output: ${outputPath}`);
+    console.log(`   - Output path: ${outputPath}`);
 
     return {
       success: true,
@@ -283,14 +346,14 @@ async function generateSitemap() {
       },
     };
   } catch (error) {
-    console.error("\n❌ Sitemap generation failed:", error.message);
+    console.error("\n❌ [Sitemap Gen] Generation failed:", error.message);
     console.error("Stack trace:", error.stack);
     throw error;
   } finally {
     // Always close database connection
     if (mongoose.connection.readyState === 1) {
       await mongoose.connection.close();
-      console.log("🔌 Database connection closed");
+      console.log("🔌 [Sitemap Gen] Database connection closed");
     }
   }
 }
@@ -299,11 +362,12 @@ async function generateSitemap() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   generateSitemap()
     .then((result) => {
-      console.log("\n🎉 Process completed successfully");
+      console.log("\n🎉 [Sitemap Gen] Process completed successfully");
       process.exit(0);
     })
     .catch((error) => {
-      console.error("\n💥 Process failed:", error.message);
+      console.error("\n💥 [Sitemap Gen] Process failed:", error.message);
+      console.error("Full error:", error);
       process.exit(1);
     });
 }
