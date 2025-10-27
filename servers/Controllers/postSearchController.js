@@ -30,16 +30,25 @@ const validateObjectId = (id, type = "ID") => {
 /**
  * @desc Search posts by title or tags
  */
+/**
+ * @desc Search posts with strict matching - only near-exact matches
+ */
 export const searchPosts = async (req, res, next) => {
   try {
     logMemory("Before searchPosts start");
-    const userId = req.user?._id?.toString(); // May be undefined for guests
+    const userId = req.user?._id?.toString();
     const { query } = req.query;
-    const cacheKey = `searchPosts:${query || "none"}`;
 
-    if (!query) {
-      throw new AppError("Query parameter required", 400, "searchPosts");
+    if (!query || query.trim().length < 2) {
+      throw new AppError(
+        "Query parameter required (min 2 characters)",
+        400,
+        "searchPosts"
+      );
     }
+
+    const trimmedQuery = query.trim();
+    const cacheKey = `searchPosts:${trimmedQuery}`;
 
     logMemory(`Before checking cache: ${cacheKey}`);
     const cachedPosts = cache.get(cacheKey);
@@ -52,11 +61,20 @@ export const searchPosts = async (req, res, next) => {
       });
     }
 
-    const regex = new RegExp(query, "i");
+    // Create strict regex - escape special characters and use word boundaries
+    const escapedQuery = trimmedQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const strictRegex = new RegExp(`\\b${escapedQuery}`, "i");
+
+    // Also create exact phrase match for multi-word queries
+    const phraseRegex = new RegExp(escapedQuery, "i");
 
     logMemory("Before PostModel.find");
     const posts = await PostModel.find({
-      $or: [{ title: regex }, { tags: regex }],
+      $or: [
+        { title: phraseRegex },
+        { tags: strictRegex },
+        { excerpt: phraseRegex },
+      ],
       isPublished: true,
       blocked: false,
     })
@@ -67,29 +85,83 @@ export const searchPosts = async (req, res, next) => {
       .populate("author", "name avatar")
       .lean();
 
-    logMemory("Before processing posts");
-    const processedPosts = posts.map((post) => ({
-      ...post,
-      blocks: Array.isArray(post.blocks) ? post.blocks : [],
-    }));
+    logMemory("Before processing and scoring posts");
+
+    // Score and filter posts for strict matching
+    const queryLower = trimmedQuery.toLowerCase();
+    const scoredPosts = posts
+      .map((post) => {
+        const title = (post.title || "").toLowerCase();
+        const excerpt = (post.excerpt || "").toLowerCase();
+        const tags = (post.tags || []).map((tag) => tag.toLowerCase());
+
+        let score = 0;
+
+        // STRICT MATCHING SCORING:
+
+        // 1. Exact title match (highest priority)
+        if (title === queryLower) {
+          score = 10000;
+        }
+        // 2. Title starts with query (very high priority)
+        else if (title.startsWith(queryLower)) {
+          score = 5000;
+        }
+        // 3. Title contains exact phrase (high priority)
+        else if (title.includes(queryLower)) {
+          // Earlier position = higher score
+          const position = title.indexOf(queryLower);
+          score = 3000 - position;
+        }
+        // 4. Exact tag match
+        else if (tags.some((tag) => tag === queryLower)) {
+          score = 4000;
+        }
+        // 5. Tag starts with query
+        else if (tags.some((tag) => tag.startsWith(queryLower))) {
+          score = 2000;
+        }
+        // 6. Excerpt contains exact phrase (lower priority)
+        else if (excerpt.includes(queryLower)) {
+          score = 500;
+        }
+
+        // Only return posts with meaningful matches
+        if (score > 0) {
+          return {
+            ...post,
+            blocks: Array.isArray(post.blocks) ? post.blocks : [],
+            _searchScore: score,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b._searchScore - a._searchScore)
+      .slice(0, 10) // Limit to top 10 most relevant results
+      .map((post) => {
+        // Remove internal search score before sending
+        const { _searchScore, ...postWithoutScore } = post;
+        return postWithoutScore;
+      });
 
     logMemory(`Before setting cache: ${cacheKey}`);
-    cache.set(cacheKey, processedPosts);
+    cache.set(cacheKey, scoredPosts);
 
     if (userId) {
       logMemory("Before recordActivity");
       await recordActivity({
         userId,
         action: "SEARCHED_POSTS",
-        message: `Searched posts with query: ${query}`,
+        message: `Searched posts with query: ${trimmedQuery}`,
       });
     }
 
     logMemory("After searchPosts complete");
     res.status(200).json({
       success: true,
-      results: processedPosts.length,
-      posts: processedPosts,
+      results: scoredPosts.length,
+      posts: scoredPosts,
     });
   } catch (error) {
     next(

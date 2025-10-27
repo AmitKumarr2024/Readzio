@@ -37,15 +37,51 @@ const SearchInput = ({
       setShowDropdown(true);
     } else if (trimmed.length === 0) {
       dispatch(clearSearchedUsers());
-      if (searchedUsers.length === 0 && searchPosts.length === 0) {
-        setShowDropdown(false);
-      }
+      setShowDropdown(false);
     }
   }, 300);
 
+  // STRICT FILTERING: Only show near-exact matches in dropdown
+  const strictFilteredPosts = searchPosts
+    .filter((post) => {
+      const queryLower = searchTerm.trim().toLowerCase();
+      if (!queryLower || queryLower.length < 2) return false;
+
+      const title = (post.title || "").toLowerCase();
+      const tags = (post.tags || []).map((tag) => tag.toLowerCase());
+
+      // Only show if:
+      // 1. Title contains exact query
+      // 2. Title starts with query
+      // 3. Exact tag match
+      return (
+        title.includes(queryLower) ||
+        title.startsWith(queryLower) ||
+        tags.includes(queryLower)
+      );
+    })
+    .slice(0, 5); // Limit to top 5 posts
+
+  const strictFilteredUsers = searchedUsers
+    .filter((user) => {
+      const queryLower = searchTerm.trim().toLowerCase();
+      if (!queryLower || queryLower.length < 2) return false;
+
+      const name = (user.name || "").toLowerCase();
+      const email = (user.email || "").toLowerCase();
+
+      // Only show if name or email starts with or contains exact query
+      return (
+        name.includes(queryLower) ||
+        email.includes(queryLower) ||
+        name.startsWith(queryLower)
+      );
+    })
+    .slice(0, 3); // Limit to top 3 users
+
   const allResults = [
-    ...searchedUsers.map((user) => ({ type: "user", data: user })),
-    ...searchPosts.map((post) => ({ type: "post", data: post })),
+    ...strictFilteredUsers.map((user) => ({ type: "user", data: user })),
+    ...strictFilteredPosts.map((post) => ({ type: "post", data: post })),
   ];
 
   const handleInputChange = (e) => {
@@ -153,10 +189,14 @@ const SearchInput = ({
   const isLoading = searchLoading || userLoading;
 
   useEffect(() => {
-    if (!isLoading && searchedUsers.length === 0 && searchPosts.length === 0) {
+    if (
+      !isLoading &&
+      allResults.length === 0 &&
+      searchTerm.trim().length >= 2
+    ) {
       setShowDropdown(false);
     }
-  }, [isLoading, searchedUsers, searchPosts]);
+  }, [isLoading, allResults.length, searchTerm]);
 
   return (
     <div
@@ -167,12 +207,12 @@ const SearchInput = ({
         <input
           ref={inputRef}
           type="search"
-          placeholder="Search articles, users, or topics..."
+          placeholder="Search for exact titles, users, or tags..."
           className="w-full px-5 py-4 pr-24 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 shadow-sm hover:shadow-md"
           value={searchTerm}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          aria-label="Search articles, users, or topics"
+          aria-label="Search for exact matches"
           aria-expanded={showDropdown}
           aria-autocomplete="list"
           aria-activedescendant={
@@ -201,6 +241,7 @@ const SearchInput = ({
 
         <button
           onClick={handleSearch}
+          disabled={searchTerm.trim().length < 2}
           className="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white p-2.5 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
           aria-label="Search"
           type="button"
@@ -209,113 +250,118 @@ const SearchInput = ({
         </button>
       </div>
 
-      {showDropdown &&
-        (searchedUsers.length > 0 || searchPosts.length > 0 || isLoading) && (
-          <div className="absolute z-50 mt-2 w-full max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl">
-            {isLoading ? (
-              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                <FiLoader className="inline text-lg animate-spin mr-2" />
-                Searching...
-              </div>
-            ) : searchError ? (
-              <div className="p-4 text-center text-red-500 dark:text-red-400">
-                Error: {searchError}
-              </div>
-            ) : allResults.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                No results found for "{searchTerm}"
-              </div>
-            ) : (
-              <div className="py-2">
-                {searchedUsers.length > 0 && (
+      {showDropdown && allResults.length > 0 && (
+        <div className="absolute z-50 mt-2 w-full max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl">
+          {isLoading ? (
+            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+              <FiLoader className="inline text-lg animate-spin mr-2" />
+              Searching for exact matches...
+            </div>
+          ) : searchError ? (
+            <div className="p-4 text-center text-red-500 dark:text-red-400">
+              Error: {searchError}
+            </div>
+          ) : (
+            <div className="py-2">
+              {strictFilteredUsers.length > 0 && (
+                <>
                   <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
-                    Users
+                    Users ({strictFilteredUsers.length})
                   </div>
-                )}
-
-                {searchedUsers.map((user, index) => {
-                  const globalIndex = index;
-                  return (
-                    <button
-                      key={user._id}
-                      id={`search-result-${globalIndex}`}
-                      onClick={() => handleSelectUser(user._id)}
-                      className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors duration-150 focus:outline-none ${
-                        selectedIndex === globalIndex
-                          ? "bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
-                          : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      }`}
-                    >
-                      <div className="flex-shrink-0">
-                        {user.avatar ? (
-                          <img
-                            src={user.avatar}
-                            alt={`${user.name || "User"} avatar`}
-                            className="w-10 h-10 rounded-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-semibold">
-                            {(() => {
-                              const name = user.name || "";
-                              const parts = name.trim().split(" ");
-                              if (parts.length >= 2)
-                                return parts[0][0] + parts[1][0];
-                              if (parts.length === 1) return parts[0][0];
-                              return (user.email?.[0] || "U").toUpperCase();
-                            })()}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <FiUser className="text-sm flex-shrink-0" />
-                          <p className="font-medium truncate">{user.name}</p>
+                  {strictFilteredUsers.map((user, index) => {
+                    const globalIndex = index;
+                    return (
+                      <button
+                        key={user._id}
+                        id={`search-result-${globalIndex}`}
+                        onClick={() => handleSelectUser(user._id)}
+                        className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors duration-150 focus:outline-none ${
+                          selectedIndex === globalIndex
+                            ? "bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
+                            : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        }`}
+                      >
+                        <div className="flex-shrink-0">
+                          {user.avatar ? (
+                            <img
+                              src={user.avatar}
+                              alt={`${user.name || "User"} avatar`}
+                              className="w-10 h-10 rounded-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-semibold">
+                              {(() => {
+                                const name = user.name || "";
+                                const parts = name.trim().split(" ");
+                                if (parts.length >= 2)
+                                  return parts[0][0] + parts[1][0];
+                                if (parts.length === 1) return parts[0][0];
+                                return (user.email?.[0] || "U").toUpperCase();
+                              })()}
+                            </div>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                          {user.email}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500">
-                          {user.totalPosts || 0} posts
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
-
-                {searchPosts.length > 0 && (
-                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
-                    Posts
-                  </div>
-                )}
-
-                {searchPosts.map((post, index) => {
-                  const globalIndex = searchedUsers.length + index;
-                  return (
-                    <button
-                      key={post._id}
-                      id={`search-result-${globalIndex}`}
-                      onClick={() => handleSelectPost(post.slug)}
-                      className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors duration-150 focus:outline-none ${
-                        selectedIndex === globalIndex
-                          ? "bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
-                          : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      }`}
-                    >
-                      <FiFileText className="text-lg text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{post.title}</p>
-                        {post.category && (
-                          <p className="text-xs text-gray-500 dark:text-gray-500">
-                            {post.category}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <FiUser className="text-sm flex-shrink-0" />
+                            <p className="font-medium truncate">{user.name}</p>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                            {user.email}
                           </p>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+
+              {strictFilteredPosts.length > 0 && (
+                <>
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                    Posts ({strictFilteredPosts.length})
+                  </div>
+                  {strictFilteredPosts.map((post, index) => {
+                    const globalIndex = strictFilteredUsers.length + index;
+                    return (
+                      <button
+                        key={post._id}
+                        id={`search-result-${globalIndex}`}
+                        onClick={() => handleSelectPost(post.slug)}
+                        className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors duration-150 focus:outline-none ${
+                          selectedIndex === globalIndex
+                            ? "bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
+                            : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        }`}
+                      >
+                        <FiFileText className="text-lg text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{post.title}</p>
+                          {post.category && (
+                            <p className="text-xs text-gray-500 dark:text-gray-500">
+                              {post.category}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {searchTerm.trim().length >= 2 &&
+        !isLoading &&
+        allResults.length === 0 &&
+        showDropdown && (
+          <div className="absolute z-50 mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl p-4">
+            <p className="text-center text-gray-500 dark:text-gray-400">
+              No exact matches found. Press Enter to see all results.
+            </p>
           </div>
         )}
     </div>
