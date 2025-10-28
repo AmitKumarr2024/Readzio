@@ -25,7 +25,11 @@ import { toast } from "react-hot-toast";
 const PlaylistList = ({ userId, isOwnProfile = false }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { playlists, status, error } = useSelector((state) => state.playlist);
+  const {
+    playlists = [],
+    status = "idle",
+    error = null,
+  } = useSelector((state) => state.playlist || {});
   const { isConnected } = useSelector((state) => state.socket || {});
   const [deletingId, setDeletingId] = useState(null);
 
