@@ -35,7 +35,9 @@ const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
+  const playlistsCount = useSelector(
+    (state) => state.playlist?.playlists?.length || 0
+  );
   const {
     isAuthenticated,
     user: authUser,
@@ -340,6 +342,23 @@ const Navbar = () => {
                           onClick={toggleDropdown}
                         >
                           Create Playlist
+                        </Link>
+                        <Link
+                          to="/profile/playlists"
+                          className="flex items-center gap-2 text-sm sm:text-base font-medium"
+                        >
+                          <FaList className="w-4 h-4" />
+                          <motion.span
+                            key={playlistsCount}
+                            variants={countVariants}
+                            initial="initial"
+                            animate="animate"
+                            exit="exit"
+                            className="font-semibold"
+                          >
+                            {playlistsCount}
+                          </motion.span>
+                          <span className="hidden sm:inline">Playlists</span>
                         </Link>
                         <Link
                           to="/user-setting"
