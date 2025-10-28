@@ -14,6 +14,7 @@ import { clearUser, getUser, trackUserIPLocation } from "../store/userSlice";
 import ThemeToggleButton from "../layout/ThemeToggleButton";
 import { disconnectSocket, initializeSocket } from "../store/socketSlice";
 import { trackGuestVisit } from "../store/guestSlice";
+import { FaList } from "react-icons/fa";
 
 const countVariants = {
   initial: { opacity: 0, y: 10 },
