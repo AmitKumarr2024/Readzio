@@ -5,8 +5,6 @@ import PublicOnlyRoute from "../connection/PublicOnlyRoute";
 import withSuspense from "../Utils/withSuspense";
 import ErrorFallback from "../components/ErrorFallback";
 
-
-
 // 🧠 Utility for safe lazy imports with fallback error handler
 const safeLazy = (importFn) =>
   withSuspense(
@@ -61,6 +59,10 @@ const VerifyEmail = safeLazy(() =>
   import("../components/resetPassword/VerifyEmail")
 );
 const TagWisePage = safeLazy(() => import("../pages/TagWisePage"));
+const PlaylistCreatePage = safeLazy(() =>
+  import("../pages/PlaylistCreatePage")
+);
+const PlaylistPage = safeLazy(() => import("../pages/PlaylistPage"));
 
 // ✅ Route definition
 const routes = createBrowserRouter([
@@ -91,7 +93,8 @@ const routes = createBrowserRouter([
       { path: "contact", element: <Contact /> },
       { path: "privacy", element: <PrivacyPage /> },
       { path: "terms-conditions", element: <TermsAndConditionPage /> },
-      
+      { path: "playlists/create", element: <PlaylistCreatePage /> },
+      { path: "playlist/:id", element: <PlaylistPage /> },
     ],
   },
   {
