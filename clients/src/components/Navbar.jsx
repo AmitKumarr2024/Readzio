@@ -335,6 +335,13 @@ const Navbar = () => {
                           Profile
                         </Link>
                         <Link
+                          to="/playlists/create"
+                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                          onClick={toggleDropdown}
+                        >
+                          Create Playlist
+                        </Link>
+                        <Link
                           to="/user-setting"
                           className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
                           onClick={toggleDropdown}
@@ -454,6 +461,13 @@ const Navbar = () => {
                   className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
                 >
                   Profile
+                </Link>
+                <Link
+                  to="/playlists/create"
+                  onClick={toggleMobileMenu}
+                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                >
+                  Create Playlist
                 </Link>
                 <Link
                   to="/user-setting"
