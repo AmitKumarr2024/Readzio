@@ -18,7 +18,6 @@ import {
   clearPlaylists,
 } from "../../store/playlistSlice";
 import { toast } from "react-hot-toast";
-import { usePlaylistSocket } from "../../hooks/usePlaylistSocket";
 
 /**
  * Component to display list of user's playlists
@@ -27,7 +26,7 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { playlists, status, error } = useSelector((state) => state.playlist);
-  const { isConnected } = usePlaylistSocket();
+  const { isConnected } = useSelector((state) => state.socket || {});
   const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-// clients/src/components/Playlist/PlaylistCreate.jsx
+// Updated clients/src/components/Playlist/PlaylistCreate.jsx
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";

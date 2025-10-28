@@ -1,3 +1,4 @@
+// Updated router file
 import { createBrowserRouter } from "react-router-dom";
 import React, { lazy } from "react";
 import App from "../App";
@@ -63,6 +64,7 @@ const PlaylistCreatePage = safeLazy(() =>
   import("../pages/PlaylistCreatePage")
 );
 const PlaylistPage = safeLazy(() => import("../pages/PlaylistPage"));
+const UserPlaylistsPage = safeLazy(() => import("../pages/UserPlaylistsPage"));
 
 // ✅ Route definition
 const routes = createBrowserRouter([
@@ -81,6 +83,7 @@ const routes = createBrowserRouter([
       { path: "admin", element: <Dashboard /> },
       { path: "about", element: <AboutPage /> },
       { path: "user", element: <UserProfilePage /> },
+      { path: "profile/playlists", element: <UserPlaylistsPage /> },
       { path: "user-setting", element: <UserSettingsPage /> },
       { path: "author-profile/:id", element: <AuthorProfilePage /> },
       { path: "plans/:id", element: <UserPlanPage /> },
