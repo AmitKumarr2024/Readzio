@@ -2,6 +2,7 @@ import React from "react";
 import LikeButton from "../LikeButton";
 import ShareButton from "../ShareButton";
 import BookmarkButton from "../BookmarkButton";
+import PlaylistButton from "../../Playlist/PlaylistButton";
 
 const EngagementButtons = ({ post }) => {
   if (!post?._id) {
@@ -10,9 +11,7 @@ const EngagementButtons = ({ post }) => {
   }
 
   const postId = post._id;
-  const postUrl = `https://readzio.com/post/${
-    post.slug || postId
-  }`;
+  const postUrl = `https://readzio.com/post/${post.slug || postId}`;
 
   return (
     <div className="flex items-center gap-4 my-10 bg-background-light dark:bg-background-dark rounded-2xl p-4 shadow-xl border border-gray-300 dark:border-gray-700">
@@ -28,6 +27,11 @@ const EngagementButtons = ({ post }) => {
       <BookmarkButton
         postId={postId}
         className="p-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-full hover:shadow-lg transition-all duration-200"
+      />
+      <PlaylistButton
+        postId={postId}
+        post={post}
+        className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-full hover:shadow-lg transition-all duration-200 flex items-center gap-2"
       />
     </div>
   );
