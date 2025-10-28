@@ -21,29 +21,78 @@ const TabbedPostSection = ({
   onTabChange,
 }) => {
   const [activeTab, setActiveTab] = useState("All Posts");
-  const { postCounts } = useSelector(selectSocketState);
   const isAuthenticated = !!user;
 
-  // console.log("🔍 TabbedPostSection Props:", {
-  //   userExists: !!user,
-  //   userId: user?._id || user?.id,
-  //   postsCount: posts.length,
-  //   activeTab,
-  //   samplePost: posts[0],
-  // });
+  // Get socket post counts for real-time updates
+  const { postCounts } = useSelector(selectSocketState);
+
+  // Get Redux post state as fallback
+  const reduxPosts = useSelector((state) => state.post.posts || []);
+  const reduxFollowingPosts = useSelector(
+    (state) => state.post.followingPosts || []
+  );
+
+  // Calculate My Posts count with real-time accuracy
+  const myPostsCount = useMemo(() => {
+    // If myPosts prop is provided, use its length
+    if (myPosts.length > 0) return myPosts.length;
+
+    const userId = user?._id || user?.id;
+    if (!userId) return 0;
+
+    // Use socket count if available, otherwise calculate from posts
+    if (
+      postCounts?.myPostsCount !== undefined &&
+      postCounts.myPostsCount !== null
+    ) {
+      return postCounts.myPostsCount;
+    }
+
+    // Fallback: calculate from posts array
+    const allPosts = posts.length > 0 ? posts : reduxPosts;
+    return allPosts.filter((post) => {
+      return (
+        post.author === userId ||
+        post.author?.toString() === userId ||
+        (typeof post.author === "object" && post.author._id === userId) ||
+        post.userId === userId ||
+        post.createdBy === userId
+      );
+    }).length;
+  }, [posts, myPosts, user, postCounts?.myPostsCount, reduxPosts]);
 
   const tabs = isAuthenticated
     ? ["All Posts", "Following", "My Posts"]
     : ["All Posts"];
 
+  // Get tab count with real-time socket updates
   const getTabCount = (tab) => {
     switch (tab) {
       case "All Posts":
-        return formatNumber(postCounts?.allPostsCount || 0);
+        // Priority: socket count > props length > redux length
+        if (
+          postCounts?.allPostsCount !== undefined &&
+          postCounts.allPostsCount !== null
+        ) {
+          return formatNumber(postCounts.allPostsCount);
+        }
+        return formatNumber(posts.length || reduxPosts.length || 0);
+
       case "Following":
-        return formatNumber(postCounts?.followingPostsCount || 0);
+        // Priority: socket count > props length > redux length
+        if (
+          postCounts?.followingPostsCount !== undefined &&
+          postCounts.followingPostsCount !== null
+        ) {
+          return formatNumber(postCounts.followingPostsCount);
+        }
+        return formatNumber(
+          followingPosts.length || reduxFollowingPosts.length || 0
+        );
+
       case "My Posts":
-        return formatNumber(postCounts?.myPostsCount || 0);
+        return formatNumber(myPostsCount);
+
       default:
         return "0";
     }
@@ -51,84 +100,63 @@ const TabbedPostSection = ({
 
   // Filter posts based on active tab
   const filteredPosts = useMemo(() => {
-    // console.log("🎯 Filtering posts for tab:", activeTab);
-    // console.log("📊 Filter data:", {
-    //   totalPosts: posts.length,
-    //   userId: user?._id || user?.id,
-    //   sampleAuthor: posts[0]?.author,
-    // });
-
+    const allPosts = posts.length > 0 ? posts : reduxPosts;
     switch (activeTab) {
       case "All Posts":
-        // console.log("✅ All Posts tab - returning", posts.length, "posts");
-        return posts;
+        return allPosts;
 
       case "Following":
         if (followingPosts.length > 0) {
-          // console.log(
-          //   "✅ Using provided followingPosts:",
-          //   followingPosts.length
-          // );
           return followingPosts;
         }
 
-        const followingFiltered = posts.filter(
+        if (reduxFollowingPosts.length > 0) {
+          return reduxFollowingPosts;
+        }
+
+        // Fallback: filter from all posts
+        return allPosts.filter(
           (post) =>
             post.isFromFollowing ||
             (post.author &&
               typeof post.author === "object" &&
               post.author.isFollowed)
         );
-        // console.log("✅ Filtered following posts:", followingFiltered.length);
-        return followingFiltered;
 
       case "My Posts":
         if (myPosts.length > 0) {
-          // console.log("✅ Using provided myPosts:", myPosts.length);
           return myPosts;
         }
 
-        // Get user ID - could be _id or id
         const userId = user?._id || user?.id;
+        if (!userId) return [];
 
-        if (!userId) {
-          // console.log("❌ No user ID found");
-          return [];
-        }
-
-        const userPosts = posts.filter((post) => {
-          // post.author is ObjectId string like "688b8843e0d57e5fe48dc49c"
-          const isMyPost =
-            post.author === userId || // Direct string match
-            post.author?.toString() === userId || // Convert to string
-            (typeof post.author === "object" && post.author._id === userId) || // If populated
-            post.userId === userId || // Alternative field
-            post.createdBy === userId; // Alternative field
-
-          // if (isMyPost) {
-          //   console.log("✅ Found my post:", {
-          //     title: post.title,
-          //     postAuthor: post.author,
-          //     userId: userId,
-          //   });
-          // }
-
-          return isMyPost;
+        return allPosts.filter((post) => {
+          return (
+            post.author === userId ||
+            post.author?.toString() === userId ||
+            (typeof post.author === "object" && post.author._id === userId) ||
+            post.userId === userId ||
+            post.createdBy === userId
+          );
         });
 
-        // console.log("✅ My posts filtered result:", userPosts.length);
-        return userPosts;
-
       default:
-        return posts;
+        return allPosts;
     }
-  }, [activeTab, posts, followingPosts, myPosts, user?._id, user?.id]);
+  }, [
+    activeTab,
+    posts,
+    followingPosts,
+    myPosts,
+    user,
+    reduxPosts,
+    reduxFollowingPosts,
+  ]);
 
   // Handle tab change
   const handleTabChange = (tab) => {
-    // console.log("🔄 Changing tab to:", tab);
     setActiveTab(tab);
-
     if (onTabChange) {
       onTabChange(tab);
     }
