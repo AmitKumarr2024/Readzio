@@ -11,6 +11,7 @@ import SearchInput from "./SearchBar/SearchInput";
 import NotificationDropdown from "./Notification/NotificationDropdown";
 import { checkAuth, logout } from "../store/authSlice";
 import { clearUser, getUser, trackUserIPLocation } from "../store/userSlice";
+import { fetchUserPlaylists } from "../store/playlistSlice";
 import ThemeToggleButton from "../layout/ThemeToggleButton";
 import { disconnectSocket, initializeSocket } from "../store/socketSlice";
 import { trackGuestVisit } from "../store/guestSlice";
@@ -101,6 +102,9 @@ const Navbar = () => {
     if (isAuthenticated && authUser?._id) {
       dispatch(initializeSocket()).catch((err) =>
         console.error("Socket init failed:", err)
+      );
+      dispatch(fetchUserPlaylists(authUser._id)).catch((err) =>
+        console.error("Fetch playlists failed:", err)
       );
       return () => dispatch(disconnectSocket());
     }
@@ -382,15 +386,6 @@ const Navbar = () => {
                         >
                           Contact Us
                         </Link>
-                        {role === "admin" && (
-                          <Link
-                            to="/admin"
-                            className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 text-violet-800 hover:text-violet-600"
-                            onClick={toggleDropdown}
-                          >
-                            Admin Panel
-                          </Link>
-                        )}
                         <Link
                           to="/about"
                           className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"

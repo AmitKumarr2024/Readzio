@@ -1,5 +1,5 @@
 // clients/src/components/Playlist/PlaylistDetail.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
@@ -10,6 +10,7 @@ import {
   FaSpinner,
   FaGlobe,
   FaLock,
+  FaPlus,
 } from "react-icons/fa";
 import { fetchPlaylistById, deletePlaylist } from "../../store/playlistSlice";
 import { toast } from "react-hot-toast";
@@ -26,9 +27,41 @@ const PlaylistDetail = ({ playlistId }) => {
     useSelector((state) => state.playlist);
   const { user } = useSelector((state) => state.auth);
   const { isConnected } = useSelector((state) => state.socket || {});
+  const {
+    posts,
+    publicPosts,
+    followingPosts,
+    latestPosts,
+    trendingPosts,
+    searchPosts,
+  } = useSelector((state) => state.post);
   const [deleting, setDeleting] = useState(false);
 
   const actualId = playlistId || id;
+
+  const allPosts = useMemo(
+    () => [
+      ...posts,
+      ...publicPosts,
+      ...followingPosts,
+      ...latestPosts,
+      ...trendingPosts,
+      ...searchPosts,
+    ],
+    [
+      posts,
+      publicPosts,
+      followingPosts,
+      latestPosts,
+      trendingPosts,
+      searchPosts,
+    ]
+  );
+
+  const postMap = useMemo(
+    () => new Map(allPosts.map((p) => [p._id, p])),
+    [allPosts]
+  );
 
   useEffect(() => {
     if (actualId) {
@@ -104,7 +137,7 @@ const PlaylistDetail = ({ playlistId }) => {
     );
   }
 
-  const isOwner = user?._id === currentPlaylist.owner?._id;
+  const isOwner = user?._id === currentPlaylist.user?._id;
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
@@ -147,66 +180,80 @@ const PlaylistDetail = ({ playlistId }) => {
             </div>
           </div>
         </div>
-        {isOwner && (
-          <div className="flex gap-2">
-            <button
-              onClick={handleEdit}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              <FaEdit />
-              Edit
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-            >
-              {deleting ? <FaSpinner className="animate-spin" /> : <FaTrash />}
-              Delete
-            </button>
-          </div>
-        )}
-        <button
-          onClick={handleShare}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
-        >
-          <FaShare />
-          Share
-        </button>
+        <div className="flex gap-2">
+          {isOwner && (
+            <>
+              <button
+                onClick={handleEdit}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <FaEdit />
+                Edit
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? (
+                  <FaSpinner className="animate-spin" />
+                ) : (
+                  <FaTrash />
+                )}
+                Delete
+              </button>
+            </>
+          )}
+          <button
+            onClick={handleShare}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+          >
+            <FaShare />
+            Share
+          </button>
+        </div>
       </div>
 
       {/* Posts Grid */}
       {currentPlaylist.posts && currentPlaylist.posts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {currentPlaylist.posts.map((post) => (
-            <div
-              key={post._id}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700"
-            >
-              <img
-                src={post.coverImage || "/default-cover.jpg"}
-                alt={post.title}
-                className="w-full h-48 object-cover"
-              />
-              <div className="p-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
-                  {post.title}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                  {post.excerpt}
-                </p>
-                <div className="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-                  <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-                  <Link
-                    to={`/post/${post.slug || post._id}`}
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    Read →
-                  </Link>
+          {currentPlaylist.posts.map((post) => {
+            const fullPost = postMap.get(post._id);
+            const postSlug = fullPost?.slug || post._id;
+            return (
+              <div
+                key={post._id}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700"
+              >
+                <img
+                  src={
+                    post.coverImage ||
+                    fullPost?.coverImage ||
+                    "/default-cover.jpg"
+                  }
+                  alt={post.title}
+                  className="w-full h-48 object-cover"
+                />
+                <div className="p-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                    {post.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                    {post.excerpt || fullPost?.excerpt}
+                  </p>
+                  <div className="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+                    <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                    <Link
+                      to={`/post/${postSlug}`}
+                      className="text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Read →
+                    </Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-12">
@@ -219,11 +266,11 @@ const PlaylistDetail = ({ playlistId }) => {
           </p>
           {isOwner && (
             <button
-              onClick={() => navigate("/posts")}
+              onClick={() => navigate("/search")}
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <FaPlus />
-              Find Postss
+              Find Posts
             </button>
           )}
         </div>
