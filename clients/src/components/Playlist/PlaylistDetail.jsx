@@ -37,6 +37,8 @@ const PlaylistDetail = ({ playlistId }) => {
   } = useSelector((state) => state.post);
   const [deleting, setDeleting] = useState(false);
 
+  console.log("posts....", posts);
+
   const actualId = playlistId || id;
 
   const allPosts = useMemo(
