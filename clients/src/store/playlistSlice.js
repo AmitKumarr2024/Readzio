@@ -960,6 +960,7 @@ const playlistSlice = createSlice({
         state.createStatus = "succeeded";
         state.playlists.unshift(action.payload);
         state.error = null;
+        state.lastFetch = new Date().toISOString();
         console.log(
           "[playlistSlice] Added to playlists, new length:",
           state.playlists.length
@@ -975,23 +976,29 @@ const playlistSlice = createSlice({
       })
 
       // Add To Playlist
+      .addCase(addToPlaylist.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
       .addCase(addToPlaylist.fulfilled, (state, action) => {
         const updatedPlaylist = action.payload;
-        console.log("[playlistSlice] addToPlaylist.fulfilled:", {
-          playlistId: updatedPlaylist?._id,
-        });
+        if (!updatedPlaylist?._id) return;
         const index = state.playlists.findIndex(
           (p) => p._id === updatedPlaylist._id
         );
-        console.log("[playlistSlice] Found index:", index);
-        if (index !== -1) {
-          state.playlists[index] = updatedPlaylist;
-          console.log("[playlistSlice] Updated playlists array");
-        }
+        if (index !== -1)
+          state.playlists[index] = {
+            ...state.playlists[index],
+            ...updatedPlaylist,
+          };
         if (state.currentPlaylist?._id === updatedPlaylist._id) {
-          state.currentPlaylist = updatedPlaylist;
-          console.log("[playlistSlice] Updated current playlist");
+          state.currentPlaylist = {
+            ...state.currentPlaylist,
+            ...updatedPlaylist,
+          };
         }
+        state.status = "succeeded";
+        state.error = null;
       })
       .addCase(addToPlaylist.rejected, (state, action) => {
         console.error(
@@ -999,26 +1006,36 @@ const playlistSlice = createSlice({
           action.payload
         );
         state.error = action.payload;
+        state.status = "failed";
       })
 
       // Remove From Playlist
+      .addCase(removeFromPlaylist.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
       .addCase(removeFromPlaylist.fulfilled, (state, action) => {
         const updatedPlaylist = action.payload;
         console.log("[playlistSlice] removeFromPlaylist.fulfilled:", {
           playlistId: updatedPlaylist?._id,
         });
+        if (!updatedPlaylist?._id) return;
         const index = state.playlists.findIndex(
           (p) => p._id === updatedPlaylist._id
         );
-        console.log("[playlistSlice] Found index:", index);
-        if (index !== -1) {
-          state.playlists[index] = updatedPlaylist;
-          console.log("[playlistSlice] Updated playlists array");
-        }
+        if (index !== -1)
+          state.playlists[index] = {
+            ...state.playlists[index],
+            ...updatedPlaylist,
+          };
         if (state.currentPlaylist?._id === updatedPlaylist._id) {
-          state.currentPlaylist = updatedPlaylist;
-          console.log("[playlistSlice] Updated current playlist");
+          state.currentPlaylist = {
+            ...state.currentPlaylist,
+            ...updatedPlaylist,
+          };
         }
+        state.status = "succeeded";
+        state.error = null;
       })
       .addCase(removeFromPlaylist.rejected, (state, action) => {
         console.error(
@@ -1026,6 +1043,7 @@ const playlistSlice = createSlice({
           action.payload
         );
         state.error = action.payload;
+        state.status = "failed";
       })
 
       // Update Playlist
@@ -1055,6 +1073,7 @@ const playlistSlice = createSlice({
           console.log("[playlistSlice] Updated current playlist");
         }
         state.error = null;
+        state.lastFetch = new Date().toISOString();
       })
       .addCase(updatePlaylist.rejected, (state, action) => {
         console.error(
@@ -1090,6 +1109,7 @@ const playlistSlice = createSlice({
           console.log("[playlistSlice] Cleared current playlist");
         }
         state.error = null;
+        state.lastFetch = new Date().toISOString();
       })
       .addCase(deletePlaylist.rejected, (state, action) => {
         console.error(
@@ -1101,23 +1121,32 @@ const playlistSlice = createSlice({
       })
 
       // Reorder Playlist Posts
+      .addCase(reorderPlaylistPosts.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
       .addCase(reorderPlaylistPosts.fulfilled, (state, action) => {
         const updatedPlaylist = action.payload;
         console.log("[playlistSlice] reorderPlaylistPosts.fulfilled:", {
           playlistId: updatedPlaylist?._id,
         });
+        if (!updatedPlaylist?._id) return;
         const index = state.playlists.findIndex(
           (p) => p._id === updatedPlaylist._id
         );
-        console.log("[playlistSlice] Found index:", index);
-        if (index !== -1) {
-          state.playlists[index] = updatedPlaylist;
-          console.log("[playlistSlice] Updated playlists array");
-        }
+        if (index !== -1)
+          state.playlists[index] = {
+            ...state.playlists[index],
+            ...updatedPlaylist,
+          };
         if (state.currentPlaylist?._id === updatedPlaylist._id) {
-          state.currentPlaylist = updatedPlaylist;
-          console.log("[playlistSlice] Updated current playlist");
+          state.currentPlaylist = {
+            ...state.currentPlaylist,
+            ...updatedPlaylist,
+          };
         }
+        state.status = "succeeded";
+        state.error = null;
       })
       .addCase(reorderPlaylistPosts.rejected, (state, action) => {
         console.error(
@@ -1125,6 +1154,7 @@ const playlistSlice = createSlice({
           action.payload
         );
         state.error = action.payload;
+        state.status = "failed";
       });
   },
 });
