@@ -65,6 +65,7 @@ const PlaylistCreatePage = safeLazy(() =>
 );
 const PlaylistPage = safeLazy(() => import("../pages/PlaylistPage"));
 const UserPlaylistsPage = safeLazy(() => import("../pages/UserPlaylistsPage"));
+const PlaylistEditPage = safeLazy(() => import("../pages/PlaylistEditPage"));
 
 // ✅ Route definition
 const routes = createBrowserRouter([
@@ -98,6 +99,7 @@ const routes = createBrowserRouter([
       { path: "terms-conditions", element: <TermsAndConditionPage /> },
       { path: "playlists/create", element: <PlaylistCreatePage /> },
       { path: "playlist/:id", element: <PlaylistPage /> },
+      { path: "playlist/:id/edit", element: <PlaylistEditPage /> },
     ],
   },
   {
