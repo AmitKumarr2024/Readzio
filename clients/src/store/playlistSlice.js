@@ -98,8 +98,16 @@ export const fetchPlaylistById = createAsyncThunk(
         throw error;
       }
 
-      console.log("[fetchPlaylistById] Success, returning:", response.data);
-      return response.data;
+      // ✅ FIX: unwrap actual playlist object
+      const result = response.data?.data || null;
+      if (!result) {
+        const error = new Error("No playlist data received");
+        console.error("[fetchPlaylistById] No data error:", error.message);
+        throw error;
+      }
+
+      console.log("[fetchPlaylistById] Success, returning:", result);
+      return result;
     } catch (error) {
       console.error("[fetchPlaylistById] Error:", {
         message: error.message,
