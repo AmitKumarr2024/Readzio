@@ -5,6 +5,7 @@ import App from "../App";
 import PublicOnlyRoute from "../connection/PublicOnlyRoute";
 import withSuspense from "../Utils/withSuspense";
 import ErrorFallback from "../components/ErrorFallback";
+import AdminRoute from "./AdminRoute";
 
 // 🧠 Utility for safe lazy imports with fallback error handler
 const safeLazy = (importFn) =>
