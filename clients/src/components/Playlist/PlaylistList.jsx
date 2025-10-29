@@ -254,7 +254,7 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 mx-10 pt-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -401,7 +401,7 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
                   <span
                     className="text-white text-lg font-bold opacity-0 
                              group-hover:opacity-100 transition-all duration-300
-                             transform translate-y-4 group-hover:translate-y-0
+                             transform translate-y-2 group-hover:translate-y-0
                              drop-shadow-lg"
                   >
                     View Playlist
@@ -417,7 +417,7 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
                                text-xs font-medium shadow-lg border border-gray-700
                                hover:scale-105 transition-transform"
                     >
-                      <FaLock className="animate-pulse-subtle" />
+                      <FaLock className="animate-pulse-subtle text-blue-700" />
                       Private
                     </div>
                   ) : (
