@@ -28,6 +28,9 @@ export const fetchUserPlaylists = createAsyncThunk(
         timeout: 30000,
         withCredentials: true,
       });
+
+      console.log("[fetchUserPlaylists] data", response);
+
       console.log("[fetchUserPlaylists] API response:", {
         status: response.status,
         dataLength: response.data?.length,
