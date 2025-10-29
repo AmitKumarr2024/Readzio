@@ -8,7 +8,9 @@ const UserPlaylistsPage = () => {
   const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
+    console.log("[UserPlaylistsPage] User from Redux:", user);
     if (!user) {
+      console.warn("[UserPlaylistsPage] No user found, redirecting...");
       navigate("/login");
     }
   }, [user, navigate]);
@@ -17,6 +19,7 @@ const UserPlaylistsPage = () => {
     return null;
   }
 
+  console.log("[UserPlaylistsPage] Rendering PlaylistList for user:", user._id);
   return <PlaylistList userId={user._id} isOwnProfile={true} />;
 };
 
