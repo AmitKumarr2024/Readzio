@@ -341,7 +341,15 @@ const Navbar = () => {
                         >
                           Profile
                         </Link>
-
+                        {role === "admin" && (
+                          <Link
+                            to="/admin"
+                            onClick={toggleMobileMenu}
+                            className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                          >
+                            Admin Panel
+                          </Link>
+                        )}
                         <Link
                           to="/profile/playlists"
                           className="flex justify-evenly items-center gap-2 text-sm sm:text-base font-medium"

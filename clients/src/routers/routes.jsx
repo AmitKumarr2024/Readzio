@@ -65,7 +65,6 @@ const PlaylistCreatePage = safeLazy(() =>
 );
 const PlaylistPage = safeLazy(() => import("../pages/PlaylistPage"));
 const UserPlaylistsPage = safeLazy(() => import("../pages/UserPlaylistsPage"));
-const PlaylistEditPage = safeLazy(() => import("../pages/PlaylistEditPage"));
 
 // ✅ Route definition
 const routes = createBrowserRouter([
@@ -81,9 +80,9 @@ const routes = createBrowserRouter([
       { path: "category/:category", element: <CategoryWisePage /> },
       { path: "post/:slug", element: <DisplayPost /> },
       { path: "search", element: <SearchPage /> },
-      { path: "admin", element: <Dashboard /> },
       { path: "about", element: <AboutPage /> },
       { path: "user", element: <UserProfilePage /> },
+      { path: "profile/playlists", element: <UserPlaylistsPage /> },
       { path: "user-setting", element: <UserSettingsPage /> },
       { path: "author-profile/:id", element: <AuthorProfilePage /> },
       { path: "plans/:id", element: <UserPlanPage /> },
@@ -96,12 +95,20 @@ const routes = createBrowserRouter([
       { path: "contact", element: <Contact /> },
       { path: "privacy", element: <PrivacyPage /> },
       { path: "terms-conditions", element: <TermsAndConditionPage /> },
-      { path: "profile/playlists", element: <UserPlaylistsPage /> },
       { path: "playlists/create", element: <PlaylistCreatePage /> },
       { path: "playlist/:id", element: <PlaylistPage /> },
-      { path: "playlist/:id/edit", element: <PlaylistEditPage /> },
+      {
+        path: "admin",
+        element: (
+          <AdminRoute>
+            <Dashboard />
+          </AdminRoute>
+        ),
+      },
     ],
   },
+
+  ,
   {
     path: "/signup",
     element: (
