@@ -346,6 +346,7 @@ const Navbar = () => {
                           to="/profile/playlists"
                           className="flex justify-evenly items-center gap-2 text-sm sm:text-base font-medium"
                         >
+                          <span className="hidden sm:inline">Playlists</span>
                           <motion.span
                             key={playlistsCount}
                             variants={countVariants}
@@ -356,7 +357,6 @@ const Navbar = () => {
                           >
                             {playlistsCount}
                           </motion.span>
-                          <span className="hidden sm:inline">Playlists</span>
                         </Link>
                         <Link
                           to="/user-setting"

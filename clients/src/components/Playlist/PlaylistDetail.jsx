@@ -144,7 +144,7 @@ const PlaylistDetail = ({ playlistId }) => {
   const isOwner = user?._id === currentPlaylist.user?._id;
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
+    <div className="max-w-7xl mx-auto py-8 px-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
