@@ -1,7 +1,7 @@
 // clients/src/components/Playlist/PlaylistDetail.jsx
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   FaList,
   FaEdit,
