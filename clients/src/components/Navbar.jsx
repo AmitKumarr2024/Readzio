@@ -341,16 +341,10 @@ const Navbar = () => {
                         >
                           Profile
                         </Link>
-                        <Link
-                          to="/playlists/create"
-                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                          onClick={toggleDropdown}
-                        >
-                          Create Playlist
-                        </Link>
+
                         <Link
                           to="/profile/playlists"
-                          className="flex items-center gap-2 text-sm sm:text-base font-medium"
+                          className="flex justify-evenly items-center gap-2 text-sm sm:text-base font-medium"
                         >
                           <FaList className="w-4 h-4" />
                           <motion.span
