@@ -14,37 +14,24 @@ export const fetchUserPlaylists = createAsyncThunk(
   async (userId, { rejectWithValue }) => {
     console.log("[fetchUserPlaylists] Start:", { userId });
     try {
-      if (!userId) {
-        const error = new Error("User ID is required");
-        console.error("[fetchUserPlaylists] Validation error:", error.message);
-        throw error;
-      }
-      console.log(
-        "[fetchUserPlaylists] Making API request for userId:",
-        userId
-      );
+      if (!userId) throw new Error("User ID is required");
 
       const response = await axiosInstance.get(`/playlists/user/${userId}`, {
         timeout: 30000,
         withCredentials: true,
       });
 
-      console.log("[fetchUserPlaylists] data", response);
+      console.log("[fetchUserPlaylists] Full API response:", response.data);
 
-      console.log("[fetchUserPlaylists] API response:", {
-        status: response.status,
-        dataLength: response.data?.length,
-      });
+      // ✅ FIX: unwrap actual playlists array
+      const result = Array.isArray(response.data?.data)
+        ? response.data?.data
+        : [];
 
-      if (!response.data) {
-        console.warn("[fetchUserPlaylists] No data in response");
-        return [];
-      }
-
-      const result = Array.isArray(response.data) ? response.data : [];
       console.log("[fetchUserPlaylists] Success, returning:", {
         count: result.length,
       });
+
       return result;
     } catch (error) {
       console.error("[fetchUserPlaylists] Error:", {
