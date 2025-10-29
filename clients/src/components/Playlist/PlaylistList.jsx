@@ -19,6 +19,97 @@ import {
 } from "../../store/playlistSlice";
 import { toast } from "react-hot-toast";
 
+// Inject CSS animations for performance
+const styleSheet = document.createElement("style");
+styleSheet.textContent = `
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -30px) scale(1.1); }
+    66% { transform: translate(-20px, 20px) scale(0.9); }
+  }
+  
+  @keyframes float-delayed {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(-25px, 25px) scale(1.05); }
+    66% { transform: translate(20px, -20px) scale(0.95); }
+  }
+  
+  @keyframes float-slow {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(15px, -15px) scale(1.08); }
+  }
+  
+  @keyframes wave {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-25%); }
+  }
+  
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.05); }
+  }
+  
+  @keyframes pulse-subtle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  
+  @keyframes bounce-subtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  .animate-float {
+    animation: float 8s ease-in-out infinite;
+  }
+  
+  .animate-float-delayed {
+    animation: float-delayed 10s ease-in-out infinite;
+  }
+  
+  .animate-float-slow {
+    animation: float-slow 12s ease-in-out infinite;
+  }
+  
+  .animate-wave {
+    animation: wave 6s ease-in-out infinite;
+  }
+  
+  .animate-shimmer {
+    animation: shimmer 1.5s ease-in-out;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse-slow 3s ease-in-out infinite;
+  }
+  
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s ease-in-out infinite;
+  }
+  
+  .animate-bounce-subtle {
+    animation: bounce-subtle 3s ease-in-out infinite;
+  }
+  
+  .animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+  }
+`;
+if (!document.head.querySelector("style[data-playlist-animations]")) {
+  styleSheet.setAttribute("data-playlist-animations", "true");
+  document.head.appendChild(styleSheet);
+}
+
 /**
  * Component to display list of user's playlists
  */
@@ -194,7 +285,10 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
       </div>
 
       {/* Playlists Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 
+                      gap-6 sm:gap-8"
+      >
         {playlists.map((playlist) => {
           console.log("[PlaylistList] Rendering playlist:", {
             id: playlist._id,
@@ -204,104 +298,195 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
           return (
             <div
               key={playlist._id}
-              className="group relative bg-white dark:bg-gray-800 rounded-xl 
-                       shadow-md hover:shadow-lg transition-all duration-200 
-                       overflow-hidden border border-gray-200 dark:border-gray-700"
+              className="group relative bg-gradient-to-br from-white to-gray-50 
+                       dark:from-gray-800 dark:to-gray-900 rounded-2xl 
+                       shadow-lg hover:shadow-2xl transition-all duration-300 
+                       overflow-hidden border border-gray-100 dark:border-gray-700
+                       hover:scale-[1.02] hover:-translate-y-1"
             >
-              {/* Cover Image or Placeholder */}
+              {/* Animated Gradient Background */}
               <div
                 onClick={() => handlePlaylistClick(playlist._id)}
-                className="relative h-48 bg-gradient-to-br from-blue-500 to-purple-600 
-                         cursor-pointer overflow-hidden"
+                className="relative h-56 cursor-pointer overflow-hidden"
+                style={{
+                  background: `linear-gradient(135deg, 
+                    hsl(${
+                      (playlist._id.charCodeAt(0) * 137.5) % 360
+                    }, 70%, 60%), 
+                    hsl(${
+                      (playlist._id.charCodeAt(1) * 137.5) % 360
+                    }, 65%, 55%), 
+                    hsl(${
+                      (playlist._id.charCodeAt(2) * 137.5) % 360
+                    }, 75%, 50%))`,
+                }}
               >
-                {playlist.coverImage ? (
-                  <img
-                    src={playlist.coverImage}
-                    alt={playlist.name}
-                    className="w-full h-full object-cover group-hover:scale-105 
-                             transition-transform duration-300"
+                {/* Animated Orbs */}
+                <div className="absolute inset-0 overflow-hidden">
+                  <div
+                    className="absolute w-64 h-64 rounded-full blur-3xl opacity-40 
+                               animate-float"
+                    style={{
+                      background: `radial-gradient(circle, rgba(255,255,255,0.8), transparent)`,
+                      top: "-20%",
+                      left: "-10%",
+                      animationDelay: "0s",
+                    }}
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <FaList className="text-6xl text-white opacity-50" />
+                  <div
+                    className="absolute w-48 h-48 rounded-full blur-2xl opacity-30 
+                               animate-float-delayed"
+                    style={{
+                      background: `radial-gradient(circle, rgba(255,255,255,0.6), transparent)`,
+                      bottom: "-15%",
+                      right: "-5%",
+                      animationDelay: "1s",
+                    }}
+                  />
+                  <div
+                    className="absolute w-56 h-56 rounded-full blur-3xl opacity-25 
+                               animate-float-slow"
+                    style={{
+                      background: `radial-gradient(circle, rgba(255,255,255,0.5), transparent)`,
+                      top: "40%",
+                      right: "30%",
+                      animationDelay: "2s",
+                    }}
+                  />
+                </div>
+
+                {/* Animated Wave Pattern */}
+                <div className="absolute inset-0 opacity-20">
+                  <svg
+                    className="w-full h-full animate-wave"
+                    viewBox="0 0 1200 600"
+                    preserveAspectRatio="none"
+                  >
+                    <path
+                      d="M0,300 Q300,200 600,300 T1200,300 L1200,600 L0,600 Z"
+                      fill="rgba(255,255,255,0.3)"
+                    />
+                  </svg>
+                </div>
+
+                {/* Playlist Icon with Pulse */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="relative">
+                    <div
+                      className="absolute inset-0 bg-white rounded-full blur-xl 
+                                  opacity-30 animate-pulse-slow"
+                    />
+                    <FaList
+                      className="relative text-7xl text-white opacity-90 
+                                     drop-shadow-2xl animate-bounce-subtle"
+                    />
                   </div>
-                )}
+                </div>
+
+                {/* Shimmer Effect on Hover */}
+                <div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent 
+                            via-white to-transparent opacity-0 group-hover:opacity-20 
+                            transition-opacity duration-500 -translate-x-full 
+                            group-hover:translate-x-full group-hover:animate-shimmer"
+                />
 
                 {/* Overlay on Hover */}
                 <div
                   className="absolute inset-0 bg-black bg-opacity-0 
-                            group-hover:bg-opacity-30 transition-all duration-200 
-                            flex items-center justify-center"
+                            group-hover:bg-opacity-40 transition-all duration-300 
+                            flex items-center justify-center backdrop-blur-0
+                            group-hover:backdrop-blur-sm"
                 >
                   <span
-                    className="text-white font-semibold opacity-0 
-                             group-hover:opacity-100 transition-opacity"
+                    className="text-white text-lg font-bold opacity-0 
+                             group-hover:opacity-100 transition-all duration-300
+                             transform translate-y-4 group-hover:translate-y-0
+                             drop-shadow-lg"
                   >
                     View Playlist
                   </span>
                 </div>
 
-                {/* Privacy Badge */}
-                <div className="absolute top-3 right-3">
+                {/* Privacy Badge with Glow */}
+                <div className="absolute top-3 right-3 z-10">
                   {playlist.isPrivate ? (
                     <div
-                      className="flex items-center gap-1 px-2 py-1 rounded-full 
-                               bg-gray-900 bg-opacity-75 text-white text-xs"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full 
+                               bg-gray-900 bg-opacity-90 backdrop-blur-md text-white 
+                               text-xs font-medium shadow-lg border border-gray-700
+                               hover:scale-105 transition-transform"
                     >
-                      <FaLock />
+                      <FaLock className="animate-pulse-subtle" />
                       Private
                     </div>
                   ) : (
                     <div
-                      className="flex items-center gap-1 px-2 py-1 rounded-full 
-                               bg-green-500 bg-opacity-75 text-white text-xs"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full 
+                               bg-green-500 bg-opacity-90 backdrop-blur-md text-white 
+                               text-xs font-medium shadow-lg border border-green-400
+                               hover:scale-105 transition-transform"
                     >
-                      <FaGlobe />
+                      <FaGlobe className="animate-spin-slow" />
                       Public
                     </div>
                   )}
                 </div>
+
+                {/* Post Count Badge */}
+                <div className="absolute bottom-3 left-3 z-10">
+                  <div
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full 
+                             bg-white bg-opacity-90 backdrop-blur-md 
+                             text-gray-800 text-xs font-semibold shadow-lg
+                             hover:scale-105 transition-transform"
+                  >
+                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                    {playlist.posts?.length || 0}{" "}
+                    {playlist.posts?.length === 1 ? "post" : "posts"}
+                  </div>
+                </div>
               </div>
 
               {/* Content */}
-              <div className="p-4">
+              <div className="p-5 bg-white dark:bg-gray-800">
                 <h3
                   onClick={() => handlePlaylistClick(playlist._id)}
-                  className="text-lg font-semibold text-gray-900 dark:text-white 
-                           mb-1 truncate cursor-pointer hover:text-blue-600 
-                           dark:hover:text-blue-400 transition-colors"
+                  className="text-xl font-bold text-gray-900 dark:text-white 
+                           mb-2 truncate cursor-pointer hover:text-blue-600 
+                           dark:hover:text-blue-400 transition-colors
+                           group-hover:translate-x-1 duration-300"
                 >
                   {playlist.name}
                 </h3>
 
                 {playlist.description && (
                   <p
-                    className="text-sm text-gray-600 dark:text-gray-400 mb-3 
-                              line-clamp-2"
+                    className="text-sm text-gray-600 dark:text-gray-400 mb-4 
+                              line-clamp-2 leading-relaxed"
                   >
                     {playlist.description}
                   </p>
                 )}
 
                 <div
-                  className="flex items-center justify-between text-sm 
-                              text-gray-500 dark:text-gray-400"
+                  className="flex items-center justify-between text-xs 
+                              text-gray-500 dark:text-gray-400 mb-4"
                 >
-                  <span>
-                    {playlist.posts?.length || 0}{" "}
-                    {playlist.posts?.length === 1 ? "post" : "posts"}
-                  </span>
-                  <span>
-                    {new Date(playlist.createdAt).toLocaleDateString()}
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    Created{" "}
+                    {new Date(playlist.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </span>
                 </div>
 
                 {/* Action Buttons (Only for Own Playlists) */}
                 {isOwnProfile && (
-                  <div
-                    className="flex gap-2 mt-4 pt-4 border-t border-gray-200 
-                                dark:border-gray-700"
-                  >
+                  <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
                     <button
                       onClick={() => {
                         console.log(
@@ -310,10 +495,14 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
                         );
                         navigate(`/playlist/${playlist._id}/edit`);
                       }}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 
-                               rounded-lg bg-gray-100 dark:bg-gray-700 
-                               hover:bg-gray-200 dark:hover:bg-gray-600 
-                               text-gray-700 dark:text-gray-300 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 
+                               rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 
+                               dark:from-blue-900/20 dark:to-indigo-900/20
+                               hover:from-blue-100 hover:to-indigo-100
+                               dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30
+                               text-blue-700 dark:text-blue-400 transition-all
+                               font-medium shadow-sm hover:shadow-md
+                               hover:scale-105 duration-200"
                     >
                       <FaEdit />
                       Edit
@@ -323,11 +512,16 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
                         handleDeletePlaylist(playlist._id, playlist.name)
                       }
                       disabled={deletingId === playlist._id}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 
-                               rounded-lg bg-red-100 dark:bg-red-900/30 
-                               hover:bg-red-200 dark:hover:bg-red-900/50 
-                               text-red-700 dark:text-red-400 transition-colors
-                               disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 
+                               rounded-xl bg-gradient-to-r from-red-50 to-pink-50
+                               dark:from-red-900/20 dark:to-pink-900/20
+                               hover:from-red-100 hover:to-pink-100
+                               dark:hover:from-red-900/30 dark:hover:to-pink-900/30
+                               text-red-700 dark:text-red-400 transition-all
+                               font-medium shadow-sm hover:shadow-md
+                               hover:scale-105 duration-200
+                               disabled:opacity-50 disabled:cursor-not-allowed 
+                               disabled:hover:scale-100"
                     >
                       {deletingId === playlist._id ? (
                         <FaSpinner className="animate-spin" />

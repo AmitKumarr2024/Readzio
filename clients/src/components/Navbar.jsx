@@ -346,7 +346,6 @@ const Navbar = () => {
                           to="/profile/playlists"
                           className="flex justify-evenly items-center gap-2 text-sm sm:text-base font-medium"
                         >
-                          <FaList className="w-4 h-4" />
                           <motion.span
                             key={playlistsCount}
                             variants={countVariants}
