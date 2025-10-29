@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 import { fetchPlaylistById, deletePlaylist } from "../../store/playlistSlice";
 import { toast } from "react-hot-toast";
+import CardOfPost from "../../components/Cards/CardOfPost";
 
 /**
  * Component to display details of a single playlist
