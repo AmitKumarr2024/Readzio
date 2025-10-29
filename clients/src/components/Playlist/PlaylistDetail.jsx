@@ -11,6 +11,7 @@ import {
   FaGlobe,
   FaLock,
   FaPlus,
+  FaArrowLeft,
 } from "react-icons/fa";
 import { fetchPlaylistById, deletePlaylist } from "../../store/playlistSlice";
 import { toast } from "react-hot-toast";
@@ -147,6 +148,13 @@ const PlaylistDetail = ({ playlistId }) => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/user/playlists")}
+            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            aria-label="Back to playlists"
+          >
+            <FaArrowLeft className="text-xl" />
+          </button>
           <div className="relative h-16 w-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
             <FaList className="text-2xl text-white" />
           </div>

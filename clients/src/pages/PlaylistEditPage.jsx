@@ -2,10 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchPlaylistById,
-  updatePlaylist,
-} from "../../src/store/playlistSlice";
+import { fetchPlaylistById, updatePlaylist } from "../../src/store/playlistSlice";
 import { toast } from "react-hot-toast";
 import { FaSpinner } from "react-icons/fa";
 
@@ -151,11 +148,11 @@ const PlaylistEditPage = () => {
         </div>
         <div className="flex gap-2">
           <button
-            type="button"
-            onClick={() => navigate("/profile/playlists")}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+            type="submit"
+            disabled={submitLoading}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
-            Back
+            {submitLoading ? <FaSpinner className="animate-spin" /> : "Update"}
           </button>
           <button
             type="button"
@@ -163,13 +160,6 @@ const PlaylistEditPage = () => {
             className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
           >
             Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={submitLoading}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-          >
-            {submitLoading ? <FaSpinner className="animate-spin" /> : "Update"}
           </button>
         </div>
       </form>
