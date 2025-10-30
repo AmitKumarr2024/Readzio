@@ -53,14 +53,11 @@ const CLIENT_PATH = path.join(__dirname, "clients", "dist");
 const CLIENT_INDEX_PATH = path.join(CLIENT_PATH, "index.html");
 const PUBLIC_PATH = path.join(__dirname, "servers", "public");
 
-const ALLOWED_ORIGINS =
-  NODE_ENV === "production"
-    ? ["https://readzio.com", "https://www.readzio.com"]
-    : [
-        /^http:\/\/localhost:\d+$/,
-        /^http:\/\/127\.0\.0\.1:\d+$/,
-        /^http:\/\/0\.0\.0\.0:\d+$/,
-      ];
+const ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "https://readzio.com",
+  "https://www.readzio.com",
+];
 
 const REQUIRED_ENV = ["MONGO_URI", "JWT_SECRET", "CLIENT_URL"];
 
@@ -139,33 +136,18 @@ app.use(
 );
 
 // CORS
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       if (!origin) return callback(null, true);
-//       if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-//       callback(new Error("Not allowed by CORS policy"), false);
-//     },
-//     credentials: true,
-//   })
-// );
-
-// Body parsing
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      const allowed = ALLOWED_ORIGINS.some((pattern) =>
-        pattern instanceof RegExp ? pattern.test(origin) : pattern === origin
-      );
-      if (allowed) return callback(null, true);
-      console.error("❌ Blocked CORS:", origin);
-      callback(new Error("Not allowed by CORS"));
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+      callback(new Error("Not allowed by CORS policy"), false);
     },
     credentials: true,
   })
 );
 
+// Body parsing
 app.use(
   express.json({
     limit: "50mb",
