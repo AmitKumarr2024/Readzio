@@ -250,16 +250,11 @@ const Navbar = () => {
             {/* Logo with Country Flag */}
             <div className="relative flex flex-col items-center">
               {/* Country Name - Positioned Above Logo */}
-              {userLocation?.country && userLocation.country !== "Unknown" && (
-                <motion.div
-                  initial={{ opacity: 0, y: -5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  className="absolute -top-5 text-[10px] font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap"
-                >
-                  {userLocation.country.toUpperCase()}
-                </motion.div>
-              )}
+              <div className="absolute -top-4 -right-3 text-sm text-gray-600 dark:text-gray-300">
+                {userLocation?.country && userLocation.country !== "Unknown"
+                  ? userLocation.country.toUpperCase()
+                  : " "}
+              </div>
 
               <Logo />
 
