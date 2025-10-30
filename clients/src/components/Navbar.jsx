@@ -112,8 +112,8 @@ const Navbar = () => {
   const userId = useMemo(() => authUser?._id, [authUser?._id]);
 
   const userLocation = useMemo(
-    () => userLocations.list.find((loc) => loc.userId === authUser?._id),
-    [userLocations.list, authUser?._id]
+    () => userLocations?.list?.find((loc) => loc.userId === authUser?._id),
+    [userLocations?.list, authUser?._id]
   );
 
   const shouldHideCategory = useMemo(
@@ -248,21 +248,36 @@ const Navbar = () => {
           {/* Left Section */}
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Logo with Country Flag */}
-            <div className="relative flex items-center">
-              <Logo />
-              {userLocation?.countryCode && (
+            <div className="relative flex flex-col items-center">
+              {/* Country Name - Positioned Above Logo */}
+              {userLocation?.country && userLocation.country !== "Unknown" && (
                 <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className="absolute -top-5 text-[10px] font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap"
+                >
+                  {userLocation.country.toUpperCase()}
+                </motion.div>
+              )}
+
+              <Logo />
+
+              {/* Country Flag - Positioned at Bottom Right of Logo */}
+              {userLocation?.countryCode && (
+                <motion.img
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  className="absolute -top-2 -right-2 flex items-center gap-1"
-                >
-                  <img
-                    src={`https://flagcdn.com/24x18/${userLocation.countryCode.toLowerCase()}.png`}
-                    alt={userLocation.country}
-                    className="w-6 h-4 object-cover rounded-sm shadow-md border-2 border-white dark:border-gray-800"
-                  />
-                </motion.div>
+                  transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 20,
+                    delay: 0.1,
+                  }}
+                  src={`https://flagcdn.com/24x18/${userLocation.countryCode.toLowerCase()}.png`}
+                  alt={userLocation.country}
+                  className="absolute -bottom-1 -right-2 w-5 h-4 object-cover rounded-sm shadow-lg border-2 border-white dark:border-gray-800"
+                />
               )}
             </div>
 
@@ -380,31 +395,8 @@ const Navbar = () => {
               </Link>
             )}
 
-            {/* Write Button with Animated Border */}
-            <motion.div
-              className="hidden md:block relative group"
-              whileHover="hover"
-            >
-              <motion.div
-                variants={{
-                  hover: {
-                    background: [
-                      "conic-gradient(from 0deg, #ff0000, #ff9900, #33cc33, #3399ff, #cc33cc, #ff0000)",
-                      "conic-gradient(from 360deg, #ff0000, #ff9900, #33cc33, #3399ff, #cc33cc, #ff0000)",
-                    ],
-                  },
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "linear",
-                }}
-                className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 blur-sm transition-opacity"
-                style={{
-                  background:
-                    "conic-gradient(from 0deg, #ff0000, #ff9900, #33cc33, #3399ff, #cc33cc, #ff0000)",
-                }}
-              />
+            {/* Write Button with Original Animated Border */}
+            <div className="relative rounded-full border-4 border-transparent [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,conic-gradient(from_var(--border-angle),#ff0000,#ff9900,#33cc33,#3399ff,#cc33cc,#ff0000)_border-box] animate-border hidden md:inline-block">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -415,12 +407,12 @@ const Navbar = () => {
                     navigate("/login");
                   }
                 }}
-                className="relative px-4 py-2 text-sm font-semibold flex items-center gap-2 bg-gradient-to-r from-slate-800 to-slate-900 rounded-full text-white shadow-lg hover:shadow-xl transition-shadow border-2 border-transparent group-hover:border-white/20"
+                className="px-4 py-2 text-sm font-medium flex items-center gap-2 bg-slate-800 rounded-full text-white"
               >
                 <TfiWrite size={16} />
                 <span>Write</span>
               </motion.button>
-            </motion.div>
+            </div>
 
             {isAuthenticated && authUser?._id ? (
               <>
@@ -637,27 +629,7 @@ const Navbar = () => {
             <div className="px-4 py-4 space-y-1">
               {/* Mobile Write Button */}
               <motion.div variants={menuItemVariants} className="mb-3">
-                <motion.div className="relative group" whileHover="hover">
-                  <motion.div
-                    variants={{
-                      hover: {
-                        background: [
-                          "conic-gradient(from 0deg, #ff0000, #ff9900, #33cc33, #3399ff, #cc33cc, #ff0000)",
-                          "conic-gradient(from 360deg, #ff0000, #ff9900, #33cc33, #3399ff, #cc33cc, #ff0000)",
-                        ],
-                      },
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                    className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 blur-sm transition-opacity"
-                    style={{
-                      background:
-                        "conic-gradient(from 0deg, #ff0000, #ff9900, #33cc33, #3399ff, #cc33cc, #ff0000)",
-                    }}
-                  />
+                <div className="relative rounded-full border-4 border-transparent [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,conic-gradient(from_var(--border-angle),#ff0000,#ff9900,#33cc33,#3399ff,#cc33cc,#ff0000)_border-box] animate-border">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -669,12 +641,12 @@ const Navbar = () => {
                       }
                       toggleMobileMenu();
                     }}
-                    className="relative w-full px-4 py-3 text-sm font-semibold flex items-center justify-center gap-2 bg-gradient-to-r from-slate-800 to-slate-900 rounded-full text-white shadow-lg border-2 border-transparent group-hover:border-white/20"
+                    className="w-full px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 bg-slate-800 rounded-full text-white"
                   >
                     <TfiWrite size={16} />
-                    Write
+                    <span>Write</span>
                   </motion.button>
-                </motion.div>
+                </div>
               </motion.div>
 
               {isAuthenticated && authUser?._id ? (
