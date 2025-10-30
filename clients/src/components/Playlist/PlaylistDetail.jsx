@@ -119,7 +119,7 @@ const PlaylistDetail = ({ playlistId }) => {
         </p>
         <button
           onClick={() => dispatch(fetchPlaylistById(actualId))}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           Try Again
         </button>
@@ -133,7 +133,7 @@ const PlaylistDetail = ({ playlistId }) => {
         <h3 className="text-xl font-semibold mb-2">Playlist Not Found</h3>
         <button
           onClick={() => navigate("/user/playlists")}
-          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
         >
           Back to Playlists
         </button>
@@ -146,104 +146,119 @@ const PlaylistDetail = ({ playlistId }) => {
   return (
     <div className="max-w-7xl mx-auto py-8 px-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 gap-4">
+        <div className="flex items-start gap-4 w-full lg:w-auto">
           <button
             onClick={() => navigate("/profile/playlists")}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors hover:scale-110 transform duration-200"
             aria-label="Back to playlists"
           >
             <FaArrowLeft className="text-2xl" />
           </button>
-          <div className="relative h-16 w-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+          <div className="relative h-16 w-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
             <FaList className="text-2xl text-white" />
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
               {currentPlaylist.name}
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-gray-600 dark:text-gray-400 mb-2">
               {currentPlaylist.description || "No description"}
             </p>
-            <div className="flex items-center gap-2 mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
               {currentPlaylist.isPrivate ? (
-                <>
+                <span className="flex items-center gap-1.5 px-2 py-1 bg-red-50 dark:bg-red-900/20 rounded-full">
                   <FaLock className="text-red-500" />
-                  Private
-                </>
+                  <span className="text-red-600 dark:text-red-400">
+                    Private
+                  </span>
+                </span>
               ) : (
-                <>
+                <span className="flex items-center gap-1.5 px-2 py-1 bg-green-50 dark:bg-green-900/20 rounded-full">
                   <FaGlobe className="text-green-500" />
-                  Public
-                </>
-              )}
-              {isConnected && (
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  Live
+                  <span className="text-green-600 dark:text-green-400">
+                    Public
+                  </span>
                 </span>
               )}
-              <span>• {currentPlaylist.posts?.length || 0} posts</span>
-              <span>
-                • Created{" "}
+              {isConnected && (
+                <span className="flex items-center gap-1.5 px-2 py-1 bg-green-50 dark:bg-green-900/20 rounded-full">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-green-600 dark:text-green-400">
+                    Live
+                  </span>
+                </span>
+              )}
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-full">
+                {currentPlaylist.posts?.length || 0} posts
+              </span>
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-full">
+                Created{" "}
                 {new Date(currentPlaylist.createdAt).toLocaleDateString()}
               </span>
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full lg:w-auto">
           {isOwner && (
             <>
               <button
                 onClick={handleEdit}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 hover:shadow-lg hover:scale-105 flex-1 lg:flex-initial"
               >
                 <FaEdit />
-                Edit
+                <span>Edit</span>
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:scale-105 disabled:hover:scale-100 flex-1 lg:flex-initial"
               >
                 {deleting ? (
                   <FaSpinner className="animate-spin" />
                 ) : (
                   <FaTrash />
                 )}
-                Delete
+                <span>Delete</span>
               </button>
             </>
           )}
           <button
             onClick={handleShare}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 hover:shadow-lg hover:scale-105 flex-1 lg:flex-initial"
           >
             <FaShare />
-            Share
+            <span>Share</span>
           </button>
         </div>
       </div>
 
-      {/* Posts Grid */}
+      {/* Posts Grid - Fixed Card Width */}
       {currentPlaylist.posts && currentPlaylist.posts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {currentPlaylist.posts.map((post) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {currentPlaylist.posts.map((post, index) => {
             const fullPost = postMap.get(post._id) || post;
 
             return (
-              <CardOfPost
+              <div
                 key={fullPost._id}
-                {...fullPost}
-                loading={false}
-                categoryMap={{}}
-              />
+                className="w-full max-w-sm mx-auto animate-fadeIn"
+                style={{
+                  animationDelay: `${index * 50}ms`,
+                }}
+              >
+                <div className="h-full transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                  <CardOfPost {...fullPost} loading={false} categoryMap={{}} />
+                </div>
+              </div>
             );
           })}
         </div>
       ) : (
-        <div className="text-center py-12">
-          <FaList className="mx-auto text-6xl text-gray-300 dark:text-gray-700 mb-4" />
+        <div className="text-center py-16 animate-fadeIn">
+          <div className="mb-4 transform hover:scale-110 transition-transform duration-300 inline-block">
+            <FaList className="mx-auto text-6xl text-gray-300 dark:text-gray-700" />
+          </div>
           <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
             No posts in this playlist yet
           </h3>
@@ -253,10 +268,10 @@ const PlaylistDetail = ({ playlistId }) => {
           {isOwner && (
             <button
               onClick={() => navigate("/search")}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 hover:shadow-lg hover:scale-105 transform"
             >
               <FaPlus />
-              Find Posts
+              <span>Find Posts</span>
             </button>
           )}
         </div>

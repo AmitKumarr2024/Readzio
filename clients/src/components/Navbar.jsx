@@ -15,17 +15,70 @@ import { fetchUserPlaylists } from "../store/playlistSlice";
 import ThemeToggleButton from "../layout/ThemeToggleButton";
 import { disconnectSocket, initializeSocket } from "../store/socketSlice";
 import { trackGuestVisit } from "../store/guestSlice";
-import { FaList } from "react-icons/fa";
 
 const countVariants = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-  exit: { opacity: 0, y: -10, transition: { duration: 0.3 } },
+  initial: { opacity: 0, scale: 0.8, y: 10 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 20,
+    },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.8,
+    y: -10,
+    transition: { duration: 0.2 },
+  },
 };
 
 const dropdownVariants = {
-  hidden: { opacity: 0, y: -10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+  hidden: {
+    opacity: 0,
+    y: -10,
+    scale: 0.95,
+    transition: { duration: 0.2 },
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 25,
+    },
+  },
+};
+
+const mobileMenuVariants = {
+  hidden: {
+    opacity: 0,
+    height: 0,
+    transition: { duration: 0.3 },
+  },
+  visible: {
+    opacity: 1,
+    height: "auto",
+    transition: {
+      duration: 0.3,
+      when: "beforeChildren",
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const menuItemVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { type: "spring", stiffness: 300, damping: 25 },
+  },
 };
 
 const Navbar = () => {
@@ -37,6 +90,7 @@ const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const playlistsCount = useSelector(
     (state) => state.playlist?.playlists?.length || 0
   );
@@ -155,7 +209,11 @@ const Navbar = () => {
   if (authLoading) {
     return (
       <div className="sticky top-0 z-50 bg-background-light dark:bg-background-dark h-16 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"
+        />
       </div>
     );
   }
@@ -169,13 +227,13 @@ const Navbar = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="sticky top-0 z-50 bg-yellow-100 dark:bg-yellow-900/50 text-text-main-light dark:text-text-main-dark px-4 py-2 text-sm flex items-center justify-center gap-2 shadow-md"
+            className="sticky top-0 z-50 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/30 dark:to-orange-900/30 text-text-main-light dark:text-text-main-dark px-4 py-3 text-sm flex items-center justify-center gap-2 shadow-lg backdrop-blur-sm"
           >
-            <span>
+            <span className="font-medium">
               Viewing as guest.{" "}
               <Link
                 to="/login"
-                className="underline font-medium hover:text-blue-600"
+                className="underline font-semibold hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
                 Log in
               </Link>{" "}
@@ -184,62 +242,94 @@ const Navbar = () => {
           </motion.div>
         )}
       </AnimatePresence>
-      <nav className="sticky top-0 z-50 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md">
-        <div className="mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <div className="relative flex flex-col items-center">
-              <div className="absolute -top-4 -right-3 text-sm text-gray-600 dark:text-gray-300">
-                {userLocation?.country && userLocation.country !== "Unknown"
-                  ? userLocation?.country.toUpperCase()
-                  : " "}
-              </div>
 
+      <nav className="sticky top-0 z-50 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md text-text-main-light dark:text-text-main-dark shadow-lg border-b border-gray-200/50 dark:border-gray-800/50">
+        <div className="mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
+          {/* Left Section */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Logo with Country Flag */}
+            <div className="relative flex items-center">
               <Logo />
               {userLocation?.countryCode && (
-                <img
-                  src={`https://flagcdn.com/24x18/${userLocation.countryCode.toLowerCase()}.png`}
-                  alt={userLocation.country}
-                  className="absolute -top-4 -right-3 w-5 h-4 object-cover rounded-sm border border-gray-300 dark:border-gray-700"
-                />
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className="absolute -top-2 -right-2 flex items-center gap-1"
+                >
+                  <img
+                    src={`https://flagcdn.com/24x18/${userLocation.countryCode.toLowerCase()}.png`}
+                    alt={userLocation.country}
+                    className="w-6 h-4 object-cover rounded-sm shadow-md border-2 border-white dark:border-gray-800"
+                  />
+                </motion.div>
               )}
             </div>
-            <Link
-              to="/users"
-              className="flex items-center gap-2 text-sm sm:text-base font-medium"
-              aria-label="Online users"
-            >
-              <span className={`w-3 h-3 rounded-full ${statusClass}`} />
-              <motion.span
-                key={onlineUsersCount}
-                variants={countVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="font-semibold"
+
+            {/* Online Users Count */}
+            <Link to="/users" className="group" aria-label="Online users">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-gray-200/80 dark:hover:bg-gray-700/80 transition-colors"
               >
-                {onlineUsersCount || 0}
-              </motion.span>
-              <span className="hidden sm:inline" translate="no">
-                online
-              </span>
+                <motion.span
+                  className={`w-2 h-2 rounded-full ${statusClass} shadow-lg`}
+                  animate={
+                    onlineUsersCount >= 1
+                      ? {
+                          boxShadow: [
+                            "0 0 0 0 rgba(34, 197, 94, 0.7)",
+                            "0 0 0 8px rgba(34, 197, 94, 0)",
+                          ],
+                        }
+                      : {}
+                  }
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                />
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={onlineUsersCount}
+                    variants={countVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    className="font-bold text-sm sm:text-base bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent"
+                  >
+                    {onlineUsersCount || 0}
+                  </motion.span>
+                </AnimatePresence>
+                <span className="hidden sm:inline text-xs font-medium text-gray-600 dark:text-gray-400">
+                  online
+                </span>
+              </motion.div>
             </Link>
           </div>
 
-          <div className="hidden md:flex flex-1 max-w-2xl mx-2 sm:mx-4 search-input">
+          {/* Center - Search Bar */}
+          <div className="hidden md:flex flex-1 max-w-xl mx-4">
             <SearchInput />
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
+          {/* Right Section */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Mobile Search Button */}
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={toggleMobileSearch}
-              className="md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               aria-label="Search"
             >
               <FiSearch className="w-5 h-5" />
-            </button>
-            <button
+            </motion.button>
+
+            {/* Mobile Menu Button */}
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={toggleMobileMenu}
-              className="md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               aria-label="Menu"
             >
               <svg
@@ -248,35 +338,73 @@ const Navbar = () => {
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path
+                <motion.path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M3.75 5.25h16.5M3.75 12h16.5M3.75 18.75h16.5"
+                  strokeWidth={2}
+                  d={
+                    mobileMenuOpen
+                      ? "M6 18L18 6M6 6l12 12"
+                      : "M4 6h16M4 12h16M4 18h16"
+                  }
+                  animate={{ rotate: mobileMenuOpen ? 180 : 0 }}
+                  transition={{ duration: 0.3 }}
                 />
               </svg>
-            </button>
+            </motion.button>
+
+            {/* Theme Toggle */}
             <ThemeToggleButton />
+
+            {/* Mobile Avatar (shown only on mobile when authenticated) */}
             {isAuthenticated && authUser?._id && (
-              <Link
-                to="/user"
-                className="block md:hidden w-9 h-9 rounded-full overflow-hidden border border-gray-300 dark:border-gray-700"
-              >
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={userName}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-lg font-medium">
-                    {userName[0]}
-                  </div>
-                )}
+              <Link to="/user" className="block md:hidden">
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="w-9 h-9 rounded-full overflow-hidden border-2 border-gray-300 dark:border-gray-700 shadow-md"
+                >
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={userName}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-base font-bold">
+                      {userName[0]}
+                    </div>
+                  )}
+                </motion.div>
               </Link>
             )}
-            <div className="relative  rounded-full border-4 border-transparent [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,conic-gradient(from_var(--border-angle),#ff0000,#ff9900,#33cc33,#3399ff,#cc33cc,#ff0000)_border-box] animate-border hidden md:inline-block">
+
+            {/* Write Button with Animated Border */}
+            <motion.div
+              className="hidden md:block relative group"
+              whileHover="hover"
+            >
+              <motion.div
+                variants={{
+                  hover: {
+                    background: [
+                      "conic-gradient(from 0deg, #ff0000, #ff9900, #33cc33, #3399ff, #cc33cc, #ff0000)",
+                      "conic-gradient(from 360deg, #ff0000, #ff9900, #33cc33, #3399ff, #cc33cc, #ff0000)",
+                    ],
+                  },
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+                className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 blur-sm transition-opacity"
+                style={{
+                  background:
+                    "conic-gradient(from 0deg, #ff0000, #ff9900, #33cc33, #3399ff, #cc33cc, #ff0000)",
+                }}
+              />
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -287,18 +415,22 @@ const Navbar = () => {
                     navigate("/login");
                   }
                 }}
-                className="px-4 py-2 text-sm font-medium flex items-center gap-2 bg-slate-800 rounded-full text-white"
+                className="relative px-4 py-2 text-sm font-semibold flex items-center gap-2 bg-gradient-to-r from-slate-800 to-slate-900 rounded-full text-white shadow-lg hover:shadow-xl transition-shadow border-2 border-transparent group-hover:border-white/20"
               >
                 <TfiWrite size={16} />
                 <span>Write</span>
               </motion.button>
-            </div>
+            </motion.div>
 
             {isAuthenticated && authUser?._id ? (
               <>
                 <NotificationDropdown />
+
+                {/* Desktop User Menu */}
                 <div ref={dropdownRef} className="relative hidden md:block">
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={toggleDropdown}
                     className="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full"
                     aria-label="User Menu"
@@ -307,15 +439,16 @@ const Navbar = () => {
                       <img
                         src={avatarUrl}
                         alt={userName}
-                        className="w-9 h-9 rounded-full object-cover user-profile-link"
+                        className="w-9 h-9 rounded-full object-cover shadow-lg border-2 border-gray-300 dark:border-gray-700"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-lg">
                         {userName[0]}
                       </div>
                     )}
-                  </button>
+                  </motion.button>
+
                   <AnimatePresence>
                     {dropdownOpen && (
                       <motion.div
@@ -323,99 +456,139 @@ const Navbar = () => {
                         initial="hidden"
                         animate="visible"
                         exit="hidden"
-                        className="absolute right-0 mt-2 w-48 bg-background-light dark:bg-background-dark rounded-md shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-800"
+                        className="absolute right-0 mt-3 w-56 bg-background-light dark:bg-background-dark rounded-xl shadow-2xl py-2 z-50 border border-gray-200 dark:border-gray-800 overflow-hidden"
                       >
                         {userId && (
+                          <motion.div whileHover={{ x: 4 }} className="px-2">
+                            <Link
+                              to={`/author-profile/${userId}`}
+                              className="flex items-center px-3 py-2.5 text-sm rounded-lg hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20 transition-all"
+                              onClick={toggleDropdown}
+                            >
+                              <span className="font-medium">Studio</span>
+                            </Link>
+                          </motion.div>
+                        )}
+                        <motion.div whileHover={{ x: 4 }} className="px-2">
                           <Link
-                            to={`/author-profile/${userId}`}
-                            className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                            to="/user"
+                            className="flex items-center px-3 py-2.5 text-sm rounded-lg hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20 transition-all"
                             onClick={toggleDropdown}
                           >
-                            Studio
+                            <span className="font-medium">Profile</span>
                           </Link>
-                        )}
-                        <Link
-                          to="/user"
-                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                          onClick={toggleDropdown}
-                        >
-                          Profile
-                        </Link>
+                        </motion.div>
+
                         {role === "admin" && (
-                          <Link
-                            to="/admin"
-                            onClick={toggleMobileMenu}
-                            className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                          >
-                            Admin Panel
-                          </Link>
+                          <motion.div whileHover={{ x: 4 }} className="px-2">
+                            <Link
+                              to="/admin"
+                              className="flex items-center px-3 py-2.5 text-sm rounded-lg hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-900/20 dark:hover:to-pink-900/20 transition-all"
+                              onClick={toggleDropdown}
+                            >
+                              <span className="font-medium">Admin Panel</span>
+                            </Link>
+                          </motion.div>
                         )}
-                        <Link
-                          to="/profile/playlists"
-                          className="flex justify-evenly items-center gap-2 text-sm sm:text-base font-medium"
-                        >
-                          <span className="hidden sm:inline">Playlists</span>
-                          <motion.span
-                            key={playlistsCount}
-                            variants={countVariants}
-                            initial="initial"
-                            animate="animate"
-                            exit="exit"
-                            className="font-semibold"
+
+                        <motion.div whileHover={{ x: 4 }} className="px-2">
+                          <Link
+                            to="/profile/playlists"
+                            className="flex items-center justify-between px-3 py-2.5 text-sm rounded-lg hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 dark:hover:from-green-900/20 dark:hover:to-emerald-900/20 transition-all"
+                            onClick={toggleDropdown}
                           >
-                            {playlistsCount}
-                          </motion.span>
-                        </Link>
-                        <Link
-                          to="/user-setting"
-                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                          onClick={toggleDropdown}
-                        >
-                          Settings
-                        </Link>
-                        <Link
-                          to="/bookmark"
-                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                          onClick={toggleDropdown}
-                        >
-                          Bookmarks
-                        </Link>
-                        <Link
-                          to="/contact"
-                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                          onClick={toggleDropdown}
-                        >
-                          Contact Us
-                        </Link>
-                        <Link
-                          to="/about"
-                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                          onClick={toggleDropdown}
-                        >
-                          About Us
-                        </Link>
+                            <span className="font-medium">Playlists</span>
+                            <AnimatePresence mode="wait">
+                              <motion.span
+                                key={playlistsCount}
+                                variants={countVariants}
+                                initial="initial"
+                                animate="animate"
+                                exit="exit"
+                                className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-bold"
+                              >
+                                {playlistsCount}
+                              </motion.span>
+                            </AnimatePresence>
+                          </Link>
+                        </motion.div>
 
-                        <Link
-                          to="/terms-conditions"
-                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                          onClick={toggleDropdown}
-                        >
-                          Terms & Conditions
-                        </Link>
-                        <Link
-                          to="/privacy"
-                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                          onClick={toggleDropdown}
-                        >
-                          Privacy Policy
-                        </Link>
+                        <div className="my-2 border-t border-gray-200 dark:border-gray-800" />
 
-                        <button
-                          onClick={handleLogout}
-                          className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
-                          Logout
-                        </button>
+                        <motion.div whileHover={{ x: 4 }} className="px-2">
+                          <Link
+                            to="/user-setting"
+                            className="flex items-center px-3 py-2.5 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                            onClick={toggleDropdown}
+                          >
+                            <span className="font-medium">Settings</span>
+                          </Link>
+                        </motion.div>
+
+                        <motion.div whileHover={{ x: 4 }} className="px-2">
+                          <Link
+                            to="/bookmark"
+                            className="flex items-center px-3 py-2.5 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                            onClick={toggleDropdown}
+                          >
+                            <span className="font-medium">Bookmarks</span>
+                          </Link>
+                        </motion.div>
+
+                        <div className="my-2 border-t border-gray-200 dark:border-gray-800" />
+
+                        <motion.div whileHover={{ x: 4 }} className="px-2">
+                          <Link
+                            to="/contact"
+                            className="flex items-center px-3 py-2.5 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                            onClick={toggleDropdown}
+                          >
+                            <span className="font-medium">Contact Us</span>
+                          </Link>
+                        </motion.div>
+
+                        <motion.div whileHover={{ x: 4 }} className="px-2">
+                          <Link
+                            to="/about"
+                            className="flex items-center px-3 py-2.5 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                            onClick={toggleDropdown}
+                          >
+                            <span className="font-medium">About Us</span>
+                          </Link>
+                        </motion.div>
+
+                        <motion.div whileHover={{ x: 4 }} className="px-2">
+                          <Link
+                            to="/terms-conditions"
+                            className="flex items-center px-3 py-2.5 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                            onClick={toggleDropdown}
+                          >
+                            <span className="font-medium">
+                              Terms & Conditions
+                            </span>
+                          </Link>
+                        </motion.div>
+
+                        <motion.div whileHover={{ x: 4 }} className="px-2">
+                          <Link
+                            to="/privacy"
+                            className="flex items-center px-3 py-2.5 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                            onClick={toggleDropdown}
+                          >
+                            <span className="font-medium">Privacy Policy</span>
+                          </Link>
+                        </motion.div>
+
+                        <div className="my-2 border-t border-gray-200 dark:border-gray-800" />
+
+                        <motion.div whileHover={{ x: 4 }} className="px-2">
+                          <button
+                            onClick={handleLogout}
+                            className="flex items-center w-full px-3 py-2.5 text-sm rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 font-medium transition-all"
+                          >
+                            Logout
+                          </button>
+                        </motion.div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -423,138 +596,230 @@ const Navbar = () => {
               </>
             ) : (
               <div className="hidden md:flex gap-2">
-                <Link
-                  to="/login"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm"
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  Login
-                </Link>
-                <Link
-                  to="/signup"
-                  className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark px-3 py-1.5 rounded-md text-sm border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  <Link
+                    to="/login"
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transition-all"
+                  >
+                    Login
+                  </Link>
+                </motion.div>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  Sign Up
-                </Link>
+                  <Link
+                    to="/signup"
+                    className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark px-4 py-2 rounded-lg text-sm font-semibold border-2 border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all"
+                  >
+                    Sign Up
+                  </Link>
+                </motion.div>
               </div>
             )}
           </div>
         </div>
       </nav>
 
+      {/* Mobile Menu */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            key="mobile-menu"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="md:hidden bg-background-light dark:bg-background-dark px-4 py-4 space-y-2 shadow-xl border-t border-gray-200 dark:border-gray-800"
+            variants={mobileMenuVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            className="md:hidden bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md shadow-2xl border-b border-gray-200 dark:border-gray-800 overflow-hidden"
           >
-            <div className="relative md:hidden block rounded-full border-4 border-transparent [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,conic-gradient(from_var(--border-angle),#ff0000,#ff9900,#33cc33,#3399ff,#cc33cc,#ff0000)_border-box] animate-border">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  if (isAuthenticated && authUser?._id) {
-                    navigate("/createPost");
-                  } else {
-                    navigate("/login");
-                  }
-                  toggleMobileMenu();
-                }}
-                className="px-4 py-2 text-sm font-medium flex items-center gap-2 bg-slate-800 rounded-full text-white"
-              >
-                <TfiWrite size={16} />
-                Write
-              </motion.button>
-            </div>
-
-            {isAuthenticated && authUser?._id ? (
-              <>
-                <Link
-                  to="/user"
-                  onClick={toggleMobileMenu}
-                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                >
-                  Profile
-                </Link>
-                <Link
-                  to="/playlists/create"
-                  onClick={toggleMobileMenu}
-                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                >
-                  Create Playlist
-                </Link>
-                <Link
-                  to="/user-setting"
-                  onClick={toggleMobileMenu}
-                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                >
-                  Settings
-                </Link>
-                <Link
-                  to="/bookmark"
-                  onClick={toggleMobileMenu}
-                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                >
-                  Bookmarks
-                </Link>
-                <Link
-                  to="/Contact"
-                  onClick={toggleMobileMenu}
-                  className="block px-4  py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                >
-                  Contact Us
-                </Link>
-                <Link
-                  to="/terms-conditions"
-                  className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                  onClick={toggleDropdown}
-                >
-                  Terms & Conditions
-                </Link>
-                <Link
-                  to="/privacy"
-                  className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                  onClick={toggleDropdown}
-                >
-                  Privacy Policy
-                </Link>
-
-                {role === "admin" && (
-                  <Link
-                    to="/admin"
-                    onClick={toggleMobileMenu}
-                    className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+            <div className="px-4 py-4 space-y-1">
+              {/* Mobile Write Button */}
+              <motion.div variants={menuItemVariants} className="mb-3">
+                <motion.div className="relative group" whileHover="hover">
+                  <motion.div
+                    variants={{
+                      hover: {
+                        background: [
+                          "conic-gradient(from 0deg, #ff0000, #ff9900, #33cc33, #3399ff, #cc33cc, #ff0000)",
+                          "conic-gradient(from 360deg, #ff0000, #ff9900, #33cc33, #3399ff, #cc33cc, #ff0000)",
+                        ],
+                      },
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                    className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 blur-sm transition-opacity"
+                    style={{
+                      background:
+                        "conic-gradient(from 0deg, #ff0000, #ff9900, #33cc33, #3399ff, #cc33cc, #ff0000)",
+                    }}
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      if (isAuthenticated && authUser?._id) {
+                        navigate("/createPost");
+                      } else {
+                        navigate("/login");
+                      }
+                      toggleMobileMenu();
+                    }}
+                    className="relative w-full px-4 py-3 text-sm font-semibold flex items-center justify-center gap-2 bg-gradient-to-r from-slate-800 to-slate-900 rounded-full text-white shadow-lg border-2 border-transparent group-hover:border-white/20"
                   >
-                    Admin Panel
-                  </Link>
-                )}
-                <button
-                  onClick={handleLogout}
-                  className="block w-full text-left py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  onClick={toggleMobileMenu}
-                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/signup"
-                  onClick={toggleMobileMenu}
-                  className="block py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                >
-                  Sign Up
-                </Link>
-              </>
-            )}
+                    <TfiWrite size={16} />
+                    Write
+                  </motion.button>
+                </motion.div>
+              </motion.div>
+
+              {isAuthenticated && authUser?._id ? (
+                <>
+                  <motion.div variants={menuItemVariants}>
+                    <Link
+                      to="/user"
+                      onClick={toggleMobileMenu}
+                      className="block px-4 py-3 text-sm font-medium rounded-lg hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20 transition-all"
+                    >
+                      Profile
+                    </Link>
+                  </motion.div>
+
+                  <motion.div variants={menuItemVariants}>
+                    <Link
+                      to="/profile/playlists"
+                      onClick={toggleMobileMenu}
+                      className="flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 dark:hover:from-green-900/20 dark:hover:to-emerald-900/20 transition-all"
+                    >
+                      <span>Playlists</span>
+                      <AnimatePresence mode="wait">
+                        <motion.span
+                          key={playlistsCount}
+                          variants={countVariants}
+                          initial="initial"
+                          animate="animate"
+                          exit="exit"
+                          className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-bold"
+                        >
+                          {playlistsCount}
+                        </motion.span>
+                      </AnimatePresence>
+                    </Link>
+                  </motion.div>
+
+                  <motion.div variants={menuItemVariants}>
+                    <Link
+                      to="/user-setting"
+                      onClick={toggleMobileMenu}
+                      className="block px-4 py-3 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                    >
+                      Settings
+                    </Link>
+                  </motion.div>
+
+                  <motion.div variants={menuItemVariants}>
+                    <Link
+                      to="/bookmark"
+                      onClick={toggleMobileMenu}
+                      className="block px-4 py-3 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                    >
+                      Bookmarks
+                    </Link>
+                  </motion.div>
+
+                  {role === "admin" && (
+                    <motion.div variants={menuItemVariants}>
+                      <Link
+                        to="/admin"
+                        onClick={toggleMobileMenu}
+                        className="block px-4 py-3 text-sm font-medium rounded-lg hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-900/20 dark:hover:to-pink-900/20 transition-all"
+                      >
+                        Admin Panel
+                      </Link>
+                    </motion.div>
+                  )}
+
+                  <div className="my-2 border-t border-gray-200 dark:border-gray-800" />
+
+                  <motion.div variants={menuItemVariants}>
+                    <Link
+                      to="/contact"
+                      onClick={toggleMobileMenu}
+                      className="block px-4 py-3 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                    >
+                      Contact Us
+                    </Link>
+                  </motion.div>
+
+                  <motion.div variants={menuItemVariants}>
+                    <Link
+                      to="/about"
+                      onClick={toggleMobileMenu}
+                      className="block px-4 py-3 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                    >
+                      About Us
+                    </Link>
+                  </motion.div>
+
+                  <motion.div variants={menuItemVariants}>
+                    <Link
+                      to="/terms-conditions"
+                      onClick={toggleMobileMenu}
+                      className="block px-4 py-3 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                    >
+                      Terms & Conditions
+                    </Link>
+                  </motion.div>
+
+                  <motion.div variants={menuItemVariants}>
+                    <Link
+                      to="/privacy"
+                      onClick={toggleMobileMenu}
+                      className="block px-4 py-3 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                    >
+                      Privacy Policy
+                    </Link>
+                  </motion.div>
+
+                  <div className="my-2 border-t border-gray-200 dark:border-gray-800" />
+
+                  <motion.div variants={menuItemVariants}>
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-3 text-sm font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-all"
+                    >
+                      Logout
+                    </button>
+                  </motion.div>
+                </>
+              ) : (
+                <>
+                  <motion.div variants={menuItemVariants}>
+                    <Link
+                      to="/login"
+                      onClick={toggleMobileMenu}
+                      className="block px-4 py-3 text-sm font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 text-white text-center shadow-md"
+                    >
+                      Login
+                    </Link>
+                  </motion.div>
+
+                  <motion.div variants={menuItemVariants}>
+                    <Link
+                      to="/signup"
+                      onClick={toggleMobileMenu}
+                      className="block px-4 py-3 text-sm font-semibold rounded-lg border-2 border-gray-300 dark:border-gray-700 text-center hover:border-blue-500 dark:hover:border-blue-500 transition-all"
+                    >
+                      Sign Up
+                    </Link>
+                  </motion.div>
+                </>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -562,11 +827,16 @@ const Navbar = () => {
       <SearchModal isOpen={showMobileSearch} onClose={toggleMobileSearch} />
 
       {!shouldHideCategory && (
-        <div className="sticky top-16 z-30 bg-background-light dark:bg-background-dark">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="sticky top-16 z-30 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md shadow-sm border-b border-gray-200/50 dark:border-gray-800/50"
+        >
           <div className="mx-auto px-4 sm:px-6 lg:px-8">
             <CategoryBox />
           </div>
-        </div>
+        </motion.div>
       )}
     </>
   );
