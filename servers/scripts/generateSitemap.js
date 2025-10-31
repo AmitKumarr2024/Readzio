@@ -29,7 +29,6 @@ const STATIC_ROUTES = [
   { url: "/terms-conditions", changefreq: "yearly", priority: 0.5 },
   { url: "/login", changefreq: "monthly", priority: 0.6 },
   { url: "/signup", changefreq: "monthly", priority: 0.6 },
-  { url: "/post", changefreq: "daily", priority: 0.8 },
 ];
 
 // Utility: Validate URL slug

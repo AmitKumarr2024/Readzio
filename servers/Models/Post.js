@@ -235,10 +235,14 @@ postSchema.pre("save", async function (next) {
 
     this.slug = slug;
   }
-
   // Normalize isPublished
   if (this.isModified("isPublished")) {
     this.isPublished = !!this.isPublished;
+
+    // ✅ Force updatedAt refresh when published
+    if (this.isPublished === true) {
+      this.updatedAt = new Date();
+    }
   }
 
   // Ensure blocks array
