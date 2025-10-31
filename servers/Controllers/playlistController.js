@@ -1,8 +1,9 @@
 // servers/controllers/playlistController.js
 
-import Playlist from "../../servers/Models/PlaylistModel.js";
-import Post from "../../servers/Models/Post.js";
-import {AppError} from "../../servers/Utils/AppError.js";
+import mongoose from "mongoose";
+import Playlist from "../Models/PlaylistModel.js";
+import Post from "../Models/Post.js";
+import { AppError } from "../Utils/AppError.js";
 import {
   emitPlaylistCreated,
   emitPlaylistUpdated,
@@ -11,7 +12,7 @@ import {
   emitPostRemovedFromPlaylist,
   emitPlaylistPostsReordered,
   emitPlaylistError,
-} from "../../servers/sockets/playlistSocketHandlers.js";
+} from "../sockets/playlistSocketHandlers.js";
 
 // ============================================================================
 // VALIDATION HELPERS
@@ -28,7 +29,7 @@ const validatePlaylistName = (name) => {
 };
 
 const validatePlaylistOwnership = (playlist, userId) => {
-  if (!playlist.user.equals(userId)) {
+  if (playlist.user.toString() !== userId.toString()) {
     throw new AppError(
       "You don't have permission to modify this playlist",
       403
@@ -37,9 +38,19 @@ const validatePlaylistOwnership = (playlist, userId) => {
 };
 
 const validatePlaylistAccess = (playlist, userId) => {
-  if (playlist.isPrivate && !playlist.user.equals(userId)) {
+  if (playlist.isPrivate && playlist.user.toString() !== userId.toString()) {
     throw new AppError("This playlist is private", 403);
   }
+};
+
+const validateObjectId = (id, fieldName = "ID") => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new AppError(`Invalid ${fieldName}`, 400);
+  }
+};
+
+const normalizeUserId = (userId) => {
+  return userId?.toString() || null;
 };
 
 // ============================================================================
@@ -83,10 +94,6 @@ export const createPlaylist = async (req, res, next) => {
     // Populate user info
     await playlist.populate("user", "name email avatar");
 
-    console.log(
-      `[PlaylistController] 🆕 Playlist created: ${playlist._id} by ${userId}`
-    );
-
     // Emit socket event
     emitPlaylistCreated(playlist.toObject(), userId);
 
@@ -96,12 +103,9 @@ export const createPlaylist = async (req, res, next) => {
       data: playlist,
     });
   } catch (error) {
-    console.error("[PlaylistController] Create playlist error:", error.message);
-
     if (req.user?._id) {
       emitPlaylistError(req.user._id, error.message, "CREATE_ERROR");
     }
-
     next(error);
   }
 };
@@ -115,6 +119,9 @@ export const deletePlaylist = async (req, res, next) => {
   try {
     const playlistId = req.params.id;
     const userId = req.user._id;
+
+    // Validate ObjectId
+    validateObjectId(playlistId, "Playlist ID");
 
     // Find playlist
     const playlist = await Playlist.findById(playlistId);
@@ -131,8 +138,6 @@ export const deletePlaylist = async (req, res, next) => {
     // Delete playlist
     await Playlist.findByIdAndDelete(playlistId);
 
-    console.log(`[PlaylistController] 🗑️ Playlist ${playlistId} deleted`);
-
     // Emit socket event
     emitPlaylistDeleted(playlistId, userId, wasPrivate);
 
@@ -141,12 +146,9 @@ export const deletePlaylist = async (req, res, next) => {
       message: "Playlist deleted successfully",
     });
   } catch (error) {
-    console.error("[PlaylistController] Delete playlist error:", error.message);
-
     if (req.user?._id) {
       emitPlaylistError(req.user._id, error.message, "DELETE_ERROR");
     }
-
     next(error);
   }
 };
@@ -162,10 +164,16 @@ export const reorderPlaylistPosts = async (req, res, next) => {
     const userId = req.user._id;
     const { postIds } = req.body;
 
+    // Validate ObjectId
+    validateObjectId(playlistId, "Playlist ID");
+
     // Validate input
     if (!Array.isArray(postIds) || postIds.length === 0) {
       return next(new AppError("Invalid post IDs array", 400));
     }
+
+    // Validate all postIds are valid ObjectIds
+    postIds.forEach((id) => validateObjectId(id, "Post ID"));
 
     // Find playlist
     const playlist = await Playlist.findById(playlistId);
@@ -205,10 +213,6 @@ export const reorderPlaylistPosts = async (req, res, next) => {
       },
     });
 
-    console.log(
-      `[PlaylistController] 🔄 Playlist ${playlistId} posts reordered`
-    );
-
     // Emit socket event
     emitPlaylistPostsReordered(playlist.toObject(), userId);
 
@@ -218,12 +222,9 @@ export const reorderPlaylistPosts = async (req, res, next) => {
       data: playlist,
     });
   } catch (error) {
-    console.error("[PlaylistController] Reorder posts error:", error.message);
-
     if (req.user?._id) {
       emitPlaylistError(req.user._id, error.message, "REORDER_ERROR");
     }
-
     next(error);
   }
 };
@@ -236,31 +237,35 @@ export const reorderPlaylistPosts = async (req, res, next) => {
 export const getPlaylistStats = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const requestingUserId = req.user?._id;
+    const requestingUserId = normalizeUserId(req.user?._id);
+
+    // Validate ObjectId
+    validateObjectId(userId, "User ID");
+
+    // Determine if requester is the owner
+    const isOwner = requestingUserId && requestingUserId === userId.toString();
 
     // Build query
     const query = { user: userId };
 
     // If not requesting own stats, only count public playlists
-    if (!requestingUserId || !requestingUserId.equals(userId)) {
+    if (!isOwner) {
       query.isPrivate = false;
     }
 
     // Get statistics
     const [totalPlaylists, playlists] = await Promise.all([
       Playlist.countDocuments(query),
-      Playlist.find(query).select("posts"),
+      Playlist.find(query).select("posts").lean(),
     ]);
 
     const totalPosts = playlists.reduce(
-      (sum, playlist) => sum + playlist.posts.length,
+      (sum, playlist) => sum + (playlist.posts?.length || 0),
       0
     );
 
     const averagePostsPerPlaylist =
       totalPlaylists > 0 ? Math.round(totalPosts / totalPlaylists) : 0;
-
-    console.log(`[PlaylistController] 📊 Fetched stats for user ${userId}`);
 
     res.status(200).json({
       success: true,
@@ -271,10 +276,6 @@ export const getPlaylistStats = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error(
-      "[PlaylistController] Get playlist stats error:",
-      error.message
-    );
     next(error);
   }
 };
@@ -292,14 +293,17 @@ export const searchPlaylists = async (req, res, next) => {
       return next(new AppError("Search query is required", 400));
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    // Sanitize and validate pagination
+    const sanitizedLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
+    const sanitizedPage = Math.max(parseInt(page) || 1, 1);
+    const skip = (sanitizedPage - 1) * sanitizedLimit;
 
     // Search in public playlists only
     const searchQuery = {
       isPrivate: false,
       $or: [
-        { name: { $regex: query, $options: "i" } },
-        { description: { $regex: query, $options: "i" } },
+        { name: { $regex: query.trim(), $options: "i" } },
+        { description: { $regex: query.trim(), $options: "i" } },
       ],
     };
 
@@ -309,31 +313,24 @@ export const searchPlaylists = async (req, res, next) => {
         .populate({
           path: "posts",
           select: "title coverImage",
-          options: { limit: 3 }, // Only show first 3 posts
+          options: { limit: 3 },
         })
-        .limit(parseInt(limit))
+        .limit(sanitizedLimit)
         .skip(skip)
-        .sort({ createdAt: -1 }),
+        .sort({ createdAt: -1 })
+        .lean(),
       Playlist.countDocuments(searchQuery),
     ]);
-
-    console.log(
-      `[PlaylistController] 🔍 Search results: ${playlists.length} playlists`
-    );
 
     res.status(200).json({
       success: true,
       count: playlists.length,
       total,
-      page: parseInt(page),
-      pages: Math.ceil(total / parseInt(limit)),
+      page: sanitizedPage,
+      pages: Math.ceil(total / sanitizedLimit),
       data: playlists,
     });
   } catch (error) {
-    console.error(
-      "[PlaylistController] Search playlists error:",
-      error.message
-    );
     next(error);
   }
 };
@@ -348,14 +345,15 @@ export const checkPostInPlaylists = async (req, res, next) => {
     const { postId } = req.params;
     const userId = req.user._id;
 
+    // Validate ObjectId
+    validateObjectId(postId, "Post ID");
+
     const playlists = await Playlist.find({
       user: userId,
       posts: postId,
-    }).select("_id name");
-
-    console.log(
-      `[PlaylistController] ✅ Post ${postId} found in ${playlists.length} playlists`
-    );
+    })
+      .select("_id name")
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -363,10 +361,6 @@ export const checkPostInPlaylists = async (req, res, next) => {
       playlists,
     });
   } catch (error) {
-    console.error(
-      "[PlaylistController] Check post in playlists error:",
-      error.message
-    );
     next(error);
   }
 };
@@ -382,6 +376,9 @@ export const bulkAddToPlaylist = async (req, res, next) => {
     const userId = req.user._id;
     const { postIds } = req.body;
 
+    // Validate ObjectId
+    validateObjectId(playlistId, "Playlist ID");
+
     // Validate input
     if (!Array.isArray(postIds) || postIds.length === 0) {
       return next(new AppError("Post IDs array is required", 400));
@@ -390,6 +387,9 @@ export const bulkAddToPlaylist = async (req, res, next) => {
     if (postIds.length > 50) {
       return next(new AppError("Cannot add more than 50 posts at once", 400));
     }
+
+    // Validate all postIds are valid ObjectIds
+    postIds.forEach((id) => validateObjectId(id, "Post ID"));
 
     // Find playlist
     const playlist = await Playlist.findById(playlistId);
@@ -401,7 +401,7 @@ export const bulkAddToPlaylist = async (req, res, next) => {
     validatePlaylistOwnership(playlist, userId);
 
     // Verify all posts exist
-    const posts = await Post.find({ _id: { $in: postIds } });
+    const posts = await Post.find({ _id: { $in: postIds } }).lean();
     if (posts.length !== postIds.length) {
       return next(new AppError("Some posts were not found", 404));
     }
@@ -429,38 +429,25 @@ export const bulkAddToPlaylist = async (req, res, next) => {
       },
     });
 
-    console.log(
-      `[PlaylistController] ➕➕ Bulk added ${newPostIds.length} posts to playlist ${playlistId}`
-    );
-
     // Emit socket event for each added post
     posts.forEach((post) => {
       if (newPostIds.includes(post._id.toString())) {
-        emitPostAddedToPlaylist(
-          playlistId,
-          post.toObject(),
-          userId,
-          playlist.isPrivate
-        );
+        emitPostAddedToPlaylist(playlistId, post, userId, playlist.isPrivate);
       }
     });
 
     res.status(200).json({
       success: true,
-      message: `${newPostIds.length} posts added to playlist successfully`,
+      message: `${newPostIds.length} post${
+        newPostIds.length > 1 ? "s" : ""
+      } added to playlist successfully`,
       data: playlist,
       addedCount: newPostIds.length,
     });
   } catch (error) {
-    console.error(
-      "[PlaylistController] Bulk add to playlist error:",
-      error.message
-    );
-
     if (req.user?._id) {
       emitPlaylistError(req.user._id, error.message, "BULK_ADD_ERROR");
     }
-
     next(error);
   }
 };
@@ -476,10 +463,12 @@ export const addToPlaylist = async (req, res, next) => {
     const playlistId = req.params.id;
     const userId = req.user._id;
 
-    // Validate inputs
+    // Validate ObjectIds
+    validateObjectId(playlistId, "Playlist ID");
     if (!postId) {
       return next(new AppError("Post ID is required", 400));
     }
+    validateObjectId(postId, "Post ID");
 
     // Find playlist
     const playlist = await Playlist.findById(playlistId);
@@ -519,10 +508,6 @@ export const addToPlaylist = async (req, res, next) => {
       },
     });
 
-    console.log(
-      `[PlaylistController] ➕ Post ${postId} added to playlist ${playlistId}`
-    );
-
     // Emit socket event
     emitPostAddedToPlaylist(
       playlistId,
@@ -537,12 +522,9 @@ export const addToPlaylist = async (req, res, next) => {
       data: playlist,
     });
   } catch (error) {
-    console.error("[PlaylistController] Add to playlist error:", error.message);
-
     if (req.user?._id) {
       emitPlaylistError(req.user._id, error.message, "ADD_POST_ERROR");
     }
-
     next(error);
   }
 };
@@ -558,10 +540,12 @@ export const removeFromPlaylist = async (req, res, next) => {
     const playlistId = req.params.id;
     const userId = req.user._id;
 
-    // Validate inputs
+    // Validate ObjectIds
+    validateObjectId(playlistId, "Playlist ID");
     if (!postId) {
       return next(new AppError("Post ID is required", 400));
     }
+    validateObjectId(postId, "Post ID");
 
     // Find playlist
     const playlist = await Playlist.findById(playlistId);
@@ -594,10 +578,6 @@ export const removeFromPlaylist = async (req, res, next) => {
       },
     });
 
-    console.log(
-      `[PlaylistController] ➖ Post ${postId} removed from playlist ${playlistId}`
-    );
-
     // Emit socket event
     emitPostRemovedFromPlaylist(playlistId, postId, userId, playlist.isPrivate);
 
@@ -607,15 +587,9 @@ export const removeFromPlaylist = async (req, res, next) => {
       data: playlist,
     });
   } catch (error) {
-    console.error(
-      "[PlaylistController] Remove from playlist error:",
-      error.message
-    );
-
     if (req.user?._id) {
       emitPlaylistError(req.user._id, error.message, "REMOVE_POST_ERROR");
     }
-
     next(error);
   }
 };
@@ -628,13 +602,19 @@ export const removeFromPlaylist = async (req, res, next) => {
 export const getUserPlaylists = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const requestingUserId = req.user?._id;
+    const requestingUserId = normalizeUserId(req.user?._id);
+
+    // Validate ObjectId
+    validateObjectId(userId, "User ID");
+
+    // Determine if requester is the owner - FIXED: Convert both to strings for comparison
+    const isOwner = requestingUserId && requestingUserId === userId.toString();
 
     // Build query
     const query = { user: userId };
 
-    // If not requesting own playlists, only show public ones
-    if (!requestingUserId || !requestingUserId.equals(userId)) {
+    // Only restrict to public playlists if viewer ≠ owner
+    if (!isOwner) {
       query.isPrivate = false;
     }
 
@@ -648,11 +628,8 @@ export const getUserPlaylists = async (req, res, next) => {
           select: "name avatar",
         },
       })
-      .sort({ createdAt: -1 });
-
-    console.log(
-      `[PlaylistController] 📋 Fetched ${playlists.length} playlists for user ${userId}`
-    );
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -660,10 +637,6 @@ export const getUserPlaylists = async (req, res, next) => {
       data: playlists,
     });
   } catch (error) {
-    console.error(
-      "[PlaylistController] Get user playlists error:",
-      error.message
-    );
     next(error);
   }
 };
@@ -676,7 +649,10 @@ export const getUserPlaylists = async (req, res, next) => {
 export const getPlaylistById = async (req, res, next) => {
   try {
     const playlistId = req.params.id;
-    const userId = req.user?._id;
+    const userId = normalizeUserId(req.user?._id);
+
+    // Validate ObjectId
+    validateObjectId(playlistId, "Playlist ID");
 
     const playlist = await Playlist.findById(playlistId)
       .populate("user", "name email avatar")
@@ -687,30 +663,25 @@ export const getPlaylistById = async (req, res, next) => {
           path: "author",
           select: "name avatar",
         },
-      });
+      })
+      .lean();
 
     if (!playlist) {
       return next(new AppError("Playlist not found", 404));
     }
 
     // Check access for private playlists
-    if (userId) {
-      validatePlaylistAccess(playlist, userId);
-    } else if (playlist.isPrivate) {
-      return next(new AppError("This playlist is private", 403));
+    if (playlist.isPrivate) {
+      if (!userId || playlist.user._id.toString() !== userId) {
+        return next(new AppError("This playlist is private", 403));
+      }
     }
-
-    console.log(`[PlaylistController] 📄 Fetched playlist ${playlistId}`);
 
     res.status(200).json({
       success: true,
       data: playlist,
     });
   } catch (error) {
-    console.error(
-      "[PlaylistController] Get playlist by ID error:",
-      error.message
-    );
     next(error);
   }
 };
@@ -726,6 +697,9 @@ export const updatePlaylist = async (req, res, next) => {
     const userId = req.user._id;
     const { name, description, isPrivate } = req.body;
 
+    // Validate ObjectId
+    validateObjectId(playlistId, "Playlist ID");
+
     // Find playlist
     const playlist = await Playlist.findById(playlistId);
     if (!playlist) {
@@ -735,10 +709,25 @@ export const updatePlaylist = async (req, res, next) => {
     // Check ownership
     validatePlaylistOwnership(playlist, userId);
 
-    // Update fields
-    if (name !== undefined) {
-      playlist.name = validatePlaylistName(name);
+    // Check for duplicate name if name is being updated
+    if (name !== undefined && name !== playlist.name) {
+      const validatedName = validatePlaylistName(name);
+      const existingPlaylist = await Playlist.findOne({
+        user: userId,
+        name: validatedName,
+        _id: { $ne: playlistId },
+      });
+
+      if (existingPlaylist) {
+        return next(
+          new AppError("You already have a playlist with this name", 409)
+        );
+      }
+
+      playlist.name = validatedName;
     }
+
+    // Update other fields
     if (description !== undefined) {
       playlist.description = description.trim();
     }
@@ -759,8 +748,6 @@ export const updatePlaylist = async (req, res, next) => {
       },
     });
 
-    console.log(`[PlaylistController] ✏️ Playlist ${playlistId} updated`);
-
     // Emit socket event
     emitPlaylistUpdated(playlist.toObject(), userId);
 
@@ -770,12 +757,9 @@ export const updatePlaylist = async (req, res, next) => {
       data: playlist,
     });
   } catch (error) {
-    console.error("[PlaylistController] Update playlist error:", error.message);
-
     if (req.user?._id) {
       emitPlaylistError(req.user._id, error.message, "UPDATE_ERROR");
     }
-
     next(error);
   }
 };
