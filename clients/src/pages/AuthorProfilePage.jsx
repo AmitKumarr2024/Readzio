@@ -33,9 +33,9 @@ import SubscriptionEligibilityProgress from "../components/Author/SubscriptionEl
 import LocationDashboard from "../components/location/LocationDashboard";
 
 const AboutAuthor = lazy(() => import("../components/Author/AboutAuthor"));
+const PlaylistList = lazy(() => import("../components/Playlist/PlaylistList"));
 const AllPosts = lazy(() => import("../components/Author/post/AllPosts"));
 const PinnedPost = lazy(() => import("../components/Author/post/PinnedPost"));
-const PlaylistList = lazy(() => import("../components/Playlist/PlaylistList"));
 const AuthorPolls = lazy(() =>
   import("../components/Author/polls/AuthorPolls")
 );
@@ -240,7 +240,7 @@ const AuthorProfilePage = () => {
         );
       case "about":
         return <AboutAuthor author={selectedUser} readOnly={readOnly} />;
-      case "playlists":
+      case "postlists":
         return (
           <PlaylistList userId={selectedUser._id} isOwnProfile={isOwnProfile} />
         );
