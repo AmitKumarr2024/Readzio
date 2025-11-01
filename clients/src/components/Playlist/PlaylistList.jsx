@@ -283,25 +283,6 @@ const PlaylistCard = ({
           </div>
         </div>
 
-        {/* Hover Overlay */}
-        <div
-          className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent
-                     opacity-0 group-hover:opacity-100 transition-all duration-500
-                     flex items-center justify-center"
-        >
-          <div className="text-center transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-            <p className="text-white text-lg font-bold glow-text">
-              View Playlist
-            </p>
-            <div className="mt-2 flex items-center justify-center gap-2 text-white/90 text-sm">
-              <FaList />
-              <span>
-                {postCount} {postCount === 1 ? "Post" : "Posts"}
-              </span>
-            </div>
-          </div>
-        </div>
-
         {/* Privacy Badge */}
         <div className="absolute top-4 right-4 z-10">
           {playlist.isPrivate ? (
