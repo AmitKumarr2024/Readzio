@@ -1,45 +1,45 @@
-// servers/controllers/postlistController.js
+// servers/controllers/playlistController.js
 
 import mongoose from "mongoose";
-import postlist from "../Models/postlistModel.js";
+import Playlist from "../Models/PlaylistModel.js";
 import Post from "../Models/Post.js";
 import { AppError } from "../Utils/AppError.js";
 import {
-  emitpostlistCreated,
-  emitpostlistUpdated,
-  emitpostlistDeleted,
-  emitPostAddedTopostlist,
-  emitPostRemovedFrompostlist,
-  emitpostlistPostsReordered,
-  emitpostlistError,
-} from "../sockets/postlistSocketHandlers.js";
+  emitPlaylistCreated,
+  emitPlaylistUpdated,
+  emitPlaylistDeleted,
+  emitPostAddedToPlaylist,
+  emitPostRemovedFromPlaylist,
+  emitPlaylistPostsReordered,
+  emitPlaylistError,
+} from "../sockets/playlistSocketHandlers.js";
 
 // ============================================================================
 // VALIDATION HELPERS
 // ============================================================================
 
-const validatepostlistName = (name) => {
+const validatePlaylistName = (name) => {
   if (!name || typeof name !== "string" || name.trim().length === 0) {
-    throw new AppError("postlist name is required", 400);
+    throw new AppError("Playlist name is required", 400);
   }
   if (name.length > 100) {
-    throw new AppError("postlist name must be less than 100 characters", 400);
+    throw new AppError("Playlist name must be less than 100 characters", 400);
   }
   return name.trim();
 };
 
-const validatepostlistOwnership = (postlist, userId) => {
-  if (postlist.user.toString() !== userId.toString()) {
+const validatePlaylistOwnership = (playlist, userId) => {
+  if (playlist.user.toString() !== userId.toString()) {
     throw new AppError(
-      "You don't have permission to modify this postlist",
+      "You don't have permission to modify this playlist",
       403
     );
   }
 };
 
-const validatepostlistAccess = (postlist, userId) => {
-  if (postlist.isPrivate && postlist.user.toString() !== userId.toString()) {
-    throw new AppError("This postlist is private", 403);
+const validatePlaylistAccess = (playlist, userId) => {
+  if (playlist.isPrivate && playlist.user.toString() !== userId.toString()) {
+    throw new AppError("This playlist is private", 403);
   }
 };
 
@@ -58,32 +58,32 @@ const normalizeUserId = (userId) => {
 // ============================================================================
 
 /**
- * @desc    Create a new postlist
- * @route   POST /api/postlists
+ * @desc    Create a new playlist
+ * @route   POST /api/playlists
  * @access  Private
  */
-export const createpostlist = async (req, res, next) => {
+export const createPlaylist = async (req, res, next) => {
   try {
     const { name, description, isPrivate } = req.body;
     const userId = req.user._id;
 
     // Validate input
-    const validatedName = validatepostlistName(name);
+    const validatedName = validatePlaylistName(name);
 
-    // Check for duplicate postlist names for this user
-    const existingpostlist = await postlist.findOne({
+    // Check for duplicate playlist names for this user
+    const existingPlaylist = await Playlist.findOne({
       user: userId,
       name: validatedName,
     });
 
-    if (existingpostlist) {
+    if (existingPlaylist) {
       return next(
-        new AppError("You already have a postlist with this name", 409)
+        new AppError("You already have a playlist with this name", 409)
       );
     }
 
-    // Create postlist
-    const postlist = await postlist.create({
+    // Create playlist
+    const playlist = await Playlist.create({
       user: userId,
       name: validatedName,
       description: description?.trim() || "",
@@ -92,80 +92,80 @@ export const createpostlist = async (req, res, next) => {
     });
 
     // Populate user info
-    await postlist.populate("user", "name email avatar");
+    await playlist.populate("user", "name email avatar");
 
     // Emit socket event
-    emitpostlistCreated(postlist.toObject(), userId);
+    emitPlaylistCreated(playlist.toObject(), userId);
 
     res.status(201).json({
       success: true,
-      message: "postlist created successfully",
-      data: postlist,
+      message: "Playlist created successfully",
+      data: playlist,
     });
   } catch (error) {
     if (req.user?._id) {
-      emitpostlistError(req.user._id, error.message, "CREATE_ERROR");
+      emitPlaylistError(req.user._id, error.message, "CREATE_ERROR");
     }
     next(error);
   }
 };
 
 /**
- * @desc    Delete a postlist
- * @route   DELETE /api/postlists/:id
+ * @desc    Delete a playlist
+ * @route   DELETE /api/playlists/:id
  * @access  Private
  */
-export const deletepostlist = async (req, res, next) => {
+export const deletePlaylist = async (req, res, next) => {
   try {
-    const postlistId = req.params.id;
+    const playlistId = req.params.id;
     const userId = req.user._id;
 
     // Validate ObjectId
-    validateObjectId(postlistId, "postlist ID");
+    validateObjectId(playlistId, "Playlist ID");
 
-    // Find postlist
-    const postlist = await postlist.findById(postlistId);
-    if (!postlist) {
-      return next(new AppError("postlist not found", 404));
+    // Find playlist
+    const playlist = await Playlist.findById(playlistId);
+    if (!playlist) {
+      return next(new AppError("Playlist not found", 404));
     }
 
     // Check ownership
-    validatepostlistOwnership(postlist, userId);
+    validatePlaylistOwnership(playlist, userId);
 
     // Store isPrivate before deletion for socket emission
-    const wasPrivate = postlist.isPrivate;
+    const wasPrivate = playlist.isPrivate;
 
-    // Delete postlist
-    await postlist.findByIdAndDelete(postlistId);
+    // Delete playlist
+    await Playlist.findByIdAndDelete(playlistId);
 
     // Emit socket event
-    emitpostlistDeleted(postlistId, userId, wasPrivate);
+    emitPlaylistDeleted(playlistId, userId, wasPrivate);
 
     res.status(200).json({
       success: true,
-      message: "postlist deleted successfully",
+      message: "Playlist deleted successfully",
     });
   } catch (error) {
     if (req.user?._id) {
-      emitpostlistError(req.user._id, error.message, "DELETE_ERROR");
+      emitPlaylistError(req.user._id, error.message, "DELETE_ERROR");
     }
     next(error);
   }
 };
 
 /**
- * @desc    Reorder posts in a postlist
- * @route   PATCH /api/postlists/:id/reorder
+ * @desc    Reorder posts in a playlist
+ * @route   PATCH /api/playlists/:id/reorder
  * @access  Private
  */
-export const reorderpostlistPosts = async (req, res, next) => {
+export const reorderPlaylistPosts = async (req, res, next) => {
   try {
-    const postlistId = req.params.id;
+    const playlistId = req.params.id;
     const userId = req.user._id;
     const { postIds } = req.body;
 
     // Validate ObjectId
-    validateObjectId(postlistId, "postlist ID");
+    validateObjectId(playlistId, "Playlist ID");
 
     // Validate input
     if (!Array.isArray(postIds) || postIds.length === 0) {
@@ -175,23 +175,23 @@ export const reorderpostlistPosts = async (req, res, next) => {
     // Validate all postIds are valid ObjectIds
     postIds.forEach((id) => validateObjectId(id, "Post ID"));
 
-    // Find postlist
-    const postlist = await postlist.findById(postlistId);
-    if (!postlist) {
-      return next(new AppError("postlist not found", 404));
+    // Find playlist
+    const playlist = await Playlist.findById(playlistId);
+    if (!playlist) {
+      return next(new AppError("Playlist not found", 404));
     }
 
     // Check ownership
-    validatepostlistOwnership(postlist, userId);
+    validatePlaylistOwnership(playlist, userId);
 
-    // Validate all postIds exist in the postlist
-    const currentPostIds = postlist.posts.map((p) => p.toString());
+    // Validate all postIds exist in the playlist
+    const currentPostIds = playlist.posts.map((p) => p.toString());
     const allPostsValid = postIds.every((id) =>
       currentPostIds.includes(id.toString())
     );
 
     if (!allPostsValid) {
-      return next(new AppError("Some post IDs are not in this postlist", 400));
+      return next(new AppError("Some post IDs are not in this playlist", 400));
     }
 
     // Check if all posts are included
@@ -200,11 +200,11 @@ export const reorderpostlistPosts = async (req, res, next) => {
     }
 
     // Reorder posts
-    postlist.posts = postIds;
-    await postlist.save();
+    playlist.posts = postIds;
+    await playlist.save();
 
     // Populate for response
-    await postlist.populate({
+    await playlist.populate({
       path: "posts",
       select: "title description category coverImage author createdAt",
       populate: {
@@ -214,27 +214,27 @@ export const reorderpostlistPosts = async (req, res, next) => {
     });
 
     // Emit socket event
-    emitpostlistPostsReordered(postlist.toObject(), userId);
+    emitPlaylistPostsReordered(playlist.toObject(), userId);
 
     res.status(200).json({
       success: true,
-      message: "postlist posts reordered successfully",
-      data: postlist,
+      message: "Playlist posts reordered successfully",
+      data: playlist,
     });
   } catch (error) {
     if (req.user?._id) {
-      emitpostlistError(req.user._id, error.message, "REORDER_ERROR");
+      emitPlaylistError(req.user._id, error.message, "REORDER_ERROR");
     }
     next(error);
   }
 };
 
 /**
- * @desc    Get postlist statistics for a user
- * @route   GET /api/postlists/user/:userId/stats
+ * @desc    Get playlist statistics for a user
+ * @route   GET /api/playlists/user/:userId/stats
  * @access  Public
  */
-export const getpostlistStats = async (req, res, next) => {
+export const getPlaylistStats = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const requestingUserId = normalizeUserId(req.user?._id);
@@ -248,31 +248,31 @@ export const getpostlistStats = async (req, res, next) => {
     // Build query
     const query = { user: userId };
 
-    // If not requesting own stats, only count public postlists
+    // If not requesting own stats, only count public playlists
     if (!isOwner) {
       query.isPrivate = false;
     }
 
     // Get statistics
-    const [totalpostlists, postlists] = await Promise.all([
-      postlist.countDocuments(query),
-      postlist.find(query).select("posts").lean(),
+    const [totalPlaylists, playlists] = await Promise.all([
+      Playlist.countDocuments(query),
+      Playlist.find(query).select("posts").lean(),
     ]);
 
-    const totalPosts = postlists.reduce(
-      (sum, postlist) => sum + (postlist.posts?.length || 0),
+    const totalPosts = playlists.reduce(
+      (sum, playlist) => sum + (playlist.posts?.length || 0),
       0
     );
 
-    const averagePostsPerpostlist =
-      totalpostlists > 0 ? Math.round(totalPosts / totalpostlists) : 0;
+    const averagePostsPerPlaylist =
+      totalPlaylists > 0 ? Math.round(totalPosts / totalPlaylists) : 0;
 
     res.status(200).json({
       success: true,
       data: {
-        totalpostlists,
+        totalPlaylists,
         totalPosts,
-        averagePostsPerpostlist,
+        averagePostsPerPlaylist,
       },
     });
   } catch (error) {
@@ -281,11 +281,11 @@ export const getpostlistStats = async (req, res, next) => {
 };
 
 /**
- * @desc    Search postlists by name or description
- * @route   GET /api/postlists/search
- * @access  Public (only searches public postlists)
+ * @desc    Search playlists by name or description
+ * @route   GET /api/playlists/search
+ * @access  Public (only searches public playlists)
  */
-export const searchpostlists = async (req, res, next) => {
+export const searchPlaylists = async (req, res, next) => {
   try {
     const { query, limit = 20, page = 1 } = req.query;
 
@@ -298,7 +298,7 @@ export const searchpostlists = async (req, res, next) => {
     const sanitizedPage = Math.max(parseInt(page) || 1, 1);
     const skip = (sanitizedPage - 1) * sanitizedLimit;
 
-    // Search in public postlists only
+    // Search in public playlists only
     const searchQuery = {
       isPrivate: false,
       $or: [
@@ -307,8 +307,8 @@ export const searchpostlists = async (req, res, next) => {
       ],
     };
 
-    const [postlists, total] = await Promise.all([
-      postlist.find(searchQuery)
+    const [playlists, total] = await Promise.all([
+      Playlist.find(searchQuery)
         .populate("user", "name avatar")
         .populate({
           path: "posts",
@@ -319,16 +319,16 @@ export const searchpostlists = async (req, res, next) => {
         .skip(skip)
         .sort({ createdAt: -1 })
         .lean(),
-      postlist.countDocuments(searchQuery),
+      Playlist.countDocuments(searchQuery),
     ]);
 
     res.status(200).json({
       success: true,
-      count: postlists.length,
+      count: playlists.length,
       total,
       page: sanitizedPage,
       pages: Math.ceil(total / sanitizedLimit),
-      data: postlists,
+      data: playlists,
     });
   } catch (error) {
     next(error);
@@ -336,11 +336,11 @@ export const searchpostlists = async (req, res, next) => {
 };
 
 /**
- * @desc    Check if a post is in any of user's postlists
- * @route   GET /api/postlists/check/:postId
+ * @desc    Check if a post is in any of user's playlists
+ * @route   GET /api/playlists/check/:postId
  * @access  Private
  */
-export const checkPostInpostlists = async (req, res, next) => {
+export const checkPostInPlaylists = async (req, res, next) => {
   try {
     const { postId } = req.params;
     const userId = req.user._id;
@@ -348,7 +348,7 @@ export const checkPostInpostlists = async (req, res, next) => {
     // Validate ObjectId
     validateObjectId(postId, "Post ID");
 
-    const postlists = await postlist.find({
+    const playlists = await Playlist.find({
       user: userId,
       posts: postId,
     })
@@ -357,8 +357,8 @@ export const checkPostInpostlists = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      inpostlists: postlists.length > 0,
-      postlists,
+      inPlaylists: playlists.length > 0,
+      playlists,
     });
   } catch (error) {
     next(error);
@@ -366,18 +366,18 @@ export const checkPostInpostlists = async (req, res, next) => {
 };
 
 /**
- * @desc    Bulk add posts to a postlist
- * @route   POST /api/postlists/:id/bulk-add
+ * @desc    Bulk add posts to a playlist
+ * @route   POST /api/playlists/:id/bulk-add
  * @access  Private
  */
-export const bulkAddTopostlist = async (req, res, next) => {
+export const bulkAddToPlaylist = async (req, res, next) => {
   try {
-    const postlistId = req.params.id;
+    const playlistId = req.params.id;
     const userId = req.user._id;
     const { postIds } = req.body;
 
     // Validate ObjectId
-    validateObjectId(postlistId, "postlist ID");
+    validateObjectId(playlistId, "Playlist ID");
 
     // Validate input
     if (!Array.isArray(postIds) || postIds.length === 0) {
@@ -391,14 +391,14 @@ export const bulkAddTopostlist = async (req, res, next) => {
     // Validate all postIds are valid ObjectIds
     postIds.forEach((id) => validateObjectId(id, "Post ID"));
 
-    // Find postlist
-    const postlist = await postlist.findById(postlistId);
-    if (!postlist) {
-      return next(new AppError("postlist not found", 404));
+    // Find playlist
+    const playlist = await Playlist.findById(playlistId);
+    if (!playlist) {
+      return next(new AppError("Playlist not found", 404));
     }
 
     // Check ownership
-    validatepostlistOwnership(postlist, userId);
+    validatePlaylistOwnership(playlist, userId);
 
     // Verify all posts exist
     const posts = await Post.find({ _id: { $in: postIds } }).lean();
@@ -407,20 +407,20 @@ export const bulkAddTopostlist = async (req, res, next) => {
     }
 
     // Add only new posts
-    const existingPostIds = new Set(postlist.posts.map((p) => p.toString()));
+    const existingPostIds = new Set(playlist.posts.map((p) => p.toString()));
     const newPostIds = postIds.filter(
       (id) => !existingPostIds.has(id.toString())
     );
 
     if (newPostIds.length === 0) {
-      return next(new AppError("All posts already exist in postlist", 409));
+      return next(new AppError("All posts already exist in playlist", 409));
     }
 
-    postlist.posts.push(...newPostIds);
-    await postlist.save();
+    playlist.posts.push(...newPostIds);
+    await playlist.save();
 
     // Populate for response
-    await postlist.populate({
+    await playlist.populate({
       path: "posts",
       select: "title description category coverImage author createdAt",
       populate: {
@@ -432,7 +432,7 @@ export const bulkAddTopostlist = async (req, res, next) => {
     // Emit socket event for each added post
     posts.forEach((post) => {
       if (newPostIds.includes(post._id.toString())) {
-        emitPostAddedTopostlist(postlistId, post, userId, postlist.isPrivate);
+        emitPostAddedToPlaylist(playlistId, post, userId, playlist.isPrivate);
       }
     });
 
@@ -440,44 +440,44 @@ export const bulkAddTopostlist = async (req, res, next) => {
       success: true,
       message: `${newPostIds.length} post${
         newPostIds.length > 1 ? "s" : ""
-      } added to postlist successfully`,
-      data: postlist,
+      } added to playlist successfully`,
+      data: playlist,
       addedCount: newPostIds.length,
     });
   } catch (error) {
     if (req.user?._id) {
-      emitpostlistError(req.user._id, error.message, "BULK_ADD_ERROR");
+      emitPlaylistError(req.user._id, error.message, "BULK_ADD_ERROR");
     }
     next(error);
   }
 };
 
 /**
- * @desc    Add a post to a postlist
- * @route   POST /api/postlists/:id/add
+ * @desc    Add a post to a playlist
+ * @route   POST /api/playlists/:id/add
  * @access  Private
  */
-export const addTopostlist = async (req, res, next) => {
+export const addToPlaylist = async (req, res, next) => {
   try {
     const { postId } = req.body;
-    const postlistId = req.params.id;
+    const playlistId = req.params.id;
     const userId = req.user._id;
 
     // Validate ObjectIds
-    validateObjectId(postlistId, "postlist ID");
+    validateObjectId(playlistId, "Playlist ID");
     if (!postId) {
       return next(new AppError("Post ID is required", 400));
     }
     validateObjectId(postId, "Post ID");
 
-    // Find postlist
-    const postlist = await postlist.findById(postlistId);
-    if (!postlist) {
-      return next(new AppError("postlist not found", 404));
+    // Find playlist
+    const playlist = await Playlist.findById(playlistId);
+    if (!playlist) {
+      return next(new AppError("Playlist not found", 404));
     }
 
     // Check ownership
-    validatepostlistOwnership(postlist, userId);
+    validatePlaylistOwnership(playlist, userId);
 
     // Verify post exists
     const post = await Post.findById(postId);
@@ -485,21 +485,21 @@ export const addTopostlist = async (req, res, next) => {
       return next(new AppError("Post not found", 404));
     }
 
-    // Check if post already in postlist
-    const postExists = postlist.posts.some(
+    // Check if post already in playlist
+    const postExists = playlist.posts.some(
       (p) => p.toString() === postId.toString()
     );
 
     if (postExists) {
-      return next(new AppError("Post already exists in this postlist", 409));
+      return next(new AppError("Post already exists in this playlist", 409));
     }
 
-    // Add post to postlist
-    postlist.posts.push(postId);
-    await postlist.save();
+    // Add post to playlist
+    playlist.posts.push(postId);
+    await playlist.save();
 
     // Populate posts for response
-    await postlist.populate({
+    await playlist.populate({
       path: "posts",
       select: "title description category coverImage author createdAt",
       populate: {
@@ -509,67 +509,67 @@ export const addTopostlist = async (req, res, next) => {
     });
 
     // Emit socket event
-    emitPostAddedTopostlist(
-      postlistId,
+    emitPostAddedToPlaylist(
+      playlistId,
       post.toObject(),
       userId,
-      postlist.isPrivate
+      playlist.isPrivate
     );
 
     res.status(200).json({
       success: true,
-      message: "Post added to postlist successfully",
-      data: postlist,
+      message: "Post added to playlist successfully",
+      data: playlist,
     });
   } catch (error) {
     if (req.user?._id) {
-      emitpostlistError(req.user._id, error.message, "ADD_POST_ERROR");
+      emitPlaylistError(req.user._id, error.message, "ADD_POST_ERROR");
     }
     next(error);
   }
 };
 
 /**
- * @desc    Remove a post from a postlist
- * @route   POST /api/postlists/:id/remove
+ * @desc    Remove a post from a playlist
+ * @route   POST /api/playlists/:id/remove
  * @access  Private
  */
-export const removeFrompostlist = async (req, res, next) => {
+export const removeFromPlaylist = async (req, res, next) => {
   try {
     const { postId } = req.body;
-    const postlistId = req.params.id;
+    const playlistId = req.params.id;
     const userId = req.user._id;
 
     // Validate ObjectIds
-    validateObjectId(postlistId, "postlist ID");
+    validateObjectId(playlistId, "Playlist ID");
     if (!postId) {
       return next(new AppError("Post ID is required", 400));
     }
     validateObjectId(postId, "Post ID");
 
-    // Find postlist
-    const postlist = await postlist.findById(postlistId);
-    if (!postlist) {
-      return next(new AppError("postlist not found", 404));
+    // Find playlist
+    const playlist = await Playlist.findById(playlistId);
+    if (!playlist) {
+      return next(new AppError("Playlist not found", 404));
     }
 
     // Check ownership
-    validatepostlistOwnership(postlist, userId);
+    validatePlaylistOwnership(playlist, userId);
 
-    // Remove post from postlist
-    const initialLength = postlist.posts.length;
-    postlist.posts = postlist.posts.filter(
+    // Remove post from playlist
+    const initialLength = playlist.posts.length;
+    playlist.posts = playlist.posts.filter(
       (p) => p.toString() !== postId.toString()
     );
 
-    if (postlist.posts.length === initialLength) {
-      return next(new AppError("Post not found in postlist", 404));
+    if (playlist.posts.length === initialLength) {
+      return next(new AppError("Post not found in playlist", 404));
     }
 
-    await postlist.save();
+    await playlist.save();
 
     // Populate posts for response
-    await postlist.populate({
+    await playlist.populate({
       path: "posts",
       select: "title description category coverImage author createdAt",
       populate: {
@@ -579,32 +579,32 @@ export const removeFrompostlist = async (req, res, next) => {
     });
 
     // Emit socket event
-    emitPostRemovedFrompostlist(postlistId, postId, userId, postlist.isPrivate);
+    emitPostRemovedFromPlaylist(playlistId, postId, userId, playlist.isPrivate);
 
     res.status(200).json({
       success: true,
-      message: "Post removed from postlist successfully",
-      data: postlist,
+      message: "Post removed from playlist successfully",
+      data: playlist,
     });
   } catch (error) {
     if (req.user?._id) {
-      emitpostlistError(req.user._id, error.message, "REMOVE_POST_ERROR");
+      emitPlaylistError(req.user._id, error.message, "REMOVE_POST_ERROR");
     }
     next(error);
   }
 };
 
 /**
- * @desc    Get all postlists for a user
- * @route   GET /api/postlists/user/:userId
- * @access  Public (only returns public postlists unless requesting own)
+ * @desc    Get all playlists for a user
+ * @route   GET /api/playlists/user/:userId
+ * @access  Public (only returns public playlists unless requesting own)
  */
-export const getUserpostlists = async (req, res, next) => {
+export const getUserPlaylists = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const requestingUserId = normalizeUserId(req.user?._id);
 
-    console.log("[getUserpostlists] Debug Info:");
+    console.log("[getUserPlaylists] Debug Info:");
     console.log("  Requested userId:", userId);
     console.log("  Requesting userId:", requestingUserId);
     console.log("  req.user:", req.user);
@@ -626,14 +626,14 @@ export const getUserpostlists = async (req, res, next) => {
     // Build query
     const query = { user: userId };
 
-    // Only restrict to public postlists if viewer ≠ owner
+    // Only restrict to public playlists if viewer ≠ owner
     if (!isOwner) {
       query.isPrivate = false;
     }
 
     console.log("  Query:", query);
 
-    const postlists = await postlist.find(query)
+    const playlists = await Playlist.find(query)
       .populate("user", "name email avatar")
       .populate({
         path: "posts",
@@ -646,31 +646,31 @@ export const getUserpostlists = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    console.log("  Found postlists:", postlists.length);
+    console.log("  Found playlists:", playlists.length);
 
     res.status(200).json({
       success: true,
-      count: postlists.length,
-      data: postlists,
+      count: playlists.length,
+      data: playlists,
     });
   } catch (error) {
     next(error);
   }
 };
 /**
- * @desc    Get a single postlist by ID
- * @route   GET /api/postlists/:id
- * @access  Public (if public postlist) / Private (if own private postlist)
+ * @desc    Get a single playlist by ID
+ * @route   GET /api/playlists/:id
+ * @access  Public (if public playlist) / Private (if own private playlist)
  */
-export const getpostlistById = async (req, res, next) => {
+export const getPlaylistById = async (req, res, next) => {
   try {
-    const postlistId = req.params.id;
+    const playlistId = req.params.id;
     const userId = normalizeUserId(req.user?._id);
 
     // Validate ObjectId
-    validateObjectId(postlistId, "postlist ID");
+    validateObjectId(playlistId, "Playlist ID");
 
-    const postlist = await postlist.findById(postlistId)
+    const playlist = await Playlist.findById(playlistId)
       .populate("user", "name email avatar")
       .populate({
         path: "posts",
@@ -682,20 +682,20 @@ export const getpostlistById = async (req, res, next) => {
       })
       .lean();
 
-    if (!postlist) {
-      return next(new AppError("postlist not found", 404));
+    if (!playlist) {
+      return next(new AppError("Playlist not found", 404));
     }
 
-    // Check access for private postlists
-    if (postlist.isPrivate) {
-      if (!userId || postlist.user._id.toString() !== userId) {
-        return next(new AppError("This postlist is private", 403));
+    // Check access for private playlists
+    if (playlist.isPrivate) {
+      if (!userId || playlist.user._id.toString() !== userId) {
+        return next(new AppError("This playlist is private", 403));
       }
     }
 
     res.status(200).json({
       success: true,
-      data: postlist,
+      data: playlist,
     });
   } catch (error) {
     next(error);
@@ -703,59 +703,59 @@ export const getpostlistById = async (req, res, next) => {
 };
 
 /**
- * @desc    Update postlist details
- * @route   PATCH /api/postlists/:id
+ * @desc    Update playlist details
+ * @route   PATCH /api/playlists/:id
  * @access  Private
  */
-export const updatepostlist = async (req, res, next) => {
+export const updatePlaylist = async (req, res, next) => {
   try {
-    const postlistId = req.params.id;
+    const playlistId = req.params.id;
     const userId = req.user._id;
     const { name, description, isPrivate } = req.body;
 
     // Validate ObjectId
-    validateObjectId(postlistId, "postlist ID");
+    validateObjectId(playlistId, "Playlist ID");
 
-    // Find postlist
-    const postlist = await postlist.findById(postlistId);
-    if (!postlist) {
-      return next(new AppError("postlist not found", 404));
+    // Find playlist
+    const playlist = await Playlist.findById(playlistId);
+    if (!playlist) {
+      return next(new AppError("Playlist not found", 404));
     }
 
     // Check ownership
-    validatepostlistOwnership(postlist, userId);
+    validatePlaylistOwnership(playlist, userId);
 
     // Check for duplicate name if name is being updated
-    if (name !== undefined && name !== postlist.name) {
-      const validatedName = validatepostlistName(name);
-      const existingpostlist = await postlist.findOne({
+    if (name !== undefined && name !== playlist.name) {
+      const validatedName = validatePlaylistName(name);
+      const existingPlaylist = await Playlist.findOne({
         user: userId,
         name: validatedName,
-        _id: { $ne: postlistId },
+        _id: { $ne: playlistId },
       });
 
-      if (existingpostlist) {
+      if (existingPlaylist) {
         return next(
-          new AppError("You already have a postlist with this name", 409)
+          new AppError("You already have a playlist with this name", 409)
         );
       }
 
-      postlist.name = validatedName;
+      playlist.name = validatedName;
     }
 
     // Update other fields
     if (description !== undefined) {
-      postlist.description = description.trim();
+      playlist.description = description.trim();
     }
     if (isPrivate !== undefined) {
-      postlist.isPrivate = isPrivate === true;
+      playlist.isPrivate = isPrivate === true;
     }
 
-    await postlist.save();
+    await playlist.save();
 
     // Populate for response
-    await postlist.populate("user", "name email avatar");
-    await postlist.populate({
+    await playlist.populate("user", "name email avatar");
+    await playlist.populate({
       path: "posts",
       select: "title description category coverImage author createdAt",
       populate: {
@@ -765,16 +765,16 @@ export const updatepostlist = async (req, res, next) => {
     });
 
     // Emit socket event
-    emitpostlistUpdated(postlist.toObject(), userId);
+    emitPlaylistUpdated(playlist.toObject(), userId);
 
     res.status(200).json({
       success: true,
-      message: "postlist updated successfully",
-      data: postlist,
+      message: "Playlist updated successfully",
+      data: playlist,
     });
   } catch (error) {
     if (req.user?._id) {
-      emitpostlistError(req.user._id, error.message, "UPDATE_ERROR");
+      emitPlaylistError(req.user._id, error.message, "UPDATE_ERROR");
     }
     next(error);
   }
