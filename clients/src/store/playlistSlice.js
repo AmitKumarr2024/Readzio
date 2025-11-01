@@ -15,18 +15,41 @@ export const fetchUserPlaylists = createAsyncThunk(
     try {
       if (!userId) throw new Error("User ID is required");
 
+      console.log(
+        "[fetchUserPlaylists] Fetching playlists for userId:",
+        userId
+      );
+
       const response = await axiosInstance.get(`/playlists/user/${userId}`, {
         timeout: 30000,
         withCredentials: true,
       });
+
+      console.log("[fetchUserPlaylists] Response status:", response.status);
+      console.log("[fetchUserPlaylists] Response data:", response.data);
 
       // ✅ Extract the data array from response
       const result = Array.isArray(response.data?.data)
         ? response.data.data
         : [];
 
+      console.log(
+        "[fetchUserPlaylists] Parsed playlists count:",
+        result.length
+      );
+      console.log("[fetchUserPlaylists] Playlists:", result);
+
+      const privateCount = result.filter((p) => p.isPrivate).length;
+      const publicCount = result.filter((p) => !p.isPrivate).length;
+      console.log(
+        `[fetchUserPlaylists] Private: ${privateCount}, Public: ${publicCount}`
+      );
+
       return result;
     } catch (error) {
+      console.error("[fetchUserPlaylists] Error:", error);
+      console.error("[fetchUserPlaylists] Error response:", error.response);
+
       if (error.response?.status === 404) {
         return rejectWithValue("User playlists not found");
       }
@@ -61,7 +84,6 @@ export const fetchPlaylistById = createAsyncThunk(
         throw new Error("No playlist data received");
       }
 
-      // ✅ Extract the data object from response
       return response.data.data;
     } catch (error) {
       if (error.response?.status === 404) {
@@ -102,6 +124,8 @@ export const createPlaylist = createAsyncThunk(
         isPrivate,
       };
 
+      console.log("[createPlaylist] Creating playlist:", payload);
+
       const response = await axiosInstance.post("/playlists", payload, {
         timeout: 30000,
         withCredentials: true,
@@ -111,9 +135,12 @@ export const createPlaylist = createAsyncThunk(
         throw new Error("No data received from server");
       }
 
-      // ✅ FIX: Return the data object, not the whole response
+      console.log("[createPlaylist] Created playlist:", response.data.data);
+
       return response.data.data;
     } catch (error) {
+      console.error("[createPlaylist] Error:", error);
+
       if (error.response?.status === 401) {
         return rejectWithValue("Authentication required");
       }
@@ -160,7 +187,6 @@ export const addToPlaylist = createAsyncThunk(
         throw new Error("No data received from server");
       }
 
-      // ✅ Return the data object
       return response.data.data;
     } catch (error) {
       if (error.response?.status === 403) {
@@ -207,7 +233,6 @@ export const removeFromPlaylist = createAsyncThunk(
         throw new Error("No data received from server");
       }
 
-      // ✅ Return the data object
       return response.data.data;
     } catch (error) {
       if (error.response?.status === 403) {
@@ -255,7 +280,6 @@ export const updatePlaylist = createAsyncThunk(
         throw new Error("No data received from server");
       }
 
-      // ✅ Return the data object
       return response.data.data;
     } catch (error) {
       if (error.response?.status === 403) {
@@ -342,7 +366,6 @@ export const reorderPlaylistPosts = createAsyncThunk(
         throw new Error("No data received from server");
       }
 
-      // ✅ Return the data object
       return response.data.data;
     } catch (error) {
       return rejectWithValue(
@@ -415,11 +438,17 @@ const playlistSlice = createSlice({
     // Socket event handlers
     handlePlaylistCreated: (state, action) => {
       const newPlaylist = action.payload;
+      console.log("[handlePlaylistCreated] New playlist:", newPlaylist);
+
       if (!newPlaylist?._id) return;
 
       const exists = state.playlists.some((p) => p._id === newPlaylist._id);
       if (!exists) {
         state.playlists.unshift(newPlaylist);
+        console.log(
+          "[handlePlaylistCreated] Added to state. Total:",
+          state.playlists.length
+        );
       }
     },
 
@@ -513,16 +542,34 @@ const playlistSlice = createSlice({
     builder
       // Fetch User Playlists
       .addCase(fetchUserPlaylists.pending, (state) => {
+        console.log("[PlaylistSlice] fetchUserPlaylists.pending");
         state.status = "loading";
         state.error = null;
       })
       .addCase(fetchUserPlaylists.fulfilled, (state, action) => {
+        console.log("[PlaylistSlice] fetchUserPlaylists.fulfilled");
+        console.log(
+          "[PlaylistSlice] Received playlists:",
+          action.payload?.length
+        );
+
         state.status = "succeeded";
         state.playlists = Array.isArray(action.payload) ? action.payload : [];
+
+        const privateCount = state.playlists.filter((p) => p.isPrivate).length;
+        const publicCount = state.playlists.filter((p) => !p.isPrivate).length;
+        console.log(
+          `[PlaylistSlice] State updated - Private: ${privateCount}, Public: ${publicCount}`
+        );
+
         state.error = null;
         state.lastFetch = new Date().toISOString();
       })
       .addCase(fetchUserPlaylists.rejected, (state, action) => {
+        console.error(
+          "[PlaylistSlice] fetchUserPlaylists.rejected:",
+          action.payload
+        );
         state.status = "failed";
         state.error = action.payload;
       })
@@ -542,16 +589,24 @@ const playlistSlice = createSlice({
         state.currentPlaylistError = action.payload;
       })
 
-      // Create Playlist - ✅ FIXED
+      // Create Playlist
       .addCase(createPlaylist.pending, (state) => {
         state.createStatus = "loading";
         state.error = null;
       })
       .addCase(createPlaylist.fulfilled, (state, action) => {
+        console.log(
+          "[PlaylistSlice] createPlaylist.fulfilled:",
+          action.payload
+        );
         state.createStatus = "succeeded";
-        // ✅ FIX: action.payload is now the playlist object directly
+
         if (action.payload && action.payload._id) {
           state.playlists.unshift(action.payload);
+          console.log(
+            "[PlaylistSlice] Playlist added to state. Total:",
+            state.playlists.length
+          );
         }
         state.error = null;
         state.lastFetch = new Date().toISOString();
@@ -561,7 +616,7 @@ const playlistSlice = createSlice({
         state.error = action.payload;
       })
 
-      // Add To Playlist - ✅ FIXED
+      // Add To Playlist
       .addCase(addToPlaylist.pending, (state) => {
         state.status = "loading";
         state.error = null;
@@ -588,7 +643,7 @@ const playlistSlice = createSlice({
         state.error = action.payload;
       })
 
-      // Remove From Playlist - ✅ FIXED
+      // Remove From Playlist
       .addCase(removeFromPlaylist.pending, (state) => {
         state.status = "loading";
         state.error = null;
@@ -615,7 +670,7 @@ const playlistSlice = createSlice({
         state.error = action.payload;
       })
 
-      // Update Playlist - ✅ FIXED
+      // Update Playlist
       .addCase(updatePlaylist.pending, (state) => {
         state.updateStatus = "loading";
         state.error = null;
@@ -665,7 +720,7 @@ const playlistSlice = createSlice({
         state.error = action.payload;
       })
 
-      // Reorder Playlist Posts - ✅ FIXED
+      // Reorder Playlist Posts
       .addCase(reorderPlaylistPosts.pending, (state) => {
         state.status = "loading";
         state.error = null;

@@ -13,18 +13,25 @@ const AboutPage = () => {
   return (
     <SpaceBackground>
       <Helmet>
-        <title>About readzio | A Creative Publishing Platform from India</title>
+        <title>
+          Free Online Publishing Platform | Publish Articles Online Worldwide &
+          India | readzio
+        </title>
         <meta
           name="description"
-          content="Discover readzio – a modern publishing platform built in India for writers, readers, and digital creators seeking clarity, creativity, and community."
+          content="readzio is a free online publishing platform for writers and creators to publish articles, stories, and blogs — open to users worldwide and across India."
+        />
+        <meta
+          name="keywords"
+          content="free online publishing platform, publish articles online free, blog publishing platform India, self publishing platform writers, creative publishing platform"
         />
         <meta
           property="og:title"
-          content="About readzio | A Creative Publishing Platform from India"
+          content="Free Online Publishing Platform | readzio"
         />
         <meta
           property="og:description"
-          content="Learn about readzio, its vision, and features — a clean, powerful space for publishing blogs, articles, and stories."
+          content="Publish stories, articles, and blogs globally or in India for free on readzio — a modern content publishing platform for writers and creators."
         />
       </Helmet>
 
@@ -36,17 +43,20 @@ const AboutPage = () => {
             </h1>
 
             <p className="text-lg leading-relaxed text-gray-700 dark:text-gray-300">
-              <strong>readzio</strong> is a creative publishing platform
-              designed for writers, bloggers, and curious minds. Whether you're
-              here to express your ideas, share knowledge, or explore meaningful
-              content — readzio provides a clean, responsive space that
-              prioritizes clarity and reader engagement.
+              <strong>readzio</strong> is a{" "}
+              <strong>free online publishing platform</strong> for creators
+              across India and worldwide. Whether you want to{" "}
+              <strong>publish articles online free</strong>, share a story, or
+              grow as a writer — readzio offers a clean and seamless space to
+              connect with your audience.
             </p>
 
             <p className="text-lg mt-6 leading-relaxed text-gray-700 dark:text-gray-300">
-              Based in <strong>India</strong>, readzio is developed with an
-              emphasis on simplicity, speed, and accessibility — offering a
-              seamless experience across all devices.
+              Developed in <strong>India</strong>, readzio also supports global
+              authors and provides <strong>self publishing features</strong> for
+              writers, bloggers, and creators across the world. It's a{" "}
+              <strong>blog publishing platform India</strong> and a{" "}
+              <strong>creative publishing platform worldwide</strong>.
             </p>
 
             <h2 className="text-2xl font-semibold mt-10 mb-4 text-gray-800 dark:text-white">

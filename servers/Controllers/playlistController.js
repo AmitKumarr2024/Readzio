@@ -604,11 +604,24 @@ export const getUserPlaylists = async (req, res, next) => {
     const { userId } = req.params;
     const requestingUserId = normalizeUserId(req.user?._id);
 
+    console.log("[getUserPlaylists] Debug Info:");
+    console.log("  Requested userId:", userId);
+    console.log("  Requesting userId:", requestingUserId);
+    console.log("  req.user:", req.user);
+
     // Validate ObjectId
     validateObjectId(userId, "User ID");
 
-    // Determine if requester is the owner - FIXED: Convert both to strings for comparison
-    const isOwner = requestingUserId && requestingUserId === userId.toString();
+    // Determine if requester is the owner - normalize both sides
+    const normalizedUserId = userId.toString().trim();
+    const normalizedRequestingUserId = requestingUserId
+      ? requestingUserId.toString().trim()
+      : null;
+    const isOwner =
+      normalizedRequestingUserId &&
+      normalizedRequestingUserId === normalizedUserId;
+
+    console.log("  Is Owner:", isOwner);
 
     // Build query
     const query = { user: userId };
@@ -617,6 +630,8 @@ export const getUserPlaylists = async (req, res, next) => {
     if (!isOwner) {
       query.isPrivate = false;
     }
+
+    console.log("  Query:", query);
 
     const playlists = await Playlist.find(query)
       .populate("user", "name email avatar")
@@ -631,6 +646,8 @@ export const getUserPlaylists = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    console.log("  Found playlists:", playlists.length);
+
     res.status(200).json({
       success: true,
       count: playlists.length,
@@ -640,7 +657,6 @@ export const getUserPlaylists = async (req, res, next) => {
     next(error);
   }
 };
-
 /**
  * @desc    Get a single playlist by ID
  * @route   GET /api/playlists/:id
