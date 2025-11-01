@@ -11,6 +11,8 @@ import {
   FaEdit,
   FaSpinner,
   FaPlus,
+  FaClock,
+  FaLayerGroup,
 } from "react-icons/fa";
 import {
   fetchUserPlaylists,
@@ -19,7 +21,7 @@ import {
 } from "../../store/playlistSlice";
 import { toast } from "react-hot-toast";
 
-// Inject CSS animations for performance - only once
+// Inject high-performance CSS animations
 const injectAnimations = (() => {
   let injected = false;
   return () => {
@@ -29,122 +31,132 @@ const injectAnimations = (() => {
     const styleSheet = document.createElement("style");
     styleSheet.setAttribute("data-playlist-animations", "true");
     styleSheet.textContent = `
-      @keyframes float {
-        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-        33% { transform: translate3d(30px, -30px, 0) scale(1.1); }
-        66% { transform: translate3d(-20px, 20px, 0) scale(0.9); }
+      @keyframes gradient-shift {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
       }
       
-      @keyframes float-delayed {
-        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-        33% { transform: translate3d(-25px, 25px, 0) scale(1.05); }
-        66% { transform: translate3d(20px, -20px, 0) scale(0.95); }
+      @keyframes float-gentle {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-20px) rotate(2deg); }
       }
       
-      @keyframes float-slow {
-        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-        50% { transform: translate3d(15px, -15px, 0) scale(1.08); }
+      @keyframes float-reverse {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(20px) rotate(-2deg); }
       }
       
-      @keyframes wave {
-        0%, 100% { transform: translateX(0); }
-        50% { transform: translateX(-25%); }
+      @keyframes orbit {
+        from { transform: rotate(0deg) translateX(40px) rotate(0deg); }
+        to { transform: rotate(360deg) translateX(40px) rotate(-360deg); }
       }
       
-      @keyframes shimmer {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
+      @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+        50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.8); }
       }
       
-      @keyframes pulse-slow {
-        0%, 100% { opacity: 0.3; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(1.05); }
+      @keyframes shimmer-wave {
+        0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+        100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
       }
       
-      @keyframes pulse-subtle {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
+      @keyframes scale-pulse {
+        0%, 100% { transform: scale(1); opacity: 0.8; }
+        50% { transform: scale(1.1); opacity: 1; }
       }
       
-      @keyframes bounce-subtle {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-      }
-      
-      @keyframes spin-slow {
+      @keyframes rotate-slow {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
       }
       
-      .animate-float {
-        animation: float 8s ease-in-out infinite;
-        will-change: transform;
+      @keyframes slide-up {
+        from { transform: translateY(10px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
       }
       
-      .animate-float-delayed {
-        animation: float-delayed 10s ease-in-out infinite;
-        will-change: transform;
+      @keyframes border-dance {
+        0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+        25% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+        50% { border-radius: 50% 60% 30% 60% / 30% 60% 70% 40%; }
+        75% { border-radius: 60% 40% 50% 60% / 70% 30% 50% 60%; }
       }
       
-      .animate-float-slow {
-        animation: float-slow 12s ease-in-out infinite;
-        will-change: transform;
+      @keyframes text-glow {
+        0%, 100% { text-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        50% { text-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.6); }
       }
       
-      .animate-wave {
-        animation: wave 6s ease-in-out infinite;
-      }
-      
-      .animate-shimmer {
-        animation: shimmer 1.5s ease-in-out;
-      }
-      
-      .animate-pulse-slow {
-        animation: pulse-slow 3s ease-in-out infinite;
-      }
-      
-      .animate-pulse-subtle {
-        animation: pulse-subtle 2s ease-in-out infinite;
-      }
-      
-      .animate-bounce-subtle {
-        animation: bounce-subtle 3s ease-in-out infinite;
-      }
-      
-      .animate-spin-slow {
-        animation: spin-slow 8s linear infinite;
-      }
-      
-      /* Performance optimizations */
       .playlist-card {
-        will-change: transform, box-shadow;
-        backface-visibility: hidden;
+        will-change: transform;
         transform: translateZ(0);
+        backface-visibility: hidden;
+        perspective: 1000px;
       }
       
-      .playlist-gradient {
-        will-change: opacity;
+      .gradient-animated {
+        background-size: 200% 200%;
+        animation: gradient-shift 8s ease infinite;
+      }
+      
+      .float-gentle {
+        animation: float-gentle 6s ease-in-out infinite;
+      }
+      
+      .float-reverse {
+        animation: float-reverse 5s ease-in-out infinite;
+      }
+      
+      .orbit-animation {
+        animation: orbit 15s linear infinite;
+      }
+      
+      .shimmer-overlay {
+        animation: shimmer-wave 3s ease-in-out infinite;
+      }
+      
+      .scale-pulse {
+        animation: scale-pulse 3s ease-in-out infinite;
+      }
+      
+      .rotate-slow {
+        animation: rotate-slow 20s linear infinite;
+      }
+      
+      .border-morph {
+        animation: border-dance 10s ease-in-out infinite;
+      }
+      
+      .glow-text {
+        animation: text-glow 3s ease-in-out infinite;
+      }
+      
+      .slide-up-enter {
+        animation: slide-up 0.4s ease-out;
       }
     `;
     document.head.appendChild(styleSheet);
   };
 })();
 
-// Utility to generate stable gradient colors from playlist ID
+// Generate vibrant gradient based on playlist ID
 const getPlaylistGradient = (playlistId) => {
-  const id = String(playlistId || "fallback");
-  const c0 = id.charCodeAt(0) || 65;
-  const c1 = id.charCodeAt(1) || 66;
-  const c2 = id.charCodeAt(2) || 67;
+  const id = String(playlistId || "default");
+  const hash = [...id].reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
+  const hue1 = (hash * 137) % 360;
+  const hue2 = (hash * 197 + 120) % 360;
+  const hue3 = (hash * 257 + 240) % 360;
 
   return `linear-gradient(135deg,
-    hsl(${(c0 * 137.5) % 360}, 70%, 60%),
-    hsl(${(c1 * 137.5) % 360}, 65%, 55%),
-    hsl(${(c2 * 137.5) % 360}, 75%, 50%)
+    hsl(${hue1}, 85%, 65%) 0%,
+    hsl(${hue2}, 80%, 60%) 50%,
+    hsl(${hue3}, 85%, 55%) 100%
   )`;
 };
 
-// Memoized playlist card component for better performance
+// Memoized Playlist Card Component
 const PlaylistCard = ({
   playlist,
   isOwnProfile,
@@ -157,7 +169,9 @@ const PlaylistCard = ({
     () => getPlaylistGradient(playlist._id),
     [playlist._id]
   );
+
   const postCount = playlist.posts?.length || 0;
+
   const createdDate = useMemo(
     () =>
       new Date(playlist.createdAt).toLocaleDateString("en-US", {
@@ -170,202 +184,249 @@ const PlaylistCard = ({
 
   return (
     <div
-      className="group relative playlist-card bg-gradient-to-br from-white to-gray-50 
-                 dark:from-gray-800 dark:to-gray-900 rounded-2xl 
-                 shadow-lg hover:shadow-2xl transition-all duration-300 
-                 overflow-hidden border border-gray-100 dark:border-gray-700
-                 hover:scale-[1.02] hover:-translate-y-1"
+      className="group playlist-card relative bg-white dark:bg-gray-900 
+                 rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl 
+                 transition-all duration-500 ease-out
+                 hover:scale-[1.03] hover:-translate-y-2
+                 border border-gray-200 dark:border-gray-700
+                 slide-up-enter"
     >
-      {/* Animated Gradient Background */}
+      {/* Animated Background Header */}
       <div
-        onClick={() => onClick(playlist._id)}
-        className="relative h-56 cursor-pointer overflow-hidden"
+        className="relative h-48 overflow-hidden cursor-pointer gradient-animated"
         style={{ background: gradient }}
+        onClick={() => onClick(playlist._id)}
       >
-        {/* Animated Orbs */}
-        <div className="absolute inset-0 overflow-hidden">
+        {/* Floating Orbs with Different Animations */}
+        <div className="absolute inset-0">
+          {/* Large floating orb */}
           <div
-            className="absolute w-64 h-64 rounded-full blur-3xl opacity-40 animate-float"
+            className="absolute w-32 h-32 rounded-full blur-2xl opacity-30 float-gentle"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(255,255,255,0.9), transparent)",
+              top: "10%",
+              left: "15%",
+            }}
+          />
+
+          {/* Medium reverse floating orb */}
+          <div
+            className="absolute w-24 h-24 rounded-full blur-xl opacity-25 float-reverse"
             style={{
               background:
                 "radial-gradient(circle, rgba(255,255,255,0.8), transparent)",
-              top: "-20%",
-              left: "-10%",
+              bottom: "20%",
+              right: "10%",
             }}
           />
+
+          {/* Small orbiting particles */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="relative w-2 h-2">
+              <div
+                className="absolute w-3 h-3 bg-white rounded-full opacity-60 blur-sm orbit-animation"
+                style={{ animationDelay: "0s" }}
+              />
+              <div
+                className="absolute w-2 h-2 bg-white rounded-full opacity-50 blur-sm orbit-animation"
+                style={{ animationDelay: "2s" }}
+              />
+              <div
+                className="absolute w-2.5 h-2.5 bg-white rounded-full opacity-55 blur-sm orbit-animation"
+                style={{ animationDelay: "4s" }}
+              />
+            </div>
+          </div>
+
+          {/* Morphing blob */}
           <div
-            className="absolute w-48 h-48 rounded-full blur-2xl opacity-30 animate-float-delayed"
+            className="absolute w-40 h-40 bg-white opacity-10 blur-3xl border-morph"
             style={{
-              background:
-                "radial-gradient(circle, rgba(255,255,255,0.6), transparent)",
-              bottom: "-15%",
-              right: "-5%",
-            }}
-          />
-          <div
-            className="absolute w-56 h-56 rounded-full blur-3xl opacity-25 animate-float-slow"
-            style={{
-              background:
-                "radial-gradient(circle, rgba(255,255,255,0.5), transparent)",
-              top: "40%",
-              right: "30%",
+              top: "30%",
+              left: "40%",
             }}
           />
         </div>
 
-        {/* Animated Wave Pattern */}
-        <div className="absolute inset-0 opacity-20">
-          <svg
-            className="w-full h-full animate-wave"
-            viewBox="0 0 1200 600"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M0,300 Q300,200 600,300 T1200,300 L1200,600 L0,600 Z"
-              fill="rgba(255,255,255,0.3)"
-            />
-          </svg>
+        {/* Shimmer Effect */}
+        <div
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+          style={{ overflow: "hidden" }}
+        >
+          <div
+            className="absolute inset-0 shimmer-overlay"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)",
+              width: "200%",
+              height: "200%",
+            }}
+          />
         </div>
 
-        {/* Playlist Icon with Pulse */}
+        {/* Central Icon with Glow */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="relative">
-            <div className="absolute inset-0 bg-white rounded-full blur-xl opacity-30 animate-pulse-slow" />
-            <FaList className="relative text-7xl text-white opacity-90 drop-shadow-2xl animate-bounce-subtle" />
+            {/* Rotating ring behind icon */}
+            <div className="absolute inset-0 -m-8">
+              <div className="w-full h-full border-4 border-white/20 rounded-full rotate-slow" />
+            </div>
+
+            {/* Pulsing glow */}
+            <div className="absolute inset-0 -m-6">
+              <div className="w-full h-full bg-white/30 rounded-full blur-2xl scale-pulse" />
+            </div>
+
+            {/* Main icon */}
+            <FaLayerGroup className="relative text-6xl text-white drop-shadow-2xl" />
           </div>
         </div>
 
-        {/* Shimmer Effect on Hover */}
+        {/* Hover Overlay */}
         <div
-          className="absolute inset-0 playlist-gradient bg-gradient-to-r from-transparent 
-                    via-white to-transparent opacity-0 group-hover:opacity-20 
-                    transition-opacity duration-500 pointer-events-none"
-        />
-
-        {/* Overlay on Hover */}
-        <div
-          className="absolute inset-0 bg-black bg-opacity-0 
-                    group-hover:bg-opacity-40 transition-all duration-300 
-                    flex items-center justify-center backdrop-blur-0
-                    group-hover:backdrop-blur-sm"
+          className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent
+                     opacity-0 group-hover:opacity-100 transition-all duration-500
+                     flex items-center justify-center"
         >
-          <span
-            className="text-white text-lg font-bold opacity-0 
-                     group-hover:opacity-100 transition-all duration-300
-                     transform translate-y-2 group-hover:translate-y-0
-                     drop-shadow-lg"
-          >
-            View Playlist
-          </span>
+          <div className="text-center transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+            <p className="text-white text-lg font-bold glow-text">
+              View Playlist
+            </p>
+            <div className="mt-2 flex items-center justify-center gap-2 text-white/90 text-sm">
+              <FaList />
+              <span>
+                {postCount} {postCount === 1 ? "Post" : "Posts"}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Privacy Badge */}
-        <div className="absolute top-3 right-3 z-10">
+        <div className="absolute top-4 right-4 z-10">
           {playlist.isPrivate ? (
             <div
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full 
-                         bg-gray-900 bg-opacity-90 backdrop-blur-md text-white 
-                         text-xs font-medium shadow-lg border border-gray-700
-                         hover:scale-105 transition-transform"
+              className="flex items-center gap-2 px-3 py-2 rounded-full 
+                         bg-black/60 backdrop-blur-md text-white text-xs font-semibold
+                         border border-white/20 shadow-lg
+                         hover:scale-110 hover:bg-black/70 transition-all duration-300"
             >
-              <FaLock className="animate-pulse-subtle" />
-              Private
+              <FaLock className="text-yellow-400" />
+              <span>Private</span>
             </div>
           ) : (
             <div
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full 
-                         bg-green-500 bg-opacity-90 backdrop-blur-md text-white 
-                         text-xs font-medium shadow-lg border border-green-400
-                         hover:scale-105 transition-transform"
+              className="flex items-center gap-2 px-3 py-2 rounded-full 
+                         bg-emerald-500/90 backdrop-blur-md text-white text-xs font-semibold
+                         border border-emerald-400/50 shadow-lg
+                         hover:scale-110 hover:bg-emerald-600 transition-all duration-300"
             >
-              <FaGlobe className="animate-spin-slow" />
-              Public
+              <FaGlobe className="rotate-slow" />
+              <span>Public</span>
             </div>
           )}
         </div>
 
         {/* Post Count Badge */}
-        <div className="absolute bottom-3 left-3 z-10">
+        <div className="absolute bottom-4 left-4 z-10">
           <div
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full 
-                     bg-white bg-opacity-90 backdrop-blur-md 
-                     text-gray-800 text-xs font-semibold shadow-lg
-                     hover:scale-105 transition-transform"
+            className="flex items-center gap-2 px-4 py-2 rounded-full 
+                       bg-white/95 backdrop-blur-md text-gray-800 text-sm font-bold
+                       shadow-lg hover:scale-110 transition-all duration-300
+                       border border-gray-200"
           >
-            <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-            {postCount} {postCount === 1 ? "post" : "posts"}
+            <div className="relative">
+              <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-ping absolute" />
+              <div className="w-2.5 h-2.5 bg-blue-600 rounded-full relative" />
+            </div>
+            <span>{postCount}</span>
           </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-5 bg-white dark:bg-gray-800">
+      {/* Content Section */}
+      <div className="p-6 space-y-4">
+        {/* Title */}
         <h3
           onClick={() => onClick(playlist._id)}
-          className="text-xl font-bold text-gray-900 dark:text-white 
-                   mb-2 truncate cursor-pointer hover:text-blue-600 
-                   dark:hover:text-blue-400 transition-colors
-                   group-hover:translate-x-1 duration-300"
+          className="text-2xl font-bold text-gray-900 dark:text-white 
+                     cursor-pointer hover:text-blue-600 dark:hover:text-blue-400
+                     transition-all duration-300 line-clamp-2
+                     group-hover:translate-x-1"
         >
           {playlist.name}
         </h3>
 
+        {/* Description */}
         {playlist.description && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 leading-relaxed">
+          <p
+            className="text-sm text-gray-600 dark:text-gray-400 
+                      line-clamp-2 leading-relaxed"
+          >
             {playlist.description}
           </p>
         )}
 
-        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-4">
-          <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-            Created {createdDate}
-          </span>
+        {/* Created Date */}
+        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
+          <FaClock className="text-blue-500" />
+          <span>Created {createdDate}</span>
         </div>
 
         {/* Action Buttons */}
         {isOwnProfile && (
-          <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={() => onEdit(playlist._id)}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 
-                       rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 
-                       dark:from-blue-900/20 dark:to-indigo-900/20
-                       hover:from-blue-100 hover:to-indigo-100
-                       dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30
-                       text-blue-700 dark:text-blue-400 transition-all
-                       font-medium shadow-sm hover:shadow-md
-                       hover:scale-105 duration-200"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3
+                       rounded-xl font-semibold text-sm
+                       bg-gradient-to-r from-blue-500 to-indigo-500
+                       hover:from-blue-600 hover:to-indigo-600
+                       text-white shadow-md hover:shadow-xl
+                       transform hover:scale-105 active:scale-95
+                       transition-all duration-300"
             >
-              <FaEdit />
-              Edit
+              <FaEdit className="text-base" />
+              <span>Edit</span>
             </button>
+
             <button
               onClick={() => onDelete(playlist._id, playlist.name)}
               disabled={deletingId === playlist._id}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 
-                       rounded-xl bg-gradient-to-r from-red-50 to-pink-50
-                       dark:from-red-900/20 dark:to-pink-900/20
-                       hover:from-red-100 hover:to-pink-100
-                       dark:hover:from-red-900/30 dark:hover:to-pink-900/30
-                       text-red-700 dark:text-red-400 transition-all
-                       font-medium shadow-sm hover:shadow-md
-                       hover:scale-105 duration-200
-                       disabled:opacity-50 disabled:cursor-not-allowed 
-                       disabled:hover:scale-100"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3
+                       rounded-xl font-semibold text-sm
+                       bg-gradient-to-r from-red-500 to-pink-500
+                       hover:from-red-600 hover:to-pink-600
+                       text-white shadow-md hover:shadow-xl
+                       transform hover:scale-105 active:scale-95
+                       transition-all duration-300
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       disabled:transform-none"
             >
               {deletingId === playlist._id ? (
-                <FaSpinner className="animate-spin" />
+                <FaSpinner className="animate-spin text-base" />
               ) : (
                 <>
-                  <FaTrash />
-                  Delete
+                  <FaTrash className="text-base" />
+                  <span>Delete</span>
                 </>
               )}
             </button>
           </div>
         )}
       </div>
+
+      {/* Animated Border Glow on Hover */}
+      <div
+        className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 
+                   transition-opacity duration-500 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3))",
+          filter: "blur(20px)",
+          zIndex: -1,
+        }}
+      />
     </div>
   );
 };
@@ -431,78 +492,114 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
 
   if (status === "loading") {
     return (
-      <div className="flex items-center justify-center py-12">
-        <FaSpinner className="animate-spin text-3xl text-blue-500" />
+      <div className="flex items-center justify-center py-20">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-200 dark:border-blue-900 rounded-full" />
+          <div className="absolute top-0 left-0 w-16 h-16 border-4 border-blue-600 rounded-full border-t-transparent animate-spin" />
+        </div>
       </div>
     );
   }
 
   if (status === "failed") {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-500 dark:text-red-400">{error}</p>
-        <button
-          onClick={() => dispatch(fetchUserPlaylists(userId))}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg 
-                   hover:bg-blue-700 transition-colors"
-        >
-          Try Again
-        </button>
+      <div className="text-center py-20 px-4">
+        <div className="max-w-md mx-auto">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+            <FaSpinner className="text-4xl text-red-500" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            Failed to Load Playlists
+          </h3>
+          <p className="text-red-500 dark:text-red-400 mb-6">{error}</p>
+          <button
+            onClick={() => dispatch(fetchUserPlaylists(userId))}
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600
+                     hover:from-blue-700 hover:to-indigo-700
+                     text-white rounded-xl font-semibold
+                     transform hover:scale-105 transition-all duration-300
+                     shadow-lg hover:shadow-xl"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
   if (playlists.length === 0) {
     return (
-      <div className="text-center py-12">
-        <FaList className="mx-auto text-6xl text-gray-300 dark:text-gray-700 mb-4" />
-        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          {isOwnProfile ? "No Playlists Yet" : "No Public Playlists"}
-        </h3>
-        <p className="text-gray-500 dark:text-gray-400 mb-6">
-          {isOwnProfile
-            ? "Create your first playlist to organize your favorite posts"
-            : "This user hasn't created any public playlists yet"}
-        </p>
-        {isOwnProfile && (
-          <button
-            onClick={handleCreateNew}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 
-                     text-white rounded-lg hover:bg-blue-700 transition-colors 
-                     font-medium"
-          >
-            <FaPlus />
-            Create Playlist
-          </button>
-        )}
+      <div className="text-center py-20 px-4">
+        <div className="max-w-md mx-auto">
+          <div className="relative w-32 h-32 mx-auto mb-8">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full opacity-20 blur-2xl animate-pulse" />
+            <div className="relative w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/20 dark:to-purple-900/20 rounded-full flex items-center justify-center">
+              <FaList className="text-6xl text-gray-400 dark:text-gray-600" />
+            </div>
+          </div>
+
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+            {isOwnProfile ? "No Playlists Yet" : "No Public Playlists"}
+          </h3>
+
+          <p className="text-gray-600 dark:text-gray-400 mb-8 text-lg">
+            {isOwnProfile
+              ? "Create your first playlist to organize your favorite posts"
+              : "This user hasn't created any public playlists yet"}
+          </p>
+
+          {isOwnProfile && (
+            <button
+              onClick={handleCreateNew}
+              className="inline-flex items-center gap-3 px-8 py-4
+                       bg-gradient-to-r from-blue-600 to-indigo-600
+                       hover:from-blue-700 hover:to-indigo-700
+                       text-white rounded-2xl font-bold text-lg
+                       shadow-xl hover:shadow-2xl
+                       transform hover:scale-105 active:scale-95
+                       transition-all duration-300"
+            >
+              <FaPlus className="text-xl" />
+              Create Your First Playlist
+            </button>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 mx-10 pt-6">
+    <div className="space-y-8 px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Playlists
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {playlists.length}{" "}
-            {playlists.length === 1 ? "playlist" : "playlists"}
+          <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+            <span className="font-medium">
+              {playlists.length}{" "}
+              {playlists.length === 1 ? "playlist" : "playlists"}
+            </span>
             {isConnected && (
-              <span className="ml-2 inline-flex items-center gap-1">
+              <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                 Live
               </span>
             )}
-          </p>
+          </div>
         </div>
+
         {isOwnProfile && (
           <button
             onClick={handleCreateNew}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white 
-                     rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="flex items-center gap-2 px-6 py-3
+                     bg-gradient-to-r from-blue-600 to-indigo-600
+                     hover:from-blue-700 hover:to-indigo-700
+                     text-white rounded-xl font-semibold
+                     shadow-lg hover:shadow-xl
+                     transform hover:scale-105 active:scale-95
+                     transition-all duration-300"
           >
             <FaPlus />
             New Playlist
@@ -511,7 +608,7 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
       </div>
 
       {/* Playlists Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
         {playlists.map((playlist) => {
           if (!playlist?._id) return null;
 
