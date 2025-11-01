@@ -15,7 +15,7 @@ import {
   MessageSquare,
   Trash2,
   FileEdit,
-  List, // Use List icon for playlists
+  List, // Use List icon for postlists
 } from "lucide-react";
 
 export const tabsConfig = [
@@ -26,8 +26,8 @@ export const tabsConfig = [
     roles: ["non-logged-in", "logged-in", "author"],
   },
   {
-    id: "playlists",
-    label: "Playlists",
+    id: "postlists",
+    label: "postlists",
     icon: <List />,
     roles: ["non-logged-in", "logged-in", "author"],
   },

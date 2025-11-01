@@ -1,4 +1,4 @@
-// clients/src/components/Playlist/PlaylistModal.jsx
+// clients/src/components/postlist/postlistModal.jsx
 import React, { useEffect, useState } from "react";
 import {
   FaTimes,
@@ -17,7 +17,7 @@ const injectModalAnimations = (() => {
     injected = true;
 
     const styleSheet = document.createElement("style");
-    styleSheet.setAttribute("data-playlist-modal-animations", "true");
+    styleSheet.setAttribute("data-postlist-modal-animations", "true");
     styleSheet.textContent = `
       @keyframes modalFadeIn {
         from {
@@ -39,7 +39,7 @@ const injectModalAnimations = (() => {
         }
       }
       
-      @keyframes playlistItemSlideIn {
+      @keyframes postlistItemSlideIn {
         from {
           opacity: 0;
           transform: translateX(-20px);
@@ -111,8 +111,8 @@ const injectModalAnimations = (() => {
         will-change: transform, opacity;
       }
       
-      .playlist-item {
-        animation: playlistItemSlideIn 0.3s ease-out backwards;
+      .postlist-item {
+        animation: postlistItemSlideIn 0.3s ease-out backwards;
         will-change: transform, opacity;
       }
       
@@ -144,12 +144,12 @@ const injectModalAnimations = (() => {
   };
 })();
 
-const PlaylistModal = ({
+const postlistModal = ({
   postId,
   post,
-  playlists,
-  isInPlaylists,
-  onAddToPlaylist,
+  postlists,
+  isInpostlists,
+  onAddTopostlist,
   onClose,
   loading,
 }) => {
@@ -161,7 +161,7 @@ const PlaylistModal = ({
     setMounted(true);
   }, []);
 
-  const handleRipple = (e, playlistId) => {
+  const handleRipple = (e, postlistId) => {
     const button = e.currentTarget;
     const rect = button.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -178,10 +178,10 @@ const PlaylistModal = ({
       setRipples((prev) => prev.filter((r) => r.id !== newRipple.id));
     }, 600);
 
-    onAddToPlaylist(playlistId);
+    onAddTopostlist(postlistId);
   };
 
-  if (!playlists.length) {
+  if (!postlists.length) {
     return (
       <div
         className="modal-backdrop fixed inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70 
@@ -218,10 +218,10 @@ const PlaylistModal = ({
           {/* Content */}
           <div className="relative text-center">
             <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-              No Playlists Yet
+              No postlists Yet
             </h3>
             <p className="text-gray-700 dark:text-gray-300 mb-6 leading-relaxed text-base">
-              Create your first playlist to start organizing your favorite posts
+              Create your first postlist to start organizing your favorite posts
             </p>
             <button
               onClick={onClose}
@@ -271,10 +271,10 @@ const PlaylistModal = ({
             <div>
               <h3 className="text-2xl font-bold text-white mb-1 flex items-center gap-2 drop-shadow-lg">
                 <FaList className="text-xl" />
-                Add to Playlist
+                Add to postlist
               </h3>
               <p className="text-white/95 text-sm font-medium drop-shadow">
-                Choose a playlist or multiple playlists
+                Choose a postlist or multiple postlists
               </p>
             </div>
             <button
@@ -289,20 +289,20 @@ const PlaylistModal = ({
           </div>
         </div>
 
-        {/* Playlists List */}
+        {/* postlists List */}
         <div className="p-6 overflow-y-auto max-h-[calc(85vh-200px)] custom-scrollbar bg-gray-50 dark:bg-gray-800">
           <div className="space-y-3">
-            {playlists.map((playlist, index) => {
-              const isInThisPlaylist = isInPlaylists.includes(playlist._id);
+            {postlists.map((postlist, index) => {
+              const isInThispostlist = isInpostlists.includes(postlist._id);
               return (
                 <button
-                  key={playlist._id}
-                  onClick={(e) => handleRipple(e, playlist._id)}
+                  key={postlist._id}
+                  onClick={(e) => handleRipple(e, postlist._id)}
                   disabled={loading}
-                  className={`playlist-item w-full relative overflow-hidden p-4 rounded-2xl 
+                  className={`postlist-item w-full relative overflow-hidden p-4 rounded-2xl 
                             transition-all duration-300 group
                             ${
-                              isInThisPlaylist
+                              isInThispostlist
                                 ? "bg-gradient-to-r from-green-50 via-emerald-50 to-green-50 dark:from-green-900/50 dark:via-emerald-900/40 dark:to-green-900/50 shadow-lg scale-[1.02] border-2 border-green-400 dark:border-green-500"
                                 : "bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-650 shadow-md hover:shadow-lg border-2 border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500"
                             }
@@ -326,8 +326,8 @@ const PlaylistModal = ({
                     />
                   ))}
 
-                  {/* Shimmer effect for selected playlists */}
-                  {isInThisPlaylist && (
+                  {/* Shimmer effect for selected postlists */}
+                  {isInThispostlist && (
                     <div className="absolute inset-0 shimmer-overlay opacity-20">
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-green-400/40 to-transparent" />
                     </div>
@@ -335,12 +335,12 @@ const PlaylistModal = ({
 
                   <div className="relative flex items-center justify-between">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {/* Playlist Icon */}
+                      {/* postlist Icon */}
                       <div
                         className={`w-12 h-12 rounded-xl flex items-center justify-center
                                   shadow-lg group-hover:shadow-xl transition-all
                                   ${
-                                    isInThisPlaylist
+                                    isInThispostlist
                                       ? "bg-gradient-to-br from-green-500 to-emerald-600"
                                       : "bg-gradient-to-br from-blue-500 to-purple-600"
                                   }`}
@@ -348,21 +348,21 @@ const PlaylistModal = ({
                         <FaList
                           className={`text-xl text-white transition-transform duration-300
                                     ${
-                                      isInThisPlaylist
+                                      isInThispostlist
                                         ? "scale-110"
                                         : "group-hover:scale-110"
                                     }`}
                         />
                       </div>
 
-                      {/* Playlist Info */}
+                      {/* postlist Info */}
                       <div className="flex-1 min-w-0 text-left">
                         <div className="font-bold text-gray-900 dark:text-gray-100 truncate mb-1 text-base">
-                          {playlist.name}
+                          {postlist.name}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 font-medium">
                           <span className="flex items-center gap-1.5">
-                            {playlist.isPrivate ? (
+                            {postlist.isPrivate ? (
                               <>
                                 <FaLock className="text-xs" />
                                 Private
@@ -375,14 +375,14 @@ const PlaylistModal = ({
                             )}
                           </span>
                           <span className="w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full" />
-                          <span>{playlist.posts?.length || 0} posts</span>
+                          <span>{postlist.posts?.length || 0} posts</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Action Icon */}
                     <div className="flex-shrink-0 ml-3">
-                      {isInThisPlaylist ? (
+                      {isInThispostlist ? (
                         <div
                           className="w-9 h-9 rounded-full bg-green-500 flex items-center 
                                    justify-center shadow-lg checkmark-icon"
@@ -416,7 +416,7 @@ const PlaylistModal = ({
         >
           <p className="text-sm text-center text-gray-700 dark:text-gray-300 flex items-center justify-center gap-2 font-medium">
             <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-lg shadow-blue-500/50" />
-            Click on playlists to add or remove this post
+            Click on postlists to add or remove this post
           </p>
         </div>
       </div>
@@ -445,4 +445,4 @@ const PlaylistModal = ({
   );
 };
 
-export default PlaylistModal;
+export default postlistModal;

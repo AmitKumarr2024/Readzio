@@ -39,7 +39,7 @@ const UserSettingsPage = safeLazy(() => import("../pages/UserSettingPage"));
 const FeatureComingSoon = safeLazy(() => import("../pages/FeatureComingSoon"));
 const DeleteModal = safeLazy(() => import("../components/Post/DeleteModal"));
 const AuthorProfilePage = safeLazy(() => import("../pages/AuthorProfilePage"));
-const PlaylistEditPage = safeLazy(() => import("../pages/PlaylistEditPage"));
+const postlistEditPage = safeLazy(() => import("../pages/postlistEditPage"));
 const UserPlanPage = safeLazy(() =>
   import("../components/PorductToBuy/UserPlanPage")
 );
@@ -62,11 +62,11 @@ const VerifyEmail = safeLazy(() =>
   import("../components/resetPassword/VerifyEmail")
 );
 const TagWisePage = safeLazy(() => import("../pages/TagWisePage"));
-const PlaylistCreatePage = safeLazy(() =>
-  import("../pages/PlaylistCreatePage")
+const postlistCreatePage = safeLazy(() =>
+  import("../pages/postlistCreatePage")
 );
-const PlaylistPage = safeLazy(() => import("../pages/PlaylistPage"));
-const UserPlaylistsPage = safeLazy(() => import("../pages/UserPlaylistsPage"));
+const postlistPage = safeLazy(() => import("../pages/postlistPage"));
+const UserpostlistsPage = safeLazy(() => import("../pages/UserpostlistsPage"));
 
 // ✅ Route definition
 const routes = createBrowserRouter([
@@ -84,7 +84,7 @@ const routes = createBrowserRouter([
       { path: "search", element: <SearchPage /> },
       { path: "about", element: <AboutPage /> },
       { path: "user", element: <UserProfilePage /> },
-      { path: "profile/playlists", element: <UserPlaylistsPage /> },
+      { path: "profile/postlists", element: <UserpostlistsPage /> },
       { path: "user-setting", element: <UserSettingsPage /> },
       { path: "author-profile/:id", element: <AuthorProfilePage /> },
       { path: "plans/:id", element: <UserPlanPage /> },
@@ -97,9 +97,9 @@ const routes = createBrowserRouter([
       { path: "contact", element: <Contact /> },
       { path: "privacy", element: <PrivacyPage /> },
       { path: "terms-conditions", element: <TermsAndConditionPage /> },
-      { path: "playlists/create", element: <PlaylistCreatePage /> },
-      { path: "playlist/:id", element: <PlaylistPage /> },
-      { path: "playlist/:id/edit", element: <PlaylistEditPage /> },
+      { path: "postlists/create", element: <postlistCreatePage /> },
+      { path: "postlist/:id", element: <postlistPage /> },
+      { path: "postlist/:id/edit", element: <postlistEditPage /> },
       {
         path: "admin",
         element: (

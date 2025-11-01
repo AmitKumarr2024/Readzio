@@ -1,4 +1,4 @@
-// clients/src/components/Playlist/PlaylistDetail.jsx
+// clients/src/components/postlist/postlistDetail.jsx
 import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate, Link } from "react-router-dom";
@@ -13,20 +13,20 @@ import {
   FaPlus,
   FaArrowLeft,
 } from "react-icons/fa";
-import { fetchPlaylistById, deletePlaylist } from "../../store/playlistSlice";
+import { fetchpostlistById, deletepostlist } from "../../store/postlistSlice";
 import { toast } from "react-hot-toast";
-import CardOfPost from "../../components/Cards/CardOfPost";
+import CardOfPost from "../Cards/CardOfPost";
 
 /**
- * Component to display details of a single playlist
- * Used in PlaylistPage
+ * Component to display details of a single postlist
+ * Used in postlistPage
  */
-const PlaylistDetail = ({ playlistId }) => {
+const postlistDetail = ({ postlistId }) => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { currentPlaylist, currentPlaylistStatus, currentPlaylistError } =
-    useSelector((state) => state.playlist);
+  const { currentpostlist, currentpostlistStatus, currentpostlistError } =
+    useSelector((state) => state.postlist);
   const { user } = useSelector((state) => state.auth);
   const { isConnected } = useSelector((state) => state.socket || {});
   const {
@@ -41,7 +41,7 @@ const PlaylistDetail = ({ playlistId }) => {
 
   console.log("posts....", posts);
 
-  const actualId = playlistId || id;
+  const actualId = postlistId || id;
 
   const allPosts = useMemo(
     () => [
@@ -69,41 +69,41 @@ const PlaylistDetail = ({ playlistId }) => {
 
   useEffect(() => {
     if (actualId) {
-      dispatch(fetchPlaylistById(actualId));
+      dispatch(fetchpostlistById(actualId));
     }
   }, [actualId, dispatch]);
 
   const handleDelete = async () => {
     if (
       !window.confirm(
-        `Delete "${currentPlaylist?.name}"? This cannot be undone.`
+        `Delete "${currentpostlist?.name}"? This cannot be undone.`
       )
     )
       return;
 
     try {
       setDeleting(true);
-      await dispatch(deletePlaylist(actualId)).unwrap();
-      toast.success("Playlist deleted successfully");
-      navigate("/user/playlists");
+      await dispatch(deletepostlist(actualId)).unwrap();
+      toast.success("postlist deleted successfully");
+      navigate("/user/postlists");
     } catch (error) {
-      toast.error("Failed to delete playlist");
+      toast.error("Failed to delete postlist");
     } finally {
       setDeleting(false);
     }
   };
 
   const handleEdit = () => {
-    navigate(`/playlist/${actualId}/edit`);
+    navigate(`/postlist/${actualId}/edit`);
   };
 
   const handleShare = () => {
-    const url = `${window.location.origin}/playlist/${actualId}`;
+    const url = `${window.location.origin}/postlist/${actualId}`;
     navigator.clipboard.writeText(url);
-    toast.success("Playlist link copied!");
+    toast.success("postlist link copied!");
   };
 
-  if (currentPlaylistStatus === "loading") {
+  if (currentpostlistStatus === "loading") {
     return (
       <div className="flex items-center justify-center py-12">
         <FaSpinner className="animate-spin text-3xl text-blue-500" />
@@ -111,14 +111,14 @@ const PlaylistDetail = ({ playlistId }) => {
     );
   }
 
-  if (currentPlaylistStatus === "failed") {
+  if (currentpostlistStatus === "failed") {
     return (
       <div className="text-center py-12">
         <p className="text-red-500 dark:text-red-400 mb-4">
-          {currentPlaylistError}
+          {currentpostlistError}
         </p>
         <button
-          onClick={() => dispatch(fetchPlaylistById(actualId))}
+          onClick={() => dispatch(fetchpostlistById(actualId))}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           Try Again
@@ -127,21 +127,21 @@ const PlaylistDetail = ({ playlistId }) => {
     );
   }
 
-  if (!currentPlaylist) {
+  if (!currentpostlist) {
     return (
       <div className="text-center py-12">
-        <h3 className="text-xl font-semibold mb-2">Playlist Not Found</h3>
+        <h3 className="text-xl font-semibold mb-2">postlist Not Found</h3>
         <button
-          onClick={() => navigate("/user/playlists")}
+          onClick={() => navigate("/user/postlists")}
           className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
         >
-          Back to Playlists
+          Back to postlists
         </button>
       </div>
     );
   }
 
-  const isOwner = user?._id === currentPlaylist.user?._id;
+  const isOwner = user?._id === currentpostlist.user?._id;
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4">
@@ -149,9 +149,9 @@ const PlaylistDetail = ({ playlistId }) => {
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 gap-4">
         <div className="flex items-start gap-4 w-full lg:w-auto">
           <button
-            onClick={() => navigate("/profile/playlists")}
+            onClick={() => navigate("/profile/postlists")}
             className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors hover:scale-110 transform duration-200"
-            aria-label="Back to playlists"
+            aria-label="Back to postlists"
           >
             <FaArrowLeft className="text-2xl" />
           </button>
@@ -160,13 +160,13 @@ const PlaylistDetail = ({ playlistId }) => {
           </div>
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-              {currentPlaylist.name}
+              {currentpostlist.name}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mb-2">
-              {currentPlaylist.description || "No description"}
+              {currentpostlist.description || "No description"}
             </p>
             <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-              {currentPlaylist.isPrivate ? (
+              {currentpostlist.isPrivate ? (
                 <span className="flex items-center gap-1.5 px-2 py-1 bg-red-50 dark:bg-red-900/20 rounded-full">
                   <FaLock className="text-red-500" />
                   <span className="text-red-600 dark:text-red-400">
@@ -190,11 +190,11 @@ const PlaylistDetail = ({ playlistId }) => {
                 </span>
               )}
               <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-full">
-                {currentPlaylist.posts?.length || 0} posts
+                {currentpostlist.posts?.length || 0} posts
               </span>
               <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-full">
                 Created{" "}
-                {new Date(currentPlaylist.createdAt).toLocaleDateString()}
+                {new Date(currentpostlist.createdAt).toLocaleDateString()}
               </span>
             </div>
           </div>
@@ -234,9 +234,9 @@ const PlaylistDetail = ({ playlistId }) => {
       </div>
 
       {/* Posts Grid - Fixed Card Width */}
-      {currentPlaylist.posts && currentPlaylist.posts.length > 0 ? (
+      {currentpostlist.posts && currentpostlist.posts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {currentPlaylist.posts.map((post, index) => {
+          {currentpostlist.posts.map((post, index) => {
             const fullPost = postMap.get(post._id) || post;
 
             return (
@@ -260,7 +260,7 @@ const PlaylistDetail = ({ playlistId }) => {
             <FaList className="mx-auto text-6xl text-gray-300 dark:text-gray-700" />
           </div>
           <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            No posts in this playlist yet
+            No posts in this postlist yet
           </h3>
           <p className="text-gray-500 dark:text-gray-400 mb-6">
             Add some posts to get started.
@@ -280,4 +280,4 @@ const PlaylistDetail = ({ playlistId }) => {
   );
 };
 
-export default PlaylistDetail;
+export default postlistDetail;

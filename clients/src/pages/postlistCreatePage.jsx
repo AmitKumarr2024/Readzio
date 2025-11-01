@@ -1,14 +1,14 @@
-// clients/src/pages/PlaylistCreatePage.jsx
+// clients/src/pages/postlistCreatePage.jsx
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import PlaylistCreate from "../components/Playlist/PlaylistCreate";
+import postlistCreate from "../components/postlist/postlistCreate";
 
 /**
- * Page component for creating a playlist
- * Route: /playlists/create
+ * Page component for creating a postlist
+ * Route: /postlists/create
  */
-const PlaylistCreatePage = () => {
+const postlistCreatePage = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
 
@@ -22,7 +22,7 @@ const PlaylistCreatePage = () => {
     return null; // Redirect handling
   }
 
-  return <PlaylistCreate />;
+  return <postlistCreate />;
 };
 
-export default PlaylistCreatePage;
+export default postlistCreatePage;

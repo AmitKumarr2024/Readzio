@@ -1,24 +1,24 @@
-// servers/routes/playlistRoutes.js
+// servers/routes/postlistRoutes.js
 
 import express from "express";
 import {
-  createPlaylist,
-  addToPlaylist,
-  removeFromPlaylist,
-  getUserPlaylists,
-  getPlaylistById,
-  updatePlaylist,
-  deletePlaylist,
-  reorderPlaylistPosts,
-  getPlaylistStats,
-  searchPlaylists,
-  checkPostInPlaylists,
-  bulkAddToPlaylist,
-} from "../../servers/Controllers/playlistController.js";
+  createpostlist,
+  addTopostlist,
+  removeFrompostlist,
+  getUserpostlists,
+  getpostlistById,
+  updatepostlist,
+  deletepostlist,
+  reorderpostlistPosts,
+  getpostlistStats,
+  searchpostlists,
+  checkPostInpostlists,
+  bulkAddTopostlist,
+} from "../Controllers/postlistController.js";
 import {
   protectedRoute as protect,
   optionalAuth, // ✅ Import the new middleware
-} from "../../servers/Middlewares/authMiddleware.js";
+} from "../Middlewares/authMiddleware.js";
 import { body, param, query } from "express-validator";
 
 const routes = express.Router();
@@ -42,7 +42,7 @@ routes.get(
       .isInt({ min: 1 })
       .withMessage("Page must be at least 1"),
   ],
-  searchPlaylists
+  searchpostlists
 );
 
 // ✅ USE optionalAuth instead of no middleware
@@ -52,7 +52,7 @@ routes.get(
     optionalAuth, // ✅ Changed from no middleware to optionalAuth
     param("userId").isMongoId().withMessage("Invalid user ID format"),
   ],
-  getUserPlaylists
+  getUserpostlists
 );
 
 // ✅ USE optionalAuth for stats too
@@ -62,17 +62,17 @@ routes.get(
     optionalAuth, // ✅ Added optionalAuth
     param("userId").isMongoId().withMessage("Invalid user ID format"),
   ],
-  getPlaylistStats
+  getpostlistStats
 );
 
-// ✅ USE optionalAuth for getting single playlist (to check private access)
+// ✅ USE optionalAuth for getting single postlist (to check private access)
 routes.get(
   "/:id",
   [
     optionalAuth, // ✅ Changed from no middleware to optionalAuth
-    param("id").isMongoId().withMessage("Invalid playlist ID format"),
+    param("id").isMongoId().withMessage("Invalid postlist ID format"),
   ],
-  getPlaylistById
+  getpostlistById
 );
 
 // Protected routes (keep using protect)
@@ -83,9 +83,9 @@ routes.post(
     body("name")
       .trim()
       .notEmpty()
-      .withMessage("Playlist name is required")
+      .withMessage("postlist name is required")
       .isLength({ max: 100 })
-      .withMessage("Playlist name must be less than 100 characters"),
+      .withMessage("postlist name must be less than 100 characters"),
     body("description")
       .optional()
       .trim()
@@ -96,21 +96,21 @@ routes.post(
       .isBoolean()
       .withMessage("isPrivate must be a boolean"),
   ],
-  createPlaylist
+  createpostlist
 );
 
 routes.patch(
   "/:id",
   [
     protect,
-    param("id").isMongoId().withMessage("Invalid playlist ID format"),
+    param("id").isMongoId().withMessage("Invalid postlist ID format"),
     body("name")
       .optional()
       .trim()
       .notEmpty()
-      .withMessage("Playlist name cannot be empty")
+      .withMessage("postlist name cannot be empty")
       .isLength({ max: 100 })
-      .withMessage("Playlist name must be less than 100 characters"),
+      .withMessage("postlist name must be less than 100 characters"),
     body("description")
       .optional()
       .trim()
@@ -121,48 +121,48 @@ routes.patch(
       .isBoolean()
       .withMessage("isPrivate must be a boolean"),
   ],
-  updatePlaylist
+  updatepostlist
 );
 
 routes.delete(
   "/:id",
-  [protect, param("id").isMongoId().withMessage("Invalid playlist ID format")],
-  deletePlaylist
+  [protect, param("id").isMongoId().withMessage("Invalid postlist ID format")],
+  deletepostlist
 );
 
 routes.post(
   "/:id/add",
   [
     protect,
-    param("id").isMongoId().withMessage("Invalid playlist ID format"),
+    param("id").isMongoId().withMessage("Invalid postlist ID format"),
     body("postId")
       .notEmpty()
       .withMessage("Post ID is required")
       .isMongoId()
       .withMessage("Invalid post ID format"),
   ],
-  addToPlaylist
+  addTopostlist
 );
 
 routes.post(
   "/:id/remove",
   [
     protect,
-    param("id").isMongoId().withMessage("Invalid playlist ID format"),
+    param("id").isMongoId().withMessage("Invalid postlist ID format"),
     body("postId")
       .notEmpty()
       .withMessage("Post ID is required")
       .isMongoId()
       .withMessage("Invalid post ID format"),
   ],
-  removeFromPlaylist
+  removeFrompostlist
 );
 
 routes.patch(
   "/:id/reorder",
   [
     protect,
-    param("id").isMongoId().withMessage("Invalid playlist ID format"),
+    param("id").isMongoId().withMessage("Invalid postlist ID format"),
     body("postIds")
       .isArray({ min: 1 })
       .withMessage("postIds must be a non-empty array")
@@ -173,14 +173,14 @@ routes.patch(
         return true;
       }),
   ],
-  reorderPlaylistPosts
+  reorderpostlistPosts
 );
 
 routes.post(
   "/:id/bulk-add",
   [
     protect,
-    param("id").isMongoId().withMessage("Invalid playlist ID format"),
+    param("id").isMongoId().withMessage("Invalid postlist ID format"),
     body("postIds")
       .isArray({ min: 1, max: 50 })
       .withMessage("postIds must be an array with 1-50 items")
@@ -191,13 +191,13 @@ routes.post(
         return true;
       }),
   ],
-  bulkAddToPlaylist
+  bulkAddTopostlist
 );
 
 routes.get(
   "/check/:postId",
   [protect, param("postId").isMongoId().withMessage("Invalid post ID format")],
-  checkPostInPlaylists
+  checkPostInpostlists
 );
 
 export default routes;

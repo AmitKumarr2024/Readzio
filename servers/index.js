@@ -31,7 +31,7 @@ import SubscriptionRoutes from "./Routes/subscriptionRoutes.js";
 import EarningRoutes from "./Routes/earningRoutes.js";
 import AchievementRoutes from "./Routes/AchievementRoutes.js";
 import CommentsRoutes from "./Routes/commentRoutes.js";
-import playlistsRoutes from "./Routes/playlistRoutes.js";
+import postlistsRoutes from "./Routes/postlistRoutes.js";
 import AdminRoutes from "./Routes/adminRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
@@ -174,7 +174,7 @@ app.use(cookieParser());
 const routeConfigs = [
   { path: "/api/auth", router: AuthRoutes, name: "AuthRoutes" },
   { path: "/api/user", router: UserRoutes, name: "UserRoutes" },
-  { path: "/api/playlists", router: playlistsRoutes, name: "playlistsRoutes" },
+  { path: "/api/postlists", router: postlistsRoutes, name: "postlistsRoutes" },
   {
     path: "/api/post",
     router: PostRoutes,

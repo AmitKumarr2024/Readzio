@@ -1,62 +1,62 @@
-// clients/src/socket/setupPlaylistSocketListeners.js
+// clients/src/socket/setuppostlistSocketListeners.js
 
 import {
-  handlePlaylistCreated,
-  handlePlaylistUpdated,
-  handlePlaylistDeleted,
-  handlePostAddedToPlaylist,
-  handlePostRemovedFromPlaylist,
-} from "../store/playlistSlice";
+  handlepostlistCreated,
+  handlepostlistUpdated,
+  handlepostlistDeleted,
+  handlePostAddedTopostlist,
+  handlePostRemovedFrompostlist,
+} from "../store/postlistSlice";
 import { debounce } from "lodash";
 
 /**
- * Setup playlist-related socket event listeners
+ * Setup postlist-related socket event listeners
  * Call this function after socket connection is established
  *
  * @param {Socket} socket - Socket.IO client instance
  * @param {Function} dispatch - Redux dispatch function
  * @param {Function} getState - Redux getState function
  */
-export const setupPlaylistSocketListeners = (socket, dispatch, getState) => {
+export const setuppostlistSocketListeners = (socket, dispatch, getState) => {
   if (!socket || !dispatch) {
-    console.error("[setupPlaylistSocketListeners] Invalid parameters");
+    console.error("[setuppostlistSocketListeners] Invalid parameters");
     return;
   }
 
-  console.log("[PlaylistSocket] 🎵 Setting up playlist socket listeners...");
+  console.log("[postlistSocket] 🎵 Setting up postlist socket listeners...");
 
   // Remove existing listeners to prevent duplicates
-  const playlistEvents = [
-    "playlistCreated",
-    "playlistUpdated",
-    "playlistDeleted",
-    "postAddedToPlaylist",
-    "postRemovedFromPlaylist",
-    "playlistPostsReordered",
+  const postlistEvents = [
+    "postlistCreated",
+    "postlistUpdated",
+    "postlistDeleted",
+    "postAddedTopostlist",
+    "postRemovedFrompostlist",
+    "postlistPostsReordered",
   ];
 
-  playlistEvents.forEach((event) => socket.off(event));
+  postlistEvents.forEach((event) => socket.off(event));
 
   // =========================================================================
   // DEBOUNCED HANDLERS (Prevent rapid-fire updates)
   // =========================================================================
 
-  const debouncedPlaylistUpdate = debounce((playlist) => {
+  const debouncedpostlistUpdate = debounce((postlist) => {
     console.log(
-      "[PlaylistSocket] 🔵 Processing debounced playlist update:",
-      playlist._id
+      "[postlistSocket] 🔵 Processing debounced postlist update:",
+      postlist._id
     );
-    dispatch(handlePlaylistUpdated(playlist));
+    dispatch(handlepostlistUpdated(postlist));
   }, 500);
 
   const debouncedPostAdded = debounce((data) => {
-    console.log("[PlaylistSocket] 🔵 Processing debounced post added:", data);
-    dispatch(handlePostAddedToPlaylist(data));
+    console.log("[postlistSocket] 🔵 Processing debounced post added:", data);
+    dispatch(handlePostAddedTopostlist(data));
   }, 500);
 
   const debouncedPostRemoved = debounce((data) => {
-    console.log("[PlaylistSocket] 🔵 Processing debounced post removed:", data);
-    dispatch(handlePostRemovedFromPlaylist(data));
+    console.log("[postlistSocket] 🔵 Processing debounced post removed:", data);
+    dispatch(handlePostRemovedFrompostlist(data));
   }, 500);
 
   // =========================================================================
@@ -64,221 +64,221 @@ export const setupPlaylistSocketListeners = (socket, dispatch, getState) => {
   // =========================================================================
 
   /**
-   * Handle playlist creation events
-   * Emitted when any user creates a new playlist
+   * Handle postlist creation events
+   * Emitted when any user creates a new postlist
    */
-  socket.on("playlistCreated", (data) => {
+  socket.on("postlistCreated", (data) => {
     try {
-      const { playlist, userId } = data;
+      const { postlist, userId } = data;
       const currentUserId = getState().auth.user?._id?.toString();
 
-      if (!playlist || !playlist._id) {
-        console.warn("[PlaylistSocket] Invalid playlist data received");
+      if (!postlist || !postlist._id) {
+        console.warn("[postlistSocket] Invalid postlist data received");
         return;
       }
 
-      console.log("[PlaylistSocket] 🆕 Playlist created:", {
-        playlistId: playlist._id,
-        name: playlist.name,
+      console.log("[postlistSocket] 🆕 postlist created:", {
+        postlistId: postlist._id,
+        name: postlist.name,
         createdBy: userId,
         isCurrentUser: userId === currentUserId,
       });
 
       // Only add to state if it belongs to current user or is public
-      if (userId === currentUserId || !playlist.isPrivate) {
-        dispatch(handlePlaylistCreated(playlist));
+      if (userId === currentUserId || !postlist.isPrivate) {
+        dispatch(handlepostlistCreated(postlist));
       }
     } catch (error) {
       console.error(
-        "[PlaylistSocket] Error handling playlistCreated:",
+        "[postlistSocket] Error handling postlistCreated:",
         error.message
       );
     }
   });
 
   /**
-   * Handle playlist update events
-   * Emitted when playlist details are modified (name, description, privacy)
+   * Handle postlist update events
+   * Emitted when postlist details are modified (name, description, privacy)
    */
-  socket.on("playlistUpdated", (data) => {
+  socket.on("postlistUpdated", (data) => {
     try {
-      const { playlist, userId } = data;
+      const { postlist, userId } = data;
       const currentUserId = getState().auth.user?._id?.toString();
 
-      if (!playlist || !playlist._id) {
-        console.warn("[PlaylistSocket] Invalid playlist data received");
+      if (!postlist || !postlist._id) {
+        console.warn("[postlistSocket] Invalid postlist data received");
         return;
       }
 
-      console.log("[PlaylistSocket] ✏️ Playlist updated:", {
-        playlistId: playlist._id,
-        name: playlist.name,
+      console.log("[postlistSocket] ✏️ postlist updated:", {
+        postlistId: postlist._id,
+        name: postlist.name,
         updatedBy: userId,
         isCurrentUser: userId === currentUserId,
       });
 
-      // Check if user has access to this playlist
+      // Check if user has access to this postlist
       const hasAccess =
         userId === currentUserId ||
-        !playlist.isPrivate ||
-        playlist.user?.toString() === currentUserId;
+        !postlist.isPrivate ||
+        postlist.user?.toString() === currentUserId;
 
       if (hasAccess) {
-        debouncedPlaylistUpdate(playlist);
+        debouncedpostlistUpdate(postlist);
       }
     } catch (error) {
       console.error(
-        "[PlaylistSocket] Error handling playlistUpdated:",
+        "[postlistSocket] Error handling postlistUpdated:",
         error.message
       );
     }
   });
 
   /**
-   * Handle playlist deletion events
-   * Emitted when a playlist is permanently deleted
+   * Handle postlist deletion events
+   * Emitted when a postlist is permanently deleted
    */
-  socket.on("playlistDeleted", (data) => {
+  socket.on("postlistDeleted", (data) => {
     try {
-      const { playlistId, userId } = data;
+      const { postlistId, userId } = data;
       const currentUserId = getState().auth.user?._id?.toString();
 
-      if (!playlistId) {
-        console.warn("[PlaylistSocket] Invalid playlist ID received");
+      if (!postlistId) {
+        console.warn("[postlistSocket] Invalid postlist ID received");
         return;
       }
 
-      console.log("[PlaylistSocket] 🗑️ Playlist deleted:", {
-        playlistId,
+      console.log("[postlistSocket] 🗑️ postlist deleted:", {
+        postlistId,
         deletedBy: userId,
         isCurrentUser: userId === currentUserId,
       });
 
-      dispatch(handlePlaylistDeleted({ playlistId }));
+      dispatch(handlepostlistDeleted({ postlistId }));
     } catch (error) {
       console.error(
-        "[PlaylistSocket] Error handling playlistDeleted:",
+        "[postlistSocket] Error handling postlistDeleted:",
         error.message
       );
     }
   });
 
   /**
-   * Handle post added to playlist events
-   * Emitted when a post is added to any playlist
+   * Handle post added to postlist events
+   * Emitted when a post is added to any postlist
    */
-  socket.on("postAddedToPlaylist", (data) => {
+  socket.on("postAddedTopostlist", (data) => {
     try {
-      const { playlistId, post, userId } = data;
+      const { postlistId, post, userId } = data;
       const currentUserId = getState().auth.user?._id?.toString();
 
-      if (!playlistId || !post || !post._id) {
-        console.warn("[PlaylistSocket] Invalid post/playlist data received");
+      if (!postlistId || !post || !post._id) {
+        console.warn("[postlistSocket] Invalid post/postlist data received");
         return;
       }
 
-      console.log("[PlaylistSocket] ➕ Post added to playlist:", {
-        playlistId,
+      console.log("[postlistSocket] ➕ Post added to postlist:", {
+        postlistId,
         postId: post._id,
         postTitle: post.title,
         addedBy: userId,
         isCurrentUser: userId === currentUserId,
       });
 
-      // Check if current user has access to this playlist
-      const playlists = getState().playlist.playlists;
-      const targetPlaylist = playlists.find((p) => p._id === playlistId);
+      // Check if current user has access to this postlist
+      const postlists = getState().postlist.postlists;
+      const targetpostlist = postlists.find((p) => p._id === postlistId);
 
       const hasAccess =
         userId === currentUserId ||
-        targetPlaylist ||
-        getState().playlist.currentPlaylist?._id === playlistId;
+        targetpostlist ||
+        getState().postlist.currentpostlist?._id === postlistId;
 
       if (hasAccess) {
-        debouncedPostAdded({ playlistId, post });
+        debouncedPostAdded({ postlistId, post });
       }
     } catch (error) {
       console.error(
-        "[PlaylistSocket] Error handling postAddedToPlaylist:",
+        "[postlistSocket] Error handling postAddedTopostlist:",
         error.message
       );
     }
   });
 
   /**
-   * Handle post removed from playlist events
-   * Emitted when a post is removed from any playlist
+   * Handle post removed from postlist events
+   * Emitted when a post is removed from any postlist
    */
-  socket.on("postRemovedFromPlaylist", (data) => {
+  socket.on("postRemovedFrompostlist", (data) => {
     try {
-      const { playlistId, postId, userId } = data;
+      const { postlistId, postId, userId } = data;
       const currentUserId = getState().auth.user?._id?.toString();
 
-      if (!playlistId || !postId) {
-        console.warn("[PlaylistSocket] Invalid post/playlist data received");
+      if (!postlistId || !postId) {
+        console.warn("[postlistSocket] Invalid post/postlist data received");
         return;
       }
 
-      console.log("[PlaylistSocket] ➖ Post removed from playlist:", {
-        playlistId,
+      console.log("[postlistSocket] ➖ Post removed from postlist:", {
+        postlistId,
         postId,
         removedBy: userId,
         isCurrentUser: userId === currentUserId,
       });
 
-      // Check if current user has access to this playlist
-      const playlists = getState().playlist.playlists;
-      const targetPlaylist = playlists.find((p) => p._id === playlistId);
+      // Check if current user has access to this postlist
+      const postlists = getState().postlist.postlists;
+      const targetpostlist = postlists.find((p) => p._id === postlistId);
 
       const hasAccess =
         userId === currentUserId ||
-        targetPlaylist ||
-        getState().playlist.currentPlaylist?._id === playlistId;
+        targetpostlist ||
+        getState().postlist.currentpostlist?._id === postlistId;
 
       if (hasAccess) {
-        debouncedPostRemoved({ playlistId, postId });
+        debouncedPostRemoved({ postlistId, postId });
       }
     } catch (error) {
       console.error(
-        "[PlaylistSocket] Error handling postRemovedFromPlaylist:",
+        "[postlistSocket] Error handling postRemovedFrompostlist:",
         error.message
       );
     }
   });
 
   /**
-   * Handle playlist posts reordered events
-   * Emitted when posts in a playlist are reordered
+   * Handle postlist posts reordered events
+   * Emitted when posts in a postlist are reordered
    */
-  socket.on("playlistPostsReordered", (data) => {
+  socket.on("postlistPostsReordered", (data) => {
     try {
-      const { playlist, userId } = data;
+      const { postlist, userId } = data;
       const currentUserId = getState().auth.user?._id?.toString();
 
-      if (!playlist || !playlist._id) {
-        console.warn("[PlaylistSocket] Invalid playlist data received");
+      if (!postlist || !postlist._id) {
+        console.warn("[postlistSocket] Invalid postlist data received");
         return;
       }
 
-      console.log("[PlaylistSocket] 🔄 Playlist posts reordered:", {
-        playlistId: playlist._id,
-        postCount: playlist.posts?.length || 0,
+      console.log("[postlistSocket] 🔄 postlist posts reordered:", {
+        postlistId: postlist._id,
+        postCount: postlist.posts?.length || 0,
         reorderedBy: userId,
         isCurrentUser: userId === currentUserId,
       });
 
-      // Check if user has access to this playlist
+      // Check if user has access to this postlist
       const hasAccess =
         userId === currentUserId ||
-        !playlist.isPrivate ||
-        playlist.user?.toString() === currentUserId;
+        !postlist.isPrivate ||
+        postlist.user?.toString() === currentUserId;
 
       if (hasAccess) {
-        dispatch(handlePlaylistUpdated(playlist));
+        dispatch(handlepostlistUpdated(postlist));
       }
     } catch (error) {
       console.error(
-        "[PlaylistSocket] Error handling playlistPostsReordered:",
+        "[postlistSocket] Error handling postlistPostsReordered:",
         error.message
       );
     }
@@ -288,87 +288,87 @@ export const setupPlaylistSocketListeners = (socket, dispatch, getState) => {
   // ERROR HANDLING
   // =========================================================================
 
-  socket.on("playlistError", (error) => {
-    console.error("[PlaylistSocket] ❌ Server error:", {
+  socket.on("postlistError", (error) => {
+    console.error("[postlistSocket] ❌ Server error:", {
       message: error.message,
       code: error.code,
       timestamp: new Date().toISOString(),
     });
   });
 
-  console.log("[PlaylistSocket] ✅ Playlist socket listeners configured");
+  console.log("[postlistSocket] ✅ postlist socket listeners configured");
 };
 
 /**
- * Cleanup function to remove all playlist socket listeners
+ * Cleanup function to remove all postlist socket listeners
  * Call this when component unmounts or socket disconnects
  *
  * @param {Socket} socket - Socket.IO client instance
  */
-export const cleanupPlaylistSocketListeners = (socket) => {
+export const cleanuppostlistSocketListeners = (socket) => {
   if (!socket) {
-    console.warn("[cleanupPlaylistSocketListeners] No socket provided");
+    console.warn("[cleanuppostlistSocketListeners] No socket provided");
     return;
   }
 
-  console.log("[PlaylistSocket] 🧹 Cleaning up playlist socket listeners...");
+  console.log("[postlistSocket] 🧹 Cleaning up postlist socket listeners...");
 
-  const playlistEvents = [
-    "playlistCreated",
-    "playlistUpdated",
-    "playlistDeleted",
-    "postAddedToPlaylist",
-    "postRemovedFromPlaylist",
-    "playlistPostsReordered",
-    "playlistError",
+  const postlistEvents = [
+    "postlistCreated",
+    "postlistUpdated",
+    "postlistDeleted",
+    "postAddedTopostlist",
+    "postRemovedFrompostlist",
+    "postlistPostsReordered",
+    "postlistError",
   ];
 
-  playlistEvents.forEach((event) => {
+  postlistEvents.forEach((event) => {
     socket.off(event);
   });
 
-  console.log("[PlaylistSocket] ✅ Playlist socket listeners cleaned up");
+  console.log("[postlistSocket] ✅ postlist socket listeners cleaned up");
 };
 
 /**
- * Emit playlist events to server (for other clients to receive)
+ * Emit postlist events to server (for other clients to receive)
  * These are helper functions to emit events from client side
  */
 
-export const emitPlaylistCreated = (socket, playlist) => {
-  if (!socket || !playlist) return;
-  socket.emit("playlistCreated", { playlist, timestamp: Date.now() });
-  console.log("[PlaylistSocket] 📤 Emitted playlistCreated");
+export const emitpostlistCreated = (socket, postlist) => {
+  if (!socket || !postlist) return;
+  socket.emit("postlistCreated", { postlist, timestamp: Date.now() });
+  console.log("[postlistSocket] 📤 Emitted postlistCreated");
 };
 
-export const emitPlaylistUpdated = (socket, playlist) => {
-  if (!socket || !playlist) return;
-  socket.emit("playlistUpdated", { playlist, timestamp: Date.now() });
-  console.log("[PlaylistSocket] 📤 Emitted playlistUpdated");
+export const emitpostlistUpdated = (socket, postlist) => {
+  if (!socket || !postlist) return;
+  socket.emit("postlistUpdated", { postlist, timestamp: Date.now() });
+  console.log("[postlistSocket] 📤 Emitted postlistUpdated");
 };
 
-export const emitPlaylistDeleted = (socket, playlistId) => {
-  if (!socket || !playlistId) return;
-  socket.emit("playlistDeleted", { playlistId, timestamp: Date.now() });
-  console.log("[PlaylistSocket] 📤 Emitted playlistDeleted");
+export const emitpostlistDeleted = (socket, postlistId) => {
+  if (!socket || !postlistId) return;
+  socket.emit("postlistDeleted", { postlistId, timestamp: Date.now() });
+  console.log("[postlistSocket] 📤 Emitted postlistDeleted");
 };
 
-export const emitPostAddedToPlaylist = (socket, playlistId, post) => {
-  if (!socket || !playlistId || !post) return;
-  socket.emit("postAddedToPlaylist", {
-    playlistId,
+export const emitPostAddedTopostlist = (socket, postlistId, post) => {
+  if (!socket || !postlistId || !post) return;
+  socket.emit("postAddedTopostlist", {
+    postlistId,
     post,
     timestamp: Date.now(),
   });
-  console.log("[PlaylistSocket] 📤 Emitted postAddedToPlaylist");
+  console.log("[postlistSocket] 📤 Emitted postAddedTopostlist");
 };
 
-export const emitPostRemovedFromPlaylist = (socket, playlistId, postId) => {
-  if (!socket || !playlistId || !postId) return;
-  socket.emit("postRemovedFromPlaylist", {
-    playlistId,
+export const emitPostRemovedFrompostlist = (socket, postlistId, postId) => {
+  if (!socket || !postlistId || !postId) return;
+  socket.emit("postRemovedFrompostlist", {
+    postlistId,
     postId,
     timestamp: Date.now(),
   });
-  console.log("[PlaylistSocket] 📤 Emitted postRemovedFromPlaylist");
+  console.log("[postlistSocket] 📤 Emitted postRemovedFrompostlist");
 };

@@ -1,4 +1,4 @@
-// clients/src/components/Playlist/PlaylistList.jsx
+// clients/src/components/postlist/postlistList.jsx
 
 import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -15,10 +15,10 @@ import {
   FaLayerGroup,
 } from "react-icons/fa";
 import {
-  fetchUserPlaylists,
-  deletePlaylist,
-  clearPlaylists,
-} from "../../store/playlistSlice";
+  fetchUserpostlists,
+  deletepostlist,
+  clearpostlists,
+} from "../../store/postlistSlice";
 import { toast } from "react-hot-toast";
 
 // Inject high-performance CSS animations
@@ -29,7 +29,7 @@ const injectAnimations = (() => {
     injected = true;
 
     const styleSheet = document.createElement("style");
-    styleSheet.setAttribute("data-playlist-animations", "true");
+    styleSheet.setAttribute("data-postlist-animations", "true");
     styleSheet.textContent = `
       @keyframes gradient-shift {
         0%, 100% { background-position: 0% 50%; }
@@ -88,7 +88,7 @@ const injectAnimations = (() => {
         50% { text-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.6); }
       }
       
-      .playlist-card {
+      .postlist-card {
         will-change: transform;
         transform: translateZ(0);
         backface-visibility: hidden;
@@ -140,9 +140,9 @@ const injectAnimations = (() => {
   };
 })();
 
-// Generate vibrant gradient based on playlist ID
-const getPlaylistGradient = (playlistId) => {
-  const id = String(playlistId || "default");
+// Generate vibrant gradient based on postlist ID
+const getpostlistGradient = (postlistId) => {
+  const id = String(postlistId || "default");
   const hash = [...id].reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
   const hue1 = (hash * 137) % 360;
@@ -156,9 +156,9 @@ const getPlaylistGradient = (playlistId) => {
   )`;
 };
 
-// Memoized Playlist Card Component
-const PlaylistCard = ({
-  playlist,
+// Memoized postlist Card Component
+export const postlistCard = ({
+  postlist,
   isOwnProfile,
   deletingId,
   onDelete,
@@ -166,25 +166,25 @@ const PlaylistCard = ({
   onEdit,
 }) => {
   const gradient = useMemo(
-    () => getPlaylistGradient(playlist._id),
-    [playlist._id]
+    () => getpostlistGradient(postlist._id),
+    [postlist._id]
   );
 
-  const postCount = playlist.posts?.length || 0;
+  const postCount = postlist.posts?.length || 0;
 
   const createdDate = useMemo(
     () =>
-      new Date(playlist.createdAt).toLocaleDateString("en-US", {
+      new Date(postlist.createdAt).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
       }),
-    [playlist.createdAt]
+    [postlist.createdAt]
   );
 
   return (
     <div
-      className="group playlist-card relative bg-white dark:bg-gray-900 
+      className="group postlist-card relative bg-white dark:bg-gray-900 
                  rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl 
                  transition-all duration-500 ease-out
                  hover:scale-[1.03] hover:-translate-y-2
@@ -195,7 +195,7 @@ const PlaylistCard = ({
       <div
         className="relative h-48 overflow-hidden cursor-pointer gradient-animated"
         style={{ background: gradient }}
-        onClick={() => onClick(playlist._id)}
+        onClick={() => onClick(postlist._id)}
       >
         {/* Floating Orbs with Different Animations */}
         <div className="absolute inset-0">
@@ -285,7 +285,7 @@ const PlaylistCard = ({
 
         {/* Privacy Badge */}
         <div className="absolute top-4 right-4 z-10">
-          {playlist.isPrivate ? (
+          {postlist.isPrivate ? (
             <div
               className="flex items-center gap-2 px-3 py-2 rounded-full 
                          bg-black/60 backdrop-blur-md text-white text-xs font-semibold
@@ -329,22 +329,22 @@ const PlaylistCard = ({
       <div className="p-6 space-y-4">
         {/* Title */}
         <h3
-          onClick={() => onClick(playlist._id)}
+          onClick={() => onClick(postlist._id)}
           className="text-2xl font-bold text-gray-900 dark:text-white 
                      cursor-pointer hover:text-blue-600 dark:hover:text-blue-400
                      transition-all duration-300 line-clamp-2
                      group-hover:translate-x-1"
         >
-          {playlist.name}
+          {postlist.name}
         </h3>
 
         {/* Description */}
-        {playlist.description && (
+        {postlist.description && (
           <p
             className="text-sm text-gray-600 dark:text-gray-400 
                       line-clamp-2 leading-relaxed"
           >
-            {playlist.description}
+            {postlist.description}
           </p>
         )}
 
@@ -358,7 +358,7 @@ const PlaylistCard = ({
         {isOwnProfile && (
           <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
             <button
-              onClick={() => onEdit(playlist._id)}
+              onClick={() => onEdit(postlist._id)}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3
                        rounded-xl font-semibold text-sm
                        bg-gradient-to-r from-blue-500 to-indigo-500
@@ -372,8 +372,8 @@ const PlaylistCard = ({
             </button>
 
             <button
-              onClick={() => onDelete(playlist._id, playlist.name)}
-              disabled={deletingId === playlist._id}
+              onClick={() => onDelete(postlist._id, postlist.name)}
+              disabled={deletingId === postlist._id}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3
                        rounded-xl font-semibold text-sm
                        bg-gradient-to-r from-red-500 to-pink-500
@@ -384,7 +384,7 @@ const PlaylistCard = ({
                        disabled:opacity-50 disabled:cursor-not-allowed
                        disabled:transform-none"
             >
-              {deletingId === playlist._id ? (
+              {deletingId === postlist._id ? (
                 <FaSpinner className="animate-spin text-base" />
               ) : (
                 <>
@@ -413,17 +413,17 @@ const PlaylistCard = ({
 };
 
 /**
- * Component to display list of user's playlists
+ * Component to display list of user's postlists
  */
-const PlaylistList = ({ userId, isOwnProfile = false }) => {
+const postlistList = ({ userId, isOwnProfile = false }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const {
-    playlists = [],
+    postlists = [],
     status = "idle",
     error = null,
-  } = useSelector((state) => state.playlist || {});
+  } = useSelector((state) => state.postlist || {});
 
   const { isConnected } = useSelector((state) => state.socket || {});
   const [deletingId, setDeletingId] = useState(null);
@@ -435,40 +435,40 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
 
   useEffect(() => {
     if (userId) {
-      dispatch(fetchUserPlaylists(userId));
+      dispatch(fetchUserpostlists(userId));
     }
 
     return () => {
-      dispatch(clearPlaylists());
+      dispatch(clearpostlists());
     };
   }, [userId, dispatch]);
 
-  const handleDeletePlaylist = async (playlistId, playlistName) => {
-    if (!window.confirm(`Delete "${playlistName}"? This cannot be undone.`)) {
+  const handleDeletepostlist = async (postlistId, postlistName) => {
+    if (!window.confirm(`Delete "${postlistName}"? This cannot be undone.`)) {
       return;
     }
 
     try {
-      setDeletingId(playlistId);
-      await dispatch(deletePlaylist(playlistId)).unwrap();
-      toast.success("Playlist deleted successfully");
+      setDeletingId(postlistId);
+      await dispatch(deletepostlist(postlistId)).unwrap();
+      toast.success("postlist deleted successfully");
     } catch (error) {
-      toast.error(error || "Failed to delete playlist");
+      toast.error(error || "Failed to delete postlist");
     } finally {
       setDeletingId(null);
     }
   };
 
-  const handlePlaylistClick = (playlistId) => {
-    navigate(`/playlist/${playlistId}`);
+  const handlepostlistClick = (postlistId) => {
+    navigate(`/postlist/${postlistId}`);
   };
 
   const handleCreateNew = () => {
-    navigate("/playlists/create");
+    navigate("/postlists/create");
   };
 
-  const handleEdit = (playlistId) => {
-    navigate(`/playlist/${playlistId}/edit`);
+  const handleEdit = (postlistId) => {
+    navigate(`/postlist/${postlistId}/edit`);
   };
 
   if (status === "loading") {
@@ -490,11 +490,11 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
             <FaSpinner className="text-4xl text-red-500" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-            Failed to Load Playlists
+            Failed to Load postlists
           </h3>
           <p className="text-red-500 dark:text-red-400 mb-6">{error}</p>
           <button
-            onClick={() => dispatch(fetchUserPlaylists(userId))}
+            onClick={() => dispatch(fetchUserpostlists(userId))}
             className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600
                      hover:from-blue-700 hover:to-indigo-700
                      text-white rounded-xl font-semibold
@@ -508,7 +508,7 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
     );
   }
 
-  if (playlists.length === 0) {
+  if (postlists.length === 0) {
     return (
       <div className="text-center py-20 px-4">
         <div className="max-w-md mx-auto">
@@ -520,13 +520,13 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
           </div>
 
           <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            {isOwnProfile ? "No Playlists Yet" : "No Public Playlists"}
+            {isOwnProfile ? "No postlists Yet" : "No Public postlists"}
           </h3>
 
           <p className="text-gray-600 dark:text-gray-400 mb-8 text-lg">
             {isOwnProfile
-              ? "Create your first playlist to organize your favorite posts"
-              : "This user hasn't created any public playlists yet"}
+              ? "Create your first postlist to organize your favorite posts"
+              : "This user hasn't created any public postlists yet"}
           </p>
 
           {isOwnProfile && (
@@ -541,7 +541,7 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
                        transition-all duration-300"
             >
               <FaPlus className="text-xl" />
-              Create Your First Playlist
+              Create Your First postlist
             </button>
           )}
         </div>
@@ -555,12 +555,12 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Playlists
+            postlists
           </h2>
           <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
             <span className="font-medium">
-              {playlists.length}{" "}
-              {playlists.length === 1 ? "playlist" : "playlists"}
+              {postlists.length}{" "}
+              {postlists.length === 1 ? "postlist" : "postlists"}
             </span>
             {isConnected && (
               <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400">
@@ -583,24 +583,24 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
                      transition-all duration-300"
           >
             <FaPlus />
-            New Playlist
+            New postlist
           </button>
         )}
       </div>
 
-      {/* Playlists Grid */}
+      {/* postlists Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
-        {playlists.map((playlist) => {
-          if (!playlist?._id) return null;
+        {postlists.map((postlist) => {
+          if (!postlist?._id) return null;
 
           return (
-            <PlaylistCard
-              key={playlist._id}
-              playlist={playlist}
+            <postlistCard
+              key={postlist._id}
+              postlist={postlist}
               isOwnProfile={isOwnProfile}
               deletingId={deletingId}
-              onDelete={handleDeletePlaylist}
-              onClick={handlePlaylistClick}
+              onDelete={handleDeletepostlist}
+              onClick={handlepostlistClick}
               onEdit={handleEdit}
             />
           );
@@ -610,4 +610,4 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
   );
 };
 
-export default PlaylistList;
+export default postlistList;

@@ -31,11 +31,12 @@ import { tabsConfig } from "../config/tabsConfig";
 import { debounce } from "lodash";
 import SubscriptionEligibilityProgress from "../components/Author/SubscriptionEligibilityProgress";
 import LocationDashboard from "../components/location/LocationDashboard";
-import PlaylistList from "../components/Playlist/PlaylistList";
+
 
 const AboutAuthor = lazy(() => import("../components/Author/AboutAuthor"));
 const AllPosts = lazy(() => import("../components/Author/post/AllPosts"));
 const PinnedPost = lazy(() => import("../components/Author/post/PinnedPost"));
+const postlistList = lazy(() => import("../components/postlist/postlistList"));
 const AuthorPolls = lazy(() =>
   import("../components/Author/polls/AuthorPolls")
 );
@@ -240,9 +241,9 @@ const AuthorProfilePage = () => {
         );
       case "about":
         return <AboutAuthor author={selectedUser} readOnly={readOnly} />;
-      case "playlists":
+      case "postlists":
         return (
-          <PlaylistList userId={selectedUser._id} isOwnProfile={isOwnProfile} />
+          <postlistList userId={selectedUser._id} isOwnProfile={isOwnProfile} />
         );
       case "achievements":
         return (

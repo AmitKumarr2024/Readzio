@@ -1,18 +1,18 @@
-// clients/src/pages/PlaylistEditPage.js
+// clients/src/pages/postlistEditPage.js
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchPlaylistById, updatePlaylist } from "../../src/store/playlistSlice";
+import { fetchpostlistById, updatepostlist } from "../../src/store/postlistSlice";
 import { toast } from "react-hot-toast";
 import { FaSpinner } from "react-icons/fa";
 
-const PlaylistEditPage = () => {
+const postlistEditPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { currentPlaylist, currentPlaylistStatus, currentPlaylistError } =
-    useSelector((state) => state.playlist);
+  const { currentpostlist, currentpostlistStatus, currentpostlistError } =
+    useSelector((state) => state.postlist);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -24,19 +24,19 @@ const PlaylistEditPage = () => {
 
   useEffect(() => {
     if (id) {
-      dispatch(fetchPlaylistById(id));
+      dispatch(fetchpostlistById(id));
     }
   }, [id, dispatch]);
 
   useEffect(() => {
-    if (currentPlaylist) {
+    if (currentpostlist) {
       setFormData({
-        name: currentPlaylist.name || "",
-        description: currentPlaylist.description || "",
-        isPrivate: currentPlaylist.isPrivate || false,
+        name: currentpostlist.name || "",
+        description: currentpostlist.description || "",
+        isPrivate: currentpostlist.isPrivate || false,
       });
     }
-  }, [currentPlaylist]);
+  }, [currentpostlist]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -51,30 +51,30 @@ const PlaylistEditPage = () => {
     if (loading || submitLoading) return;
 
     if (formData.name.trim().length === 0) {
-      toast.error("Playlist name is required");
+      toast.error("postlist name is required");
       return;
     }
 
     if (formData.name.length > 100) {
-      toast.error("Playlist name must be less than 100 characters");
+      toast.error("postlist name must be less than 100 characters");
       return;
     }
 
     try {
       setSubmitLoading(true);
       await dispatch(
-        updatePlaylist({ playlistId: id, updates: formData })
+        updatepostlist({ postlistId: id, updates: formData })
       ).unwrap();
-      toast.success("Playlist updated successfully");
-      navigate(`/playlist/${id}`);
+      toast.success("postlist updated successfully");
+      navigate(`/postlist/${id}`);
     } catch (error) {
-      toast.error(error || "Failed to update playlist");
+      toast.error(error || "Failed to update postlist");
     } finally {
       setSubmitLoading(false);
     }
   };
 
-  if (currentPlaylistStatus === "loading" || loading) {
+  if (currentpostlistStatus === "loading" || loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <FaSpinner className="animate-spin text-3xl text-blue-500" />
@@ -82,12 +82,12 @@ const PlaylistEditPage = () => {
     );
   }
 
-  if (currentPlaylistStatus === "failed") {
+  if (currentpostlistStatus === "failed") {
     return (
       <div className="text-center py-12">
-        <p className="text-red-500 mb-4">{currentPlaylistError}</p>
+        <p className="text-red-500 mb-4">{currentpostlistError}</p>
         <button
-          onClick={() => dispatch(fetchPlaylistById(id))}
+          onClick={() => dispatch(fetchpostlistById(id))}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg"
         >
           Try Again
@@ -96,15 +96,15 @@ const PlaylistEditPage = () => {
     );
   }
 
-  if (!currentPlaylist) {
+  if (!currentpostlist) {
     return (
       <div className="text-center py-12">
-        <h3 className="text-xl font-semibold mb-2">Playlist Not Found</h3>
+        <h3 className="text-xl font-semibold mb-2">postlist Not Found</h3>
         <button
-          onClick={() => navigate("/profile/playlists")}
+          onClick={() => navigate("/profile/postlists")}
           className="px-4 py-2 bg-gray-500 text-white rounded-lg"
         >
-          Back to Playlists
+          Back to postlists
         </button>
       </div>
     );
@@ -112,7 +112,7 @@ const PlaylistEditPage = () => {
 
   return (
     <div className="max-w-md mx-auto py-8 px-4">
-      <h1 className="text-2xl font-bold mb-6">Edit Playlist</h1>
+      <h1 className="text-2xl font-bold mb-6">Edit postlist</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">Name</label>
@@ -156,7 +156,7 @@ const PlaylistEditPage = () => {
           </button>
           <button
             type="button"
-            onClick={() => navigate(`/playlist/${id}`)}
+            onClick={() => navigate(`/postlist/${id}`)}
             className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
           >
             Cancel
@@ -167,4 +167,4 @@ const PlaylistEditPage = () => {
   );
 };
 
-export default PlaylistEditPage;
+export default postlistEditPage;

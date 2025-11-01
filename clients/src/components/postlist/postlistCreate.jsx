@@ -1,16 +1,16 @@
-// Updated clients/src/components/Playlist/PlaylistCreate.jsx
+// Updated clients/src/components/postlist/postlistCreate.jsx
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { FaList, FaLock, FaGlobe, FaPlus } from "react-icons/fa";
-import { createPlaylist } from "../../store/playlistSlice";
+import { createpostlist } from "../../store/postlistSlice";
 import { toast } from "react-hot-toast";
 
 /**
- * Component for creating a new playlist
- * Route: /playlists/create
+ * Component for creating a new postlist
+ * Route: /postlists/create
  */
-const PlaylistCreate = () => {
+const postlistCreate = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
@@ -32,17 +32,17 @@ const PlaylistCreate = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      toast.error("Playlist name is required");
+      toast.error("postlist name is required");
       return;
     }
 
     try {
       setLoading(true);
-      await dispatch(createPlaylist(formData)).unwrap();
-      toast.success("Playlist created successfully!");
-      navigate("/profile/playlists"); // Redirect to user's playlists
+      await dispatch(createpostlist(formData)).unwrap();
+      toast.success("postlist created successfully!");
+      navigate("/profile/postlists"); // Redirect to user's postlists
     } catch (error) {
-      toast.error(error || "Failed to create playlist");
+      toast.error(error || "Failed to create postlist");
     } finally {
       setLoading(false);
     }
@@ -52,7 +52,7 @@ const PlaylistCreate = () => {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold mb-4">Login Required</h2>
-        <p>Please log in to create playlists.</p>
+        <p>Please log in to create postlists.</p>
       </div>
     );
   }
@@ -63,7 +63,7 @@ const PlaylistCreate = () => {
         <div className="text-center mb-6">
           <FaPlus className="mx-auto text-4xl text-blue-500 mb-2" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Create New Playlist
+            Create New postlist
           </h1>
         </div>
 
@@ -73,7 +73,7 @@ const PlaylistCreate = () => {
               htmlFor="name"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
             >
-              Playlist Name *
+              postlist Name *
             </label>
             <input
               type="text"
@@ -102,7 +102,7 @@ const PlaylistCreate = () => {
               onChange={handleChange}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="A short description of your playlist..."
+              placeholder="A short description of your postlist..."
             />
           </div>
 
@@ -144,7 +144,7 @@ const PlaylistCreate = () => {
               ) : (
                 <>
                   <FaList />
-                  Create Playlist
+                  Create postlist
                 </>
               )}
             </button>
@@ -155,4 +155,4 @@ const PlaylistCreate = () => {
   );
 };
 
-export default PlaylistCreate;
+export default postlistCreate;

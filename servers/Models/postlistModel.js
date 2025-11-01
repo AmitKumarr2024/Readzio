@@ -1,8 +1,8 @@
-// servers/models/PlaylistModel.js
+// servers/models/postlistModel.js
 
 import mongoose from "mongoose";
 
-const playlistSchema = new mongoose.Schema(
+const postlistSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -12,10 +12,10 @@ const playlistSchema = new mongoose.Schema(
     },
     name: {
       type: String,
-      required: [true, "Playlist name is required"],
+      required: [true, "postlist name is required"],
       trim: true,
-      maxlength: [100, "Playlist name cannot exceed 100 characters"],
-      minlength: [1, "Playlist name cannot be empty"],
+      maxlength: [100, "postlist name cannot exceed 100 characters"],
+      minlength: [1, "postlist name cannot be empty"],
     },
     description: {
       type: String,
@@ -73,28 +73,28 @@ const playlistSchema = new mongoose.Schema(
 // ============================================================================
 
 // Compound index for user + name uniqueness
-playlistSchema.index({ user: 1, name: 1 }, { unique: true });
+postlistSchema.index({ user: 1, name: 1 }, { unique: true });
 
-// Index for searching public playlists
-playlistSchema.index({ isPrivate: 1, createdAt: -1 });
+// Index for searching public postlists
+postlistSchema.index({ isPrivate: 1, createdAt: -1 });
 
 // Text index for search functionality
-playlistSchema.index({ name: "text", description: "text" });
+postlistSchema.index({ name: "text", description: "text" });
 
-// Index for user's playlists query
-playlistSchema.index({ user: 1, createdAt: -1 });
+// Index for user's postlists query
+postlistSchema.index({ user: 1, createdAt: -1 });
 
 // ============================================================================
 // VIRTUALS
 // ============================================================================
 
 // Virtual for post count
-playlistSchema.virtual("postCount").get(function () {
+postlistSchema.virtual("postCount").get(function () {
   return this.posts ? this.posts.length : 0;
 });
 
 // Virtual for formatted creation date
-playlistSchema.virtual("formattedDate").get(function () {
+postlistSchema.virtual("formattedDate").get(function () {
   return this.createdAt.toLocaleDateString();
 });
 
@@ -103,16 +103,16 @@ playlistSchema.virtual("formattedDate").get(function () {
 // ============================================================================
 
 /**
- * Check if a post exists in the playlist
+ * Check if a post exists in the postlist
  */
-playlistSchema.methods.hasPost = function (postId) {
+postlistSchema.methods.hasPost = function (postId) {
   return this.posts.some((post) => post.toString() === postId.toString());
 };
 
 /**
- * Add a post to the playlist (with duplicate check)
+ * Add a post to the postlist (with duplicate check)
  */
-playlistSchema.methods.addPost = async function (postId) {
+postlistSchema.methods.addPost = async function (postId) {
   if (!this.hasPost(postId)) {
     this.posts.push(postId);
     await this.save();
@@ -122,9 +122,9 @@ playlistSchema.methods.addPost = async function (postId) {
 };
 
 /**
- * Remove a post from the playlist
+ * Remove a post from the postlist
  */
-playlistSchema.methods.removePost = async function (postId) {
+postlistSchema.methods.removePost = async function (postId) {
   const initialLength = this.posts.length;
   this.posts = this.posts.filter(
     (post) => post.toString() !== postId.toString()
@@ -140,7 +140,7 @@ playlistSchema.methods.removePost = async function (postId) {
 /**
  * Increment view count
  */
-playlistSchema.methods.incrementViews = async function () {
+postlistSchema.methods.incrementViews = async function () {
   this.viewCount += 1;
   await this.save();
 };
@@ -148,7 +148,7 @@ playlistSchema.methods.incrementViews = async function () {
 /**
  * Toggle like (increment or decrement)
  */
-playlistSchema.methods.toggleLike = async function (increment = true) {
+postlistSchema.methods.toggleLike = async function (increment = true) {
   this.likeCount = Math.max(0, this.likeCount + (increment ? 1 : -1));
   await this.save();
 };
@@ -156,7 +156,7 @@ playlistSchema.methods.toggleLike = async function (increment = true) {
 /**
  * Increment share count
  */
-playlistSchema.methods.incrementShares = async function () {
+postlistSchema.methods.incrementShares = async function () {
   this.shareCount += 1;
   await this.save();
 };
@@ -166,9 +166,9 @@ playlistSchema.methods.incrementShares = async function () {
 // ============================================================================
 
 /**
- * Find all public playlists
+ * Find all public postlists
  */
-playlistSchema.statics.findPublicPlaylists = function (options = {}) {
+postlistSchema.statics.findPublicpostlists = function (options = {}) {
   const { limit = 20, skip = 0, sort = { createdAt: -1 } } = options;
 
   return this.find({ isPrivate: false })
@@ -184,12 +184,12 @@ playlistSchema.statics.findPublicPlaylists = function (options = {}) {
 };
 
 /**
- * Find playlists by user with privacy filtering
+ * Find postlists by user with privacy filtering
  */
-playlistSchema.statics.findUserPlaylists = function (userId, requestingUserId) {
+postlistSchema.statics.findUserpostlists = function (userId, requestingUserId) {
   const query = { user: userId };
 
-  // If requesting user is not the owner, only show public playlists
+  // If requesting user is not the owner, only show public postlists
   if (!requestingUserId || requestingUserId.toString() !== userId.toString()) {
     query.isPrivate = false;
   }
@@ -208,9 +208,9 @@ playlistSchema.statics.findUserPlaylists = function (userId, requestingUserId) {
 };
 
 /**
- * Search playlists by query
+ * Search postlists by query
  */
-playlistSchema.statics.searchPlaylists = function (searchQuery, options = {}) {
+postlistSchema.statics.searchpostlists = function (searchQuery, options = {}) {
   const { limit = 20, skip = 0 } = options;
 
   return this.find({
@@ -229,9 +229,9 @@ playlistSchema.statics.searchPlaylists = function (searchQuery, options = {}) {
 };
 
 /**
- * Get playlists containing a specific post
+ * Get postlists containing a specific post
  */
-playlistSchema.statics.findByPost = function (postId, userId = null) {
+postlistSchema.statics.findByPost = function (postId, userId = null) {
   const query = { posts: postId };
 
   // If userId provided, filter by user and respect privacy
@@ -247,9 +247,9 @@ playlistSchema.statics.findByPost = function (postId, userId = null) {
 };
 
 /**
- * Get trending playlists (most viewed/liked)
+ * Get trending postlists (most viewed/liked)
  */
-playlistSchema.statics.getTrendingPlaylists = function (options = {}) {
+postlistSchema.statics.getTrendingpostlists = function (options = {}) {
   const { limit = 10, days = 30 } = options;
   const dateThreshold = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
@@ -274,7 +274,7 @@ playlistSchema.statics.getTrendingPlaylists = function (options = {}) {
 /**
  * Pre-save middleware: Auto-generate cover image from first post
  */
-playlistSchema.pre("save", async function (next) {
+postlistSchema.pre("save", async function (next) {
   try {
     // If no cover image and has posts, use first post's cover
     if (!this.coverImage && this.posts && this.posts.length > 0) {
@@ -294,15 +294,15 @@ playlistSchema.pre("save", async function (next) {
 /**
  * Pre-remove middleware: Clean up related data
  */
-playlistSchema.pre("remove", async function (next) {
+postlistSchema.pre("remove", async function (next) {
   try {
-    console.log(`[PlaylistModel] Cleaning up playlist: ${this._id}`);
+    console.log(`[postlistModel] Cleaning up postlist: ${this._id}`);
 
-    // Add any cleanup logic here (e.g., remove from user's saved playlists)
+    // Add any cleanup logic here (e.g., remove from user's saved postlists)
     // const User = mongoose.model("User");
     // await User.updateMany(
-    //   { savedPlaylists: this._id },
-    //   { $pull: { savedPlaylists: this._id } }
+    //   { savedpostlists: this._id },
+    //   { $pull: { savedpostlists: this._id } }
     // );
 
     next();
@@ -314,13 +314,13 @@ playlistSchema.pre("remove", async function (next) {
 /**
  * Post-save middleware: Log creation/updates
  */
-playlistSchema.post("save", function (doc) {
+postlistSchema.post("save", function (doc) {
   if (this.isNew) {
     console.log(
-      `[PlaylistModel] New playlist created: ${doc._id} - "${doc.name}"`
+      `[postlistModel] New postlist created: ${doc._id} - "${doc.name}"`
     );
   } else {
-    console.log(`[PlaylistModel] Playlist updated: ${doc._id} - "${doc.name}"`);
+    console.log(`[postlistModel] postlist updated: ${doc._id} - "${doc.name}"`);
   }
 });
 
@@ -328,9 +328,9 @@ playlistSchema.post("save", function (doc) {
 // ERROR HANDLING
 // ============================================================================
 
-playlistSchema.post("save", function (error, doc, next) {
+postlistSchema.post("save", function (error, doc, next) {
   if (error.name === "MongoServerError" && error.code === 11000) {
-    next(new Error("You already have a playlist with this name"));
+    next(new Error("You already have a postlist with this name"));
   } else {
     next(error);
   }
@@ -340,6 +340,6 @@ playlistSchema.post("save", function (error, doc, next) {
 // EXPORT
 // ============================================================================
 
-const Playlist = mongoose.model("Playlist", playlistSchema);
+const postlist = mongoose.model("postlist", postlistSchema);
 
-export default Playlist;
+export default postlist;

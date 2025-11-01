@@ -19,7 +19,7 @@ const getYouTubeEmbedURL = (url, { autoPlay, muted, loop }) => {
     autoplay: autoPlay ? 1 : 0,
     mute: muted ? 1 : 0,
     loop: loop ? 1 : 0,
-    playlist: loop ? videoId : undefined,
+    postlist: loop ? videoId : undefined,
   });
   return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
 };
