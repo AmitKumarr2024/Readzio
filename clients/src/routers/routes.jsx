@@ -39,6 +39,7 @@ const UserSettingsPage = safeLazy(() => import("../pages/UserSettingPage"));
 const FeatureComingSoon = safeLazy(() => import("../pages/FeatureComingSoon"));
 const DeleteModal = safeLazy(() => import("../components/Post/DeleteModal"));
 const AuthorProfilePage = safeLazy(() => import("../pages/AuthorProfilePage"));
+const PlaylistEditPage = safeLazy(() => import("../pages/PlaylistEditPage"));
 const UserPlanPage = safeLazy(() =>
   import("../components/PorductToBuy/UserPlanPage")
 );
@@ -98,6 +99,7 @@ const routes = createBrowserRouter([
       { path: "terms-conditions", element: <TermsAndConditionPage /> },
       { path: "playlists/create", element: <PlaylistCreatePage /> },
       { path: "playlist/:id", element: <PlaylistPage /> },
+      { path: "playlist/:id/edit", element: <PlaylistEditPage /> },
       {
         path: "admin",
         element: (

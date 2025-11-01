@@ -15,12 +15,15 @@ import {
   checkPostInPlaylists,
   bulkAddToPlaylist,
 } from "../../servers/Controllers/playlistController.js";
-import { protectedRoute as protect } from "../../servers/Middlewares/authMiddleware.js";
+import {
+  protectedRoute as protect,
+  optionalAuth, // ✅ Import the new middleware
+} from "../../servers/Middlewares/authMiddleware.js";
 import { body, param, query } from "express-validator";
 
 const routes = express.Router();
 
-// Public routes
+// Public routes with optional auth (for ownership checks)
 routes.get(
   "/search",
   [
@@ -42,25 +45,37 @@ routes.get(
   searchPlaylists
 );
 
+// ✅ USE optionalAuth instead of no middleware
 routes.get(
   "/user/:userId",
-  [param("userId").isMongoId().withMessage("Invalid user ID format")],
+  [
+    optionalAuth, // ✅ Changed from no middleware to optionalAuth
+    param("userId").isMongoId().withMessage("Invalid user ID format"),
+  ],
   getUserPlaylists
 );
 
+// ✅ USE optionalAuth for stats too
 routes.get(
   "/user/:userId/stats",
-  [param("userId").isMongoId().withMessage("Invalid user ID format")],
+  [
+    optionalAuth, // ✅ Added optionalAuth
+    param("userId").isMongoId().withMessage("Invalid user ID format"),
+  ],
   getPlaylistStats
 );
 
+// ✅ USE optionalAuth for getting single playlist (to check private access)
 routes.get(
   "/:id",
-  [param("id").isMongoId().withMessage("Invalid playlist ID format")],
+  [
+    optionalAuth, // ✅ Changed from no middleware to optionalAuth
+    param("id").isMongoId().withMessage("Invalid playlist ID format"),
+  ],
   getPlaylistById
 );
 
-// Protected routes
+// Protected routes (keep using protect)
 routes.post(
   "/",
   [

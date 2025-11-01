@@ -1,12 +1,13 @@
+// servers/Middlewares/authMiddleware.js
+
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/dotenv.js";
 import UserModel from "../../servers/Models/User.js";
 import { AppError } from "../../servers/Utils/AppError.js";
 
-// Authenticates requests by verifying JWT and attaching user data
+// Existing protectedRoute middleware (keep as is)
 export const protectedRoute = async (req, res, next) => {
   try {
-    // Bypasses auth for public routes
     if (
       req.path.startsWith("/public") ||
       req.path.match(/^\/comments\/[^/]+\/count$/)
@@ -14,7 +15,6 @@ export const protectedRoute = async (req, res, next) => {
       return next();
     }
 
-    // Retrieves token from header or cookie
     let token;
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -23,7 +23,6 @@ export const protectedRoute = async (req, res, next) => {
       token = req.cookies?.jwt;
     }
 
-    // Validates token presence
     if (!token) {
       throw new AppError(
         "Unauthorized",
@@ -33,7 +32,6 @@ export const protectedRoute = async (req, res, next) => {
       );
     }
 
-    // Verifies token
     const decoded = jwt.verify(token, JWT_SECRET);
     if (!decoded || !decoded.userId) {
       throw new AppError(
@@ -44,7 +42,6 @@ export const protectedRoute = async (req, res, next) => {
       );
     }
 
-    // Fetches user from database
     const user = await UserModel.findById(decoded.userId)
       .select("-password")
       .maxTimeMS(15000);
@@ -57,7 +54,6 @@ export const protectedRoute = async (req, res, next) => {
       );
     }
 
-    // Attaches user data to request
     req.user = {
       ...user.toObject(),
       isAdmin: user.role === "admin",
@@ -65,7 +61,6 @@ export const protectedRoute = async (req, res, next) => {
 
     next();
   } catch (error) {
-    // AppError with context for protected route
     next(
       error instanceof AppError
         ? error
@@ -76,5 +71,72 @@ export const protectedRoute = async (req, res, next) => {
             "Error in protectedRoute middleware"
           )
     );
+  }
+};
+
+// ✅ NEW: Optional authentication middleware
+// Attaches user if token is valid, but continues even if no token or invalid token
+export const optionalAuth = async (req, res, next) => {
+  try {
+    // Get token from multiple sources
+    let token;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+      console.log("[optionalAuth] Token from Authorization header");
+    } else if (req.cookies?.jwt) {
+      token = req.cookies.jwt;
+      console.log("[optionalAuth] Token from cookie");
+    }
+
+    console.log("[optionalAuth] Token present:", !!token);
+
+    // If no token, continue as guest
+    if (!token) {
+      console.log("[optionalAuth] No token - continuing as guest");
+      return next();
+    }
+
+    // Try to verify token
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      console.log("[optionalAuth] Token decoded:", decoded);
+
+      if (decoded && decoded.userId) {
+        const user = await UserModel.findById(decoded.userId)
+          .select("-password")
+          .maxTimeMS(15000);
+
+        if (user) {
+          req.user = {
+            ...user.toObject(),
+            isAdmin: user.role === "admin",
+          };
+          console.log(
+            "[optionalAuth] ✅ User authenticated:",
+            user._id.toString(),
+            user.email
+          );
+        } else {
+          console.log(
+            "[optionalAuth] ❌ User not found for ID:",
+            decoded.userId
+          );
+        }
+      }
+    } catch (tokenError) {
+      // Token is invalid or expired, but we continue as guest
+      console.log(
+        "[optionalAuth] Token verification failed:",
+        tokenError.message
+      );
+    }
+
+    // Always continue to next middleware, even if token is invalid
+    next();
+  } catch (error) {
+    console.error("[optionalAuth] Unexpected error:", error);
+    // Even on unexpected errors, continue as guest
+    next();
   }
 };
