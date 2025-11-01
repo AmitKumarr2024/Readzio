@@ -19,7 +19,7 @@ const AD_IN_FEED_INTERVAL = 5;
 const AD_MULTIPLEX_INTERVAL = 12;
 
 const GuestPostView = () => {
-  console.log("GuestPostView: Component mounted/updated");
+  // console.log("GuestPostView: Component mounted/updated");
   const dispatch = useDispatch();
 
   // --- Local State ---
@@ -40,12 +40,12 @@ const GuestPostView = () => {
   const isSidebarOpen = useSelector(
     (state) => state.postMeta?.isSidebarOpen ?? false
   );
-  console.log("GuestPostView: Redux state", {
-    posts: posts.length,
-    loading,
-    error,
-    isSidebarOpen,
-  });
+  // console.log("GuestPostView: Redux state", {
+  //   posts: posts.length,
+  //   loading,
+  //   error,
+  //   isSidebarOpen,
+  // });
 
   // --- Grid Layout ---
   const gridClass = useMemo(() => {
@@ -60,19 +60,19 @@ const GuestPostView = () => {
   // --- Fetch Posts ---
   const fetchPosts = useCallback(
     async (pageToFetch) => {
-      console.log("fetchPosts: Starting fetch for page", pageToFetch, {
-        isFetching: isFetchingRef.current,
-        hasMore,
-      });
+      // console.log("fetchPosts: Starting fetch for page", pageToFetch, {
+      //   isFetching: isFetchingRef.current,
+      //   hasMore,
+      // });
       if (isFetchingRef.current || !hasMore) {
-        console.log("fetchPosts: Early return - fetching or no more");
+        // console.log("fetchPosts: Early return - fetching or no more");
         return;
       }
       isFetchingRef.current = true;
 
       // Cancel any pending fetch
       if (abortControllerRef.current) {
-        console.log("fetchPosts: Aborting previous request");
+        // console.log("fetchPosts: Aborting previous request");
         abortControllerRef.current.abort();
       }
 
@@ -82,11 +82,11 @@ const GuestPostView = () => {
       try {
         // Track guest visit only once
         if (pageToFetch === 1 && !localStorage.getItem("guestId")) {
-          console.log("fetchPosts: Tracking guest visit");
+          // console.log("fetchPosts: Tracking guest visit");
           await dispatch(trackGuestVisit()).unwrap();
         }
 
-        console.log("fetchPosts: Dispatching fetchPublicPosts");
+        // console.log("fetchPosts: Dispatching fetchPublicPosts");
         const result = await dispatch(
           fetchPublicPosts({
             page: pageToFetch,
@@ -96,29 +96,29 @@ const GuestPostView = () => {
         ).unwrap();
 
         const fetchedCount = result?.posts?.length ?? 0;
-        console.log(
-          "fetchPosts: Fetched",
-          fetchedCount,
-          "posts. Result:",
-          result
-        );
+        // console.log(
+        //   "fetchPosts: Fetched",
+        //   fetchedCount,
+        //   "posts. Result:",
+        //   result
+        // );
 
         if (fetchedCount < POSTS_PER_PAGE) {
           setHasMore(false);
-          console.log("fetchPosts: No more posts");
+          // console.log("fetchPosts: No more posts");
         }
 
         if (fetchedCount > 0) {
           setPage((prev) => {
             const newPage = prev + 1;
-            console.log("fetchPosts: Updated page to", newPage);
+            // console.log("fetchPosts: Updated page to", newPage);
             return newPage;
           });
         }
       } catch (err) {
-        console.log("fetchPosts: Error caught", err);
+        // console.log("fetchPosts: Error caught", err);
         if (err.name === "AbortError") {
-          console.log("fetchPosts: AbortError ignored");
+          // console.log("fetchPosts: AbortError ignored");
           return;
         }
         console.error("GuestPostView fetch error:", err);
@@ -126,7 +126,7 @@ const GuestPostView = () => {
       } finally {
         isFetchingRef.current = false;
         setInitialLoaded(true);
-        console.log("fetchPosts: Finally - fetching=false, loaded=true");
+        // console.log("fetchPosts: Finally - fetching=false, loaded=true");
       }
     },
     [dispatch, hasMore]
@@ -134,16 +134,16 @@ const GuestPostView = () => {
 
   // --- Initial Load (only once) ---
   useEffect(() => {
-    console.log("Initial useEffect: Triggered", {
-      didFetch: didFetchRef.current,
-      loading,
-      postsLength: posts.length,
-    });
+    // console.log("Initial useEffect: Triggered", {
+    //   didFetch: didFetchRef.current,
+    //   loading,
+    //   postsLength: posts.length,
+    // });
     if (didFetchRef.current) return;
     didFetchRef.current = true;
 
     if (!loading && posts.length === 0) {
-      console.log("Initial useEffect: Starting initial fetch");
+      // console.log("Initial useEffect: Starting initial fetch");
       fetchPosts(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -151,24 +151,24 @@ const GuestPostView = () => {
 
   // --- Infinite Scroll ---
   useEffect(() => {
-    console.log("InfiniteScroll useEffect: Triggered", {
-      observerTarget: !!observerTargetRef.current,
-      hasMore,
-    });
+    // console.log("InfiniteScroll useEffect: Triggered", {
+    //   observerTarget: !!observerTargetRef.current,
+    //   hasMore,
+    // });
     if (!observerTargetRef.current || !hasMore) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        console.log("Observer: Entry intersecting?", entry.isIntersecting, {
-          isFetching: isFetchingRef.current,
-          page,
-        });
+        // console.log("Observer: Entry intersecting?", entry.isIntersecting, {
+        //   isFetching: isFetchingRef.current,
+        //   page,
+        // });
         if (entry.isIntersecting && !isFetchingRef.current) {
-          console.log("Observer: Triggering fetch for page", page);
+          // console.log("Observer: Triggering fetch for page", page);
           isFetchingRef.current = true;
           fetchPosts(page).finally(() => {
-            console.log("Observer: Fetch complete, unlocking");
+            // console.log("Observer: Fetch complete, unlocking");
             isFetchingRef.current = false;
           });
         }
@@ -178,7 +178,7 @@ const GuestPostView = () => {
 
     observer.observe(observerTargetRef.current);
     return () => {
-      console.log("Observer: Disconnecting");
+      // console.log("Observer: Disconnecting");
       observer.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -186,7 +186,7 @@ const GuestPostView = () => {
 
   // --- Retry Handler ---
   const handleRetry = useCallback(() => {
-    console.log("handleRetry: Resetting state");
+    // console.log("handleRetry: Resetting state");
     setPage(1);
     setHasMore(true);
     setInitialLoaded(false);
@@ -197,17 +197,17 @@ const GuestPostView = () => {
 
   // --- Posts + Ads Composition ---
   const postsWithAds = useMemo(() => {
-    console.log("postsWithAds: Computing with", posts.length, "posts");
+    // console.log("postsWithAds: Computing with", posts.length, "posts");
     return posts.flatMap((post, index) => {
       if (!post?._id) {
-        console.log("postsWithAds: Skipping invalid post at index", index);
+        // console.log("postsWithAds: Skipping invalid post at index", index);
         return [];
       }
       const elements = [<GuestCardOfPost key={post._id} post={post} />];
 
       try {
         if ((index + 1) % AD_IN_FEED_INTERVAL === 0) {
-          console.log("postsWithAds: Adding in-feed ad at index", index);
+          // console.log("postsWithAds: Adding in-feed ad at index", index);
           elements.push(
             <div
               key={`infeed-${post._id}-${index}`}
@@ -224,7 +224,7 @@ const GuestPostView = () => {
         }
 
         if ((index + 1) % AD_MULTIPLEX_INTERVAL === 0) {
-          console.log("postsWithAds: Adding multiplex ad at index", index);
+          // console.log("postsWithAds: Adding multiplex ad at index", index);
           elements.push(
             <div
               key={`multiplex-${post._id}-${index}`}
@@ -246,13 +246,13 @@ const GuestPostView = () => {
   }, [posts]);
 
   // --- UI States ---
-  console.log("GuestPostView: Rendering UI state", {
-    initialLoaded,
-    loading,
-    postsLength: posts.length,
-    error,
-    hasMore,
-  });
+  // console.log("GuestPostView: Rendering UI state", {
+  //   initialLoaded,
+  //   loading,
+  //   postsLength: posts.length,
+  //   error,
+  //   hasMore,
+  // });
   if (!initialLoaded && loading && posts.length === 0) {
     return (
       <div className={gridClass} role="status" aria-label="Loading posts">

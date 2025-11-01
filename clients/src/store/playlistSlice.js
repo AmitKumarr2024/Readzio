@@ -15,35 +15,35 @@ export const fetchUserPlaylists = createAsyncThunk(
     try {
       if (!userId) throw new Error("User ID is required");
 
-      console.log(
-        "[fetchUserPlaylists] Fetching playlists for userId:",
-        userId
-      );
+      // console.log(
+      //   "[fetchUserPlaylists] Fetching playlists for userId:",
+      //   userId
+      // );
 
       const response = await axiosInstance.get(`/playlists/user/${userId}`, {
         timeout: 30000,
         withCredentials: true,
       });
 
-      console.log("[fetchUserPlaylists] Response status:", response.status);
-      console.log("[fetchUserPlaylists] Response data:", response.data);
+      // console.log("[fetchUserPlaylists] Response status:", response.status);
+      // console.log("[fetchUserPlaylists] Response data:", response.data);
 
       // ✅ Extract the data array from response
       const result = Array.isArray(response.data?.data)
         ? response.data.data
         : [];
 
-      console.log(
-        "[fetchUserPlaylists] Parsed playlists count:",
-        result.length
-      );
-      console.log("[fetchUserPlaylists] Playlists:", result);
+      // console.log(
+      //   "[fetchUserPlaylists] Parsed playlists count:",
+      //   result.length
+      // );
+      // console.log("[fetchUserPlaylists] Playlists:", result);
 
       const privateCount = result.filter((p) => p.isPrivate).length;
       const publicCount = result.filter((p) => !p.isPrivate).length;
-      console.log(
-        `[fetchUserPlaylists] Private: ${privateCount}, Public: ${publicCount}`
-      );
+      // console.log(
+      //   `[fetchUserPlaylists] Private: ${privateCount}, Public: ${publicCount}`
+      // );
 
       return result;
     } catch (error) {
@@ -124,7 +124,7 @@ export const createPlaylist = createAsyncThunk(
         isPrivate,
       };
 
-      console.log("[createPlaylist] Creating playlist:", payload);
+      // console.log("[createPlaylist] Creating playlist:", payload);
 
       const response = await axiosInstance.post("/playlists", payload, {
         timeout: 30000,
@@ -135,7 +135,7 @@ export const createPlaylist = createAsyncThunk(
         throw new Error("No data received from server");
       }
 
-      console.log("[createPlaylist] Created playlist:", response.data.data);
+      // console.log("[createPlaylist] Created playlist:", response.data.data);
 
       return response.data.data;
     } catch (error) {
@@ -438,17 +438,17 @@ const playlistSlice = createSlice({
     // Socket event handlers
     handlePlaylistCreated: (state, action) => {
       const newPlaylist = action.payload;
-      console.log("[handlePlaylistCreated] New playlist:", newPlaylist);
+      // console.log("[handlePlaylistCreated] New playlist:", newPlaylist);
 
       if (!newPlaylist?._id) return;
 
       const exists = state.playlists.some((p) => p._id === newPlaylist._id);
       if (!exists) {
         state.playlists.unshift(newPlaylist);
-        console.log(
-          "[handlePlaylistCreated] Added to state. Total:",
-          state.playlists.length
-        );
+        // console.log(
+        //   "[handlePlaylistCreated] Added to state. Total:",
+        //   state.playlists.length
+        // );
       }
     },
 
@@ -542,25 +542,25 @@ const playlistSlice = createSlice({
     builder
       // Fetch User Playlists
       .addCase(fetchUserPlaylists.pending, (state) => {
-        console.log("[PlaylistSlice] fetchUserPlaylists.pending");
+        // console.log("[PlaylistSlice] fetchUserPlaylists.pending");
         state.status = "loading";
         state.error = null;
       })
       .addCase(fetchUserPlaylists.fulfilled, (state, action) => {
-        console.log("[PlaylistSlice] fetchUserPlaylists.fulfilled");
-        console.log(
-          "[PlaylistSlice] Received playlists:",
-          action.payload?.length
-        );
+        // console.log("[PlaylistSlice] fetchUserPlaylists.fulfilled");
+        // console.log(
+        //   "[PlaylistSlice] Received playlists:",
+        //   action.payload?.length
+        // );
 
         state.status = "succeeded";
         state.playlists = Array.isArray(action.payload) ? action.payload : [];
 
         const privateCount = state.playlists.filter((p) => p.isPrivate).length;
         const publicCount = state.playlists.filter((p) => !p.isPrivate).length;
-        console.log(
-          `[PlaylistSlice] State updated - Private: ${privateCount}, Public: ${publicCount}`
-        );
+        // console.log(
+        //   `[PlaylistSlice] State updated - Private: ${privateCount}, Public: ${publicCount}`
+        // );
 
         state.error = null;
         state.lastFetch = new Date().toISOString();
@@ -595,18 +595,18 @@ const playlistSlice = createSlice({
         state.error = null;
       })
       .addCase(createPlaylist.fulfilled, (state, action) => {
-        console.log(
-          "[PlaylistSlice] createPlaylist.fulfilled:",
-          action.payload
-        );
+        // console.log(
+        //   "[PlaylistSlice] createPlaylist.fulfilled:",
+        //   action.payload
+        // );
         state.createStatus = "succeeded";
 
         if (action.payload && action.payload._id) {
           state.playlists.unshift(action.payload);
-          console.log(
-            "[PlaylistSlice] Playlist added to state. Total:",
-            state.playlists.length
-          );
+          // console.log(
+          //   "[PlaylistSlice] Playlist added to state. Total:",
+          //   state.playlists.length
+          // );
         }
         state.error = null;
         state.lastFetch = new Date().toISOString();

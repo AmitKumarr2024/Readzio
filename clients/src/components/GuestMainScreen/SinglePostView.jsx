@@ -12,11 +12,11 @@ const SinglePostView = () => {
   );
 
   useEffect(() => {
-    console.log("🟦 [SinglePostView] useEffect triggered for slug:", slug);
+    // console.log("🟦 [SinglePostView] useEffect triggered for slug:", slug);
     const loadPost = async () => {
       try {
         const result = await dispatch(fetchPublicPostBySlug(slug)).unwrap();
-        console.log("🟩 [SinglePostView] Post fetch complete:", result);
+        // console.log("🟩 [SinglePostView] Post fetch complete:", result);
         await dispatch(trackGuestView(slug)).unwrap();
       } catch (err) {
         console.error("🟥 [SinglePostView] Failed to fetch post:", err);
@@ -29,20 +29,20 @@ const SinglePostView = () => {
   useEffect(() => {
     if (singlePost) {
       console.group("🟨 [Post Data Debug]");
-      console.log("Title:", singlePost.title);
-      console.log("Thumbnail:", singlePost.thumbnail);
-      console.log("Excerpt:", singlePost.excerpt);
-      console.log("Blocks present:", Array.isArray(singlePost.blocks));
+      // console.log("Title:", singlePost.title);
+      // console.log("Thumbnail:", singlePost.thumbnail);
+      // console.log("Excerpt:", singlePost.excerpt);
+      // console.log("Blocks present:", Array.isArray(singlePost.blocks));
       if (Array.isArray(singlePost.blocks)) {
-        console.log("Blocks length:", singlePost.blocks.length);
+        // console.log("Blocks length:", singlePost.blocks.length);
         singlePost.blocks.forEach((block, i) => {
-          console.log(`  🧱 Block #${i}`, {
-            type: block.type,
-            data: block.data,
-            content: block.content,
-            value: block.value,
-            src: block.src,
-          });
+          // console.log(`  🧱 Block #${i}`, {
+          //   type: block.type,
+          //   data: block.data,
+          //   content: block.content,
+          //   value: block.value,
+          //   src: block.src,
+          // });
         });
       }
       console.groupEnd();
@@ -50,7 +50,7 @@ const SinglePostView = () => {
   }, [singlePost]);
 
   if (loading) {
-    console.log("⏳ [SinglePostView] Rendering loading state");
+    // console.log("⏳ [SinglePostView] Rendering loading state");
     return (
       <div className="p-4 max-w-4xl mx-auto">
         <Skeleton height="h-8" width="w-3/4" className="mb-4" />
@@ -85,7 +85,7 @@ const SinglePostView = () => {
     );
   }
 
-  console.log("✅ [SinglePostView] Rendering post:", singlePost.title);
+  // console.log("✅ [SinglePostView] Rendering post:", singlePost.title);
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
@@ -107,12 +107,12 @@ const SinglePostView = () => {
         singlePost.blocks.map((block, index) => {
           const type = block.type || "";
           const data = block.data || {};
-          console.log(`🔍 Rendering block #${index} | type: ${type}`, block);
+          // console.log(`🔍 Rendering block #${index} | type: ${type}`, block);
 
           switch (type) {
             case "paragraph":
             case "text":
-              console.log(`📝 Rendering paragraph block #${index}`, data.text);
+              // console.log(`📝 Rendering paragraph block #${index}`, data.text);
               return (
                 <p
                   key={index}
@@ -126,7 +126,7 @@ const SinglePostView = () => {
             case "header":
               const level = data.level || 2;
               const HeaderTag = `h${Math.min(level, 6)}`;
-              console.log(`🔠 Rendering header block #${index}`, data.text);
+              // console.log(`🔠 Rendering header block #${index}`, data.text);
               return (
                 <HeaderTag key={index} className="font-semibold text-xl my-3">
                   {data.text}
@@ -136,7 +136,7 @@ const SinglePostView = () => {
             case "image":
               const url =
                 data.file?.url || data.url || block.content || block.src;
-              console.log(`🖼️ Rendering image block #${index}`, url);
+              // console.log(`🖼️ Rendering image block #${index}`, url);
               return (
                 <div key={index} className="my-4">
                   <img
@@ -151,7 +151,7 @@ const SinglePostView = () => {
               );
 
             case "list":
-              console.log(`📋 Rendering list block #${index}`, data.items);
+              // console.log(`📋 Rendering list block #${index}`, data.items);
               return (
                 <ul key={index} className="list-disc list-inside mb-3">
                   {Array.isArray(data.items) &&

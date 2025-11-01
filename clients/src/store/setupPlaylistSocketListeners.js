@@ -23,7 +23,7 @@ export const setuppostlistSocketListeners = (socket, dispatch, getState) => {
     return;
   }
 
-  console.log("[postlistSocket] 🎵 Setting up postlist socket listeners...");
+  // console.log("[postlistSocket] 🎵 Setting up postlist socket listeners...");
 
   // Remove existing listeners to prevent duplicates
   const postlistEvents = [
@@ -42,20 +42,20 @@ export const setuppostlistSocketListeners = (socket, dispatch, getState) => {
   // =========================================================================
 
   const debouncedpostlistUpdate = debounce((postlist) => {
-    console.log(
-      "[postlistSocket] 🔵 Processing debounced postlist update:",
-      postlist._id
-    );
+    // console.log(
+    //   "[postlistSocket] 🔵 Processing debounced postlist update:",
+    //   postlist._id
+    // );
     dispatch(handlepostlistUpdated(postlist));
   }, 500);
 
   const debouncedPostAdded = debounce((data) => {
-    console.log("[postlistSocket] 🔵 Processing debounced post added:", data);
+    // console.log("[postlistSocket] 🔵 Processing debounced post added:", data);
     dispatch(handlePostAddedTopostlist(data));
   }, 500);
 
   const debouncedPostRemoved = debounce((data) => {
-    console.log("[postlistSocket] 🔵 Processing debounced post removed:", data);
+    // console.log("[postlistSocket] 🔵 Processing debounced post removed:", data);
     dispatch(handlePostRemovedFrompostlist(data));
   }, 500);
 
@@ -77,12 +77,12 @@ export const setuppostlistSocketListeners = (socket, dispatch, getState) => {
         return;
       }
 
-      console.log("[postlistSocket] 🆕 postlist created:", {
-        postlistId: postlist._id,
-        name: postlist.name,
-        createdBy: userId,
-        isCurrentUser: userId === currentUserId,
-      });
+      // console.log("[postlistSocket] 🆕 postlist created:", {
+      //   postlistId: postlist._id,
+      //   name: postlist.name,
+      //   createdBy: userId,
+      //   isCurrentUser: userId === currentUserId,
+      // });
 
       // Only add to state if it belongs to current user or is public
       if (userId === currentUserId || !postlist.isPrivate) {
@@ -110,12 +110,12 @@ export const setuppostlistSocketListeners = (socket, dispatch, getState) => {
         return;
       }
 
-      console.log("[postlistSocket] ✏️ postlist updated:", {
-        postlistId: postlist._id,
-        name: postlist.name,
-        updatedBy: userId,
-        isCurrentUser: userId === currentUserId,
-      });
+      // console.log("[postlistSocket] ✏️ postlist updated:", {
+      //   postlistId: postlist._id,
+      //   name: postlist.name,
+      //   updatedBy: userId,
+      //   isCurrentUser: userId === currentUserId,
+      // });
 
       // Check if user has access to this postlist
       const hasAccess =
@@ -148,11 +148,11 @@ export const setuppostlistSocketListeners = (socket, dispatch, getState) => {
         return;
       }
 
-      console.log("[postlistSocket] 🗑️ postlist deleted:", {
-        postlistId,
-        deletedBy: userId,
-        isCurrentUser: userId === currentUserId,
-      });
+      // console.log("[postlistSocket] 🗑️ postlist deleted:", {
+      //   postlistId,
+      //   deletedBy: userId,
+      //   isCurrentUser: userId === currentUserId,
+      // });
 
       dispatch(handlepostlistDeleted({ postlistId }));
     } catch (error) {
@@ -177,13 +177,13 @@ export const setuppostlistSocketListeners = (socket, dispatch, getState) => {
         return;
       }
 
-      console.log("[postlistSocket] ➕ Post added to postlist:", {
-        postlistId,
-        postId: post._id,
-        postTitle: post.title,
-        addedBy: userId,
-        isCurrentUser: userId === currentUserId,
-      });
+      // console.log("[postlistSocket] ➕ Post added to postlist:", {
+      //   postlistId,
+      //   postId: post._id,
+      //   postTitle: post.title,
+      //   addedBy: userId,
+      //   isCurrentUser: userId === currentUserId,
+      // });
 
       // Check if current user has access to this postlist
       const postlists = getState().postlist.postlists;
@@ -219,12 +219,12 @@ export const setuppostlistSocketListeners = (socket, dispatch, getState) => {
         return;
       }
 
-      console.log("[postlistSocket] ➖ Post removed from postlist:", {
-        postlistId,
-        postId,
-        removedBy: userId,
-        isCurrentUser: userId === currentUserId,
-      });
+      // console.log("[postlistSocket] ➖ Post removed from postlist:", {
+      //   postlistId,
+      //   postId,
+      //   removedBy: userId,
+      //   isCurrentUser: userId === currentUserId,
+      // });
 
       // Check if current user has access to this postlist
       const postlists = getState().postlist.postlists;
@@ -260,12 +260,12 @@ export const setuppostlistSocketListeners = (socket, dispatch, getState) => {
         return;
       }
 
-      console.log("[postlistSocket] 🔄 postlist posts reordered:", {
-        postlistId: postlist._id,
-        postCount: postlist.posts?.length || 0,
-        reorderedBy: userId,
-        isCurrentUser: userId === currentUserId,
-      });
+      // console.log("[postlistSocket] 🔄 postlist posts reordered:", {
+      //   postlistId: postlist._id,
+      //   postCount: postlist.posts?.length || 0,
+      //   reorderedBy: userId,
+      //   isCurrentUser: userId === currentUserId,
+      // });
 
       // Check if user has access to this postlist
       const hasAccess =
@@ -296,7 +296,7 @@ export const setuppostlistSocketListeners = (socket, dispatch, getState) => {
     });
   });
 
-  console.log("[postlistSocket] ✅ postlist socket listeners configured");
+  // console.log("[postlistSocket] ✅ postlist socket listeners configured");
 };
 
 /**
@@ -311,7 +311,7 @@ export const cleanuppostlistSocketListeners = (socket) => {
     return;
   }
 
-  console.log("[postlistSocket] 🧹 Cleaning up postlist socket listeners...");
+  // console.log("[postlistSocket] 🧹 Cleaning up postlist socket listeners...");
 
   const postlistEvents = [
     "postlistCreated",
@@ -327,7 +327,7 @@ export const cleanuppostlistSocketListeners = (socket) => {
     socket.off(event);
   });
 
-  console.log("[postlistSocket] ✅ postlist socket listeners cleaned up");
+  // console.log("[postlistSocket] ✅ postlist socket listeners cleaned up");
 };
 
 /**
@@ -338,19 +338,19 @@ export const cleanuppostlistSocketListeners = (socket) => {
 export const emitpostlistCreated = (socket, postlist) => {
   if (!socket || !postlist) return;
   socket.emit("postlistCreated", { postlist, timestamp: Date.now() });
-  console.log("[postlistSocket] 📤 Emitted postlistCreated");
+  // console.log("[postlistSocket] 📤 Emitted postlistCreated");
 };
 
 export const emitpostlistUpdated = (socket, postlist) => {
   if (!socket || !postlist) return;
   socket.emit("postlistUpdated", { postlist, timestamp: Date.now() });
-  console.log("[postlistSocket] 📤 Emitted postlistUpdated");
+  // console.log("[postlistSocket] 📤 Emitted postlistUpdated");
 };
 
 export const emitpostlistDeleted = (socket, postlistId) => {
   if (!socket || !postlistId) return;
   socket.emit("postlistDeleted", { postlistId, timestamp: Date.now() });
-  console.log("[postlistSocket] 📤 Emitted postlistDeleted");
+  // console.log("[postlistSocket] 📤 Emitted postlistDeleted");
 };
 
 export const emitPostAddedTopostlist = (socket, postlistId, post) => {
@@ -360,7 +360,7 @@ export const emitPostAddedTopostlist = (socket, postlistId, post) => {
     post,
     timestamp: Date.now(),
   });
-  console.log("[postlistSocket] 📤 Emitted postAddedTopostlist");
+  // console.log("[postlistSocket] 📤 Emitted postAddedTopostlist");
 };
 
 export const emitPostRemovedFrompostlist = (socket, postlistId, postId) => {
@@ -370,5 +370,5 @@ export const emitPostRemovedFrompostlist = (socket, postlistId, postId) => {
     postId,
     timestamp: Date.now(),
   });
-  console.log("[postlistSocket] 📤 Emitted postRemovedFrompostlist");
+  // console.log("[postlistSocket] 📤 Emitted postRemovedFrompostlist");
 };

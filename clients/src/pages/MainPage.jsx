@@ -17,47 +17,47 @@ const MainPage = () => {
   const authState = useSelector((state) => state.auth);
   const { isAuthenticated, user, loading: authLoading } = authState;
 
-  console.log("Auth State:", authState);
+  // console.log("Auth State:", authState);
 
   // --- Authenticated user's posts ---
   const postState = useSelector((state) => state.post || {});
   const { posts: authPosts = [], loading: authPostLoading } = postState;
-  console.log("Post State:", postState);
+  // console.log("Post State:", postState);
 
   // --- Layout meta ---
   const postMeta = useSelector((state) => state.postMeta);
   const { isSidebarOpen, isMobile } = postMeta;
-  console.log("Layout Meta:", postMeta);
+  // console.log("Layout Meta:", postMeta);
 
   // --- Handle tab change ---
   const handleTabChange = useCallback((tab) => {
-    console.log("Tab changed to:", tab);
+    // console.log("Tab changed to:", tab);
   }, []);
 
   // --- Fetch posts for logged-in users only ---
   useEffect(() => {
-    console.log("useEffect: Checking auth to fetch posts", {
-      authLoading,
-      isAuthenticated,
-    });
+    // console.log("useEffect: Checking auth to fetch posts", {
+    //   authLoading,
+    //   isAuthenticated,
+    // });
     if (!authLoading && isAuthenticated) {
-      console.log("Dispatching getAllPosts for authenticated user");
+      // console.log("Dispatching getAllPosts for authenticated user");
       dispatch(getAllPosts({ page: 1, limit: 12 }));
     }
   }, [dispatch, isAuthenticated, authLoading]);
 
   // --- Clear stale post data ---
   useEffect(() => {
-    console.log(
-      "useEffect: Clearing stale posts, isAuthenticated=",
-      isAuthenticated
-    );
+    // console.log(
+    //   "useEffect: Clearing stale posts, isAuthenticated=",
+    //   isAuthenticated
+    // );
     if (isAuthenticated) {
       dispatch({ type: "guest/clearGuestPosts" });
-      console.log("Cleared guest posts");
+      // console.log("Cleared guest posts");
     } else {
       dispatch({ type: "post/clearAllPosts" });
-      console.log("Cleared authenticated posts");
+      // console.log("Cleared authenticated posts");
     }
   }, [isAuthenticated, dispatch]);
 
@@ -69,7 +69,7 @@ const MainPage = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         const mobile = window.innerWidth < 1024;
-        console.log("Resizing, isMobile=", mobile);
+        // console.log("Resizing, isMobile=", mobile);
         dispatch(setIsMobile(mobile));
       }, 100);
     };
@@ -85,12 +85,12 @@ const MainPage = () => {
 
   // --- Lock scroll on mobile when sidebar is open ---
   useEffect(() => {
-    console.log(
-      "useEffect: Sidebar scroll lock, isSidebarOpen=",
-      isSidebarOpen,
-      "isMobile=",
-      isMobile
-    );
+    // console.log(
+    //   "useEffect: Sidebar scroll lock, isSidebarOpen=",
+    //   isSidebarOpen,
+    //   "isMobile=",
+    //   isMobile
+    // );
     if (isMobile && isSidebarOpen) {
       document.body.style.overflow = "hidden";
       document.body.style.position = "fixed";
@@ -108,7 +108,7 @@ const MainPage = () => {
     };
   }, [isMobile, isSidebarOpen]);
 
-  console.log(`MainPage Rendering Mode: ${isAuthenticated ? "USER" : "GUEST"}`);
+  // console.log(`MainPage Rendering Mode: ${isAuthenticated ? "USER" : "GUEST"}`);
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">

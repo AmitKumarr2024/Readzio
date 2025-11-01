@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { MessageCircle, Eye, Heart, Bookmark, Share2 } from "lucide-react";
 
 const GuestCardOfPost = ({ post }) => {
-  console.log("GuestCardOfPost: Rendering", post?.title || "Untitled");
+  // console.log("GuestCardOfPost: Rendering", post?.title || "Untitled");
   const {
     _id,
     slug,
