@@ -1,380 +1,380 @@
-// servers/sockets/postlistSocketHandlers.js
+// servers/sockets/playlistSocketHandlers.js
 
 /**
- * postlist Socket Event Handlers
+ * Playlist Socket Event Handlers
  * These functions emit real-time events to connected clients
- * Call these from your postlist controller after database operations
+ * Call these from your playlist controller after database operations
  */
 
 import { io } from "./socket.js"; // Import your socket instance
 
 /**
- * Emit postlist created event to relevant users
- * @param {Object} postlist - The created postlist object
- * @param {String} userId - ID of user who created the postlist
+ * Emit playlist created event to relevant users
+ * @param {Object} playlist - The created playlist object
+ * @param {String} userId - ID of user who created the playlist
  */
-export const emitpostlistCreated = (postlist, userId) => {
+export const emitPlaylistCreated = (playlist, userId) => {
   try {
-    if (!postlist || !postlist._id) {
-      console.warn("[postlistSocket] Invalid postlist for creation event");
+    if (!playlist || !playlist._id) {
+      console.warn("[PlaylistSocket] Invalid playlist for creation event");
       return;
     }
 
     console.log(
-      `[postlistSocket] 🆕 Emitting postlistCreated: ${postlist._id}`
+      `[PlaylistSocket] 🆕 Emitting playlistCreated: ${playlist._id}`
     );
 
     // Emit to the creator's room
-    io.to(userId.toString()).emit("postlistCreated", {
-      postlist,
+    io.to(userId.toString()).emit("playlistCreated", {
+      playlist,
       userId: userId.toString(),
       timestamp: Date.now(),
     });
 
-    // If postlist is public, broadcast to all users
-    if (!postlist.isPrivate) {
-      io.emit("postlistCreated", {
-        postlist,
+    // If playlist is public, broadcast to all users
+    if (!playlist.isPrivate) {
+      io.emit("playlistCreated", {
+        playlist,
         userId: userId.toString(),
         timestamp: Date.now(),
       });
     }
   } catch (error) {
     console.error(
-      "[postlistSocket] Error emitting postlistCreated:",
+      "[PlaylistSocket] Error emitting playlistCreated:",
       error.message
     );
   }
 };
 
 /**
- * Emit postlist updated event
- * @param {Object} postlist - The updated postlist object
- * @param {String} userId - ID of user who updated the postlist
+ * Emit playlist updated event
+ * @param {Object} playlist - The updated playlist object
+ * @param {String} userId - ID of user who updated the playlist
  */
-export const emitpostlistUpdated = (postlist, userId) => {
+export const emitPlaylistUpdated = (playlist, userId) => {
   try {
-    if (!postlist || !postlist._id) {
-      console.warn("[postlistSocket] Invalid postlist for update event");
+    if (!playlist || !playlist._id) {
+      console.warn("[PlaylistSocket] Invalid playlist for update event");
       return;
     }
 
     console.log(
-      `[postlistSocket] ✏️ Emitting postlistUpdated: ${postlist._id}`
+      `[PlaylistSocket] ✏️ Emitting playlistUpdated: ${playlist._id}`
     );
 
     const eventData = {
-      postlist,
+      playlist,
       userId: userId.toString(),
       timestamp: Date.now(),
     };
 
     // Emit to the owner's room
-    io.to(userId.toString()).emit("postlistUpdated", eventData);
+    io.to(userId.toString()).emit("playlistUpdated", eventData);
 
-    // If postlist is public or was changed to public, broadcast
-    if (!postlist.isPrivate) {
-      io.emit("postlistUpdated", eventData);
+    // If playlist is public or was changed to public, broadcast
+    if (!playlist.isPrivate) {
+      io.emit("playlistUpdated", eventData);
     }
   } catch (error) {
     console.error(
-      "[postlistSocket] Error emitting postlistUpdated:",
+      "[PlaylistSocket] Error emitting playlistUpdated:",
       error.message
     );
   }
 };
 
 /**
- * Emit postlist deleted event
- * @param {String} postlistId - ID of deleted postlist
- * @param {String} userId - ID of user who deleted the postlist
- * @param {Boolean} wasPrivate - Whether postlist was private
+ * Emit playlist deleted event
+ * @param {String} playlistId - ID of deleted playlist
+ * @param {String} userId - ID of user who deleted the playlist
+ * @param {Boolean} wasPrivate - Whether playlist was private
  */
-export const emitpostlistDeleted = (postlistId, userId, wasPrivate = true) => {
+export const emitPlaylistDeleted = (playlistId, userId, wasPrivate = true) => {
   try {
-    if (!postlistId) {
-      console.warn("[postlistSocket] Invalid postlist ID for deletion event");
+    if (!playlistId) {
+      console.warn("[PlaylistSocket] Invalid playlist ID for deletion event");
       return;
     }
 
-    console.log(`[postlistSocket] 🗑️ Emitting postlistDeleted: ${postlistId}`);
+    console.log(`[PlaylistSocket] 🗑️ Emitting playlistDeleted: ${playlistId}`);
 
     const eventData = {
-      postlistId: postlistId.toString(),
+      playlistId: playlistId.toString(),
       userId: userId.toString(),
       timestamp: Date.now(),
     };
 
     // Emit to the owner's room
-    io.to(userId.toString()).emit("postlistDeleted", eventData);
+    io.to(userId.toString()).emit("playlistDeleted", eventData);
 
-    // If postlist was public, broadcast to all
+    // If playlist was public, broadcast to all
     if (!wasPrivate) {
-      io.emit("postlistDeleted", eventData);
+      io.emit("playlistDeleted", eventData);
     }
   } catch (error) {
     console.error(
-      "[postlistSocket] Error emitting postlistDeleted:",
+      "[PlaylistSocket] Error emitting playlistDeleted:",
       error.message
     );
   }
 };
 
 /**
- * Emit post added to postlist event
- * @param {String} postlistId - ID of the postlist
+ * Emit post added to playlist event
+ * @param {String} playlistId - ID of the playlist
  * @param {Object} post - The post object that was added
  * @param {String} userId - ID of user who added the post
- * @param {Boolean} isPrivate - Whether postlist is private
+ * @param {Boolean} isPrivate - Whether playlist is private
  */
-export const emitPostAddedTopostlist = (
-  postlistId,
+export const emitPostAddedToPlaylist = (
+  playlistId,
   post,
   userId,
   isPrivate = true
 ) => {
   try {
-    if (!postlistId || !post || !post._id) {
-      console.warn("[postlistSocket] Invalid data for post added event");
+    if (!playlistId || !post || !post._id) {
+      console.warn("[PlaylistSocket] Invalid data for post added event");
       return;
     }
 
     console.log(
-      `[postlistSocket] ➕ Emitting postAddedTopostlist: ${postlistId}`
+      `[PlaylistSocket] ➕ Emitting postAddedToPlaylist: ${playlistId}`
     );
 
     const eventData = {
-      postlistId: postlistId.toString(),
+      playlistId: playlistId.toString(),
       post,
       userId: userId.toString(),
       timestamp: Date.now(),
     };
 
     // Emit to the owner's room
-    io.to(userId.toString()).emit("postAddedTopostlist", eventData);
+    io.to(userId.toString()).emit("postAddedToPlaylist", eventData);
 
-    // If postlist is public, broadcast to all
+    // If playlist is public, broadcast to all
     if (!isPrivate) {
-      io.emit("postAddedTopostlist", eventData);
+      io.emit("postAddedToPlaylist", eventData);
     }
   } catch (error) {
     console.error(
-      "[postlistSocket] Error emitting postAddedTopostlist:",
+      "[PlaylistSocket] Error emitting postAddedToPlaylist:",
       error.message
     );
   }
 };
 
 /**
- * Emit post removed from postlist event
- * @param {String} postlistId - ID of the postlist
+ * Emit post removed from playlist event
+ * @param {String} playlistId - ID of the playlist
  * @param {String} postId - ID of the post that was removed
  * @param {String} userId - ID of user who removed the post
- * @param {Boolean} isPrivate - Whether postlist is private
+ * @param {Boolean} isPrivate - Whether playlist is private
  */
-export const emitPostRemovedFrompostlist = (
-  postlistId,
+export const emitPostRemovedFromPlaylist = (
+  playlistId,
   postId,
   userId,
   isPrivate = true
 ) => {
   try {
-    if (!postlistId || !postId) {
-      console.warn("[postlistSocket] Invalid data for post removed event");
+    if (!playlistId || !postId) {
+      console.warn("[PlaylistSocket] Invalid data for post removed event");
       return;
     }
 
     console.log(
-      `[postlistSocket] ➖ Emitting postRemovedFrompostlist: ${postlistId}`
+      `[PlaylistSocket] ➖ Emitting postRemovedFromPlaylist: ${playlistId}`
     );
 
     const eventData = {
-      postlistId: postlistId.toString(),
+      playlistId: playlistId.toString(),
       postId: postId.toString(),
       userId: userId.toString(),
       timestamp: Date.now(),
     };
 
     // Emit to the owner's room
-    io.to(userId.toString()).emit("postRemovedFrompostlist", eventData);
+    io.to(userId.toString()).emit("postRemovedFromPlaylist", eventData);
 
-    // If postlist is public, broadcast to all
+    // If playlist is public, broadcast to all
     if (!isPrivate) {
-      io.emit("postRemovedFrompostlist", eventData);
+      io.emit("postRemovedFromPlaylist", eventData);
     }
   } catch (error) {
     console.error(
-      "[postlistSocket] Error emitting postRemovedFrompostlist:",
+      "[PlaylistSocket] Error emitting postRemovedFromPlaylist:",
       error.message
     );
   }
 };
 
 /**
- * Emit postlist posts reordered event
- * @param {Object} postlist - The postlist with reordered posts
+ * Emit playlist posts reordered event
+ * @param {Object} playlist - The playlist with reordered posts
  * @param {String} userId - ID of user who reordered the posts
  */
-export const emitpostlistPostsReordered = (postlist, userId) => {
+export const emitPlaylistPostsReordered = (playlist, userId) => {
   try {
-    if (!postlist || !postlist._id) {
-      console.warn("[postlistSocket] Invalid postlist for reorder event");
+    if (!playlist || !playlist._id) {
+      console.warn("[PlaylistSocket] Invalid playlist for reorder event");
       return;
     }
 
     console.log(
-      `[postlistSocket] 🔄 Emitting postlistPostsReordered: ${postlist._id}`
+      `[PlaylistSocket] 🔄 Emitting playlistPostsReordered: ${playlist._id}`
     );
 
     const eventData = {
-      postlist,
+      playlist,
       userId: userId.toString(),
       timestamp: Date.now(),
     };
 
     // Emit to the owner's room
-    io.to(userId.toString()).emit("postlistPostsReordered", eventData);
+    io.to(userId.toString()).emit("playlistPostsReordered", eventData);
 
-    // If postlist is public, broadcast to all
-    if (!postlist.isPrivate) {
-      io.emit("postlistPostsReordered", eventData);
+    // If playlist is public, broadcast to all
+    if (!playlist.isPrivate) {
+      io.emit("playlistPostsReordered", eventData);
     }
   } catch (error) {
     console.error(
-      "[postlistSocket] Error emitting postlistPostsReordered:",
+      "[PlaylistSocket] Error emitting playlistPostsReordered:",
       error.message
     );
   }
 };
 
 /**
- * Emit postlist error event to specific user
+ * Emit playlist error event to specific user
  * @param {String} userId - ID of user to notify
  * @param {String} message - Error message
  * @param {String} code - Error code
  */
-export const emitpostlistError = (userId, message, code = "postlist_ERROR") => {
+export const emitPlaylistError = (userId, message, code = "PLAYLIST_ERROR") => {
   try {
     if (!userId) {
-      console.warn("[postlistSocket] No user ID for error event");
+      console.warn("[PlaylistSocket] No user ID for error event");
       return;
     }
 
     console.log(
-      `[postlistSocket] ❌ Emitting postlistError to user: ${userId}`
+      `[PlaylistSocket] ❌ Emitting playlistError to user: ${userId}`
     );
 
-    io.to(userId.toString()).emit("postlistError", {
+    io.to(userId.toString()).emit("playlistError", {
       message,
       code,
       timestamp: Date.now(),
     });
   } catch (error) {
     console.error(
-      "[postlistSocket] Error emitting postlistError:",
+      "[PlaylistSocket] Error emitting playlistError:",
       error.message
     );
   }
 };
 
 /**
- * Setup client-side postlist event listeners in socket.js
+ * Setup client-side playlist event listeners in socket.js
  * Add these inside your io.on("connection", (socket) => { ... }) handler
  */
-export const setuppostlistSocketEvents = (socket) => {
+export const setupPlaylistSocketEvents = (socket) => {
   /**
-   * Client emits postlistCreated after creating a postlist
+   * Client emits playlistCreated after creating a playlist
    */
-  socket.on("postlistCreated", (data) => {
+  socket.on("playlistCreated", (data) => {
     try {
-      const { postlist } = data;
+      const { playlist } = data;
       if (!socket.userId) return;
 
-      console.log(`[postlistSocket] Client postlist created: ${postlist._id}`);
+      console.log(`[PlaylistSocket] Client playlist created: ${playlist._id}`);
 
       // Re-emit to other clients
-      emitpostlistCreated(postlist, socket.userId);
+      emitPlaylistCreated(playlist, socket.userId);
     } catch (error) {
       console.error(
-        "[postlistSocket] Error handling client postlistCreated:",
+        "[PlaylistSocket] Error handling client playlistCreated:",
         error.message
       );
-      emitpostlistError(
+      emitPlaylistError(
         socket.userId,
-        "Failed to broadcast postlist creation",
+        "Failed to broadcast playlist creation",
         "BROADCAST_ERROR"
       );
     }
   });
 
   /**
-   * Client emits postlistUpdated after updating a postlist
+   * Client emits playlistUpdated after updating a playlist
    */
-  socket.on("postlistUpdated", (data) => {
+  socket.on("playlistUpdated", (data) => {
     try {
-      const { postlist } = data;
+      const { playlist } = data;
       if (!socket.userId) return;
 
-      console.log(`[postlistSocket] Client postlist updated: ${postlist._id}`);
+      console.log(`[PlaylistSocket] Client playlist updated: ${playlist._id}`);
 
       // Re-emit to other clients
-      emitpostlistUpdated(postlist, socket.userId);
+      emitPlaylistUpdated(playlist, socket.userId);
     } catch (error) {
       console.error(
-        "[postlistSocket] Error handling client postlistUpdated:",
+        "[PlaylistSocket] Error handling client playlistUpdated:",
         error.message
       );
-      emitpostlistError(
+      emitPlaylistError(
         socket.userId,
-        "Failed to broadcast postlist update",
+        "Failed to broadcast playlist update",
         "BROADCAST_ERROR"
       );
     }
   });
 
   /**
-   * Client emits postlistDeleted after deleting a postlist
+   * Client emits playlistDeleted after deleting a playlist
    */
-  socket.on("postlistDeleted", (data) => {
+  socket.on("playlistDeleted", (data) => {
     try {
-      const { postlistId } = data;
+      const { playlistId } = data;
       if (!socket.userId) return;
 
-      console.log(`[postlistSocket] Client postlist deleted: ${postlistId}`);
+      console.log(`[PlaylistSocket] Client playlist deleted: ${playlistId}`);
 
       // Re-emit to other clients
-      emitpostlistDeleted(postlistId, socket.userId);
+      emitPlaylistDeleted(playlistId, socket.userId);
     } catch (error) {
       console.error(
-        "[postlistSocket] Error handling client postlistDeleted:",
+        "[PlaylistSocket] Error handling client playlistDeleted:",
         error.message
       );
-      emitpostlistError(
+      emitPlaylistError(
         socket.userId,
-        "Failed to broadcast postlist deletion",
+        "Failed to broadcast playlist deletion",
         "BROADCAST_ERROR"
       );
     }
   });
 
   /**
-   * Client emits postAddedTopostlist after adding a post
+   * Client emits postAddedToPlaylist after adding a post
    */
-  socket.on("postAddedTopostlist", (data) => {
+  socket.on("postAddedToPlaylist", (data) => {
     try {
-      const { postlistId, post } = data;
+      const { playlistId, post } = data;
       if (!socket.userId) return;
 
-      console.log(`[postlistSocket] Client post added: ${postlistId}`);
+      console.log(`[PlaylistSocket] Client post added: ${playlistId}`);
 
       // Re-emit to other clients
-      emitPostAddedTopostlist(postlistId, post, socket.userId);
+      emitPostAddedToPlaylist(playlistId, post, socket.userId);
     } catch (error) {
       console.error(
-        "[postlistSocket] Error handling client postAddedTopostlist:",
+        "[PlaylistSocket] Error handling client postAddedToPlaylist:",
         error.message
       );
-      emitpostlistError(
+      emitPlaylistError(
         socket.userId,
         "Failed to broadcast post addition",
         "BROADCAST_ERROR"
@@ -383,23 +383,23 @@ export const setuppostlistSocketEvents = (socket) => {
   });
 
   /**
-   * Client emits postRemovedFrompostlist after removing a post
+   * Client emits postRemovedFromPlaylist after removing a post
    */
-  socket.on("postRemovedFrompostlist", (data) => {
+  socket.on("postRemovedFromPlaylist", (data) => {
     try {
-      const { postlistId, postId } = data;
+      const { playlistId, postId } = data;
       if (!socket.userId) return;
 
-      console.log(`[postlistSocket] Client post removed: ${postlistId}`);
+      console.log(`[PlaylistSocket] Client post removed: ${playlistId}`);
 
       // Re-emit to other clients
-      emitPostRemovedFrompostlist(postlistId, postId, socket.userId);
+      emitPostRemovedFromPlaylist(playlistId, postId, socket.userId);
     } catch (error) {
       console.error(
-        "[postlistSocket] Error handling client postRemovedFrompostlist:",
+        "[PlaylistSocket] Error handling client postRemovedFromPlaylist:",
         error.message
       );
-      emitpostlistError(
+      emitPlaylistError(
         socket.userId,
         "Failed to broadcast post removal",
         "BROADCAST_ERROR"
