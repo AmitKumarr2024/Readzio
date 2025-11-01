@@ -2,7 +2,7 @@ import React from "react";
 import LikeButton from "../LikeButton";
 import ShareButton from "../ShareButton";
 import BookmarkButton from "../BookmarkButton";
-import postlistButton from "../../postlist/postlistButton";
+import PlaylistButton from "../../Playlist/PlaylistButton";
 
 const EngagementButtons = ({ post }) => {
   if (!post?._id) {
@@ -28,7 +28,7 @@ const EngagementButtons = ({ post }) => {
         postId={postId}
         className="p-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-full hover:shadow-lg transition-all duration-200"
       />
-      <postlistButton
+      <PlaylistButton
         postId={postId}
         post={post}
         className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-full hover:shadow-lg transition-all duration-200 flex items-center gap-2"

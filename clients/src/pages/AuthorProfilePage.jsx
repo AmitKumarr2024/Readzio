@@ -36,7 +36,7 @@ import LocationDashboard from "../components/location/LocationDashboard";
 const AboutAuthor = lazy(() => import("../components/Author/AboutAuthor"));
 const AllPosts = lazy(() => import("../components/Author/post/AllPosts"));
 const PinnedPost = lazy(() => import("../components/Author/post/PinnedPost"));
-const postlistList = lazy(() => import("../components/postlist/postlistList"));
+const postlistList = lazy(() => import("../components/Playlist/PlaylistList"));
 const AuthorPolls = lazy(() =>
   import("../components/Author/polls/AuthorPolls")
 );

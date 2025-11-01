@@ -19,7 +19,7 @@ import socketReducer from "../store/socketSlice";
 import themeReducer from "../store/themeSlice";
 import guestReducer from "../store/guestSlice";
 import bannerNotificationReducer from "../store/bannerNotificationSlice";
-import postlistReducer from "../store/postlistSlice";
+import playlistReducer from "../store/playlistSlice";
 
 const store = configureStore({
   reducer: {
@@ -43,7 +43,7 @@ const store = configureStore({
     socket: socketReducer,
     theme: themeReducer,
     guest: guestReducer,
-    postlist: postlistReducer
+    playlist: playlistReducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

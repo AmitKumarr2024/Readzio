@@ -11,7 +11,7 @@ import SearchInput from "./SearchBar/SearchInput";
 import NotificationDropdown from "./Notification/NotificationDropdown";
 import { checkAuth, logout } from "../store/authSlice";
 import { clearUser, getUser, trackUserIPLocation } from "../store/userSlice";
-import { fetchUserpostlists } from "../store/postlistSlice";
+import { fetchUserPlaylists } from "../store/playlistSlice";
 import ThemeToggleButton from "../layout/ThemeToggleButton";
 import { disconnectSocket, initializeSocket } from "../store/socketSlice";
 import { trackGuestVisit } from "../store/guestSlice";
@@ -91,8 +91,8 @@ const Navbar = () => {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const postlistsCount = useSelector(
-    (state) => state.postlist?.postlists?.length || 0
+  const playlistsCount = useSelector(
+    (state) => state.playlist?.playlists?.length || 0
   );
   const {
     isAuthenticated,
@@ -157,8 +157,8 @@ const Navbar = () => {
       dispatch(initializeSocket()).catch((err) =>
         console.error("Socket init failed:", err)
       );
-      dispatch(fetchUserpostlists(authUser._id)).catch((err) =>
-        console.error("Fetch postlists failed:", err)
+      dispatch(fetchUserPlaylists(authUser._id)).catch((err) =>
+        console.error("Fetch playlists failed:", err)
       );
       return () => dispatch(disconnectSocket());
     }
@@ -480,21 +480,21 @@ const Navbar = () => {
 
                         <motion.div whileHover={{ x: 4 }} className="px-2">
                           <Link
-                            to="/profile/postlists"
+                            to="/profile/playlists"
                             className="flex items-center justify-between px-3 py-2.5 text-sm rounded-lg hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 dark:hover:from-green-900/20 dark:hover:to-emerald-900/20 transition-all"
                             onClick={toggleDropdown}
                           >
-                            <span className="font-medium">postlists</span>
+                            <span className="font-medium">Postlists</span>
                             <AnimatePresence mode="wait">
                               <motion.span
-                                key={postlistsCount}
+                                key={playlistsCount}
                                 variants={countVariants}
                                 initial="initial"
                                 animate="animate"
                                 exit="exit"
                                 className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-bold"
                               >
-                                {postlistsCount}
+                                {playlistsCount}
                               </motion.span>
                             </AnimatePresence>
                           </Link>
@@ -658,21 +658,21 @@ const Navbar = () => {
 
                   <motion.div variants={menuItemVariants}>
                     <Link
-                      to="/profile/postlists"
+                      to="/profile/playlists"
                       onClick={toggleMobileMenu}
                       className="flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 dark:hover:from-green-900/20 dark:hover:to-emerald-900/20 transition-all"
                     >
-                      <span>postlists</span>
+                      <span>Postlists</span>
                       <AnimatePresence mode="wait">
                         <motion.span
-                          key={postlistsCount}
+                          key={playlistsCount}
                           variants={countVariants}
                           initial="initial"
                           animate="animate"
                           exit="exit"
                           className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-bold"
                         >
-                          {postlistsCount}
+                          {playlistsCount}
                         </motion.span>
                       </AnimatePresence>
                     </Link>
