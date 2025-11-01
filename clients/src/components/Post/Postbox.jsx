@@ -28,6 +28,7 @@ import Skeleton from "@/components/Ui/Skeleton";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import SafeInFeedAd from "../../Ads/SafeInFeedAd";
 import useWindowWidth from "../../Utils/useWindowWidth";
+import AdCard from "../../Ads/AdCard";
 
 // --- CONSTANTS ---
 const POSTS_PER_PAGE = 100;
@@ -545,11 +546,8 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
                 // ... (Your CardOfPost/Ad rendering logic remains here) ...
                 if (item.type === "card-ad") {
                   return (
-                    <div
-                      key={item.id}
-                      className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden w-full min-w-[250px]"
-                    >
-                      <SafeInFeedAd postId={item.postId} />
+                    <div key={item.id} className="w-full">
+                      <AdCard postId={item?.postId} />
                     </div>
                   );
                 }

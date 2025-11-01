@@ -1,27 +1,41 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import GoogleAd from "./GoogleAd";
 
-/**
- * Displays a card-style Google Ad within post grid
- */
 const CardAd = ({ postId }) => {
+  const adRef = useRef(null);
+  const [showAd, setShowAd] = useState(true);
+
+  useEffect(() => {
+    if (!adRef.current) return;
+    setTimeout(() => {
+      if (adRef.current && adRef.current.offsetHeight < 100) {
+        setShowAd(false);
+      }
+    }, 3000);
+  }, []);
+
+  if (!showAd) return null;
+
   return (
-    <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden h-full">
-      <div className="relative w-full aspect-video bg-gray-100 dark:bg-gray-700">
-        <GoogleAd
-          adSlot="3793794759"
-          adFormat="fluid"
-          postId={postId}
-          style={{
-            display: "block",
-            width: "100%",
-            height: "100%",
-            textAlign: "center",
-          }}
-        />
+    <div className="flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden h-full">
+      <div className="relative w-full aspect-video">
+        <div ref={adRef}>
+          <GoogleAd
+            adSlot="3793794759"
+            adFormat="fluid"
+            postId={postId}
+            style={{
+              display: "block",
+              width: "100%",
+              height: "100%",
+            }}
+          />
+        </div>
       </div>
-      <div className="p-4 flex-grow flex flex-col items-center justify-center">
-        <p className="text-sm text-gray-700 dark:text-gray-200 font-semibold text-center">
+      <div className="p-6 flex-grow">
+        {" "}
+        {/* Match CardOfPost p-6 */}
+        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium text-center">
           Sponsored
         </p>
       </div>
