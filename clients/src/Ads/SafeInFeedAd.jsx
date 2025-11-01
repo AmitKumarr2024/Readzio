@@ -16,28 +16,27 @@ const SafeInFeedAd = ({ postId }) => {
       return;
     }
 
-    const isSmallScreen = window.innerWidth < 480;
-    if (isSmallScreen) {
+    // ✅ Don't attempt rendering on very small screens
+    if (window.innerWidth < 480) {
       setShowAd(false);
       return;
     }
 
     const checkAdRendered = () => {
-      if (!ref.current || ref.current.offsetHeight < 100) {
-        retryTimeoutRef.current = setTimeout(() => {
-          if (!ref.current || ref.current.offsetHeight < 100) {
-            setFallback(true);
-            setTimeout(() => {
-              if (ref.current && ref.current.offsetHeight < 100) {
-                setShowAd(false);
-              }
-            }, 2000);
+      if (!ref.current || ref.current.offsetWidth < 250) {
+        console.warn(
+          "[SafeInFeedAd] Ad container too small (<250px), using fallback."
+        );
+        setFallback(true);
+        setTimeout(() => {
+          if (ref.current && ref.current.offsetHeight < 100) {
+            setShowAd(false);
           }
-        }, 1000);
+        }, 2000);
       }
     };
 
-    const initialTimeout = setTimeout(checkAdRendered, 4000);
+    const initialTimeout = setTimeout(checkAdRendered, 1000);
 
     return () => {
       clearTimeout(initialTimeout);
@@ -45,6 +44,7 @@ const SafeInFeedAd = ({ postId }) => {
     };
   }, [isAdBlocked]);
 
+  // ✅ If ads are blocked or not to be shown, render fallback ad component
   if (!showAd) return null;
 
   return (

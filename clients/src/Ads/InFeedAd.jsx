@@ -13,6 +13,7 @@ const InFeedAd = ({ postId }) => {
     if (typeof window === "undefined" || !adRef.current) return;
 
     try {
+      // ✅ Trigger Google AdSense rendering
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch (err) {
       console.warn("[InFeedAd] Ad push failed", err);
@@ -44,12 +45,22 @@ const InFeedAd = ({ postId }) => {
     return () => observer.disconnect();
   }, [isAdBlocked, socketInstance, postId]);
 
+  // ✅ Check for container width before rendering
+  useEffect(() => {
+    if (adRef.current && adRef.current.offsetWidth < 250) {
+      console.warn(
+        "[InFeedAd] Ad container too small to render (must be >= 250px)"
+      );
+    }
+  }, []);
+
   return (
     <div className="w-full flex justify-center px-2 sm:px-0 my-6">
       <div
         className="w-full"
         style={{
-          maxWidth: "728px", // keeps ad centered and safe on large screens
+          maxWidth: "728px",
+          minWidth: "250px", // ✅ Ensures minimum width for Fluid Ad
         }}
       >
         <ins

@@ -17,7 +17,7 @@ const CardAd = ({ postId }) => {
   if (!showAd) return null;
 
   return (
-    <div className="flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden h-full">
+    <div className="flex flex-col  rounded-2xl shadow-lg  overflow-hidden h-full">
       <div className="relative w-full aspect-video">
         <div ref={adRef}>
           <GoogleAd
