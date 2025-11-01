@@ -184,17 +184,17 @@ const PlaylistModal = ({
   if (!playlists.length) {
     return (
       <div
-        className="modal-backdrop fixed inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 
-                      flex items-center justify-center z-50 backdrop-blur-sm p-4"
+        className="modal-backdrop fixed inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70 
+                      flex items-center justify-center z-50 backdrop-blur-md p-4"
       >
         <div
-          className="modal-content bg-gradient-to-br from-white via-gray-50 to-white 
-                       dark:from-gray-800 dark:via-gray-850 dark:to-gray-900 
-                       p-8 rounded-3xl shadow-2xl max-w-md w-full border border-gray-200 
-                       dark:border-gray-700 relative overflow-hidden"
+          className="modal-content bg-white dark:bg-gray-900
+                       p-8 rounded-3xl shadow-2xl max-w-md w-full 
+                       border border-gray-200 dark:border-gray-700 
+                       relative overflow-hidden"
         >
           {/* Animated Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 opacity-5 dark:opacity-10">
             <div
               className="absolute top-0 left-0 w-32 h-32 bg-blue-500 rounded-full blur-3xl float-animation"
               style={{ animationDelay: "0s" }}
@@ -209,7 +209,7 @@ const PlaylistModal = ({
           <div className="relative flex justify-center mb-6">
             <div
               className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full 
-                          flex items-center justify-center shadow-lg"
+                          flex items-center justify-center shadow-xl"
             >
               <FaList className="text-3xl text-white float-animation" />
             </div>
@@ -217,16 +217,16 @@ const PlaylistModal = ({
 
           {/* Content */}
           <div className="relative text-center">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
               No Playlists Yet
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+            <p className="text-gray-700 dark:text-gray-300 mb-6 leading-relaxed text-base">
               Create your first playlist to start organizing your favorite posts
             </p>
             <button
               onClick={onClose}
               className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 
-                       text-white rounded-xl font-semibold shadow-lg
+                       text-white font-semibold rounded-xl shadow-lg
                        hover:from-blue-700 hover:to-purple-700 
                        transform hover:scale-105 transition-all duration-200
                        active:scale-95"
@@ -241,14 +241,14 @@ const PlaylistModal = ({
 
   return (
     <div
-      className="modal-backdrop fixed inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 
-                 flex items-center justify-center z-50 backdrop-blur-sm p-4"
+      className="modal-backdrop fixed inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70 
+                 flex items-center justify-center z-50 backdrop-blur-md p-4"
       onClick={onClose}
     >
       <div
-        className="modal-content bg-white dark:bg-gray-800 rounded-3xl shadow-2xl 
-                   max-w-md w-full max-h-[85vh] overflow-hidden border border-gray-200 
-                   dark:border-gray-700 relative"
+        className="modal-content bg-white dark:bg-gray-900 rounded-3xl shadow-2xl 
+                   max-w-md w-full max-h-[85vh] overflow-hidden 
+                   border border-gray-200 dark:border-gray-700 relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with gradient background */}
@@ -269,11 +269,11 @@ const PlaylistModal = ({
 
           <div className="relative flex justify-between items-center">
             <div>
-              <h3 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">
+              <h3 className="text-2xl font-bold text-white mb-1 flex items-center gap-2 drop-shadow-lg">
                 <FaList className="text-xl" />
                 Add to Playlist
               </h3>
-              <p className="text-blue-100 text-sm">
+              <p className="text-white/95 text-sm font-medium drop-shadow">
                 Choose a playlist or multiple playlists
               </p>
             </div>
@@ -282,7 +282,7 @@ const PlaylistModal = ({
               className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md 
                        hover:bg-white/30 text-white transition-all duration-200
                        flex items-center justify-center hover:rotate-90 
-                       transform hover:scale-110 active:scale-95"
+                       transform hover:scale-110 active:scale-95 shadow-lg"
             >
               <FaTimes className="text-lg" />
             </button>
@@ -290,7 +290,7 @@ const PlaylistModal = ({
         </div>
 
         {/* Playlists List */}
-        <div className="p-6 overflow-y-auto max-h-[calc(85vh-200px)] custom-scrollbar">
+        <div className="p-6 overflow-y-auto max-h-[calc(85vh-200px)] custom-scrollbar bg-gray-50 dark:bg-gray-800">
           <div className="space-y-3">
             {playlists.map((playlist, index) => {
               const isInThisPlaylist = isInPlaylists.includes(playlist._id);
@@ -303,16 +303,11 @@ const PlaylistModal = ({
                             transition-all duration-300 group
                             ${
                               isInThisPlaylist
-                                ? "bg-gradient-to-r from-green-100 via-emerald-50 to-green-100 dark:from-green-900/40 dark:via-emerald-900/30 dark:to-green-900/40 shadow-lg scale-[1.02]"
-                                : "bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-750 hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-650 dark:hover:to-gray-700 shadow-md hover:shadow-lg"
+                                ? "bg-gradient-to-r from-green-50 via-emerald-50 to-green-50 dark:from-green-900/50 dark:via-emerald-900/40 dark:to-green-900/50 shadow-lg scale-[1.02] border-2 border-green-400 dark:border-green-500"
+                                : "bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-650 shadow-md hover:shadow-lg border-2 border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500"
                             }
                             disabled:opacity-50 disabled:cursor-not-allowed
-                            hover:scale-[1.02] active:scale-[0.98]
-                            border-2 ${
-                              isInThisPlaylist
-                                ? "border-green-300 dark:border-green-600"
-                                : "border-transparent hover:border-gray-300 dark:hover:border-gray-600"
-                            }`}
+                            hover:scale-[1.02] active:scale-[0.98]`}
                   style={{
                     animationDelay: `${index * 0.05}s`,
                   }}
@@ -333,8 +328,8 @@ const PlaylistModal = ({
 
                   {/* Shimmer effect for selected playlists */}
                   {isInThisPlaylist && (
-                    <div className="absolute inset-0 shimmer-overlay opacity-30">
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+                    <div className="absolute inset-0 shimmer-overlay opacity-20">
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-green-400/40 to-transparent" />
                     </div>
                   )}
 
@@ -343,7 +338,7 @@ const PlaylistModal = ({
                       {/* Playlist Icon */}
                       <div
                         className={`w-12 h-12 rounded-xl flex items-center justify-center
-                                  shadow-md group-hover:shadow-lg transition-all
+                                  shadow-lg group-hover:shadow-xl transition-all
                                   ${
                                     isInThisPlaylist
                                       ? "bg-gradient-to-br from-green-500 to-emerald-600"
@@ -362,11 +357,11 @@ const PlaylistModal = ({
 
                       {/* Playlist Info */}
                       <div className="flex-1 min-w-0 text-left">
-                        <div className="font-semibold text-gray-900 dark:text-white truncate mb-0.5">
+                        <div className="font-bold text-gray-900 dark:text-gray-100 truncate mb-1 text-base">
                           {playlist.name}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                          <span className="flex items-center gap-1">
+                        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 font-medium">
+                          <span className="flex items-center gap-1.5">
                             {playlist.isPrivate ? (
                               <>
                                 <FaLock className="text-xs" />
@@ -379,7 +374,7 @@ const PlaylistModal = ({
                               </>
                             )}
                           </span>
-                          <span className="w-1 h-1 bg-gray-400 rounded-full" />
+                          <span className="w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full" />
                           <span>{playlist.posts?.length || 0} posts</span>
                         </div>
                       </div>
@@ -389,20 +384,21 @@ const PlaylistModal = ({
                     <div className="flex-shrink-0 ml-3">
                       {isInThisPlaylist ? (
                         <div
-                          className="w-8 h-8 rounded-full bg-green-500 flex items-center 
+                          className="w-9 h-9 rounded-full bg-green-500 flex items-center 
                                    justify-center shadow-lg checkmark-icon"
                         >
-                          <FaCheck className="text-white text-sm" />
+                          <FaCheck className="text-white text-base font-bold" />
                         </div>
                       ) : (
                         <div
-                          className="w-8 h-8 rounded-full bg-white dark:bg-gray-600 
+                          className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-600 
                                    flex items-center justify-center shadow-md
                                    group-hover:bg-blue-500 group-hover:text-white
                                    transition-all duration-200 group-hover:shadow-lg
-                                   group-hover:scale-110"
+                                   group-hover:scale-110 border-2 border-gray-300 dark:border-gray-500
+                                   group-hover:border-blue-400"
                         >
-                          <FaPlus className="text-gray-400 dark:text-gray-300 group-hover:text-white text-sm" />
+                          <FaPlus className="text-gray-600 dark:text-gray-200 group-hover:text-white text-base font-bold" />
                         </div>
                       )}
                     </div>
@@ -415,11 +411,11 @@ const PlaylistModal = ({
 
         {/* Footer Info */}
         <div
-          className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-750 dark:to-gray-800 
-                       border-t border-gray-200 dark:border-gray-700"
+          className="p-4 bg-white dark:bg-gray-850
+                       border-t-2 border-gray-200 dark:border-gray-700"
         >
-          <p className="text-xs text-center text-gray-600 dark:text-gray-400 flex items-center justify-center gap-2">
-            <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+          <p className="text-sm text-center text-gray-700 dark:text-gray-300 flex items-center justify-center gap-2 font-medium">
+            <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-lg shadow-blue-500/50" />
             Click on playlists to add or remove this post
           </p>
         </div>
@@ -428,17 +424,21 @@ const PlaylistModal = ({
       {/* Custom Scrollbar Styles */}
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
+          width: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
+          background: rgba(0, 0, 0, 0.05);
+          border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
           background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
           border-radius: 10px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: linear-gradient(to bottom, #2563eb, #7c3aed);
+          background-clip: padding-box;
         }
       `}</style>
     </div>
