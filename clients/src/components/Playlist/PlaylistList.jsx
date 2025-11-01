@@ -555,12 +555,12 @@ const PlaylistList = ({ userId, isOwnProfile = false }) => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Playlists
+            Postlists
           </h2>
           <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
             <span className="font-medium">
               {playlists.length}{" "}
-              {playlists.length === 1 ? "playlist" : "playlists"}
+              {playlists.length === 1 ? "postlist" : "postlists"}
             </span>
             {isConnected && (
               <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400">

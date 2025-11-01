@@ -84,10 +84,10 @@ const PlaylistDetail = ({ playlistId }) => {
     try {
       setDeleting(true);
       await dispatch(deletePlaylist(actualId)).unwrap();
-      toast.success("Playlist deleted successfully");
+      toast.success("Postlist deleted successfully");
       navigate("/user/playlists");
     } catch (error) {
-      toast.error("Failed to delete playlist");
+      toast.error("Failed to delete Postlist");
     } finally {
       setDeleting(false);
     }
@@ -100,7 +100,7 @@ const PlaylistDetail = ({ playlistId }) => {
   const handleShare = () => {
     const url = `${window.location.origin}/playlist/${actualId}`;
     navigator.clipboard.writeText(url);
-    toast.success("Playlist link copied!");
+    toast.success("Postlist link copied!");
   };
 
   if (currentPlaylistStatus === "loading") {
@@ -130,7 +130,7 @@ const PlaylistDetail = ({ playlistId }) => {
   if (!currentPlaylist) {
     return (
       <div className="text-center py-12">
-        <h3 className="text-xl font-semibold mb-2">Playlist Not Found</h3>
+        <h3 className="text-xl font-semibold mb-2">Postlist Not Found</h3>
         <button
           onClick={() => navigate("/user/playlists")}
           className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
