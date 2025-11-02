@@ -37,6 +37,7 @@ import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
 import DailyEmailRoutes from "./Routes/dailyMailRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
+import prerender from "prerender-node";
 
 const app = express();
 app.set("trust proxy", true);
@@ -166,6 +167,56 @@ app.use(
 );
 
 app.use(cookieParser());
+
+// =============================================================================
+// SEO BOT HANDLING (GOOGLEBOT, ETC.)
+// =============================================================================
+
+// ✅ Prerender Setup for Googlebot and others
+prerender.set("protocol", "https");
+prerender.set("prerenderServiceUrl", "https://render-tron.appspot.com/render/"); // using Rendertron
+prerender.set("whitelist", ["^/post/"]); // whitelist dynamic URLs
+
+app.use(
+  prerender.blacklist([
+    "^/api", // Don't prerender API routes
+    "^/socket.io", // Don't prerender WebSocket
+    "^.*\\.(js|css|png|jpg|jpeg|svg)$", // Don't prerender static assets
+  ])
+);
+
+// ✅ Middleware for manual bot fallback (backup)
+app.get("/*", (req, res, next) => {
+  const userAgent = req.headers["user-agent"]?.toLowerCase() || "";
+  const isBot = /bot|crawler|spider|crawling/i.test(userAgent);
+
+  if (
+    req.path.startsWith("/api") ||
+    req.path.startsWith("/socket.io") ||
+    /\.(js|css|png|jpg|jpeg|ico|svg)$/.test(req.path)
+  ) {
+    return next();
+  }
+
+  if (isBot) {
+    console.log(`🤖 Bot detected: ${req.headers["user-agent"]}`);
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${req.url.replace("/", "").toUpperCase()} | Readzio</title>
+          <meta name="description" content="Preview content for ${req.url}" />
+        </head>
+        <body>
+          <h1>SEO Preview for ${req.url}</h1>
+          <p>This is a fallback view for bots if prerendering fails.</p>
+        </body>
+      </html>
+    `);
+  }
+
+  next(); // Continue if not a bot
+});
 
 // =============================================================================
 // ROUTE CONFIGURATION
