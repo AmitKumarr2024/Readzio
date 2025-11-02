@@ -174,16 +174,15 @@ app.use(cookieParser());
 
 // ✅ Prerender Setup for Googlebot and others
 prerender.set("protocol", "https");
-prerender.set("prerenderServiceUrl", "https://render-tron.appspot.com/render/"); // using Rendertron
-prerender.set("whitelist", ["^/post/"]); // whitelist dynamic URLs
+prerender.set("prerenderServiceUrl", "https://render-tron.appspot.com/render"); // Use the root rendertron URL
+prerender.set("whitelisted", ["^/post/"]); // Only prerender dynamic post URLs
+prerender.set("blacklisted", [
+  "^/api", // Don't prerender API routes
+  "^/socket.io", // Don't prerender WebSocket
+  "^.*\\.(js|css|png|jpg|jpeg|svg|ico)$", // Skip static assets
+]); // ✅ correct way
 
-app.use(
-  prerender.blacklist([
-    "^/api", // Don't prerender API routes
-    "^/socket.io", // Don't prerender WebSocket
-    "^.*\\.(js|css|png|jpg|jpeg|svg)$", // Don't prerender static assets
-  ])
-);
+app.use(prerender); // Always apply after set()
 
 // ✅ Middleware for manual bot fallback (backup)
 app.get("/*", (req, res, next) => {
