@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useMemo } from "react";
+// Updated UsersPage.jsx
+import React, { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -8,7 +9,6 @@ import { getAllUsers } from "../store/adminSlice";
 
 const UserCard = ({ user, isYou }) => {
   const navigate = useNavigate();
-
   if (!user || !user._id) return null;
 
   return (
@@ -22,7 +22,7 @@ const UserCard = ({ user, isYou }) => {
         <img
           src={user.avatar || "/default-avatar.png"}
           alt={user.name || "User"}
-          className="w-12 h-12 rounded-full object-cover"
+          className="w-12 h-12 rounded-full"
         />
         <div>
           <h3 className="font-semibold text-text-main-light dark:text-text-main-dark">
@@ -120,27 +120,37 @@ const UsersPage = () => {
     error = null,
   } = useSelector((state) => state.admin || {});
   const { user: currentUser } = useSelector((state) => state.auth || {});
-  const { userStatus, status: socketStatus } = useSelector(
+  const { userStatus, socketInstance } = useSelector(
     (state) => state.socket || {}
   );
 
-  // ✅ FIX 1: Initialize socket first, then fetch users
   useEffect(() => {
-    const initializeData = async () => {
-      try {
-        // Wait for socket to connect first
-        await dispatch(initializeSocket()).unwrap();
-        // Then fetch users
-        dispatch(getAllUsers({ page: 1, limit: 50 }));
-      } catch (error) {
-        console.error("Failed to initialize:", error);
-        // Still try to fetch users even if socket fails
-        dispatch(getAllUsers({ page: 1, limit: 50 }));
+    dispatch(initializeSocket());
+    dispatch(getAllUsers({ page: 1, limit: 50 }));
+  }, [dispatch]);
+
+  // Socket listener for real-time online status updates
+  useEffect(() => {
+    if (!socketInstance) return;
+
+    const handleUserStatus = async ({ userId, isOnline }) => {
+      if (!isOnline) return; // Only add if online
+
+      // Check if already in users list
+      const isInList = users.some((u) => u._id.toString() === userId);
+      if (!isInList) {
+        try {
+          const { payload } = await dispatch(getSingleUser(userId)).unwrap();
+          dispatch(addUserToList(payload));
+        } catch (err) {
+          console.error("Failed to fetch online user:", err);
+        }
       }
     };
 
-    initializeData();
-  }, [dispatch]);
+    socketInstance.on("userStatus", handleUserStatus);
+    return () => socketInstance.off("userStatus", handleUserStatus);
+  }, [dispatch, socketInstance, users]);
 
   const loadMore = () => {
     if (currentPageUsers < totalPagesUsers && !loading) {
@@ -148,66 +158,36 @@ const UsersPage = () => {
     }
   };
 
-  // ✅ FIX 2: Use useMemo to prevent unnecessary recalculations
-  const enrichedUsers = useMemo(() => {
-    // If socket not connected yet, show all users instead of empty list
-    const onlineUserIds = Object.keys(userStatus).filter(
-      (userId) => userStatus[userId]?.isOnline
-    );
+  const onlineUserIds = Object.keys(userStatus).filter(
+    (userId) => userStatus[userId]?.isOnline
+  );
+  let enrichedUsers = users.filter(
+    (user) => user && user._id && onlineUserIds.includes(user._id.toString())
+  );
 
-    // If no socket status yet, show all users (better UX than empty page)
-    let filteredUsers =
-      socketStatus === "connected" && onlineUserIds.length > 0
-        ? users.filter(
-            (user) =>
-              user && user._id && onlineUserIds.includes(user._id.toString())
-          )
-        : users; // Show all users if socket not ready
-
-    // Add current user if they're online and not already in the list
-    if (
-      currentUser &&
-      currentUser._id &&
-      userStatus[currentUser._id]?.isOnline &&
-      !filteredUsers.find((u) => u._id === currentUser._id)
-    ) {
-      filteredUsers = [currentUser, ...filteredUsers];
-    }
-
-    return filteredUsers;
-  }, [users, userStatus, currentUser, socketStatus]);
-
-  // ✅ FIX 3: Show loading only on initial load
-  const isInitialLoading = loading && !users.length;
-
-  // ✅ FIX 4: Better empty state handling
-  const showEmptyState =
-    !isInitialLoading &&
-    enrichedUsers.length === 0 &&
-    socketStatus === "connected";
+  if (
+    currentUser &&
+    currentUser._id &&
+    userStatus[currentUser._id]?.isOnline &&
+    !enrichedUsers.find((u) => u._id === currentUser._id)
+  ) {
+    enrichedUsers.unshift(currentUser);
+  }
 
   return (
-    <div className="w-full min-h-screen mx-auto py-6 px-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
+    <div className="w-full h-screen mx-auto py-6 px-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
       <h1 className="text-3xl font-bold text-text-main-light dark:text-text-main-dark mb-6 flex items-center gap-2">
         <Users className="w-8 h-8 text-blue-600" /> Online Community
       </h1>
 
-      {/* Socket Status Indicator (for debugging) */}
-      {socketStatus !== "connected" && (
-        <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-lg flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">Connecting to server...</span>
-        </div>
-      )}
-
       {error ? (
         <p className="text-red-500 text-center">Error: {error}</p>
-      ) : isInitialLoading ? (
+      ) : loading && !users.length ? (
         <div className="text-center py-4">
           <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" />
           <p>Loading users...</p>
         </div>
-      ) : showEmptyState ? (
+      ) : enrichedUsers.length === 0 ? (
         <p className="text-gray-500 text-center">No online users found</p>
       ) : (
         <AllUsers
