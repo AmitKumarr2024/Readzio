@@ -172,38 +172,41 @@ app.use(cookieParser());
 // SEO BOT HANDLING (GOOGLEBOT, ETC.)
 // =============================================================================
 
+// =============================================================================
+// SEO BOT HANDLING (GOOGLEBOT, ETC.)
+// =============================================================================
+
 // ✅ Prerender Setup for Googlebot and others
 prerender.set("protocol", "https");
-prerender.set("prerenderServiceUrl", "https://render-tron.appspot.com/render"); // Use the root rendertron URL
+prerender.set("prerenderServiceUrl", "https://render-tron.appspot.com/render"); // Rendertron for free SSR
 prerender.set("whitelisted", ["^/post/"]); // Only prerender dynamic post URLs
-prerender.set("blacklisted", [
-  "^/api", // Don't prerender API routes
-  "^/socket.io", // Don't prerender WebSocket
-  "^.*\\.(js|css|png|jpg|jpeg|svg|ico)$", // Skip static assets
-]); // ✅ correct way
+app.use(prerender); // Always apply after setup
 
-app.use(prerender); // Always apply after set()
-
-// ✅ Middleware for manual bot fallback (backup)
-app.get("/*", (req, res, next) => {
+// ✅ Fallback Middleware for Bots (backup if prerendering fails)
+// Use middleware instead of route to ensure it runs before other handlers
+app.use((req, res, next) => {
   const userAgent = req.headers["user-agent"]?.toLowerCase() || "";
   const isBot = /bot|crawler|spider|crawling/i.test(userAgent);
 
+  // Skip API and static files
   if (
     req.path.startsWith("/api") ||
     req.path.startsWith("/socket.io") ||
-    /\.(js|css|png|jpg|jpeg|ico|svg)$/.test(req.path)
+    /\.(js|css|png|jpg|jpeg|ico|svg|woff|woff2|ttf|eot)$/.test(req.path)
   ) {
     return next();
   }
 
+  // Handle bots
   if (isBot) {
     console.log(`🤖 Bot detected: ${req.headers["user-agent"]}`);
     return res.send(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${req.url.replace("/", "").toUpperCase()} | Readzio</title>
+          <title>${
+            req.url.replace("/", "").toUpperCase() || "Home"
+          } | Readzio</title>
           <meta name="description" content="Preview content for ${req.url}" />
         </head>
         <body>
