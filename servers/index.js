@@ -172,46 +172,51 @@ app.use(cookieParser());
 // SEO BOT HANDLING (GOOGLEBOT, ETC.)
 // =============================================================================
 
-// =============================================================================
-// SEO BOT HANDLING (GOOGLEBOT, ETC.)
-// =============================================================================
-
-// ✅ Prerender Setup for Googlebot and others
-prerender.set("protocol", "https");
-prerender.set("prerenderServiceUrl", "https://render-tron.appspot.com/render"); // Rendertron for free SSR
-prerender.set("whitelisted", ["^/post/"]); // Only prerender dynamic post URLs
-app.use(prerender); // Always apply after setup
-
-// ✅ Fallback Middleware for Bots (backup if prerendering fails)
-// Use middleware instead of route to ensure it runs before other handlers
+// ✅ Bot Detection MUST come before static file serving
 app.use((req, res, next) => {
   const userAgent = req.headers["user-agent"]?.toLowerCase() || "";
   const isBot = /bot|crawler|spider|crawling/i.test(userAgent);
 
-  // Skip API and static files
+  // Skip API and socket routes
+  if (req.path.startsWith("/api") || req.path.startsWith("/socket.io")) {
+    return next();
+  }
+
+  // Skip actual static files (with extensions)
   if (
-    req.path.startsWith("/api") ||
-    req.path.startsWith("/socket.io") ||
-    /\.(js|css|png|jpg|jpeg|ico|svg|woff|woff2|ttf|eot)$/.test(req.path)
+    /\.(js|css|png|jpg|jpeg|ico|svg|woff|woff2|ttf|eot|xml|txt)$/.test(req.path)
   ) {
     return next();
   }
 
-  // Handle bots
+  // Handle bots for HTML pages
   if (isBot) {
-    console.log(`🤖 Bot detected: ${req.headers["user-agent"]}`);
-    return res.send(`
+    console.log(
+      `🤖 Bot detected: ${req.headers["user-agent"]} - Path: ${req.path}`
+    );
+
+    // Return pre-rendered content or fallback
+    return res.status(200).send(`
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
         <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>${
-            req.url.replace("/", "").toUpperCase() || "Home"
+            req.path === "/"
+              ? "Home"
+              : req.path.split("/").filter(Boolean).join(" - ")
           } | Readzio</title>
-          <meta name="description" content="Preview content for ${req.url}" />
+          <meta name="description" content="Readzio - ${req.path}" />
+          <meta property="og:title" content="${req.path} | Readzio" />
+          <meta property="og:description" content="Content preview for ${
+            req.path
+          }" />
         </head>
         <body>
-          <h1>SEO Preview for ${req.url}</h1>
-          <p>This is a fallback view for bots if prerendering fails.</p>
+          <h1>Readzio - ${req.path}</h1>
+          <p>This is SEO-optimized content for search engines.</p>
+          <p>Path: ${req.path}</p>
         </body>
       </html>
     `);
@@ -220,6 +225,11 @@ app.use((req, res, next) => {
   next(); // Continue if not a bot
 });
 
+// ✅ Optional: Prerender middleware (if you want to use it)
+prerender.set("protocol", "https");
+prerender.set("prerenderServiceUrl", "https://render-tron.appspot.com/render");
+prerender.set("whitelisted", ["^/post/"]);
+app.use(prerender);
 // =============================================================================
 // ROUTE CONFIGURATION
 // =============================================================================
@@ -454,7 +464,7 @@ if (NODE_ENV === "production") {
     );
 
     // SPA fallback - serve index.html for all non-API routes
-    app.get("/{*splat}", (req, res, next) => {
+    app.get("*", (req, res, next) => {
       // Skip API and special routes
       const skipRoutes = [
         "/api",
