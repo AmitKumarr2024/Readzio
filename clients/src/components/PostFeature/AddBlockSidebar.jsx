@@ -266,7 +266,7 @@ const AddBlockSidebar = ({
           </motion.button>
 
           {/* Header */}
-          <div className="p-4 border-b border-gray-700">
+          {/* <div className="p-4 border-b border-gray-700">
             <AnimatePresence mode="wait">
               {isOpen ? (
                 <motion.div
@@ -304,7 +304,7 @@ const AddBlockSidebar = ({
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </div> */}
 
           {/* Blocks Grid/List */}
           <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
