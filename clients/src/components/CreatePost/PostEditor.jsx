@@ -74,6 +74,7 @@ const SortableBlock = ({ block, index, children }) => {
 };
 
 const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
+  const [selectedBlockIndex, setSelectedBlockIndex] = useState(null);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
