@@ -253,7 +253,7 @@ const AddBlockSidebar = ({
             width: isOpen ? "280px" : "60px",
           }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="fixed left-0 top-0 h-[850px] bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 shadow-2xl z-50 flex flex-col border-r border-gray-700 gpu-accelerated"
+          className="fixed left-0 top-0 h-[550px] bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 shadow-2xl z-50 flex flex-col border-r border-gray-700 gpu-accelerated"
         >
           {/* Toggle Button */}
           <motion.button
