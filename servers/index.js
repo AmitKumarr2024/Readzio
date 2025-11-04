@@ -172,57 +172,74 @@ app.use(cookieParser());
 // SEO BOT HANDLING (GOOGLEBOT, ETC.)
 // =============================================================================
 
-// ✅ Bot Detection MUST come before static file serving
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   const userAgent = req.headers["user-agent"]?.toLowerCase() || "";
   const isBot = /bot|crawler|spider|crawling/i.test(userAgent);
 
-  // Skip API and socket routes
-  if (req.path.startsWith("/api") || req.path.startsWith("/socket.io")) {
-    return next();
-  }
-
-  // Skip actual static files (with extensions)
+  // Skip API and static file requests
   if (
+    req.path.startsWith("/api") ||
+    req.path.startsWith("/socket.io") ||
     /\.(js|css|png|jpg|jpeg|ico|svg|woff|woff2|ttf|eot|xml|txt)$/.test(req.path)
   ) {
     return next();
   }
 
-  // Handle bots for HTML pages
-  if (isBot) {
-    console.log(
-      `🤖 Bot detected: ${req.headers["user-agent"]} - Path: ${req.path}`
-    );
+  if (isBot && req.path.startsWith("/post/")) {
+    // Extract slug safely (handles trailing slashes and query params)
+    const slug = req.path.split("/").filter(Boolean)[1];
 
-    // Return pre-rendered content or fallback
-    return res.status(200).send(`
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${
-            req.path === "/"
-              ? "Home"
-              : req.path.split("/").filter(Boolean).join(" - ")
-          } | Readzio</title>
-          <meta name="description" content="Readzio - ${req.path}" />
-          <meta property="og:title" content="${req.path} | Readzio" />
-          <meta property="og:description" content="Content preview for ${
-            req.path
-          }" />
-        </head>
-        <body>
-          <h1>Readzio - ${req.path}</h1>
-          <p>This is SEO-optimized content for search engines.</p>
-          <p>Path: ${req.path}</p>
-        </body>
-      </html>
-    `);
+    if (!slug) {
+      console.warn("⚠️ No slug found in path:", req.path);
+      return next();
+    }
+
+    try {
+      const post = await PostModel.findOne({ slug }).select(
+        "title content intro"
+      );
+
+      if (post) {
+        const title = `${post.title} | Readzio`;
+
+        let description = post.intro;
+        if (!description && post.content) {
+          description =
+            post.content
+              .replace(/<[^>]+>/g, "")
+              .substring(0, 160)
+              .trim() + "...";
+        }
+        description =
+          description || "Explore high-quality articles on Readzio.";
+
+        return res.status(200).send(`
+          <!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>${title}</title>
+              <meta name="description" content="${description}" />
+              <meta property="og:title" content="${title}" />
+              <meta property="og:description" content="${description}" />
+            </head>
+            <body>
+              <h1>${post.title}</h1>
+              <p>${description}</p>
+              <em>This HTML content is optimized for search engine crawlers like Googlebot.</em>
+            </body>
+          </html>
+        `);
+      } else {
+        console.warn("⚠️ No post found for slug:", slug);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching post by slug:", error.message);
+    }
   }
 
-  next(); // Continue if not a bot
+  next();
 });
 
 // ✅ Optional: Prerender middleware (if you want to use it)
