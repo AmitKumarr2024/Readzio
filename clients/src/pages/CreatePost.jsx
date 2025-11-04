@@ -450,7 +450,7 @@ const CreatePost = () => {
             </button>
           </div>
 
-          <div className="w-full md:w-3/5 my-4">
+          <div className="w-full md:w-3/5 my-4 mx-auto">
             <PostEditor
               size={55}
               title={title}

@@ -523,7 +523,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               onClick={() => removeBlock(index)}
                               className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                             >
-                              <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                             </button>
                           </div>
                         </div>
@@ -578,7 +577,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               onClick={() => removeBlock(index)}
                               className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                             >
-                              <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                             </button>
                           </div>
                         </div>
@@ -647,7 +645,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               onClick={() => removeBlock(index)}
                               className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                             >
-                              <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                             </button>
                           </div>
                         </div>
@@ -699,7 +696,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               onClick={() => removeBlock(index)}
                               className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                             >
-                              <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
+                             
                             </button>
                           </div>
                         </div>
@@ -743,7 +740,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 onClick={() => removeBlock(index)}
                                 className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                               >
-                                <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                               </button>
                             </div>
                           </div>
@@ -974,7 +970,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 onClick={() => removeBlock(index)}
                                 className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                               >
-                                <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                               </button>
                             </div>
                           </div>
@@ -1032,7 +1027,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               onClick={() => removeBlock(index)}
                               className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                             >
-                              <Trash2 className="w-4 h-4 text-red-500 group-hover:text-red-600" />
                             </button>
                           </div>
                         </div>
