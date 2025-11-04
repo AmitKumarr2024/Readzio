@@ -286,7 +286,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
 
   return (
     <div
-      className={`min-w-[350px] ${sizeToWidthClass(
+      className={`min-w-[350px] ml-20 ${sizeToWidthClass(
         size
       )} max-w-[1200px] min-h-[600px] sm:min-h-[800px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300 border border-gray-200 dark:border-gray-800 ${
         isImageLimitReached || isSizeLimitReached
