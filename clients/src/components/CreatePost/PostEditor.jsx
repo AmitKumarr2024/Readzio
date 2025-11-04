@@ -288,13 +288,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     <div
       className={`min-w-[350px] ${sizeToWidthClass(
         size
-      )} max-w-[1200px] min-h-[600px] pl-10 sm:min-h-[800px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300 border border-gray-200 dark:border-gray-800 ${
+      )} max-w-[1200px] min-h-[600px] ml-20 sm:min-h-[800px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300 border border-gray-200 dark:border-gray-800 ${
         isImageLimitReached || isSizeLimitReached
           ? "animate-pulse border-red-500 dark:border-red-400"
           : ""
       }`}
     >
-      <div className="flex flex-col items-center gap-6 mb-6">
+      <div className="w-full justify-center flex flex-col items-center gap-6 mb-6">
         <div className="w-full flex justify-center items-center">
           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
             <FiEdit3 className="w-5 h-5 text-white" />
