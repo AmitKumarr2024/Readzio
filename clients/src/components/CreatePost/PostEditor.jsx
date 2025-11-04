@@ -288,7 +288,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     <div
       className={`min-w-[350px] ${sizeToWidthClass(
         size
-      )} max-w-[800px] min-h-[600px] ml-20 sm:min-h-[800px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300 border border-gray-200 dark:border-gray-800 ${
+      )} max-w-[400px] min-h-[600px] ml-20 sm:min-h-[800px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300 border border-gray-200 dark:border-gray-800 ${
         isImageLimitReached || isSizeLimitReached
           ? "animate-pulse border-red-500 dark:border-red-400"
           : ""

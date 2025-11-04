@@ -38,6 +38,7 @@ import guestRoutes from "./Routes/guestRoutes.js";
 import DailyEmailRoutes from "./Routes/dailyMailRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 import prerender from "prerender-node";
+import PostModel from "../servers/Models/Post.js";
 
 const app = express();
 app.set("trust proxy", true);
@@ -176,7 +177,6 @@ app.use(async (req, res, next) => {
   const userAgent = req.headers["user-agent"]?.toLowerCase() || "";
   const isBot = /bot|crawler|spider|crawling/i.test(userAgent);
 
-  // Skip API and static file requests
   if (
     req.path.startsWith("/api") ||
     req.path.startsWith("/socket.io") ||
@@ -186,60 +186,74 @@ app.use(async (req, res, next) => {
   }
 
   if (isBot && req.path.startsWith("/post/")) {
-    // Extract slug safely (handles trailing slashes and query params)
-    const slug = req.path.split("/").filter(Boolean)[1];
-
-    if (!slug) {
-      console.warn("⚠️ No slug found in path:", req.path);
-      return next();
-    }
+    const slug = req.path.split("/")[2];
 
     try {
-      const post = await PostModel.findOne({ slug }).select(
-        "title content intro"
-      );
+      const post = await PostModel.findOne({ slug, isPublished: true })
+        .populate("author", "name") // ✅ Preload author name
+        .select(
+          "title metaTitle metaDescription excerpt blocks ogImage createdAt"
+        );
 
       if (post) {
-        const title = `${post.title} | Readzio`;
-
-        let description = post.intro;
-        if (!description && post.content) {
-          description =
-            post.content
-              .replace(/<[^>]+>/g, "")
-              .substring(0, 160)
-              .trim() + "...";
-        }
-        description =
-          description || "Explore high-quality articles on Readzio.";
+        const title = `${post.metaTitle || post.title} | Readzio`;
+        const description =
+          post.metaDescription ||
+          post.excerpt ||
+          post.blocks?.find((b) => b.type === "text")?.text?.slice(0, 160) ||
+          "Explore high-quality articles on Readzio.";
+        const ogImage =
+          post.ogImage || "https://readzio.com/default-og-image.png";
+        const authorName = post.author?.name || "Unknown";
 
         return res.status(200).send(`
           <!DOCTYPE html>
           <html lang="en">
             <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
               <title>${title}</title>
               <meta name="description" content="${description}" />
               <meta property="og:title" content="${title}" />
               <meta property="og:description" content="${description}" />
+              <meta property="og:image" content="${ogImage}" />
+              <meta property="og:type" content="article" />
+              <meta property="og:url" content="https://readzio.com/post/${slug}" />
+              <meta name="twitter:card" content="summary_large_image" />
+              <meta name="twitter:title" content="${title}" />
+              <meta name="twitter:description" content="${description}" />
+              <meta name="twitter:image" content="${ogImage}" />
+
+              <script type="application/ld+json">
+              {
+                "@context": "https://schema.org",
+                "@type": "BlogPosting",
+                "headline": "${post.title}",
+                "image": ["${ogImage}"],
+                "url": "https://readzio.com/post/${slug}",
+                "author": {
+                  "@type": "Person",
+                  "name": "${authorName}"
+                },
+                "datePublished": "${post.createdAt.toISOString()}"
+              }
+              </script>
             </head>
             <body>
               <h1>${post.title}</h1>
               <p>${description}</p>
-              <em>This HTML content is optimized for search engine crawlers like Googlebot.</em>
+              <p><em>Slug: ${slug}</em></p>
+              <small>Static preview for search bots</small>
             </body>
           </html>
         `);
-      } else {
-        console.warn("⚠️ No post found for slug:", slug);
       }
     } catch (error) {
-      console.error("❌ Error fetching post by slug:", error.message);
+      console.error("Error fetching post for bot:", error.message);
     }
   }
 
-  next();
+  next(); // Continue to static React app for real users
 });
 
 // ✅ Optional: Prerender middleware (if you want to use it)
