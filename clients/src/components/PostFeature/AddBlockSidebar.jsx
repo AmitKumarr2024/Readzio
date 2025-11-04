@@ -253,7 +253,7 @@ const AddBlockSidebar = ({
             width: isOpen ? "280px" : "60px",
           }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="fixed left-0 top-12 h-[850px] bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 shadow-2xl z-50 flex flex-col border-r border-gray-700 gpu-accelerated"
+          className="fixed left-0 top-14 h-[850px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark  shadow-2xl z-50 flex flex-col border-r border-gray-700 gpu-accelerated"
         >
           {/* Toggle Button */}
           <motion.button
@@ -266,7 +266,7 @@ const AddBlockSidebar = ({
           </motion.button>
 
           {/* Header */}
-          <div className="p-4 border-b border-gray-700">
+          <div className="p-1 border-b border-gray-700">
             <AnimatePresence mode="wait">
               {isOpen ? (
                 <motion.div
@@ -274,7 +274,7 @@ const AddBlockSidebar = ({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="flex items-center gap-3"
+                  className="flex items-center gap-2"
                 >
                   <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <Plus className="w-5 h-5 text-white" />
@@ -324,7 +324,7 @@ const AddBlockSidebar = ({
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.03 }}
-                        className={`bg-gradient-to-br ${color} hover:shadow-lg text-white font-medium p-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-all duration-300 group relative overflow-hidden gpu-accelerated`}
+                        className={`bg-gradient-to-br ${color} hover:shadow-lg  text-text-main-light dark:text-text-main-dark  font-medium p-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-all duration-300 group relative overflow-hidden gpu-accelerated`}
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
                       >
@@ -352,7 +352,7 @@ const AddBlockSidebar = ({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.03 }}
-                        className={`bg-gradient-to-br ${color} hover:shadow-lg text-white p-3 rounded-xl flex items-center justify-center transition-all duration-300 group relative overflow-hidden gpu-accelerated`}
+                        className={`bg-gradient-to-br ${color} hover:shadow-lg  text-text-main-light dark:text-text-main-dark  p-3 rounded-xl flex items-center justify-center transition-all duration-300 group relative overflow-hidden gpu-accelerated`}
                         whileHover={{ scale: 1.1, x: 5 }}
                         whileTap={{ scale: 0.95 }}
                         title={label}
