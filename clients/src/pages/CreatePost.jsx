@@ -436,7 +436,7 @@ const CreatePost = () => {
 
       {/* 🔹 Show editor only if not submitting */}
       {!showPostTypeModal && !showCategoryModal && !isSubmitting && (
-        <div className="min-w-full pl-10 md:pl-72 flex container justify-around items-center flex-col flex-wrap md:flex-row">
+        <div className="min-w-full ml-10 flex container justify-around items-center flex-col flex-wrap md:flex-row">
           <div className="w-full flex justify-start px-4 pt-10">
             <button
               onClick={() => {
