@@ -288,7 +288,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     <div
       className={`min-w-[350px] ${sizeToWidthClass(
         size
-      )} max-w-[1200px] min-h-[600px] sm:min-h-[800px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300 border border-gray-200 dark:border-gray-800 ${
+      )} max-w-[1200px] min-h-[600px] sm:min-h-[800px] pl-10 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-xl flex flex-col p-3 sm:p-4 md:p-6 rounded-2xl mx-auto transition-all duration-300 border border-gray-200 dark:border-gray-800 ${
         isImageLimitReached || isSizeLimitReached
           ? "animate-pulse border-red-500 dark:border-red-400"
           : ""
@@ -522,8 +522,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <button
                               onClick={() => removeBlock(index)}
                               className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                            >
-                            </button>
+                            ></button>
                           </div>
                         </div>
                       );
@@ -576,8 +575,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <button
                               onClick={() => removeBlock(index)}
                               className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                            >
-                            </button>
+                            ></button>
                           </div>
                         </div>
                       );
@@ -644,8 +642,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <button
                               onClick={() => removeBlock(index)}
                               className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                            >
-                            </button>
+                            ></button>
                           </div>
                         </div>
                       );
@@ -695,9 +692,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <button
                               onClick={() => removeBlock(index)}
                               className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                            >
-                             
-                            </button>
+                            ></button>
                           </div>
                         </div>
                       );
@@ -739,8 +734,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               <button
                                 onClick={() => removeBlock(index)}
                                 className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                              >
-                              </button>
+                              ></button>
                             </div>
                           </div>
                         </div>
@@ -969,8 +963,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               <button
                                 onClick={() => removeBlock(index)}
                                 className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                              >
-                              </button>
+                              ></button>
                             </div>
                           </div>
                         </div>
@@ -1026,8 +1019,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <button
                               onClick={() => removeBlock(index)}
                               className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                            >
-                            </button>
+                            ></button>
                           </div>
                         </div>
                       );
