@@ -20,7 +20,7 @@ import PostImageBlock from "../PostFeature/PostImageBlock";
 import CodeBlock from "../PostFeature/CodeBlock";
 import TextBlockWrapper from "../PostFeature/TextBlockWrapper";
 import TitleInput from "../PostFeature/TitleInput";
-import AddBlockButtons from "../PostFeature/AddBlockButtons";
+import AddBlockButtons from "../PostFeature/AddBlockSidebar";
 import FileBlock from "../PostFeature/FileBlock";
 import HeadingBlock from "../PostFeature/HeadingBlock";
 import HrBlock from "../PostFeature/HrBlock";
@@ -31,6 +31,7 @@ import TableBlock from "../PostFeature/TableBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
 import { FiEdit3 } from "react-icons/fi";
 import { Trash2 } from "lucide-react";
+import AddBlockSidebar from "../PostFeature/AddBlockSidebar";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGE_COUNT = 40; // 40 images
@@ -102,7 +103,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     }
   };
 
-  const addBlock = (type, options = {}) => {
+  const addBlock = (type, options = {}, afterIndex = null) => {
     const restoreScroll = preventScroll();
     const imageCount = blocks.filter((b) => b.type === "image").length;
     const postSize = new TextEncoder().encode(
@@ -182,10 +183,26 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     restoreScroll();
   };
 
+  // Add block selection handler
+  const handleBlockClick = (index, e) => {
+    // Don't select if clicking inside input/button/textarea
+    if (
+      e.target.tagName === "INPUT" ||
+      e.target.tagName === "BUTTON" ||
+      e.target.tagName === "TEXTAREA" ||
+      e.target.closest("button")
+    ) {
+      return;
+    }
+    setSelectedBlockIndex(index === selectedBlockIndex ? null : index);
+  };
+
+  // Update removeBlock to clear selection
   const removeBlock = (index) => {
     const restoreScroll = preventScroll();
     const updated = blocks.filter((_, i) => i !== index);
     setBlocks(updated);
+    setSelectedBlockIndex(null); // Clear selection
     toast.success("Block removed");
     restoreScroll();
   };
@@ -396,13 +413,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
           <div className="flex flex-col mx-auto bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark overflow-y-auto mb-4 px-3 sm:px-4 md:px-6 pb-4 sm:pb-6 w-full space-y-4 sm:space-y-6 min-h-[400px] sm:min-h-[430px] pt-4 sm:pt-6 rounded-lg">
             <AnimatePresence>
               {blocks.map((block, index) => {
-                const motionDivProps = {
-                  initial: { opacity: 0, y: 20 },
-                  animate: { opacity: 1, y: 0 },
-                  exit: { opacity: 0, y: -20 },
-                  transition: { duration: 0.3 },
-                  layout: true,
-                };
+                const isSelected = selectedBlockIndex === index;
                 const blockContent = (() => {
                   switch (block.type) {
                     case "text":
@@ -1031,7 +1042,35 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                 })();
                 return (
                   <SortableBlock key={block.id} block={block} index={index}>
-                    <motion.div key={block.id} {...motionDivProps}>
+                    <motion.div
+                      key={block.id}
+                      onClick={(e) => handleBlockClick(index, e)}
+                      className={`relative cursor-pointer transition-all duration-300 rounded-xl ${
+                        isSelected
+                          ? "selected-block border-4 border-blue-500"
+                          : "border-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600"
+                      }`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                      layout
+                    >
+                      {/* Delete button for selected block */}
+                      {isSelected && (
+                        <motion.button
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="absolute -top-3 -right-3 z-20 w-8 h-8 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg delete-button-animated"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeBlock(index);
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </motion.button>
+                      )}
+
                       {blockContent}
                     </motion.div>
                   </SortableBlock>
@@ -1041,8 +1080,11 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
           </div>
         </SortableContext>
       </DndContext>
-      <AddBlockButtons
+      <AddBlockSidebar
         addBlock={addBlock}
+        selectedBlockIndex={selectedBlockIndex}
+        onSelectBlock={setSelectedBlockIndex}
+        onDeleteBlock={removeBlock}
         isDisabled={isImageLimitReached || isSizeLimitReached}
       />
     </div>

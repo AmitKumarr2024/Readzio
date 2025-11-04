@@ -228,7 +228,7 @@ const SignupPage = () => {
                   >
                     I accept the{" "}
                     <Link
-                      to="/terms-and-conditions"
+                      to="/terms-conditions"
                       className="text-indigo-600 hover:underline font-medium"
                     >
                       Terms and Conditions
