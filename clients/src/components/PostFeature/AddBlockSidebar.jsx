@@ -255,7 +255,7 @@ const AddBlockSidebar = ({
           {/* Toggle Button */}
           <motion.button
             onClick={() => setIsOpen(!isOpen)}
-            className="absolute right-4 top-2 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all duration-300 pulse-glow"
+            className="absolute inset-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all duration-300 pulse-glow"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -293,7 +293,7 @@ const AddBlockSidebar = ({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="flex justify-center w-full"
+                  className="flex justify-end gap-4 w-full"
                 >
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <Plus className="w-4 h-4 text-white" />
@@ -352,7 +352,7 @@ const AddBlockSidebar = ({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.03 }}
-                        className={`bg-gradient-to-br ${color} hover:shadow-lg text-white p-2 rounded-xl flex flex-col items-center justify-center gap-1 min-w-[48px] transition-all duration-300 group relative overflow-hidden gpu-accelerated`}
+                        className={`bg-gradient-to-br ${color} hover:shadow-lg text-pink-500 p-2 rounded-xl flex flex-col items-center justify-center gap-1 min-w-full h-28 transition-all duration-300 group relative overflow-hidden gpu-accelerated`}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         title={label}
