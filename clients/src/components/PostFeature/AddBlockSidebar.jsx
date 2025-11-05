@@ -14,8 +14,8 @@ import {
   Video,
   Plus,
   X,
-  ChevronRight,
-  ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   Trash2,
 } from "lucide-react";
 
@@ -47,14 +47,14 @@ const styles = `
   }
 }
 
-@keyframes slide-in-right {
+@keyframes slide-in-down {
   from {
     opacity: 0;
-    transform: translateX(10px);
+    transform: translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 
@@ -82,7 +82,7 @@ const styles = `
 }
 
 .delete-button-animated {
-  animation: slide-in-right 0.3s ease-out;
+  animation: slide-in-down 0.3s ease-out;
   will-change: opacity, transform;
 }
 
@@ -123,70 +123,70 @@ const blockTypes = [
     type: "text",
     label: "Text",
     color: "from-indigo-500 to-indigo-600",
-    icon: <Type size={18} />,
+    icon: <Type size={14} />,
     params: { value: "" },
   },
   {
     type: "image",
     label: "Image",
     color: "from-green-500 to-green-600",
-    icon: <Image size={18} />,
+    icon: <Image size={14} />,
     params: { src: "", caption: "" },
   },
   {
     type: "code",
     label: "Code",
     color: "from-purple-500 to-purple-600",
-    icon: <Code size={18} />,
+    icon: <Code size={14} />,
     params: { code: "", language: "", caption: "" },
   },
   {
     type: "file",
     label: "File",
     color: "from-pink-500 to-pink-600",
-    icon: <FileText size={18} />,
+    icon: <FileText size={14} />,
     params: { url: "", name: "", size: 0 },
   },
   {
     type: "heading",
     label: "Heading",
     color: "from-blue-500 to-blue-600",
-    icon: <Hash size={18} />,
+    icon: <Hash size={14} />,
     params: { text: "", level: 2 },
   },
   {
     type: "hr",
     label: "HR Line",
     color: "from-gray-400 to-gray-500",
-    icon: <FaGripLinesVertical size={18} />,
+    icon: <FaGripLinesVertical size={14} />,
     params: { caption: "" },
   },
   {
     type: "link",
     label: "Link",
     color: "from-teal-500 to-teal-600",
-    icon: <FiLink size={18} />,
+    icon: <FiLink size={14} />,
     params: { href: "", text: "" },
   },
   {
     type: "list",
     label: "Ordered",
     color: "from-orange-500 to-orange-600",
-    icon: <LuListOrdered size={18} />,
+    icon: <LuListOrdered size={14} />,
     params: { ordered: true, items: ["Item 1", "Item 2"] },
   },
   {
     type: "list",
     label: "Unordered",
     color: "from-orange-400 to-orange-500",
-    icon: <RiListUnordered size={18} />,
+    icon: <RiListUnordered size={14} />,
     params: { ordered: false, items: ["Item 1", "Item 2"] },
   },
   {
     type: "poll",
     label: "Poll",
     color: "from-pink-600 to-pink-700",
-    icon: <FaPoll size={18} />,
+    icon: <FaPoll size={14} />,
     params: {
       question: "",
       options: ["Option 1", "Option 2"],
@@ -197,14 +197,14 @@ const blockTypes = [
     type: "quote",
     label: "Quote",
     color: "from-gray-600 to-gray-700",
-    icon: <FaQuoteLeft size={18} />,
+    icon: <FaQuoteLeft size={14} />,
     params: { text: "Your quote...", author: "Author" },
   },
   {
     type: "table",
     label: "Table",
     color: "from-cyan-500 to-cyan-600",
-    icon: <MdTableChart size={18} />,
+    icon: <MdTableChart size={14} />,
     params: {
       headers: ["Header 1", "Header 2"],
       rows: [
@@ -218,7 +218,7 @@ const blockTypes = [
     type: "video",
     label: "Video",
     color: "from-red-500 to-red-600",
-    icon: <Video size={18} />,
+    icon: <Video size={14} />,
     params: { src: "", caption: "" },
   },
 ];
@@ -232,10 +232,7 @@ const AddBlockSidebar = ({
   const [isOpen, setIsOpen] = useState(false);
 
   const handleAddBlock = (type, params) => {
-    // If a block is selected, add after it, otherwise add at the end
     addBlock(type, params, selectedBlockIndex);
-
-    // Auto close on mobile after selection
     if (window.innerWidth < 768) {
       setIsOpen(false);
     }
@@ -245,39 +242,39 @@ const AddBlockSidebar = ({
     <>
       <style>{styles}</style>
 
-      {/* Desktop Sidebar */}
-      <div className="hidden md:block">
+      {/* Desktop Top Bar */}
+      <div className="block md:block">
         <motion.div
           initial={false}
           animate={{
-            width: isOpen ? "280px" : "60px",
+            height: isOpen ? "320px" : "52px",
           }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="fixed left-0 top-14 h-[850px] bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark  shadow-2xl z-50 flex flex-col border-r border-gray-700 gpu-accelerated"
+          className="fixed left-0 top-16 w-full bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-2xl z-50 flex flex-col border-b border-gray-700 gpu-accelerated overflow-hidden"
         >
           {/* Toggle Button */}
           <motion.button
             onClick={() => setIsOpen(!isOpen)}
-            className="absolute -right-4 top-8 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all duration-300 pulse-glow"
+            className="absolute right-4 top-2 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all duration-300 pulse-glow"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
-            {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+            {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </motion.button>
 
           {/* Header */}
-          <div className="p-1 border-b border-gray-700">
+          <div className="p-2 border-b border-gray-700 flex-shrink-0">
             <AnimatePresence mode="wait">
               {isOpen ? (
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
                   className="flex items-center gap-2"
                 >
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                    <Plus className="w-5 h-5 text-white" />
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <Plus className="w-4 h-4 text-white" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-white text-sm">
@@ -296,53 +293,56 @@ const AddBlockSidebar = ({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="flex justify-center"
+                  className="flex justify-center w-full"
                 >
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                    <Plus className="w-2 h-2 text-white" />
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <Plus className="w-4 h-4 text-white" />
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Blocks Grid/List */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+          {/* Blocks Container */}
+          <div className="flex-1 overflow-hidden custom-scrollbar">
             <AnimatePresence mode="wait">
               {isOpen ? (
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="grid grid-cols-2 gap-2"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  transition={{ duration: 0.2 }}
+                  className="p-3 overflow-y-auto h-full"
                 >
-                  {blockTypes.map(
-                    ({ type, label, color, icon, params }, index) => (
-                      <motion.button
-                        key={type + label}
-                        onClick={() => handleAddBlock(type, params)}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.03 }}
-                        className={`bg-gradient-to-br ${color} hover:shadow-lg  text-text-main-light dark:text-text-main-dark  font-medium p-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-all duration-300 group relative overflow-hidden gpu-accelerated`}
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <div className="absolute inset-0 shimmer-bg opacity-0 group-hover:opacity-100" />
-                        <div className="relative z-10">{icon}</div>
-                        <span className="relative z-10 text-xs leading-tight text-center">
-                          {label}
-                        </span>
-                      </motion.button>
-                    )
-                  )}
+                  <div className="grid grid-cols-4 gap-3">
+                    {blockTypes.map(
+                      ({ type, label, color, icon, params }, index) => (
+                        <motion.button
+                          key={type + label}
+                          onClick={() => handleAddBlock(type, params)}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.03 }}
+                          className={`bg-gradient-to-br ${color} hover:shadow-lg text-white font-medium p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 group relative overflow-hidden gpu-accelerated`}
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <div className="absolute inset-0 shimmer-bg opacity-0 group-hover:opacity-100" />
+                          <div className="relative z-10">{icon}</div>
+                          <span className="relative z-10 text-xs leading-tight text-center">
+                            {label}
+                          </span>
+                        </motion.button>
+                      )
+                    )}
+                  </div>
                 </motion.div>
               ) : (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="flex flex-col gap-2"
+                  className="p-2 overflow-x-auto flex flex-row gap-2 h-full items-center"
                 >
                   {blockTypes.map(
                     ({ type, label, color, icon, params }, index) => (
@@ -352,13 +352,18 @@ const AddBlockSidebar = ({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.03 }}
-                        className={`bg-gradient-to-br ${color} hover:shadow-lg  text-text-main-light dark:text-text-main-dark  p-3 rounded-xl flex items-center justify-center transition-all duration-300 group relative overflow-hidden gpu-accelerated`}
-                        whileHover={{ scale: 1.1, x: 5 }}
+                        className={`bg-gradient-to-br ${color} hover:shadow-lg text-white p-2 rounded-xl flex flex-col items-center justify-center gap-1 min-w-[48px] transition-all duration-300 group relative overflow-hidden gpu-accelerated`}
+                        whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         title={label}
                       >
                         <div className="absolute inset-0 shimmer-bg opacity-0 group-hover:opacity-100" />
-                        <div className="relative z-10">{icon}</div>
+                        <div className="relative z-10 flex-shrink-0">
+                          {icon}
+                        </div>
+                        <span className="relative z-10 text-xs leading-tight text-center whitespace-nowrap">
+                          {label}
+                        </span>
                       </motion.button>
                     )
                   )}
@@ -373,7 +378,7 @@ const AddBlockSidebar = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="p-4 border-t border-gray-700 bg-blue-500/10"
+              className="p-3 border-t border-gray-700 bg-blue-500/10 flex-shrink-0"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -394,9 +399,8 @@ const AddBlockSidebar = ({
         </motion.div>
       </div>
 
-      {/* Mobile Floating Button */}
+      {/* Mobile Top Sheet */}
       <div className="md:hidden">
-        {/* Floating Action Button */}
         <AnimatePresence>
           {!isOpen && (
             <motion.button
@@ -404,19 +408,17 @@ const AddBlockSidebar = ({
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
               onClick={() => setIsOpen(true)}
-              className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-2xl z-50 float-animation pulse-glow gpu-accelerated"
+              className="fixed top-4 right-4 w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-2xl z-50 float-animation pulse-glow gpu-accelerated"
               whileTap={{ scale: 0.9 }}
             >
-              <Plus className="w-8 h-8" />
+              <Plus className="w-7 h-7" />
             </motion.button>
           )}
         </AnimatePresence>
 
-        {/* Full Screen Overlay */}
         <AnimatePresence>
           {isOpen && (
             <>
-              {/* Backdrop */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -424,16 +426,13 @@ const AddBlockSidebar = ({
                 onClick={() => setIsOpen(false)}
                 className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
               />
-
-              {/* Content */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="fixed inset-4 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-3xl z-50 flex flex-col shadow-2xl border border-gray-700 gpu-accelerated"
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                className="fixed top-16 left-0 w-full max-h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-b-3xl z-50 flex flex-col shadow-2xl border-b border-gray-700 gpu-accelerated overflow-hidden"
               >
-                {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                <div className="flex items-center justify-between p-4 border-b border-gray-700 flex-shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
                       <Plus className="w-5 h-5 text-white" />
@@ -457,8 +456,6 @@ const AddBlockSidebar = ({
                     <X size={20} />
                   </motion.button>
                 </div>
-
-                {/* Blocks Grid */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
                   <div className="grid grid-cols-3 gap-3">
                     {blockTypes.map(
