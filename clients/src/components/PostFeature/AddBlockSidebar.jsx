@@ -295,7 +295,7 @@ const AddBlockSidebar = ({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="flex justify-center"
+                  className="flex justify-center w-full"
                 >
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <Plus className="w-4 h-4 text-white" />
@@ -344,7 +344,7 @@ const AddBlockSidebar = ({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="p-2 flex flex-wrap h-44 flex-row justify-center gap-2 items-center"
+                  className="p-2 overflow-x-auto flex flex-row gap-2 h-full items-center"
                 >
                   {blockTypes.map(
                     ({ type, label, color, icon, params }, index) => (
@@ -354,7 +354,7 @@ const AddBlockSidebar = ({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.03 }}
-                        className={`bg-gradient-to-br ${color} hover:shadow-lg text-white px-3 py-2 rounded-xl flex items-center gap-2 min-w-[80px] h-44 transition-all duration-300 group relative overflow-hidden whitespace-nowrap`}
+                        className={`bg-gradient-to-br ${color} hover:shadow-lg text-white px-3 py-2 rounded-xl flex items-center gap-2 min-w-[80px] transition-all duration-300 group relative overflow-hidden whitespace-nowrap`}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         title={label}
