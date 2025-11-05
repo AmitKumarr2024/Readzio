@@ -437,7 +437,7 @@ const CreatePost = () => {
       {/* 🔹 Show editor only if not submitting */}
       {!showPostTypeModal && !showCategoryModal && !isSubmitting && (
         <div className="min-w-full flex container justify-around items-center flex-col flex-wrap md:flex-row">
-          <div className="w-full flex justify-start px-4 pt-10">
+          <div className="w-full flex justify-start px-4 pt-16">
             <button
               onClick={() => {
                 // console.log("[CreatePost] Cancel & Go Back clicked");

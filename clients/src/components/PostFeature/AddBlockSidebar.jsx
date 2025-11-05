@@ -243,19 +243,17 @@ const AddBlockSidebar = ({
       <style>{styles}</style>
 
       {/* Desktop Top Bar */}
-      <div className="block md:block">
+      <div className="hidden md:block">
         <motion.div
           initial={false}
-          animate={{
-            height: isOpen ? "320px" : "52px",
-          }}
+          animate={{ height: isOpen ? "320px" : "52px" }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="fixed left-0 top-16 w-full bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-2xl z-50 flex flex-col border-b border-gray-700 gpu-accelerated overflow-hidden"
+          className="fixed left-0 top-16 w-full bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-2xl z-50 flex flex-col border-b border-gray-700 overflow-hidden"
         >
           {/* Toggle Button */}
           <motion.button
             onClick={() => setIsOpen(!isOpen)}
-            className="absolute right-4 top-2 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all duration-300 pulse-glow"
+            className="absolute right-4 top-2 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all duration-300"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -263,7 +261,7 @@ const AddBlockSidebar = ({
           </motion.button>
 
           {/* Header */}
-          <div className="p-2 border-b border-gray-700 flex-shrink-0">
+          <div className="p-2 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
             <AnimatePresence mode="wait">
               {isOpen ? (
                 <motion.div
@@ -271,21 +269,25 @@ const AddBlockSidebar = ({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
-                  className="flex items-center gap-2"
+                  className="flex items-center justify-between w-full"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                    <Plus className="w-4 h-4 text-white" />
+                  {/* Left info */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                      <Plus className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white text-sm">
+                        Add Block
+                      </h3>
+                      <p className="text-xs text-gray-400">
+                        {selectedBlockIndex !== null
+                          ? "After selected"
+                          : "At end"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-white text-sm">
-                      Add Block
-                    </h3>
-                    <p className="text-xs text-gray-400">
-                      {selectedBlockIndex !== null
-                        ? "After selected"
-                        : "At end"}
-                    </p>
-                  </div>
+                  {/* Right spacer/icon can go here if needed */}
                 </motion.div>
               ) : (
                 <motion.div
@@ -293,7 +295,7 @@ const AddBlockSidebar = ({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="flex justify-start gap-2 w-full"
+                  className="flex justify-end w-full"
                 >
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <Plus className="w-4 h-4 text-white" />
@@ -323,13 +325,13 @@ const AddBlockSidebar = ({
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.03 }}
-                          className={`bg-gradient-to-br ${color} hover:shadow-lg text-white font-medium p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 group relative overflow-hidden gpu-accelerated`}
+                          className={`bg-gradient-to-br ${color} hover:shadow-lg text-white font-medium p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 group relative overflow-hidden`}
                           whileHover={{ scale: 1.05, y: -2 }}
                           whileTap={{ scale: 0.95 }}
                         >
                           <div className="absolute inset-0 shimmer-bg opacity-0 group-hover:opacity-100" />
                           <div className="relative z-10">{icon}</div>
-                          <span className="relative z-10 text-xs leading-tight text-center">
+                          <span className="relative z-10 text-xs leading-tight text-center truncate">
                             {label}
                           </span>
                         </motion.button>
@@ -352,7 +354,7 @@ const AddBlockSidebar = ({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.03 }}
-                        className={`bg-gradient-to-br ${color} hover:shadow-lg text-white px-3 py-2 rounded-xl flex items-center gap-2 min-w-0 transition-all duration-300 group relative overflow-hidden gpu-accelerated whitespace-nowrap`}
+                        className={`bg-gradient-to-br ${color} hover:shadow-lg text-white px-3 py-2 rounded-xl flex items-center gap-2 min-w-[80px] transition-all duration-300 group relative overflow-hidden whitespace-nowrap`}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         title={label}
