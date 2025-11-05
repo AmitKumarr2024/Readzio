@@ -294,21 +294,25 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
           : ""
       }`}
     >
-      <div className="w-full justify-center flex flex-col items-center gap-6 mb-6">
-        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-          <FiEdit3 className="w-5 h-5 text-white" />
+      <div className="w-full flex flex-col items-center gap-6 mb-6 px-4 sm:px-6 md:px-8">
+        {/* Icon */}
+        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+          <FiEdit3 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+
+        {/* Title */}
+        <div className="text-center">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
             Create Content
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
+          <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">
             Build your post with blocks
           </p>
         </div>
 
-        <div className="grow ml-10 mb-4">
-          <div className="grid grid-cols-2 gap-6">
+        {/* Progress Section */}
+        <div className="w-full max-w-4xl mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {/* Images Progress */}
             <div>
               <div className="flex justify-between items-center mb-2">
@@ -319,6 +323,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                   {imageCount}/{MAX_IMAGE_COUNT}
                 </span>
               </div>
+
               <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
                 <div
                   className={`h-2 rounded-full transition-all duration-300 ease-out ${
@@ -336,7 +341,8 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                   }}
                 ></div>
               </div>
-              <div className="flex justify-between items-center mt-2">
+
+              <div className="flex justify-between items-center mt-2 flex-wrap gap-2">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {imageCount} of {MAX_IMAGE_COUNT} images
                 </p>
@@ -364,6 +370,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                   {((postSize / MAX_PAYLOAD_SIZE) * 100).toFixed(1)}%
                 </span>
               </div>
+
               <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
                 <div
                   className={`h-2 rounded-full transition-all duration-300 ease-out ${
@@ -381,7 +388,8 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                   }}
                 ></div>
               </div>
-              <div className="flex justify-between items-center mt-2">
+
+              <div className="flex justify-between items-center mt-2 flex-wrap gap-2">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {(postSize / 1024).toFixed(2)} KB / 40 MB
                 </p>
