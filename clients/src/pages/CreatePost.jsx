@@ -437,7 +437,7 @@ const CreatePost = () => {
       {/* 🔹 Show editor only if not submitting */}
       {!showPostTypeModal && !showCategoryModal && !isSubmitting && (
         <div className="min-w-full flex container justify-around items-center flex-col flex-wrap md:flex-row">
-          <div className="w-full flex justify-start px-4 pt-10 pl-11">
+          <div className="w-full flex justify-start px-4 pt-10 ml-20">
             <button
               onClick={() => {
                 // console.log("[CreatePost] Cancel & Go Back clicked");
@@ -463,7 +463,7 @@ const CreatePost = () => {
                 categoryMap[selectedCategoryId] || selectedCategoryId
               }
             />
-            <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            <div className="text-sm text-gray-500 dark:text-gray-400 ml-28 mt-2">
               Images will be uploaded in their original format and quality (up
               to 5MB).
             </div>
