@@ -295,7 +295,7 @@ const AddBlockSidebar = ({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="flex justify-end w-full"
+                  className="flex justify-center"
                 >
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <Plus className="w-4 h-4 text-white" />
@@ -344,7 +344,7 @@ const AddBlockSidebar = ({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="p-2 overflow-x-auto flex flex-row gap-2 h-full items-center"
+                  className="p-2 flex flex-wrap py-28 flex-row gap-2 items-center"
                 >
                   {blockTypes.map(
                     ({ type, label, color, icon, params }, index) => (
