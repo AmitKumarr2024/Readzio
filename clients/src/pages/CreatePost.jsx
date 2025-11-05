@@ -463,7 +463,7 @@ const CreatePost = () => {
                 categoryMap[selectedCategoryId] || selectedCategoryId
               }
             />
-            <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
               Images will be uploaded in their original format and quality (up
               to 5MB).
             </div>
