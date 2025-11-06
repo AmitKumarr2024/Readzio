@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { FiUpload } from "react-icons/fi";
-import { MdDeleteForever } from "react-icons/md";
 import { motion } from "framer-motion";
 
 const blockVariants = {
@@ -44,14 +43,7 @@ const PostImageBlock = ({
         </span>
       )}
 
-      {/* Remove image button */}
-      <button
-        onClick={() => removeBlock(index)}
-        className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition"
-        aria-label="Remove image"
-      >
-        <MdDeleteForever size={24} />
-      </button>
+    
 
       {/* Image URL input */}
       <input

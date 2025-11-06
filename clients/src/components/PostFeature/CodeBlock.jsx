@@ -78,13 +78,6 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
         >
           <IoIosBackspace size={24} />
         </button>
-        <button
-          onClick={() => removeBlock(index)}
-          className="text-red-400 hover:text-red-600 transition"
-          aria-label="Remove code block"
-        >
-          <MdDeleteForever size={24} />
-        </button>
       </div>
 
       {/* Language selector */}
