@@ -229,7 +229,7 @@ const ContentBlockToolbar = ({
           : `${DESKTOP_CLOSED_HEIGHT}px`,
       }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="fixed left-0 top-16 w-full bg-gray-900 text-white shadow-2xl z-50  flex-col border-b border-blue-700/50 overflow-hidden hidden md:flex"
+      className="fixed left-0 top-16 w-full bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-2xl z-50  flex-col border-b border-blue-700/50 overflow-hidden hidden md:flex"
     >
       {/* 1. Header/Toggle Bar (Always visible) */}
       <div className="p-2 flex items-center justify-between flex-shrink-0 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark border-b border-blue-700/30">
@@ -238,7 +238,7 @@ const ContentBlockToolbar = ({
           <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
             <Plus className="w-3 h-3 text-white" />
           </div>
-          <p className="text-sm font-medium text-gray-200">
+          <p className="text-sm font-medium text-text-main-light dark:text-text-main-dark">
             Insert Block <span className="text-blue-400">({selectedInfo})</span>
           </p>
         </div>
@@ -293,7 +293,7 @@ const ContentBlockToolbar = ({
                       whileTap={{ scale: 0.95 }}
                       title={`Add ${label}`}
                     >
-                      <div className="relative z-10 w-4 h-4">{icon}</div>
+                      <div className="relative z-10 w-6 h-6">{icon}</div>
                       <span className="relative z-10 text-lg leading-tight text-center truncate">
                         {label}
                       </span>
