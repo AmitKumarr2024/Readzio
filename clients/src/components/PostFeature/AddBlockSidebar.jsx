@@ -288,13 +288,13 @@ const ContentBlockToolbar = ({
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.02 }}
-                      className={`bg-gradient-to-br ${color} hover:shadow-xl text-white font-medium p-4 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 group relative overflow-hidden`}
+                      className={`bg-gradient-to-br ${color} hover:shadow-xl text-white font-medium px-2 py-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 group relative overflow-hidden`}
                       whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
                       title={`Add ${label}`}
                     >
-                      <div className="relative z-10">{icon}</div>
-                      <span className="relative z-10 text-lg leading-tight text-center truncate">
+                      <div className="relative z-10 text-xl">{icon}</div>
+                      <span className="relative z-10 text-sm leading-tight text-center truncate">
                         {label}
                       </span>
                       <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -331,8 +331,10 @@ const ContentBlockToolbar = ({
                   whileTap={{ scale: 0.95 }}
                   title={`Add ${label}`}
                 >
-                  <div className="relative z-10 flex-shrink-0">{icon}</div>
-                  <span className="relative z-10 text-xs leading-tight truncate font-medium">
+                  <div className="relative z-10 text-lg flex-shrink-0">
+                    {icon}
+                  </div>
+                  <span className="relative z-10 text-sm leading-tight truncate font-medium">
                     {label}
                   </span>
                 </motion.button>
@@ -415,7 +417,7 @@ const ContentBlockToolbar = ({
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: index * 0.05 }}
-                        className={`bg-gradient-to-br ${color} text-white font-medium p-4 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden active:scale-95 gpu-accelerated`}
+                        className={`bg-gradient-to-br ${color} text-white font-medium px-3 py-1.5 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden active:scale-95 gpu-accelerated`}
                         whileTap={{ scale: 0.9 }}
                       >
                         <div className="relative z-10 w-8 h-8 flex items-center justify-center">
