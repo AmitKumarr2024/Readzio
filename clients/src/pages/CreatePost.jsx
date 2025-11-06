@@ -35,17 +35,16 @@ const asyncRetry = async (fn, { retries = 3, minTimeout = 1000 } = {}) => {
   throw lastError;
 };
 
-const MAX_PAYLOAD_SIZE = 40 * 1024 * 1024; // 40 MB
-const MAX_TEXT_BLOCK_SIZE = 100 * 1024; // 100KB
-const MAX_TABLE_BLOCK_SIZE = 200 * 1024; // 200KB
-const MAX_IMAGE_COUNT = 40; // 40 images
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
+const MAX_PAYLOAD_SIZE = 40 * 1024 * 1024;
+const MAX_TEXT_BLOCK_SIZE = 100 * 1024;
+const MAX_TABLE_BLOCK_SIZE = 200 * 1024;
+const MAX_IMAGE_COUNT = 40;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 const CreatePost = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // ---- local state
   const [showPostTypeModal, setShowPostTypeModal] = useState(true);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [title, setTitle] = useState("");
@@ -53,38 +52,30 @@ const CreatePost = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categoriesFetched, setCategoriesFetched] = useState(false);
 
-  // ---- redux
   const { post, createLoading, createError } = useSelector((s) => s.post);
   const { postType, category: selectedCategoryId } = useSelector(
     (s) => s.postMeta
   );
   const { categories } = useSelector((s) => s.categories);
 
-  // ---- refs / guards
   const isSubmittingRef = useRef(false);
   const hasCheckedPostTypeRef = useRef(false);
 
-  // ---- Stable debounced handlers (moved outside component or memoized properly)
   const debouncedTitleChange = useCallback(
     debounce((value) => {
-      // console.log("[CreatePost] Debounced title change:", value);
       setTitle(value);
     }, 300),
-    [] // Empty dependency array since setTitle is stable
+    []
   );
 
-  // ---- Debounced draft saver (for autosave / localStorage / backend)
   const debouncedSaveDraft = useMemo(
     () =>
       debounce((draft) => {
-        // console.log("[CreatePost] Debounced draft save:", draft);
-        // Example: localStorage.setItem("draftPost", JSON.stringify(draft));
-        // Or dispatch(saveDraft(draft)) if you want to persist in redux/backend
+        // Save draft logic
       }, 500),
     []
   );
 
-  // ---- Watch title/blocks and trigger debounced save
   useEffect(() => {
     if (title || blocks.length > 0) {
       debouncedSaveDraft({ title, blocks });
@@ -94,29 +85,21 @@ const CreatePost = () => {
 
   const debouncedBlocksChange = useCallback(
     debounce((value) => {
-      // console.log("[CreatePost] Debounced blocks change:", value);
       setBlocks(value);
     }, 300),
-    [] // Empty dependency array since setBlocks is stable
+    []
   );
 
-  // ---- Cleanup debounced functions
   useEffect(() => {
-    // console.log("[CreatePost] Component mounted");
     return () => {
-      // console.log(
-      //   "[CreatePost] Component unmounting, cancelling debounced functions"
-      // );
       debouncedTitleChange.cancel();
       debouncedBlocksChange.cancel();
     };
-  }, []); // Remove debounced functions from dependencies
+  }, []);
 
-  // ---- Fetch categories (only once)
   useEffect(() => {
     if (categoriesFetched) return;
 
-    // console.log("[CreatePost] Fetching categories");
     setCategoriesFetched(true);
 
     dispatch(fetchCategories())
@@ -124,40 +107,29 @@ const CreatePost = () => {
       .catch((e) => {
         console.error("[CreatePost] Fetch categories error:", e);
         toast.error("Failed to load categories.", { position: "top-right" });
-        setCategoriesFetched(false); // Reset on error to allow retry
+        setCategoriesFetched(false);
       });
   }, [dispatch, categoriesFetched]);
 
-  // ---- Handle saved postType and modal transitions (fixed dependencies)
   useEffect(() => {
     if (hasCheckedPostTypeRef.current) {
-      // console.log("[CreatePost] Skipping postType check, already processed");
       return;
     }
 
     if (postType) {
-      // console.log("[CreatePost] PostType already exists:", postType);
       return;
     }
 
     const savedPostType = localStorage.getItem("postType");
-    // console.log(
-    //   "[CreatePost] Checking saved postType:",
-    //   savedPostType,
-    //   "Categories length:",
-    //   categories?.length
-    // );
 
     if (savedPostType && categories?.length > 0) {
-      // console.log("[CreatePost] Setting postType and opening category modal");
       dispatch(setPostType(savedPostType));
       setShowPostTypeModal(false);
       setShowCategoryModal(true);
       hasCheckedPostTypeRef.current = true;
     }
-  }, [dispatch, categories?.length, postType]); // Use categories?.length instead of categories
+  }, [dispatch, categories?.length, postType]);
 
-  // ---- Memoized category map (stable dependencies)
   const categoryMap = useMemo(() => {
     if (!categories?.length) return {};
 
@@ -165,11 +137,9 @@ const CreatePost = () => {
     categories.forEach((cat) => {
       map[cat._id] = cat.name;
     });
-    // console.log("[CreatePost] Category map created:", map);
     return map;
-  }, [categories]); // Keep categories as dependency but check length inside
+  }, [categories]);
 
-  // ---- Memoized filtered posts (more stable)
   const filteredPosts = useMemo(() => {
     if (!post) return [];
 
@@ -177,21 +147,11 @@ const CreatePost = () => {
     const filtered = selectedCategoryId
       ? posts.filter((p) => p.category === selectedCategoryId)
       : posts;
-    // console.log("[CreatePost] Filtered posts:", filtered);
     return filtered;
   }, [post, selectedCategoryId]);
 
-  // ---- Stable validation function
   const validateBeforeSubmit = useCallback(
     async (metaData) => {
-      // console.log("[CreatePost] Validating post data:", {
-      //   title,
-      //   blocksLength: blocks.length,
-      //   postType,
-      //   selectedCategoryId,
-      //   metaData,
-      // });
-
       if (!title.trim()) throw new Error("Please enter a title");
       if (title.trim().length < 3)
         throw new Error("Title must be at least 3 characters long");
@@ -258,28 +218,23 @@ const CreatePost = () => {
         );
       }
 
-      // console.log("[CreatePost] Validation passed");
       return postData;
     },
     [title, blocks, postType, selectedCategoryId]
   );
 
-  // ---- Actions
   const handleCreatePost = useCallback(
     async (metaData) => {
       if (isSubmittingRef.current) {
-        // console.log("[CreatePost] Submission blocked, already submitting");
         return;
       }
 
       isSubmittingRef.current = true;
       setIsSubmitting(true);
-      // console.log("[CreatePost] Creating post with metaData:", metaData);
 
       try {
         const postData = await validateBeforeSubmit(metaData);
         const resultAction = await dispatch(createPosts(postData)).unwrap();
-        // console.log("[CreatePost] Post created successfully:", resultAction);
 
         toast.success("Post created successfully!", { position: "top-right" });
         setTitle("");
@@ -298,7 +253,6 @@ const CreatePost = () => {
               { retries: 2, minTimeout: 1000 }
             );
             if (checkPost) {
-              // console.log("[CreatePost] Post found after timeout:", checkPost);
               toast.success("Post created successfully!", {
                 position: "top-right",
               });
@@ -324,19 +278,16 @@ const CreatePost = () => {
       } finally {
         isSubmittingRef.current = false;
         setIsSubmitting(false);
-        // console.log("[CreatePost] Submission complete");
       }
     },
-    [dispatch, navigate, validateBeforeSubmit, title] // Added title for slug generation
+    [dispatch, navigate, validateBeforeSubmit, title]
   );
 
   const handleDeletePost = useCallback(
     (id) => {
-      // console.log("[CreatePost] Deleting post with id:", id);
       dispatch(deletePost(id))
         .unwrap()
         .then(() => {
-          // console.log("[CreatePost] Post deleted successfully");
           toast.success("Post deleted", { position: "top-right" });
         })
         .catch((err) => {
@@ -350,42 +301,32 @@ const CreatePost = () => {
   );
 
   const handleUpdateDraft = useCallback((draft) => {
-    // console.log("[CreatePost] Updating draft:", draft);
     if (draft.title !== undefined) {
-      setTitle(draft.title); // instant
+      setTitle(draft.title);
     }
     if (draft.blocks !== undefined) {
-      setBlocks(draft.blocks); // instant
+      setBlocks(draft.blocks);
     }
   }, []);
 
-  // ---- Render
-  // console.log("[CreatePost] Rendering, state:", {
-  //   showPostTypeModal,
-  //   showCategoryModal,
-  //   title,
-  //   blocksLength: blocks.length,
-  //   isSubmitting,
-  // });
+  // Just replace the return statement in your CreatePost component with this:
 
   return (
-    <div className="flex flex-col md:flex-row bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
+    <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
+      {/* Post Type Modal */}
       {showPostTypeModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
           <PostTypeSelector
             postType={postType}
             setPostType={(value) => {
-              // console.log("[CreatePost] Setting postType:", value);
               dispatch(setPostType(value));
               localStorage.setItem("postType", value);
             }}
             onContinue={() => {
-              // console.log("[CreatePost] PostTypeSelector onContinue");
               setShowPostTypeModal(false);
               setShowCategoryModal(true);
             }}
             onClose={() => {
-              // console.log("[CreatePost] PostTypeSelector onClose");
               localStorage.removeItem("postType");
               navigate("/");
             }}
@@ -393,19 +334,15 @@ const CreatePost = () => {
         </div>
       )}
 
+      {/* Category Modal */}
       {showCategoryModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
           <CategorySelector
             onBack={() => {
-              // console.log("[CreatePost] CategorySelector onBack");
               setShowCategoryModal(false);
               setShowPostTypeModal(true);
             }}
             onContinue={(selectedCategory) => {
-              // console.log(
-              //   "[CreatePost] CategorySelector onContinue:",
-              //   selectedCategory
-              // );
               if (!selectedCategory?.id) {
                 toast.error("Please select a category", {
                   position: "top-right",
@@ -416,7 +353,6 @@ const CreatePost = () => {
               setShowCategoryModal(false);
             }}
             onClose={() => {
-              // console.log("[CreatePost] CategorySelector onClose");
               localStorage.removeItem("postType");
               navigate("/");
             }}
@@ -424,72 +360,231 @@ const CreatePost = () => {
         </div>
       )}
 
-      {/* 🔹 Show loader while submitting */}
+      {/* Loading Overlay */}
       {isSubmitting && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex flex-col items-center justify-center">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4">
           <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
-          <p className="mt-4 text-white text-lg font-semibold">
+          <p className="mt-4 text-white text-base sm:text-lg font-semibold text-center">
             Creating your post...
           </p>
         </div>
       )}
 
-      {/* 🔹 Show editor only if not submitting */}
+      {/* Main Content Area */}
       {!showPostTypeModal && !showCategoryModal && !isSubmitting && (
-        <div className="min-w-full flex container justify-around mt-36 items-center flex-col flex-wrap md:flex-row">
-          <div className="w-full flex justify-start px-4 ">
-            <button
-              onClick={() => {
-                // console.log("[CreatePost] Cancel & Go Back clicked");
-                localStorage.removeItem("postType");
-                navigate("/");
-              }}
-              className="font-bold text-red-600 dark:text-red-400 border border-red-500 dark:border-red-400 px-4 py-1.5 rounded-full shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"
-            >
-              ⬅ Cancel & Go Back
-            </button>
-          </div>
-
-          <div className="w-full md:w-3/5 my-1">
-            <PostEditor
-              size={55}
-              title={title}
-              setTitle={setTitle}
-              blocks={blocks}
-              setBlocks={setBlocks}
-              postType={postType}
-              category={selectedCategoryId}
-              categoryName={
-                categoryMap[selectedCategoryId] || selectedCategoryId
-              }
-            />
-            <div className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
-              Images will be uploaded in their original format and quality (up
-              to 5MB).
+        <div className="w-full">
+          {/* Sticky Header with Back Button */}
+          <div className="sticky top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+              <button
+                onClick={() => {
+                  localStorage.removeItem("postType");
+                  navigate("/");
+                }}
+                className="inline-flex items-center gap-2 font-semibold text-red-600 dark:text-red-400 border border-red-500 dark:border-red-400 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 text-sm sm:text-base"
+              >
+                <span className="text-lg">←</span>
+                <span className="hidden xs:inline">Cancel & Go Back</span>
+                <span className="inline xs:hidden">Cancel</span>
+              </button>
             </div>
           </div>
 
-          <div className="w-full md:w-2/5 md:pl-1">
-            <PostPreviewList
-              currentDraftPost={{ title, blocks }}
-              onUpdateDraft={handleUpdateDraft}
-              postType={postType}
-              category={selectedCategoryId}
-              categoryName={
-                categoryMap[selectedCategoryId] || selectedCategoryId
-              }
-              allPosts={filteredPosts}
-              deletePost={handleDeletePost}
-              createLoading={createLoading}
-              createError={createError}
-              onCreatePost={handleCreatePost}
-              isSubmitting={isSubmitting}
-            />
+          {/* Two Column Layout Container */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+              {/* Left Column - Editor */}
+              <div className="w-full lg:w-3/5 xl:w-2/3">
+                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
+                  <PostEditor
+                    size={55}
+                    title={title}
+                    setTitle={setTitle}
+                    blocks={blocks}
+                    setBlocks={setBlocks}
+                    postType={postType}
+                    category={selectedCategoryId}
+                    categoryName={
+                      categoryMap[selectedCategoryId] || selectedCategoryId
+                    }
+                  />
+
+                  {/* Image Upload Info Box */}
+                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 dark:text-blue-400 text-base flex-shrink-0">
+                        💡
+                      </span>
+                      <span>
+                        Images will be uploaded in their original format and
+                        quality (up to 5MB each).
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column - Preview */}
+              <div className="w-full lg:w-2/5 xl:w-1/3">
+                <div className="lg:sticky lg:top-24">
+                  <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
+                    <PostPreviewList
+                      currentDraftPost={{ title, blocks }}
+                      onUpdateDraft={handleUpdateDraft}
+                      postType={postType}
+                      category={selectedCategoryId}
+                      categoryName={
+                        categoryMap[selectedCategoryId] || selectedCategoryId
+                      }
+                      allPosts={filteredPosts}
+                      deletePost={handleDeletePost}
+                      createLoading={createLoading}
+                      createError={createError}
+                      onCreatePost={handleCreatePost}
+                      isSubmitting={isSubmitting}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
+
+  // old code
+  // return (
+  //   <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
+  //     {/* Modals */}
+  //     {showPostTypeModal && (
+  //       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
+  //         <PostTypeSelector
+  //           postType={postType}
+  //           setPostType={(value) => {
+  //             dispatch(setPostType(value));
+  //             localStorage.setItem("postType", value);
+  //           }}
+  //           onContinue={() => {
+  //             setShowPostTypeModal(false);
+  //             setShowCategoryModal(true);
+  //           }}
+  //           onClose={() => {
+  //             localStorage.removeItem("postType");
+  //             navigate("/");
+  //           }}
+  //         />
+  //       </div>
+  //     )}
+
+  //     {showCategoryModal && (
+  //       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
+  //         <CategorySelector
+  //           onBack={() => {
+  //             setShowCategoryModal(false);
+  //             setShowPostTypeModal(true);
+  //           }}
+  //           onContinue={(selectedCategory) => {
+  //             if (!selectedCategory?.id) {
+  //               toast.error("Please select a category", {
+  //                 position: "top-right",
+  //               });
+  //               return;
+  //             }
+  //             dispatch(setCategory(selectedCategory.id));
+  //             setShowCategoryModal(false);
+  //           }}
+  //           onClose={() => {
+  //             localStorage.removeItem("postType");
+  //             navigate("/");
+  //           }}
+  //         />
+  //       </div>
+  //     )}
+
+  //     {/* Loading Overlay */}
+  //     {isSubmitting && (
+  //       <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+  //         <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
+  //         <p className="mt-4 text-white text-base sm:text-lg font-semibold text-center">
+  //           Creating your post...
+  //         </p>
+  //       </div>
+  //     )}
+
+  //     {/* Main Content */}
+  //     {!showPostTypeModal && !showCategoryModal && !isSubmitting && (
+  //       <div className="w-full">
+  //         {/* Header with Back Button */}
+  //         <div className="sticky top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 shadow-sm">
+  //           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+  //             <button
+  //               onClick={() => {
+  //                 localStorage.removeItem("postType");
+  //                 navigate("/");
+  //               }}
+  //               className="inline-flex items-center gap-2 font-semibold text-red-600 dark:text-red-400 border border-red-500 dark:border-red-400 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 text-sm sm:text-base"
+  //             >
+  //               <span className="text-lg">←</span>
+  //               <span className="hidden xs:inline">Cancel & Go Back</span>
+  //               <span className="xs:hidden">Cancel</span>
+  //             </button>
+  //           </div>
+  //         </div>
+
+  //         {/* Two Column Layout */}
+  //         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+  //           <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+  //             {/* Editor Section - Left */}
+  //             <div className="w-full lg:w-3/5 xl:w-2/3">
+  //               <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
+  //                 <PostEditor
+  //                   size={55}
+  //                   title={title}
+  //                   setTitle={setTitle}
+  //                   blocks={blocks}
+  //                   setBlocks={setBlocks}
+  //                   postType={postType}
+  //                   category={selectedCategoryId}
+  //                   categoryName={
+  //                     categoryMap[selectedCategoryId] || selectedCategoryId
+  //                   }
+  //                 />
+  //                 <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 text-center">
+  //                   💡 Images will be uploaded in their original format and
+  //                   quality (up to 5MB each, max {MAX_IMAGE_COUNT} images)
+  //                 </div>
+  //               </div>
+  //             </div>
+
+  //             {/* Preview Section - Right */}
+  //             <div className="w-full lg:w-2/5 xl:w-1/3">
+  //               <div className="lg:sticky lg:top-24">
+  //                 <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
+  //                   <PostPreviewList
+  //                     currentDraftPost={{ title, blocks }}
+  //                     onUpdateDraft={handleUpdateDraft}
+  //                     postType={postType}
+  //                     category={selectedCategoryId}
+  //                     categoryName={
+  //                       categoryMap[selectedCategoryId] || selectedCategoryId
+  //                     }
+  //                     allPosts={filteredPosts}
+  //                     deletePost={handleDeletePost}
+  //                     createLoading={createLoading}
+  //                     createError={createError}
+  //                     onCreatePost={handleCreatePost}
+  //                     isSubmitting={isSubmitting}
+  //                   />
+  //                 </div>
+  //               </div>
+  //             </div>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     )}
+  //   </div>
+  // );
 };
 
 export default CreatePost;
