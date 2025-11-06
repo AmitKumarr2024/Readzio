@@ -232,7 +232,7 @@ const ContentBlockToolbar = ({
       className="fixed left-0 top-16 w-full bg-gray-900 text-white shadow-2xl z-50  flex-col border-b border-blue-700/50 overflow-hidden hidden md:flex"
     >
       {/* 1. Header/Toggle Bar (Always visible) */}
-      <div className="p-2 flex items-center justify-between flex-shrink-0 bg-gray-800 border-b border-blue-700/30">
+      <div className="p-2 flex items-center justify-between flex-shrink-0 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark border-b border-blue-700/30">
         {/* Left Status Area */}
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -246,7 +246,7 @@ const ContentBlockToolbar = ({
         {/* Right Toggle Button (Minimize/Maximize Icon with Label) */}
         <motion.button
           onClick={() => setIsOpen(!isOpen)}
-          className="px-3 py-1 bg-gray-700/50 rounded-full flex items-center gap-2 text-sm font-medium text-white hover:bg-blue-600 transition-all duration-300 shadow-md"
+          className="px-3 py-1 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-full flex items-center gap-2 text-sm font-medium  hover:bg-blue-600 transition-all duration-300 shadow-md"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           aria-expanded={isOpen}
@@ -288,12 +288,12 @@ const ContentBlockToolbar = ({
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.02 }}
-                      className={`bg-gradient-to-br ${color} hover:shadow-xl text-white font-medium px-2 py-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 group relative overflow-hidden`}
+                      className={`bg-gradient-to-br ${color} hover:shadow-xl text-white font-medium px-3 py-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 group relative overflow-hidden`}
                       whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
                       title={`Add ${label}`}
                     >
-                      <div className="relative z-10 text-3xl">{icon}</div>
+                      <div className="relative z-10 w-4 h-4">{icon}</div>
                       <span className="relative z-10 text-lg leading-tight text-center truncate">
                         {label}
                       </span>
@@ -331,7 +331,7 @@ const ContentBlockToolbar = ({
                   whileTap={{ scale: 0.95 }}
                   title={`Add ${label}`}
                 >
-                  <div className="relative z-10 text-xl flex-shrink-0">
+                  <div className="relative z-10 w-3 h-3 flex-shrink-0">
                     {icon}
                   </div>
                   <span className="relative z-10 text-lg leading-tight truncate font-medium">
