@@ -374,7 +374,7 @@ const CreatePost = () => {
       {!showPostTypeModal && !showCategoryModal && !isSubmitting && (
         <div className="w-full">
           {/* Sticky Header with Back Button */}
-          <div className="sticky top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 shadow-sm">
+          <div className="sticky top-32 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 shadow-sm">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
               <button
                 onClick={() => {
@@ -391,10 +391,10 @@ const CreatePost = () => {
           </div>
 
           {/* Two Column Layout Container */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="max-w-full mx-auto px-2 sm:px-3 lg:px-4 py-6 sm:py-8">
             <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
               {/* Left Column - Editor */}
-              <div className="w-full lg:w-3/5 xl:w-2/3">
+              <div className="w-full lg:w-3/5 xl:w-3/5">
                 <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
                   <PostEditor
                     size={55}
@@ -425,7 +425,7 @@ const CreatePost = () => {
               </div>
 
               {/* Right Column - Preview */}
-              <div className="w-full lg:w-2/5 xl:w-1/3">
+              <div className="w-full lg:w-2/5 xl:w-2/5">
                 <div className="lg:sticky lg:top-24">
                   <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
                     <PostPreviewList
