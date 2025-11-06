@@ -15,12 +15,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FiMove } from "react-icons/fi";
+import { FiEdit3 } from "react-icons/fi";
+import { Trash2 } from "lucide-react";
 import PostImageBlock from "../PostFeature/PostImageBlock";
 import CodeBlock from "../PostFeature/CodeBlock";
 import TextBlockWrapper from "../PostFeature/TextBlockWrapper";
 import TitleInput from "../PostFeature/TitleInput";
-import AddBlockButtons from "../PostFeature/AddBlockSidebar";
 import FileBlock from "../PostFeature/FileBlock";
 import HeadingBlock from "../PostFeature/HeadingBlock";
 import HrBlock from "../PostFeature/HrBlock";
@@ -29,8 +29,6 @@ import PollBlock from "../PostFeature/PollBlock";
 import QuoteBlock from "../PostFeature/QuoteBlock";
 import TableBlock from "../PostFeature/TableBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
-import { FiEdit3 } from "react-icons/fi";
-import { Trash2 } from "lucide-react";
 import AddBlockSidebar from "../PostFeature/AddBlockSidebar";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -90,103 +88,173 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     };
   }, []);
 
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
-    if (active.id !== over?.id) {
+  const handleDragEnd = useCallback(
+    (event) => {
+      const { active, over } = event;
+      if (active.id !== over?.id) {
+        const restoreScroll = preventScroll();
+        const oldIndex = blocks.findIndex((block) => block.id === active.id);
+        const newIndex = blocks.findIndex((block) => block.id === over?.id);
+        const newBlocks = [...blocks];
+        const [movedBlock] = newBlocks.splice(oldIndex, 1);
+        newBlocks.splice(newIndex, 0, movedBlock);
+        setBlocks(newBlocks);
+        restoreScroll();
+      }
+    },
+    [blocks, setBlocks, preventScroll]
+  );
+
+  const addBlock = useCallback(
+    (type, options = {}, afterIndex = null) => {
       const restoreScroll = preventScroll();
-      const oldIndex = blocks.findIndex((block) => block.id === active.id);
-      const newIndex = blocks.findIndex((block) => block.id === over?.id);
-      const newBlocks = [...blocks];
-      const [movedBlock] = newBlocks.splice(oldIndex, 1);
-      newBlocks.splice(newIndex, 0, movedBlock);
-      setBlocks(newBlocks);
-      restoreScroll();
-    }
-  };
+      const imageCount = blocks.filter((b) => b.type === "image").length;
+      const postSize = new TextEncoder().encode(
+        JSON.stringify({ title, blocks })
+      ).length;
 
-  const addBlock = (type, options = {}, afterIndex = null) => {
-    const restoreScroll = preventScroll();
-    const imageCount = blocks.filter((b) => b.type === "image").length;
-    const postSize = new TextEncoder().encode(
-      JSON.stringify({ title, blocks })
-    ).length;
-
-    if (type === "image" && imageCount >= MAX_IMAGE_COUNT) {
-      toast.error(`Maximum ${MAX_IMAGE_COUNT} images reached.`);
-      return;
-    }
-    if (postSize >= MAX_PAYLOAD_SIZE) {
-      toast.error("Post size limit of 40MB reached.");
-      return;
-    }
-
-    const newBlock =
-      type === "text"
-        ? { id: uuidv4(), type, value: "<p></p>" }
-        : type === "heading"
-        ? { id: uuidv4(), type, level: 2, text: "Heading Text" }
-        : type === "code"
-        ? {
-            id: uuidv4(),
-            type,
-            code: options.code || "",
-            caption: options.caption || "",
-            language: options.language || "",
-          }
-        : type === "image"
-        ? { id: uuidv4(), type, src: "", caption: "" }
-        : type === "file"
-        ? { id: uuidv4(), type, url: "", name: "", size: 0 }
-        : type === "hr"
-        ? { id: uuidv4(), type }
-        : type === "link"
-        ? { id: uuidv4(), type, href: "", text: "Link Text" }
-        : type === "list"
-        ? { id: uuidv4(), type, items: [""], ordered: options.ordered || false }
-        : type === "poll"
-        ? { id: uuidv4(), type, question: "", options: ["", ""] }
-        : type === "quote"
-        ? { id: uuidv4(), type, text: "Your quote here...", author: "" }
-        : type === "table"
-        ? {
-            id: uuidv4(),
-            type,
-            data: [
-              ["", ""],
-              ["", ""],
-            ],
-            caption: "",
-          }
-        : type === "video"
-        ? { id: uuidv4(), type, src: "", caption: "" }
-        : null;
-
-    if (newBlock) {
-      if (type === "table" && !newBlock.data?.length) {
-        toast.error("Invalid table configuration.");
+      if (type === "image" && imageCount >= MAX_IMAGE_COUNT) {
+        toast.error(`Maximum ${MAX_IMAGE_COUNT} images reached.`);
+        restoreScroll();
         return;
       }
-      setBlocks([...blocks, newBlock]);
-      toast.success(
-        `${type.charAt(0).toUpperCase() + type.slice(1)} block added`
-      );
+      if (postSize >= MAX_PAYLOAD_SIZE) {
+        toast.error("Post size limit of 40MB reached.");
+        restoreScroll();
+        return;
+      }
+
+      let newBlock = null;
+
+      if (type === "list-ordered" || type === "list-unordered") {
+        newBlock = {
+          id: uuidv4(),
+          type: "list",
+          ordered: type === "list-ordered",
+          items: options.items || ["Item 1", "Item 2"],
+        };
+      } else if (type === "text") {
+        newBlock = {
+          id: uuidv4(),
+          type,
+          value: options.value ? `<p>${options.value}</p>` : "<p></p>",
+        };
+      } else if (type === "heading") {
+        newBlock = {
+          id: uuidv4(),
+          type,
+          level: options.level || 2,
+          text: options.text || "New Heading",
+        };
+      } else if (type === "code") {
+        newBlock = {
+          id: uuidv4(),
+          type,
+          code: options.code || "// your code here",
+          caption: options.caption || "",
+          language: options.language || "javascript",
+        };
+      } else if (type === "image") {
+        newBlock = {
+          id: uuidv4(),
+          type,
+          src:
+            options.src ||
+            "https://placehold.co/150x100/3b82f6/ffffff?text=Image",
+          caption: options.caption || "",
+        };
+      } else if (type === "video") {
+        newBlock = {
+          id: uuidv4(),
+          type,
+          src:
+            options.src ||
+            "https://placehold.co/150x100/ef4444/ffffff?text=Video",
+          caption: options.caption || "",
+        };
+      } else if (type === "file") {
+        newBlock = {
+          id: uuidv4(),
+          type,
+          url: options.url || "#",
+          name: options.name || "File.pdf",
+          size: 0,
+        };
+      } else if (type === "hr") {
+        newBlock = {
+          id: uuidv4(),
+          type,
+          caption: options.caption || "",
+        };
+      } else if (type === "link") {
+        newBlock = {
+          id: uuidv4(),
+          type,
+          href: options.href || "#",
+          text: options.text || "New Link",
+        };
+      } else if (type === "poll") {
+        newBlock = {
+          id: uuidv4(),
+          type,
+          question: options.question || "New Poll?",
+          options: options.options || ["Yes", "No"],
+          votedUserIds: options.votedUserIds || [],
+        };
+      } else if (type === "quote") {
+        newBlock = {
+          id: uuidv4(),
+          type,
+          text: options.text || "Your quote...",
+          author: options.author || "Author",
+        };
+      } else if (type === "table") {
+        const headers = options.headers || ["H1", "H2"];
+        const rows = options.rows || [["C1", "C2"]];
+        newBlock = {
+          id: uuidv4(),
+          type,
+          data: [headers, ...rows],
+          caption: options.caption || "",
+        };
+      }
+
+      if (newBlock) {
+        if (type === "table" && !newBlock.data?.length) {
+          toast.error("Invalid table configuration.");
+          restoreScroll();
+          return;
+        }
+        const insertIndex =
+          afterIndex !== null ? afterIndex + 1 : blocks.length;
+        setBlocks((prev) => {
+          const updated = [...prev];
+          updated.splice(insertIndex, 0, newBlock);
+          return updated;
+        });
+        toast.success(
+          `${type.charAt(0).toUpperCase() + type.slice(1)} block added`
+        );
+      }
       restoreScroll();
-    }
-  };
+    },
+    [blocks.length, title, setBlocks, preventScroll]
+  );
 
-  const updateBlock = (index, newData) => {
-    // console.log("Updating block:", { index, newData }); // Debug log
-    const restoreScroll = preventScroll();
-    const updated = [...blocks];
-    updated[index] = { ...updated[index], ...newData }; // This should preserve language
-    // console.log("Updated block result:", updated[index]); // Debug log
-    setBlocks(updated);
-    restoreScroll();
-  };
+  const updateBlock = useCallback(
+    (index, newData) => {
+      const restoreScroll = preventScroll();
+      setBlocks((prev) => {
+        const updated = [...prev];
+        updated[index] = { ...updated[index], ...newData };
+        return updated;
+      });
+      restoreScroll();
+    },
+    [setBlocks, preventScroll]
+  );
 
-  // Add block selection handler
-  const handleBlockClick = (index, e) => {
-    // Don't select if clicking inside input/button/textarea
+  const handleBlockClick = useCallback((index, e) => {
     if (
       e.target.tagName === "INPUT" ||
       e.target.tagName === "BUTTON" ||
@@ -195,75 +263,82 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
     ) {
       return;
     }
-    setSelectedBlockIndex(index === selectedBlockIndex ? null : index);
-  };
+    setSelectedBlockIndex((prev) => (prev === index ? null : index));
+  }, []);
 
-  // Update removeBlock to clear selection
-  const removeBlock = (index) => {
-    const restoreScroll = preventScroll();
-    const updated = blocks.filter((_, i) => i !== index);
-    setBlocks(updated);
-    setSelectedBlockIndex(null); // Clear selection
-    toast.success("Block removed");
-    restoreScroll();
-  };
+  const removeBlock = useCallback(
+    (index) => {
+      const restoreScroll = preventScroll();
+      setBlocks((prev) => prev.filter((_, i) => i !== index));
+      setSelectedBlockIndex(null);
+      toast.success("Block removed");
+      restoreScroll();
+    },
+    [setBlocks, preventScroll]
+  );
 
-  const handleImageUpload = (file, index) => {
-    if (!file) return;
-    if (file.size > MAX_IMAGE_SIZE) {
-      toast.error("Image size exceeds 5MB limit.");
-      return;
-    }
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file.");
-      return;
-    }
-    const imageCount = blocks.filter((b) => b.type === "image").length;
-    if (imageCount >= MAX_IMAGE_COUNT) {
-      toast.error(`Maximum ${MAX_IMAGE_COUNT} images reached.`);
-      return;
-    }
-    const restoreScroll = preventScroll();
-    const reader = new FileReader();
-    reader.onload = () => {
+  const handleImageUpload = useCallback(
+    (file, index) => {
+      if (!file) return;
+      if (file.size > MAX_IMAGE_SIZE) {
+        toast.error("Image size exceeds 5MB limit.");
+        return;
+      }
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please upload an image file.");
+        return;
+      }
+      const imageCount = blocks.filter((b) => b.type === "image").length;
+      if (imageCount >= MAX_IMAGE_COUNT) {
+        toast.error(`Maximum ${MAX_IMAGE_COUNT} images reached.`);
+        return;
+      }
+      const restoreScroll = preventScroll();
+      const reader = new FileReader();
+      reader.onload = () => {
+        updateBlock(index, {
+          src: reader.result,
+          caption: blocks[index]?.caption || "",
+        });
+        toast.success("Image uploaded");
+        restoreScroll();
+      };
+      reader.onerror = () => {
+        toast.error("Failed to upload image");
+        restoreScroll();
+      };
+      reader.readAsDataURL(file);
+    },
+    [blocks, updateBlock, preventScroll]
+  );
+
+  const handleFileUpload = useCallback(
+    (e, index) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error("File size exceeds 10MB limit.");
+        return;
+      }
+      const postSize =
+        new TextEncoder().encode(JSON.stringify({ title, blocks })).length +
+        file.size;
+      if (postSize > MAX_PAYLOAD_SIZE) {
+        toast.error("Adding this file exceeds 40MB post size limit.");
+        return;
+      }
+      const restoreScroll = preventScroll();
+      const url = URL.createObjectURL(file);
       updateBlock(index, {
-        src: reader.result,
-        caption: blocks[index]?.caption || "",
+        url,
+        name: file.name,
+        size: file.size,
       });
-      toast.success("Image uploaded");
+      toast.success("File uploaded");
       restoreScroll();
-    };
-    reader.onerror = () => {
-      toast.error("Failed to upload image");
-      restoreScroll();
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleFileUpload = (e, index) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error("File size exceeds 10MB limit.");
-      return;
-    }
-    const postSize =
-      new TextEncoder().encode(JSON.stringify({ title, blocks })).length +
-      file.size;
-    if (postSize > MAX_PAYLOAD_SIZE) {
-      toast.error("Adding this file exceeds 40MB post size limit.");
-      return;
-    }
-    const restoreScroll = preventScroll();
-    const url = URL.createObjectURL(file);
-    updateBlock(index, {
-      url,
-      name: file.name,
-      size: file.size,
-    });
-    toast.success("File uploaded");
-    restoreScroll();
-  };
+    },
+    [title, blocks, updateBlock, preventScroll]
+  );
 
   const sizeToWidthClass = (size) => {
     const widthMap = {
@@ -495,10 +570,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               type="text"
                               value={block.text || ""}
                               onChange={(e) =>
-                                updateBlock(index, {
-                                  ...block,
-                                  text: e.target.value,
-                                })
+                                updateBlock(index, { text: e.target.value })
                               }
                               className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               placeholder="Edit heading text"
@@ -512,10 +584,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <select
                               value={block.level || 2}
                               onChange={(e) =>
-                                updateBlock(index, {
-                                  ...block,
-                                  level: +e.target.value,
-                                })
+                                updateBlock(index, { level: +e.target.value })
                               }
                               className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Heading level"
@@ -526,12 +595,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 </option>
                               ))}
                             </select>
-                          </div>
-                          <div className="text-right">
-                            <button
-                              onClick={() => removeBlock(index)}
-                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                            ></button>
                           </div>
                         </div>
                       );
@@ -555,10 +618,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             type="url"
                             value={block.href || ""}
                             onChange={(e) =>
-                              updateBlock(index, {
-                                ...block,
-                                href: e.target.value,
-                              })
+                              updateBlock(index, { href: e.target.value })
                             }
                             placeholder="https://example.com"
                             className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -571,21 +631,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             type="text"
                             value={block.text || ""}
                             onChange={(e) =>
-                              updateBlock(index, {
-                                ...block,
-                                text: e.target.value,
-                              })
+                              updateBlock(index, { text: e.target.value })
                             }
                             placeholder="Link text"
                             className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                             aria-label="Link text"
                           />
-                          <div className="text-right mt-2">
-                            <button
-                              onClick={() => removeBlock(index)}
-                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                            ></button>
-                          </div>
                         </div>
                       );
                     case "list":
@@ -607,10 +658,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 onChange={(e) => {
                                   const newItems = [...(block.items || [])];
                                   newItems[i] = e.target.value;
-                                  updateBlock(index, {
-                                    ...block,
-                                    items: newItems,
-                                  });
+                                  updateBlock(index, { items: newItems });
                                 }}
                                 placeholder={`Item ${i + 1}`}
                                 className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -622,10 +670,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                     const newItems = (block.items || []).filter(
                                       (_, idx) => idx !== i
                                     );
-                                    updateBlock(index, {
-                                      ...block,
-                                      items: newItems,
-                                    });
+                                    updateBlock(index, { items: newItems });
                                   }}
                                   className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition"
                                   aria-label={`Remove list item ${i + 1}`}
@@ -639,7 +684,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             type="button"
                             onClick={() => {
                               const newItems = [...(block.items || []), ""];
-                              updateBlock(index, { ...block, items: newItems });
+                              updateBlock(index, { items: newItems });
                             }}
                             className="mt-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500 text-white text-xs sm:text-sm rounded-lg hover:bg-blue-600 transition"
                             aria-label="Add list item"
@@ -647,12 +692,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                           >
                             + Add Item
                           </button>
-                          <div className="text-right mt-2">
-                            <button
-                              onClick={() => removeBlock(index)}
-                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                            ></button>
-                          </div>
                         </div>
                       );
                     case "poll":
@@ -664,16 +703,15 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               Array.isArray(block.options) &&
                               block.options.length >= 2
                                 ? block.options
-                                : ["", ""]
+                                : ["Yes", "No"]
                             }
                             onChangeQuestion={(newQuestion) =>
-                              updateBlock(index, {
-                                ...block,
-                                question: newQuestion,
-                              })
+                              updateBlock(index, { question: newQuestion })
                             }
                             onChangeOptions={(i, val, remove = false) => {
-                              let newOptions = [...(block.options || ["", ""])];
+                              let newOptions = [
+                                ...(block.options || ["Yes", "No"]),
+                              ];
                               if (remove) {
                                 if (newOptions.length > 2) {
                                   newOptions.splice(i, 1);
@@ -691,18 +729,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                   newOptions.push("");
                                 }
                               }
-                              updateBlock(index, {
-                                ...block,
-                                options: newOptions,
-                              });
+                              updateBlock(index, { options: newOptions });
                             }}
                           />
-                          <div className="text-right mt-2">
-                            <button
-                              onClick={() => removeBlock(index)}
-                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                            ></button>
-                          </div>
                         </div>
                       );
                     case "quote":
@@ -717,10 +746,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               type="text"
                               value={block.text || ""}
                               onChange={(e) =>
-                                updateBlock(index, {
-                                  ...block,
-                                  text: e.target.value,
-                                })
+                                updateBlock(index, { text: e.target.value })
                               }
                               placeholder="Quote text"
                               className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -730,21 +756,12 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               type="text"
                               value={block.author || ""}
                               onChange={(e) =>
-                                updateBlock(index, {
-                                  ...block,
-                                  author: e.target.value,
-                                })
+                                updateBlock(index, { author: e.target.value })
                               }
                               placeholder="Author (optional)"
                               className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Quote author"
                             />
-                            <div className="text-right">
-                              <button
-                                onClick={() => removeBlock(index)}
-                                className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                              ></button>
-                            </div>
                           </div>
                         </div>
                       );
@@ -758,8 +775,8 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               block.data.length > 0
                                 ? block.data
                                 : [
-                                    ["", ""],
-                                    ["", ""],
+                                    ["H1", "H2"],
+                                    ["C1", "C2"],
                                   ]
                             }
                             caption={block.caption || ""}
@@ -777,18 +794,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       type="text"
                                       value={header || ""}
                                       onChange={(e) => {
-                                        const restoreScroll = preventScroll();
                                         const newData = [
                                           ...(block.data || [[]]),
                                         ];
                                         newData[0] = [...(newData[0] || [])];
                                         newData[0][headerIndex] =
                                           e.target.value;
-                                        updateBlock(index, {
-                                          ...block,
-                                          data: newData,
-                                        });
-                                        restoreScroll();
+                                        updateBlock(index, { data: newData });
                                       }}
                                       placeholder={`Header ${headerIndex + 1}`}
                                       className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-200 dark:border-gray-800 rounded bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -800,16 +812,11 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                 )}
                                 <button
                                   onClick={() => {
-                                    const restoreScroll = preventScroll();
                                     const newData = (block.data || [[]]).map(
                                       (row) => [...row, ""]
                                     );
-                                    updateBlock(index, {
-                                      ...block,
-                                      data: newData,
-                                    });
+                                    updateBlock(index, { data: newData });
                                     toast.success("Column added");
-                                    restoreScroll();
                                   }}
                                   className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                                   aria-label="Add table column"
@@ -831,7 +838,6 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                       type="text"
                                       value={cell || ""}
                                       onChange={(e) => {
-                                        const restoreScroll = preventScroll();
                                         const newData = [
                                           ...(block.data || [[]]),
                                         ];
@@ -840,11 +846,7 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                                         ];
                                         newData[rowIndex + 1][cellIndex] =
                                           e.target.value;
-                                        updateBlock(index, {
-                                          ...block,
-                                          data: newData,
-                                        });
-                                        restoreScroll();
+                                        updateBlock(index, { data: newData });
                                       }}
                                       placeholder={`R${rowIndex + 1} C${
                                         cellIndex + 1
@@ -865,14 +867,11 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               <input
                                 type="text"
                                 value={block.caption || ""}
-                                onChange={(e) => {
-                                  const restoreScroll = preventScroll();
+                                onChange={(e) =>
                                   updateBlock(index, {
-                                    ...block,
                                     caption: e.target.value,
-                                  });
-                                  restoreScroll();
-                                }}
+                                  })
+                                }
                                 placeholder="Table caption"
                                 className="w-full px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-200 dark:border-gray-800 rounded bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 aria-label="Table caption"
@@ -881,19 +880,14 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <div className="flex flex-wrap gap-2">
                               <button
                                 onClick={() => {
-                                  const restoreScroll = preventScroll();
                                   const newData = [
                                     ...(block.data || [[]]),
                                     Array(block.data?.[0]?.length || 1).fill(
                                       ""
                                     ),
                                   ];
-                                  updateBlock(index, {
-                                    ...block,
-                                    data: newData,
-                                  });
+                                  updateBlock(index, { data: newData });
                                   toast.success("Row added");
-                                  restoreScroll();
                                 }}
                                 className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                                 aria-label="Add table row"
@@ -903,40 +897,16 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               </button>
                               <button
                                 onClick={() => {
-                                  const restoreScroll = preventScroll();
-                                  const newData = (block.data || [[]]).map(
-                                    (row) => [...row, ""]
-                                  );
-                                  updateBlock(index, {
-                                    ...block,
-                                    data: newData,
-                                  });
-                                  toast.success("Column added");
-                                  restoreScroll();
-                                }}
-                                className="px-3 sm:px-4 py-1 sm:py-1.5 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                aria-label="Add table column"
-                                disabled={isSizeLimitReached}
-                              >
-                                + Add Column
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const restoreScroll = preventScroll();
                                   if ((block.data || []).length > 1) {
                                     const newData = (block.data || []).slice(
                                       0,
                                       -1
                                     );
-                                    updateBlock(index, {
-                                      ...block,
-                                      data: newData,
-                                    });
+                                    updateBlock(index, { data: newData });
                                     toast.success("Row removed");
                                   } else {
                                     toast.error("At least one row is required");
                                   }
-                                  restoreScroll();
                                 }}
                                 className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
                                 aria-label="Remove table row"
@@ -945,34 +915,23 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                               </button>
                               <button
                                 onClick={() => {
-                                  const restoreScroll = preventScroll();
                                   if (block.data?.[0]?.length > 1) {
                                     const newData = (block.data || [[]]).map(
                                       (row) => row.slice(0, -1)
                                     );
-                                    updateBlock(index, {
-                                      ...block,
-                                      data: newData,
-                                    });
+                                    updateBlock(index, { data: newData });
                                     toast.success("Column removed");
                                   } else {
                                     toast.error(
                                       "At least one column is required"
                                     );
                                   }
-                                  restoreScroll();
                                 }}
                                 className="px-3 sm:px-4 py-1 sm:py-1.5 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition"
                                 aria-label="Remove table column"
                               >
                                 - Remove Column
                               </button>
-                            </div>
-                            <div className="flex justify-end mt-3 sm:mt-4">
-                              <button
-                                onClick={() => removeBlock(index)}
-                                className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                              ></button>
                             </div>
                           </div>
                         </div>
@@ -991,14 +950,9 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <input
                               type="url"
                               value={block.src || ""}
-                              onChange={(e) => {
-                                const restoreScroll = preventScroll();
-                                updateBlock(index, {
-                                  ...block,
-                                  src: e.target.value,
-                                });
-                                restoreScroll();
-                              }}
+                              onChange={(e) =>
+                                updateBlock(index, { src: e.target.value })
+                              }
                               placeholder="https://example.com/video.mp4"
                               className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Video URL"
@@ -1011,24 +965,13 @@ const PostEditor = ({ title, setTitle, blocks, setBlocks, size }) => {
                             <input
                               type="text"
                               value={block.caption || ""}
-                              onChange={(e) => {
-                                const restoreScroll = preventScroll();
-                                updateBlock(index, {
-                                  ...block,
-                                  caption: e.target.value,
-                                });
-                                restoreScroll();
-                              }}
+                              onChange={(e) =>
+                                updateBlock(index, { caption: e.target.value })
+                              }
                               placeholder="Caption text"
                               className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Video caption"
                             />
-                          </div>
-                          <div className="text-right mt-2">
-                            <button
-                              onClick={() => removeBlock(index)}
-                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
-                            ></button>
                           </div>
                         </div>
                       );
