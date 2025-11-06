@@ -293,8 +293,8 @@ const ContentBlockToolbar = ({
                       whileTap={{ scale: 0.95 }}
                       title={`Add ${label}`}
                     >
-                      <div className="relative z-10 text-xl">{icon}</div>
-                      <span className="relative z-10 text-sm leading-tight text-center truncate">
+                      <div className="relative z-10 text-3xl">{icon}</div>
+                      <span className="relative z-10 text-lg leading-tight text-center truncate">
                         {label}
                       </span>
                       <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -316,7 +316,7 @@ const ContentBlockToolbar = ({
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
               // --- FIX APPLIED HERE: Replaced 'overflow-x-auto' with 'flex-wrap' ---
-              className="p-2 flex flex-wrap gap-2 h-full items-start overflow-y-auto custom-scrollbar"
+              className="p-1 flex flex-wrap gap-2 h-full items-center justify-center overflow-y-auto custom-scrollbar"
               // Added items-start and overflow-y-auto to manage the wrapped content within the fixed height
             >
               {blockTypes.map(({ type, label, color, icon, params }, index) => (
@@ -331,10 +331,10 @@ const ContentBlockToolbar = ({
                   whileTap={{ scale: 0.95 }}
                   title={`Add ${label}`}
                 >
-                  <div className="relative z-10 text-lg flex-shrink-0">
+                  <div className="relative z-10 text-xl flex-shrink-0">
                     {icon}
                   </div>
-                  <span className="relative z-10 text-sm leading-tight truncate font-medium">
+                  <span className="relative z-10 text-lg leading-tight truncate font-medium">
                     {label}
                   </span>
                 </motion.button>
