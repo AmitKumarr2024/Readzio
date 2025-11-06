@@ -176,13 +176,13 @@ const BlockRenderer = ({
           />
         );
       case "code":
-        console.log("[DEBUG] Rendering code block:", {
-          index: i,
-          type: block.type,
-          codePreview: block.code?.slice(0, 30),
-          language: block.language,
-          caption: block.caption,
-        });
+        // console.log("[DEBUG] Rendering code block:", {
+        //   index: i,
+        //   type: block.type,
+        //   codePreview: block.code?.slice(0, 30),
+        //   language: block.language,
+        //   caption: block.caption,
+        // });
         return (
           <CodeBlockOutput
             key={i}

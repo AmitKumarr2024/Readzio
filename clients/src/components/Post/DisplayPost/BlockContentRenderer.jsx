@@ -60,20 +60,20 @@ const BlockContentRenderer = ({
     isPublishedStatus &&
     (!canViewPost || isBlocked);
 
-  console.log("[BlockContentRenderer] Debug Info:", {
-    postId: postId || "N/A",
-    isAuthenticated,
-    isAuthor,
-    isPublished: isPublishedStatus,
-    isBlocked,
-    canViewPost,
-    isPostRestricted,
-    shouldShowContent,
-    shouldShowBlockedOverlay,
-    shouldShowRestrictedNotice,
-    blocksCount: Array.isArray(blocks) ? blocks.length : 0,
-    hasBlocks: Array.isArray(blocks) && blocks.length > 0,
-  });
+  // console.log("[BlockContentRenderer] Debug Info:", {
+  //   postId: postId || "N/A",
+  //   isAuthenticated,
+  //   isAuthor,
+  //   isPublished: isPublishedStatus,
+  //   isBlocked,
+  //   canViewPost,
+  //   isPostRestricted,
+  //   shouldShowContent,
+  //   shouldShowBlockedOverlay,
+  //   shouldShowRestrictedNotice,
+  //   blocksCount: Array.isArray(blocks) ? blocks.length : 0,
+  //   hasBlocks: Array.isArray(blocks) && blocks.length > 0,
+  // });
 
   return (
     <div className="relative">
