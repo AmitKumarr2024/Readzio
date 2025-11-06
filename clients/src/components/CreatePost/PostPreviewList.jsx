@@ -365,13 +365,6 @@ const PostPreviewList = ({
               >
                 {copiedIndex === i ? "Copied!" : "Copy"}
               </button>
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-16 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete code block"
-              >
-                🗑
-              </button>
             </div>
           );
         case "file":
@@ -381,13 +374,6 @@ const PostPreviewList = ({
               className="relative my-6 group bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-all duration-300"
             >
               <FileBlock {...blockProps} />
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete file block"
-              >
-                🗑
-              </button>
             </div>
           );
         case "list":
@@ -396,13 +382,6 @@ const PostPreviewList = ({
             return (
               <div key={i} className="my-4 text-red-500 italic">
                 Invalid list data: {JSON.stringify(block.items)}
-                <button
-                  onClick={() => deleteBlock(i)}
-                  className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                  aria-label="Delete list block"
-                >
-                  🗑
-                </button>
               </div>
             );
           }
@@ -424,13 +403,6 @@ const PostPreviewList = ({
                   ))}
                 </ul>
               )}
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete list block"
-              >
-                🗑
-              </button>
             </div>
           );
         case "video":
@@ -446,13 +418,6 @@ const PostPreviewList = ({
                 muted={false}
                 loop={false}
               />
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete video block"
-              >
-                🗑
-              </button>
             </div>
           );
         case "image":
@@ -476,13 +441,6 @@ const PostPreviewList = ({
               {block.caption && (
                 <p className="mt-2 text-sm italic">{block.caption}</p>
               )}
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete image block"
-              >
-                🗑
-              </button>
             </div>
           );
         case "heading":
@@ -499,13 +457,6 @@ const PostPreviewList = ({
               >
                 {block.text || "Empty heading"}
               </h2>
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete heading block"
-              >
-                🗑
-              </button>
             </div>
           );
         case "hr":
@@ -515,13 +466,6 @@ const PostPreviewList = ({
               {block.caption && (
                 <p className="mt-2 text-sm italic">{block.caption}</p>
               )}
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete HR block"
-              >
-                🗑
-              </button>
             </div>
           );
         case "link":
@@ -535,13 +479,6 @@ const PostPreviewList = ({
               >
                 {block.text || block.href || "Empty link"}
               </a>
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete link block"
-              >
-                🗑
-              </button>
             </div>
           );
         case "poll":
@@ -560,13 +497,6 @@ const PostPreviewList = ({
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete poll block"
-              >
-                🗑
-              </button>
             </div>
           );
         case "quote":
@@ -581,13 +511,6 @@ const PostPreviewList = ({
                   <footer className="mt-2 text-sm">— {block.author}</footer>
                 )}
               </blockquote>
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete quote block"
-              >
-                🗑
-              </button>
             </div>
           );
         case "table":
@@ -600,13 +523,6 @@ const PostPreviewList = ({
                 data={block.data}
                 caption={block.caption || ""}
               />
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete table block"
-              >
-                🗑
-              </button>
             </div>
           );
         case "text":
@@ -621,13 +537,6 @@ const PostPreviewList = ({
                   __html: DOMPurify.sanitize(block.value || "Empty text"),
                 }}
               />
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete text block"
-              >
-                🗑
-              </button>
             </div>
           );
         default:
@@ -638,13 +547,6 @@ const PostPreviewList = ({
           return (
             <div key={i} className="relative my-4 text-red-500 italic">
               Unsupported block type: {block.type}
-              <button
-                onClick={() => deleteBlock(i)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-sm hover:bg-red-600 transition z-10"
-                aria-label="Delete unsupported block"
-              >
-                🗑
-              </button>
             </div>
           );
       }
@@ -652,170 +554,326 @@ const PostPreviewList = ({
     [zoomLevel, copiedIndex, currentDraftPost, onUpdateDraft]
   );
 
+  // Replace the return statement in PostPreviewList component with this:
+
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
+    <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-950/30 dark:to-purple-950/30">
+      {/* Publishing Loading Overlay */}
       <AnimatePresence>
         {showPublishLoading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4"
           >
-            <LoadingBar loading={showPublishLoading} text="Publishing..." />
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl">
+              <LoadingBar loading={showPublishLoading} text="Publishing..." />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-      {currentDraftPost && (
-        <>
-          <div className="text-center space-y-4 mb-8">
-            <h2 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-              Draft Preview
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
-              Review your content before publishing to the world
-            </p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700 mb-8">
-            <h1 className="text-2xl sm:text-3xl font-semibold mb-4 capitalize">
-              {currentDraftPost.title || "Untitled Draft"}
-            </h1>
-            <p className="mb-4 opacity-80">
-              Category: {categoryName || "Uncategorized"}
-            </p>
-          </div>
-          <div className="bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900/20 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700 min-h-96 mb-8">
-            {sanitizedBlocks.length === 0 ? (
-              <p className="italic text-center opacity-80">
-                No content blocks added yet.
-              </p>
-            ) : (
-              sanitizedBlocks.map((block, i) => renderBlock(block, i))
-            )}
-          </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700 mb-8">
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={isFeatured}
-                onChange={() => setIsFeaturedLocal(!isFeatured)}
-                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-              />
-              Feature Post
-            </label>
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={isPinned}
-                onChange={() => setIsPinnedLocal(!isPinned)}
-                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-              />
-              Pin Post
-            </label>
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={isPublished}
-                onChange={() => setIsPublishedLocal(!isPublished)}
-                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-              />
-              Publish Post
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="font-medium">Language</span>
-              <input
-                type="text"
-                value={language}
-                onChange={(e) => setLanguageLocal(e.target.value)}
-                placeholder="e.g., en"
-                className="px-3 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
-            </label>
-          </div>
-
-          <button
-            onClick={createPost}
-            disabled={isSubmitting || createLoading}
-            className={`w-full flex items-center justify-center text-xl font-bold py-6 rounded-3xl shadow-xl transition-all duration-300 transform hover:scale-[1.02] ${
-              isSubmitting || createLoading
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white shadow-2xl"
-            }`}
-          >
-            {isSubmitting || createLoading ? (
-              <div className="flex items-center gap-3">
-                <Loader2 className="animate-spin" size={24} />
-                Creating Amazing Content...
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <Sparkles size={24} />
-                Create Post
-                <Sparkles size={24} />
-              </div>
-            )}
-          </button>
-          {createError && (
-            <p className="mt-2 text-red-500 text-sm text-center">
-              {createError}
-            </p>
-          )}
-        </>
-      )}
-      {allPosts.length === 0 ? (
-        <p className="text-center mt-8 opacity-80">No posts available yet.</p>
-      ) : (
-        <div className="grid gap-6 mt-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {allPosts.map((post) => {
-            const firstBlock = post.blocks.find((b) =>
-              ["image", "text", "file", "heading"].includes(b.type)
-            );
-            return (
+      {/* Main Content Container */}
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
+        {currentDraftPost && (
+          <>
+            {/* Header Section */}
+            <div className="text-center mb-8 sm:mb-12 space-y-3 sm:space-y-4">
               <motion.div
-                key={post._id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-lg transition-all duration-300"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-700 dark:text-blue-300 text-sm font-medium mb-2"
               >
-                <div
-                  onClick={() => dispatch(getSinglePost(post.slug))}
-                  className="cursor-pointer"
-                >
-                  {firstBlock?.type === "image" ? (
-                    <img
-                      src={firstBlock.src}
-                      alt={firstBlock.caption || "Post Image"}
-                      className="w-full h-40 object-cover rounded-t-xl hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        console.error(
-                          "[PostPreviewList] Image load error for post:",
-                          post._id
-                        );
-                        e.target.style.display = "none";
-                      }}
-                      loading="lazy"
-                    />
-                  ) : firstBlock?.type === "text" ? (
-                    <div
-                      className="p-4 line-clamp-3 text-sm list-inside"
-                      dangerouslySetInnerHTML={{
-                        __html: DOMPurify.sanitize(firstBlock.value),
-                      }}
-                    />
-                  ) : (
-                    <div className="p-4 italic text-sm">
-                      No preview available
-                    </div>
-                  )}
-                </div>
+                <Sparkles size={16} />
+                <span>Draft Preview</span>
               </motion.div>
-            );
-          })}
-        </div>
-      )}
+
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent leading-tight">
+                Review Your Content
+              </h2>
+
+              <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg max-w-2xl mx-auto">
+                Take a final look before publishing to the world ✨
+              </p>
+            </div>
+
+            {/* Post Title & Category Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-100 dark:border-gray-700 mb-6 sm:mb-8 hover:shadow-2xl transition-all duration-300"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex-1">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 capitalize text-gray-900 dark:text-white leading-tight">
+                    {currentDraftPost.title || "Untitled Draft"}
+                  </h1>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-full text-purple-700 dark:text-purple-300 text-sm font-medium">
+                      <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
+                      {categoryName || "Uncategorized"}
+                    </span>
+
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">
+                      {sanitizedBlocks.length} block
+                      {sanitizedBlocks.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Content Blocks Preview */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 shadow-xl border border-gray-100 dark:border-gray-700 mb-6 sm:mb-8 min-h-[400px]"
+            >
+              {sanitizedBlocks.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 sm:py-24 text-center">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center mb-4 sm:mb-6">
+                    <Sparkles
+                      className="text-blue-600 dark:text-blue-400"
+                      size={32}
+                    />
+                  </div>
+                  <p className="text-lg sm:text-xl font-medium text-gray-600 dark:text-gray-400 mb-2">
+                    No content blocks yet
+                  </p>
+                  <p className="text-sm sm:text-base text-gray-500 dark:text-gray-500">
+                    Start adding content to see the preview
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4 sm:space-y-6">
+                  {sanitizedBlocks.map((block, i) => renderBlock(block, i))}
+                </div>
+              )}
+            </motion.div>
+
+            {/* Post Settings Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-gradient-to-br from-white to-blue-50/50 dark:from-gray-800 dark:to-blue-950/20 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-100 dark:border-gray-700 mb-6 sm:mb-8"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <Settings
+                    className="text-blue-600 dark:text-blue-400"
+                    size={24}
+                  />
+                </div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                  Post Settings
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                {/* Feature Toggle */}
+                <label className="flex items-center gap-4 p-4 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all group">
+                  <input
+                    type="checkbox"
+                    checked={isFeatured}
+                    onChange={() => setIsFeaturedLocal(!isFeatured)}
+                    className="h-5 w-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Star className="text-yellow-500" size={18} />
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        Feature Post
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Highlight on homepage
+                    </p>
+                  </div>
+                </label>
+
+                {/* Pin Toggle */}
+                <label className="flex items-center gap-4 p-4 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all group">
+                  <input
+                    type="checkbox"
+                    checked={isPinned}
+                    onChange={() => setIsPinnedLocal(!isPinned)}
+                    className="h-5 w-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Pin className="text-red-500" size={18} />
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        Pin Post
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Keep at top
+                    </p>
+                  </div>
+                </label>
+
+                {/* Publish Toggle */}
+                <label className="flex items-center gap-4 p-4 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all group">
+                  <input
+                    type="checkbox"
+                    checked={isPublished}
+                    onChange={() => setIsPublishedLocal(!isPublished)}
+                    className="h-5 w-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Zap className="text-green-500" size={18} />
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        Publish Post
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Make it live
+                    </p>
+                  </div>
+                </label>
+
+                {/* Language Input */}
+                <div className="p-4 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Globe className="text-blue-500" size={18} />
+                    <label className="font-semibold text-gray-900 dark:text-white text-sm">
+                      Language
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={language}
+                    onChange={(e) => setLanguageLocal(e.target.value)}
+                    placeholder="e.g., en or en-US"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Use ISO language code
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Publish Button */}
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              onClick={createPost}
+              disabled={isSubmitting || createLoading}
+              className={`w-full flex items-center justify-center gap-3 text-lg sm:text-xl font-bold py-5 sm:py-6 rounded-2xl shadow-2xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] ${
+                isSubmitting || createLoading
+                  ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
+                  : "bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white shadow-blue-500/50 dark:shadow-blue-900/50"
+              }`}
+            >
+              {isSubmitting || createLoading ? (
+                <>
+                  <Loader2 className="animate-spin" size={24} />
+                  <span className="hidden sm:inline">
+                    Creating Amazing Content...
+                  </span>
+                  <span className="sm:hidden">Creating...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={24} />
+                  <span>Create Post</span>
+                  <Sparkles size={24} />
+                </>
+              )}
+            </motion.button>
+
+            {createError && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-3 sm:mt-4 text-red-500 dark:text-red-400 text-sm sm:text-base text-center font-medium bg-red-50 dark:bg-red-900/20 py-3 rounded-lg"
+              >
+                {createError}
+              </motion.p>
+            )}
+          </>
+        )}
+
+        {/* All Posts Grid */}
+        {allPosts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="mt-12 sm:mt-16"
+          >
+            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-6 sm:mb-8 text-center">
+              Your Posts
+            </h3>
+
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {allPosts.map((post) => {
+                const firstBlock = post.blocks.find((b) =>
+                  ["image", "text", "file", "heading"].includes(b.type)
+                );
+                return (
+                  <motion.div
+                    key={post._id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    whileHover={{ y: -5 }}
+                    className="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-2xl transition-all duration-300 cursor-pointer"
+                    onClick={() => dispatch(getSinglePost(post.slug))}
+                  >
+                    {/* Preview Content */}
+                    <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 overflow-hidden">
+                      {firstBlock?.type === "image" ? (
+                        <img
+                          src={firstBlock.src}
+                          alt={firstBlock.caption || "Post Image"}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                          loading="lazy"
+                        />
+                      ) : firstBlock?.type === "text" ? (
+                        <div
+                          className="p-4 sm:p-6 line-clamp-4 text-sm text-gray-700 dark:text-gray-300"
+                          dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(firstBlock.value),
+                          }}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <p className="text-gray-500 dark:text-gray-400 italic text-sm">
+                            No preview available
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Hover Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4 sm:p-6">
+                      <div className="text-white">
+                        <p className="font-semibold text-base sm:text-lg line-clamp-2">
+                          {post.title}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Confirm Modal */}
       <AnimatePresence>
         {showConfirmModal && (
           <ConfirmPostModal
@@ -824,52 +882,73 @@ const PostPreviewList = ({
           />
         )}
       </AnimatePresence>
+
+      {/* Publishing Countdown */}
       <AnimatePresence>
         {isPostConfirmed && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-lg p-4 flex items-center gap-4 z-50 border border-gray-200 dark:border-gray-800"
+            className="fixed top-4 sm:top-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md"
           >
-            <p>Publishing in {countdown}s...</p>
-            <button
-              onClick={handleConfirmPublish}
-              className="bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600 text-sm"
-            >
-              Publish Now
-            </button>
-            <button
-              onClick={handleCancelPublish}
-              className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 text-sm"
-            >
-              Cancel
-            </button>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+                <div className="flex-1 text-center sm:text-left">
+                  <p className="font-semibold text-gray-900 dark:text-white mb-1">
+                    Publishing in {countdown}s...
+                  </p>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 h-2 rounded-full transition-all duration-1000"
+                      style={{ width: `${((5 - countdown) / 5) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={handleConfirmPublish}
+                    className="flex-1 sm:flex-none bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                  >
+                    Publish Now
+                  </button>
+                  <button
+                    onClick={handleCancelPublish}
+                    className="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Single Post Modal */}
       <AnimatePresence>
         {isModalOpen && singlePost && (
           <motion.div
-            ref={modalRef}
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={closeModal}
-            aria-modal="true"
-            role="dialog"
           >
             <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-lg border border-gray-200 dark:border-gray-800"
+              className="bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl p-6 sm:p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
             >
               <PostView post={singlePost} />
               <button
                 onClick={closeModal}
-                className="mt-4 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition text-sm"
+                className="mt-6 w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg"
               >
-                Close
+                Close Preview
               </button>
             </motion.div>
           </motion.div>
@@ -877,6 +956,232 @@ const PostPreviewList = ({
       </AnimatePresence>
     </div>
   );
+// old code
+  // return (
+  //   <div className="max-w-7xl mx-auto px-1 py-8">
+  //     <AnimatePresence>
+  //       {showPublishLoading && (
+  //         <motion.div
+  //           initial={{ opacity: 0 }}
+  //           animate={{ opacity: 1 }}
+  //           exit={{ opacity: 0 }}
+  //           className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
+  //         >
+  //           <LoadingBar loading={showPublishLoading} text="Publishing..." />
+  //         </motion.div>
+  //       )}
+  //     </AnimatePresence>
+  //     {currentDraftPost && (
+  //       <>
+  //         <div className="text-center space-y-4 mb-8">
+  //           <h2 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+  //             Draft Preview
+  //           </h2>
+  //           <p className="text-gray-600 dark:text-gray-400 text-lg">
+  //             Review your content before publishing to the world
+  //           </p>
+  //         </div>
+  //         <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700 mb-8">
+  //           <h1 className="text-2xl sm:text-3xl font-semibold mb-4 capitalize">
+  //             {currentDraftPost.title || "Untitled Draft"}
+  //           </h1>
+  //           <p className="mb-4 opacity-80">
+  //             Category: {categoryName || "Uncategorized"}
+  //           </p>
+  //         </div>
+  //         <div className="bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900/20 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700 min-h-96 mb-8">
+  //           {sanitizedBlocks.length === 0 ? (
+  //             <p className="italic text-center opacity-80">
+  //               No content blocks added yet.
+  //             </p>
+  //           ) : (
+  //             sanitizedBlocks.map((block, i) => renderBlock(block, i))
+  //           )}
+  //         </div>
+
+  //         <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700 mb-8">
+  //           <label className="flex items-center gap-3">
+  //             <input
+  //               type="checkbox"
+  //               checked={isFeatured}
+  //               onChange={() => setIsFeaturedLocal(!isFeatured)}
+  //               className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+  //             />
+  //             Feature Post
+  //           </label>
+  //           <label className="flex items-center gap-3">
+  //             <input
+  //               type="checkbox"
+  //               checked={isPinned}
+  //               onChange={() => setIsPinnedLocal(!isPinned)}
+  //               className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+  //             />
+  //             Pin Post
+  //           </label>
+  //           <label className="flex items-center gap-3">
+  //             <input
+  //               type="checkbox"
+  //               checked={isPublished}
+  //               onChange={() => setIsPublishedLocal(!isPublished)}
+  //               className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+  //             />
+  //             Publish Post
+  //           </label>
+  //           <label className="flex flex-col gap-1">
+  //             <span className="font-medium">Language</span>
+  //             <input
+  //               type="text"
+  //               value={language}
+  //               onChange={(e) => setLanguageLocal(e.target.value)}
+  //               placeholder="e.g., en"
+  //               className="px-3 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+  //             />
+  //           </label>
+  //         </div>
+
+  //         <button
+  //           onClick={createPost}
+  //           disabled={isSubmitting || createLoading}
+  //           className={`w-full flex items-center justify-center text-xl font-bold py-6 rounded-3xl shadow-xl transition-all duration-300 transform hover:scale-[1.02] ${
+  //             isSubmitting || createLoading
+  //               ? "bg-gray-400 cursor-not-allowed"
+  //               : "bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white shadow-2xl"
+  //           }`}
+  //         >
+  //           {isSubmitting || createLoading ? (
+  //             <div className="flex items-center gap-3">
+  //               <Loader2 className="animate-spin" size={24} />
+  //               Creating Amazing Content...
+  //             </div>
+  //           ) : (
+  //             <div className="flex items-center gap-3">
+  //               <Sparkles size={24} />
+  //               Create Post
+  //               <Sparkles size={24} />
+  //             </div>
+  //           )}
+  //         </button>
+  //         {createError && (
+  //           <p className="mt-2 text-red-500 text-sm text-center">
+  //             {createError}
+  //           </p>
+  //         )}
+  //       </>
+  //     )}
+  //     {allPosts.length === 0 ? (
+  //       <p className="text-center mt-8 opacity-80">No posts available yet.</p>
+  //     ) : (
+  //       <div className="grid gap-6 mt-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+  //         {allPosts.map((post) => {
+  //           const firstBlock = post.blocks.find((b) =>
+  //             ["image", "text", "file", "heading"].includes(b.type)
+  //           );
+  //           return (
+  //             <motion.div
+  //               key={post._id}
+  //               layout
+  //               initial={{ opacity: 0, y: 20 }}
+  //               animate={{ opacity: 1, y: 0 }}
+  //               exit={{ opacity: 0, y: -20 }}
+  //               className="relative bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-md border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-lg transition-all duration-300"
+  //             >
+  //               <div
+  //                 onClick={() => dispatch(getSinglePost(post.slug))}
+  //                 className="cursor-pointer"
+  //               >
+  //                 {firstBlock?.type === "image" ? (
+  //                   <img
+  //                     src={firstBlock.src}
+  //                     alt={firstBlock.caption || "Post Image"}
+  //                     className="w-full h-40 object-cover rounded-t-xl hover:scale-105 transition-transform duration-300"
+  //                     onError={(e) => {
+  //                       console.error(
+  //                         "[PostPreviewList] Image load error for post:",
+  //                         post._id
+  //                       );
+  //                       e.target.style.display = "none";
+  //                     }}
+  //                     loading="lazy"
+  //                   />
+  //                 ) : firstBlock?.type === "text" ? (
+  //                   <div
+  //                     className="p-4 line-clamp-3 text-sm list-inside"
+  //                     dangerouslySetInnerHTML={{
+  //                       __html: DOMPurify.sanitize(firstBlock.value),
+  //                     }}
+  //                   />
+  //                 ) : (
+  //                   <div className="p-4 italic text-sm">
+  //                     No preview available
+  //                   </div>
+  //                 )}
+  //               </div>
+  //             </motion.div>
+  //           );
+  //         })}
+  //       </div>
+  //     )}
+  //     <AnimatePresence>
+  //       {showConfirmModal && (
+  //         <ConfirmPostModal
+  //           onConfirm={handleModalConfirm}
+  //           onCancel={handleCancelPublish}
+  //         />
+  //       )}
+  //     </AnimatePresence>
+  //     <AnimatePresence>
+  //       {isPostConfirmed && (
+  //         <motion.div
+  //           initial={{ opacity: 0, y: -20 }}
+  //           animate={{ opacity: 1, y: 0 }}
+  //           exit={{ opacity: 0, y: -20 }}
+  //           className="fixed top-20 left-1/2 -translate-x-1/2 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl shadow-lg p-4 flex items-center gap-4 z-50 border border-gray-200 dark:border-gray-800"
+  //         >
+  //           <p>Publishing in {countdown}s...</p>
+  //           <button
+  //             onClick={handleConfirmPublish}
+  //             className="bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600 text-sm"
+  //           >
+  //             Publish Now
+  //           </button>
+  //           <button
+  //             onClick={handleCancelPublish}
+  //             className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 text-sm"
+  //           >
+  //             Cancel
+  //           </button>
+  //         </motion.div>
+  //       )}
+  //     </AnimatePresence>
+  //     <AnimatePresence>
+  //       {isModalOpen && singlePost && (
+  //         <motion.div
+  //           ref={modalRef}
+  //           initial={{ opacity: 0, y: 50 }}
+  //           animate={{ opacity: 1, y: 0 }}
+  //           exit={{ opacity: 0, y: 50 }}
+  //           className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+  //           onClick={closeModal}
+  //           aria-modal="true"
+  //           role="dialog"
+  //         >
+  //           <motion.div
+  //             onClick={(e) => e.stopPropagation()}
+  //             className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-lg border border-gray-200 dark:border-gray-800"
+  //           >
+  //             <PostView post={singlePost} />
+  //             <button
+  //               onClick={closeModal}
+  //               className="mt-4 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition text-sm"
+  //             >
+  //               Close
+  //             </button>
+  //           </motion.div>
+  //         </motion.div>
+  //       )}
+  //     </AnimatePresence>
+  //   </div>
+  // );
 };
 
 export default PostPreviewList;
