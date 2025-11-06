@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 // Consolidated all icons into lucide-react (Standard library)
 import {
@@ -10,7 +10,6 @@ import {
   Video,
   Plus,
   X,
-  Trash2,
   Minimize2, // Used for the toggle button in the 'open' state
   Maximize2, // Used for the toggle button in the 'closed' state
   Minus, // Replaces FaGripLinesVertical (Divider)
@@ -22,44 +21,8 @@ import {
   Table, // Replaces MdTableChart
 } from "lucide-react";
 
-// External CSS for animations - HIGH PERFORMANCE
+// External CSS - REMOVING UNWANTED INFINITE ANIMATIONS (float and pulse-glow are now removed)
 const styles = `
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
-  50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
-}
-
-@keyframes shimmer {
-  0% { background-position: -1000px 0; }
-  100% { background-position: 1000px 0; }
-}
-
-@keyframes selected-pulse {
-  0%, 100% { 
-    border-color: rgb(59, 130, 246);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-  }
-  50% { 
-    border-color: rgb(37, 99, 235);
-    box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.3);
-  }
-}
-
-.float-animation {
-  animation: float 3s ease-in-out infinite;
-  will-change: transform;
-}
-
-.pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-  will-change: box-shadow;
-}
-
 /* Custom Scrollbar only needed for vertical grid and mobile sheet */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
@@ -86,6 +49,8 @@ const styles = `
   backface-visibility: hidden;
   perspective: 1000px;
 }
+
+/* Removed @keyframes for float and pulse-glow */
 `;
 
 // --- DATA STRUCTURES (Updated with Lucide Icons) ---
@@ -189,15 +154,26 @@ const blockTypes = [
   },
 ];
 
-// --- MAIN TOOLBAR COMPONENT (REPLACING AddBlockSidebar) ---
-
-const ContentBlockToolbar = ({
+// --- MAIN TOOLBAR COMPONENT (RENAMED TO AddBlockSidebar AND PROPS FIXED) ---
+const AddBlockSidebar = ({
   addBlock = () => {},
   selectedBlockIndex = null,
+  // Added missing props to match usage in PostEditor
+  onSelectBlock = () => {},
+  onDeleteBlock = () => {},
+  isDisabled = false,
 }) => {
   // Mobile: isOpen controls the full-screen sheet
   // Desktop: isOpen controls the height expansion
   const [isOpen, setIsOpen] = useState(false);
+
+  // New state to track if the component has mounted (to run staggered animations only ONCE)
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    // Set to true after initial render
+    setHasMounted(true);
+  }, []);
 
   const handleAddBlock = (type, params) => {
     addBlock(type, params, selectedBlockIndex);
@@ -240,6 +216,9 @@ const ContentBlockToolbar = ({
           </div>
           <p className="text-sm font-medium text-text-main-light dark:text-text-main-dark">
             Insert Block <span className="text-blue-400">({selectedInfo})</span>
+            {isDisabled && (
+              <span className="ml-2 text-red-400"> (Limit Reached)</span>
+            )}
           </p>
         </div>
 
@@ -285,12 +264,21 @@ const ContentBlockToolbar = ({
                     <motion.button
                       key={type + label}
                       onClick={() => handleAddBlock(type, params)}
-                      initial={{ opacity: 0, scale: 0.9 }}
+                      disabled={isDisabled} // Use isDisabled prop here
+                      // FIX 2: Only apply initial/delay if component has not mounted yet
+                      initial={!hasMounted ? { opacity: 0, scale: 0.9 } : false}
                       animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.02 }}
-                      className={`bg-gradient-to-br ${color} hover:shadow-xl text-white font-medium px-3 py-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 group relative overflow-hidden`}
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
+                      transition={{ delay: !hasMounted ? index * 0.02 : 0 }}
+                      className={`bg-gradient-to-br ${color} hover:shadow-xl text-white font-medium px-3 py-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 group relative overflow-hidden ${
+                        isDisabled
+                          ? "opacity-50 cursor-not-allowed"
+                          : "hover:bg-opacity-90"
+                      }`}
+                      whileHover={{
+                        scale: isDisabled ? 1 : 1.05,
+                        y: isDisabled ? 0 : -2,
+                      }}
+                      whileTap={{ scale: isDisabled ? 1 : 0.95 }}
                       title={`Add ${label}`}
                     >
                       <div className="relative z-10 w-6 h-6">{icon}</div>
@@ -305,9 +293,7 @@ const ContentBlockToolbar = ({
             </motion.div>
           )}
 
-          {/* STATE B: CLOSED (HORIZONTAL BUTTON ROW, now using flex-wrap)
-            Removed overflow-x-auto and kept flex-wrap.
-          */}
+          {/* STATE B: CLOSED (HORIZONTAL BUTTON ROW, now using flex-wrap) */}
           {!isOpen && (
             <motion.div
               key="horizontal-wrap"
@@ -315,20 +301,24 @@ const ContentBlockToolbar = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              // --- FIX APPLIED HERE: Replaced 'overflow-x-auto' with 'flex-wrap' ---
               className="p-1 flex flex-wrap gap-2 h-full items-center justify-center overflow-y-auto custom-scrollbar"
-              // Added items-start and overflow-y-auto to manage the wrapped content within the fixed height
             >
               {blockTypes.map(({ type, label, color, icon, params }, index) => (
                 <motion.button
                   key={type + label}
                   onClick={() => handleAddBlock(type, params)}
-                  initial={{ opacity: 0, x: -20 }}
+                  disabled={isDisabled} // Use isDisabled prop here
+                  // FIX 2: Only apply initial/delay if component has not mounted yet
+                  initial={!hasMounted ? { opacity: 0, x: -20 } : false}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`bg-gradient-to-br ${color} hover:shadow-lg text-white px-3 py-1 rounded-xl flex items-center gap-2 min-w-[100px] transition-all duration-300 group relative overflow-hidden whitespace-nowrap`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  transition={{ delay: !hasMounted ? index * 0.05 : 0 }}
+                  className={`bg-gradient-to-br ${color} hover:shadow-lg text-white px-3 py-1 rounded-xl flex items-center gap-2 min-w-[100px] transition-all duration-300 group relative overflow-hidden whitespace-nowrap ${
+                    isDisabled
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-opacity-90"
+                  }`}
+                  whileHover={{ scale: isDisabled ? 1 : 1.05 }}
+                  whileTap={{ scale: isDisabled ? 1 : 0.95 }}
                   title={`Add ${label}`}
                 >
                   <div className="relative z-10 w-3 h-3 flex-shrink-0">
@@ -357,9 +347,12 @@ const ContentBlockToolbar = ({
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
             onClick={() => setIsOpen(true)}
-            // Positioned at the top right, below the main fixed navigation
-            className="fixed top-[4.5rem] right-4 w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-2xl z-50 float-animation pulse-glow gpu-accelerated md:hidden"
-            whileTap={{ scale: 0.9 }}
+            disabled={isDisabled} // Use isDisabled prop here
+            // FIX 1: Removed continuous CSS classes (float-animation, pulse-glow)
+            className={`fixed top-[4.5rem] right-4 w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-2xl z-50 gpu-accelerated md:hidden ${
+              isDisabled ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            whileTap={{ scale: isDisabled ? 1 : 0.9 }}
             aria-label="Open Block Menu"
           >
             <Plus className="w-5 h-5" />
@@ -395,7 +388,15 @@ const ContentBlockToolbar = ({
                     <h3 className="font-semibold text-white">
                       Add Content Block
                     </h3>
-                    <p className="text-xs text-gray-400">{selectedInfo}</p>
+                    <p className="text-xs text-gray-400">
+                      {selectedInfo}
+                      {isDisabled && (
+                        <span className="ml-2 text-red-400">
+                          {" "}
+                          (Limit Reached)
+                        </span>
+                      )}
+                    </p>
                   </div>
                 </div>
                 <motion.button
@@ -414,11 +415,19 @@ const ContentBlockToolbar = ({
                       <motion.button
                         key={type + label}
                         onClick={() => handleAddBlock(type, params)}
-                        initial={{ opacity: 0, scale: 0.8 }}
+                        disabled={isDisabled} // Use isDisabled prop here
+                        // FIX 2: Only apply initial/delay if component has not mounted yet
+                        initial={
+                          !hasMounted ? { opacity: 0, scale: 0.8 } : false
+                        }
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 0.05 }}
-                        className={`bg-gradient-to-br ${color} text-white font-medium px-3 py-1.5 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden active:scale-95 gpu-accelerated`}
-                        whileTap={{ scale: 0.9 }}
+                        transition={{ delay: !hasMounted ? index * 0.05 : 0 }}
+                        className={`bg-gradient-to-br ${color} text-white font-medium px-3 py-1.5 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden gpu-accelerated ${
+                          isDisabled
+                            ? "opacity-50 cursor-not-allowed"
+                            : "active:scale-95"
+                        }`}
+                        whileTap={{ scale: isDisabled ? 1 : 0.9 }}
                       >
                         <div className="relative z-10 w-8 h-8 flex items-center justify-center">
                           {icon}
@@ -447,4 +456,4 @@ const ContentBlockToolbar = ({
   );
 };
 
-export default ContentBlockToolbar;
+export default AddBlockSidebar;
