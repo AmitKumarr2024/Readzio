@@ -575,7 +575,7 @@ const PostPreviewList = ({
       </AnimatePresence>
 
       {/* Main Content Container */}
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
+      <div className="w-full max-w-full mx-auto px-2 sm:px-3 lg:px-4 py-6 sm:py-4 lg:py-6">
         {currentDraftPost && (
           <>
             {/* Header Section */}
@@ -583,7 +583,7 @@ const PostPreviewList = ({
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-700 dark:text-blue-300 text-sm font-medium mb-2"
+                className="inline-flex items-center gap-2 px-1 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-700 dark:text-blue-300 text-sm font-medium mb-2"
               >
                 <Sparkles size={16} />
                 <span>Draft Preview</span>
@@ -956,7 +956,7 @@ const PostPreviewList = ({
       </AnimatePresence>
     </div>
   );
-// old code
+  // old code
   // return (
   //   <div className="max-w-7xl mx-auto px-1 py-8">
   //     <AnimatePresence>
