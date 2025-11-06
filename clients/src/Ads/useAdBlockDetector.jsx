@@ -3,96 +3,89 @@ import { useState, useEffect } from "react";
 
 const useAdBlockDetector = () => {
   const [isAdBlocked, setIsAdBlocked] = useState(false);
-  const [isBrave, setIsBrave] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
-    // Define the interval for re-checking (e.g., every 5 seconds)
-    const CHECK_INTERVAL = 5000; // 5 seconds
 
-    const detectAdBlocker = async () => {
-      // ... (Rest of your detection logic remains the same) ...
-
+    const checkAdBlock = async () => {
       let detections = {
         domBlocked: false,
         scriptBlocked: false,
         fetchBlocked: false,
-        isBraveBrowser: false,
+        isBrave: false,
       };
 
-      // 1. Check if Brave browser first
+      // 1. Check if Brave browser
       try {
         if (navigator.brave && typeof navigator.brave.isBrave === "function") {
-          detections.isBraveBrowser = await navigator.brave.isBrave();
+          detections.isBrave = await navigator.brave.isBrave();
         }
       } catch (e) {
         // Not Brave
       }
 
-      // Also check user agent as fallback
-      if (!detections.isBraveBrowser) {
-        detections.isBraveBrowser = /Brave/.test(navigator.userAgent);
+      // Fallback: Check user agent
+      if (!detections.isBrave) {
+        detections.isBrave = /Brave/.test(navigator.userAgent);
       }
 
-      // 2. DOM-based detection (multiple tests)
-      const testElements = [
-        { className: "adsbox ad-banner advertisement", id: "ad-test-1" },
-        { className: "adsbygoogle sponsor-ads", id: "ad-test-2" },
-        { className: "ad ads pub_300x250", id: "ad-test-3" },
+      // 2. Multiple DOM-based detection tests
+      const testClasses = [
+        "adsbox ad-banner advertisement",
+        "adsbygoogle sponsor-ads",
+        "ad ads pub_300x250",
       ];
 
-      for (const test of testElements) {
-        const adDiv = document.createElement("div");
-        adDiv.className = test.className;
-        adDiv.id = test.id;
-        adDiv.style.cssText =
+      for (const className of testClasses) {
+        const bait = document.createElement("div");
+        bait.className = className;
+        bait.style.cssText =
           "height: 1px !important; width: 1px !important; position: absolute !important; top: -9999px !important; left: -9999px !important;";
-        document.body.appendChild(adDiv);
+        document.body.appendChild(bait);
 
-        await new Promise((resolve) => {
-          setTimeout(() => {
-            const styles = window.getComputedStyle(adDiv);
-            if (
-              styles.display === "none" ||
-              styles.visibility === "hidden" ||
-              adDiv.offsetHeight === 0 ||
-              adDiv.offsetWidth === 0
-            ) {
-              detections.domBlocked = true;
-            }
-            adDiv.remove();
-            resolve();
-          }, 50);
-        });
+        // Check immediately
+        const styles = window.getComputedStyle(bait);
+        if (
+          styles.display === "none" ||
+          styles.visibility === "hidden" ||
+          bait.offsetHeight === 0 ||
+          bait.offsetWidth === 0
+        ) {
+          detections.domBlocked = true;
+        }
+
+        // Cleanup
+        if (bait.parentNode) {
+          document.body.removeChild(bait);
+        }
+
+        if (detections.domBlocked) break; // No need to test more
       }
 
-      // Wait for DOM tests
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      // 3. Script loading detection (Google AdSense)
+      // 3. Script loading detection
       detections.scriptBlocked = await new Promise((resolve) => {
-        const testScript = document.createElement("script");
-        testScript.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?v=${Date.now()}`;
-        testScript.async = true;
+        const script = document.createElement("script");
+        script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?t=${Date.now()}`;
+        script.async = true;
 
         const timeout = setTimeout(() => {
-          testScript.remove();
-          resolve(true); // Blocked
+          script.remove();
+          resolve(true); // Assume blocked
         }, 3000);
 
-        testScript.onload = () => {
+        script.onload = () => {
           clearTimeout(timeout);
-          testScript.remove();
+          script.remove();
           resolve(false); // Not blocked
         };
 
-        testScript.onerror = () => {
+        script.onerror = () => {
           clearTimeout(timeout);
-          testScript.remove();
+          script.remove();
           resolve(true); // Blocked
         };
 
-        document.head.appendChild(testScript);
+        document.head.appendChild(script);
       });
 
       // 4. Fetch-based detection
@@ -115,57 +108,49 @@ const useAdBlockDetector = () => {
         detections.fetchBlocked = true;
       }
 
-      // 5. Additional Brave-specific checks
-      if (detections.isBraveBrowser) {
-        // Check for Brave Shields indicators
-        const braveCheck = document.createElement("div");
-        braveCheck.className = "brave-ad-block-test";
-        braveCheck.style.cssText =
+      // 5. Brave-specific check
+      if (detections.isBrave) {
+        const braveTest = document.createElement("div");
+        braveTest.className = "brave-ad-test";
+        braveTest.style.cssText =
           "height: 1px; width: 1px; position: absolute; top: -9999px;";
-        document.body.appendChild(braveCheck);
+        document.body.appendChild(braveTest);
 
-        await new Promise((resolve) => {
-          setTimeout(() => {
-            if (braveCheck.offsetHeight === 0) {
-              detections.domBlocked = true;
-            }
-            braveCheck.remove();
-            resolve();
-          }, 100);
-        });
+        setTimeout(() => {
+          if (braveTest.offsetHeight === 0) {
+            detections.domBlocked = true;
+          }
+          if (braveTest.parentNode) {
+            braveTest.remove();
+          }
+        }, 100);
       }
 
-      // Determine if ads are blocked
-      const isBlocked =
-        detections.domBlocked ||
-        detections.scriptBlocked ||
-        detections.fetchBlocked;
+      // Wait for all async checks
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
+      // Final determination
       if (isMounted) {
+        const isBlocked =
+          detections.domBlocked ||
+          detections.scriptBlocked ||
+          detections.fetchBlocked;
         setIsAdBlocked(isBlocked);
-        setIsBrave(detections.isBraveBrowser);
       }
     };
 
-    // Initial check (after a delay)
-    const initialTimeoutId = setTimeout(() => {
-      detectAdBlocker();
+    // Delay initial check to ensure page is loaded
+    const timeoutId = setTimeout(() => {
+      checkAdBlock();
     }, 1000);
-
-    // Set up interval for re-checking
-    const intervalId = setInterval(() => {
-      detectAdBlocker();
-    }, CHECK_INTERVAL);
 
     return () => {
       isMounted = false;
-      clearTimeout(initialTimeoutId);
-      // Clean up the interval when the component unmounts
-      clearInterval(intervalId);
+      clearTimeout(timeoutId);
     };
-  }, []); // The dependency array remains empty
+  }, []);
 
-  return { isAdBlocked, isBrave };
+  return isAdBlocked;
 };
 
 export default useAdBlockDetector;
