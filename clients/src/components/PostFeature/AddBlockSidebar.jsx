@@ -163,9 +163,6 @@ const AddBlockSidebar = ({
   onDeleteBlock = () => {},
   isDisabled = false,
 }) => {
-  // This log will now only run when the component actually re-renders due to prop changes.
-  console.log("AddBlockSidebar render:", { selectedBlockIndex, isDisabled });
-
   // Mobile: isOpen controls the full-screen sheet
   // Desktop: isOpen controls the height expansion
   const [isOpen, setIsOpen] = useState(false);
@@ -460,6 +457,13 @@ const AddBlockSidebar = ({
   );
 };
 
-// Wrap the component with React.memo()
-// This ensures the component only re-renders if its props change.
-export default React.memo(AddBlockSidebar);
+// Custom comparator to ignore function prop changes
+const arePropsEqual = (prevProps, nextProps) => {
+  return (
+    prevProps.selectedBlockIndex === nextProps.selectedBlockIndex &&
+    prevProps.isDisabled === nextProps.isDisabled
+  );
+};
+
+// Wrap the component with React.memo using custom comparator
+export default React.memo(AddBlockSidebar, arePropsEqual);
