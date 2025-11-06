@@ -163,6 +163,8 @@ const AddBlockSidebar = ({
   onDeleteBlock = () => {},
   isDisabled = false,
 }) => {
+  console.log("AddBlockSidebar render:", { selectedBlockIndex, isDisabled });
+
   // Mobile: isOpen controls the full-screen sheet
   // Desktop: isOpen controls the height expansion
   const [isOpen, setIsOpen] = useState(false);
