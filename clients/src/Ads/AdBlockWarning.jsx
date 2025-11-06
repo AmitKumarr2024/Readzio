@@ -97,7 +97,7 @@ const AdBlockWarning = () => {
 
       {/* Main AdBlock Warning */}
       <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 backdrop-blur-lg bg-black/50 animate-fadeIn overflow-y-auto">
-        <div className="relative max-w-sm w-full my-4 animate-scaleIn max-h-[90vh] overflow-y-auto">
+        <div className="relative max-w-sm w-full my-4 animate-scaleIn max-h-[90vh] ">
           {/* Animated glow effects */}
           <div className="absolute inset-0 bg-gradient-to-br from-red-500/30 via-orange-500/30 to-pink-500/30 rounded-2xl blur-xl animate-pulse" />
           <div className="absolute -top-4 -right-4 w-16 h-16 bg-red-500/20 rounded-full blur-xl animate-pulse" />

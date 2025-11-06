@@ -7,8 +7,12 @@ const useAdBlockDetector = () => {
 
   useEffect(() => {
     let isMounted = true;
+    // Define the interval for re-checking (e.g., every 5 seconds)
+    const CHECK_INTERVAL = 5000; // 5 seconds
 
     const detectAdBlocker = async () => {
+      // ... (Rest of your detection logic remains the same) ...
+
       let detections = {
         domBlocked: false,
         scriptBlocked: false,
@@ -143,16 +147,23 @@ const useAdBlockDetector = () => {
       }
     };
 
-    // Delay to ensure page is fully loaded
-    const timeoutId = setTimeout(() => {
+    // Initial check (after a delay)
+    const initialTimeoutId = setTimeout(() => {
       detectAdBlocker();
     }, 1000);
 
+    // Set up interval for re-checking
+    const intervalId = setInterval(() => {
+      detectAdBlocker();
+    }, CHECK_INTERVAL);
+
     return () => {
       isMounted = false;
-      clearTimeout(timeoutId);
+      clearTimeout(initialTimeoutId);
+      // Clean up the interval when the component unmounts
+      clearInterval(intervalId);
     };
-  }, []);
+  }, []); // The dependency array remains empty
 
   return { isAdBlocked, isBrave };
 };
