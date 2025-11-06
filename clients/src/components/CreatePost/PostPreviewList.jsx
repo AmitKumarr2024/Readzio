@@ -575,7 +575,7 @@ const PostPreviewList = ({
       </AnimatePresence>
 
       {/* Main Content Container */}
-      <div className="w-full max-w-full mx-auto px-2 sm:px-3 lg:px-4 py-6 sm:py-4 lg:py-6">
+      <div className="w-full max-w-full mx-auto px-1 sm:px-2 lg:px-3 py-6 sm:py-4 lg:py-6">
         {currentDraftPost && (
           <>
             {/* Header Section */}
