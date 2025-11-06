@@ -374,8 +374,8 @@ const CreatePost = () => {
       {!showPostTypeModal && !showCategoryModal && !isSubmitting && (
         <div className="w-full mt-36">
           {/* Sticky Header with Back Button */}
-          <div className="sticky left-2 top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 shadow-sm">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="sticky  top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 shadow-sm">
+            <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
               <button
                 onClick={() => {
                   localStorage.removeItem("postType");
