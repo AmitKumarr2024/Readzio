@@ -1,10 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaGripLinesVertical, FaPoll, FaQuoteLeft } from "react-icons/fa";
-import { FiLink } from "react-icons/fi";
-import { LuListOrdered } from "react-icons/lu";
-import { RiListUnordered } from "react-icons/ri";
-import { MdTableChart } from "react-icons/md";
+// Consolidated all icons into lucide-react (Standard library)
 import {
   Type,
   Image,
@@ -14,9 +10,16 @@ import {
   Video,
   Plus,
   X,
-  ChevronDown,
-  ChevronUp,
   Trash2,
+  Minimize2, // Used for the toggle button in the 'open' state
+  Maximize2, // Used for the toggle button in the 'closed' state
+  Minus, // Replaces FaGripLinesVertical (Divider)
+  BarChart2, // Replaces FaPoll (Poll)
+  Quote, // Replaces FaQuoteLeft (Quote)
+  Link, // Replaces FiLink (Link)
+  ListOrdered, // Replaces LuListOrdered
+  List, // Replaces RiListUnordered
+  Table, // Replaces MdTableChart
 } from "lucide-react";
 
 // External CSS for animations - HIGH PERFORMANCE
@@ -47,17 +50,6 @@ const styles = `
   }
 }
 
-@keyframes slide-in-left {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
 .float-animation {
   animation: float 3s ease-in-out infinite;
   will-change: transform;
@@ -68,27 +60,10 @@ const styles = `
   will-change: box-shadow;
 }
 
-.shimmer-bg {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-  background-size: 1000px 100%;
-  animation: shimmer 2s infinite linear;
-  will-change: background-position;
-}
-
-.selected-block {
-  animation: selected-pulse 1.5s ease-in-out infinite;
-  will-change: border-color, box-shadow;
-  position: relative;
-}
-
-.delete-button-animated {
-  animation: slide-in-left 0.3s ease-out;
-  will-change: opacity, transform;
-}
-
-/* Scrollbar styling */
+/* Custom Scrollbar only needed for vertical grid and mobile sheet */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
+  height: 6px; 
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -106,11 +81,6 @@ const styles = `
 }
 
 /* Performance optimizations */
-* {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
 .gpu-accelerated {
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -118,99 +88,57 @@ const styles = `
 }
 `;
 
+// --- DATA STRUCTURES (Updated with Lucide Icons) ---
 const blockTypes = [
   {
     type: "text",
     label: "Text",
     color: "from-indigo-500 to-indigo-600",
     icon: <Type size={14} />,
-    params: { value: "" },
-  },
-  {
-    type: "image",
-    label: "Image",
-    color: "from-green-500 to-green-600",
-    icon: <Image size={14} />,
-    params: { src: "", caption: "" },
-  },
-  {
-    type: "code",
-    label: "Code",
-    color: "from-purple-500 to-purple-600",
-    icon: <Code size={14} />,
-    params: { code: "", language: "", caption: "" },
-  },
-  {
-    type: "file",
-    label: "File",
-    color: "from-pink-500 to-pink-600",
-    icon: <FileText size={14} />,
-    params: { url: "", name: "", size: 0 },
+    params: { value: "New Text Block" },
   },
   {
     type: "heading",
     label: "Heading",
     color: "from-blue-500 to-blue-600",
     icon: <Hash size={14} />,
-    params: { text: "", level: 2 },
+    params: { text: "New Heading", level: 2 },
   },
   {
-    type: "hr",
-    label: "HR Line",
-    color: "from-gray-400 to-gray-500",
-    icon: <FaGripLinesVertical size={14} />,
-    params: { caption: "" },
-  },
-  {
-    type: "link",
-    label: "Link",
-    color: "from-teal-500 to-teal-600",
-    icon: <FiLink size={14} />,
-    params: { href: "", text: "" },
-  },
-  {
-    type: "list",
-    label: "Ordered",
+    type: "list-ordered",
+    label: "Ordered List",
     color: "from-orange-500 to-orange-600",
-    icon: <LuListOrdered size={14} />,
+    icon: <ListOrdered size={14} />,
     params: { ordered: true, items: ["Item 1", "Item 2"] },
   },
   {
-    type: "list",
-    label: "Unordered",
+    type: "list-unordered",
+    label: "Unordered List",
     color: "from-orange-400 to-orange-500",
-    icon: <RiListUnordered size={14} />,
+    icon: <List size={14} />,
     params: { ordered: false, items: ["Item 1", "Item 2"] },
-  },
-  {
-    type: "poll",
-    label: "Poll",
-    color: "from-pink-600 to-pink-700",
-    icon: <FaPoll size={14} />,
-    params: {
-      question: "",
-      options: ["Option 1", "Option 2"],
-      votedUserIds: [],
-    },
   },
   {
     type: "quote",
     label: "Quote",
     color: "from-gray-600 to-gray-700",
-    icon: <FaQuoteLeft size={14} />,
+    icon: <Quote size={14} />,
     params: { text: "Your quote...", author: "Author" },
   },
   {
-    type: "table",
-    label: "Table",
-    color: "from-cyan-500 to-cyan-600",
-    icon: <MdTableChart size={14} />,
+    type: "hr",
+    label: "Divider",
+    color: "from-gray-400 to-gray-500",
+    icon: <Minus size={14} />,
+    params: { caption: "" },
+  },
+  {
+    type: "image",
+    label: "Image",
+    color: "from-green-500 to-green-600",
+    icon: <Image size={14} />,
     params: {
-      headers: ["Header 1", "Header 2"],
-      rows: [
-        ["Cell 1", "Cell 2"],
-        ["Cell 3", "Cell 4"],
-      ],
+      src: "https://placehold.co/150x100/3b82f6/ffffff?text=Image",
       caption: "",
     },
   },
@@ -219,267 +147,302 @@ const blockTypes = [
     label: "Video",
     color: "from-red-500 to-red-600",
     icon: <Video size={14} />,
-    params: { src: "", caption: "" },
+    params: {
+      src: "https://placehold.co/150x100/ef4444/ffffff?text=Video",
+      caption: "",
+    },
+  },
+  {
+    type: "link",
+    label: "Link",
+    color: "from-teal-500 to-teal-600",
+    icon: <Link size={14} />,
+    params: { href: "#", text: "New Link" },
+  },
+  {
+    type: "code",
+    label: "Code",
+    color: "from-purple-500 to-purple-600",
+    icon: <Code size={14} />,
+    params: { code: "// your code here", language: "javascript", caption: "" },
+  },
+  {
+    type: "table",
+    label: "Table",
+    color: "from-cyan-500 to-cyan-600",
+    icon: <Table size={14} />,
+    params: { headers: ["H1", "H2"], rows: [["C1", "C2"]] },
+  },
+  {
+    type: "poll",
+    label: "Poll",
+    color: "from-pink-600 to-pink-700",
+    icon: <BarChart2 size={14} />,
+    params: { question: "New Poll?", options: ["Yes", "No"], votedUserIds: [] },
+  },
+  {
+    type: "file",
+    label: "File",
+    color: "from-pink-500 to-pink-600",
+    icon: <FileText size={14} />,
+    params: { url: "#", name: "File.pdf", size: "1.2 MB" },
   },
 ];
 
-const AddBlockSidebar = ({
+// --- MAIN TOOLBAR COMPONENT (REPLACING AddBlockSidebar) ---
+
+const ContentBlockToolbar = ({
   addBlock = () => {},
   selectedBlockIndex = null,
-  onSelectBlock = () => {},
-  onDeleteBlock = () => {},
 }) => {
+  // Mobile: isOpen controls the full-screen sheet
+  // Desktop: isOpen controls the height expansion
   const [isOpen, setIsOpen] = useState(false);
 
   const handleAddBlock = (type, params) => {
     addBlock(type, params, selectedBlockIndex);
+    // On small screens, close the sheet after adding a block
     if (window.innerWidth < 768) {
       setIsOpen(false);
     }
   };
 
-  return (
-    <>
-      <style>{styles}</style>
+  const selectedInfo = useMemo(() => {
+    if (selectedBlockIndex === null || selectedBlockIndex < 0)
+      return "At the end";
+    return `After Block ${selectedBlockIndex + 1}`;
+  }, [selectedBlockIndex]);
 
-      {/* Desktop Left Sidebar */}
-      <div className="hidden md:block fixed left-0 top-16 h-[calc(100vh-4rem)] w-80 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-2xl z-50 overflow-hidden border-r border-gray-700">
-        <motion.div
-          initial={false}
-          animate={{ width: isOpen ? "320px" : "80px" }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="h-full flex flex-col"
+  // Constants for desktop animation
+  // Increased height to accommodate wrapped buttons (flex-wrap)
+  const DESKTOP_CLOSED_HEIGHT = 120;
+  const DESKTOP_OPEN_HEIGHT = 300;
+
+  // --- DESKTOP VIEW (Top Bar / Slider Navbar) ---
+  const DesktopToolbar = () => (
+    <motion.div
+      initial={false}
+      // Animate height based on open/closed state
+      animate={{
+        height: isOpen
+          ? `${DESKTOP_OPEN_HEIGHT}px`
+          : `${DESKTOP_CLOSED_HEIGHT}px`,
+      }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
+      className="fixed left-0 top-16 w-full bg-gray-900 text-white shadow-2xl z-50  flex-col border-b border-blue-700/50 overflow-hidden hidden md:flex"
+    >
+      {/* 1. Header/Toggle Bar (Always visible) */}
+      <div className="p-2 flex items-center justify-between flex-shrink-0 bg-gray-800 border-b border-blue-700/30">
+        {/* Left Status Area */}
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+            <Plus className="w-3 h-3 text-white" />
+          </div>
+          <p className="text-sm font-medium text-gray-200">
+            Insert Block <span className="text-blue-400">({selectedInfo})</span>
+          </p>
+        </div>
+
+        {/* Right Toggle Button (Minimize/Maximize Icon with Label) */}
+        <motion.button
+          onClick={() => setIsOpen(!isOpen)}
+          className="px-3 py-1 bg-gray-700/50 rounded-full flex items-center gap-2 text-sm font-medium text-white hover:bg-blue-600 transition-all duration-300 shadow-md"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          aria-expanded={isOpen}
+          aria-label={isOpen ? "Minimize Block Menu" : "Maximize Block Menu"}
         >
-          {/* Toggle Button */}
-          <motion.button
-            onClick={() => setIsOpen(!isOpen)}
-            className="absolute right-2 top-2 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all duration-300 z-10"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </motion.button>
+          {isOpen ? (
+            <>
+              <Minimize2 size={14} className="flex-shrink-0" />
+              <span className="hidden sm:inline">Minimize</span>
+            </>
+          ) : (
+            <>
+              <Maximize2 size={14} className="flex-shrink-0" />
+              <span className="hidden sm:inline">Maximize</span>
+            </>
+          )}
+        </motion.button>
+      </div>
 
-          {/* Header */}
-          <div className="p-4 border-b border-gray-700 flex items-center justify-start flex-shrink-0 h-16">
-            <AnimatePresence mode="wait">
-              {isOpen ? (
-                <motion.div
-                  initial={{ opacity: 0, x: -10 }}
+      {/* 2. Blocks Container (Animated Content) */}
+      <div className="flex-1 overflow-hidden custom-scrollbar">
+        <AnimatePresence mode="wait">
+          {/* STATE A: OPEN (GRID LAYOUT) */}
+          {isOpen && (
+            <motion.div
+              key="grid"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="p-3 overflow-y-auto h-full"
+            >
+              <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 xl:grid-cols-10 gap-3">
+                {blockTypes.map(
+                  ({ type, label, color, icon, params }, index) => (
+                    <motion.button
+                      key={type + label}
+                      onClick={() => handleAddBlock(type, params)}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.02 }}
+                      className={`bg-gradient-to-br ${color} hover:shadow-xl text-white font-medium p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 group relative overflow-hidden`}
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      title={`Add ${label}`}
+                    >
+                      <div className="relative z-10">{icon}</div>
+                      <span className="relative z-10 text-xs leading-tight text-center truncate">
+                        {label}
+                      </span>
+                      <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </motion.button>
+                  )
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* STATE B: CLOSED (HORIZONTAL BUTTON ROW, now using flex-wrap)
+            Removed overflow-x-auto and kept flex-wrap.
+          */}
+          {!isOpen && (
+            <motion.div
+              key="horizontal-wrap"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              // --- FIX APPLIED HERE: Replaced 'overflow-x-auto' with 'flex-wrap' ---
+              className="p-2 flex flex-wrap gap-2 h-full items-start overflow-y-auto custom-scrollbar"
+              // Added items-start and overflow-y-auto to manage the wrapped content within the fixed height
+            >
+              {blockTypes.map(({ type, label, color, icon, params }, index) => (
+                <motion.button
+                  key={type + label}
+                  onClick={() => handleAddBlock(type, params)}
+                  initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex items-center gap-3"
+                  transition={{ delay: index * 0.05 }}
+                  className={`bg-gradient-to-br ${color} hover:shadow-lg text-white px-3 py-1 rounded-xl flex items-center gap-2 min-w-[100px] transition-all duration-300 group relative overflow-hidden whitespace-nowrap`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  title={`Add ${label}`}
                 >
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <div className="relative z-10 flex-shrink-0">{icon}</div>
+                  <span className="relative z-10 text-xs leading-tight truncate font-medium">
+                    {label}
+                  </span>
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+
+  // --- MOBILE VIEW (Floating Button & Top Sheet) ---
+  const MobileToolbar = () => (
+    <>
+      {/* Floating Plus Button (When closed, positioned under the fixed header) */}
+      <AnimatePresence>
+        {!isOpen && (
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            onClick={() => setIsOpen(true)}
+            // Positioned at the top right, below the main fixed navigation
+            className="fixed top-[4.5rem] right-4 w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-2xl z-50 float-animation pulse-glow gpu-accelerated md:hidden"
+            whileTap={{ scale: 0.9 }}
+            aria-label="Open Block Menu"
+          >
+            <Plus className="w-5 h-5" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Full-Screen Sheet (When open) - Modified to slide down from the top */}
+      <AnimatePresence>
+        {isOpen && (
+          <div className="md:hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              // Slides down from the top, below the main header (top-16)
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -20, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed top-16 left-0 w-full max-h-[80vh] bg-gray-900 rounded-b-xl z-[60] flex flex-col shadow-2xl border-b border-blue-700/50 gpu-accelerated overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-gray-800 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
                     <Plus className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white text-sm">
-                      Add Block
+                    <h3 className="font-semibold text-white">
+                      Add Content Block
                     </h3>
-                    <p className="text-xs text-gray-400">
-                      {selectedBlockIndex !== null
-                        ? "After selected"
-                        : "At end"}
-                    </p>
+                    <p className="text-xs text-gray-400">{selectedInfo}</p>
                   </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center"
+                </div>
+                <motion.button
+                  onClick={() => setIsOpen(false)}
+                  className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center text-white"
+                  whileTap={{ scale: 0.9 }}
+                  aria-label="Close Menu"
                 >
-                  <Plus className="w-5 h-5 text-white" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Blocks Container */}
-          <div className="flex-1 overflow-hidden custom-scrollbar">
-            <AnimatePresence mode="wait">
-              {isOpen ? (
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2 }}
-                  className="p-4 overflow-y-auto h-full slide-in-left"
-                >
-                  <div className="grid grid-cols-2 gap-3">
-                    {blockTypes.map(
-                      ({ type, label, color, icon, params }, index) => (
-                        <motion.button
-                          key={type + label}
-                          onClick={() => handleAddBlock(type, params)}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.03 }}
-                          className={`bg-gradient-to-br ${color} hover:shadow-lg text-white font-medium p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 group relative overflow-hidden`}
-                          whileHover={{ scale: 1.05, y: -2 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <div className="absolute inset-0 shimmer-bg opacity-0 group-hover:opacity-100" />
-                          <div className="relative z-10">{icon}</div>
-                          <span className="relative z-10 text-xs leading-tight text-center truncate">
-                            {label}
-                          </span>
-                        </motion.button>
-                      )
-                    )}
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="p-4 overflow-y-auto h-full flex flex-col gap-3 items-center justify-center"
-                >
+                  <X size={20} />
+                </motion.button>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+                <div className="grid grid-cols-3 gap-3">
                   {blockTypes.map(
                     ({ type, label, color, icon, params }, index) => (
                       <motion.button
                         key={type + label}
                         onClick={() => handleAddBlock(type, params)}
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.03 }}
-                        className={`bg-gradient-to-br ${color} hover:shadow-lg text-white p-3 rounded-xl flex items-center justify-center w-full transition-all duration-300 group relative overflow-hidden`}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        title={label}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.05 }}
+                        className={`bg-gradient-to-br ${color} text-white font-medium p-4 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden active:scale-95 gpu-accelerated`}
+                        whileTap={{ scale: 0.9 }}
                       >
-                        <div className="absolute inset-0 shimmer-bg opacity-0 group-hover:opacity-100" />
-                        <div className="relative z-10">{icon}</div>
+                        <div className="relative z-10 w-8 h-8 flex items-center justify-center">
+                          {icon}
+                        </div>
+                        <span className="relative z-10 text-xs leading-tight text-center">
+                          {label}
+                        </span>
                       </motion.button>
                     )
                   )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Selected Block Info */}
-          {selectedBlockIndex !== null && isOpen && (
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="p-3 border-t border-gray-700 bg-blue-500/10 flex-shrink-0"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-blue-300">
-                    Block {selectedBlockIndex + 1} selected
-                  </span>
                 </div>
-                <button
-                  onClick={() => onSelectBlock(null)}
-                  className="text-xs text-gray-400 hover:text-white transition-colors"
-                >
-                  Clear
-                </button>
               </div>
             </motion.div>
-          )}
-        </motion.div>
-      </div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  );
 
-      {/* Mobile Bottom Sheet */}
-      <div className="md:hidden">
-        <AnimatePresence>
-          {!isOpen && (
-            <motion.button
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              onClick={() => setIsOpen(true)}
-              className="fixed bottom-4 right-4 w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-2xl z-50 float-animation pulse-glow gpu-accelerated"
-              whileTap={{ scale: 0.9 }}
-            >
-              <Plus className="w-7 h-7" />
-            </motion.button>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {isOpen && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsOpen(false)}
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
-              />
-              <motion.div
-                initial={{ y: "100%", opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: "100%", opacity: 0 }}
-                transition={{ type: "spring", damping: 25, stiffness: 500 }}
-                className="fixed bottom-0 left-0 w-full max-h-[80vh] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-t-3xl z-50 flex flex-col shadow-2xl border-t border-gray-700 gpu-accelerated overflow-hidden slide-in-left"
-              >
-                <div className="flex items-center justify-between p-4 border-b border-gray-700 flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                      <Plus className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-white">
-                        Add Content Block
-                      </h3>
-                      <p className="text-xs text-gray-400">
-                        {selectedBlockIndex !== null
-                          ? `After block ${selectedBlockIndex + 1}`
-                          : "At the end"}
-                      </p>
-                    </div>
-                  </div>
-                  <motion.button
-                    onClick={() => setIsOpen(false)}
-                    className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center text-white"
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <X size={20} />
-                  </motion.button>
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-                  <div className="grid grid-cols-3 gap-3">
-                    {blockTypes.map(
-                      ({ type, label, color, icon, params }, index) => (
-                        <motion.button
-                          key={type + label}
-                          onClick={() => handleAddBlock(type, params)}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: index * 0.05 }}
-                          className={`bg-gradient-to-br ${color} text-white font-medium p-4 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden active:scale-95 gpu-accelerated`}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          <div className="shimmer-bg absolute inset-0 opacity-30" />
-                          <div className="relative z-10 w-8 h-8 flex items-center justify-center">
-                            {icon}
-                          </div>
-                          <span className="relative z-10 text-xs leading-tight text-center">
-                            {label}
-                          </span>
-                        </motion.button>
-                      )
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </div>
+  return (
+    <>
+      <style>{styles}</style>
+      <DesktopToolbar />
+      <MobileToolbar />
     </>
   );
 };
 
-export default AddBlockSidebar;
+export default ContentBlockToolbar;
