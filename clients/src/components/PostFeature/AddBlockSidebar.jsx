@@ -25,29 +25,29 @@ import {
 const styles = `
 /* Custom Scrollbar only needed for vertical grid and mobile sheet */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px; 
+ width: 6px;
+ height: 6px; 
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
+ background: rgba(0, 0, 0, 0.1);
+ border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.5);
-  border-radius: 10px;
+ background: rgba(59, 130, 246, 0.5);
+ border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(59, 130, 246, 0.7);
+ background: rgba(59, 130, 246, 0.7);
 }
 
 /* Performance optimizations */
 .gpu-accelerated {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
+ transform: translateZ(0);
+ backface-visibility: hidden;
+ perspective: 1000px;
 }
 
 /* Removed @keyframes for float and pulse-glow */
@@ -163,6 +163,7 @@ const AddBlockSidebar = ({
   onDeleteBlock = () => {},
   isDisabled = false,
 }) => {
+  // This log will now only run when the component actually re-renders due to prop changes.
   console.log("AddBlockSidebar render:", { selectedBlockIndex, isDisabled });
 
   // Mobile: isOpen controls the full-screen sheet
@@ -430,6 +431,7 @@ const AddBlockSidebar = ({
                             : "active:scale-95"
                         }`}
                         whileTap={{ scale: isDisabled ? 1 : 0.9 }}
+                        title={`Add ${label}`}
                       >
                         <div className="relative z-10 w-8 h-8 flex items-center justify-center">
                           {icon}
@@ -458,4 +460,6 @@ const AddBlockSidebar = ({
   );
 };
 
-export default AddBlockSidebar;
+// Wrap the component with React.memo()
+// This ensures the component only re-renders if its props change.
+export default React.memo(AddBlockSidebar);
