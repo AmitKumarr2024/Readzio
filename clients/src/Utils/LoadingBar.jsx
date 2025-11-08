@@ -199,7 +199,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
               <div className="absolute inset-0 blur-2xl bg-gradient-to-br from-cyan-500 to-purple-600 opacity-50 rounded-full" />
 
               <motion.div
-                className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl"
+                className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl"
                 style={{
                   boxShadow:
                     "0 0 60px rgba(0, 255, 255, 0.5), 0 0 100px rgba(138, 43, 226, 0.3)",
@@ -263,7 +263,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
               ease: "easeInOut",
             }}
           >
-            <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 mb-2">
+            <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 mb-2">
               {text}
             </h2>
             <motion.div
@@ -295,7 +295,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
           </motion.div>
 
           {/* Progress bar with liquid effect */}
-          <div className="w-96 max-w-[90vw]">
+          <div className="w-60 max-w-[60vw]">
             <div className="relative h-3 bg-gray-800/50 rounded-full overflow-hidden backdrop-blur-sm border border-gray-700/50">
               <motion.div
                 className="absolute inset-0 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 rounded-full"
