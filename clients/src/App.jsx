@@ -6,7 +6,6 @@ import SplashLoader from "./AppRootFile/components/SplashLoader";
 import GoogleLoginPopup from "./AppRootFile/components/GoogleLoginPopup";
 import BroadcastBanner from "./AppRootFile/components/BroadcastBanner";
 import LocationErrorPopup from "./AppRootFile/components/LocationErrorPopup";
-import PageTransitionLoader from "./AppRootFile/components/PageTransitionLoader";
 import { useThemeSetup } from "./AppRootFile/hook/useThemeSetup";
 import { useGeolocation } from "./AppRootFile/hook/useGeolocation";
 import { useSocketInit } from "./AppRootFile/hook/useSocketInit";
@@ -28,6 +27,7 @@ import VerifyBanner from "./AppRootFile/components/VerifyBanner";
 import AppTour from "./AppRootFile/components/AppTour";
 import { dismissBannerNotification } from "./store/bannerNotificationSlice";
 import { toast } from "react-hot-toast";
+import LoadingBar from "./Utils/LoadingBar";
 
 export default function App() {
   const navigation = useNavigation();
@@ -150,7 +150,7 @@ export default function App() {
           Thank you for your feedback!
         </div>
       )}
-      <PageTransitionLoader isLoading={isTransitionLoading} />
+      <LoadingBar text="Loading..." />
       <Outlet />
       <LocationErrorPopup locationError={locationError} onDismiss={() => {}} />
       <CookieConsentBanner />
