@@ -150,7 +150,8 @@ export default function App() {
           Thank you for your feedback!
         </div>
       )}
-      <LoadingBar text="Loading..." />
+      {/* ✅ Only show during navigation transitions */}
+      {isTransitionLoading && <LoadingBar text="Loading..." />}
       <Outlet />
       <LocationErrorPopup locationError={locationError} onDismiss={() => {}} />
       <CookieConsentBanner />
