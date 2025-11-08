@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Outlet, useNavigation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ScrollToTop from "./Utils/ScrollToTop";
 import SplashLoader from "./AppRootFile/components/SplashLoader";
@@ -30,16 +30,23 @@ import { toast } from "react-hot-toast";
 import LoadingBar from "./Utils/LoadingBar";
 
 export default function App() {
-  const navigation = useNavigation();
   const dispatch = useDispatch();
+  const location = useLocation();
   const [booting, setBooting] = useState(true);
-  const [showThankYou, setShowThankYou] = useState(false); // Added state
+  const [showThankYou, setShowThankYou] = useState(false);
+  const [routeLoading, setRouteLoading] = useState(false);
   const isAdBlocked = useAdBlockDetector();
 
   useEffect(() => {
     const timer = setTimeout(() => setBooting(false), 1000);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    setRouteLoading(true);
+    const timer = setTimeout(() => setRouteLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleStorageChange = (e) => {
@@ -74,7 +81,6 @@ export default function App() {
   const { newNotification, feedbackPrompt } = useSelector(
     (state) => state.socket
   );
-  const isTransitionLoading = navigation.state === "loading";
 
   useEffect(() => {
     try {
@@ -92,7 +98,6 @@ export default function App() {
   }, [newNotification]);
 
   const handleDismiss = async (notificationId) => {
-    // Optimistic update
     dispatch(newNotificationReceived(null));
     localStorage.removeItem("newNotification");
 
@@ -102,7 +107,6 @@ export default function App() {
     } catch (err) {
       console.error("[App] Dismiss error:", err);
       toast.error("Failed to dismiss notification");
-      // Revert on error
       if (newNotification) {
         dispatch(newNotificationReceived(newNotification));
         localStorage.setItem(
@@ -150,8 +154,7 @@ export default function App() {
           Thank you for your feedback!
         </div>
       )}
-      {/* ✅ Only show during navigation transitions */}
-      {isTransitionLoading && <LoadingBar text="Loading..." />}
+      {routeLoading && <LoadingBar text="Loading..." />}
       <Outlet />
       <LocationErrorPopup locationError={locationError} onDismiss={() => {}} />
       <CookieConsentBanner />
