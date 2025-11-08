@@ -23,7 +23,7 @@ const NotificationManager = () => {
   if (!isAuthenticated || user?.role !== "admin") return null;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-lg mt-8 transition-all duration-300">
+    <div className="p-6 max-w-7xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-lg mt-8 transition-all duration-300">
       {/* Loading Bar */}
       <LoadingBar loading={loading} text="Fetching notifications..." />
 
