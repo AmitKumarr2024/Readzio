@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { HashLoader } from "react-spinners";
+import LoadingBar from "../../Utils/LoadingBar";
 
 export default function SplashLoader() {
   return (
@@ -15,7 +16,7 @@ export default function SplashLoader() {
         animate={{ opacity: [0.5, 1, 0.5] }}
         transition={{ duration: 1.5, repeat: Infinity }}
       >
-        Loading...
+        <LoadingBar/>
       </motion.p>
     </motion.div>
   );

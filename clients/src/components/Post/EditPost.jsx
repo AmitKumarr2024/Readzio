@@ -12,7 +12,7 @@ import {
   setTags,
 } from "../../store/Post/postMetaSlice";
 import { fetchCategories, selectCategory } from "../../store/categorySlice";
-import { X } from "lucide-react";
+import { X, Save, ImagePlus } from "lucide-react";
 import { Transition } from "@headlessui/react";
 
 const ErrorBoundary = ({ children }) => {
@@ -80,7 +80,7 @@ const EditPost = () => {
               : [
                   ["", ""],
                   ["", ""],
-                ]; // Default 2x2 table
+                ];
           return {
             id: block.id,
             type: "table",
@@ -134,7 +134,7 @@ const EditPost = () => {
             : [
                 ["", ""],
                 ["", ""],
-              ]; // Default 2x2 table
+              ];
         return {
           id: block.id,
           type: "table",
@@ -181,7 +181,7 @@ const EditPost = () => {
       toast.error("Invalid post type selected");
       return;
     }
-    dispatch(setPostType(newPostType)); // Update local state
+    dispatch(setPostType(newPostType));
     try {
       const action = await dispatch(
         updatePost({
@@ -197,7 +197,7 @@ const EditPost = () => {
       }
     } catch (err) {
       toast.error(err.message || "Failed to update post type");
-      dispatch(setPostType(currentPost.postType || "Article")); // Revert on failure
+      dispatch(setPostType(currentPost.postType || "Article"));
     }
   };
 
@@ -206,7 +206,7 @@ const EditPost = () => {
     if (!file) return;
     const reader = new FileReader();
     reader.onloadend = () => {
-      setThumbnail(reader.result); // convert to base64
+      setThumbnail(reader.result);
     };
     reader.readAsDataURL(file);
   };
@@ -232,8 +232,11 @@ const EditPost = () => {
   if (loading && !currentPost) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-        <div className="text-center text-gray-600 dark:text-gray-300 animate-pulse">
-          Loading post...
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">
+            Loading post...
+          </p>
         </div>
       </div>
     );
@@ -259,124 +262,177 @@ const EditPost = () => {
     <ErrorBoundary>
       <LoadingBar loading={updateLoading} />
       <Transition show={isOpen} as={React.Fragment}>
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-hidden bg-black/60 backdrop-blur-sm">
           <Transition.Child
             as={React.Fragment}
             enter="ease-out duration-300"
-            enterFrom="opacity-0 scale-95"
-            enterTo="opacity-100 scale-100"
+            enterFrom="opacity-0 translate-y-8"
+            enterTo="opacity-100 translate-y-0"
             leave="ease-in duration-200"
-            leaveFrom="opacity-100 scale-100"
-            leaveTo="opacity-0 scale-95"
+            leaveFrom="opacity-100 translate-y-0"
+            leaveTo="opacity-0 translate-y-8"
           >
-            <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  navigate(-1);
-                }}
-                className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-white bg-red-500 rounded-full hover:bg-red-600 transition-colors"
-                aria-label="Close modal"
-              >
-                <X className="w-6 h-6" />
-              </button>
-
-              <h2 className="text-3xl font-semibold text-center mb-8 text-gray-900 dark:text-white">
-                Edit Post
-              </h2>
-
-              <div className="space-y-6">
-                <div>
-                  <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                    Title
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-white transition-all"
-                    value={title}
-                    onChange={handleTitleChange}
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                    Thumbnail
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleThumbnailChange}
-                  />
-                  {thumbnail && (
-                    <img
-                      src={thumbnail}
-                      alt="Thumbnail preview"
-                      className="w-full max-w-full h-auto max-h-[500px] object-contain rounded-sm shadow-xl border border-gray-300 dark:border-gray-700 transition-transform duration-300 hover:scale-[1.02]"
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                    Category
-                  </label>
-                  <select
-                    className="w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-white transition-all"
-                    value={selectedCategory?._id || ""}
-                    onChange={handleCategoryChange}
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((cat) => (
-                      <option key={cat._id} value={cat._id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                    Post Type
-                  </label>
-                  <select
-                    className="w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-white transition-all"
-                    value={postType}
-                    onChange={handlePostTypeChange}
-                  >
-                    <option value="">Select post type</option>
-                    <option value="Article">Article</option>
-                    <option value="Blog">Blog</option>
-                  </select>
-                </div>
-
-                <div>
-                  <TagsInput />
-                </div>
-
-                <div>
-                  <label className="block mb-2 text-lg font-semibold text-gray-700 dark:text-gray-200">
-                    Content Blocks
-                  </label>
-                  <div className="border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm p-4 dark:bg-gray-900">
-                    <PostEditor
-                      size={100}
-                      blocks={blocks}
-                      setBlocks={handleBlocksChange}
-                      postType={postType}
-                      category={selectedCategory?._id || ""}
-                      title={title}
-                      setTitle={setTitle}
-                    />
+            <div className="relative w-full h-full overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+              {/* Fixed Header */}
+              <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700 shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent animate-gradient">
+                        Edit Post
+                      </h1>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Make your changes and save
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate(-1);
+                      }}
+                      className="ml-4 p-2 sm:p-3 rounded-full bg-red-500 hover:bg-red-600 text-white transition-all duration-200 hover:scale-110 shadow-lg hover:shadow-xl"
+                      aria-label="Close"
+                    >
+                      <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </button>
                   </div>
                 </div>
+              </div>
 
-                <button
-                  onClick={handleSave}
-                  disabled={updateLoading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-400 text-white font-medium text-lg py-3 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
-                >
-                  {updateLoading ? "Saving..." : "Save Changes"}
-                </button>
+              {/* Main Content */}
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+                <div className="space-y-6">
+                  {/* Title Section */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all duration-200 hover:shadow-md">
+                    <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      Post Title
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 text-base sm:text-lg border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all duration-200"
+                      value={title}
+                      onChange={handleTitleChange}
+                      placeholder="Enter your post title..."
+                    />
+                  </div>
+
+                  {/* Two Column Layout for Medium+ screens */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left Column */}
+                    <div className="space-y-6">
+                      {/* Thumbnail Section */}
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all duration-200 hover:shadow-md">
+                        <label className="md:block mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                          <ImagePlus className="w-4 h-4" />
+                          Thumbnail Image
+                        </label>
+                        <div className="space-y-3">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleThumbnailChange}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-200 transition-all cursor-pointer"
+                          />
+                          {thumbnail && (
+                            <div className="relative group overflow-hidden rounded-lg">
+                              <img
+                                src={thumbnail}
+                                alt="Thumbnail"
+                                className="w-full h-48 object-cover rounded-lg shadow-md transition-transform duration-300 group-hover:scale-105"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Category Section */}
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all duration-200 hover:shadow-md">
+                        <label className="block mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                          Category
+                        </label>
+                        <select
+                          className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all duration-200 cursor-pointer"
+                          value={selectedCategory?._id || ""}
+                          onChange={handleCategoryChange}
+                        >
+                          <option value="">Select a category</option>
+                          {categories.map((cat) => (
+                            <option key={cat._id} value={cat._id}>
+                              {cat.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="space-y-6">
+                      {/* Post Type Section */}
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all duration-200 hover:shadow-md">
+                        <label className="block mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                          Post Type
+                        </label>
+                        <select
+                          className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all duration-200 cursor-pointer"
+                          value={postType}
+                          onChange={handlePostTypeChange}
+                        >
+                          <option value="">Select post type</option>
+                          <option value="Article">Article</option>
+                          <option value="Blog">Blog</option>
+                        </select>
+                      </div>
+
+                      {/* Tags Section */}
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all duration-200 hover:shadow-md">
+                        <label className="block mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                          Tags
+                        </label>
+                        <TagsInput />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Content Editor Section - Full Width */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all duration-200 hover:shadow-md">
+                    <label className="block mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      Content Blocks
+                    </label>
+                    <div className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg p-4 dark:bg-gray-900/50 min-h-[300px]">
+                      <PostEditor
+                        size={100}
+                        blocks={blocks}
+                        setBlocks={handleBlocksChange}
+                        postType={postType}
+                        category={selectedCategory?._id || ""}
+                        title={title}
+                        setTitle={setTitle}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Save Button - Sticky on mobile */}
+                  <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent dark:from-gray-900 dark:via-gray-900 pt-6 pb-6 sm:pb-8">
+                    <button
+                      onClick={handleSave}
+                      disabled={updateLoading}
+                      className="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-purple-600 text-white font-semibold text-base sm:text-lg py-4 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
+                    >
+                      {updateLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          Saving Changes...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-5 h-5" />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </Transition.Child>
