@@ -21,6 +21,7 @@ import {
   resetPostMeta,
 } from "../store/Post/postMetaSlice";
 import debounce from "lodash/debounce";
+import LoadingBar from "../Utils/LoadingBar";
 
 const asyncRetry = async (fn, { retries = 3, minTimeout = 1000 } = {}) => {
   let lastError = null;
@@ -361,14 +362,7 @@ const CreatePost = () => {
       )}
 
       {/* Loading Overlay */}
-      {isSubmitting && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4">
-          <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
-          <p className="mt-4 text-white text-base sm:text-lg font-semibold text-center">
-            Creating your post...
-          </p>
-        </div>
-      )}
+      {isSubmitting && <LoadingBar text="Creating your post..." />}
 
       {/* Main Content Area */}
       {!showPostTypeModal && !showCategoryModal && !isSubmitting && (
@@ -452,139 +446,6 @@ const CreatePost = () => {
       )}
     </div>
   );
-
-  // old code
-  // return (
-  //   <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
-  //     {/* Modals */}
-  //     {showPostTypeModal && (
-  //       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
-  //         <PostTypeSelector
-  //           postType={postType}
-  //           setPostType={(value) => {
-  //             dispatch(setPostType(value));
-  //             localStorage.setItem("postType", value);
-  //           }}
-  //           onContinue={() => {
-  //             setShowPostTypeModal(false);
-  //             setShowCategoryModal(true);
-  //           }}
-  //           onClose={() => {
-  //             localStorage.removeItem("postType");
-  //             navigate("/");
-  //           }}
-  //         />
-  //       </div>
-  //     )}
-
-  //     {showCategoryModal && (
-  //       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
-  //         <CategorySelector
-  //           onBack={() => {
-  //             setShowCategoryModal(false);
-  //             setShowPostTypeModal(true);
-  //           }}
-  //           onContinue={(selectedCategory) => {
-  //             if (!selectedCategory?.id) {
-  //               toast.error("Please select a category", {
-  //                 position: "top-right",
-  //               });
-  //               return;
-  //             }
-  //             dispatch(setCategory(selectedCategory.id));
-  //             setShowCategoryModal(false);
-  //           }}
-  //           onClose={() => {
-  //             localStorage.removeItem("postType");
-  //             navigate("/");
-  //           }}
-  //         />
-  //       </div>
-  //     )}
-
-  //     {/* Loading Overlay */}
-  //     {isSubmitting && (
-  //       <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4">
-  //         <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
-  //         <p className="mt-4 text-white text-base sm:text-lg font-semibold text-center">
-  //           Creating your post...
-  //         </p>
-  //       </div>
-  //     )}
-
-  //     {/* Main Content */}
-  //     {!showPostTypeModal && !showCategoryModal && !isSubmitting && (
-  //       <div className="w-full">
-  //         {/* Header with Back Button */}
-  //         <div className="sticky top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 shadow-sm">
-  //           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-  //             <button
-  //               onClick={() => {
-  //                 localStorage.removeItem("postType");
-  //                 navigate("/");
-  //               }}
-  //               className="inline-flex items-center gap-2 font-semibold text-red-600 dark:text-red-400 border border-red-500 dark:border-red-400 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 text-sm sm:text-base"
-  //             >
-  //               <span className="text-lg">←</span>
-  //               <span className="hidden xs:inline">Cancel & Go Back</span>
-  //               <span className="xs:hidden">Cancel</span>
-  //             </button>
-  //           </div>
-  //         </div>
-
-  //         {/* Two Column Layout */}
-  //         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-  //           <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-  //             {/* Editor Section - Left */}
-  //             <div className="w-full lg:w-3/5 xl:w-2/3">
-  //               <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
-  //                 <PostEditor
-  //                   size={55}
-  //                   title={title}
-  //                   setTitle={setTitle}
-  //                   blocks={blocks}
-  //                   setBlocks={setBlocks}
-  //                   postType={postType}
-  //                   category={selectedCategoryId}
-  //                   categoryName={
-  //                     categoryMap[selectedCategoryId] || selectedCategoryId
-  //                   }
-  //                 />
-  //                 <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 text-center">
-  //                   💡 Images will be uploaded in their original format and
-  //                   quality (up to 5MB each, max {MAX_IMAGE_COUNT} images)
-  //                 </div>
-  //               </div>
-  //             </div>
-
-  //             {/* Preview Section - Right */}
-  //             <div className="w-full lg:w-2/5 xl:w-1/3">
-  //               <div className="lg:sticky lg:top-24">
-  //                 <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
-  //                   <PostPreviewList
-  //                     currentDraftPost={{ title, blocks }}
-  //                     onUpdateDraft={handleUpdateDraft}
-  //                     postType={postType}
-  //                     category={selectedCategoryId}
-  //                     categoryName={
-  //                       categoryMap[selectedCategoryId] || selectedCategoryId
-  //                     }
-  //                     allPosts={filteredPosts}
-  //                     deletePost={handleDeletePost}
-  //                     createLoading={createLoading}
-  //                     createError={createError}
-  //                     onCreatePost={handleCreatePost}
-  //                     isSubmitting={isSubmitting}
-  //                   />
-  //                 </div>
-  //               </div>
-  //             </div>
-  //           </div>
-  //         </div>
-  //       </div>
-  //     )}
-  //   </div>
-  // );
 };
 
 export default CreatePost;
