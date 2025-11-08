@@ -300,7 +300,7 @@ const EditPost = () => {
               </div>
 
               {/* Main Content */}
-              <div className="max-w-full mx-auto   px-1 sm:px-2 lg:px-8  py-4 sm:py-28">
+              <div className="max-w-full mx-auto   px-1 sm:px-2 lg:px-8 mt-20 py-24 sm:py-28">
                 <div className="space-y-4">
                   {/* Title Section */}
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all duration-200 hover:shadow-md">
