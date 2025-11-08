@@ -274,7 +274,7 @@ const EditPost = () => {
           >
             <div className="relative w-full h-full overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
               {/* Fixed Header */}
-              <div className="fixed w-full -top-4 z-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700 shadow-sm">
+              <div className="fixed w-full -top-3 z-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700 shadow-sm">
                 <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-2">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
@@ -300,7 +300,7 @@ const EditPost = () => {
               </div>
 
               {/* Main Content */}
-              <div className="max-w-full mx-auto  px-4 sm:px-6 lg:px-8 mt-14 py-4 sm:py-8">
+              <div className="max-w-full mx-auto   px-1 sm:px-2 lg:px-8  py-4 sm:py-28">
                 <div className="space-y-4">
                   {/* Title Section */}
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all duration-200 hover:shadow-md">
