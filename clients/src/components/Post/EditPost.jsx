@@ -349,7 +349,7 @@ const EditPost = () => {
                       {/* Category Section */}
                       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all duration-200 hover:shadow-md">
                         <label className="block mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                          Category
+                          Categorys
                         </label>
                         <select
                           className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-white transition-all duration-200 cursor-pointer"
