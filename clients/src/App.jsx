@@ -154,7 +154,7 @@ export default function App() {
           Thank you for your feedback!
         </div>
       )}
-      {routeLoading && <LoadingBar loading={routeLoading} text="Loading..." />}
+      {routeLoading && <LoadingBar loading={routeLoading} text="Opening your reading world..." />}
 
       <Outlet />
       <LocationErrorPopup locationError={locationError} onDismiss={() => {}} />

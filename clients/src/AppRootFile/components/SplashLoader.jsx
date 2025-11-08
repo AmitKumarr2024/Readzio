@@ -9,7 +9,8 @@ export default function SplashLoader() {
       exit={{ opacity: 0, transition: { duration: 0.5 } }}
       className="min-h-screen w-full flex flex-col items-center justify-center bg-background-light dark:bg-background-dark"
     >
-      <LoadingBar  text="Loading..."/>
+      {/* ✅ Pass loading={true} to trigger animation */}
+      <LoadingBar loading={true} text="Opening your reading world..." />
     </motion.div>
   );
 }
