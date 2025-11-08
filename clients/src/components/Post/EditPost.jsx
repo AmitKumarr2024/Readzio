@@ -274,8 +274,8 @@ const EditPost = () => {
           >
             <div className="relative w-full h-full overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
               {/* Fixed Header */}
-              <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700 shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+              <div className="sticky top-20 z-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700 shadow-sm">
+                <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-2">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent animate-gradient">
@@ -300,7 +300,7 @@ const EditPost = () => {
               </div>
 
               {/* Main Content */}
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+              <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-4">
                 <div className="space-y-6">
                   {/* Title Section */}
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all duration-200 hover:shadow-md">
