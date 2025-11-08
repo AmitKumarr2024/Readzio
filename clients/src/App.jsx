@@ -154,7 +154,8 @@ export default function App() {
           Thank you for your feedback!
         </div>
       )}
-      {routeLoading && <LoadingBar text="Loading..." />}
+      {routeLoading && <LoadingBar loading={routeLoading} text="Loading..." />}
+
       <Outlet />
       <LocationErrorPopup locationError={locationError} onDismiss={() => {}} />
       <CookieConsentBanner />

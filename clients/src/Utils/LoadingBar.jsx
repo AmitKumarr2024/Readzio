@@ -28,7 +28,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
             clearInterval(interval);
             return 100;
           }
-          return prev + Math.random() * 15;
+          return Math.min(prev + Math.random() * 15, 100);
         });
       }, 300);
 
@@ -85,7 +85,16 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
     return () => cancelAnimationFrame(animationId);
   }, [loading]);
 
-  if (!loading) return null;
+  if (!loading) {
+    return (
+      <motion.div
+        initial={{ opacity: 1 }}
+        animate={{ opacity: 0 }}
+        transition={{ duration: 0.5 }}
+        className="fixed inset-0 bg-black z-[9999]"
+      />
+    );
+  }
 
   return (
     <AnimatePresence>
