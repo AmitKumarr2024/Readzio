@@ -1,8 +1,9 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Tag, Image, Upload, Link, Check, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSelector } from "react-redux";
-import TagsInput from "./TagsInput"; // Assuming TagsInput is in a separate file
+import TagsInput from "./TagsInput";
 
 const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
   const [selectedThumbnail, setSelectedThumbnail] = useState(null);
@@ -13,9 +14,9 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isEmbed, setIsEmbed] = useState(false);
   const [errors, setErrors] = useState({});
-  const tags = useSelector((state) => state.postMeta.tags || []); // Get tags from Redux
+  const tags = useSelector((state) => state.postMeta.tags || []);
 
-  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
   const ALLOWED_FORMATS = ["image/jpeg", "image/png", "image/webp"];
 
   const formatFileSize = (sizeInBytes) => {
@@ -151,7 +152,7 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
       thumbnail: selectedThumbnail,
       thumbnailSize: fileSize,
       isEmbed,
-      tags, // Include tags in the confirmation payload
+      tags,
     });
   };
 
@@ -166,7 +167,7 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
     onCancel();
   };
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex justify-center items-center p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -185,7 +186,6 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
               transition={{ duration: 0.2 }}
               className="p-6"
             >
-              {/* Header */}
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
@@ -209,7 +209,6 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
                 </button>
               </div>
 
-              {/* Tags Section */}
               <div className="mb-8">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
@@ -239,7 +238,6 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
                 </div>
               </div>
 
-              {/* Thumbnail Section */}
               <div className="mb-8">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
@@ -443,6 +441,8 @@ const ConfirmPostModal = ({ onConfirm = () => {}, onCancel = () => {} }) => {
       </motion.div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default ConfirmPostModal;

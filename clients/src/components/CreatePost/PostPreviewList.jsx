@@ -884,46 +884,49 @@ const PostPreviewList = ({
       </AnimatePresence>
 
       {/* Publishing Countdown */}
+      {/* Publishing Countdown */}
       <AnimatePresence>
-        {isPostConfirmed && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-6 sm:top-36 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-md"
-          >
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-              <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
-                <div className="flex-1 text-center sm:text-left">
-                  <p className="font-semibold text-gray-900 dark:text-white mb-1">
-                    Publishing in {countdown}s...
-                  </p>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 h-2 rounded-full transition-all duration-1000"
-                      style={{ width: `${((5 - countdown) / 5) * 100}%` }}
-                    />
+        {isPostConfirmed &&
+          createPortal(
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-6 sm:top-36 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-md"
+            >
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+                  <div className="flex-1 text-center sm:text-left">
+                    <p className="font-semibold text-gray-900 dark:text-white mb-1">
+                      Publishing in {countdown}s...
+                    </p>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 h-2 rounded-full transition-all duration-1000"
+                        style={{ width: `${((5 - countdown) / 5) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <button
+                      onClick={handleConfirmPublish}
+                      className="flex-1 sm:flex-none bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                    >
+                      Publish Now
+                    </button>
+                    <button
+                      onClick={handleCancelPublish}
+                      className="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={handleConfirmPublish}
-                    className="flex-1 sm:flex-none bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
-                  >
-                    Publish Now
-                  </button>
-                  <button
-                    onClick={handleCancelPublish}
-                    className="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
               </div>
-            </div>
-          </motion.div>
-        )}
+            </motion.div>,
+            document.body
+          )}
       </AnimatePresence>
 
       {/* Single Post Modal */}
