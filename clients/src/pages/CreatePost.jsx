@@ -310,8 +310,6 @@ const CreatePost = () => {
     }
   }, []);
 
-  // Just replace the return statement in your CreatePost component with this:
-
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
       {/* Post Type Modal */}
@@ -365,17 +363,23 @@ const CreatePost = () => {
       {isSubmitting && <LoadingBar text="Creating your post..." />}
 
       {/* Main Content Area */}
-      {!showPostTypeModal && !showCategoryModal && !isSubmitting && (
+      {!showPostTypeModal && !showCategoryModal && (
         <div className="w-full mt-36">
           {/* Sticky Header with Back Button */}
           <div className="sticky  top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 shadow-sm">
             <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
               <button
                 onClick={() => {
+                  if (isSubmitting) return;
                   localStorage.removeItem("postType");
                   navigate("/");
                 }}
-                className="inline-flex items-center gap-2 font-semibold text-red-600 dark:text-red-400 border border-red-500 dark:border-red-400 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 text-sm sm:text-base"
+                disabled={isSubmitting}
+                className={`inline-flex items-center gap-2 font-semibold text-red-600 dark:text-red-400 border border-red-500 dark:border-red-400 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg shadow-sm transition-all duration-200 text-sm sm:text-base ${
+                  isSubmitting
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-red-50 dark:hover:bg-red-900/20"
+                }`}
               >
                 <span className="text-lg">←</span>
                 <span className="hidden xs:inline">Cancel & Go Back</span>
