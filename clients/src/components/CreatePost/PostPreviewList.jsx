@@ -21,6 +21,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { debounce } from "lodash";
+import { createPortal } from "react-dom";
 import DOMPurify from "dompurify";
 import FileBlock from "../PostFeature/FileBlock";
 import VideoBlock from "../PostFeature/VideoBlock";
