@@ -280,11 +280,6 @@ const SuggestedPosts = ({ postId, className }) => {
                   {shouldShowBannerAd(index) && (
                     <div className="col-span-full">
                       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden p-6">
-                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-4">
-                          <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-500 rounded-md font-semibold">
-                            Advertisement
-                          </span>
-                        </div>
                         <div className="flex items-center justify-center min-h-[250px] rounded-xl overflow-hidden">
                           <HorizontalBannerAd postId={post._id} />
                         </div>

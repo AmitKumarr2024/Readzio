@@ -205,7 +205,7 @@ const AddBlockSidebar = ({
           : `${DESKTOP_CLOSED_HEIGHT}px`,
       }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="fixed left-0 top-16 w-full bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-2xl z-50  flex-col border-b border-blue-700/50 overflow-hidden hidden md:flex"
+      className="fixed left-0 top-16 w-full bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-2xl z-40  flex-col border-b border-blue-700/50 overflow-hidden hidden md:flex"
     >
       {/* 1. Header/Toggle Bar (Always visible) */}
       <div className="p-2 flex items-center justify-between flex-shrink-0 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark border-b border-blue-700/30">
@@ -349,7 +349,7 @@ const AddBlockSidebar = ({
             onClick={() => setIsOpen(true)}
             disabled={isDisabled} // Use isDisabled prop here
             // FIX 1: Removed continuous CSS classes (float-animation, pulse-glow)
-            className={`fixed top-[4.5rem] right-4 w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-2xl z-50 gpu-accelerated md:hidden ${
+            className={`fixed top-[4.5rem] right-4 w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-2xl z-40 gpu-accelerated md:hidden ${
               isDisabled ? "opacity-50 cursor-not-allowed" : ""
             }`}
             whileTap={{ scale: isDisabled ? 1 : 0.9 }}
@@ -369,7 +369,7 @@ const AddBlockSidebar = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40"
             />
             <motion.div
               // Slides down from the top, below the main header (top-16)
@@ -377,7 +377,7 @@ const AddBlockSidebar = ({
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -20, opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="fixed top-16 left-0 w-full max-h-[80vh] bg-gray-900 rounded-b-xl z-[60] flex flex-col shadow-2xl border-b border-blue-700/50 gpu-accelerated overflow-hidden"
+              className="fixed top-16 left-0 w-full max-h-[80vh] bg-gray-900 rounded-b-xl z-50 flex flex-col shadow-2xl border-b border-blue-700/50 gpu-accelerated overflow-hidden"
             >
               <div className="flex items-center justify-between p-4 border-b border-gray-800 flex-shrink-0">
                 <div className="flex items-center gap-3">
