@@ -298,7 +298,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
           });
         }
         // Add a multiplex ad (example: every 18 posts, must span full width)
-        if ((i + 1) % 18 === 0) {
+        if ((i + 1) % 9 === 0) {
           items.push({
             type: "multiplex-ad",
             id: `multiplex-ad-${result[i]._id}-${i}`,
