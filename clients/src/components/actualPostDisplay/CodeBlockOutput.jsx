@@ -69,8 +69,8 @@ const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
       </div>
 
       {/* Code content */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-purple-500/5"></div>
+      <div className="relative overflow-x-auto overflow-y-auto max-h-[600px]">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-purple-500/5 pointer-events-none"></div>
         <SyntaxHighlighter
           language={language}
           style={tomorrow}
@@ -99,8 +99,9 @@ const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
         </SyntaxHighlighter>
 
         {/* Subtle gradient overlay for depth */}
-        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-gray-900/20 via-transparent to-transparent"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-t from-gray-900/40 to-transparent"></div>
       </div>
+
 
       {/* Caption */}
       {caption && (
