@@ -262,16 +262,16 @@ const EditPost = () => {
     <ErrorBoundary>
       <LoadingBar loading={updateLoading} />
       <Transition show={isOpen} as={React.Fragment}>
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-hidden bg-black/60 backdrop-blur-sm">
-          <Transition.Child
-            as={React.Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0 translate-y-8"
-            enterTo="opacity-100 translate-y-0"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100 translate-y-0"
-            leaveTo="opacity-0 translate-y-8"
-          >
+        <Transition.Child
+          as={React.Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0 translate-y-8"
+          enterTo="opacity-100 translate-y-0"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100 translate-y-0"
+          leaveTo="opacity-0 translate-y-8"
+        >
+          <div className="fixed inset-0 z-50 overflow-hidden">
             <div className="relative w-full h-full overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
               {/* Fixed Header */}
               <div className="fixed w-full -top-2 z-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700 shadow-sm">
@@ -435,8 +435,8 @@ const EditPost = () => {
                 </div>
               </div>
             </div>
-          </Transition.Child>
-        </div>
+          </div>
+        </Transition.Child>
       </Transition>
     </ErrorBoundary>
   );

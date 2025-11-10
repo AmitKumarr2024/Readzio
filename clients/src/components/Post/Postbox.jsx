@@ -290,7 +290,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
 
       for (let i = 0; i < result.length; i++) {
         items.push(result[i]);
-        if ((i + 1) % 6 === 0) {
+        if ((i + 1) % 5 === 0) {
           items.push({
             type: "card-ad",
             id: `card-ad-${result[i]._id}-${i}`,
