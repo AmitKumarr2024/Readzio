@@ -416,7 +416,7 @@ const EditorTextBlock = ({ value, onUpdate }) => {
   text-text-main-light dark:text-text-main-dark
   border border-gray-200 dark:border-gray-800
   focus:outline-none focus:ring-2 focus:ring-indigo-500
-  text-xs sm:text-sm leading-relaxed
+  text-lg leading-relaxed
   [&>ul]:list-disc [&>ul]:pl-5
   [&>ol]:list-decimal [&>ol]:pl-5
   [&>ul]:space-y-1 [&>ol]:space-y-1
