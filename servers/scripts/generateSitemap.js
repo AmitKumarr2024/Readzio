@@ -92,7 +92,7 @@ async function fetchPostsInBatches() {
       );
       const batch = await PostModel.find(
         { isPublished: true },
-        "slug updatedAt createdAt title _id" // Added title and _id for debug
+        "slug updatedAt createdAt title _id isPublished" // Added title and _id for debug
       )
         .sort({ createdAt: -1 })
         .skip(skip)
