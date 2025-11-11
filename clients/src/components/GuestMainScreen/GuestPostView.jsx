@@ -1,4 +1,4 @@
-// GuestPostView.jsx (with console.logs for debugging)
+// GuestPostView.jsx (Fixed infinite scroll)
 import React, {
   useEffect,
   useState,
@@ -19,7 +19,6 @@ const AD_IN_FEED_INTERVAL = 5;
 const AD_MULTIPLEX_INTERVAL = 12;
 
 const GuestPostView = () => {
-  // console.log("GuestPostView: Component mounted/updated");
   const dispatch = useDispatch();
 
   // --- Local State ---
@@ -29,7 +28,7 @@ const GuestPostView = () => {
   const observerTargetRef = useRef(null);
   const isFetchingRef = useRef(false);
   const abortControllerRef = useRef(null);
-  const didFetchRef = useRef(false);
+  const hasTrackedVisitRef = useRef(false);
 
   // --- Redux ---
   const {
@@ -40,12 +39,6 @@ const GuestPostView = () => {
   const isSidebarOpen = useSelector(
     (state) => state.postMeta?.isSidebarOpen ?? false
   );
-  // console.log("GuestPostView: Redux state", {
-  //   posts: posts.length,
-  //   loading,
-  //   error,
-  //   isSidebarOpen,
-  // });
 
   // --- Grid Layout ---
   const gridClass = useMemo(() => {
@@ -60,19 +53,13 @@ const GuestPostView = () => {
   // --- Fetch Posts ---
   const fetchPosts = useCallback(
     async (pageToFetch) => {
-      // console.log("fetchPosts: Starting fetch for page", pageToFetch, {
-      //   isFetching: isFetchingRef.current,
-      //   hasMore,
-      // });
       if (isFetchingRef.current || !hasMore) {
-        // console.log("fetchPosts: Early return - fetching or no more");
         return;
       }
       isFetchingRef.current = true;
 
       // Cancel any pending fetch
       if (abortControllerRef.current) {
-        // console.log("fetchPosts: Aborting previous request");
         abortControllerRef.current.abort();
       }
 
@@ -81,12 +68,11 @@ const GuestPostView = () => {
 
       try {
         // Track guest visit only once
-        if (pageToFetch === 1 && !localStorage.getItem("guestId")) {
-          // console.log("fetchPosts: Tracking guest visit");
+        if (!hasTrackedVisitRef.current && !localStorage.getItem("guestId")) {
+          hasTrackedVisitRef.current = true;
           await dispatch(trackGuestVisit()).unwrap();
         }
 
-        // console.log("fetchPosts: Dispatching fetchPublicPosts");
         const result = await dispatch(
           fetchPublicPosts({
             page: pageToFetch,
@@ -96,29 +82,18 @@ const GuestPostView = () => {
         ).unwrap();
 
         const fetchedCount = result?.posts?.length ?? 0;
-        // console.log(
-        //   "fetchPosts: Fetched",
-        //   fetchedCount,
-        //   "posts. Result:",
-        //   result
-        // );
 
         if (fetchedCount < POSTS_PER_PAGE) {
           setHasMore(false);
-          // console.log("fetchPosts: No more posts");
         }
 
         if (fetchedCount > 0) {
-          setPage((prev) => {
-            const newPage = prev + 1;
-            // console.log("fetchPosts: Updated page to", newPage);
-            return newPage;
-          });
+          setPage((prev) => prev + 1);
+        } else if (pageToFetch === 1) {
+          setHasMore(false);
         }
       } catch (err) {
-        // console.log("fetchPosts: Error caught", err);
         if (err.name === "AbortError") {
-          // console.log("fetchPosts: AbortError ignored");
           return;
         }
         console.error("GuestPostView fetch error:", err);
@@ -126,7 +101,6 @@ const GuestPostView = () => {
       } finally {
         isFetchingRef.current = false;
         setInitialLoaded(true);
-        // console.log("fetchPosts: Finally - fetching=false, loaded=true");
       }
     },
     [dispatch, hasMore]
@@ -134,80 +108,55 @@ const GuestPostView = () => {
 
   // --- Initial Load (only once) ---
   useEffect(() => {
-    // console.log("Initial useEffect: Triggered", {
-    //   didFetch: didFetchRef.current,
-    //   loading,
-    //   postsLength: posts.length,
-    // });
-    if (didFetchRef.current) return;
-    didFetchRef.current = true;
-
-    if (!loading && posts.length === 0) {
-      // console.log("Initial useEffect: Starting initial fetch");
+    if (posts.length === 0 && !loading && !initialLoaded) {
       fetchPosts(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- Infinite Scroll ---
+  // --- Infinite Scroll Observer ---
   useEffect(() => {
-    // console.log("InfiniteScroll useEffect: Triggered", {
-    //   observerTarget: !!observerTargetRef.current,
-    //   hasMore,
-    // });
     if (!observerTargetRef.current || !hasMore) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        // console.log("Observer: Entry intersecting?", entry.isIntersecting, {
-        //   isFetching: isFetchingRef.current,
-        //   page,
-        // });
-        if (entry.isIntersecting && !isFetchingRef.current) {
-          // console.log("Observer: Triggering fetch for page", page);
-          isFetchingRef.current = true;
-          fetchPosts(page).finally(() => {
-            // console.log("Observer: Fetch complete, unlocking");
-            isFetchingRef.current = false;
-          });
+        if (entry.isIntersecting && !isFetchingRef.current && hasMore) {
+          fetchPosts(page);
         }
       },
-      { rootMargin: "300px" }
+      {
+        rootMargin: "400px",
+        threshold: 0.1,
+      }
     );
 
     observer.observe(observerTargetRef.current);
+
     return () => {
-      // console.log("Observer: Disconnecting");
       observer.disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMore]);
+  }, [page, hasMore, fetchPosts]);
 
   // --- Retry Handler ---
   const handleRetry = useCallback(() => {
-    // console.log("handleRetry: Resetting state");
     setPage(1);
     setHasMore(true);
     setInitialLoaded(false);
     isFetchingRef.current = false;
-    didFetchRef.current = false;
     fetchPosts(1);
   }, [fetchPosts]);
 
   // --- Posts + Ads Composition ---
   const postsWithAds = useMemo(() => {
-    // console.log("postsWithAds: Computing with", posts.length, "posts");
     return posts.flatMap((post, index) => {
       if (!post?._id) {
-        // console.log("postsWithAds: Skipping invalid post at index", index);
         return [];
       }
       const elements = [<GuestCardOfPost key={post._id} post={post} />];
 
       try {
         if ((index + 1) % AD_IN_FEED_INTERVAL === 0) {
-          // console.log("postsWithAds: Adding in-feed ad at index", index);
           elements.push(
             <div
               key={`infeed-${post._id}-${index}`}
@@ -224,7 +173,6 @@ const GuestPostView = () => {
         }
 
         if ((index + 1) % AD_MULTIPLEX_INTERVAL === 0) {
-          // console.log("postsWithAds: Adding multiplex ad at index", index);
           elements.push(
             <div
               key={`multiplex-${post._id}-${index}`}
@@ -246,13 +194,6 @@ const GuestPostView = () => {
   }, [posts]);
 
   // --- UI States ---
-  // console.log("GuestPostView: Rendering UI state", {
-  //   initialLoaded,
-  //   loading,
-  //   postsLength: posts.length,
-  //   error,
-  //   hasMore,
-  // });
   if (!initialLoaded && loading && posts.length === 0) {
     return (
       <div className={gridClass} role="status" aria-label="Loading posts">
@@ -271,7 +212,7 @@ const GuestPostView = () => {
             Connection Error
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            We couldn’t connect to the server. Please try again.
+            We couldn't connect to the server. Please try again.
           </p>
           <button
             onClick={handleRetry}
@@ -313,20 +254,22 @@ const GuestPostView = () => {
 
       <div className="text-center py-8">
         {hasMore && (
-          <div ref={observerTargetRef} className="h-1 bg-transparent"></div>
-        )}
-
-        {loading && posts.length > 0 && (
-          <div className={gridClass}>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={`skeleton-next-${i}`} />
-            ))}
+          <div
+            ref={observerTargetRef}
+            className="h-20 flex items-center justify-center"
+          >
+            {loading && (
+              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                <span>Loading more posts...</span>
+              </div>
+            )}
           </div>
         )}
 
         {!hasMore && !loading && posts.length > 0 && (
-          <p className="text-gray-500 dark:text-gray-400">
-            You’ve reached the end of the public feed.
+          <p className="text-gray-500 dark:text-gray-400 text-lg">
+            You've reached the end of the feed 🎉
           </p>
         )}
 
@@ -337,7 +280,7 @@ const GuestPostView = () => {
               onClick={handleRetry}
               className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition duration-150 ease-in-out"
             >
-              Load More
+              Retry
             </button>
           </div>
         )}
