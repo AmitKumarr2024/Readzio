@@ -35,8 +35,8 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGE_COUNT = 40; // 40 images
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
 const MAX_PAYLOAD_SIZE = 40 * 1024 * 1024; // 40 MB
-const MAX_TEXT_BLOCK_SIZE = 100 * 1024; // 100KB
-const MAX_TABLE_BLOCK_SIZE = 200 * 1024; // 200KB
+const MAX_TEXT_BLOCK_SIZE = 300 * 1024; // 300KB
+const MAX_TABLE_BLOCK_SIZE = 400 * 1024; // 400KB
 
 const SortableBlock = ({ block, index, children }) => {
   const {
