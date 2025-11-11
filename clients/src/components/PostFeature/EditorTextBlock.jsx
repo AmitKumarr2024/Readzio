@@ -106,31 +106,19 @@ const EditorTextBlock = ({ value, onUpdate }) => {
 
   // Execute formatting commands
 
-  // Inside your EditorTextBlock component:
   const execCommand = (command, val = null) => {
     try {
       const selection = window.getSelection();
-
-      // Handle custom font size properly
-      if (command === "fontSize") {
-        // Always use "7" as placeholder size
-        document.execCommand("fontSize", false, "7");
-        const fontElements = contentRef.current?.getElementsByTagName("font");
-        if (fontElements) {
-          for (let el of fontElements) {
-            if (el.size === "7") {
-              el.removeAttribute("size");
-              el.style.fontSize = `${val}px`; // apply real px
-            }
-          }
-        }
-      } else if (
+      if (
         command === "removeFormat" &&
         (!selection || selection.isCollapsed || !selection.toString().trim())
       ) {
         toast.error("Please select text to remove formatting.");
         return;
-      } else if (
+      }
+
+      // For lists, ensure proper nesting and cleanup
+      if (
         command === "insertOrderedList" ||
         command === "insertUnorderedList"
       ) {
@@ -141,6 +129,7 @@ const EditorTextBlock = ({ value, onUpdate }) => {
           parent.tagName === "OL" ||
           parent.closest("ul, ol")
         ) {
+          // Toggle off if already in a list
           document.execCommand("outdent", false, null);
         } else {
           document.execCommand(command, false, null);
@@ -157,48 +146,6 @@ const EditorTextBlock = ({ value, onUpdate }) => {
       toast.error(`Error executing ${command}`);
     }
   };
-
-  // old size
-  // const execCommand = (command, val = null) => {
-  //   try {
-  //     const selection = window.getSelection();
-  //     if (
-  //       command === "removeFormat" &&
-  //       (!selection || selection.isCollapsed || !selection.toString().trim())
-  //     ) {
-  //       toast.error("Please select text to remove formatting.");
-  //       return;
-  //     }
-
-  //     // For lists, ensure proper nesting and cleanup
-  //     if (
-  //       command === "insertOrderedList" ||
-  //       command === "insertUnorderedList"
-  //     ) {
-  //       const range = selection.getRangeAt(0);
-  //       const parent = range.commonAncestorContainer.parentElement;
-  //       if (
-  //         parent.tagName === "UL" ||
-  //         parent.tagName === "OL" ||
-  //         parent.closest("ul, ol")
-  //       ) {
-  //         // Toggle off if already in a list
-  //         document.execCommand("outdent", false, null);
-  //       } else {
-  //         document.execCommand(command, false, null);
-  //       }
-  //     } else {
-  //       document.execCommand(command, false, val);
-  //     }
-
-  //     onUpdate(contentRef.current?.innerHTML || "");
-  //     checkActiveCommands();
-  //     contentRef.current?.focus();
-  //   } catch (e) {
-  //     console.error(`[EditorTextBlock] Error executing ${command}:`, e);
-  //     toast.error(`Error executing ${command}`);
-  //   }
-  // };
 
   // Handle content change
   const handleInput = () => {
@@ -326,30 +273,10 @@ const EditorTextBlock = ({ value, onUpdate }) => {
         />
 
         {/* Font Size Selector */}
+
         <select
           onChange={(e) => execCommand("fontSize", e.target.value)}
-          defaultValue="18"
-          title="Font Size"
-          className="border rounded-lg px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
-          aria-label="Font size selector"
-        >
-          <option value="10">10px</option>
-          <option value="12">12px</option>
-          <option value="14">14px</option>
-          <option value="16">16px</option>
-          <option value="18">18px</option>
-          <option value="20">20px</option>
-          <option value="24">24px</option>
-          <option value="32">32px</option>
-          <option value="48">48px</option>
-          <option value="64">64px</option>
-          <option value="72">72px</option>
-        </select>
-
-        {/* old */}
-        {/* <select
-          onChange={(e) => execCommand("fontSize", e.target.value)}
-          defaultValue="4"
+          defaultValue="3"
           title="Font Size"
           className="border rounded-lg px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
           aria-label="Font size selector"
@@ -361,7 +288,7 @@ const EditorTextBlock = ({ value, onUpdate }) => {
           <option value="5">24px</option>
           <option value="6">32px</option>
           <option value="7">48px</option>
-        </select> */}
+        </select>
 
         {/* Emoji Picker */}
         <div className="relative" ref={emojiPickerRef}>

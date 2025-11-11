@@ -77,7 +77,7 @@ const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
           customStyle={{
             margin: 0,
             padding: "1.5rem",
-            fontSize: "0.875rem",
+            fontSize: "1.1rem",
             backgroundColor: "transparent",
             fontFamily:
               'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
@@ -88,7 +88,7 @@ const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
           lineNumberStyle={{
             color: "#6B7280",
             paddingRight: "1rem",
-            fontSize: "0.75rem",
+            fontSize: "1rem",
             minWidth: "2.5rem",
             textAlign: "right",
             userSelect: "none",
