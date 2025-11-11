@@ -276,7 +276,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
       }
 
       // Insert multiplex ad every 12 posts (not counting card ads)
-      if (postCounter % 12 === 0 && postCounter > 0) {
+      if (postCounter % 13 === 0 && postCounter > 0) {
         items.push({
           type: "multiplex-ad",
           id: `multiplex-ad-${posts[i]._id}-${i}`,
