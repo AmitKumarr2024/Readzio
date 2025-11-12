@@ -149,7 +149,37 @@ const EditorTextBlock = ({ value, onUpdate }) => {
 
   // Handle content change
   const handleInput = () => {
-    const html = contentRef.current?.innerHTML || "";
+    let html = contentRef.current?.innerHTML || "";
+    // Convert <font size="x"> to <span style="font-size: ...px">
+    html = html.replace(
+      /<font size="1">(.*?)<\/font>/gi,
+      '<span style="font-size:10px">$1</span>'
+    );
+    html = html.replace(
+      /<font size="2">(.*?)<\/font>/gi,
+      '<span style="font-size:13px">$1</span>'
+    );
+    html = html.replace(
+      /<font size="3">(.*?)<\/font>/gi,
+      '<span style="font-size:16px">$1</span>'
+    );
+    html = html.replace(
+      /<font size="4">(.*?)<\/font>/gi,
+      '<span style="font-size:18px">$1</span>'
+    );
+    html = html.replace(
+      /<font size="5">(.*?)<\/font>/gi,
+      '<span style="font-size:24px">$1</span>'
+    );
+    html = html.replace(
+      /<font size="6">(.*?)<\/font>/gi,
+      '<span style="font-size:32px">$1</span>'
+    );
+    html = html.replace(
+      /<font size="7">(.*?)<\/font>/gi,
+      '<span style="font-size:48px">$1</span>'
+    );
+
     onUpdate(html);
     checkActiveCommands();
   };
@@ -276,7 +306,7 @@ const EditorTextBlock = ({ value, onUpdate }) => {
 
         <select
           onChange={(e) => execCommand("fontSize", e.target.value)}
-          defaultValue="3"
+          defaultValue="4"
           title="Font Size"
           className="border rounded-lg px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
           aria-label="Font size selector"
