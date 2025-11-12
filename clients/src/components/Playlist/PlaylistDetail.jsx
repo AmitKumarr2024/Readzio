@@ -12,8 +12,13 @@ import {
   FaLock,
   FaPlus,
   FaArrowLeft,
+  FaTimes,
 } from "react-icons/fa";
-import { fetchPlaylistById, deletePlaylist } from "../../store/playlistSlice";
+import {
+  fetchPlaylistById,
+  deletePlaylist,
+  updatePlaylist,
+} from "../../store/playlistSlice";
 import { toast } from "react-hot-toast";
 import CardOfPost from "../../components/Cards/CardOfPost";
 
@@ -38,8 +43,7 @@ const PlaylistDetail = ({ playlistId }) => {
     searchPosts,
   } = useSelector((state) => state.post);
   const [deleting, setDeleting] = useState(false);
-
-  // console.log("posts....", posts);
+  const [removingPostId, setRemovingPostId] = useState(null);
 
   const actualId = playlistId || id;
 
@@ -72,6 +76,42 @@ const PlaylistDetail = ({ playlistId }) => {
       dispatch(fetchPlaylistById(actualId));
     }
   }, [actualId, dispatch]);
+
+  const handleRemovePost = async (postId) => {
+    if (!window.confirm("Remove this post from the playlist?")) return;
+
+    try {
+      setRemovingPostId(postId);
+
+      // Filter out the post to remove
+      const updatedPosts = currentPlaylist.posts
+        .filter((post) => post._id !== postId)
+        .map((post) => post._id);
+
+      // Update the playlist
+      await dispatch(
+        updatePlaylist({
+          id: actualId,
+          data: {
+            name: currentPlaylist.name,
+            description: currentPlaylist.description,
+            isPrivate: currentPlaylist.isPrivate,
+            posts: updatedPosts,
+          },
+        })
+      ).unwrap();
+
+      toast.success("Post removed from playlist");
+
+      // Refresh the playlist
+      dispatch(fetchPlaylistById(actualId));
+    } catch (error) {
+      toast.error("Failed to remove post");
+      console.error("Remove post error:", error);
+    } finally {
+      setRemovingPostId(null);
+    }
+  };
 
   const handleDelete = async () => {
     if (
@@ -242,11 +282,27 @@ const PlaylistDetail = ({ playlistId }) => {
             return (
               <div
                 key={fullPost._id}
-                className="w-full max-w-sm mx-auto animate-fadeIn"
+                className="w-full max-w-sm mx-auto animate-fadeIn relative group"
                 style={{
                   animationDelay: `${index * 50}ms`,
                 }}
               >
+                {/* Remove Button - Only visible to owner */}
+                {isOwner && (
+                  <button
+                    onClick={() => handleRemovePost(fullPost._id)}
+                    disabled={removingPostId === fullPost._id}
+                    className="absolute -top-2 -right-2 z-10 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 transform hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Remove from playlist"
+                  >
+                    {removingPostId === fullPost._id ? (
+                      <FaSpinner className="animate-spin text-sm" />
+                    ) : (
+                      <FaTimes className="text-sm" />
+                    )}
+                  </button>
+                )}
+
                 <div className="h-full transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
                   <CardOfPost {...fullPost} loading={false} categoryMap={{}} />
                 </div>
