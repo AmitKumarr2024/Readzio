@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { createPortal } from "react-dom";
 import { FaList, FaPlus, FaCheck } from "react-icons/fa";
 import {
   fetchUserPlaylists,
@@ -72,7 +73,11 @@ const PlaylistButton = ({ postId, post }) => {
     }
   };
 
-  const handleButtonClick = () => {
+  const handleButtonClick = (e) => {
+    // Prevent any parent click handlers
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!user) {
       toast.error("Please login to save to playlists");
       return;
@@ -86,7 +91,7 @@ const PlaylistButton = ({ postId, post }) => {
       <button
         onClick={handleButtonClick}
         disabled={loading}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg 
+        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg 
                    bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 
                    dark:hover:bg-gray-700 transition-colors duration-200
                    disabled:opacity-50 disabled:cursor-not-allowed"
@@ -94,7 +99,7 @@ const PlaylistButton = ({ postId, post }) => {
       >
         <FaList className="text-gray-600 dark:text-gray-400" />
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Postlist
+          Save to Postlist
         </span>
         {isInPlaylists.length > 0 && (
           <span className="text-xs bg-blue-500 text-white rounded-full px-2 py-0.5">
@@ -103,18 +108,20 @@ const PlaylistButton = ({ postId, post }) => {
         )}
       </button>
 
-      {/* Playlist Modal */}
-      {showModal && (
-        <PlaylistModal
-          postId={postId}
-          post={post}
-          playlists={playlists}
-          isInPlaylists={isInPlaylists}
-          onAddToPlaylist={handleAddToPlaylist}
-          onClose={() => setShowModal(false)}
-          loading={loading}
-        />
-      )}
+      {/* Playlist Modal - Using Portal for fullscreen */}
+      {showModal &&
+        createPortal(
+          <PlaylistModal
+            postId={postId}
+            post={post}
+            playlists={playlists}
+            isInPlaylists={isInPlaylists}
+            onAddToPlaylist={handleAddToPlaylist}
+            onClose={() => setShowModal(false)}
+            loading={loading}
+          />,
+          document.body
+        )}
     </>
   );
 };
