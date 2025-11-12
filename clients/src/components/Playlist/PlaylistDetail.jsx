@@ -17,7 +17,7 @@ import {
 import {
   fetchPlaylistById,
   deletePlaylist,
-  updatePlaylist,
+  removeFromPlaylist,
 } from "../../store/playlistSlice";
 import { toast } from "react-hot-toast";
 import CardOfPost from "../../components/Cards/CardOfPost";
@@ -83,28 +83,11 @@ const PlaylistDetail = ({ playlistId }) => {
     try {
       setRemovingPostId(postId);
 
-      // Filter out the post to remove
-      const updatedPosts = currentPlaylist.posts
-        .filter((post) => post._id !== postId)
-        .map((post) => post._id);
-
-      // Update the playlist
       await dispatch(
-        updatePlaylist({
-          playlistId: actualId,
-          updates: {
-            name: currentPlaylist.name,
-            description: currentPlaylist.description,
-            isPrivate: currentPlaylist.isPrivate,
-            posts: updatedPosts,
-          },
-        })
+        removeFromPlaylist({ playlistId: actualId, postId })
       ).unwrap();
 
       toast.success("Post removed from playlist");
-
-      // Refresh the playlist
-      dispatch(fetchPlaylistById(actualId));
     } catch (error) {
       toast.error("Failed to remove post");
       console.error("Remove post error:", error);
