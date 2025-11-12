@@ -91,8 +91,8 @@ const PlaylistDetail = ({ playlistId }) => {
       // Update the playlist
       await dispatch(
         updatePlaylist({
-          id: actualId,
-          data: {
+          playlistId: actualId,
+          updates: {
             name: currentPlaylist.name,
             description: currentPlaylist.description,
             isPrivate: currentPlaylist.isPrivate,
@@ -124,10 +124,10 @@ const PlaylistDetail = ({ playlistId }) => {
     try {
       setDeleting(true);
       await dispatch(deletePlaylist(actualId)).unwrap();
-      toast.success("Postlist deleted successfully");
-      navigate("/user/playlists");
+      toast.success("Playlist deleted successfully");
+      navigate("/profile/playlists");
     } catch (error) {
-      toast.error("Failed to delete Postlist");
+      toast.error("Failed to delete Playlist");
     } finally {
       setDeleting(false);
     }
@@ -140,7 +140,7 @@ const PlaylistDetail = ({ playlistId }) => {
   const handleShare = () => {
     const url = `${window.location.origin}/playlist/${actualId}`;
     navigator.clipboard.writeText(url);
-    toast.success("Postlist link copied!");
+    toast.success("Playlist link copied!");
   };
 
   if (currentPlaylistStatus === "loading") {
@@ -170,12 +170,12 @@ const PlaylistDetail = ({ playlistId }) => {
   if (!currentPlaylist) {
     return (
       <div className="text-center py-12">
-        <h3 className="text-xl font-semibold mb-2">Postlist Not Found</h3>
+        <h3 className="text-xl font-semibold mb-2">Playlist Not Found</h3>
         <button
-          onClick={() => navigate("/user/playlists")}
+          onClick={() => navigate("/profile/playlists")}
           className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
         >
-          Back to Postlists
+          Back to Playlists
         </button>
       </div>
     );
@@ -278,7 +278,6 @@ const PlaylistDetail = ({ playlistId }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {currentPlaylist.posts.map((post, index) => {
             const fullPost = postMap.get(post._id) || post;
-            console.log("fullPost", fullPost);
 
             return (
               <div
@@ -317,7 +316,7 @@ const PlaylistDetail = ({ playlistId }) => {
             <FaList className="mx-auto text-6xl text-gray-300 dark:text-gray-700" />
           </div>
           <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            No posts in this Postlist yet
+            No posts in this Playlist yet
           </h3>
           <p className="text-gray-500 dark:text-gray-400 mb-6">
             Add some posts to get started.
