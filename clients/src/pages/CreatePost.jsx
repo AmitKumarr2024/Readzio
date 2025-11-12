@@ -375,7 +375,7 @@ const CreatePost = () => {
                   navigate("/");
                 }}
                 disabled={isSubmitting}
-                className={`inline-flex items-center gap-2 font-semibold text-red-600 dark:text-red-400 border border-red-500 dark:border-red-400 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg shadow-sm transition-all duration-200 text-sm sm:text-base ${
+                className={`inline-flex items-center gap-2 font-semibold text-red-600 dark:text-red-400 border border-red-500 dark:border-red-400 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg shadow-sm transition-all duration-200 text-xs sm:text-sm ${
                   isSubmitting
                     ? "opacity-50 cursor-not-allowed"
                     : "hover:bg-red-50 dark:hover:bg-red-900/20"

@@ -513,7 +513,7 @@ const PostPreviewList = ({
               className="relative my-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4"
             >
               <div
-                className="rich-content text-base leading-relaxed my-4"
+                className="rich-content text-lg leading-relaxed my-4 sm:text-xl"
                 dangerouslySetInnerHTML={{
                   __html: DOMPurify.sanitize(block.value || "Empty text"),
                 }}
@@ -672,7 +672,7 @@ const PostPreviewList = ({
                     <p className="text-lg sm:text-xl font-medium text-gray-600 dark:text-gray-400 mb-2">
                       No content blocks yet
                     </p>
-                    <p className="text-sm sm:text-base text-gray-500 dark:text-gray-500">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-500">
                       Start adding content to see the preview
                     </p>
                   </div>
@@ -822,7 +822,7 @@ const PostPreviewList = ({
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="mt-3 sm:mt-4 text-red-500 dark:text-red-400 text-sm sm:text-base text-center font-medium bg-red-50 dark:bg-red-900/20 py-3 rounded-lg"
+                  className="mt-3 sm:mt-4 text-red-500 dark:text-red-400 text-xs sm:text-sm text-center font-medium bg-red-50 dark:bg-red-900/20 py-3 rounded-lg"
                 >
                   {createError}
                 </motion.p>
