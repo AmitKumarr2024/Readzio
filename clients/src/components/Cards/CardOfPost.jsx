@@ -209,6 +209,14 @@ const CardOfPost = ({
                 Subscribed
               </span>
             )}
+
+            {/* Playlist Button - Absolute bottom-right */}
+            <PlaylistButton
+              postId={id}
+              post={postData}
+              variant="icon"
+              className="absolute bottom-2 right-2 z-10"
+            />
           </div>
         </div>
 
@@ -316,14 +324,6 @@ const CardOfPost = ({
           )}
         </div>
       </Link>
-
-      {/* Playlist Button - Outside Link, at bottom */}
-      <div
-        className="px-6 pb-6 pt-2 border-t border-gray-100 dark:border-slate-800"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <PlaylistButton postId={id} post={postData} />
-      </div>
 
       {/* Hover Effect Border */}
       <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-15 transition-opacity duration-300 pointer-events-none bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 p-[2px] z-[2]">
