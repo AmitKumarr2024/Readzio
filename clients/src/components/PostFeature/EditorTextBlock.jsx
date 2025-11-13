@@ -104,8 +104,6 @@ const EditorTextBlock = ({ value, onUpdate }) => {
     setActiveCommands(newActiveCommands);
   };
 
-  // Execute formatting commands
-
   const execCommand = (command, val = null) => {
     try {
       const selection = window.getSelection();
@@ -117,7 +115,6 @@ const EditorTextBlock = ({ value, onUpdate }) => {
         return;
       }
 
-      // For lists, ensure proper nesting and cleanup
       if (
         command === "insertOrderedList" ||
         command === "insertUnorderedList"
@@ -129,7 +126,6 @@ const EditorTextBlock = ({ value, onUpdate }) => {
           parent.tagName === "OL" ||
           parent.closest("ul, ol")
         ) {
-          // Toggle off if already in a list
           document.execCommand("outdent", false, null);
         } else {
           document.execCommand(command, false, null);
@@ -147,10 +143,8 @@ const EditorTextBlock = ({ value, onUpdate }) => {
     }
   };
 
-  // Handle content change
   const handleInput = () => {
     let html = contentRef.current?.innerHTML || "";
-    // Convert <font size="x"> to <span style="font-size: ...px">
     html = html.replace(
       /<font size="1">(.*?)<\/font>/gi,
       '<span style="font-size:10px">$1</span>'
@@ -184,7 +178,6 @@ const EditorTextBlock = ({ value, onUpdate }) => {
     checkActiveCommands();
   };
 
-  // Clear entire editor
   const clearContent = () => {
     if (contentRef.current) {
       contentRef.current.innerHTML = "<p></p>";
@@ -194,7 +187,6 @@ const EditorTextBlock = ({ value, onUpdate }) => {
     }
   };
 
-  // Insert link around selected text
   const insertLink = () => {
     const url = prompt("Enter the URL:");
     if (!url) return;
@@ -209,7 +201,8 @@ const EditorTextBlock = ({ value, onUpdate }) => {
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.textContent = selection.toString();
-    link.className = "text-indigo-600 underline hover:text-indigo-800";
+    link.className =
+      "text-blue-600 dark:text-blue-400 underline hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200";
     range.deleteContents();
     range.insertNode(link);
     range.setStartAfter(link);
@@ -219,7 +212,6 @@ const EditorTextBlock = ({ value, onUpdate }) => {
     checkActiveCommands();
   };
 
-  // Insert emoji at cursor
   const insertEmoji = (emoji) => {
     const sel = window.getSelection();
     if (!sel.rangeCount) return;
@@ -236,9 +228,9 @@ const EditorTextBlock = ({ value, onUpdate }) => {
   };
 
   return (
-    <div className="mb-4 border rounded-xl p-3 sm:p-4 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark shadow-md transition-shadow hover:shadow-lg">
-      {/* Toolbar */}
-      <div className="flex flex-wrap gap-1 sm:gap-2 mb-3 p-2 sm:p-3 rounded-lg">
+    <div className="mb-8 rounded-2xl overflow-hidden bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
+      {/* Modern Toolbar */}
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 p-3 sm:p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
         {[
           { icon: <FaBold />, command: "bold", title: "Bold" },
           { icon: <FaItalic />, command: "italic", title: "Italic" },
@@ -266,7 +258,7 @@ const EditorTextBlock = ({ value, onUpdate }) => {
           { icon: "1.", command: "insertOrderedList", title: "Ordered List" },
           { icon: "•", command: "insertUnorderedList", title: "Bullet List" },
           {
-            icon: <FaLink className="text-indigo-500" />,
+            icon: <FaLink className="text-blue-500" />,
             command: insertLink,
             title: "Insert Link",
           },
@@ -280,11 +272,11 @@ const EditorTextBlock = ({ value, onUpdate }) => {
               typeof command === "function" ? command() : execCommand(command)
             }
             title={title}
-            className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
+            className={`p-2 sm:p-2.5 rounded-lg transition-all duration-200 ${
               activeCommands[command]
-                ? "bg-indigo-500 text-white"
-                : "hover:bg-gray-200 dark:hover:bg-gray-700"
-            } focus:ring-2 focus:ring-indigo-500 focus:outline-none`}
+                ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md"
+                : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
+            } focus:ring-2 focus:ring-blue-500 focus:outline-none`}
             aria-pressed={activeCommands[command] || false}
             aria-label={title}
           >
@@ -298,17 +290,16 @@ const EditorTextBlock = ({ value, onUpdate }) => {
           onChange={(e) => execCommand("foreColor", e.target.value)}
           defaultValue="#000000"
           title="Text Color"
-          className="w-6 h-6 sm:w-8 sm:h-8 p-1 rounded-lg border focus:ring-2 focus:ring-indigo-500"
+          className="w-9 h-9 sm:w-10 sm:h-10 p-1 rounded-lg border-2 border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
           aria-label="Text color picker"
         />
 
         {/* Font Size Selector */}
-
         <select
           onChange={(e) => execCommand("fontSize", e.target.value)}
           defaultValue="4"
           title="Font Size"
-          className="border rounded-lg px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark"
+          className="border-2 border-gray-200 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 cursor-pointer"
           aria-label="Font size selector"
         >
           <option value="1">10px</option>
@@ -325,19 +316,19 @@ const EditorTextBlock = ({ value, onUpdate }) => {
           <button
             onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
             title="Insert Emoji"
-            className="p-1.5 sm:p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="p-2 sm:p-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg border-2 border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all duration-200"
             aria-label="Toggle emoji picker"
             aria-expanded={emojiPickerOpen}
           >
             😀
           </button>
           {emojiPickerOpen && (
-            <div className="absolute right-0 z-20 mt-2 p-2 sm:p-3 bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark border rounded-lg shadow-xl grid grid-cols-5 sm:grid-cols-6 gap-1 sm:gap-2 max-h-40 sm:max-h-48 overflow-y-auto w-64 sm:w-72">
+            <div className="absolute right-0 z-20 mt-2 p-3 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-2xl grid grid-cols-5 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto w-72 sm:w-80">
               {emojiOptions.map((emoji) => (
                 <button
                   key={emoji}
                   onClick={() => insertEmoji(emoji)}
-                  className="w-8 h-8 sm:w-10 sm:h-10 text-xl flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-10 h-10 text-2xl flex items-center justify-center hover:bg-blue-50 dark:hover:bg-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all duration-200"
                   aria-label={`Insert ${emoji} emoji`}
                 >
                   {emoji}
@@ -351,14 +342,14 @@ const EditorTextBlock = ({ value, onUpdate }) => {
         <button
           onClick={clearContent}
           title="Clear Block Content"
-          className="p-1.5 sm:p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none"
+          className="p-2 sm:p-2.5 bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg border-2 border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-red-500 focus:outline-none transition-all duration-200"
           aria-label="Clear text block content"
         >
-          <FaBackspace className="text-red-500" size={16} />
+          <FaBackspace className="text-red-500" size={18} />
         </button>
       </div>
 
-      {/* Editable Area */}
+      {/* Modern Editable Area with Newspaper-style Typography */}
       <div
         ref={contentRef}
         contentEditable
@@ -368,19 +359,41 @@ const EditorTextBlock = ({ value, onUpdate }) => {
         onKeyUp={checkActiveCommands}
         onMouseUp={checkActiveCommands}
         className="
-  min-h-[100px] sm:min-h-[120px] p-3 sm:p-4 rounded-lg
-  bg-background-light dark:bg-background-dark
-  text-text-main-light dark:text-text-main-dark
-  border border-gray-200 dark:border-gray-800
-  focus:outline-none focus:ring-2 focus:ring-indigo-500
-  text-lg leading-relaxed
-  [&>ul]:list-disc [&>ul]:pl-5
-  [&>ol]:list-decimal [&>ol]:pl-5
-  [&>ul]:space-y-1 [&>ol]:space-y-1
-"
+          min-h-[200px] sm:min-h-[250px] p-6 sm:p-8 lg:p-10
+          bg-white dark:bg-gray-800
+          text-gray-800 dark:text-gray-100
+          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset
+          
+          text-base sm:text-lg lg:text-xl
+          leading-relaxed sm:leading-loose
+          font-serif
+          
+          [&>p]:mb-5 [&>p]:leading-relaxed [&>p]:sm:leading-loose
+          [&>h1]:text-3xl [&>h1]:sm:text-4xl [&>h1]:font-bold [&>h1]:mb-6 [&>h1]:mt-8
+          [&>h2]:text-2xl [&>h2]:sm:text-3xl [&>h2]:font-bold [&>h2]:mb-5 [&>h2]:mt-7
+          [&>h3]:text-xl [&>h3]:sm:text-2xl [&>h3]:font-semibold [&>h3]:mb-4 [&>h3]:mt-6
+          
+          [&>ul]:list-disc [&>ul]:pl-6 [&>ul]:sm:pl-8 [&>ul]:space-y-2 [&>ul]:my-5
+          [&>ol]:list-decimal [&>ol]:pl-6 [&>ol]:sm:pl-8 [&>ol]:space-y-2 [&>ol]:my-5
+          [&>ul>li]:mb-2 [&>ol>li]:mb-2
+          
+          [&>blockquote]:border-l-4 [&>blockquote]:border-blue-500 [&>blockquote]:pl-6 
+          [&>blockquote]:italic [&>blockquote]:my-6 [&>blockquote]:text-gray-600 
+          [&>blockquote]:dark:text-gray-400
+          
+          [&_a]:text-blue-600 [&_a]:dark:text-blue-400 [&_a]:underline 
+          [&_a]:hover:text-blue-700 [&_a]:dark:hover:text-blue-300
+          [&_a]:transition-colors [&_a]:duration-200
+          
+          [&_strong]:font-bold [&_em]:italic [&_u]:underline
+        "
         role="textbox"
         aria-multiline="true"
-        aria-label="Text editor"
+        aria-label="Text editor with newspaper-style formatting"
+        style={{
+          WebkitFontSmoothing: "antialiased",
+          MozOsxFontSmoothing: "grayscale",
+        }}
       />
     </div>
   );

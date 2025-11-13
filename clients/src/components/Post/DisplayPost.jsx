@@ -105,23 +105,15 @@ const DisplayPost = () => {
   }, [currentUser, activePost]);
 
   const isPostRestricted = useMemo(() => {
-    // Guests cannot see restrictions - they see public version
     if (!isAuthenticated) return false;
     if (!activePost?._id) return false;
     return restrictedPostIds.includes(activePost._id);
   }, [activePost?._id, restrictedPostIds, isAuthenticated]);
 
   const canViewPost = useMemo(() => {
-    // Guests can always view public posts
     if (!isAuthenticated) return true;
-
-    // Authors can always view their own posts
     if (isAuthor) return true;
-
-    // If post is not restricted, anyone can view
     if (!isPostRestricted) return true;
-
-    // If post is restricted, check subscription
     return Boolean(
       activePost?.author?._id && isSubscribed?.[activePost.author._id]
     );
@@ -154,7 +146,6 @@ const DisplayPost = () => {
       return;
     }
 
-    // Reset all state when slug changes
     const resetState = () => {
       setFetchAttempted(false);
       setPostReady(false);
@@ -169,7 +160,6 @@ const DisplayPost = () => {
 
     resetState();
 
-    // Clear old post data from store
     if (isAuthenticated) {
       dispatch(clearCurrentPost());
     } else {
@@ -180,7 +170,6 @@ const DisplayPost = () => {
       try {
         if (isAuthenticated) {
           await dispatch(getSinglePost({ slug, isGuest: false })).unwrap();
-          // Fetch categories for authenticated users
           dispatch(fetchCategories()).catch((err) =>
             console.warn("[DisplayPost] Categories fetch failed:", err)
           );
@@ -218,14 +207,12 @@ const DisplayPost = () => {
 
     hasFetchedStatus.current = true;
 
-    // Fetch interaction status
     dispatch(fetchBookmarkAndLikeStatus(activePost._id))
       .unwrap()
       .catch((err) => {
         console.warn("[DisplayPost] Failed to fetch interaction status:", err);
       });
 
-    // Fetch subscription plans
     dispatch(fetchSubscriptionPlansByAuthor(activePost.author._id))
       .unwrap()
       .catch((err) => {
@@ -239,13 +226,11 @@ const DisplayPost = () => {
       return;
     }
 
-    // Start tracking if not already tracking
     if (!isTracking && !localStartTime) {
       dispatch(startReading(activePost._id));
       setLocalStartTime(Date.now());
     }
 
-    // Cleanup function to submit reading time
     return () => {
       if (
         isTracking &&
@@ -256,13 +241,11 @@ const DisplayPost = () => {
       ) {
         const timeSpent = Math.floor((Date.now() - localStartTime) / 1000);
 
-        // Only submit if user spent more than 3 seconds
         if (timeSpent > 3) {
           readingTimeSubmitted.current = true;
           dispatch(submitReadingTime({ postId: activePost._id, timeSpent }))
             .unwrap()
             .catch((error) => {
-              // Ignore 404 errors (post might have been deleted)
               if (error?.status !== 404) {
                 console.warn(
                   "[DisplayPost] Failed to record reading time:",
@@ -315,7 +298,7 @@ const DisplayPost = () => {
       ) {
         navigate("/404", { replace: true });
       }
-    }, 1000); // Give 1 second for data to load
+    }, 1000);
 
     return () => clearTimeout(timeoutId);
   }, [fetchAttempted, postReady, activeLoading, navigate]);
@@ -352,10 +335,8 @@ const DisplayPost = () => {
     isAuthor,
   ]);
 
-  // Constants
   const BASE_URL = import.meta.env.VITE_API_URL || "https://readzio.com";
 
-  // Helper functions
   const formatTime = (seconds) => {
     if (!seconds || typeof seconds !== "number") return "0 sec";
 
@@ -369,36 +350,34 @@ const DisplayPost = () => {
   };
 
   const renderSkeleton = () => (
-    <div className="space-y-6">
-      <Skeleton height="h-8" width="w-3/4" />
-      <Skeleton height="h-4" width="w-1/2" />
-      <div className="space-y-2">
-        <Skeleton height="h-32" width="w-full" className="rounded-lg" />
-        <Skeleton height="h-6" width="w-3/4" />
-        <Skeleton height="h-4" width="w-full" />
-        <Skeleton height="h-4" width="w-full" />
-        <Skeleton height="h-4" width="w-2/3" />
+    <div className="space-y-8 animate-pulse">
+      <div className="space-y-4">
+        <Skeleton height="h-12" width="w-3/4" className="rounded-xl" />
+        <Skeleton height="h-6" width="w-1/2" className="rounded-lg" />
+      </div>
+      <div className="space-y-4">
+        <Skeleton height="h-48" width="w-full" className="rounded-2xl" />
+        <Skeleton height="h-6" width="w-full" className="rounded-lg" />
+        <Skeleton height="h-6" width="w-full" className="rounded-lg" />
+        <Skeleton height="h-6" width="w-4/5" className="rounded-lg" />
+        <Skeleton height="h-6" width="w-3/4" className="rounded-lg" />
       </div>
     </div>
   );
 
   const renderPostContent = () => {
-    // Show skeleton while loading or before fetch attempt
     if (activeLoading || subscriptionLoading || !fetchAttempted) {
       return renderSkeleton();
     }
 
-    // Show error if there's an error
     if (activeError) {
       return <PostNotFound message={activeError} />;
     }
 
-    // Show not found if no post data
     if (!activePost?._id || !Array.isArray(activePost.blocks)) {
       return <PostNotFound message="Post not found" />;
     }
 
-    // Extract metadata for SEO
     const firstImage =
       activePost.blocks?.find((b) => b?.type === "image")?.src ||
       activePost.thumbnail ||
@@ -447,7 +426,6 @@ const DisplayPost = () => {
           <meta name="description" content={plainText} />
           <link rel="canonical" href={`${BASE_URL}/post/${activePost.slug}`} />
 
-          {/* Open Graph */}
           <meta
             property="og:title"
             content={activePost.title || "readzio Post"}
@@ -460,7 +438,6 @@ const DisplayPost = () => {
             content={`${BASE_URL}/post/${activePost.slug}`}
           />
 
-          {/* Twitter Card */}
           <meta name="twitter:card" content="summary_large_image" />
           <meta
             name="twitter:title"
@@ -469,45 +446,53 @@ const DisplayPost = () => {
           <meta name="twitter:description" content={plainText} />
           <meta name="twitter:image" content={firstImage} />
 
-          {/* JSON-LD structured data */}
           <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
         </Helmet>
 
-        <article className="space-y-8 prose prose-lg max-w-none text-gray-700 dark:text-gray-300 leading-relaxed">
-          <PostHeader post={activePost} />
-          <PostMetaSection
-            post={activePost}
-            isUserSubscribed={isUserSubscribed}
-            isAuthor={isAuthor}
-            isPostRestricted={isPostRestricted}
-            categoryMap={categoryMap}
-            formatTime={formatTime}
-            setIsDeleteModalOpen={setIsDeleteModalOpen}
-          />
-          <BlockContentRenderer
-            post={activePost}
-            isAuthor={isAuthor}
-            showAnyway={showAnyway}
-            setShowAnyway={setShowAnyway}
-            canViewPost={canViewPost}
-            isPostRestricted={isPostRestricted}
-            currentUser={currentUser}
-            getUserById={(userId) =>
-              userId === activePost.author?._id ? activePost.author : null
-            }
-          />
-          <SubscriptionBanner
-            showSeeMore={showSeeMore}
-            post={activePost}
-            isPostRestricted={isPostRestricted}
-            canViewPost={canViewPost}
-          />
-          <EngagementButtons post={activePost} />
-          {activePost._id && activePost.author?._id && (
-            <CommentBox
-              postId={activePost._id}
-              postAuthorId={activePost.author._id}
+        <article className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-3xl">
+          <div className="p-6 sm:p-8 lg:p-12 space-y-8">
+            <PostHeader post={activePost} />
+            <PostMetaSection
+              post={activePost}
+              isUserSubscribed={isUserSubscribed}
+              isAuthor={isAuthor}
+              isPostRestricted={isPostRestricted}
+              categoryMap={categoryMap}
+              formatTime={formatTime}
+              setIsDeleteModalOpen={setIsDeleteModalOpen}
             />
+            <BlockContentRenderer
+              post={activePost}
+              isAuthor={isAuthor}
+              showAnyway={showAnyway}
+              setShowAnyway={setShowAnyway}
+              canViewPost={canViewPost}
+              isPostRestricted={isPostRestricted}
+              currentUser={currentUser}
+              getUserById={(userId) =>
+                userId === activePost.author?._id ? activePost.author : null
+              }
+              isAuthenticated={isAuthenticated}
+            />
+          </div>
+
+          <div className="border-t border-gray-200 dark:border-gray-700 p-6 sm:p-8 bg-gray-50 dark:bg-gray-900/50">
+            <SubscriptionBanner
+              showSeeMore={showSeeMore}
+              post={activePost}
+              isPostRestricted={isPostRestricted}
+              canViewPost={canViewPost}
+            />
+            <EngagementButtons post={activePost} />
+          </div>
+
+          {activePost._id && activePost.author?._id && (
+            <div className="border-t border-gray-200 dark:border-gray-700 p-6 sm:p-8 lg:p-12 bg-white dark:bg-gray-800">
+              <CommentBox
+                postId={activePost._id}
+                postAuthorId={activePost.author._id}
+              />
+            </div>
           )}
         </article>
       </>
@@ -517,46 +502,62 @@ const DisplayPost = () => {
   return (
     <ErrorBoundary>
       <HelmetProvider>
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 font-sans antialiased">
-          <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="lg:grid lg:grid-cols-3 lg:gap-10">
-              <div className="lg:col-span-2 space-y-8">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900 text-gray-900 dark:text-gray-100 font-sans antialiased">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+              {/* Main Content */}
+              <div className="lg:col-span-8 space-y-8">
                 {renderPostContent()}
                 {activePost?._id && (
-                  <MultiplexAd postId={activePost._id} testMode={false} />
+                  <div className="rounded-2xl overflow-hidden shadow-xl">
+                    <MultiplexAd postId={activePost._id} testMode={false} />
+                  </div>
                 )}
               </div>
 
-              <div className="hidden lg:block lg:col-span-1 space-y-8">
-                <div className="sticky -top-80 space-y-8">
+              {/* Sidebar */}
+              <aside className="hidden lg:block lg:col-span-4 space-y-8">
+                <div className="sticky top-8 space-y-8">
                   <AuthorSidebar
                     authorId={activePost?.author?._id || null}
                     isLoading={
                       activeLoading || subscriptionLoading || !fetchAttempted
                     }
-                    className="rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6"
+                    className="rounded-2xl bg-white dark:bg-gray-800 backdrop-blur-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300 hover:shadow-2xl"
                   />
                   {activePost?._id && (
-                    <div className="sticky top-[calc(100vh-200px)]">
+                    <div className="rounded-2xl overflow-hidden shadow-xl">
                       <DisplayAd postId={activePost._id} testMode={false} />
                     </div>
                   )}
                 </div>
-              </div>
+              </aside>
             </div>
           </div>
 
+          {/* Suggested Posts Section */}
           {activePost?._id && (
-            <div className="w-full min-h-screen bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 py-16">
-              <ErrorBoundary>
-                <SuggestedPosts
-                  postId={activePost._id}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-full"
-                />
-              </ErrorBoundary>
-            </div>
+            <section className="w-full bg-gradient-to-r from-gray-100 via-blue-50 to-purple-100 dark:from-gray-800 dark:via-blue-900 dark:to-purple-900 py-16 sm:py-20 lg:py-24 border-t border-gray-200 dark:border-gray-700">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-12">
+                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                    Continue Reading
+                  </h2>
+                  <p className="text-lg text-gray-600 dark:text-gray-400">
+                    Discover more stories you'll love
+                  </p>
+                </div>
+                <ErrorBoundary>
+                  <SuggestedPosts
+                    postId={activePost._id}
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
+                  />
+                </ErrorBoundary>
+              </div>
+            </section>
           )}
 
+          {/* Mobile Author Button */}
           {activePost?.author?._id && (
             <>
               <UserModal
@@ -566,15 +567,27 @@ const DisplayPost = () => {
               />
 
               <button
-                className="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-full shadow-xl hover:shadow-2xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 z-50 border border-blue-500/30"
+                className="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full shadow-2xl hover:shadow-3xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 z-50 border-2 border-white/20 backdrop-blur-sm font-semibold text-lg flex items-center gap-2"
                 onClick={() => setIsUserModalOpen(true)}
                 aria-label="View author information"
               >
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                    clipRule="evenodd"
+                  />
+                </svg>
                 Author
               </button>
             </>
           )}
 
+          {/* Delete Modal */}
           {isAuthor && activePost?._id && activePost?.slug && (
             <DeleteModal
               isOpen={isDeleteModalOpen}

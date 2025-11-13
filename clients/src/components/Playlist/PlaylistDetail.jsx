@@ -88,6 +88,9 @@ const PlaylistDetail = ({ playlistId }) => {
       ).unwrap();
 
       toast.success("Post removed from playlist");
+
+      // Refetch to ensure UI updates correctly
+      dispatch(fetchPlaylistById(actualId));
     } catch (error) {
       toast.error("Failed to remove post");
       console.error("Remove post error:", error);
