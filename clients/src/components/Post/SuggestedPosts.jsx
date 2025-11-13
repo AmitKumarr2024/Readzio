@@ -27,9 +27,11 @@ const SuggestedPosts = ({ postId, className }) => {
       hasFetched.current = false;
       lastPostId.current = postId;
       setDisplayLimit(12);
+      dispatch({ type: "suggestedPosts/resetStatus" });
+      return;
     }
 
-    if (status === "idle" && !hasFetched.current) {
+    if ((status === "idle" || status === undefined) && !hasFetched.current) {
       hasFetched.current = true;
 
       dispatch(
