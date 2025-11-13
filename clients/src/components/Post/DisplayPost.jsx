@@ -105,15 +105,23 @@ const DisplayPost = () => {
   }, [currentUser, activePost]);
 
   const isPostRestricted = useMemo(() => {
+    // Guests cannot see restrictions - they see public version
     if (!isAuthenticated) return false;
     if (!activePost?._id) return false;
     return restrictedPostIds.includes(activePost._id);
   }, [activePost?._id, restrictedPostIds, isAuthenticated]);
 
   const canViewPost = useMemo(() => {
+    // Guests can always view public posts
     if (!isAuthenticated) return true;
+
+    // Authors can always view their own posts
     if (isAuthor) return true;
+
+    // If post is not restricted, anyone can view
     if (!isPostRestricted) return true;
+
+    // If post is restricted, check subscription
     return Boolean(
       activePost?.author?._id && isSubscribed?.[activePost.author._id]
     );
@@ -146,6 +154,7 @@ const DisplayPost = () => {
       return;
     }
 
+    // Reset all state when slug changes
     const resetState = () => {
       setFetchAttempted(false);
       setPostReady(false);
@@ -160,6 +169,7 @@ const DisplayPost = () => {
 
     resetState();
 
+    // Clear old post data from store
     if (isAuthenticated) {
       dispatch(clearCurrentPost());
     } else {
@@ -170,6 +180,7 @@ const DisplayPost = () => {
       try {
         if (isAuthenticated) {
           await dispatch(getSinglePost({ slug, isGuest: false })).unwrap();
+          // Fetch categories for authenticated users
           dispatch(fetchCategories()).catch((err) =>
             console.warn("[DisplayPost] Categories fetch failed:", err)
           );
@@ -207,12 +218,14 @@ const DisplayPost = () => {
 
     hasFetchedStatus.current = true;
 
+    // Fetch interaction status
     dispatch(fetchBookmarkAndLikeStatus(activePost._id))
       .unwrap()
       .catch((err) => {
         console.warn("[DisplayPost] Failed to fetch interaction status:", err);
       });
 
+    // Fetch subscription plans
     dispatch(fetchSubscriptionPlansByAuthor(activePost.author._id))
       .unwrap()
       .catch((err) => {
@@ -226,11 +239,13 @@ const DisplayPost = () => {
       return;
     }
 
+    // Start tracking if not already tracking
     if (!isTracking && !localStartTime) {
       dispatch(startReading(activePost._id));
       setLocalStartTime(Date.now());
     }
 
+    // Cleanup function to submit reading time
     return () => {
       if (
         isTracking &&
@@ -241,11 +256,13 @@ const DisplayPost = () => {
       ) {
         const timeSpent = Math.floor((Date.now() - localStartTime) / 1000);
 
+        // Only submit if user spent more than 3 seconds
         if (timeSpent > 3) {
           readingTimeSubmitted.current = true;
           dispatch(submitReadingTime({ postId: activePost._id, timeSpent }))
             .unwrap()
             .catch((error) => {
+              // Ignore 404 errors (post might have been deleted)
               if (error?.status !== 404) {
                 console.warn(
                   "[DisplayPost] Failed to record reading time:",
@@ -298,7 +315,7 @@ const DisplayPost = () => {
       ) {
         navigate("/404", { replace: true });
       }
-    }, 1000);
+    }, 1000); // Give 1 second for data to load
 
     return () => clearTimeout(timeoutId);
   }, [fetchAttempted, postReady, activeLoading, navigate]);
@@ -335,8 +352,10 @@ const DisplayPost = () => {
     isAuthor,
   ]);
 
+  // Constants
   const BASE_URL = import.meta.env.VITE_API_URL || "https://readzio.com";
 
+  // Helper functions
   const formatTime = (seconds) => {
     if (!seconds || typeof seconds !== "number") return "0 sec";
 
@@ -350,34 +369,36 @@ const DisplayPost = () => {
   };
 
   const renderSkeleton = () => (
-    <div className="space-y-8 animate-pulse">
-      <div className="space-y-4">
-        <Skeleton height="h-12" width="w-3/4" className="rounded-xl" />
-        <Skeleton height="h-6" width="w-1/2" className="rounded-lg" />
-      </div>
-      <div className="space-y-4">
-        <Skeleton height="h-48" width="w-full" className="rounded-2xl" />
-        <Skeleton height="h-6" width="w-full" className="rounded-lg" />
-        <Skeleton height="h-6" width="w-full" className="rounded-lg" />
-        <Skeleton height="h-6" width="w-4/5" className="rounded-lg" />
-        <Skeleton height="h-6" width="w-3/4" className="rounded-lg" />
+    <div className="space-y-6">
+      <Skeleton height="h-8" width="w-3/4" />
+      <Skeleton height="h-4" width="w-1/2" />
+      <div className="space-y-2">
+        <Skeleton height="h-32" width="w-full" className="rounded-lg" />
+        <Skeleton height="h-6" width="w-3/4" />
+        <Skeleton height="h-4" width="w-full" />
+        <Skeleton height="h-4" width="w-full" />
+        <Skeleton height="h-4" width="w-2/3" />
       </div>
     </div>
   );
 
   const renderPostContent = () => {
+    // Show skeleton while loading or before fetch attempt
     if (activeLoading || subscriptionLoading || !fetchAttempted) {
       return renderSkeleton();
     }
 
+    // Show error if there's an error
     if (activeError) {
       return <PostNotFound message={activeError} />;
     }
 
+    // Show not found if no post data
     if (!activePost?._id || !Array.isArray(activePost.blocks)) {
       return <PostNotFound message="Post not found" />;
     }
 
+    // Extract metadata for SEO
     const firstImage =
       activePost.blocks?.find((b) => b?.type === "image")?.src ||
       activePost.thumbnail ||
@@ -426,6 +447,7 @@ const DisplayPost = () => {
           <meta name="description" content={plainText} />
           <link rel="canonical" href={`${BASE_URL}/post/${activePost.slug}`} />
 
+          {/* Open Graph */}
           <meta
             property="og:title"
             content={activePost.title || "readzio Post"}
@@ -438,6 +460,7 @@ const DisplayPost = () => {
             content={`${BASE_URL}/post/${activePost.slug}`}
           />
 
+          {/* Twitter Card */}
           <meta name="twitter:card" content="summary_large_image" />
           <meta
             name="twitter:title"
@@ -446,53 +469,45 @@ const DisplayPost = () => {
           <meta name="twitter:description" content={plainText} />
           <meta name="twitter:image" content={firstImage} />
 
+          {/* JSON-LD structured data */}
           <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
         </Helmet>
 
-        <article className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-3xl">
-          <div className="p-6 sm:p-8 lg:p-12 space-y-8">
-            <PostHeader post={activePost} />
-            <PostMetaSection
-              post={activePost}
-              isUserSubscribed={isUserSubscribed}
-              isAuthor={isAuthor}
-              isPostRestricted={isPostRestricted}
-              categoryMap={categoryMap}
-              formatTime={formatTime}
-              setIsDeleteModalOpen={setIsDeleteModalOpen}
-            />
-            <BlockContentRenderer
-              post={activePost}
-              isAuthor={isAuthor}
-              showAnyway={showAnyway}
-              setShowAnyway={setShowAnyway}
-              canViewPost={canViewPost}
-              isPostRestricted={isPostRestricted}
-              currentUser={currentUser}
-              getUserById={(userId) =>
-                userId === activePost.author?._id ? activePost.author : null
-              }
-              isAuthenticated={isAuthenticated}
-            />
-          </div>
-
-          <div className="border-t border-gray-200 dark:border-gray-700 p-6 sm:p-8 bg-gray-50 dark:bg-gray-900/50">
-            <SubscriptionBanner
-              showSeeMore={showSeeMore}
-              post={activePost}
-              isPostRestricted={isPostRestricted}
-              canViewPost={canViewPost}
-            />
-            <EngagementButtons post={activePost} />
-          </div>
-
+        <article className="space-y-8 prose prose-lg max-w-none text-gray-700 dark:text-gray-300 leading-relaxed">
+          <PostHeader post={activePost} />
+          <PostMetaSection
+            post={activePost}
+            isUserSubscribed={isUserSubscribed}
+            isAuthor={isAuthor}
+            isPostRestricted={isPostRestricted}
+            categoryMap={categoryMap}
+            formatTime={formatTime}
+            setIsDeleteModalOpen={setIsDeleteModalOpen}
+          />
+          <BlockContentRenderer
+            post={activePost}
+            isAuthor={isAuthor}
+            showAnyway={showAnyway}
+            setShowAnyway={setShowAnyway}
+            canViewPost={canViewPost}
+            isPostRestricted={isPostRestricted}
+            currentUser={currentUser}
+            getUserById={(userId) =>
+              userId === activePost.author?._id ? activePost.author : null
+            }
+          />
+          <SubscriptionBanner
+            showSeeMore={showSeeMore}
+            post={activePost}
+            isPostRestricted={isPostRestricted}
+            canViewPost={canViewPost}
+          />
+          <EngagementButtons post={activePost} />
           {activePost._id && activePost.author?._id && (
-            <div className="border-t border-gray-200 dark:border-gray-700 p-6 sm:p-8 lg:p-12 bg-white dark:bg-gray-800">
-              <CommentBox
-                postId={activePost._id}
-                postAuthorId={activePost.author._id}
-              />
-            </div>
+            <CommentBox
+              postId={activePost._id}
+              postAuthorId={activePost.author._id}
+            />
           )}
         </article>
       </>
