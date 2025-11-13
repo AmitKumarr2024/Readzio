@@ -26,9 +26,8 @@ const SuggestedPosts = ({ postId, className }) => {
     if (lastPostId.current !== postId) {
       hasFetched.current = false;
       lastPostId.current = postId;
-      setDisplayLimit(12);
+      setDisplayLimit(posts.length || 12);
       dispatch({ type: "suggestedPosts/resetStatus" });
-      return;
     }
 
     if ((status === "idle" || status === undefined) && !hasFetched.current) {
@@ -36,11 +35,14 @@ const SuggestedPosts = ({ postId, className }) => {
 
       dispatch(
         fetchSuggestedPosts({
-          limit: 30,
+          limit: 100,
           exclude: postId || "",
         })
       )
         .unwrap()
+        .then(() => {
+          setDisplayLimit((prev) => posts.length);
+        })
         .catch((error) => {
           console.error("[SuggestedPosts] Fetch error:", error);
 
@@ -55,9 +57,9 @@ const SuggestedPosts = ({ postId, className }) => {
           }
         });
     }
-  }, [dispatch, status, postId]);
+  }, [dispatch, status, postId, posts.length]);
 
-  // Infinite scroll logic
+  // Infinite scroll logic (disabled for full load)
   const loadMore = useCallback(() => {
     if (displayLimit < posts.length) {
       setDisplayLimit((prev) => Math.min(prev + 12, posts.length));
