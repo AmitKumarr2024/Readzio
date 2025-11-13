@@ -503,10 +503,10 @@ const DisplayPost = () => {
     <ErrorBoundary>
       <HelmetProvider>
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900 text-gray-900 dark:text-gray-100 font-sans antialiased">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
+          <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
               {/* Main Content */}
-              <div className="lg:col-span-8 space-y-8">
+              <div className="lg:col-span-2 space-y-8">
                 {renderPostContent()}
                 {activePost?._id && (
                   <div className="rounded-2xl overflow-hidden shadow-xl">
@@ -517,7 +517,7 @@ const DisplayPost = () => {
 
               {/* Sidebar */}
               <aside className="hidden lg:block lg:col-span-4 space-y-8">
-                <div className="sticky top-8 space-y-8">
+                <div className="sticky -top-80 space-y-8">
                   <AuthorSidebar
                     authorId={activePost?.author?._id || null}
                     isLoading={
@@ -538,7 +538,7 @@ const DisplayPost = () => {
           {/* Suggested Posts Section */}
           {activePost?._id && (
             <section className="w-full bg-gradient-to-r from-gray-100 via-blue-50 to-purple-100 dark:from-gray-800 dark:via-blue-900 dark:to-purple-900 py-16 sm:py-20 lg:py-24 border-t border-gray-200 dark:border-gray-700">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-12">
                   <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4">
                     Continue Reading
@@ -550,7 +550,7 @@ const DisplayPost = () => {
                 <ErrorBoundary>
                   <SuggestedPosts
                     postId={activePost._id}
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
+                    className="max-w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
                   />
                 </ErrorBoundary>
               </div>
