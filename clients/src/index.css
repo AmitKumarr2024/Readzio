@@ -407,3 +407,95 @@ div[contenteditable="true"] ::selection {
   background-color: rgb(30 58 138); /* blue-900 */
   color: inherit;
 }
+
+
+/* engagementbutton componets */
+@keyframes rainbow-border {
+            0% { border-color: #ff0000; box-shadow: 0 0 20px rgba(255, 0, 0, 0.3); }
+            14% { border-color: #ff7f00; box-shadow: 0 0 20px rgba(255, 127, 0, 0.3); }
+            28% { border-color: #ffff00; box-shadow: 0 0 20px rgba(255, 255, 0, 0.3); }
+            42% { border-color: #00ff00; box-shadow: 0 0 20px rgba(0, 255, 0, 0.3); }
+            57% { border-color: #0000ff; box-shadow: 0 0 20px rgba(0, 0, 255, 0.3); }
+            71% { border-color: #4b0082; box-shadow: 0 0 20px rgba(75, 0, 130, 0.3); }
+            85% { border-color: #9400d3; box-shadow: 0 0 20px rgba(148, 0, 211, 0.3); }
+            100% { border-color: #ff0000; box-shadow: 0 0 20px rgba(255, 0, 0, 0.3); }
+          }
+
+          @keyframes rainbow-bg {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+
+          .rainbow-container {
+            animation: rainbow-border 3s linear infinite;
+            background: linear-gradient(
+              90deg,
+              rgba(255, 0, 0, 0.05),
+              rgba(255, 127, 0, 0.05),
+              rgba(255, 255, 0, 0.05),
+              rgba(0, 255, 0, 0.05),
+              rgba(0, 0, 255, 0.05),
+              rgba(75, 0, 130, 0.05),
+              rgba(148, 0, 211, 0.05)
+            );
+            background-size: 200% 200%;
+            animation: rainbow-border 3s linear infinite, rainbow-bg 8s ease infinite;
+          }
+
+          @keyframes button-rainbow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+
+          .rainbow-button {
+            background: linear-gradient(
+              90deg,
+              #ff0000,
+              #ff7f00,
+              #ffff00,
+              #00ff00,
+              #0000ff,
+              #4b0082,
+              #9400d3,
+              #ff0000
+            );
+            background-size: 200% 200%;
+            animation: button-rainbow 3s ease infinite;
+            transition: all 0.3s ease;
+          }
+
+          .rainbow-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+          }
+
+          .rainbow-button:active {
+            transform: scale(0.95);
+          }
+
+          @media (max-width: 640px) {
+            .engagement-container {
+              padding: 0.75rem;
+            }
+            
+            .engagement-buttons {
+              gap: 0.5rem;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .engagement-container {
+              padding: 0.5rem;
+              margin: 1.5rem 0;
+            }
+            
+            .engagement-buttons {
+              gap: 0.375rem;
+            }
+            
+            .rainbow-button {
+              padding: 0.375rem;
+            }
+          }

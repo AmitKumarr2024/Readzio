@@ -14,26 +14,32 @@ const EngagementButtons = ({ post }) => {
   const postUrl = `https://readzio.com/post/${post.slug || postId}`;
 
   return (
-    <div className="flex items-center gap-4 my-10 bg-background-light dark:bg-background-dark rounded-2xl p-4 shadow-xl border border-gray-300 dark:border-gray-700">
-      <LikeButton
-        postId={postId}
-        className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full hover:shadow-lg transition-all duration-200"
-      />
-      <ShareButton
-        postId={postId} // ✅ Required to increment share count
-        postUrl={postUrl} // ✅ For sharing link
-        className="p-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full hover:shadow-lg transition-all duration-200"
-      />
-      <BookmarkButton
-        postId={postId}
-        className="p-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-full hover:shadow-lg transition-all duration-200"
-      />
-      <PlaylistButton
-        postId={postId}
-        post={post}
-        className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-full hover:shadow-lg transition-all duration-200 flex items-center gap-2"
-      />
-    </div>
+    <>
+      <div className="engagement-container w-full max-w-4xl mx-auto my-10 px-4 sm:px-6">
+        <div className="rainbow-container rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-4 backdrop-blur-sm">
+          <div className="engagement-buttons flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4">
+            <LikeButton
+              postId={postId}
+              className="rainbow-button p-2 sm:p-3 text-white rounded-full hover:shadow-lg transition-all duration-200 flex-shrink-0"
+            />
+            <ShareButton
+              postId={postId}
+              postUrl={postUrl}
+              className="rainbow-button p-2 sm:p-3 text-white rounded-full hover:shadow-lg transition-all duration-200 flex-shrink-0"
+            />
+            <BookmarkButton
+              postId={postId}
+              className="rainbow-button p-2 sm:p-3 text-white rounded-full hover:shadow-lg transition-all duration-200 flex-shrink-0"
+            />
+            <PlaylistButton
+              postId={postId}
+              post={post}
+              className="rainbow-button p-2 sm:p-3 text-white rounded-full hover:shadow-lg transition-all duration-200 flex items-center gap-2 flex-shrink-0"
+            />
+          </div>
+        </div>
+      </div>
+    </>
   );
 };
 

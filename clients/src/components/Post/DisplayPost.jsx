@@ -528,7 +528,7 @@ const DisplayPost = () => {
               </div>
 
               <div className="hidden lg:block lg:col-span-1 space-y-8">
-                <div className="sticky -top-80 space-y-8">
+                <div className="sticky -top-72 space-y-8">
                   <AuthorSidebar
                     authorId={activePost?.author?._id || null}
                     isLoading={
