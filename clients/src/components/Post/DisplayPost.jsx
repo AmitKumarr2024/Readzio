@@ -502,62 +502,46 @@ const DisplayPost = () => {
   return (
     <ErrorBoundary>
       <HelmetProvider>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900 text-gray-900 dark:text-gray-100 font-sans antialiased">
-          <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-              {/* Main Content */}
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 font-sans antialiased">
+          <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="lg:grid lg:grid-cols-3 lg:gap-10">
               <div className="lg:col-span-2 space-y-8">
                 {renderPostContent()}
                 {activePost?._id && (
-                  <div className="rounded-2xl overflow-hidden shadow-xl">
-                    <MultiplexAd postId={activePost._id} testMode={false} />
-                  </div>
+                  <MultiplexAd postId={activePost._id} testMode={false} />
                 )}
               </div>
 
-              {/* Sidebar */}
-              <aside className="hidden lg:block lg:col-span-4 space-y-8">
+              <div className="hidden lg:block lg:col-span-1 space-y-8">
                 <div className="sticky -top-80 space-y-8">
                   <AuthorSidebar
                     authorId={activePost?.author?._id || null}
                     isLoading={
                       activeLoading || subscriptionLoading || !fetchAttempted
                     }
-                    className="rounded-2xl bg-white dark:bg-gray-800 backdrop-blur-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300 hover:shadow-2xl"
+                    className="rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6"
                   />
                   {activePost?._id && (
-                    <div className="rounded-2xl overflow-hidden shadow-xl">
+                    <div className="sticky top-[calc(100vh-200px)]">
                       <DisplayAd postId={activePost._id} testMode={false} />
                     </div>
                   )}
                 </div>
-              </aside>
+              </div>
             </div>
           </div>
 
-          {/* Suggested Posts Section */}
           {activePost?._id && (
-            <section className="w-full bg-gradient-to-r from-gray-100 via-blue-50 to-purple-100 dark:from-gray-800 dark:via-blue-900 dark:to-purple-900 py-16 sm:py-20 lg:py-24 border-t border-gray-200 dark:border-gray-700">
-              <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="text-center mb-12">
-                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                    Continue Reading
-                  </h2>
-                  <p className="text-lg text-gray-600 dark:text-gray-400">
-                    Discover more stories you'll love
-                  </p>
-                </div>
-                <ErrorBoundary>
-                  <SuggestedPosts
-                    postId={activePost._id}
-                    className="max-w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
-                  />
-                </ErrorBoundary>
-              </div>
-            </section>
+            <div className="w-full min-h-screen bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 py-16">
+              <ErrorBoundary>
+                <SuggestedPosts
+                  postId={activePost._id}
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-full"
+                />
+              </ErrorBoundary>
+            </div>
           )}
 
-          {/* Mobile Author Button */}
           {activePost?.author?._id && (
             <>
               <UserModal
@@ -567,27 +551,15 @@ const DisplayPost = () => {
               />
 
               <button
-                className="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full shadow-2xl hover:shadow-3xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 z-50 border-2 border-white/20 backdrop-blur-sm font-semibold text-lg flex items-center gap-2"
+                className="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-full shadow-xl hover:shadow-2xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 z-50 border border-blue-500/30"
                 onClick={() => setIsUserModalOpen(true)}
                 aria-label="View author information"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                    clipRule="evenodd"
-                  />
-                </svg>
                 Author
               </button>
             </>
           )}
 
-          {/* Delete Modal */}
           {isAuthor && activePost?._id && activePost?.slug && (
             <DeleteModal
               isOpen={isDeleteModalOpen}
