@@ -625,16 +625,6 @@ const DisplayPost = () => {
         <article className="space-y-8 prose prose-lg max-w-none text-gray-700 dark:text-gray-300 leading-relaxed">
           <PostHeader post={activePost} />
 
-          {/* ---------------------------------------------
-            ✅ VISIBLE DESCRIPTION BOX (first text block)
-        ---------------------------------------------- */}
-          {descriptionHtml && (
-            <div
-              className="text-[1.15rem] leading-relaxed text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700"
-              dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-            />
-          )}
-
           <PostMetaSection
             post={activePost}
             isUserSubscribed={isUserSubscribed}
