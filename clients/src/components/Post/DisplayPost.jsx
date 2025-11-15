@@ -382,6 +382,138 @@ const DisplayPost = () => {
     </div>
   );
 
+  // const renderPostContent = () => {
+  //   // Show skeleton while loading or before fetch attempt
+  //   if (activeLoading || subscriptionLoading || !fetchAttempted) {
+  //     return renderSkeleton();
+  //   }
+
+  //   // Show error if there's an error
+  //   if (activeError) {
+  //     return <PostNotFound message={activeError} />;
+  //   }
+
+  //   // Show not found if no post data
+  //   if (!activePost?._id || !Array.isArray(activePost.blocks)) {
+  //     return <PostNotFound message="Post not found" />;
+  //   }
+
+  //   // Extract metadata for SEO
+  //   const firstImage =
+  //     activePost.blocks?.find((b) => b?.type === "image")?.src ||
+  //     activePost.thumbnail ||
+  //     "/logo.png";
+
+  //   const plainText =
+  //     activePost.blocks
+  //       ?.filter((b) => b?.type === "text")
+  //       .map((b) => b?.content || b?.text || "")
+  //       .join(" ")
+  //       .slice(0, 160)
+  //       .replace(/\s+\S*$/, "") || "Read this post on readzio";
+
+  //   const jsonLd = {
+  //     "@context": "https://schema.org",
+  //     "@type": "BlogPosting",
+  //     headline: activePost.title || "readzio Post",
+  //     description: plainText,
+  //     image: firstImage,
+  //     author: {
+  //       "@type": "Person",
+  //       name: activePost.author?.fullName || "readzio Author",
+  //     },
+  //     publisher: {
+  //       "@type": "Organization",
+  //       name: "readzio",
+  //       logo: {
+  //         "@type": "ImageObject",
+  //         url: `${BASE_URL}/logo.png`,
+  //       },
+  //     },
+  //     url: `${BASE_URL}/post/${activePost.slug}`,
+  //     datePublished: activePost.createdAt,
+  //     dateModified: activePost.updatedAt || activePost.createdAt,
+  //   };
+
+  //   return (
+  //     <>
+  //       <Helmet>
+  //         <title>
+  //           {activePost.title
+  //             ? `${activePost.title} | readzio`
+  //             : "Loading... | readzio"}
+  //         </title>
+  //         <meta name="robots" content="index, follow" />
+  //         <meta name="description" content={plainText} />
+  //         <link rel="canonical" href={`${BASE_URL}/post/${activePost.slug}`} />
+
+  //         {/* Open Graph */}
+  //         <meta
+  //           property="og:title"
+  //           content={activePost.title || "readzio Post"}
+  //         />
+  //         <meta property="og:description" content={plainText} />
+  //         <meta property="og:image" content={firstImage} />
+  //         <meta property="og:type" content="article" />
+  //         <meta
+  //           property="og:url"
+  //           content={`${BASE_URL}/post/${activePost.slug}`}
+  //         />
+
+  //         {/* Twitter Card */}
+  //         <meta name="twitter:card" content="summary_large_image" />
+  //         <meta
+  //           name="twitter:title"
+  //           content={activePost.title || "readzio Post"}
+  //         />
+  //         <meta name="twitter:description" content={plainText} />
+  //         <meta name="twitter:image" content={firstImage} />
+
+  //         {/* JSON-LD structured data */}
+  //         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+  //       </Helmet>
+
+  //       <article className="space-y-8 prose prose-lg max-w-none text-gray-700 dark:text-gray-300 leading-relaxed">
+  //         <PostHeader post={activePost} />
+  //         <PostMetaSection
+  //           post={activePost}
+  //           isUserSubscribed={isUserSubscribed}
+  //           isAuthor={isAuthor}
+  //           isPostRestricted={isPostRestricted}
+  //           categoryMap={categoryMap}
+  //           formatTime={formatTime}
+  //           setIsDeleteModalOpen={setIsDeleteModalOpen}
+  //         />
+  //         <BlockContentRenderer
+  //           post={activePost}
+  //           isAuthor={isAuthor}
+  //           showAnyway={showAnyway}
+  //           setShowAnyway={setShowAnyway}
+  //           canViewPost={canViewPost}
+  //           isPostRestricted={isPostRestricted}
+  //           currentUser={currentUser}
+  //           getUserById={(userId) =>
+  //             userId === activePost.author?._id ? activePost.author : null
+  //           }
+  //         />
+  //         <SubscriptionBanner
+  //           showSeeMore={showSeeMore}
+  //           post={activePost}
+  //           isPostRestricted={isPostRestricted}
+  //           canViewPost={canViewPost}
+  //         />
+  //         <EngagementButtons post={activePost} />
+  //         {activePost._id && activePost.author?._id && (
+  //           <CommentBox
+  //             postId={activePost._id}
+  //             postAuthorId={activePost.author._id}
+  //           />
+  //         )}
+  //       </article>
+  //     </>
+  //   );
+  // };
+
   const renderPostContent = () => {
     // Show skeleton while loading or before fetch attempt
     if (activeLoading || subscriptionLoading || !fetchAttempted) {
@@ -398,25 +530,36 @@ const DisplayPost = () => {
       return <PostNotFound message="Post not found" />;
     }
 
-    // Extract metadata for SEO
+    // ---------------------------------------------
+    // ✅ Extract first TEXT block properly
+    // ---------------------------------------------
+    const firstTextBlock = activePost.blocks?.find(
+      (b) => b?.type === "text" && b?.value
+    );
+
+    const descriptionHtml = firstTextBlock?.value || "";
+
+    const plainDescription =
+      descriptionHtml
+        .replace(/<[^>]+>/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 160)
+        .trim() || "Read this post on readzio";
+
+    // Extract first image
     const firstImage =
       activePost.blocks?.find((b) => b?.type === "image")?.src ||
+      activePost.blocks?.find((b) => b?.type === "image")?.url ||
       activePost.thumbnail ||
-      "/default-og-image.jpg";
+      `${BASE_URL}/logo.png`;
 
-    const plainText =
-      activePost.blocks
-        ?.filter((b) => b?.type === "text")
-        .map((b) => b?.content || b?.text || "")
-        .join(" ")
-        .slice(0, 160)
-        .replace(/\s+\S*$/, "") || "Read this post on readzio";
-
+    // JSON-LD structured data
     const jsonLd = {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
       headline: activePost.title || "readzio Post",
-      description: plainText,
+      description: plainDescription,
       image: firstImage,
       author: {
         "@type": "Person",
@@ -431,8 +574,11 @@ const DisplayPost = () => {
         },
       },
       url: `${BASE_URL}/post/${activePost.slug}`,
-      datePublished: activePost.createdAt,
-      dateModified: activePost.updatedAt || activePost.createdAt,
+      datePublished: activePost.createdAt || new Date().toISOString(),
+      dateModified:
+        activePost.updatedAt ||
+        activePost.createdAt ||
+        new Date().toISOString(),
     };
 
     return (
@@ -443,8 +589,11 @@ const DisplayPost = () => {
               ? `${activePost.title} | readzio`
               : "Loading... | readzio"}
           </title>
+
           <meta name="robots" content="index, follow" />
-          <meta name="description" content={plainText} />
+          {/* ✅ Updated description */}
+          <meta name="description" content={plainDescription} />
+
           <link rel="canonical" href={`${BASE_URL}/post/${activePost.slug}`} />
 
           {/* Open Graph */}
@@ -452,7 +601,7 @@ const DisplayPost = () => {
             property="og:title"
             content={activePost.title || "readzio Post"}
           />
-          <meta property="og:description" content={plainText} />
+          <meta property="og:description" content={plainDescription} />
           <meta property="og:image" content={firstImage} />
           <meta property="og:type" content="article" />
           <meta
@@ -466,7 +615,7 @@ const DisplayPost = () => {
             name="twitter:title"
             content={activePost.title || "readzio Post"}
           />
-          <meta name="twitter:description" content={plainText} />
+          <meta name="twitter:description" content={plainDescription} />
           <meta name="twitter:image" content={firstImage} />
 
           {/* JSON-LD structured data */}
@@ -475,6 +624,17 @@ const DisplayPost = () => {
 
         <article className="space-y-8 prose prose-lg max-w-none text-gray-700 dark:text-gray-300 leading-relaxed">
           <PostHeader post={activePost} />
+
+          {/* ---------------------------------------------
+            ✅ VISIBLE DESCRIPTION BOX (first text block)
+        ---------------------------------------------- */}
+          {descriptionHtml && (
+            <div
+              className="text-[1.15rem] leading-relaxed text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700"
+              dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+            />
+          )}
+
           <PostMetaSection
             post={activePost}
             isUserSubscribed={isUserSubscribed}
@@ -484,6 +644,7 @@ const DisplayPost = () => {
             formatTime={formatTime}
             setIsDeleteModalOpen={setIsDeleteModalOpen}
           />
+
           <BlockContentRenderer
             post={activePost}
             isAuthor={isAuthor}
@@ -496,13 +657,16 @@ const DisplayPost = () => {
               userId === activePost.author?._id ? activePost.author : null
             }
           />
+
           <SubscriptionBanner
             showSeeMore={showSeeMore}
             post={activePost}
             isPostRestricted={isPostRestricted}
             canViewPost={canViewPost}
           />
+
           <EngagementButtons post={activePost} />
+
           {activePost._id && activePost.author?._id && (
             <CommentBox
               postId={activePost._id}
