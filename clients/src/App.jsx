@@ -28,6 +28,7 @@ import AppTour from "./AppRootFile/components/AppTour";
 import { dismissBannerNotification } from "./store/bannerNotificationSlice";
 import { toast } from "react-hot-toast";
 import LoadingBar from "./Utils/LoadingBar";
+import AdminDashboard from "./pages/Admin/Dashboard";
 
 export default function App() {
   const dispatch = useDispatch();
@@ -36,6 +37,13 @@ export default function App() {
   const [showThankYou, setShowThankYou] = useState(false);
   const [routeLoading, setRouteLoading] = useState(false);
   const isAdBlocked = useAdBlockDetector();
+  // ✅ Control when loader shows/hides
+  const [isAppLoading, setIsAppLoading] = useState(true);
+
+  // ✅ Only render content when loading is complete
+  {
+    !isAppLoading && <AdminDashboard />;
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => setBooting(false), 1000);
@@ -154,7 +162,12 @@ export default function App() {
           Thank you for your feedback!
         </div>
       )}
-      {routeLoading && <LoadingBar loading={routeLoading} text="Opening your reading world..." />}
+      {routeLoading && (
+        <LoadingBar
+          loading={routeLoading}
+          text="Opening your reading world..."
+        />
+      )}
 
       <Outlet />
       <LocationErrorPopup locationError={locationError} onDismiss={() => {}} />
