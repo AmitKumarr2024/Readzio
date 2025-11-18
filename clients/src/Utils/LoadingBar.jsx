@@ -10,8 +10,8 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
     if (loading) {
       setProgress(0);
 
-      // Generate particles
-      const newParticles = Array.from({ length: 50 }, (_, i) => ({
+      // ✅ REDUCED particles from 50 → 12 for better performance
+      const newParticles = Array.from({ length: 12 }, (_, i) => ({
         id: i,
         x: Math.random() * 100,
         y: Math.random() * 100,
@@ -36,7 +36,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
     }
   }, [loading]);
 
-  // Canvas animation for glow effect
+  // ✅ OPTIMIZED canvas animation - reduced to 30fps for mobile performance
   useEffect(() => {
     if (!loading || !canvasRef.current) return;
 
@@ -47,9 +47,17 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
 
     let animationId;
     let hue = 0;
+    let lastTime = 0;
 
-    const animate = () => {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+    const animate = (currentTime) => {
+      // ✅ Limit to 30 FPS for mobile performance
+      if (currentTime - lastTime < 1000 / 30) {
+        animationId = requestAnimationFrame(animate);
+        return;
+      }
+      lastTime = currentTime;
+
+      ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Draw orbiting particles
@@ -58,29 +66,30 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
       const centerY = canvas.height / 2;
       const time = Date.now() * 0.001;
 
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2 + time;
-        const radius = 120 + Math.sin(time * 2 + i) * 20;
+      // ✅ REDUCED from 8 → 5 particles for better performance
+      for (let i = 0; i < 5; i++) {
+        const angle = (i / 5) * Math.PI * 2 + time;
+        const radius = 100 + Math.sin(time * 2 + i) * 15;
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius;
 
-        const gradient = ctx.createRadialGradient(x, y, 0, x, y, 15);
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, 12);
         gradient.addColorStop(
           0,
-          `hsla(${(hue + i * 45) % 360}, 100%, 60%, 0.8)`
+          `hsla(${(hue + i * 72) % 360}, 100%, 60%, 0.6)`
         );
-        gradient.addColorStop(1, `hsla(${(hue + i * 45) % 360}, 100%, 60%, 0)`);
+        gradient.addColorStop(1, `hsla(${(hue + i * 72) % 360}, 100%, 60%, 0)`);
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(x, y, 15, 0, Math.PI * 2);
+        ctx.arc(x, y, 12, 0, Math.PI * 2);
         ctx.fill();
       }
 
       animationId = requestAnimationFrame(animate);
     };
 
-    animate();
+    animate(0);
 
     return () => cancelAnimationFrame(animationId);
   }, [loading]);
@@ -102,24 +111,34 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden"
+        className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden pointer-events-none"
         style={{
           background:
-            "radial-gradient(circle at center, #0a0a0a 0%, #000000 100%)",
+            "radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 50%, #000000 100%)",
         }}
       >
         {/* Animated canvas background */}
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full"
-          style={{ opacity: 0.6 }}
+          style={{ opacity: 0.5 }}
+        />
+
+        {/* Grid pattern overlay */}
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage: `linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)`,
+            backgroundSize: "50px 50px",
+          }}
         />
 
         {/* Floating particles */}
         {particles.map((particle) => (
           <motion.div
             key={particle.id}
-            className="absolute rounded-full bg-gradient-to-br from-cyan-400 to-blue-600"
+            className="absolute rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600"
             style={{
               width: particle.size,
               height: particle.size,
@@ -127,8 +146,8 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
               top: `${particle.y}%`,
             }}
             animate={{
-              y: [0, -100, 0],
-              opacity: [0, 1, 0],
+              y: [0, -80, 0],
+              opacity: [0, 0.8, 0],
               scale: [0, 1, 0],
             }}
             transition={{
@@ -140,11 +159,11 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
           />
         ))}
 
-        {/* Main content container */}
-        <div className="relative z-10 flex flex-col items-center">
+        {/* ✅ Main content container - pointer-events-auto allows interaction */}
+        <div className="relative z-10 flex flex-col items-center pointer-events-auto px-4">
           {/* Logo container with 3D effect */}
           <motion.div
-            className="relative mb-12"
+            className="relative mb-10 sm:mb-12"
             animate={{
               rotateY: [0, 360],
             }}
@@ -160,24 +179,24 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
           >
             {/* Glow rings around logo */}
             <motion.div
-              className="absolute inset-0 -m-8"
+              className="absolute inset-0 -m-6 sm:-m-8"
               animate={{
                 rotate: 360,
-                scale: [1, 1.2, 1],
+                scale: [1, 1.15, 1],
               }}
               transition={{
                 rotate: { duration: 8, repeat: Infinity, ease: "linear" },
                 scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
               }}
             >
-              <div className="w-full h-full rounded-full border-4 border-cyan-500/30 blur-sm" />
+              <div className="w-full h-full rounded-full border-2 sm:border-4 border-cyan-500/20 blur-sm" />
             </motion.div>
 
             <motion.div
-              className="absolute inset-0 -m-12"
+              className="absolute inset-0 -m-8 sm:-m-12"
               animate={{
                 rotate: -360,
-                scale: [1, 1.3, 1],
+                scale: [1, 1.25, 1],
               }}
               transition={{
                 rotate: { duration: 6, repeat: Infinity, ease: "linear" },
@@ -189,14 +208,14 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
                 },
               }}
             >
-              <div className="w-full h-full rounded-full border-4 border-purple-500/30 blur-sm" />
+              <div className="w-full h-full rounded-full border-2 sm:border-4 border-purple-500/20 blur-sm" />
             </motion.div>
 
             {/* Logo with multiple layers */}
             <motion.div
               className="relative"
               animate={{
-                scale: [1, 1.1, 1],
+                scale: [1, 1.08, 1],
               }}
               transition={{
                 duration: 2,
@@ -205,13 +224,13 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
               }}
             >
               {/* Shadow layers for 3D depth */}
-              <div className="absolute inset-0 blur-2xl bg-gradient-to-br from-cyan-500 to-purple-600 opacity-50 rounded-full" />
+              <div className="absolute inset-0 blur-2xl bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-600 opacity-40 rounded-full" />
 
               <motion.div
-                className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl"
+                className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 sm:border-4 border-white/10 shadow-2xl backdrop-blur-sm"
                 style={{
                   boxShadow:
-                    "0 0 60px rgba(0, 255, 255, 0.5), 0 0 100px rgba(138, 43, 226, 0.3)",
+                    "0 0 40px rgba(6, 182, 212, 0.4), 0 0 80px rgba(147, 51, 234, 0.2)",
                 }}
               >
                 {/* Fallback gradient if logo doesn't load */}
@@ -228,16 +247,16 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
                 />
               </motion.div>
 
-              {/* Orbiting elements */}
+              {/* Orbiting elements - REDUCED from 3 to 3 but smaller */}
               {[0, 120, 240].map((angle, i) => (
                 <motion.div
                   key={i}
-                  className="absolute w-3 h-3 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500"
+                  className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full"
                   style={{
                     top: "50%",
                     left: "50%",
-                    marginLeft: -6,
-                    marginTop: -6,
+                    marginLeft: -4,
+                    marginTop: -4,
                   }}
                   animate={{
                     rotate: 360,
@@ -251,9 +270,9 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
                 >
                   <div
                     style={{
-                      transform: `rotate(${angle}deg) translateX(80px)`,
+                      transform: `rotate(${angle}deg) translateX(60px)`,
                     }}
-                    className="w-3 h-3 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 shadow-lg"
+                    className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/50"
                   />
                 </motion.div>
               ))}
@@ -262,9 +281,9 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
 
           {/* Loading text with glitch effect */}
           <motion.div
-            className="mb-8 text-center"
+            className="mb-6 sm:mb-8 text-center"
             animate={{
-              opacity: [0.5, 1, 0.5],
+              opacity: [0.6, 1, 0.6],
             }}
             transition={{
               duration: 2,
@@ -272,13 +291,13 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
               ease: "easeInOut",
             }}
           >
-            <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 mb-2">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 mb-2 px-4">
               {text}
             </h2>
             <motion.div
               className="flex justify-center gap-2"
               animate={{
-                opacity: [1, 0.3, 1],
+                opacity: [1, 0.4, 1],
               }}
               transition={{
                 duration: 1.5,
@@ -288,7 +307,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
               {[0, 1, 2].map((i) => (
                 <motion.div
                   key={i}
-                  className="w-2 h-2 rounded-full bg-cyan-400"
+                  className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50"
                   animate={{
                     scale: [1, 1.5, 1],
                     opacity: [1, 0.3, 1],
@@ -304,8 +323,8 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
           </motion.div>
 
           {/* Progress bar with liquid effect */}
-          <div className="w-60 max-w-[60vw]">
-            <div className="relative h-3 bg-gray-800/50 rounded-full overflow-hidden backdrop-blur-sm border border-gray-700/50">
+          <div className="w-full max-w-[280px] sm:max-w-xs md:max-w-sm">
+            <div className="relative h-2 sm:h-3 bg-gray-900/50 rounded-full overflow-hidden backdrop-blur-sm border border-gray-700/30 shadow-inner">
               <motion.div
                 className="absolute inset-0 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 rounded-full"
                 style={{
@@ -317,7 +336,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
               >
                 {/* Shimmer effect */}
                 <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
                   animate={{
                     x: ["-100%", "200%"],
                   }}
@@ -331,7 +350,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
 
               {/* Glow effect */}
               <motion.div
-                className="absolute inset-0 blur-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 opacity-50"
+                className="absolute inset-0 blur-lg bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 opacity-40"
                 style={{
                   width: `${Math.min(progress, 100)}%`,
                 }}
@@ -340,7 +359,7 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
 
             {/* Progress percentage */}
             <motion.p
-              className="text-center mt-4 text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500"
+              className="text-center mt-3 sm:mt-4 text-lg sm:text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500"
               key={Math.floor(progress)}
               initial={{ scale: 1 }}
               animate={{ scale: [1, 1.1, 1] }}
@@ -349,11 +368,30 @@ const LoadingBar = ({ loading, text = "Loading..." }) => {
               {Math.floor(Math.min(progress, 100))}%
             </motion.p>
           </div>
+
+          {/* Additional decorative text */}
+          <motion.p
+            className="mt-6 text-xs sm:text-sm text-gray-500 font-light tracking-wider"
+            animate={{
+              opacity: [0.3, 0.6, 0.3],
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            Preparing your experience...
+          </motion.p>
         </div>
 
         {/* Edge glow effects */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50 blur-sm" />
-        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent opacity-50 blur-sm" />
+        <div className="absolute top-0 left-0 w-full h-0.5 sm:h-1 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent blur-sm" />
+        <div className="absolute bottom-0 left-0 w-full h-0.5 sm:h-1 bg-gradient-to-r from-transparent via-purple-500/50 to-transparent blur-sm" />
+
+        {/* Corner accents */}
+        <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-cyan-500/10 to-transparent blur-2xl" />
+        <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-purple-500/10 to-transparent blur-2xl" />
       </motion.div>
     </AnimatePresence>
   );
