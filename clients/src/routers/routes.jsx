@@ -49,7 +49,10 @@ const CategorySelectPage = safeLazy(() =>
 const BookmarkComponent = safeLazy(() =>
   import("../components/Post/BookmarkComponent")
 );
-const Dashboard = safeLazy(() => import("../pages/Admin/Dashboard"));
+
+// ✅ FIXED: Admin Dashboard - Only lazy import here
+const AdminDashboard = safeLazy(() => import("../pages/Admin/Dashboard"));
+
 const AcknowledgeConfirmation = safeLazy(() =>
   import("../pages/Admin/AcknowledgeConfirmation")
 );
@@ -104,14 +107,12 @@ const routes = createBrowserRouter([
         path: "admin",
         element: (
           <AdminRoute>
-            <Dashboard />
+            <AdminDashboard />
           </AdminRoute>
         ),
       },
     ],
   },
-
-  ,
   {
     path: "/signup",
     element: (

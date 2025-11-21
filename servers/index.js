@@ -63,6 +63,13 @@ const ALLOWED_ORIGINS = [
 
 const REQUIRED_ENV = ["MONGO_URI", "JWT_SECRET", "CLIENT_URL"];
 
+// Cache for sitemap stats (to track changes)
+let sitemapCache = {
+  lastModified: null,
+  etag: null,
+  content: null,
+};
+
 // =============================================================================
 // ENVIRONMENT VALIDATION
 // =============================================================================
@@ -190,7 +197,7 @@ app.use(async (req, res, next) => {
 
     try {
       const post = await PostModel.findOne({ slug, isPublished: true })
-        .populate("author", "name") // ✅ Preload author name
+        .populate("author", "name")
         .select(
           "title metaTitle metaDescription excerpt blocks ogImage createdAt"
         );
@@ -253,14 +260,14 @@ app.use(async (req, res, next) => {
     }
   }
 
-  next(); // Continue to static React app for real users
+  next();
 });
 
-// ✅ Optional: Prerender middleware (if you want to use it)
 prerender.set("protocol", "https");
 prerender.set("prerenderServiceUrl", "https://render-tron.appspot.com/render");
 prerender.set("whitelisted", ["^/post/"]);
 app.use(prerender);
+
 // =============================================================================
 // ROUTE CONFIGURATION
 // =============================================================================
@@ -368,7 +375,6 @@ const routeStats = mountRoutes();
 // STATIC FILE SERVING
 // =============================================================================
 
-// Public directory
 if (fsSync.existsSync(PUBLIC_PATH)) {
   app.use(
     "/public",
@@ -399,6 +405,7 @@ Disallow: /admin/`
   );
 });
 
+// ✅ FIXED SITEMAP ROUTE - ALWAYS FRESH, NO CACHING
 app.get("/sitemap.xml", async (req, res) => {
   try {
     // Check if sitemap exists
@@ -407,10 +414,24 @@ app.get("/sitemap.xml", async (req, res) => {
       return res.status(404).type("text/plain").send("Sitemap not found");
     }
 
-    // Read and serve sitemap
+    // Get file stats
+    const stats = await fs.stat(SITEMAP_PATH);
+    const lastModified = stats.mtime.toUTCString();
+    const etag = `"${stats.size}-${stats.mtime.getTime()}"`;
+
+    // Check if client already has latest version (conditional request)
+    const ifNoneMatch = req.headers["if-none-match"];
+    const ifModifiedSince = req.headers["if-modified-since"];
+
+    if (ifNoneMatch === etag || ifModifiedSince === lastModified) {
+      console.log("✅ Sitemap: Client has latest version (304)");
+      return res.status(304).end();
+    }
+
+    // Read sitemap content
     const sitemapContent = await fs.readFile(SITEMAP_PATH, "utf-8");
 
-    // Validate XML structure (basic check)
+    // Validate XML structure
     if (
       !sitemapContent.includes("<?xml") ||
       !sitemapContent.includes("<urlset")
@@ -419,11 +440,21 @@ app.get("/sitemap.xml", async (req, res) => {
       return res.status(500).type("text/plain").send("Invalid sitemap format");
     }
 
+    // ✅ CRITICAL FIX: Force Google to always refetch
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
-    res.setHeader("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Last-Modified", lastModified);
+    res.setHeader("ETag", etag);
+    res.setHeader("X-Robots-Tag", "noindex"); // Prevent sitemap from being indexed
+    
     res.send(sitemapContent);
 
-    console.log("✅ Sitemap served successfully");
+    console.log("✅ Sitemap served successfully (FRESH, NO CACHE)");
+    console.log(`   - Size: ${(stats.size / 1024).toFixed(2)} KB`);
+    console.log(`   - Last Modified: ${lastModified}`);
+    console.log(`   - ETag: ${etag}`);
   } catch (error) {
     console.error("❌ Error serving sitemap:", error.message);
     res.status(500).type("text/plain").send("Error loading sitemap");
@@ -443,6 +474,16 @@ app.get("/ads.txt", (req, res) => {
 app.get("/health", (req, res) => {
   const memUsage = process.memoryUsage();
   const sitemapExists = fsSync.existsSync(SITEMAP_PATH);
+  let sitemapStats = null;
+
+  if (sitemapExists) {
+    const stats = fsSync.statSync(SITEMAP_PATH);
+    sitemapStats = {
+      size: `${(stats.size / 1024).toFixed(2)} KB`,
+      lastModified: stats.mtime.toISOString(),
+      age: `${Math.floor((Date.now() - stats.mtime.getTime()) / 60000)} minutes ago`,
+    };
+  }
 
   res.status(200).json({
     status: "OK",
@@ -470,6 +511,7 @@ app.get("/health", (req, res) => {
     sitemap: {
       exists: sitemapExists,
       path: sitemapExists ? SITEMAP_PATH : null,
+      stats: sitemapStats,
     },
   });
 });
@@ -480,7 +522,6 @@ app.get("/health", (req, res) => {
 
 if (NODE_ENV === "production") {
   if (fsSync.existsSync(CLIENT_INDEX_PATH)) {
-    // Serve static files
     app.use(
       express.static(CLIENT_PATH, {
         maxAge: "1d",
@@ -494,9 +535,7 @@ if (NODE_ENV === "production") {
       })
     );
 
-    // SPA fallback - serve index.html for all non-API routes
     app.get("*", (req, res, next) => {
-      // Skip API and special routes
       const skipRoutes = [
         "/api",
         "/public",
@@ -510,7 +549,6 @@ if (NODE_ENV === "production") {
         return next();
       }
 
-      // Serve index.html
       res.sendFile(CLIENT_INDEX_PATH, (err) => {
         if (err) {
           console.error("❌ Failed to serve index.html:", err.message);
@@ -524,12 +562,11 @@ if (NODE_ENV === "production") {
     console.log("✅ Client app mounted (production mode)");
   } else {
     console.error("❌ Client build not found:", CLIENT_INDEX_PATH);
-    app.get("/{*splat}", (req, res) => {
+    app.get("*", (req, res) => {
       res.status(503).send("Service unavailable - client build not found");
     });
   }
 } else {
-  // Development mode - simple API response
   app.get("/", (req, res) => {
     res.json({
       message: "readzio API is running in development mode",
@@ -648,31 +685,27 @@ async function startServer() {
     console.log(`📊 Node: ${process.version}`);
     console.log(`📊 Platform: ${process.platform}`);
 
-    // Validate environment
     validateEnvironment();
 
-    // Connect to database
     console.log("🔌 Connecting to MongoDB...");
     await connectDb();
     console.log("✅ Database connected");
 
-    // Start background jobs
     console.log("🧹 Starting background jobs...");
     startTempCleanup();
     startDailyDigestJob();
     console.log("✅ Background jobs started");
 
-    // Check sitemap existence only in production
     if (NODE_ENV === "production") {
       if (fsSync.existsSync(SITEMAP_PATH)) {
         const stats = fsSync.statSync(SITEMAP_PATH);
         console.log(`✅ Sitemap found: ${(stats.size / 1024).toFixed(2)}KB`);
+        console.log(`   Last modified: ${stats.mtime.toISOString()}`);
       } else {
         console.warn("⚠️  Sitemap not found - run sitemap generator");
       }
     }
 
-    // Start server
     server.listen(PORT, "0.0.0.0", function () {
       const address = this.address();
       console.log(`\n✅ Server running on port ${address.port}`);

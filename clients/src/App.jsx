@@ -28,7 +28,8 @@ import AppTour from "./AppRootFile/components/AppTour";
 import { dismissBannerNotification } from "./store/bannerNotificationSlice";
 import { toast } from "react-hot-toast";
 import LoadingBar from "./Utils/LoadingBar";
-import AdminDashboard from "./pages/Admin/Dashboard";
+
+// ❌ REMOVED: import AdminDashboard from "./pages/Admin/Dashboard";
 
 export default function App() {
   const dispatch = useDispatch();
@@ -37,13 +38,9 @@ export default function App() {
   const [showThankYou, setShowThankYou] = useState(false);
   const [routeLoading, setRouteLoading] = useState(false);
   const isAdBlocked = useAdBlockDetector();
-  // ✅ Control when loader shows/hides
-  const [isAppLoading, setIsAppLoading] = useState(true);
 
-  // ✅ Only render content when loading is complete
-  {
-    !isAppLoading && <AdminDashboard />;
-  }
+  // ❌ REMOVED: Unused isAppLoading state
+  // ❌ REMOVED: Unused AdminDashboard render block
 
   useEffect(() => {
     const timer = setTimeout(() => setBooting(false), 1000);

@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import PostModel from "../../servers/Models/Post.js";
-import connectDb from "../../servers/config/mongodb.js"; // Import server's connect function
+import connectDb from "../../servers/config/mongodb.js";
 
 dotenv.config();
 
@@ -51,37 +51,14 @@ async function fetchPostsInBatches() {
       mongoose.connection.readyState
     );
 
-    // Debug: Count all posts without filter
-    const allCount = await PostModel.countDocuments({});
-    console.log(`📊 [Fetch Posts] Total posts (no filter): ${allCount}`);
-
-    // Debug: Sample unpublished posts
-    const sampleUnpublished = await PostModel.find({ isPublished: false })
-      .select("title slug isPublished")
-      .limit(3)
-      .lean();
-    console.log(
-      `📊 [Fetch Posts] Sample unpublished (first 3):`,
-      JSON.stringify(sampleUnpublished, null, 2)
-    );
-
     const totalCount = await PostModel.countDocuments({ isPublished: true });
     console.log(
       `📊 [Fetch Posts] Total published posts (isPublished: true): ${totalCount}`
     );
 
     if (totalCount === 0) {
-      console.warn(
-        "⚠️ [Fetch Posts] No published posts! All isPublished=false?"
-      );
-      const publishedSample = await PostModel.find({ isPublished: true })
-        .select("title slug isPublished")
-        .limit(3)
-        .lean();
-      console.log(
-        `📊 [Fetch Posts] Sample published (should be 0):`,
-        JSON.stringify(publishedSample, null, 2)
-      );
+      console.warn("⚠️ [Fetch Posts] No published posts found!");
+      return posts;
     }
 
     while (hasMore) {
@@ -92,7 +69,7 @@ async function fetchPostsInBatches() {
       );
       const batch = await PostModel.find(
         { isPublished: true },
-        "slug updatedAt createdAt title _id isPublished" // Added title and _id for debug
+        "slug updatedAt createdAt"
       )
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -101,12 +78,6 @@ async function fetchPostsInBatches() {
         .exec();
 
       console.log(`📦 [Fetch Posts] Batch fetched, length: ${batch.length}`);
-      if (batch.length > 0) {
-        console.log(
-          `📦 [Fetch Posts] Sample batch post:`,
-          JSON.stringify(batch[0], null, 2)
-        );
-      }
 
       if (batch.length === 0) {
         hasMore = false;
@@ -142,18 +113,9 @@ function validatePosts(posts) {
   const invalidPosts = [];
 
   posts.forEach((post, index) => {
-    console.log(
-      `🔍 [Validate Posts] Processing post ${index + 1}/${posts.length}: ID=${
-        post._id
-      }, Title="${post.title?.substring(0, 50)}...", Slug="${
-        post.slug
-      }", Published=${post.isPublished}`
-    );
-
     if (!post.slug) {
       console.warn(
-        `🔍 [Validate Posts] ❌ Missing slug for post ${post._id}:`,
-        JSON.stringify(post, null, 2)
+        `🔍 [Validate Posts] ❌ Missing slug for post at index ${index}`
       );
       invalidPosts.push({ index, reason: "Missing slug", post });
       return;
@@ -161,14 +123,12 @@ function validatePosts(posts) {
 
     if (!isValidSlug(post.slug)) {
       console.warn(
-        `🔍 [Validate Posts] ❌ Invalid slug '${post.slug}' for post ${post._id}:`,
-        JSON.stringify(post, null, 2)
+        `🔍 [Validate Posts] ❌ Invalid slug '${post.slug}' at index ${index}`
       );
       invalidPosts.push({ index, reason: "Invalid slug format", post });
       return;
     }
 
-    console.log(`🔍 [Validate Posts] ✅ Valid: ${post.slug}`);
     validPosts.push(post);
   });
 
@@ -177,17 +137,9 @@ function validatePosts(posts) {
   );
 
   if (invalidPosts.length > 0) {
-    console.warn(`⚠️ [Validate Posts] Details on first 3 invalid:`);
-    invalidPosts.slice(0, 3).forEach((item) => {
-      console.warn(
-        `   - ${item.reason}: ID=${
-          item.post._id
-        }, Title="${item.post.title?.substring(0, 30)}..."`
-      );
-    });
-    if (invalidPosts.length > 3) {
-      console.warn(`   ... and ${invalidPosts.length - 3} more`);
-    }
+    console.warn(
+      `⚠️ [Validate Posts] ${invalidPosts.length} invalid posts found`
+    );
   }
 
   return { validPosts, invalidPosts };
@@ -242,7 +194,7 @@ async function generateSitemap() {
         priority: route.priority,
       };
       const success = sitemap.write(entry);
-      console.log(`   ${success ? "✓" : "✗ (skipped)"} ${entry.url}`);
+      console.log(`   ${success ? "✓" : "✗"} ${entry.url}`);
       if (success) totalWritten++;
     });
     console.log(`📝 [Sitemap Gen] Static routes added: ${totalWritten}`);
@@ -269,9 +221,7 @@ async function generateSitemap() {
         const success = sitemap.write(entry);
         if (success) {
           postWritten++;
-          if (index < 3) console.log(`   ✓ Added first few: ${entry.url}`);
-        } else {
-          console.log(`   ✗ Skipped post: ${entry.url}`);
+          if (index < 3) console.log(`   ✓ ${entry.url}`);
         }
 
         // Log progress every 100 posts
@@ -282,7 +232,7 @@ async function generateSitemap() {
         }
       });
       console.log(
-        `   ✓ [Sitemap Gen] All ${validPosts.length} post URLs processed, ${postWritten} written`
+        `   ✓ [Sitemap Gen] ${postWritten} post URLs written successfully`
       );
     } else {
       console.warn("⚠️ [Sitemap Gen] No valid posts found to add to sitemap");
@@ -326,7 +276,7 @@ async function generateSitemap() {
     console.log(`   - Total URLs: ${totalWritten}`);
     console.log(`   - Static routes: ${STATIC_ROUTES.length}`);
     console.log(
-      `   - Post URLs added: ${postWritten} (valid: ${validPosts.length}, invalid: ${invalidPosts.length})`
+      `   - Post URLs: ${postWritten} (valid: ${validPosts.length}, invalid: ${invalidPosts.length})`
     );
     console.log(`   - File size: ${(stats.size / 1024).toFixed(2)} KB`);
     console.log(`   - Generation time: ${duration}s`);
