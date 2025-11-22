@@ -2,8 +2,60 @@ import React, { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
+// ✅ Auto-detect language from code content
+const detectLanguage = (code) => {
+  if (!code || !code.trim()) return "text";
+
+  const trimmed = code.trim();
+
+  // HTML detection
+  if (
+    trimmed.startsWith("<!DOCTYPE") ||
+    trimmed.startsWith("<html") ||
+    /^<[a-z]+/.test(trimmed)
+  ) {
+    return "html";
+  }
+
+  // Python detection
+  if (
+    /^(def|class|import|from|print)\s/.test(trimmed) ||
+    trimmed.includes("if __name__")
+  ) {
+    return "python";
+  }
+
+  // JavaScript/JSX detection
+  if (
+    /^(const|let|var|function|import|export|class)\s/.test(trimmed) ||
+    trimmed.includes("=>") ||
+    trimmed.includes("console.")
+  ) {
+    return "javascript";
+  }
+
+  // CSS detection
+  if (/^[\w-]+\s*\{|^\.[\w-]+\s*\{|^#[\w-]+\s*\{/.test(trimmed)) {
+    return "css";
+  }
+
+  // JSON detection
+  if (
+    (trimmed.startsWith("{") || trimmed.startsWith("[")) &&
+    trimmed.includes(":")
+  ) {
+    return "json";
+  }
+
+  // Fallback to generic text
+  return "text";
+};
+
+const CodeBlockOutput = ({ code, caption }) => {
   const [copied, setCopied] = useState(false);
+
+  // ✅ Auto-detect language from code
+  const detectedLang = detectLanguage(code);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code).then(() => {
@@ -24,7 +76,7 @@ const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
           </div>
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/30 backdrop-blur-sm">
             <span className="w-2 h-2 bg-blue-400 rounded-full mr-2 animate-pulse"></span>
-            {language.toUpperCase()}
+            CODE
           </span>
         </div>
 
@@ -72,7 +124,7 @@ const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
       <div className="relative overflow-x-auto overflow-y-auto max-h-[600px]">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-purple-500/5 pointer-events-none"></div>
         <SyntaxHighlighter
-          language={language}
+          language={detectedLang}
           style={tomorrow}
           customStyle={{
             margin: 0,

@@ -1342,24 +1342,46 @@ export const createPost = async (req, res, next) => {
     }
 
     // Content moderation
+    // Improved content moderation that ignores code blocks
     const moderateContent = async (text) => {
-      const spamPatterns = [/(.)\1{20,}/i, /http[s]?:\/\/[^\s]{100,}/i];
-      for (const p of spamPatterns)
-        if (p.test(text))
+      // Ignore HTML / CSS / JS code blocks entirely
+      const cleaned = text
+        .replace(/```[\s\S]*?```/g, "") // remove markdown code fences
+        .replace(/<code[\s\S]*?<\/code>/g, "") // remove HTML code blocks
+        .replace(/<pre[\s\S]*?<\/pre>/g, "") // remove <pre> blocks
+        .replace(/[<>{}()[\];=/]/g, " "); // strip markup characters
+
+      // Real spam patterns (safe)
+      const spamPatterns = [
+        /(.)\1{40,}/i, // repeating same character 40+ times
+        /http[s]?:\/\/\S{300,}/i, // URLs longer than 300 chars
+      ];
+
+      for (const p of spamPatterns) {
+        if (p.test(cleaned)) {
           return { isFlagged: true, categories: { spam: true } };
+        }
+      }
+
       return { isFlagged: false, categories: {} };
     };
+
+    // Collect text-only content (ignore code)
     const blockTextContent = processedBlocks
       .flatMap((b) =>
-        ["text", "value", "code", "caption", "question"]
+        ["text", "value", "caption", "question"]
           .map((f) => b[f])
           .filter(Boolean)
       )
       .join("\n");
+
     const fullText = `${title}\n${excerpt || ""}\n${blockTextContent}`;
+
     const moderation = await moderateContent(fullText);
-    if (moderation.isFlagged)
-      throw new AppError(`Content violates guidelines`, 400, "CreatePost");
+
+    if (moderation.isFlagged) {
+      throw new AppError("Content violates guidelines", 400, "CreatePost");
+    }
 
     // DB transaction
     session = await mongoose.startSession();

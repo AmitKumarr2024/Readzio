@@ -44,7 +44,7 @@ const getValidLanguage = (lang, code) => {
     "markdown",
   ];
 
-  // Detect HTML automatically if code starts with
+  // Detect HTML automatically if code starts with <
   if (!lang || lang === "plaintext") {
     if (code?.trim().startsWith("<")) return "html";
     return "code"; // fallback to real language instead of 'text'
