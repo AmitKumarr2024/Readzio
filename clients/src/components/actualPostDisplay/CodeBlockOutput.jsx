@@ -2,7 +2,13 @@ import React, { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-// ✅ Auto-detect language from code content
+// Escape HTML for safe rendering (fixes content violation errors)
+const escapeHTML = (str) => {
+  if (!str) return "";
+  return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+};
+
+// Auto-detect language from code content
 const detectLanguage = (code) => {
   if (!code || !code.trim()) return "text";
 
@@ -12,7 +18,7 @@ const detectLanguage = (code) => {
   if (
     trimmed.startsWith("<!DOCTYPE") ||
     trimmed.startsWith("<html") ||
-    /^<[a-z]+/.test(trimmed)
+    /^<[a-z]+/i.test(trimmed)
   ) {
     return "html";
   }
@@ -25,7 +31,7 @@ const detectLanguage = (code) => {
     return "python";
   }
 
-  // JavaScript/JSX detection
+  // JavaScript detection
   if (
     /^(const|let|var|function|import|export|class)\s/.test(trimmed) ||
     trimmed.includes("=>") ||
@@ -47,14 +53,12 @@ const detectLanguage = (code) => {
     return "json";
   }
 
-  // Fallback to generic text
   return "text";
 };
 
 const CodeBlockOutput = ({ code, caption }) => {
   const [copied, setCopied] = useState(false);
 
-  // ✅ Auto-detect language from code
   const detectedLang = detectLanguage(code);
 
   const handleCopy = () => {
@@ -66,7 +70,7 @@ const CodeBlockOutput = ({ code, caption }) => {
 
   return (
     <div className="group relative my-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl shadow-2xl border border-gray-700/50 overflow-hidden backdrop-blur-sm">
-      {/* Header with language badge and copy button */}
+      {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 bg-gray-800/80 border-b border-gray-700/50 backdrop-blur-sm">
         <div className="flex items-center space-x-3">
           <div className="flex space-x-2">
@@ -74,27 +78,28 @@ const CodeBlockOutput = ({ code, caption }) => {
             <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
             <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
           </div>
+
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/30 backdrop-blur-sm">
             <span className="w-2 h-2 bg-blue-400 rounded-full mr-2 animate-pulse"></span>
             CODE
           </span>
         </div>
 
+        {/* Copy Button */}
         <button
           onClick={handleCopy}
           className={`
-            inline-flex items-center px-4 py-2 rounded-lg text-xs font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 select-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-gray-800
+            inline-flex items-center px-4 py-2 rounded-lg text-xs font-medium transition-all duration-300 ease-out
             ${
               copied
-                ? "bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-300 border border-green-500/30 shadow-lg shadow-green-500/20"
-                : "bg-gradient-to-r from-gray-700/50 to-gray-600/50 text-gray-300 border border-gray-600/50 hover:from-blue-600/20 hover:to-purple-600/20 hover:text-blue-300 hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/20"
+                ? "bg-green-500/20 text-green-300 border border-green-500/30 shadow-green-500/20"
+                : "bg-gray-700/50 text-gray-300 border border-gray-600/50 hover:from-blue-600/20 hover:to-purple-600/20 hover:text-blue-300"
             }
           `}
-          aria-label="Copy code"
         >
           <svg
             className={`w-4 h-4 mr-2 transition-all duration-300 ${
-              copied ? "text-green-300" : "text-gray-400"
+              copied ? "text-green-400" : "text-gray-400"
             }`}
             fill="none"
             stroke="currentColor"
@@ -116,13 +121,15 @@ const CodeBlockOutput = ({ code, caption }) => {
               />
             )}
           </svg>
-          <span className="font-mono">{copied ? "Copied!" : "Copy"}</span>
+
+          {copied ? "Copied!" : "Copy"}
         </button>
       </div>
 
-      {/* Code content */}
+      {/* Code Viewer */}
       <div className="relative overflow-x-auto overflow-y-auto max-h-[600px]">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-purple-500/5 pointer-events-none"></div>
+
         <SyntaxHighlighter
           language={detectedLang}
           style={tomorrow}
@@ -132,7 +139,7 @@ const CodeBlockOutput = ({ code, caption }) => {
             fontSize: "1.1rem",
             backgroundColor: "transparent",
             fontFamily:
-              'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+              'ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace',
             lineHeight: "1.7",
           }}
           wrapLongLines
@@ -147,11 +154,10 @@ const CodeBlockOutput = ({ code, caption }) => {
             opacity: 0.6,
           }}
         >
-          {code}
+          {escapeHTML(code)}
         </SyntaxHighlighter>
 
-        {/* Subtle gradient overlay for depth */}
-        <div className="absolute bottom-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-t from-gray-900/40 to-transparent"></div>
+        <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-gray-900/40 to-transparent pointer-events-none"></div>
       </div>
 
       {/* Caption */}
@@ -176,10 +182,9 @@ const CodeBlockOutput = ({ code, caption }) => {
         </div>
       )}
 
-      {/* Hover effect border */}
-      <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-gradient-to-r group-hover:from-blue-500/30 group-hover:to-purple-500/30 transition-all duration-500 pointer-events-none"></div>
+      {/* Hover Effects */}
+      <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-blue-500/20 group-hover:shadow-xl transition-all duration-500 pointer-events-none"></div>
 
-      {/* Subtle glow effect */}
       <div className="absolute -inset-1 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-700 -z-10"></div>
     </div>
   );

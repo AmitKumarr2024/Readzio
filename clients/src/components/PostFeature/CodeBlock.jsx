@@ -1,16 +1,17 @@
 import React from "react";
 import { IoIosBackspace } from "react-icons/io";
-import { MdDeleteForever } from "react-icons/md";
 import { motion } from "framer-motion";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
+// Animation Variants
 const blockVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
   exit: { opacity: 0, y: -20, transition: { duration: 0.2 } },
 };
 
+// Supported languages
 const supportedLanguages = [
   "javascript",
   "python",
@@ -24,37 +25,22 @@ const supportedLanguages = [
   "css",
   "json",
   "markdown",
-  "text", // ✅ added safe fallback
+  "text", // SAFE fallback
 ];
 
-// ✅ Normalizer
+// Normalizer
 const getValidLanguage = (lang, code) => {
-  const supportedLanguages = [
-    "javascript",
-    "python",
-    "java",
-    "c",
-    "cpp",
-    "go",
-    "typescript",
-    "bash",
-    "html",
-    "css",
-    "json",
-    "markdown",
-  ];
-
-  // Detect HTML automatically if code starts with <
+  // Auto-detect HTML
   if (!lang || lang === "plaintext") {
     if (code?.trim().startsWith("<")) return "html";
-    return "code"; // fallback to real language instead of 'text'
+    return "text"; // final safe fallback
   }
 
-  // Only return supported languages
-  return supportedLanguages.includes(lang) ? lang : "code";
+  // If not supported, return safe fallback
+  return supportedLanguages.includes(lang) ? lang : "text";
 };
 
-const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
+const CodeBlock = ({ block, index, updateBlock, refProp }) => {
   if (!block || typeof block.code === "undefined") return null;
 
   const normalizedLang = getValidLanguage(block.language, block.code);
@@ -69,7 +55,7 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
       exit="exit"
       layout
     >
-      {/* Action buttons */}
+      {/* Clear button */}
       <div className="absolute top-4 right-4 flex gap-2">
         <button
           onClick={() => updateBlock(index, { ...block, code: "" })}
@@ -82,7 +68,7 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
 
       {/* Language selector */}
       <select
-        value={normalizedLang} // ✅ always safe
+        value={normalizedLang}
         onChange={(e) =>
           updateBlock(index, { ...block, language: e.target.value })
         }
@@ -95,7 +81,7 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
         ))}
       </select>
 
-      {/* Code editor */}
+      {/* Code Editor */}
       <textarea
         value={block.code}
         onChange={(e) => updateBlock(index, { ...block, code: e.target.value })}
@@ -104,11 +90,11 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
         className="w-full bg-gray-800 text-white rounded-lg p-4 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition resize-y"
       />
 
-      {/* Preview with syntax highlighting */}
+      {/* Preview */}
       {block.code && (
         <div className="mt-4 bg-gray-800 rounded-lg p-4 overflow-x-auto">
           <SyntaxHighlighter
-            language={normalizedLang} // ✅ safe lang here too
+            language={normalizedLang}
             style={oneDark}
             wrapLongLines
           >
@@ -117,7 +103,7 @@ const CodeBlock = ({ block, index, updateBlock, removeBlock, refProp }) => {
         </div>
       )}
 
-      {/* Optional caption */}
+      {/* Caption */}
       <input
         placeholder="Caption (optional)"
         value={block.caption}
