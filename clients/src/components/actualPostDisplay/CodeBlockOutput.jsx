@@ -51,11 +51,11 @@ const detectLanguage = (code) => {
   return "text";
 };
 
-const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
+const CodeBlockOutput = ({ code, caption }) => {
   const [copied, setCopied] = useState(false);
 
-  // ✅ Normalize the language
-  const normalizedLang = getValidLanguage(language, code);
+  // ✅ Auto-detect language from code
+  const detectedLang = detectLanguage(code);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code).then(() => {
@@ -76,7 +76,7 @@ const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
           </div>
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/30 backdrop-blur-sm">
             <span className="w-2 h-2 bg-blue-400 rounded-full mr-2 animate-pulse"></span>
-            {normalizedLang.toUpperCase()}
+            CODE
           </span>
         </div>
 
@@ -124,7 +124,7 @@ const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
       <div className="relative overflow-x-auto overflow-y-auto max-h-[600px]">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-purple-500/5 pointer-events-none"></div>
         <SyntaxHighlighter
-          language={normalizedLang}
+          language={detectedLang}
           style={tomorrow}
           customStyle={{
             margin: 0,
@@ -185,54 +185,4 @@ const CodeBlockOutput = ({ code, language = "javascript", caption }) => {
   );
 };
 
-// Demo usage
-export default function App() {
-  const pythonCode = `def factorial(n):
-    if n <= 1:
-        return 1
-    return n * factorial(n - 1)
-
-print(factorial(5))  # Output: 120`;
-
-  const jsCode = `const greet = (name) => {
-  console.log(\`Hello, \${name}!\`);
-};
-
-greet('World');`;
-
-  const htmlCode = `<!DOCTYPE html>
-<html>
-<head>
-    <title>My Page</title>
-</head>
-<body>
-    <h1>Hello World!</h1>
-</body>
-</html>`;
-
-  return (
-    <div className="min-h-screen bg-gray-950 p-8">
-      <h1 className="text-3xl font-bold text-white mb-8">
-        CodeBlock Output Demo
-      </h1>
-
-      <CodeBlockOutput
-        code={pythonCode}
-        language="python"
-        caption="A simple recursive factorial function in Python"
-      />
-
-      <CodeBlockOutput
-        code={jsCode}
-        language="javascript"
-        caption="Arrow function example in JavaScript"
-      />
-
-      <CodeBlockOutput
-        code={htmlCode}
-        language="html"
-        caption="Basic HTML5 document structure"
-      />
-    </div>
-  );
-}
+export default CodeBlockOutput;
