@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import http from "http";
 import mongoose from "mongoose";
+import rateLimit from "express-rate-limit";
 
 import {
   CLIENT_URL,
@@ -42,6 +43,16 @@ import PostModel from "../servers/Models/Post.js";
 
 const app = express();
 app.set("trust proxy", true);
+
+
+// General public rate limiter
+const apiLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 min
+  max: 200, // limit each IP
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 
 const __dirname = path.resolve();
 
@@ -176,6 +187,11 @@ app.use(
 
 app.use(cookieParser());
 
+
+
+// Apply to all API routes
+app.use("/api", apiLimiter);
+
 // =============================================================================
 // SEO BOT HANDLING (GOOGLEBOT, ETC.)
 // =============================================================================
@@ -271,6 +287,8 @@ app.use(prerender);
 // =============================================================================
 // ROUTE CONFIGURATION
 // =============================================================================
+
+
 
 const routeConfigs = [
   { path: "/api/auth", router: AuthRoutes, name: "AuthRoutes" },
