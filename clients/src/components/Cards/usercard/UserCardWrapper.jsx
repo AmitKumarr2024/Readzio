@@ -11,17 +11,14 @@ import {
   unfollowUser,
 } from "../../../store/followSlice";
 import { getAllPosts } from "../../../store/postSlice";
-import {
-  getSubscriptionStatusByAuthor,
-  checkEligibilityForSubscription,
-} from "../../../store/subscriptionSlice";
+import { getSubscriptionStatusByAuthor } from "../../../store/subscriptionSlice";
 import { selectSocketState } from "../../../store/socketSlice";
 
 const UserCardWrapper = ({ userId }) => {
   const dispatch = useDispatch();
   const currentUser = useSelector((state) => state.user?.user || null);
   const auth = useSelector((state) => state.auth || {});
-  const { user = null, isAuthenticated = false } = auth;
+  const { user = null } = auth;
   const followingList = useSelector(
     (state) => state.follow?.following?.list || []
   );
@@ -32,141 +29,144 @@ const UserCardWrapper = ({ userId }) => {
   const [fetchedUser, setFetchedUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
-  // Local state for immediate count updates
   const [localFollowersCount, setLocalFollowersCount] = useState(0);
   const [localFollowingCount, setLocalFollowingCount] = useState(0);
 
-  // Memoized refetch function
+  // Log when the following list changes — this tells us if the follow/unfollow actually updated Redux
+  useEffect(() => {
+    console.log("[FollowingList] Updated", {
+      length: followingList.length,
+      includesTarget: userId
+        ? followingList.some(
+            (item) => (typeof item === "string" ? item : item?._id) === userId
+          )
+        : "no target userId",
+      targetUserId: userId || "own profile",
+    });
+  }, [followingList, userId]);
+
   const refetchUserInfo = useCallback(async () => {
     if (!userId || typeof userId !== "string") return null;
-    console.log("[Refetch] Starting refetch for userId:", userId);
+
     try {
-      const res = await dispatch(getUserById(userId)).unwrap();
-      
       const userData = await dispatch(getUserById(userId)).unwrap();
-      // Handle different response formats
-      if (res?._id) {
-        userData = res;
-      } else if (res?.user?._id) {
-        userData = res.user;
-      } else if (res?.data?._id) {
-        userData = res.data;
-      }
-      if (userData?._id) {
-        console.log("[Refetch] Success – received user data:", {
-          id: userData._id,
-        });
-        setFetchedUser(userData);
-        setLocalFollowersCount(userData.followers?.length || 0);
-        setLocalFollowingCount(userData.following?.length || 0);
-        return userData;
-      } else {
-        console.error("[Refetch] Invalid user data:", res);
+
+      if (!userData?._id) {
+        console.error("[Refetch] Invalid user data:", userData);
+        toast.error("Failed to refetch user");
         return null;
       }
+
+      console.log("[Refetch] Success — server returned counts", {
+        id: userData._id,
+        followersCount:
+          userData.followersCount ?? userData.followers?.length ?? 0,
+        followingCount:
+          userData.followingCount ?? userData.following?.length ?? 0,
+      });
+
+      setFetchedUser(userData);
+      setLocalFollowersCount(
+        userData.followersCount ?? userData.followers?.length ?? 0
+      );
+      setLocalFollowingCount(
+        userData.followingCount ?? userData.following?.length ?? 0
+      );
+
+      return userData;
     } catch (err) {
       console.error("[Refetch] Failed:", err);
-      toast.error("Failed to fetch user");
+      toast.error("Failed to refetch user");
       return null;
     }
-  }, [userId, dispatch]);
+  }, [dispatch, userId]);
 
-  // Initial data fetch
   useEffect(() => {
     if (!userId || typeof userId !== "string") {
       setFetchedUser(null);
       setSubscriptionStatus(null);
-      setLoadingUser(false);
       setLocalFollowersCount(0);
       setLocalFollowingCount(0);
+      setLoadingUser(false);
       return;
     }
 
     const fetchInitialData = async () => {
-      console.log("[InitialFetch] Starting for userId:", userId);
       setLoadingUser(true);
       try {
-        const [userRes, , followersRes, followingRes] = await Promise.all([
-          dispatch(getUserById(userId)),
-          dispatch(checkEligibilityForSubscription()),
-          dispatch(fetchFollowers({ page: 1, limit: 12 })),
-          dispatch(fetchFollowing({ page: 1, limit: 12 })),
-        ]);
+        const userData = await dispatch(getUserById(userId)).unwrap();
 
-        console.log("[InitialFetch] getUserById raw response:", userRes);
-
-        // Handle different response formats
-        const userData = userRes?.payload;
-
-        if (!userData || !userData?._id) {
-          console.error(
-            "[InitialFetch] Invalid user payload:",
-            userRes.payload
-          );
+        if (!userData?._id) {
+          console.error("[InitialFetch] Invalid user data:", userData);
           toast.error("Invalid user data received");
           setFetchedUser(null);
           return;
         }
 
-        if (userData?._id) {
-          console.log("[InitialFetch] Parsed user data:", {
-            id: userData._id,
-          });
-          setFetchedUser(userData);
-          setLocalFollowersCount(userData.followers?.length || 0);
-          setLocalFollowingCount(userData.following?.length || 0);
+        console.log("[InitialFetch] Success — server returned counts", {
+          id: userData._id,
+          followersCount:
+            userData.followersCount ?? userData.followers?.length ?? 0,
+          followingCount:
+            userData.followingCount ?? userData.following?.length ?? 0,
+        });
 
-          // Subscription status
-          if (user?._id && user._id !== userId) {
-            try {
-              const status = await dispatch(
-                getSubscriptionStatusByAuthor({
-                  userId: user._id,
-                  authorId: userId,
-                })
-              ).unwrap();
-              setSubscriptionStatus(status);
-            } catch (err) {
-              console.error("[InitialFetch] Subscription status error:", err);
-              setSubscriptionStatus(null);
-            }
-          } else {
+        setFetchedUser(userData);
+        setLocalFollowersCount(
+          userData.followersCount ?? userData.followers?.length ?? 0
+        );
+        setLocalFollowingCount(
+          userData.followingCount ?? userData.following?.length ?? 0
+        );
+
+        // Subscription status
+        if (user?._id && user._id !== userId) {
+          try {
+            const status = await dispatch(
+              getSubscriptionStatusByAuthor({
+                userId: user._id,
+                authorId: userId,
+              })
+            ).unwrap();
+            setSubscriptionStatus(status);
+          } catch (err) {
+            console.error("[InitialFetch] Subscription status error:", err);
             setSubscriptionStatus(null);
           }
-
-          dispatch(getFollowStatus(userId));
         } else {
-          console.error("[InitialFetch] Invalid user data:", userRes);
-          setFetchedUser(null);
-          toast.error("Invalid user data received");
+          setSubscriptionStatus(null);
+        }
+
+        // Follow-related data only if authenticated
+        if (currentUser?._id) {
+          if (userId) {
+            dispatch(getFollowStatus(userId));
+          }
+          await Promise.all([
+            dispatch(fetchFollowing({ page: 1, limit: 12 })).unwrap(),
+            dispatch(fetchFollowers({ page: 1, limit: 12 })).unwrap(),
+          ]);
         }
       } catch (err) {
         console.error("[InitialFetch] Error:", err);
-        setFetchedUser(null);
-        setSubscriptionStatus(null);
         toast.error("Failed to fetch user data");
+        setFetchedUser(null);
       } finally {
         setLoadingUser(false);
-        console.log("[InitialFetch] Completed");
       }
     };
 
     fetchInitialData();
-  }, [userId, dispatch, user?._id]);
+  }, [userId, dispatch, user?._id, currentUser?._id]);
 
-  // Sync local counts when fetchedUser updates
   useEffect(() => {
-    if (fetchedUser) {
-      setLocalFollowersCount(fetchedUser.followers?.length || 0);
-      setLocalFollowingCount(fetchedUser.following?.length || 0);
-    }
-  }, [fetchedUser]);
-
-  // Update counts for current user's own profile
-  useEffect(() => {
-    if (currentUser?._id && !userId) {
-      setLocalFollowersCount(currentUser.followers?.length || 0);
-      setLocalFollowingCount(currentUser.following?.length || 0);
+    if (!userId && currentUser?._id) {
+      setLocalFollowersCount(
+        currentUser.followersCount ?? currentUser.followers?.length ?? 0
+      );
+      setLocalFollowingCount(
+        currentUser.followingCount ?? currentUser.following?.length ?? 0
+      );
     }
   }, [currentUser, userId]);
 
@@ -175,13 +175,15 @@ const UserCardWrapper = ({ userId }) => {
   }, [followError]);
 
   const handleFollowToggle = async () => {
-    const wasFollowing = isFollowing;
+    const wasFollowing = followingList.some(
+      (item) => (typeof item === "string" ? item : item?._id) === userId
+    );
 
-    console.log("[FollowToggle] Clicked", {
-      userId,
+    console.log("[FollowToggle] Starting", {
+      targetUserId: userId,
       wasFollowing,
       currentLocalFollowersCount: localFollowersCount,
-      currentFollowingListLength: followingList.length,
+      followingListLength: followingList.length,
     });
 
     try {
@@ -202,23 +204,33 @@ const UserCardWrapper = ({ userId }) => {
 
       console.log("[FollowToggle] Server action succeeded");
 
-      // Refetch fresh user data
+      // Refetch target user counts
       const updatedUser = await refetchUserInfo();
 
-      console.log("[FollowToggle] After refetch – updated counts:", {
-        followers: updatedUser?.followers?.length ?? "N/A",
-        following: updatedUser?.following?.length ?? "N/A",
+      console.log("[FollowToggle] After refetch — server confirmed counts", {
+        followersCount:
+          updatedUser?.followersCount ??
+          updatedUser?.followers?.length ??
+          "N/A",
+        followingCount:
+          updatedUser?.followingCount ??
+          updatedUser?.following?.length ??
+          "N/A",
       });
 
-      // Refresh lists
+      // Refresh current user's lists
       await Promise.all([
         dispatch(fetchFollowing({ page: 1, limit: 12 })).unwrap(),
         dispatch(fetchFollowers({ page: 1, limit: 12 })).unwrap(),
       ]);
 
+      console.log("[FollowToggle] Current user lists refreshed");
+
       // Update posts feed
       const followingIds = followingList.map((item) => item._id || item);
       dispatch(getAllPosts({ followingIds, page: 1, limit: null }));
+
+      console.log("[FollowToggle] Completed successfully");
     } catch (err) {
       // Revert optimistic update
       setLocalFollowersCount((prev) => {
@@ -243,7 +255,7 @@ const UserCardWrapper = ({ userId }) => {
     );
   }
 
-  if (!userToShow || !userToShow?._id) {
+  if (!userToShow || !userToShow._id) {
     return <div className="text-center py-4 text-red-500">User not found</div>;
   }
 
