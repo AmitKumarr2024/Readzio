@@ -42,9 +42,9 @@ const UserCardWrapper = ({ userId }) => {
     console.log("[Refetch] Starting refetch for userId:", userId);
     try {
       const res = await dispatch(getUserById(userId)).unwrap();
-
+      
+      const userData = await dispatch(getUserById(userId)).unwrap();
       // Handle different response formats
-      let userData = null;
       if (res?._id) {
         userData = res;
       } else if (res?.user?._id) {
@@ -52,12 +52,9 @@ const UserCardWrapper = ({ userId }) => {
       } else if (res?.data?._id) {
         userData = res.data;
       }
-
       if (userData?._id) {
         console.log("[Refetch] Success – received user data:", {
           id: userData._id,
-          followersLength: userData.followers?.length || 0,
-          followingLength: userData.following?.length || 0,
         });
         setFetchedUser(userData);
         setLocalFollowersCount(userData.followers?.length || 0);
@@ -99,22 +96,21 @@ const UserCardWrapper = ({ userId }) => {
         console.log("[InitialFetch] getUserById raw response:", userRes);
 
         // Handle different response formats
-        let userData = null;
-        if (userRes.payload?._id) {
-          userData = userRes.payload;
-        } else if (userRes.payload?.user?._id) {
-          userData = userRes.payload.user;
-        } else if (userRes.payload?.data?._id) {
-          userData = userRes.payload.data;
-        } else if (userRes._id) {
-          userData = userRes;
+        const userData = userRes?.payload;
+
+        if (!userData || !userData?._id) {
+          console.error(
+            "[InitialFetch] Invalid user payload:",
+            userRes.payload
+          );
+          toast.error("Invalid user data received");
+          setFetchedUser(null);
+          return;
         }
 
         if (userData?._id) {
           console.log("[InitialFetch] Parsed user data:", {
             id: userData._id,
-            followersLength: userData.followers?.length || 0,
-            followingLength: userData.following?.length || 0,
           });
           setFetchedUser(userData);
           setLocalFollowersCount(userData.followers?.length || 0);
