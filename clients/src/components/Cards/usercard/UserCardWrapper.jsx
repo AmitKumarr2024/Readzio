@@ -35,6 +35,7 @@ const UserCardWrapper = ({ userId }) => {
 
   console.log("userId in UserCardWrapper:", userId);
   console.log("currentUser in UserCardWrapper:", currentUser);
+  console.log("posts in UserCardWrapper:", posts);
 
   const refetchUserInfo = async () => {
     console.log("[UserCardWrapper] Refetching user info for", userId);
