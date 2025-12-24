@@ -440,7 +440,7 @@ export const getAllUser = async (req, res, next) => {
     const limit = Math.min(parseInt(req.query.limit) || 100, 1000);
     const skip = (page - 1) * limit;
     const projection =
-      "name email gender avatar banner bio profession location createdAt role blocked bookmarks following followers blockedUsers subscribedCategories subscribedAuthors subscribers hasSubscriptionPlan subscriptionPlan subscriptionDate tourCompleted";
+      "name email gender avatar banner bio profession location createdAt role blocked bookmarks following followers blockedUsers subscribedCategories  subscribers hasSubscriptionPlan subscriptionPlan subscriptionDate tourCompleted";
 
     // Fetches users and total count
     const [users, totalUsers] = await Promise.all([
@@ -805,7 +805,6 @@ export const getSingleUserById = async (req, res, next) => {
     // Fetches user
     const user = await UserModel.findById(id)
       .select("-password -googleId")
-      .populate("subscribedAuthors", "name email avatar")
       .lean();
 
     if (!user) {
