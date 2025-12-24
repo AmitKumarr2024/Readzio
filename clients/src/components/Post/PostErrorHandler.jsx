@@ -26,7 +26,7 @@ const PostErrorHandler = ({ message, post, currentUser, getUserById, isPostRestr
           )}
         </div>
         <div className="hidden md:block md:w-80 w-full">
-          {post?.author?._id && <UserCardWrapper userId={post.author._id} />}
+          {post?.author?._id && <UserCardWrapper userId={post?.author?._id} />}
         </div>
       </div>
     </div>

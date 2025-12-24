@@ -15,7 +15,7 @@ import {
   getSubscriptionStatusByAuthor,
   checkEligibilityForSubscription,
 } from "../../../store/subscriptionSlice";
-import { selectSocketState } from "../../../store/socketSlice"; // Add this import
+import { selectSocketState } from "../../../store/socketSlice";
 
 const UserCardWrapper = ({ userId }) => {
   const dispatch = useDispatch();
@@ -27,13 +27,17 @@ const UserCardWrapper = ({ userId }) => {
   );
   const posts = useSelector((state) => state.post?.posts || []);
   const followError = useSelector((state) => state.follow?.error);
-  const { userStatus = {} } = useSelector(selectSocketState); // Add socket selector
+  const { userStatus = {} } = useSelector(selectSocketState);
 
   const [fetchedUser, setFetchedUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
 
+  console.log("userId in UserCardWrapper:", userId);
+  console.log("currentUser in UserCardWrapper:", currentUser);
+
   const refetchUserInfo = async () => {
+    console.log("[UserCardWrapper] Refetching user info for", userId);
     if (!userId || typeof userId !== "string") return;
     try {
       const res = await dispatch(getUserById(userId)).unwrap();
@@ -45,6 +49,12 @@ const UserCardWrapper = ({ userId }) => {
   };
 
   useEffect(() => {
+    console.log("[UserCardWrapper] Main useEffect triggered", {
+      userId,
+      currentUserId: user?._id,
+      isAuthenticated,
+    });
+
     if (!userId || typeof userId !== "string") {
       setFetchedUser(null);
       setSubscriptionStatus(null);
@@ -58,6 +68,8 @@ const UserCardWrapper = ({ userId }) => {
       dispatch(checkEligibilityForSubscription()),
     ])
       .then(([userRes]) => {
+        console.log("[UserCardWrapper] User data received", userRes.payload);
+
         if (userRes.payload?._id) {
           setFetchedUser(userRes.payload);
           dispatch(fetchFollowers());
@@ -74,6 +86,10 @@ const UserCardWrapper = ({ userId }) => {
           )
             .unwrap()
             .then((status) => {
+              console.log(
+                "[UserCardWrapper] Subscription status fetched",
+                status
+              );
               setSubscriptionStatus(status);
             })
             .catch((err) => {
@@ -86,7 +102,7 @@ const UserCardWrapper = ({ userId }) => {
         }
       })
       .catch((err) => {
-        console.error("Error in UserCardWrapper:", err);
+        console.log("[UserCardWrapper] Error during fetch", err);
         setFetchedUser(null);
         setSubscriptionStatus(null);
         toast.error("Failed to fetch user data");
@@ -105,6 +121,10 @@ const UserCardWrapper = ({ userId }) => {
   }, [followError]);
 
   const handleFollowToggle = async () => {
+    console.log("[UserCardWrapper] Follow toggle started", {
+      isFollowing,
+      userId,
+    });
     try {
       await dispatch(
         isFollowing ? unfollowUser(userId) : followUser(userId)
@@ -112,6 +132,7 @@ const UserCardWrapper = ({ userId }) => {
       await dispatch(fetchFollowing()).unwrap();
       const followingIds = followingList.map((item) => item._id || item);
       dispatch(getAllPosts({ followingIds, page: 1, limit: null }));
+      console.log("[UserCardWrapper] Follow action succeeded, refetching...");
       refetchUserInfo();
     } catch (err) {
       toast.error(err.message || "Failed to update follow status");
@@ -119,6 +140,8 @@ const UserCardWrapper = ({ userId }) => {
   };
 
   const userToShow = userId ? fetchedUser : currentUser;
+  console.log("userToShow", userToShow);
+
   if (loadingUser)
     return (
       <div className="text-center py-4 animate-pulse">Loading user...</div>
@@ -132,15 +155,40 @@ const UserCardWrapper = ({ userId }) => {
       ? item === userToShow._id
       : item?._id === userToShow._id
   );
+
   const showButtons =
     userId && currentUser?._id && currentUser._id !== userToShow._id;
   const followersCount = userToShow.followers?.length || 0;
   const followingCount = userToShow.following?.length || 0;
-  const isOnline = userStatus[userToShow._id]?.isOnline || false; // Realtime online status
+  const isOnline = userStatus[userToShow._id]?.isOnline || false;
+
+  console.log("[UserCardWrapper] Online status", {
+    userId: userToShow._id,
+    isOnline,
+  });
+
+  console.log("[UserCardWrapper] Follow check", {
+    followingList: followingList.map((item) =>
+      typeof item === "string" ? item : item?._id
+    ),
+    targetUserId: userToShow._id,
+    isFollowing,
+  });
+
+  console.log("[UserCardWrapper] Rendering UserCard with props", {
+    userId: userToShow._id,
+    username: userToShow.username,
+    isFollowing,
+    showButtons,
+    subscriptionStatus,
+    followersCount,
+    followingCount,
+    isOnline,
+  });
 
   return (
     <UserCard
-      user={{ ...userToShow, isOnline }} // Pass realtime online status
+      user={{ ...userToShow, isOnline }}
       posts={posts}
       followers={userToShow.followers || []}
       following={userToShow.following || []}

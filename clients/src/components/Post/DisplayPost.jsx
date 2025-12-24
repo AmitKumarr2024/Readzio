@@ -79,6 +79,7 @@ const DisplayPost = () => {
   const activePost = isAuthenticated ? post : guestPost;
   const activeLoading = isAuthenticated ? loading : guestLoading;
   const activeError = isAuthenticated ? error : guestError;
+  console.log("activePost", activePost);
 
   // Memoized values
   const categoryMap = useMemo(() => {
@@ -100,7 +101,7 @@ const DisplayPost = () => {
     return Boolean(
       currentUser?._id &&
         activePost?.author?._id &&
-        currentUser._id === activePost.author._id
+        currentUser._id === activePost?.author?._id
     );
   }, [currentUser, activePost]);
 
@@ -123,7 +124,7 @@ const DisplayPost = () => {
 
     // If post is restricted, check subscription
     return Boolean(
-      activePost?.author?._id && isSubscribed?.[activePost.author._id]
+      activePost?.author?._id && isSubscribed?.[activePost.author?._id]
     );
   }, [
     isAuthor,
@@ -135,7 +136,7 @@ const DisplayPost = () => {
 
   const isUserSubscribed = useMemo(() => {
     return Boolean(
-      activePost?.author?._id && isSubscribed?.[activePost.author._id]
+      activePost?.author?._id && isSubscribed?.[activePost.author?._id]
     );
   }, [activePost?.author?._id, isSubscribed]);
 
@@ -226,7 +227,7 @@ const DisplayPost = () => {
       });
 
     // Fetch subscription plans
-    dispatch(fetchSubscriptionPlansByAuthor(activePost.author._id))
+    dispatch(fetchSubscriptionPlansByAuthor(activePost?.author?._id))
       .unwrap()
       .catch((err) => {
         console.warn("[DisplayPost] Failed to fetch subscription plans:", err);
@@ -563,7 +564,7 @@ const DisplayPost = () => {
       image: firstImage,
       author: {
         "@type": "Person",
-        name: activePost.author?.fullName || "readzio Author",
+        name: activePost.author?.name || "readzio Author",
       },
       publisher: {
         "@type": "Organization",
@@ -660,7 +661,7 @@ const DisplayPost = () => {
           {activePost._id && activePost.author?._id && (
             <CommentBox
               postId={activePost._id}
-              postAuthorId={activePost.author._id}
+              postAuthorId={activePost.author?._id}
             />
           )}
         </article>
@@ -716,7 +717,7 @@ const DisplayPost = () => {
               <UserModal
                 isOpen={isUserModalOpen}
                 onClose={() => setIsUserModalOpen(false)}
-                authorId={activePost.author._id}
+                authorId={activePost?.author?._id}
               />
 
               <button
@@ -733,8 +734,8 @@ const DisplayPost = () => {
             <DeleteModal
               isOpen={isDeleteModalOpen}
               onClose={() => setIsDeleteModalOpen(false)}
-              postId={activePost._id}
-              slug={activePost.slug}
+              postId={activePost?._id}
+              slug={activePost?.slug}
             />
           )}
         </div>
