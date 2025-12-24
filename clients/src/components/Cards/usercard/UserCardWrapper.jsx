@@ -39,10 +39,11 @@ const UserCardWrapper = ({ userId }) => {
   // Memoized refetch function
   const refetchUserInfo = useCallback(async () => {
     if (!userId || typeof userId !== "string") return null;
+    console.log("[Refetch] Starting refetch for userId:", userId);
     try {
       const res = await dispatch(getUserById(userId)).unwrap();
 
-      // ✅ Handle different response formats
+      // Handle different response formats
       let userData = null;
       if (res?._id) {
         userData = res;
@@ -53,17 +54,21 @@ const UserCardWrapper = ({ userId }) => {
       }
 
       if (userData?._id) {
+        console.log("[Refetch] Success – received user data:", {
+          id: userData._id,
+          followersLength: userData.followers?.length || 0,
+          followingLength: userData.following?.length || 0,
+        });
         setFetchedUser(userData);
-        // Sync local counts with fresh data
         setLocalFollowersCount(userData.followers?.length || 0);
         setLocalFollowingCount(userData.following?.length || 0);
         return userData;
       } else {
-        console.error("Invalid user data in refetch:", res);
+        console.error("[Refetch] Invalid user data:", res);
         return null;
       }
     } catch (err) {
-      console.error("Failed to fetch user:", err);
+      console.error("[Refetch] Failed:", err);
       toast.error("Failed to fetch user");
       return null;
     }
@@ -81,9 +86,9 @@ const UserCardWrapper = ({ userId }) => {
     }
 
     const fetchInitialData = async () => {
+      console.log("[InitialFetch] Starting for userId:", userId);
       setLoadingUser(true);
       try {
-        // Fetch all data in parallel
         const [userRes, , followersRes, followingRes] = await Promise.all([
           dispatch(getUserById(userId)),
           dispatch(checkEligibilityForSubscription()),
@@ -91,10 +96,9 @@ const UserCardWrapper = ({ userId }) => {
           dispatch(fetchFollowing({ page: 1, limit: 12 })),
         ]);
 
-        // ✅ Debug: Log the actual response structure
-        console.log("getUserById response:", userRes);
+        console.log("[InitialFetch] getUserById raw response:", userRes);
 
-        // ✅ Handle different response formats
+        // Handle different response formats
         let userData = null;
         if (userRes.payload?._id) {
           userData = userRes.payload;
@@ -107,13 +111,16 @@ const UserCardWrapper = ({ userId }) => {
         }
 
         if (userData?._id) {
+          console.log("[InitialFetch] Parsed user data:", {
+            id: userData._id,
+            followersLength: userData.followers?.length || 0,
+            followingLength: userData.following?.length || 0,
+          });
           setFetchedUser(userData);
-
-          // Initialize local counts
           setLocalFollowersCount(userData.followers?.length || 0);
           setLocalFollowingCount(userData.following?.length || 0);
 
-          // Fetch subscription status if needed
+          // Subscription status
           if (user?._id && user._id !== userId) {
             try {
               const status = await dispatch(
@@ -124,27 +131,27 @@ const UserCardWrapper = ({ userId }) => {
               ).unwrap();
               setSubscriptionStatus(status);
             } catch (err) {
-              console.error("Failed to fetch subscription status:", err);
+              console.error("[InitialFetch] Subscription status error:", err);
               setSubscriptionStatus(null);
             }
           } else {
             setSubscriptionStatus(null);
           }
 
-          // Fetch follow status
           dispatch(getFollowStatus(userId));
         } else {
-          console.error("Invalid user data structure:", userRes);
+          console.error("[InitialFetch] Invalid user data:", userRes);
           setFetchedUser(null);
           toast.error("Invalid user data received");
         }
       } catch (err) {
-        console.error("Error in UserCardWrapper:", err);
+        console.error("[InitialFetch] Error:", err);
         setFetchedUser(null);
         setSubscriptionStatus(null);
         toast.error("Failed to fetch user data");
       } finally {
         setLoadingUser(false);
+        console.log("[InitialFetch] Completed");
       }
     };
 
@@ -174,24 +181,40 @@ const UserCardWrapper = ({ userId }) => {
   const handleFollowToggle = async () => {
     const wasFollowing = isFollowing;
 
-    try {
-      // ✅ OPTIMISTIC UPDATE: Update count immediately
-      if (wasFollowing) {
-        setLocalFollowersCount((prev) => Math.max(0, prev - 1));
-      } else {
-        setLocalFollowersCount((prev) => prev + 1);
-      }
+    console.log("[FollowToggle] Clicked", {
+      userId,
+      wasFollowing,
+      currentLocalFollowersCount: localFollowersCount,
+      currentFollowingListLength: followingList.length,
+    });
 
-      // Perform the follow/unfollow action
+    try {
+      // Optimistic update
+      setLocalFollowersCount((prev) => {
+        const newCount = wasFollowing ? Math.max(0, prev - 1) : prev + 1;
+        console.log(
+          "[FollowToggle] Optimistic update → new followers count:",
+          newCount
+        );
+        return newCount;
+      });
+
+      // Server action
       await dispatch(
         wasFollowing ? unfollowUser(userId) : followUser(userId)
       ).unwrap();
 
-      // ✅ CRITICAL: Refetch user data to get actual updated counts from server
-      // This is necessary because follow/unfollow API doesn't return target user's counts
+      console.log("[FollowToggle] Server action succeeded");
+
+      // Refetch fresh user data
       const updatedUser = await refetchUserInfo();
 
-      // Fetch updated following/followers lists for current user
+      console.log("[FollowToggle] After refetch – updated counts:", {
+        followers: updatedUser?.followers?.length ?? "N/A",
+        following: updatedUser?.following?.length ?? "N/A",
+      });
+
+      // Refresh lists
       await Promise.all([
         dispatch(fetchFollowing({ page: 1, limit: 12 })).unwrap(),
         dispatch(fetchFollowers({ page: 1, limit: 12 })).unwrap(),
@@ -200,20 +223,18 @@ const UserCardWrapper = ({ userId }) => {
       // Update posts feed
       const followingIds = followingList.map((item) => item._id || item);
       dispatch(getAllPosts({ followingIds, page: 1, limit: null }));
-
-      // ✅ Ensure counts are synced with server response
-      if (updatedUser) {
-        setLocalFollowersCount(updatedUser.followers?.length || 0);
-        setLocalFollowingCount(updatedUser.following?.length || 0);
-      }
     } catch (err) {
-      // ✅ REVERT OPTIMISTIC UPDATE on error
-      if (wasFollowing) {
-        setLocalFollowersCount((prev) => prev + 1);
-      } else {
-        setLocalFollowersCount((prev) => Math.max(0, prev - 1));
-      }
-      console.error("Follow toggle error:", err);
+      // Revert optimistic update
+      setLocalFollowersCount((prev) => {
+        const reverted = wasFollowing ? prev + 1 : Math.max(0, prev - 1);
+        console.log(
+          "[FollowToggle] ERROR → reverting followers count to:",
+          reverted
+        );
+        return reverted;
+      });
+
+      console.error("[FollowToggle] Failed:", err);
       toast.error(err.message || "Failed to update follow status");
     }
   };
@@ -247,8 +268,8 @@ const UserCardWrapper = ({ userId }) => {
       posts={posts}
       followers={userToShow.followers || []}
       following={userToShow.following || []}
-      followersCount={localFollowersCount} // ✅ Use local state for instant updates
-      followingCount={localFollowingCount} // ✅ Use local state for instant updates
+      followersCount={localFollowersCount}
+      followingCount={localFollowingCount}
       showFollowBtn={showButtons}
       isFollowing={isFollowing}
       currentUserId={currentUser?._id || null}
@@ -260,7 +281,6 @@ const UserCardWrapper = ({ userId }) => {
 };
 
 export default UserCardWrapper;
-
 // -----------------------------------------------------------
 // old code
 
