@@ -805,7 +805,6 @@ export const getSingleUserById = async (req, res, next) => {
     // Fetches user
     const user = await UserModel.findById(id)
       .select("-password -googleId")
-      .populate("name email avatar")
       .lean();
 
     if (!user) {
