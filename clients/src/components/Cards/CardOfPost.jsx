@@ -70,7 +70,7 @@ const CardOfPost = ({
 
   if (loading) {
     return (
-      <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[2.5rem] p-3 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
+      <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[1rem] p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
         <div className="relative">
           <Skeleton className="w-full h-56 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse" />
         </div>
@@ -146,10 +146,10 @@ const CardOfPost = ({
   };
 
   return (
-    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[1.2 rem] p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
+    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[1 rem] p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
       {/* 🔵 BORDER HOVER ANIMATION — PLACE IT HERE */}
       <div
-        className="absolute inset-0  p-[2px]
+        className="absolute inset-0  p-[1px]
       opacity-0 group-hover:opacity-100
       transition-opacity duration-500
       overflow-hidden pointer-events-none z-0"
@@ -160,7 +160,7 @@ const CardOfPost = ({
         animate-border-rotate"
         />
         <div
-          className="absolute inset-[2px]
+          className="absolute inset-[4px]
         bg-white dark:bg-slate-900
         rounded-[calc(1rem-2px)]"
         />
