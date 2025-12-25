@@ -70,7 +70,7 @@ const CardOfPost = ({
 
   if (loading) {
     return (
-      <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900  p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
+      <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-xl p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
         <div className="relative">
           <Skeleton className="w-full h-56 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse" />
         </div>
@@ -146,31 +146,29 @@ const CardOfPost = ({
   };
 
   return (
-    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900  p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
+    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-xl p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
       {/* 🔵 BORDER HOVER ANIMATION — PLACE IT HERE */}
       <div
         className="absolute inset-0 rounded-[1rem] p-[2px]
-      opacity-0 group-hover:opacity-100
-      transition-opacity duration-500
-      overflow-hidden pointer-events-none z-0"
+  opacity-0 group-hover:opacity-100
+  transition-opacity duration-500
+  overflow-hidden pointer-events-none z-0"
       >
         <div
           className="absolute inset-[-200%]
-        bg-[conic-gradient(from_0deg,transparent_20%,#3b82f6_40%,#a855f7_60%,transparent_80%)]
-        animate-border-rotate"
+    bg-[conic-gradient(from_0deg,transparent_20%,#3b82f6_40%,#a855f7_60%,transparent_80%)]
+    animate-border-rotate"
         />
         <div
           className="absolute inset-[5px]
-        bg-white dark:bg-slate-900
-        rounded-[calc(1rem-2px)]"
+    bg-white dark:bg-slate-900
+    rounded-[calc(1rem-5px)]"
         />
       </div>
 
       {/* Premium Glow Effect */}
       {isPostPremium && (
-        <div
-          className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-fullblur-xl z-[1]"
-        />
+        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-fullblur-xl z-[1]" />
       )}
 
       {/* Link wrapper for image and content */}
@@ -179,7 +177,7 @@ const CardOfPost = ({
         className="relative z-10 flex-1 flex flex-col  overflow-hidden"
       >
         {/* Image Section */}
-        <div className="relative overflow-hidden ">
+        <div className="relative rounded-[1rem] overflow-hidden ">
           <div className="aspect-video w-full relative overflow-hidden">
             <img
               src={
