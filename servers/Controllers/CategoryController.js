@@ -166,10 +166,6 @@ export const getUserSelectedCategories = async (req, res, next) => {
   }
 };
 
-import CategoryModel from "../Models/category.js";
-import UserModel from "../Models/User.js";
-import { AppError } from "../Utils/AppError.js";
-
 export const createCategory = async (req, res, next) => {
   try {
     const { name, slug, description } = req.body;
