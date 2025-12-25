@@ -149,7 +149,7 @@ const CardOfPost = ({
     <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[1 rem] p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
       {/* 🔵 BORDER HOVER ANIMATION — PLACE IT HERE */}
       <div
-        className="absolute inset-0  p-[1px]
+        className="absolute inset-0 rounded-[1 rem] p-[1px]
       opacity-0 group-hover:opacity-100
       transition-opacity duration-500
       overflow-hidden pointer-events-none z-0"
@@ -177,7 +177,7 @@ const CardOfPost = ({
       {/* Link wrapper for image and content */}
       <Link
         to={`/post/${slug}`}
-        className="relative z-10 flex-1 flex flex-col rounded-[2rem] overflow-hidden"
+        className="relative z-10 flex-1 flex flex-col rounded-[1rem] overflow-hidden"
       >
         {/* Image Section */}
         <div className="relative overflow-hidden rounded-[0.75rem]">
@@ -246,12 +246,9 @@ const CardOfPost = ({
         </div>
 
         {/* Content Section */}
-        <div className="p-2 flex flex-col gap-4 flex-1">
+        <div className="p-2 flex flex-col gap-4 flex-1 min-h-[200px]">
           {/* Title */}
-          <h3
-            className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-2 leading-relaxed"
-            title={title || "Untitled"}
-          >
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-2 leading-relaxed">
             {title || "Untitled"}
           </h3>
 

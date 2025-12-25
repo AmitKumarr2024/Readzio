@@ -34,7 +34,7 @@ const GuestCardOfPost = ({ post }) => {
     <Link
       to={`/post/${slug}`}
       className="group relative bg-white dark:bg-gray-800 font-Urbanist
-  rounded-lg shadow-sm hover:shadow-md
+  rounded-xl shadow-sm hover:shadow-md
   transition-all duration-300
   overflow-hidden flex flex-col h-full max-w-full"
     >
@@ -61,7 +61,7 @@ const GuestCardOfPost = ({ post }) => {
           <img
             src={thumbnail || "https://placehold.co/400x225?text=No+Image"}
             alt={title || "Post"}
-            className="w-full h-full object-cover aspect-video rounded-t-lg"
+            className="w-full h-full object-cover aspect-video rounded-t-sm"
             loading="lazy"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
