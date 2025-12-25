@@ -437,10 +437,10 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   return (
     <ErrorBoundary>
       <div className="w-full px-4 py-4">
-        <Sorted
+        {/* <Sorted
           posts={filteredPosts}
           onSortChange={(sortedPosts) => setDisplayPosts(sortedPosts)}
-        />
+        /> */}
 
         {/* INITIAL LOADING STATE */}
         {shouldShowInitialLoader && renderSkeletonGrid()}

@@ -70,7 +70,7 @@ const CardOfPost = ({
 
   if (loading) {
     return (
-      <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900  p-1 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]  hover:border-transparent">
+      <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900  p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]  hover:border-transparent">
         <div className="relative">
           <Skeleton className="w-full h-56 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse" />
         </div>
@@ -146,7 +146,7 @@ const CardOfPost = ({
   };
 
   return (
-    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900  p-1 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]  hover:border-transparent">
+    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900  p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]  hover:border-transparent">
       {/* 🔵 BORDER HOVER ANIMATION — PLACE IT HERE */}
       <div
         className="absolute inset-0 rounded-[2rem] p-[1px]
@@ -178,7 +178,7 @@ const CardOfPost = ({
       >
         {/* Image Section */}
         <div className="relative rounded-[1rem] overflow-hidden ">
-          <div className="aspect-video w-full relative overflow-hidden">
+          <div className="aspect-video w-full relative">
             <img
               src={
                 thumbnail ||
@@ -201,7 +201,7 @@ const CardOfPost = ({
 
             {/* Read Time (Top-Right) */}
             {readTime && (
-              <span className="absolute top-0 right-0 flex items-center gap-1 px-3 py-1.5 bg-black/70 text-white text-xs font-medium rounded-full backdrop-blur-sm">
+              <span className="absolute z-20 top-0 right-0 flex items-center gap-1 px-3 py-1.5 bg-black/70 text-white text-xs font-medium rounded-full backdrop-blur-sm">
                 <Clock className="w-3 h-3" />
                 {readTime}
               </span>
