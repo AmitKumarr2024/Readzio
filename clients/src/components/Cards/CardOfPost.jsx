@@ -149,7 +149,7 @@ const CardOfPost = ({
     <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[1.2 rem] p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
       {/* 🔵 BORDER HOVER ANIMATION — PLACE IT HERE */}
       <div
-        className="absolute inset-0 rounded-[1.2rem] p-[1px]
+        className="absolute inset-0  p-[2px]
       opacity-0 group-hover:opacity-100
       transition-opacity duration-500
       overflow-hidden pointer-events-none z-0"
@@ -162,13 +162,16 @@ const CardOfPost = ({
         <div
           className="absolute inset-[2px]
         bg-white dark:bg-slate-900
-        rounded-[calc(2.5rem-2px)]"
+        rounded-[calc(1rem-2px)]"
         />
       </div>
 
       {/* Premium Glow Effect */}
       {isPostPremium && (
-        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl blur-xl z-[1]" />
+        <div
+          className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[1rem]
+ blur-xl z-[1]"
+        />
       )}
 
       {/* Link wrapper for image and content */}
@@ -177,8 +180,8 @@ const CardOfPost = ({
         className="relative z-10 flex-1 flex flex-col rounded-[2rem] overflow-hidden"
       >
         {/* Image Section */}
-        <div className="relative overflow-hidden">
-          <div className="aspect-video w-full relative">
+        <div className="relative overflow-hidden rounded-[0.75rem]">
+          <div className="aspect-video w-full relative overflow-hidden">
             <img
               src={
                 thumbnail ||
@@ -245,7 +248,10 @@ const CardOfPost = ({
         {/* Content Section */}
         <div className="p-2 flex flex-col gap-4 flex-1">
           {/* Title */}
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-1 leading-relaxed">
+          <h3
+            className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-2 leading-relaxed"
+            title={title || "Untitled"}
+          >
             {title || "Untitled"}
           </h3>
 
