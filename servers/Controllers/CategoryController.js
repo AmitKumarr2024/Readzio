@@ -50,7 +50,10 @@ export const seedCategories = async (req, res, next) => {
 export const getAllCategories = async (req, res, next) => {
   try {
     const categories = await CategoryModel.find().sort("name");
-    res.status(200).json({ success: true, categories });
+    res.status(200).json({
+      success: true,
+      categories: Array.isArray(categories) ? categories : [],
+    });
   } catch (error) {
     next(
       new AppError(
@@ -85,7 +88,10 @@ export const getUserSelectedCategories = async (req, res, next) => {
       );
     }
 
-    res.status(200).json({ success: true, categories: user.categories });
+    res.status(200).json({
+      success: true,
+      categories: Array.isArray(user.categories) ? user.categories : [],
+    });
   } catch (error) {
     next(
       error instanceof AppError
@@ -420,7 +426,12 @@ export const assignCategoriesToUser = async (req, res, next) => {
     await user.save();
 
     const updatedUser = await UserModel.findById(userId).populate("categories");
-    res.status(200).json({ success: true, categories: updatedUser.categories });
+    res.status(200).json({
+      success: true,
+      categories: Array.isArray(updatedUser.categories)
+        ? updatedUser.categories
+        : [],
+    });
   } catch (error) {
     next(
       error instanceof AppError

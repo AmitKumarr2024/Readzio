@@ -121,7 +121,7 @@ export const updateUser = createAsyncThunk(
   "user/updateUser",
   async (formData, { rejectWithValue }) => {
     // console.log("[UserSlice] updateUser: Starting request");
-    
+
     // Log FormData contents
     // console.log("[UserSlice] FormData entries:");
     // for (let [key, value] of formData.entries()) {
@@ -136,21 +136,21 @@ export const updateUser = createAsyncThunk(
     //     console.log(`  ${key}:`, value);
     //   }
     // }
-    
+
     try {
       // Now axios will work correctly with FormData because we fixed the interceptor
       const res = await axiosInstance.patch("/user/update-user", formData, {
         withCredentials: true,
         timeout: 60000, // 60 seconds for file uploads
       });
-      
+
       console.log("[UserSlice] updateUser: Response received", res.data);
       return res.data.data;
     } catch (err) {
       console.error("[UserSlice] updateUser: Error", {
         message: err.message,
         response: err.response?.data,
-        status: err.response?.status
+        status: err.response?.status,
       });
       return rejectWithValue(
         err.response?.data?.message || err.message || "Failed to update user"
@@ -158,7 +158,6 @@ export const updateUser = createAsyncThunk(
     }
   }
 );
-
 
 export const deleteUser = createAsyncThunk(
   "user/deleteUser",
@@ -1027,51 +1026,52 @@ const userSlice = createSlice({
         state.ipLocation.error = action.payload;
       })
 
-      // trackUserIPLocation
       .addCase(trackUserIPLocation.pending, (state) => {
         state.ipLocation.tracked = false;
-      })
-      .addCase(trackUserIPLocation.fulfilled, (state, { payload }) => {
-        // console.log(
-        //   "[UserSlice] trackUserIPLocation.fulfilled: Payload",
-        //   payload
-        // );
-        state.ipLocation.tracked = true;
-        if (payload) {
-          const location = {
-            userId: state.userId || payload.userId,
-            coordinates: {
-              lat: payload.latitude || 0,
-              lon: payload.longitude || 0,
-            },
-            city: payload.city || "Unknown",
-            country: payload.country || "Unknown",
-            state: payload.state || "Unknown",
-            pincode: payload.pincode || "Unknown",
-            timestamp: payload.timestamp || Date.now(),
-          };
-          // console.log(
-          //   "[UserSlice] trackUserIPLocation.fulfilled: Saving location",
-          //   location
-          // );
-          state.userLocations.list = [
-            location,
-            ...state.userLocations.list.filter(
-              (loc) => loc.userId !== location.userId
-            ),
-          ];
-          state.followerLocations.list = [
-            location,
-            ...state.followerLocations.list.filter(
-              (loc) => loc.userId !== location.userId
-            ),
-          ];
-        }
+        state.ipLocation.loading = true;
+        state.ipLocation.error = null;
       })
 
-      .addCase(trackUserIPLocation.rejected, (state) => {
-        state.ipLocation.tracked = false;
+      .addCase(trackUserIPLocation.fulfilled, (state, { payload }) => {
+        state.ipLocation.loading = false;
+        state.ipLocation.tracked = Boolean(payload);
+
+        if (!payload) return;
+
+        const location = {
+          userId: state.userId || payload.userId,
+          coordinates: {
+            lat: payload.latitude,
+            lon: payload.longitude,
+          },
+          city: payload.city || "Unknown",
+          country: payload.country || "Unknown",
+          state: payload.state || "Unknown",
+          pincode: payload.pincode || "Unknown",
+          timestamp: payload.timestamp || Date.now(),
+        };
+
+        state.userLocations.list = [
+          location,
+          ...state.userLocations.list.filter(
+            (loc) => loc.userId !== location.userId
+          ),
+        ];
+
+        state.followerLocations.list = [
+          location,
+          ...state.followerLocations.list.filter(
+            (loc) => loc.userId !== location.userId
+          ),
+        ];
       })
+
+      .addCase(trackUserIPLocation.rejected, (state, action) => {
+        state.ipLocation.loading = false;
+        state.ipLocation.tracked = false;
+        state.ipLocation.error = action.payload || "IP tracking failed";
+      })
+
       // Check feedback prompt
       .addCase(shouldShowFeedbackPrompt.pending, (state) => {
         state.feedback.shouldPrompt = false;
