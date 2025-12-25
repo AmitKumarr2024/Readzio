@@ -316,133 +316,69 @@ export const deleteCategory = async (req, res, next) => {
 export const assignCategoriesToUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const { categoryIds, newCategories } = req.body;
+    const { categoryIds = [], newCategories = [] } = req.body;
 
-    // Validates user ID format
     if (!userId || userId.length !== 24) {
-      return next(
-        new AppError(
-          "Invalid user ID format",
-          400,
-          "AssignCategoriesToUser",
-          "Invalid user ID"
-        )
-      );
+      return next(new AppError("Invalid user ID", 400));
     }
 
-    // Validates user existence
     const user = await UserModel.findById(userId);
     if (!user) {
-      return next(
-        new AppError(
-          "User not found",
-          404,
-          "AssignCategoriesToUser",
-          "User does not exist"
-        )
-      );
+      return next(new AppError("User not found", 404));
     }
 
-    // Validates category IDs
     if (
-      !categoryIds ||
-      !Array.isArray(categoryIds) ||
-      categoryIds.length === 0
+      (!Array.isArray(categoryIds) || categoryIds.length === 0) &&
+      (!Array.isArray(newCategories) || newCategories.length === 0)
     ) {
-      return next(
-        new AppError(
-          "At least one category ID is required",
-          400,
-          "AssignCategoriesToUser",
-          "Missing or invalid category IDs"
-        )
-      );
-    }
-
-    // Validates existing category IDs
-    const validCategories = await CategoryModel.find({
-      _id: { $in: categoryIds },
-    });
-    if (validCategories.length !== categoryIds.length) {
-      return next(
-        new AppError(
-          "One or more category IDs are invalid",
-          400,
-          "AssignCategoriesToUser",
-          "Invalid category IDs"
-        )
-      );
+      return next(new AppError("No categories provided", 400));
     }
 
     let finalCategoryIds = [...categoryIds];
 
-    // Processes new categories if provided
-    if (
-      newCategories &&
-      Array.isArray(newCategories) &&
-      newCategories.length > 0
-    ) {
+    if (Array.isArray(newCategories) && newCategories.length > 0) {
       for (const { name, slug, description } of newCategories) {
-        // Validates required fields for new categories
         if (!name || !slug) {
-          return next(
-            new AppError(
-              "Name and slug are required for new categories",
-              400,
-              "AssignCategoriesToUser",
-              "Missing required fields for new category"
-            )
-          );
+          return next(new AppError("Name and slug required", 400));
         }
 
-        // Checks for existing category by name or slug
-        const existing = await CategoryModel.findOne({
+        const exists = await CategoryModel.findOne({
           $or: [{ name }, { slug }],
         });
-        if (existing) {
-          return next(
-            new AppError(
-              `Category '${name}' or slug '${slug}' already exists`,
-              400,
-              "AssignCategoriesToUser",
-              "Category already exists"
-            )
-          );
+        if (exists) {
+          return next(new AppError(`Category '${name}' already exists`, 400));
         }
 
-        const newCategory = new CategoryModel({
+        const category = await CategoryModel.create({
           name,
           slug,
           description,
           createdBy: req.user._id,
         });
-        await newCategory.save();
-        finalCategoryIds.push(newCategory._id);
+
+        finalCategoryIds.push(category._id);
       }
     }
 
-    // Assigns unique category IDs to user
-    user.categories = [...new Set(finalCategoryIds.map((id) => id.toString()))];
+    const validCategories = await CategoryModel.find({
+      _id: { $in: finalCategoryIds },
+    });
+
+    if (validCategories.length !== finalCategoryIds.length) {
+      return next(new AppError("Invalid category IDs", 400));
+    }
+
+    user.categories = Array.from(new Set(finalCategoryIds));
     await user.save();
 
     const updatedUser = await UserModel.findById(userId).populate("categories");
+
     res.status(200).json({
       success: true,
-      categories: Array.isArray(updatedUser.categories)
-        ? updatedUser.categories
-        : [],
+      categories: updatedUser.categories || [],
     });
-  } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message,
-            500,
-            "AssignCategoriesToUser",
-            "Failed to assign categories"
-          )
-    );
+  } catch (err) {
+    next(new AppError(err.message, 500, "AssignCategoriesToUser"));
   }
 };
 

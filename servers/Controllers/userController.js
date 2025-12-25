@@ -77,37 +77,25 @@ export const trackIPLocation = async (req, res, next) => {
 // Saves user location with validation and emits updates
 export const saveUserLocation = async (req, res, next) => {
   try {
-    // console.log("[geoLocation from middleware]", req.geoLocation);
     const { coordinates, city: bodyCity, country: bodyCountry } = req.body;
     const geo = req.geoLocation || {};
     const latitude = geo.latitude || coordinates?.lat;
     const longitude = geo.longitude || coordinates?.lon;
 
     if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
-      throw new AppError(
-        "Invalid or missing coordinates",
-        400,
-        "SaveUserLocation",
-        "No valid coordinates provided"
-      );
+      return res
+        .status(400)
+        .json({ message: "Invalid or missing coordinates" });
     }
 
     const user = await UserModel.findById(req.user._id).select("followers");
     if (!user) {
-      throw new AppError(
-        "User not found",
-        404,
-        "SaveUserLocation",
-        "User not found in DB"
-      );
+      return res.status(404).json({ message: "User not found" });
     }
 
     const locationData = {
       userId: req.user._id,
-      coordinates: {
-        type: "Point",
-        coordinates: [longitude, latitude],
-      },
+      coordinates: { type: "Point", coordinates: [longitude, latitude] },
       city: geo.city || bodyCity || "Unknown",
       country: geo.country || bodyCountry || "Unknown",
       state: geo.state || "Unknown",
@@ -115,8 +103,6 @@ export const saveUserLocation = async (req, res, next) => {
       ip: geo.ip || req.ip || "",
       timestamp: new Date(),
     };
-
-    // console.log("[saveUserLocation] Saving location:", locationData);
 
     await UserLocation.deleteMany({ userId: req.user._id });
     const location = await UserLocation.create(locationData);
@@ -137,8 +123,11 @@ export const saveUserLocation = async (req, res, next) => {
       timestamp: location.timestamp.getTime(),
     };
 
+    // Emit updates safely
     io.to("adminRoom").emit("userLocationUpdate", socketLocationData);
-    user.followers.forEach((followerId) =>
+
+    const followers = Array.isArray(user.followers) ? user.followers : [];
+    followers.forEach((followerId) =>
       io
         .to(followerId.toString())
         .emit("userLocationUpdate", socketLocationData)
@@ -150,6 +139,7 @@ export const saveUserLocation = async (req, res, next) => {
       location: socketLocationData,
     });
   } catch (error) {
+    console.error("💥 saveUserLocation error:", error);
     next(
       error instanceof AppError
         ? error
