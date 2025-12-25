@@ -177,10 +177,10 @@ const CardOfPost = ({
       {/* Link wrapper for image and content */}
       <Link
         to={`/post/${slug}`}
-        className="relative z-10 flex-1 flex flex-col rounded-lg overflow-hidden"
+        className="relative z-10 flex-1 flex flex-col rounded-xs overflow-hidden"
       >
         {/* Image Section */}
-        <div className="relative overflow-hidden rounded-[0.75rem]">
+        <div className="relative overflow-hidden ">
           <div className="aspect-video w-full relative overflow-hidden">
             <img
               src={
