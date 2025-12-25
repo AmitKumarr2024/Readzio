@@ -149,7 +149,7 @@ const CardOfPost = ({
     <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900  p-1 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]  hover:border-transparent">
       {/* 🔵 BORDER HOVER ANIMATION — PLACE IT HERE */}
       <div
-        className="absolute inset-0 rounded-[1rem] p-[1px]
+        className="absolute inset-0 rounded-[2rem] p-[1px]
   opacity-0 group-hover:opacity-100
   transition-opacity duration-500
   overflow-hidden pointer-events-none z-0"
@@ -160,9 +160,9 @@ const CardOfPost = ({
     animate-border-rotate"
         />
         <div
-          className="absolute inset-[5px]
+          className="absolute inset-[8px]
     bg-white dark:bg-slate-900
-    rounded-[calc(1rem-2px)]"
+    rounded-[calc(2rem-2px)]"
         />
       </div>
 
