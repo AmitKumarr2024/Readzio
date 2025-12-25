@@ -70,7 +70,7 @@ const CardOfPost = ({
 
   if (loading) {
     return (
-      <div className="group relative bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-slate-800">
+      <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[2.5rem] p-3 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
         <div className="relative">
           <Skeleton className="w-full h-56 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse" />
         </div>
@@ -146,19 +146,36 @@ const CardOfPost = ({
   };
 
   return (
-    <div className="group relative bg-white dark:bg-slate-900 rounded-2xl shadow-lg transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] overflow-hidden border border-gray-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-slate-700 transform hover:-translate-y-1 h-full flex flex-col">
-      <div className="absolute inset-0 rounded-[2.5rem] p-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden pointer-events-none z-0">
-        <div className="absolute inset-[-200%] bg-[conic-gradient(from_0deg,transparent_20%,#3b82f6_40%,#a855f7_60%,transparent_80%)] animate-border-rotate" />
-        <div className="absolute inset-[2px] bg-white dark:bg-slate-900 rounded-[calc(2.5rem-2px)]" />
+    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[2.5rem] p-3 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
+      {/* 🔵 BORDER HOVER ANIMATION — PLACE IT HERE */}
+      <div
+        className="absolute inset-0 rounded-[2.5rem] p-[2px]
+      opacity-0 group-hover:opacity-100
+      transition-opacity duration-500
+      overflow-hidden pointer-events-none z-0"
+      >
+        <div
+          className="absolute inset-[-200%]
+        bg-[conic-gradient(from_0deg,transparent_20%,#3b82f6_40%,#a855f7_60%,transparent_80%)]
+        animate-border-rotate"
+        />
+        <div
+          className="absolute inset-[2px]
+        bg-white dark:bg-slate-900
+        rounded-[calc(2.5rem-2px)]"
+        />
       </div>
-      
+
       {/* Premium Glow Effect */}
       {isPostPremium && (
         <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl blur-xl z-[1]" />
       )}
 
       {/* Link wrapper for image and content */}
-      <Link to={`/post/${slug}`} className="flex-1 flex flex-col">
+      <Link
+        to={`/post/${slug}`}
+        className="relative z-10 flex-1 flex flex-col rounded-[2rem] overflow-hidden"
+      >
         {/* Image Section */}
         <div className="relative overflow-hidden">
           <div className="aspect-video w-full relative">
@@ -329,11 +346,6 @@ const CardOfPost = ({
           )}
         </div>
       </Link>
-
-      {/* Hover Effect Border */}
-      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-15 transition-opacity duration-300 pointer-events-none bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 p-[2px] z-[2]">
-        <div className="w-full h-full rounded-2xl bg-transparent" />
-      </div>
     </div>
   );
 };
