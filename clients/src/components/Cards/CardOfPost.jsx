@@ -148,8 +148,9 @@ const CardOfPost = ({
   return (
     <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[1rem] p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
       {/* 🔵 BORDER HOVER ANIMATION — PLACE IT HERE */}
+      {/* 🔵 BORDER HOVER ANIMATION */}
       <div
-        className="absolute inset-0 rounded-[1rem] p-[2px]
+        className="absolute inset-0 rounded-lg p-[2px]
   opacity-0 group-hover:opacity-100
   transition-opacity duration-500
   overflow-hidden pointer-events-none z-0"
@@ -157,11 +158,11 @@ const CardOfPost = ({
         <div
           className="absolute inset-[-200%]
     bg-[conic-gradient(from_0deg,transparent_20%,#3b82f6_40%,#a855f7_60%,transparent_80%)]
-    animate-none group-hover:animate-border-rotate"
+    animate-border-rotate"
         />
         <div
-          className="absolute inset-[2px]
-    bg-white dark:bg-slate-900
+          className="absolute inset-[3px]
+    bg-white dark:bg-gray-800
     rounded-[calc(1rem-2px)]"
         />
       </div>
