@@ -14,7 +14,7 @@ const Sorted = ({ posts, onSortChange, className = "" }) => {
           new Date(b.createdAt || 0).getTime()
         );
       } else if (sortOption === "Popular") {
-        return (b.views || 0) - (a.views || 0);
+        return (b.viewsCount || 0) - (a.viewsCount || 0);
       } else {
         return (
           new Date(b.createdAt || 0).getTime() -
@@ -30,11 +30,6 @@ const Sorted = ({ posts, onSortChange, className = "" }) => {
     <div
       className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full px-4 py-3 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 ${className}`}
     >
-      {/* Dynamic Count (Optional addition for context) */}
-      <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-        Showing {posts?.length || 0} posts
-      </span>
-
       <div className="flex items-center gap-3">
         <label
           htmlFor="sort"
