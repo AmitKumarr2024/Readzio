@@ -814,3 +814,32 @@ div[contenteditable="true"] ::selection {
     }
   }
 }
+
+/* card of home screen */
+
+@keyframes border-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-border-rotate {
+  animation: border-rotate 4s linear infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
