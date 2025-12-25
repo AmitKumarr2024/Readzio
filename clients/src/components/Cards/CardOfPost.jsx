@@ -146,10 +146,10 @@ const CardOfPost = ({
   };
 
   return (
-    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[2.5rem] p-3 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
+    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[1.2 rem] p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
       {/* 🔵 BORDER HOVER ANIMATION — PLACE IT HERE */}
       <div
-        className="absolute inset-0 rounded-[2.5rem] p-[2px]
+        className="absolute inset-0 rounded-[1.2rem] p-[1px]
       opacity-0 group-hover:opacity-100
       transition-opacity duration-500
       overflow-hidden pointer-events-none z-0"
@@ -243,9 +243,9 @@ const CardOfPost = ({
         </div>
 
         {/* Content Section */}
-        <div className="p-6 flex flex-col gap-4 flex-1">
+        <div className="p-2 flex flex-col gap-4 flex-1">
           {/* Title */}
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-2 leading-relaxed">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-1 leading-relaxed">
             {title || "Untitled"}
           </h3>
 
