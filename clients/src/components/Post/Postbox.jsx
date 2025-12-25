@@ -147,21 +147,39 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
         post?.category
     );
 
+    // CATEGORY FILTER
     if (category) {
       validPosts = validPosts.filter((post) => {
         let postCategorySlug = "";
+
         if (typeof post.category === "object" && post.category?.slug) {
           postCategorySlug = post.category.slug.toLowerCase();
         } else if (typeof post.category === "string") {
           const matched = categories.find((cat) => cat._id === post.category);
           if (matched) postCategorySlug = matched.slug?.toLowerCase();
         }
+
         return postCategorySlug === category.toLowerCase();
       });
     }
 
-    return validPosts;
-  }, [getSourcePosts, category, categories]);
+    // 🔽 SORTING
+    const sortedPosts = [...validPosts].sort((a, b) => {
+      switch (sortBy) {
+        case "views":
+          return (b.viewsCount ?? 0) - (a.viewsCount ?? 0);
+
+        case "likes":
+          return (b.likes?.length ?? 0) - (a.likes?.length ?? 0);
+
+        case "latest":
+        default:
+          return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+    });
+
+    return sortedPosts;
+  }, [getSourcePosts, category, categories, sortBy]);
 
   useEffect(() => {
     if (!displayPosts?.length) {
