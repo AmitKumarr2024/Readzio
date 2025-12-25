@@ -174,7 +174,7 @@ const CardOfPost = ({
       {/* Link wrapper for image and content */}
       <Link
         to={`/post/${slug}`}
-        className="relative z-10 flex-1 flex flex-col rounded-[1rem] overflow-hidden"
+        className="relative z-10 flex-1 flex flex-col  overflow-hidden"
       >
         {/* Image Section */}
         <div className="relative overflow-hidden">
@@ -243,9 +243,9 @@ const CardOfPost = ({
         </div>
 
         {/* Content Section */}
-        <div className="p-2 flex flex-col gap-3 flex-1">
+        <div className="p-2 flex flex-col gap-4 flex-1  min-h-[200px]">
           {/* Title */}
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-3 leading-relaxed">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-3 leading-relaxed">
             {title || "Untitled"}
           </h3>
 
