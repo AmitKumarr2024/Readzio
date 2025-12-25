@@ -70,7 +70,7 @@ const CardOfPost = ({
 
   if (loading) {
     return (
-      <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[1rem] p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
+      <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[2rem] p-3 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
         <div className="relative">
           <Skeleton className="w-full h-56 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse" />
         </div>
@@ -146,50 +146,46 @@ const CardOfPost = ({
   };
 
   return (
-    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[1rem] p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
+    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 rounded-[2rem] p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-800/50 hover:border-transparent">
       {/* 🔵 BORDER HOVER ANIMATION — PLACE IT HERE */}
-      {/* 🔵 BORDER HOVER ANIMATION */}
       <div
-        className="absolute inset-0 rounded-lg p-[2px]
-  opacity-0 group-hover:opacity-100
-  transition-opacity duration-500
-  overflow-hidden pointer-events-none z-0"
+        className="absolute inset-0 rounded-[1rem] p-[2px]
+      opacity-0 group-hover:opacity-100
+      transition-opacity duration-500
+      overflow-hidden pointer-events-none z-0"
       >
         <div
           className="absolute inset-[-200%]
-    bg-[conic-gradient(from_0deg,transparent_20%,#3b82f6_40%,#a855f7_60%,transparent_80%)]
-    animate-border-rotate"
+        bg-[conic-gradient(from_0deg,transparent_20%,#3b82f6_40%,#a855f7_60%,transparent_80%)]
+        animate-border-rotate"
         />
         <div
           className="absolute inset-[3px]
-    bg-white dark:bg-gray-800
-    rounded-[calc(1rem-2px)]"
+        bg-white dark:bg-slate-900
+        rounded-[calc(2.5rem-2px)]"
         />
       </div>
 
       {/* Premium Glow Effect */}
       {isPostPremium && (
-        <div
-          className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[1rem]
- blur-xl z-[1]"
-        />
+        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl blur-xl z-[1]" />
       )}
 
       {/* Link wrapper for image and content */}
       <Link
         to={`/post/${slug}`}
-        className="relative z-10 flex-1 flex flex-col rounded-[calc(1rem-2px)] overflow-hidden"
+        className="relative z-10 flex-1 flex flex-col rounded-[1rem] overflow-hidden"
       >
         {/* Image Section */}
-        <div className="relative overflow-hidden rounded-t-[0.75rem]">
-          <div className="aspect-video w-full relative overflow-hidden">
+        <div className="relative overflow-hidden">
+          <div className="aspect-video w-full relative">
             <img
               src={
                 thumbnail ||
                 "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&q=80"
               }
               alt={title || "Post"}
-              className="w-full h-full object-cover transition-transform overflow-hidden duration-500 group-hover:scale-105"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
             />
             {/* Dark gradient overlay */}
@@ -247,9 +243,9 @@ const CardOfPost = ({
         </div>
 
         {/* Content Section */}
-        <div className="p-2 flex flex-col gap-4 flex-1  min-h-[200px]">
+        <div className="p-2 flex flex-col gap-3 flex-1">
           {/* Title */}
-          <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-3 leading-relaxed">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-2 leading-relaxed">
             {title || "Untitled"}
           </h3>
 
