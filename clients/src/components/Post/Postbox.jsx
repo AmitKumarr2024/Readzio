@@ -438,7 +438,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   return (
     <ErrorBoundary>
       <div className="w-full px-4 py-4">
-        <Sorted sortBy={sortBy} onSortChange={setSortBy} />
+        {/* <Sorted sortBy={sortBy} onSortChange={setSortBy} /> */}
 
         {/* INITIAL LOADING STATE */}
         {shouldShowInitialLoader && renderSkeletonGrid()}

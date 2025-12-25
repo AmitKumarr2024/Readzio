@@ -160,7 +160,7 @@ const CardOfPost = ({
     animate-border-rotate"
         />
         <div
-          className="absolute inset-[8px]
+          className="absolute inset-[5px]
     bg-white dark:bg-slate-900
     rounded-[calc(2rem-2px)]"
         />
