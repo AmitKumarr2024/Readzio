@@ -8,7 +8,6 @@ import {
   clearError,
   resetSlugAvailability,
   checkSlugAvailability,
-  forceRefreshCategories,
   deleteCategory,
   updateCategory,
 } from "../../../store/categorySlice";
@@ -104,10 +103,10 @@ const AddCategory = ({ onAdd }) => {
       setDescription("");
       setSlugTouched(false);
 
-      // Force refresh categories to show new one
-      dispatch(forceRefreshCategories());
+      // Pass the full category object to parent for live update
+      onAdd(result.category);
 
-      onAdd(result._id);
+      // Clear errors and reset slug availability
       dispatch(clearError());
       dispatch(resetSlugAvailability());
     } catch (err) {
@@ -385,7 +384,6 @@ const CategoryManagement = () => {
       .unwrap()
       .then(() => {
         toast.success("Category updated!");
-        dispatch(forceRefreshCategories());
       })
       .catch((err) => toast.error(err || "Failed to update category"));
   };
@@ -398,7 +396,6 @@ const CategoryManagement = () => {
       .unwrap()
       .then(() => {
         toast.success("Category deleted!");
-        dispatch(forceRefreshCategories());
 
         // Remove from selectedCategories if it was selected
         setSelectedCategories((prev) => prev.filter((id) => id !== categoryId));
@@ -451,25 +448,26 @@ const CategoryManagement = () => {
     }
   };
 
-  const handleAddCategorySuccess = (newCategoryId) => {
-    // Auto-select new category and mark as changed
-    setSelectedCategories((prev) => {
-      const newSelection = [...prev, newCategoryId];
-      setHasChanges(true);
-      return newSelection;
-    });
+  const handleAddCategorySuccess = (newCategory) => {
+    // Add the new category ID to selectedCategories
+    setSelectedCategories((prev) => [...prev, newCategory._id]);
+
+    // Optionally, add the new category to categories list if needed
+    // But since categories come from Redux, you usually don't manage local state here
+    // Just rely on Redux fetch or optimistic update if necessary
+
     setShowAddCategory(false);
     toast("New category added and selected. Don't forget to save!");
   };
 
   const handleReset = () => {
-    const originalIds = userSelectedCategories.map((cat) => cat._id);
+    const originalIds = userSelectedCategories.map((cat) => cat?._id);
     setSelectedCategories(originalIds);
     setHasChanges(false);
     toast("Changes reset");
   };
 
-  if (loadingStates?.fetching && categories.length === 0) {
+  if (loadingStates?.fetching && categories?.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900">
         <motion.div
