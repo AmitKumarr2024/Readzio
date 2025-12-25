@@ -72,6 +72,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   const observer = useRef(null);
   const lastPostElementRef = useRef(null);
   const [displayPosts, setDisplayPosts] = useState([]);
+  const [sortBy, setSortBy] = useState("latest");
 
   // --- Component Setup Effects ---
 
@@ -437,10 +438,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   return (
     <ErrorBoundary>
       <div className="w-full px-4 py-4">
-        {/* <Sorted
-          posts={filteredPosts}
-          onSortChange={(sortedPosts) => setDisplayPosts(sortedPosts)}
-        /> */}
+        <Sorted sortBy={sortBy} onSortChange={setSortBy} />
 
         {/* INITIAL LOADING STATE */}
         {shouldShowInitialLoader && renderSkeletonGrid()}
