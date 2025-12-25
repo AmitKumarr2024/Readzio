@@ -28,7 +28,7 @@ const Sorted = ({ posts, onSortChange, className = "" }) => {
 
   return (
     <div
-      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full px-4 py-3 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 ${className}`}
+      className={`flex flex-col sm:flex-row sm:items-center justify-end gap-4 w-full px-4 py-3 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 ${className}`}
     >
       <div className="flex items-center gap-3">
         <label
