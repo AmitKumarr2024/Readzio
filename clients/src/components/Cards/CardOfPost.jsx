@@ -162,7 +162,7 @@ const CardOfPost = ({
         <div
           className="absolute inset-[5px]
     bg-white dark:bg-slate-900
-    rounded-[calc(1rem-5px)]"
+    rounded-[calc(1rem-2px)]"
         />
       </div>
 
@@ -243,7 +243,7 @@ const CardOfPost = ({
         </div>
 
         {/* Content Section */}
-        <div className="p-2 flex flex-col gap-4 flex-1 min-h-[200px]">
+        <div className="p-2 flex flex-col gap-4 min-h-[200px]">
           {/* Title */}
           <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-2 leading-relaxed">
             {title || "Untitled"}
