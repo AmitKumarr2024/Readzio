@@ -51,12 +51,12 @@ const GuestCardOfPost = ({ post }) => {
     animate-border-rotate"
         />
         <div
-          className="absolute inset-[2px]
+          className="absolute inset-[3px]
     bg-white dark:bg-gray-800
     rounded-[calc(0.5rem-2px)]"
         />
       </div>
-      <div className="relative z-10 flex flex-col h-full">
+      <div className="relative p-1 z-10 flex flex-col h-full">
         <div className="relative w-full aspect-video">
           <img
             src={thumbnail || "https://placehold.co/400x225?text=No+Image"}
@@ -85,14 +85,24 @@ const GuestCardOfPost = ({ post }) => {
             </span>
           )}
         </div>
-        <div className="p-4 flex flex-col gap-3 min-h-[200px]">
-          <h3 className="text-lg sm:text-xl font-semibold leading-snug text-gray-900 dark:text-white group-hover:text-blue-500 line-clamp-2">
+        <div className="p-4 flex flex-col gap-4 min-h-[200px]">
+          <h3 className="text-lg sm:text-xl  font-semibold leading-snug text-gray-900 dark:text-white group-hover:text-blue-500 line-clamp-3">
             {title || "Untitled"}
           </h3>
-          <div className="flex flex-col sm:flex-row sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400 justify-between">
-            <span className="truncate">{category?.name}</span>
-            <span className="truncate font-bold text-gray-700 dark:text-gray-200">
-              {author.name || "Anonymous"}
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                {author.name?.charAt(0)?.toUpperCase() || "A"}
+              </div>
+              <div className="flex flex-col">
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {author.name || "Anonymous"}
+                </span>
+               
+              </div>
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+              {formattedDate}
             </span>
           </div>
           <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
@@ -113,9 +123,7 @@ const GuestCardOfPost = ({ post }) => {
               {shareCount}
             </span>
           </div>
-          <div className="text-xs text-gray-400 dark:text-gray-500">
-            {formattedDate}
-          </div>
+        
           {tags?.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {tags.slice(0, 4).map((tag) => (
