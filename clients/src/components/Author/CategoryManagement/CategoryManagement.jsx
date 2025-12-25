@@ -28,7 +28,7 @@ const AddCategory = ({ onAdd }) => {
     error,
     slugAvailability = {},
   } = useSelector((state) => state.categories);
-
+  
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
@@ -40,7 +40,7 @@ const AddCategory = ({ onAdd }) => {
   const handleNameChange = (value) => {
     setName(value);
     setFormError(""); // Clear form errors on input
-
+    
     if (!slugTouched) {
       const autoSlug = value
         .toLowerCase()
@@ -141,7 +141,7 @@ const AddCategory = ({ onAdd }) => {
       setFormError("");
 
       // Wait a bit before refreshing to ensure backend has processed
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       // Force refresh categories to show new one
       await dispatch(forceRefreshCategories());
@@ -155,10 +155,10 @@ const AddCategory = ({ onAdd }) => {
       dispatch(resetSlugAvailability());
     } catch (err) {
       console.error("Error creating category:", err);
-
+      
       // Extract error message from various error formats
       let errorMessage = "Failed to create category";
-
+      
       if (typeof err === "string") {
         errorMessage = err;
       } else if (err?.message) {
@@ -188,11 +188,10 @@ const AddCategory = ({ onAdd }) => {
     }
 
     const timeoutId = setTimeout(() => {
-      dispatch(
-        checkSlugAvailability({ slug: slug.trim(), type: "category" })
-      ).catch((err) => {
-        console.error("Slug availability check failed:", err);
-      });
+      dispatch(checkSlugAvailability({ slug: slug.trim(), type: "category" }))
+        .catch(err => {
+          console.error("Slug availability check failed:", err);
+        });
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
@@ -208,29 +207,29 @@ const AddCategory = ({ onAdd }) => {
 
   const getSlugStatus = () => {
     if (!slug || !slugTouched) return null;
-
+    
     if (!/^[a-z0-9-]+$/.test(slug)) {
       return { type: "error", message: "Invalid format" };
     }
-
+    
     if (slugAvailability.loading) {
       return { type: "loading", message: "Checking availability..." };
     }
-
+    
     if (slugAvailability.isAvailable === true) {
       return { type: "success", message: "Available" };
     }
-
+    
     if (slugAvailability.isAvailable === false) {
       return { type: "error", message: "Already taken" };
     }
-
+    
     return null;
   };
 
   const slugStatus = getSlugStatus();
-  const isFormDisabled =
-    isSubmitting ||
+  const isFormDisabled = 
+    isSubmitting || 
     loadingStates.creating ||
     slugStatus?.type === "loading" ||
     (slugTouched && slugStatus?.type === "error");
@@ -410,7 +409,7 @@ const CategoryManagement = () => {
     error,
     loadingStates = {},
   } = useSelector((state) => state.categories);
-
+  
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -420,7 +419,7 @@ const CategoryManagement = () => {
   useEffect(() => {
     console.log("Fetching categories...");
     dispatch(fetchCategories());
-
+    
     if (user?._id) {
       console.log("Fetching user selected categories for user:", user._id);
       dispatch(fetchUserSelectedCategories());
@@ -429,10 +428,7 @@ const CategoryManagement = () => {
 
   // Sync selected categories with user's categories
   useEffect(() => {
-    if (
-      Array.isArray(userSelectedCategories) &&
-      userSelectedCategories.length > 0
-    ) {
+    if (Array.isArray(userSelectedCategories) && userSelectedCategories.length > 0) {
       const newSelected = userSelectedCategories.map((cat) => cat._id || cat);
       console.log("Setting selected categories:", newSelected);
       setSelectedCategories(newSelected);
@@ -443,44 +439,39 @@ const CategoryManagement = () => {
     }
   }, [userSelectedCategories]);
 
-  const handleCategoryToggle = useCallback(
-    (categoryId) => {
-      setSelectedCategories((prev) => {
-        const newSelection = prev.includes(categoryId)
-          ? prev.filter((id) => id !== categoryId)
-          : [...prev, categoryId];
+  const handleCategoryToggle = useCallback((categoryId) => {
+    setSelectedCategories((prev) => {
+      const newSelection = prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId];
 
-        // Check if there are changes
-        const originalIds = (userSelectedCategories || []).map(
-          (cat) => cat._id || cat
-        );
-        const hasChangesNow =
-          JSON.stringify([...newSelection].sort()) !==
-          JSON.stringify([...originalIds].sort());
-        setHasChanges(hasChangesNow);
+      // Check if there are changes
+      const originalIds = (userSelectedCategories || []).map((cat) => cat._id || cat);
+      const hasChangesNow =
+        JSON.stringify([...newSelection].sort()) !==
+        JSON.stringify([...originalIds].sort());
+      setHasChanges(hasChangesNow);
 
-        return newSelection;
-      });
-    },
-    [userSelectedCategories]
-  );
+      return newSelection;
+    });
+  }, [userSelectedCategories]);
 
   const handleSave = async () => {
     if (!user?._id) {
       toast.error("Please log in to save categories");
       return;
     }
-
+    
     if (selectedCategories.length === 0) {
       toast.error("Please select at least one category");
       return;
     }
 
     setIsSaving(true);
-
+    
     try {
       console.log("Saving categories:", selectedCategories);
-
+      
       await dispatch(
         assignCategoriesToUser({
           userId: user._id,
@@ -492,15 +483,15 @@ const CategoryManagement = () => {
       toast.success("Categories updated successfully!");
       setHasChanges(false);
       dispatch(clearError());
-
+      
       // Refresh user selected categories to ensure sync
       await dispatch(fetchUserSelectedCategories());
     } catch (err) {
       console.error("Error saving categories:", err);
-
+      
       // Extract error message
       let errorMessage = "Failed to update categories";
-
+      
       if (typeof err === "string") {
         errorMessage = err;
       } else if (err?.message) {
@@ -510,7 +501,7 @@ const CategoryManagement = () => {
       } else if (err?.data?.message) {
         errorMessage = err.data.message;
       }
-
+      
       toast.error(errorMessage);
     } finally {
       setIsSaving(false);
@@ -519,30 +510,28 @@ const CategoryManagement = () => {
 
   const handleAddCategorySuccess = useCallback((newCategoryId) => {
     console.log("New category added with ID:", newCategoryId);
-
+    
     if (!newCategoryId) {
       console.error("No category ID provided");
       return;
     }
-
+    
     // Auto-select new category and mark as changed
     setSelectedCategories((prev) => {
       const newSelection = [...prev, newCategoryId];
       setHasChanges(true);
       return newSelection;
     });
-
+    
     setShowAddCategory(false);
-    toast.info("New category added and selected. Don't forget to save!");
+    toast("New category added and selected. Don't forget to save!");
   }, []);
 
   const handleReset = useCallback(() => {
-    const originalIds = (userSelectedCategories || []).map(
-      (cat) => cat._id || cat
-    );
+    const originalIds = (userSelectedCategories || []).map((cat) => cat._id || cat);
     setSelectedCategories(originalIds);
     setHasChanges(false);
-    toast.info("Changes reset");
+    toast("Changes reset");
   }, [userSelectedCategories]);
 
   if (loadingStates?.fetching && categories.length === 0) {
@@ -645,8 +634,7 @@ const CategoryManagement = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {categories.map((category) => {
                       const categoryId = category._id || category.id;
-                      const isSelected =
-                        selectedCategories.includes(categoryId);
+                      const isSelected = selectedCategories.includes(categoryId);
                       const isCustom = category.createdBy;
 
                       return (
@@ -666,7 +654,7 @@ const CategoryManagement = () => {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
                                 <h4 className="font-semibold truncate">
-                                  {category.name}
+                                  {category?.name}
                                 </h4>
                                 {isCustom && (
                                   <FaStar

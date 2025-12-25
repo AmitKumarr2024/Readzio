@@ -501,7 +501,11 @@ export const assignCategoriesToUser = async (req, res, next) => {
     await user.save();
 
     // Fetch updated user with populated categories
-    const updatedUser = await UserModel.findById(userId).populate("categories");
+    // Fixed: match the working pattern from getUserSelectedCategories
+    const updatedUser = await UserModel.findById(userId).populate({
+      path: "categories",
+      strictPopulate: false,
+    });
 
     res.status(200).json({
       success: true,
