@@ -9,6 +9,8 @@ import {
   resetSlugAvailability,
   checkSlugAvailability,
   forceRefreshCategories,
+  deleteCategory,
+  updateCategory,
 } from "../../../store/categorySlice";
 import { toast } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -358,6 +360,52 @@ const CategoryManagement = () => {
     }
   }, [userSelectedCategories]);
 
+  // Inside CategoryManagement
+  const handleEditCategory = (category) => {
+    const newName = prompt("Edit category name:", category.name);
+    if (!newName) return;
+    const newSlug = prompt("Edit category slug:", category.slug);
+    if (!newSlug) return;
+
+    const newDescription = prompt(
+      "Edit category description:",
+      category.description || ""
+    );
+
+    dispatch(
+      updateCategory({
+        categoryId: category._id,
+        updates: {
+          name: newName.trim(),
+          slug: newSlug.trim(),
+          description: newDescription?.trim() || "",
+        },
+      })
+    )
+      .unwrap()
+      .then(() => {
+        toast.success("Category updated!");
+        dispatch(forceRefreshCategories());
+      })
+      .catch((err) => toast.error(err || "Failed to update category"));
+  };
+
+  const handleDeleteCategory = (categoryId) => {
+    if (!window.confirm("Are you sure you want to delete this category?"))
+      return;
+
+    dispatch(deleteCategory(categoryId))
+      .unwrap()
+      .then(() => {
+        toast.success("Category deleted!");
+        dispatch(forceRefreshCategories());
+
+        // Remove from selectedCategories if it was selected
+        setSelectedCategories((prev) => prev.filter((id) => id !== categoryId));
+      })
+      .catch((err) => toast.error(err || "Failed to delete category"));
+  };
+
   const handleCategoryToggle = (categoryId) => {
     setSelectedCategories((prev) => {
       const newSelection = prev.includes(categoryId)
@@ -411,14 +459,14 @@ const CategoryManagement = () => {
       return newSelection;
     });
     setShowAddCategory(false);
-    toast.info("New category added and selected. Don't forget to save!");
+    toast("New category added and selected. Don't forget to save!");
   };
 
   const handleReset = () => {
     const originalIds = userSelectedCategories.map((cat) => cat._id);
     setSelectedCategories(originalIds);
     setHasChanges(false);
-    toast.info("Changes reset");
+    toast("Changes reset");
   };
 
   if (loadingStates?.fetching && categories.length === 0) {
@@ -553,6 +601,26 @@ const CategoryManagement = () => {
                                     }`}
                                     title="Custom category"
                                   />
+                                )}
+                                {isCustom && (
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <button
+                                      onClick={() =>
+                                        handleEditCategory(category)
+                                      }
+                                      className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleDeleteCategory(category._id)
+                                      }
+                                      className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                               {category.description && (
