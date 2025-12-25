@@ -313,18 +313,22 @@ export const deleteCategory = async (req, res, next) => {
 };
 
 // Assigns categories to a user, including creating new ones
+
 export const assignCategoriesToUser = async (req, res, next) => {
   try {
-    const { userId } = req.params;
+    const { userId } = req.params; // This comes from the frontend
     const { categoryIds = [], newCategories = [] } = req.body;
 
-    if (!userId || userId.length !== 24) {
-      return next(new AppError("Invalid user ID", 400));
-    }
-
-    const user = await UserModel.findById(userId);
-    if (!user) {
-      return next(new AppError("User not found", 404));
+    // Validate that the userId matches the logged-in user
+    if (req.user._id.toString() !== userId) {
+      return next(
+        new AppError(
+          "Unauthorized: Cannot modify categories for other users",
+          403,
+          "AssignCategoriesToUser",
+          "Unauthorized access"
+        )
+      );
     }
 
     if (
@@ -332,6 +336,12 @@ export const assignCategoriesToUser = async (req, res, next) => {
       (!Array.isArray(newCategories) || newCategories.length === 0)
     ) {
       return next(new AppError("No categories provided", 400));
+    }
+
+    // Only fetch and modify the logged-in user's document
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return next(new AppError("User not found", 404));
     }
 
     let finalCategoryIds = [...categoryIds];
@@ -368,6 +378,7 @@ export const assignCategoriesToUser = async (req, res, next) => {
       return next(new AppError("Invalid category IDs", 400));
     }
 
+    // Save categories to the logged-in user
     user.categories = Array.from(new Set(finalCategoryIds));
     await user.save();
 
@@ -381,6 +392,76 @@ export const assignCategoriesToUser = async (req, res, next) => {
     next(new AppError(err.message, 500, "AssignCategoriesToUser"));
   }
 };
+
+// old code
+// export const assignCategoriesToUser = async (req, res, next) => {
+//   try {
+//     const { userId } = req.params;
+//     const { categoryIds = [], newCategories = [] } = req.body;
+
+//     if (!userId || userId.length !== 24) {
+//       return next(new AppError("Invalid user ID", 400));
+//     }
+
+//     const user = await UserModel.findById(userId);
+//     if (!user) {
+//       return next(new AppError("User not found", 404));
+//     }
+
+//     if (
+//       (!Array.isArray(categoryIds) || categoryIds.length === 0) &&
+//       (!Array.isArray(newCategories) || newCategories.length === 0)
+//     ) {
+//       return next(new AppError("No categories provided", 400));
+//     }
+
+//     let finalCategoryIds = [...categoryIds];
+
+//     if (Array.isArray(newCategories) && newCategories.length > 0) {
+//       for (const { name, slug, description } of newCategories) {
+//         if (!name || !slug) {
+//           return next(new AppError("Name and slug required", 400));
+//         }
+
+//         const exists = await CategoryModel.findOne({
+//           $or: [{ name }, { slug }],
+//         });
+//         if (exists) {
+//           return next(new AppError(`Category '${name}' already exists`, 400));
+//         }
+
+//         const category = await CategoryModel.create({
+//           name,
+//           slug,
+//           description,
+//           createdBy: req.user._id,
+//         });
+
+//         finalCategoryIds.push(category._id);
+//       }
+//     }
+
+//     const validCategories = await CategoryModel.find({
+//       _id: { $in: finalCategoryIds },
+//     });
+
+//     if (validCategories.length !== finalCategoryIds.length) {
+//       return next(new AppError("Invalid category IDs", 400));
+//     }
+
+//     user.categories = Array.from(new Set(finalCategoryIds));
+//     await user.save();
+
+//     const updatedUser = await UserModel.findById(userId).populate("categories");
+
+//     res.status(200).json({
+//       success: true,
+//       categories: updatedUser.categories || [],
+//     });
+//   } catch (err) {
+//     next(new AppError(err.message, 500, "AssignCategoriesToUser"));
+//   }
+// };
 
 // Checks availability of a slug for posts or categories
 export const checkSlugAvailability = async (req, res, next) => {
