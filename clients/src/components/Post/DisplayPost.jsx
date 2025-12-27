@@ -515,25 +515,176 @@ const DisplayPost = () => {
   //   );
   // };
 
+  // const renderPostContent = () => {
+  //   // Show skeleton while loading or before fetch attempt
+  //   if (activeLoading || subscriptionLoading || !fetchAttempted) {
+  //     return renderSkeleton();
+  //   }
+
+  //   // Show error if there's an error
+  //   if (activeError) {
+  //     return <PostNotFound message={activeError} />;
+  //   }
+
+  //   // Show not found if no post data
+  //   if (!activePost?._id || !Array.isArray(activePost.blocks)) {
+  //     return <PostNotFound message="Post not found" />;
+  //   }
+
+  //   // ---------------------------------------------
+  //   // ✅ Extract first TEXT block properly
+  //   // ---------------------------------------------
+  //   const firstTextBlock = activePost.blocks?.find(
+  //     (b) => b?.type === "text" && b?.value
+  //   );
+
+  //   const descriptionHtml = firstTextBlock?.value || "";
+
+  //   const plainDescription =
+  //     descriptionHtml
+  //       .replace(/<[^>]+>/g, "")
+  //       .replace(/\s+/g, " ")
+  //       .trim()
+  //       .slice(0, 160)
+  //       .trim() || "Read this post on readzio";
+
+  //   // Extract first image
+  //   const firstImage =
+  //     activePost.blocks?.find((b) => b?.type === "image")?.src ||
+  //     activePost.blocks?.find((b) => b?.type === "image")?.url ||
+  //     activePost.thumbnail ||
+  //     `${BASE_URL}/logo.png`;
+
+  //   // JSON-LD structured data
+  //   const jsonLd = {
+  //     "@context": "https://schema.org",
+  //     "@type": "BlogPosting",
+  //     headline: activePost.title || "readzio Post",
+  //     description: plainDescription,
+  //     image: firstImage,
+  //     author: {
+  //       "@type": "Person",
+  //       name: activePost.author?.name || "readzio Author",
+  //     },
+  //     publisher: {
+  //       "@type": "Organization",
+  //       name: "readzio",
+  //       logo: {
+  //         "@type": "ImageObject",
+  //         url: `${BASE_URL}/logo.png`,
+  //       },
+  //     },
+  //     url: `${BASE_URL}/post/${activePost.slug}`,
+  //     datePublished: activePost.createdAt || new Date().toISOString(),
+  //     dateModified:
+  //       activePost.updatedAt ||
+  //       activePost.createdAt ||
+  //       new Date().toISOString(),
+  //   };
+
+  //   return (
+  //     <>
+  //       <Helmet>
+  //         <title>
+  //           {activePost.title
+  //             ? `${activePost.title} | readzio`
+  //             : "Loading... | readzio"}
+  //         </title>
+
+  //         <meta name="robots" content="index, follow" />
+  //         {/* ✅ Updated description */}
+  //         <meta name="description" content={plainDescription} />
+
+  //         <link rel="canonical" href={`${BASE_URL}/post/${activePost.slug}`} />
+
+  //         {/* Open Graph */}
+  //         <meta
+  //           property="og:title"
+  //           content={activePost.title || "readzio Post"}
+  //         />
+  //         <meta property="og:description" content={plainDescription} />
+  //         <meta property="og:image" content={firstImage} />
+  //         <meta property="og:type" content="article" />
+  //         <meta
+  //           property="og:url"
+  //           content={`${BASE_URL}/post/${activePost.slug}`}
+  //         />
+
+  //         {/* Twitter Card */}
+  //         <meta name="twitter:card" content="summary_large_image" />
+  //         <meta
+  //           name="twitter:title"
+  //           content={activePost.title || "readzio Post"}
+  //         />
+  //         <meta name="twitter:description" content={plainDescription} />
+  //         <meta name="twitter:image" content={firstImage} />
+
+  //         {/* JSON-LD structured data */}
+  //         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+  //       </Helmet>
+
+  //       <article className="space-y-8 prose prose-lg max-w-none text-gray-700 dark:text-gray-300 leading-relaxed">
+  //         <PostHeader post={activePost} />
+
+  //         <PostMetaSection
+  //           post={activePost}
+  //           isUserSubscribed={isUserSubscribed}
+  //           isAuthor={isAuthor}
+  //           isPostRestricted={isPostRestricted}
+  //           categoryMap={categoryMap}
+  //           formatTime={formatTime}
+  //           setIsDeleteModalOpen={setIsDeleteModalOpen}
+  //         />
+
+  //         <BlockContentRenderer
+  //           post={activePost}
+  //           isAuthor={isAuthor}
+  //           showAnyway={showAnyway}
+  //           setShowAnyway={setShowAnyway}
+  //           canViewPost={canViewPost}
+  //           isPostRestricted={isPostRestricted}
+  //           currentUser={currentUser}
+  //           getUserById={(userId) =>
+  //             userId === activePost.author?._id ? activePost.author : null
+  //           }
+  //         />
+
+  //         <SubscriptionBanner
+  //           showSeeMore={showSeeMore}
+  //           post={activePost}
+  //           isPostRestricted={isPostRestricted}
+  //           canViewPost={canViewPost}
+  //         />
+
+  //         <EngagementButtons post={activePost} />
+
+  //         {activePost._id && activePost.author?._id && (
+  //           <CommentBox
+  //             postId={activePost._id}
+  //             postAuthorId={activePost.author?._id}
+  //           />
+  //         )}
+  //       </article>
+  //     </>
+  //   );
+  // };
+
+  // new and safe for seo
+
   const renderPostContent = () => {
-    // Show skeleton while loading or before fetch attempt
     if (activeLoading || subscriptionLoading || !fetchAttempted) {
       return renderSkeleton();
     }
 
-    // Show error if there's an error
     if (activeError) {
       return <PostNotFound message={activeError} />;
     }
 
-    // Show not found if no post data
     if (!activePost?._id || !Array.isArray(activePost.blocks)) {
       return <PostNotFound message="Post not found" />;
     }
 
-    // ---------------------------------------------
-    // ✅ Extract first TEXT block properly
-    // ---------------------------------------------
+    // 1. Extract first TEXT block
     const firstTextBlock = activePost.blocks?.find(
       (b) => b?.type === "text" && b?.value
     );
@@ -548,23 +699,27 @@ const DisplayPost = () => {
         .slice(0, 160)
         .trim() || "Read this post on readzio";
 
-    // Extract first image
+    // 2. Extract first image
     const firstImage =
       activePost.blocks?.find((b) => b?.type === "image")?.src ||
       activePost.blocks?.find((b) => b?.type === "image")?.url ||
       activePost.thumbnail ||
       `${BASE_URL}/logo.png`;
 
-    // JSON-LD structured data
+    // 3. Build JSON-LD
     const jsonLd = {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
       headline: activePost.title || "readzio Post",
       description: plainDescription,
-      image: firstImage,
+      image: [firstImage],
       author: {
         "@type": "Person",
-        name: activePost.author?.name || "readzio Author",
+        name:
+          activePost.author?.name ||
+          activePost.author?.fullName ||
+          "readzio Author",
+        url: `${BASE_URL}/profile/${activePost.author?._id}`,
       },
       publisher: {
         "@type": "Organization",
@@ -580,6 +735,18 @@ const DisplayPost = () => {
         activePost.updatedAt ||
         activePost.createdAt ||
         new Date().toISOString(),
+      mainEntityOfPage: {
+        "@type": "WebPage",
+        "@id": `${BASE_URL}/post/${activePost.slug}`,
+      },
+      isAccessibleForFree: isPostRestricted ? "False" : "True",
+      hasPart: isPostRestricted
+        ? {
+            "@type": "WebPageElement",
+            isAccessibleForFree: "False",
+            cssSelector: ".premium-content-section",
+          }
+        : undefined,
     };
 
     return (
@@ -590,14 +757,11 @@ const DisplayPost = () => {
               ? `${activePost.title} | readzio`
               : "Loading... | readzio"}
           </title>
-
           <meta name="robots" content="index, follow" />
-          {/* ✅ Updated description */}
           <meta name="description" content={plainDescription} />
-
           <link rel="canonical" href={`${BASE_URL}/post/${activePost.slug}`} />
 
-          {/* Open Graph */}
+          {/* OG and Twitter Tags */}
           <meta
             property="og:title"
             content={activePost.title || "readzio Post"}
@@ -609,21 +773,16 @@ const DisplayPost = () => {
             property="og:url"
             content={`${BASE_URL}/post/${activePost.slug}`}
           />
-
-          {/* Twitter Card */}
           <meta name="twitter:card" content="summary_large_image" />
-          <meta
-            name="twitter:title"
-            content={activePost.title || "readzio Post"}
-          />
-          <meta name="twitter:description" content={plainDescription} />
-          <meta name="twitter:image" content={firstImage} />
 
-          {/* JSON-LD structured data */}
           <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
         </Helmet>
 
-        <article className="space-y-8 prose prose-lg max-w-none text-gray-700 dark:text-gray-300 leading-relaxed">
+        <article
+          className="space-y-8 prose prose-lg max-w-none text-gray-700 dark:text-gray-300 leading-relaxed"
+          itemScope
+          itemType="https://schema.org/BlogPosting"
+        >
           <PostHeader post={activePost} />
 
           <PostMetaSection
@@ -636,18 +795,39 @@ const DisplayPost = () => {
             setIsDeleteModalOpen={setIsDeleteModalOpen}
           />
 
-          <BlockContentRenderer
-            post={activePost}
-            isAuthor={isAuthor}
-            showAnyway={showAnyway}
-            setShowAnyway={setShowAnyway}
-            canViewPost={canViewPost}
-            isPostRestricted={isPostRestricted}
-            currentUser={currentUser}
-            getUserById={(userId) =>
-              userId === activePost.author?._id ? activePost.author : null
-            }
-          />
+          <div className="relative">
+            <BlockContentRenderer
+              post={activePost}
+              isAuthor={isAuthor}
+              showAnyway={showAnyway}
+              setShowAnyway={setShowAnyway}
+              canViewPost={canViewPost}
+              isPostRestricted={isPostRestricted}
+              currentUser={currentUser}
+              getUserById={(userId) =>
+                userId === activePost.author?._id ? activePost.author : null
+              }
+            />
+
+            {/* --- SEO Hidden Text Integration --- */}
+            {firstTextBlock && (
+              <div
+                itemProp="articleBody"
+                dangerouslySetInnerHTML={{ __html: firstTextBlock?.value }}
+                style={{
+                  position: "absolute",
+                  width: "1px",
+                  height: "1px",
+                  padding: 0,
+                  margin: "-1px",
+                  overflow: "hidden",
+                  clip: "rect(0, 0, 0, 0)",
+                  whiteSpace: "nowrap",
+                  border: 0,
+                }}
+              />
+            )}
+          </div>
 
           <SubscriptionBanner
             showSeeMore={showSeeMore}
