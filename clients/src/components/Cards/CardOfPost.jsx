@@ -1,9 +1,6 @@
-// new code
-
-import React, { useEffect, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { debounce } from "lodash";
+import React from "react";
+import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   MessageCircle,
   Eye,
@@ -14,7 +11,6 @@ import {
   Crown,
   Sparkles,
 } from "lucide-react";
-import { fetchSubscriptionPlansByAuthor } from "../../store/subscriptionSlice";
 import Skeleton from "@/components/Ui/Skeleton";
 import PlaylistButton from "../Playlist/PlaylistButton";
 
@@ -40,59 +36,32 @@ const CardOfPost = ({
   tags = [],
   readTime,
 }) => {
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const {
-    plans = [],
-    isSubscribed = {},
-    loading: subscriptionLoading,
-  } = useSelector((state) => state.subscription || {});
+  // 🔍 DEBUG: Identify this specific card render
+  console.log(
+    `🔍 CardOfPost rendering - ID: ${id}, Slug: ${slug}, Title: ${title}`
+  );
+
+  const { isSubscribed = {} } = useSelector(
+    (state) => state.subscription || {}
+  );
   const currentUser = useSelector((state) => state.auth.user);
+
+  // 🔍 DEBUG: Log subscription-related state
+  console.log("🔍 Redux isSubscribed object:", isSubscribed);
+  console.log("🔍 Current user ID:", currentUser?._id);
 
   const authorId = author?._id || "";
   const isPostPremium = isPremium;
-  const isSubscribedToAuthor = isSubscribed[authorId];
+  const isSubscribedToAuthor = isSubscribed[authorId] ?? false;
 
-  // Debounced fetch for subscription plans
-  const debouncedFetchPlans = useMemo(
-    () =>
-      debounce((authorId) => {
-        if (authorId && !subscriptionLoading) {
-          dispatch(fetchSubscriptionPlansByAuthor(authorId));
-        }
-      }, 1000),
-    [dispatch, subscriptionLoading]
+  // 🔍 DEBUG: Log derived badge logic
+  console.log("🔍 Author ID:", authorId);
+  console.log("🔍 isSubscribedToAuthor:", isSubscribedToAuthor);
+  console.log("🔍 Is own post?", authorId === currentUser?._id);
+  console.log(
+    "🔍 Should show Subscribed badge?",
+    isSubscribedToAuthor && authorId !== currentUser?._id
   );
-
-  useEffect(() => {
-    if (authorId) {
-      debouncedFetchPlans(authorId);
-    }
-    return () => {
-      debouncedFetchPlans.cancel();
-    };
-  }, [authorId, debouncedFetchPlans]);
-
-  // Handle card click - avoid navigation conflicts
-  const handleCardClick = (e) => {
-    // Check if click is on PlaylistButton or its children
-    if (e.target.closest("[data-playlist-button]")) {
-      e.preventDefault();
-      return;
-    }
-
-    // Prevent navigation if clicking on interactive elements
-    if (e.target.closest("button") || e.target.closest("a[href]")) {
-      return;
-    }
-
-    // Navigate to post
-    if (slug) {
-      navigate(`/post/${slug}`);
-    } else if (id) {
-      navigate(`/post/${id}`);
-    }
-  };
 
   if (loading) {
     return (
@@ -131,7 +100,6 @@ const CardOfPost = ({
     return count.toString();
   };
 
-  // Collect all post data for passing to PlaylistButton
   const postData = {
     _id: id,
     slug,
@@ -146,37 +114,20 @@ const CardOfPost = ({
   };
 
   return (
-    <div
-      className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:border-transparent cursor-pointer"
-      onClick={handleCardClick}
-    >
-      {/* Border Hover Animation */}
-      <div
-        className="absolute inset-0 rounded-[2rem] p-[1px]
-          opacity-0 group-hover:opacity-100
-          transition-opacity duration-500
-          overflow-hidden pointer-events-none z-0"
-      >
-        <div
-          className="absolute inset-[-200%]
-            bg-[conic-gradient(from_0deg,transparent_20%,#3b82f6_40%,#a855f7_60%,transparent_80%)]
-            animate-border-rotate"
-        />
-        <div
-          className="absolute inset-[5px]
-            bg-white dark:bg-slate-900
-            rounded-[calc(2rem-2px)]"
-        />
+    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:border-transparent">
+      {/* Border hover animation */}
+      <div className="absolute inset-0 rounded-[2rem] p-[1px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden pointer-events-none z-0">
+        <div className="absolute inset-[-200%] bg-[conic-gradient(from_0deg,transparent_20%,#3b82f6_40%,#a855f7_60%,transparent_80%)] animate-border-rotate" />
+        <div className="absolute inset-[5px] bg-white dark:bg-slate-900 rounded-[calc(2rem-2px)]" />
       </div>
 
-      {/* Premium Glow Effect */}
+      {/* Premium glow */}
       {isPostPremium && (
         <div className="absolute pointer-events-none inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full blur-xl z-[1]" />
       )}
 
-      {/* Content wrapper - removed Link, using div instead */}
-      <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
-        {/* Image Section */}
+      {/* Image section - clickable */}
+      <Link to={`/post/${slug}`} className="block z-10">
         <div className="relative rounded-[1rem] overflow-hidden">
           <div className="aspect-video w-full relative">
             <img
@@ -188,10 +139,9 @@ const CardOfPost = ({
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
             />
-            {/* Dark gradient overlay */}
             <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60" />
 
-            {/* Premium Badge (Top-Left) */}
+            {/* Premium badge */}
             {isPostPremium && (
               <span className="absolute top-0 left-0 flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-bold rounded-full shadow-lg backdrop-blur-sm animate-pulse">
                 <Crown className="w-3 h-3" />
@@ -199,7 +149,7 @@ const CardOfPost = ({
               </span>
             )}
 
-            {/* Read Time (Top-Right) */}
+            {/* Read time */}
             {readTime && (
               <span className="absolute z-20 top-0 right-0 flex items-center gap-1 px-3 py-1.5 bg-black/70 text-white text-xs font-medium rounded-full backdrop-blur-sm">
                 <Clock className="w-3 h-3" />
@@ -207,7 +157,7 @@ const CardOfPost = ({
               </span>
             )}
 
-            {/* Post Type Badge (Bottom-Left) */}
+            {/* Post type badge */}
             {postType && (
               <span
                 className={`absolute bottom-1 left-1 flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full text-white animate-pulse ${
@@ -224,7 +174,7 @@ const CardOfPost = ({
               </span>
             )}
 
-            {/* Subscribed Badge (Bottom-Right) */}
+            {/* Subscribed badge */}
             {isSubscribedToAuthor && authorId !== currentUser?._id && (
               <span className="absolute bottom-1 right-1 flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg animate-pulse">
                 <Sparkles className="w-3 h-3" />
@@ -233,123 +183,120 @@ const CardOfPost = ({
             )}
           </div>
         </div>
+      </Link>
 
-        {/* Content Section */}
-        <div className="p-2 flex flex-col gap-4 min-h-[200px]">
-          {/* Title */}
+      {/* Content section */}
+      <div className="p-2 flex-1 flex flex-col gap-4">
+        {/* Title - clickable */}
+        <Link to={`/post/${slug}`} className="block">
           <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-2 leading-relaxed">
             {title || "Untitled"}
           </h3>
+        </Link>
 
-          {/* Author & Category */}
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                {author.name?.charAt(0)?.toUpperCase() || "A"}
-              </div>
-              <div className="flex flex-col">
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  {author.name || "Anonymous"}
-                </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {(() => {
-                    if (category?.name) return category.name;
-                    if (Array.isArray(categoryMap) && category?._id) {
-                      const matched = categoryMap.find(
-                        (c) => c._id === category._id
-                      );
-                      if (matched) return matched.name;
-                    }
-                    if (!Array.isArray(categoryMap)) {
-                      return (
-                        categoryMap[category?._id] ||
-                        categoryMap[category] ||
-                        (typeof category === "string" ? category : "General")
-                      );
-                    }
-                    return "General";
-                  })()}
-                </span>
-              </div>
+        {/* Author & Category */}
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+              {author.name?.charAt(0)?.toUpperCase() || "A"}
             </div>
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-              {formattedDate}
+            <div className="flex flex-col">
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {author.name || "Anonymous"}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {(() => {
+                  if (category?.name) return category.name;
+                  if (Array.isArray(categoryMap) && category?._id) {
+                    const matched = categoryMap.find(
+                      (c) => c._id === category._id
+                    );
+                    if (matched) return matched.name;
+                  }
+                  if (!Array.isArray(categoryMap)) {
+                    return (
+                      categoryMap[category?._id] ||
+                      categoryMap[category] ||
+                      (typeof category === "string" ? category : "General")
+                    );
+                  }
+                  return "General";
+                })()}
+              </span>
+            </div>
+          </div>
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+            {formattedDate}
+          </span>
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors">
+              <Heart className="w-4 h-4" />
+              {formatCount(likesCount)}
+            </span>
+            <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors">
+              <MessageCircle className="w-4 h-4" />
+              {formatCount(commentsCount)}
+            </span>
+            <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors">
+              <Eye className="w-4 h-4" />
+              {formatCount(viewsCount)}
             </span>
           </div>
 
-          {/* Stats */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors">
-                <Heart className="w-4 h-4" />
-                {formatCount(likesCount)}
-              </span>
-              <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors">
-                <MessageCircle className="w-4 h-4" />
-                {formatCount(commentsCount)}
-              </span>
-              <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-green-500 transition-colors">
-                <Eye className="w-4 h-4" />
-                {formatCount(viewsCount)}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-yellow-500 transition-colors">
-                <Bookmark className="w-4 h-4" />
-                {formatCount(bookmarksCount)}
-              </span>
-              <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-purple-500 transition-colors">
-                <Share2 className="w-4 h-4" />
-                {formatCount(shareCount)}
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-yellow-500 transition-colors">
+              <Bookmark className="w-4 h-4" />
+              {formatCount(bookmarksCount)}
+            </span>
+            <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-purple-500 transition-colors">
+              <Share2 className="w-4 h-4" />
+              {formatCount(shareCount)}
+            </span>
           </div>
-
-          {/* Tags */}
-          {tags?.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {tags.slice(0, 2).map((tag, index) => (
-                <span
-                  key={tag}
-                  className={`px-3 py-1 text-xs font-medium rounded-full transition-all duration-200 hover:scale-105 cursor-pointer ${
-                    index === 0
-                      ? "bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-700 dark:text-blue-300 hover:from-blue-200 hover:to-blue-300"
-                      : index === 1
-                      ? "bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 text-purple-700 dark:text-purple-300 hover:from-purple-200 hover:to-purple-300"
-                      : "bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900 dark:to-green-800 text-green-700 dark:text-green-300 hover:from-green-200 hover:to-green-300"
-                  }`}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  #{tag}
-                </span>
-              ))}
-              {tags.length > 2 && (
-                <span
-                  className="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  +{tags.length - 2} more
-                </span>
-              )}
-            </div>
-          )}
         </div>
+
+        {/* Tags */}
+        {tags?.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {tags.slice(0, 2).map((tag, index) => (
+              <span
+                key={tag}
+                className={`px-3 py-1 text-xs font-medium rounded-full transition-all duration-200 hover:scale-105 cursor-pointer ${
+                  index === 0
+                    ? "bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-700 dark:text-blue-300 hover:from-blue-200 hover:to-blue-300"
+                    : index === 1
+                    ? "bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 text-purple-700 dark:text-purple-300 hover:from-purple-200 hover:to-purple-300"
+                    : "bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900 dark:to-green-800 text-green-700 dark:text-green-300 hover:from-green-200 hover:to-green-300"
+                }`}
+              >
+                #{tag}
+              </span>
+            ))}
+            {tags.length > 2 && (
+              <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                +{tags.length - 2} more
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Playlist Button - Absolute bottom-right with data attribute */}
-      <div
-        data-playlist-button
-        onClick={(e) => e.stopPropagation()}
-        className="absolute bottom-2 right-2 z-10"
-      >
-        <PlaylistButton postId={id} post={postData} variant="icon" />
-      </div>
+      {/* Playlist button - raised z-index */}
+      <PlaylistButton
+        postId={id}
+        post={postData}
+        variant="icon"
+        className="absolute bottom-2 right-2 z-20"
+      />
     </div>
   );
 };
 
-export default CardOfPost;
+export default React.memo(CardOfPost);
 
 // old code
 
