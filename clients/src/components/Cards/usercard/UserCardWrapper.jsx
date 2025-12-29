@@ -40,7 +40,6 @@ const UserCardWrapper = ({ userId }) => {
       const res = await dispatch(getUserById(userId)).unwrap();
       setFetchedUser(res);
 
-      // === NEW DEBUG LOG ===
       console.log("[Data Debug] Fetched user details (refetch)", {
         userId: res?._id,
         hasFollowersArray: !!res?.followers,
@@ -53,7 +52,6 @@ const UserCardWrapper = ({ userId }) => {
         bio: res?.bio,
         avatar: !!res?.avatar,
       });
-      // === END NEW LOG ===
     } catch (err) {
       setFetchedUser(null);
       toast.error("Failed to fetch user");
@@ -85,7 +83,6 @@ const UserCardWrapper = ({ userId }) => {
         if (userRes.payload?._id) {
           setFetchedUser(userRes.payload);
 
-          // === NEW DEBUG LOG ===
           console.log("[Data Debug] Fetched user details (initial load)", {
             userId: userRes.payload?._id,
             hasFollowersArray: !!userRes.payload?.followers,
@@ -98,7 +95,6 @@ const UserCardWrapper = ({ userId }) => {
             bio: userRes.payload?.bio,
             avatar: !!userRes.payload?.avatar,
           });
-          // === END NEW LOG ===
 
           dispatch(fetchFollowers());
           dispatch(fetchFollowing());
@@ -169,18 +165,17 @@ const UserCardWrapper = ({ userId }) => {
 
   const userToShow = userId ? fetchedUser : currentUser;
 
-  // === NEW DEBUG LOG FOR FINAL USER SOURCE ===
+  // FIXED: Fully safe optional chaining when userToShow may be null
   console.log("[Data Debug] Final userToShow source", {
     source: userId ? "fetched" : "currentUser",
     userId: userToShow?._id,
     followersCountCalculated:
-      userToShow.followers?.length ?? userToShow.followersCount ?? 0,
+      userToShow?.followers?.length ?? userToShow?.followersCount ?? 0,
     followingCountCalculated:
-      userToShow.following?.length ?? userToShow.followingCount ?? 0,
+      userToShow?.following?.length ?? userToShow?.followingCount ?? 0,
     hasFollowersArray: !!userToShow?.followers,
     hasFollowingArray: !!userToShow?.following,
   });
-  // === END NEW LOG ===
 
   console.log("userToShow", userToShow);
 
@@ -194,6 +189,7 @@ const UserCardWrapper = ({ userId }) => {
 
   const showButtons =
     userId && currentUser?._id && currentUser._id !== userToShow._id;
+
   const followersCount =
     userToShow.followers?.length ?? userToShow.followersCount ?? 0;
 
@@ -230,8 +226,8 @@ const UserCardWrapper = ({ userId }) => {
     <UserCard
       user={{ ...userToShow, isOnline }}
       posts={posts}
-      followers={userToShow.followers || []}
-      following={userToShow.following || []}
+      followers={userToShow?.followers || []}
+      following={userToShow?.following || []}
       followersCount={followersCount}
       followingCount={followingCount}
       showFollowBtn={showButtons}
