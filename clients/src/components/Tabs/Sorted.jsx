@@ -1,30 +1,33 @@
-import React, { useState, useEffect } from "react";
-import { ChevronDown, BarChart3, Clock, Calendar } from "lucide-react"; // Optional: Icons for extra flair
+import React, { useState } from "react";
+import { ChevronDown } from "lucide-react";
 
-const Sorted = ({ posts, onSortChange, className = "" }) => {
+const Sorted = ({ posts = [], onSortChange, className = "" }) => {
   const [sortOption, setSortOption] = useState("Newest");
 
-  useEffect(() => {
-    if (!posts || !Array.isArray(posts)) return;
+  const handleSortChange = (e) => {
+    const value = e.target.value;
+    setSortOption(value);
+
+    if (!Array.isArray(posts)) return;
 
     const sortedPosts = [...posts].sort((a, b) => {
-      if (sortOption === "Older") {
-        return (
-          new Date(a.createdAt || 0).getTime() -
-          new Date(b.createdAt || 0).getTime()
-        );
-      } else if (sortOption === "Popular") {
-        return (b.viewsCount || 0) - (a.viewsCount || 0);
-      } else {
-        return (
-          new Date(b.createdAt || 0).getTime() -
-          new Date(a.createdAt || 0).getTime()
-        );
+      const aDate = new Date(a?.createdAt || 0).getTime();
+      const bDate = new Date(b?.createdAt || 0).getTime();
+
+      if (value === "Older") {
+        return aDate - bDate;
       }
+
+      if (value === "Popular") {
+        return (b?.viewsCount || 0) - (a?.viewsCount || 0);
+      }
+
+      // Default: Newest
+      return bDate - aDate;
     });
 
-    onSortChange(sortedPosts, sortOption);
-  }, [posts, sortOption, onSortChange]);
+    onSortChange(sortedPosts, value);
+  };
 
   return (
     <div
@@ -38,11 +41,11 @@ const Sorted = ({ posts, onSortChange, className = "" }) => {
           Sort by:
         </label>
 
-        <div className="relative group min-w-[140px]">
+        <div className="relative min-w-[140px]">
           <select
             id="sort"
             value={sortOption}
-            onChange={(e) => setSortOption(e.target.value)}
+            onChange={handleSortChange}
             className="w-full appearance-none cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 pl-4 pr-10 text-sm font-medium text-gray-700 dark:text-gray-200 transition-all hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm"
           >
             <option value="Newest">✨ Newest</option>
@@ -50,7 +53,7 @@ const Sorted = ({ posts, onSortChange, className = "" }) => {
             <option value="Popular">🔥 Popular</option>
           </select>
 
-          {/* Custom Arrow Icon */}
+          {/* Dropdown Icon */}
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
             <ChevronDown size={16} />
           </div>

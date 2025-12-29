@@ -164,10 +164,8 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   }, [getSourcePosts, category, categories]);
 
   useEffect(() => {
-    if (!displayPosts?.length) {
-      setDisplayPosts(filteredPosts);
-    }
-  }, [filteredPosts]);
+    setDisplayPosts(filteredPosts);
+  }, [filterType, category, filteredPosts]);
 
   const dedupedPosts = useMemo(() => {
     const seen = new Set();
@@ -354,29 +352,29 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
   // --- Intersection Observer ---
 
   useEffect(() => {
-    if (!lastPostElementRef.current || !hasMore || !hasInitialized) return;
+    if (
+      !lastPostElementRef.current ||
+      !hasMore ||
+      !hasInitialized ||
+      isLoadingMore
+    )
+      return;
 
-    if (observer.current) {
-      observer.current.disconnect();
-    }
+    observer.current?.disconnect();
 
     observer.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isLoadingMore) {
+      ([entry]) => {
+        if (entry.isIntersecting) {
           loadMorePosts();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.2 }
     );
 
     observer.current.observe(lastPostElementRef.current);
 
-    return () => {
-      if (observer.current) {
-        observer.current.disconnect();
-      }
-    };
-  }, [loadMorePosts, hasMore, hasInitialized, isLoadingMore]);
+    return () => observer.current?.disconnect();
+  }, [hasMore, hasInitialized, isLoadingMore, loadMorePosts]);
 
   // --- Retry Handler ---
 
