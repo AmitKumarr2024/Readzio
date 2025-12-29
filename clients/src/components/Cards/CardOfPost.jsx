@@ -38,28 +38,6 @@ const CardOfPost = ({
   tags = [],
   readTime,
 }) => {
-  // 🔍 DEBUG: Log all incoming props
-  console.log("🔍 CardOfPost rendered with props", {
-    id,
-    slug,
-    title,
-    thumbnail,
-    createdAt,
-    commentsCount,
-    viewsCount,
-    likesCount,
-    bookmarksCount,
-    shareCount,
-    authorName: author?.name,
-    authorId: author?._id,
-    category,
-    isPremium,
-    postType,
-    readTime,
-    loading,
-    tags,
-  });
-
   const dispatch = useDispatch();
   const {
     plans = [],
@@ -68,31 +46,14 @@ const CardOfPost = ({
   } = useSelector((state) => state.subscription || {});
   const currentUser = useSelector((state) => state.auth.user);
 
-  // 🔍 DEBUG: Log Redux subscription state
-  console.log("🔍 Subscription Redux state", {
-    plansLength: plans.length,
-    isSubscribedKeys: Object.keys(isSubscribed),
-    subscriptionLoading,
-    currentUserId: currentUser?._id,
-  });
-
   const authorId = author?._id || "";
   const isPostPremium = isPremium;
   const isSubscribedToAuthor = isSubscribed[authorId];
-
-  // 🔍 DEBUG: Log derived values
-  console.log("🔍 Derived values", {
-    authorId,
-    isPostPremium,
-    isSubscribedToAuthor,
-    isOwnPost: authorId === currentUser?._id,
-  });
 
   // Debounced fetch for subscription plans
   const debouncedFetchPlans = useMemo(
     () =>
       debounce((authorId) => {
-        console.log("🔍 Debounced fetch triggered for authorId:", authorId);
         if (authorId && !subscriptionLoading) {
           dispatch(fetchSubscriptionPlansByAuthor(authorId));
         }
@@ -101,22 +62,19 @@ const CardOfPost = ({
   );
 
   useEffect(() => {
-    console.log("🔍 useEffect for subscription plans - authorId:", authorId);
     if (authorId) {
       debouncedFetchPlans(authorId);
     }
     return () => {
-      console.log("🔍 Cleaning up debounced fetch");
       debouncedFetchPlans.cancel();
     };
   }, [authorId, debouncedFetchPlans]);
 
   if (loading) {
-    console.log("🔍 Rendering loading skeleton");
     return (
-      <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:border-transparent">
+      <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 p-2 rounded-[2rem] transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:border-transparent">
         <div className="relative">
-          <Skeleton className="w-full h-56 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse" />
+          <Skeleton className="w-full h-56 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse rounded-[1rem]" />
         </div>
         <div className="p-6 space-y-4">
           <Skeleton className="h-6 w-4/5 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse rounded-lg" />
@@ -134,8 +92,6 @@ const CardOfPost = ({
     );
   }
 
-  console.log("🔍 Rendering full card (not loading)");
-
   const formattedDate = new Date(createdAt || new Date()).toLocaleDateString(
     "en-US",
     {
@@ -144,35 +100,6 @@ const CardOfPost = ({
       day: "numeric",
     }
   );
-
-  console.log("🔍 Formatted date:", formattedDate);
-
-  const getPostTypeConfig = (type) => {
-    const configs = {
-      blog: {
-        bg: "bg-gradient-to-r from-purple-500 to-purple-600",
-        icon: "📝",
-      },
-      article: {
-        bg: "bg-gradient-to-r from-emerald-500 to-emerald-600",
-        icon: "📄",
-      },
-      news: { bg: "bg-gradient-to-r from-red-500 to-red-600", icon: "📰" },
-      tutorial: {
-        bg: "bg-gradient-to-r from-blue-500 to-blue-600",
-        icon: "🎓",
-      },
-    };
-    return (
-      configs[type?.toLowerCase()] || {
-        bg: "bg-gradient-to-r from-gray-500 to-gray-600",
-        icon: "📋",
-      }
-    );
-  };
-
-  const postTypeConfig = getPostTypeConfig(postType);
-  console.log("🔍 Post type config:", postTypeConfig);
 
   const formatCount = (count) => {
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
@@ -193,54 +120,25 @@ const CardOfPost = ({
     tags,
   };
 
-  console.log("🔍 Final render - about to return JSX");
-
   return (
-    <div
-      className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:border-transparent"
-      onMouseEnter={() => console.log("🖱️ Mouse ENTER outer card")}
-      onMouseLeave={() => console.log("🖱️ Mouse LEAVE outer card")}
-      onClick={() => console.log("🖱️ Click bubbled to outer card")}
-      onMouseDown={() => console.log("🖱️ MouseDown on outer card")}
-      onMouseUp={() => console.log("🖱️ MouseUp on outer card")}
-    >
-      {/* Border animation - decorative */}
-      <div
-        className="absolute inset-0 rounded-[2rem] p-[1px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden pointer-events-none z-0"
-        onClick={() =>
-          console.log("🖱️ Click on border animation (should NOT fire)")
-        }
-      >
+    <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900 p-2 rounded-[2rem] transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:border-transparent">
+      {/* Border animation - behind everything */}
+      <div className="absolute -inset-[1px] rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden pointer-events-none -z-10">
         <div className="absolute inset-[-200%] bg-[conic-gradient(from_0deg,transparent_20%,#3b82f6_40%,#a855f7_60%,transparent_80%)] animate-border-rotate" />
-        <div className="absolute inset-[5px] bg-white dark:bg-slate-900 rounded-[calc(2rem-2px)]" />
       </div>
 
-      {/* Premium glow - decorative */}
+      {/* Premium glow - behind everything */}
       {isPostPremium && (
-        <div
-          className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full blur-xl pointer-events-none z-[1]"
-          onClick={() =>
-            console.log("🖱️ Click on premium glow (should NOT fire)")
-          }
-        />
+        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem] blur-xl pointer-events-none -z-10" />
       )}
 
+      {/* Main clickable Link */}
       <Link
         to={`/post/${slug}`}
-        className="relative z-10 flex-1 flex flex-col overflow-hidden"
-        onClick={() =>
-          console.log("🔗 MAIN LINK CLICKED – navigation should trigger")
-        }
-        onMouseEnter={() => console.log("🖱️ Mouse ENTER main Link area")}
-        onMouseLeave={() => console.log("🖱️ Mouse LEAVE main Link area")}
-        onMouseDown={() => console.log("🖱️ MouseDown on main Link")}
-        onMouseUp={() => console.log("🖱️ MouseUp on main Link")}
+        className="relative z-[1] flex-1 flex flex-col overflow-hidden rounded-[2rem]"
       >
         {/* Image Section */}
-        <div
-          className="relative rounded-[1rem] overflow-hidden"
-          onClick={() => console.log("🖱️ Click on image container")}
-        >
+        <div className="relative rounded-[1rem] overflow-hidden">
           <div className="aspect-video w-full relative">
             <img
               src={
@@ -250,97 +148,82 @@ const CardOfPost = ({
               alt={title || "Post"}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
-              onClick={() => console.log("🖱️ Click directly on <img>")}
-              onMouseDown={() => console.log("🖱️ MouseDown on <img>")}
-              onMouseUp={() => console.log("🖱️ MouseUp on <img>")}
-              onMouseEnter={() => console.log("🖱️ Mouse ENTER <img>")}
             />
 
-            {/* Gradient overlay - decorative */}
-            <div
-              className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60 pointer-events-none"
-              onClick={() =>
-                console.log("🖱️ Click on gradient overlay (should NOT fire)")
-              }
-            />
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60 pointer-events-none" />
 
-            {/* Badges - all decorative */}
-            {isPostPremium && (
-              <span className="absolute top-0 left-0 flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-bold rounded-full shadow-lg backdrop-blur-sm animate-pulse pointer-events-none">
-                <Crown className="w-3 h-3" />
-                Premium
-              </span>
-            )}
+            {/* Top row badges */}
+            <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none z-10">
+              {isPostPremium && (
+                <span className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-bold rounded-full shadow-lg backdrop-blur-sm">
+                  <Crown className="w-3 h-3" />
+                  Premium
+                </span>
+              )}
 
-            {readTime && (
-              <span className="absolute z-20 top-0 right-0 flex items-center gap-1 px-3 py-1.5 bg-black/70 text-white text-xs font-medium rounded-full backdrop-blur-sm pointer-events-none">
-                <Clock className="w-3 h-3" />
-                {readTime}
-              </span>
-            )}
+              {readTime && (
+                <span className="flex items-center gap-1 px-3 py-1.5 bg-black/70 text-white text-xs font-medium rounded-full backdrop-blur-sm ml-auto">
+                  <Clock className="w-3 h-3" />
+                  {readTime}
+                </span>
+              )}
+            </div>
 
-            {postType && (
-              <span
-                className={`absolute bottom-1 left-1 flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full text-white animate-pulse pointer-events-none ${
-                  postType.toLowerCase() === "blog"
-                    ? "bg-indigo-600"
-                    : postType.toLowerCase() === "article"
-                    ? "bg-emerald-600"
-                    : postType.toLowerCase() === "news"
-                    ? "bg-red-600"
-                    : "bg-gray-500"
-                }`}
+            {/* Bottom row badges and playlist button */}
+            <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between z-10">
+              {/* Left side badges */}
+              <div className="flex items-center gap-2 pointer-events-none">
+                {postType && (
+                  <span
+                    className={`flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full text-white ${
+                      postType.toLowerCase() === "blog"
+                        ? "bg-indigo-600"
+                        : postType.toLowerCase() === "article"
+                        ? "bg-emerald-600"
+                        : postType.toLowerCase() === "news"
+                        ? "bg-red-600"
+                        : "bg-gray-500"
+                    }`}
+                  >
+                    {postType}
+                  </span>
+                )}
+
+                {isSubscribedToAuthor && authorId !== currentUser?._id && (
+                  <span className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                    <Sparkles className="w-3 h-3" />
+                    Subscribed
+                  </span>
+                )}
+              </div>
+
+              {/* Playlist Button - interactive */}
+              <div
+                className="pointer-events-auto relative z-20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
               >
-                {postType}
-              </span>
-            )}
-
-            {isSubscribedToAuthor && authorId !== currentUser?._id && (
-              <span className="absolute bottom-1 right-1 flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg animate-pulse pointer-events-none">
-                <Sparkles className="w-3 h-3" />
-                Subscribed
-              </span>
-            )}
-
-            {/* Playlist Button - interactive, stops propagation */}
-            <div
-              className="absolute bottom-2 right-2 z-50 pointer-events-auto"
-              onClick={(e) => {
-                console.log(
-                  "🎵 Playlist container clicked – stopping propagation"
-                );
-                e.stopPropagation();
-                e.preventDefault();
-              }}
-              onMouseEnter={() =>
-                console.log("🖱️ Mouse ENTER playlist button area")
-              }
-              onMouseDown={() => console.log("🖱️ MouseDown on playlist area")}
-            >
-              <PlaylistButton
-                postId={id}
-                post={postData}
-                variant="icon"
-                className="pointer-events-auto"
-              />
+                <PlaylistButton
+                  postId={id}
+                  post={postData}
+                  variant="icon"
+                  className="pointer-events-auto"
+                />
+              </div>
             </div>
           </div>
         </div>
 
         {/* Content Section */}
-        <div className="p-2 flex flex-col gap-4 min-h-[200px]">
-          <h3
-            className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-2 leading-relaxed"
-            onClick={() => console.log("🖱️ Click on title <h3>")}
-            onMouseEnter={() => console.log("🖱️ Mouse ENTER title")}
-          >
+        <div className="p-4 flex flex-col gap-4 min-h-[200px]">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-2 leading-relaxed">
             {title || "Untitled"}
           </h3>
 
-          <div
-            className="flex items-center justify-between text-sm relative z-20"
-            onClick={() => console.log("🖱️ Click on author/category section")}
-          >
+          <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
                 {author.name?.charAt(0)?.toUpperCase() || "A"}
@@ -375,10 +258,7 @@ const CardOfPost = ({
             </span>
           </div>
 
-          <div
-            className="flex items-center justify-between relative z-20"
-            onClick={() => console.log("🖱️ Click on stats section")}
-          >
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-red-500 transition-colors">
                 <Heart className="w-4 h-4" />
@@ -407,10 +287,7 @@ const CardOfPost = ({
           </div>
 
           {tags?.length > 0 && (
-            <div
-              className="flex flex-wrap gap-2 relative z-20"
-              onClick={() => console.log("🖱️ Click on tags section")}
-            >
+            <div className="flex flex-wrap gap-2">
               {tags.slice(0, 2).map((tag, index) => (
                 <span
                   key={tag}

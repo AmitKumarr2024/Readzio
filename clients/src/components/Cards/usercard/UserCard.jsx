@@ -28,6 +28,26 @@ const UserCard = ({
   const authorName = user?.name || "Unknown";
   const isCurrentUser = currentUserId === user?._id;
 
+  // === NEW DEBUG LOG ===
+  console.log("[UserCard Data Debug] Displaying for user", {
+    userId: user?._id,
+    isCurrentUser,
+    followersSource: isCurrentUser
+      ? "prop array length"
+      : "user.followersCount or fallback",
+    displayedFollowers: isCurrentUser
+      ? followers.length
+      : user?.followersCount ?? 0,
+    followingSource: isCurrentUser
+      ? "prop array length"
+      : "user.followingCount or fallback",
+    displayedFollowing: isCurrentUser
+      ? following.length
+      : user?.followingCount ?? 0,
+    displayedPosts: user?.postsCount ?? 0,
+  });
+  // === END NEW LOG ===
+
   return (
     <div className="modern-user-card-container">
       {isLoading ? (

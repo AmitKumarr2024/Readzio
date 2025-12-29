@@ -39,6 +39,21 @@ const UserCardWrapper = ({ userId }) => {
     try {
       const res = await dispatch(getUserById(userId)).unwrap();
       setFetchedUser(res);
+
+      // === NEW DEBUG LOG ===
+      console.log("[Data Debug] Fetched user details (refetch)", {
+        userId: res?._id,
+        hasFollowersArray: !!res?.followers,
+        followersArrayLength: res?.followers?.length,
+        followersCount: res?.followersCount,
+        hasFollowingArray: !!res?.following,
+        followingArrayLength: res?.following?.length,
+        followingCount: res?.followingCount,
+        postsCount: res?.postsCount,
+        bio: res?.bio,
+        avatar: !!res?.avatar,
+      });
+      // === END NEW LOG ===
     } catch (err) {
       setFetchedUser(null);
       toast.error("Failed to fetch user");
@@ -69,6 +84,22 @@ const UserCardWrapper = ({ userId }) => {
 
         if (userRes.payload?._id) {
           setFetchedUser(userRes.payload);
+
+          // === NEW DEBUG LOG ===
+          console.log("[Data Debug] Fetched user details (initial load)", {
+            userId: userRes.payload?._id,
+            hasFollowersArray: !!userRes.payload?.followers,
+            followersArrayLength: userRes.payload?.followers?.length,
+            followersCount: userRes.payload?.followersCount,
+            hasFollowingArray: !!userRes.payload?.following,
+            followingArrayLength: userRes.payload?.following?.length,
+            followingCount: userRes.payload?.followingCount,
+            postsCount: userRes.payload?.postsCount,
+            bio: userRes.payload?.bio,
+            avatar: !!userRes.payload?.avatar,
+          });
+          // === END NEW LOG ===
+
           dispatch(fetchFollowers());
           dispatch(fetchFollowing());
           if (!user?._id || user._id === userId) {
@@ -137,6 +168,20 @@ const UserCardWrapper = ({ userId }) => {
   };
 
   const userToShow = userId ? fetchedUser : currentUser;
+
+  // === NEW DEBUG LOG FOR FINAL USER SOURCE ===
+  console.log("[Data Debug] Final userToShow source", {
+    source: userId ? "fetched" : "currentUser",
+    userId: userToShow?._id,
+    followersCountCalculated:
+      userToShow.followers?.length ?? userToShow.followersCount ?? 0,
+    followingCountCalculated:
+      userToShow.following?.length ?? userToShow.followingCount ?? 0,
+    hasFollowersArray: !!userToShow?.followers,
+    hasFollowingArray: !!userToShow?.following,
+  });
+  // === END NEW LOG ===
+
   console.log("userToShow", userToShow);
 
   if (loadingUser)
