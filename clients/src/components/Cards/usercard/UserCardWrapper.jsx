@@ -25,16 +25,13 @@ const UserCardWrapper = ({ userId }) => {
   const followingList = useSelector(
     (state) => state.follow?.following?.list || []
   );
+  const posts = useSelector((state) => state.post?.posts || []);
   const followError = useSelector((state) => state.follow?.error);
   const { userStatus = {} } = useSelector(selectSocketState);
 
   const [fetchedUser, setFetchedUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
-
-  console.log("userId in UserCardWrapper:", userId);
-  console.log("currentUser in UserCardWrapper:", currentUser);
-  console.log("posts in UserCardWrapper:", posts);
 
   const refetchUserInfo = async () => {
     console.log("[UserCardWrapper] Refetching user info for", userId);
@@ -113,12 +110,12 @@ const UserCardWrapper = ({ userId }) => {
   }, [userId, dispatch, user?._id]);
 
   useEffect(() => {
-    if (currentUser?._id) dispatch(fetchFollowing());
-  }, [currentUser?._id, dispatch]);
-
-  useEffect(() => {
     if (followError) toast.error(followError);
   }, [followError]);
+
+  const isFollowing = followingList.some((item) =>
+    typeof item === "string" ? item === userId : item?._id === userId
+  );
 
   const handleFollowToggle = async () => {
     console.log("[UserCardWrapper] Follow toggle started", {
@@ -150,16 +147,14 @@ const UserCardWrapper = ({ userId }) => {
     return <div className="text-center py-4 text-red-500">User not found</div>;
   }
 
-  const isFollowing = followingList.some((item) =>
-    typeof item === "string"
-      ? item === userToShow._id
-      : item?._id === userToShow._id
-  );
-
   const showButtons =
     userId && currentUser?._id && currentUser._id !== userToShow._id;
-  const followersCount = userToShow.followers?.length || 0;
-  const followingCount = userToShow.following?.length || 0;
+  const followersCount =
+    userToShow.followers?.length ?? userToShow.followersCount ?? 0;
+
+  const followingCount =
+    userToShow.following?.length ?? userToShow.followingCount ?? 0;
+
   const isOnline = userStatus[userToShow._id]?.isOnline || false;
 
   console.log("[UserCardWrapper] Online status", {
