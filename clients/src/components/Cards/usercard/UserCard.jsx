@@ -68,7 +68,8 @@ const UserCard = ({
 
   const displayedFollowing = followingCount ?? following?.length ?? 0;
 
-  const displayedPosts = posts?.length ?? 0;
+  const displayedPosts =
+    posts && posts.length > 0 ? posts.length : user?.postsCount ?? 0;
 
   console.log("[UserCard] Displayed stats", {
     isCurrentUser,
