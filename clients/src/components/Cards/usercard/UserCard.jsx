@@ -5,8 +5,11 @@ import Skeleton from "@/components/Ui/Skeleton";
 
 const UserCard = ({
   user,
+  posts,
   followers = [],
   following = [],
+  followersCount = 0, // ✅ ADD
+  followingCount = 0, // ✅ ADD
   showFollowBtn,
   isFollowing,
   currentUserId,
@@ -14,6 +17,9 @@ const UserCard = ({
   subscriptionStatus,
   isLoading = false,
 }) => {
+  console.log("user..", user);
+  console.log("posts...", posts);
+
   // === DEBUG: Incoming props ===
   console.log("[UserCard] Received props", {
     userId: user?._id,
@@ -33,12 +39,12 @@ const UserCard = ({
     isLoading,
   });
 
-  if (!user && !isLoading) {
+  if (!user?._id && !isLoading) {
     console.log("[UserCard] Early return: no user and not loading");
     return null;
   }
 
-  const formatDate = (dateStr) => {
+  const formatDate = React.useCallback((dateStr) => {
     console.log("[UserCard] formatDate called with", dateStr);
     if (!dateStr) return "Not available";
     const formatted = new Date(dateStr).toLocaleDateString("en-US", {
@@ -47,8 +53,9 @@ const UserCard = ({
       day: "numeric",
     });
     console.log("[UserCard] formatDate result", formatted);
+
     return formatted;
-  };
+  }, []);
 
   const authorName = user?.name || "Unknown";
   console.log("[UserCard] Computed authorName", authorName);
@@ -57,13 +64,11 @@ const UserCard = ({
   console.log("[UserCard] Computed isCurrentUser", isCurrentUser);
 
   // === DEBUG: Final displayed stats ===
-  const displayedFollowers = isCurrentUser
-    ? followers.length
-    : user?.followersCount ?? 0;
-  const displayedFollowing = isCurrentUser
-    ? following.length
-    : user?.followingCount ?? 0;
-  const displayedPosts = user?.postsCount ?? 0;
+  const displayedFollowers = followersCount ?? followers?.length ?? 0;
+
+  const displayedFollowing = followingCount ?? following?.length ?? 0;
+
+  const displayedPosts = posts?.length ?? 0;
 
   console.log("[UserCard] Displayed stats", {
     isCurrentUser,
@@ -116,7 +121,9 @@ const UserCard = ({
                   />
                 ) : (
                   <div className="profile-initials">
-                    {authorName?.trim()?.[0]?.toUpperCase() || "U"}
+                    {authorName && authorName.trim()
+                      ? authorName.trim()[0].toUpperCase()
+                      : "U"}
                   </div>
                 )}
                 {user?.isOnline && <div className="online-indicator" />}
