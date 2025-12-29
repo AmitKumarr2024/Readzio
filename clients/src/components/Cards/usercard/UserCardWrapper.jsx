@@ -165,7 +165,6 @@ const UserCardWrapper = ({ userId }) => {
 
   const userToShow = userId ? fetchedUser : currentUser;
 
-  // FIXED: Fully safe optional chaining when userToShow may be null
   console.log("[Data Debug] Final userToShow source", {
     source: userId ? "fetched" : "currentUser",
     userId: userToShow?._id,
@@ -176,8 +175,6 @@ const UserCardWrapper = ({ userId }) => {
     hasFollowersArray: !!userToShow?.followers,
     hasFollowingArray: !!userToShow?.following,
   });
-
-  console.log("userToShow", userToShow);
 
   if (loadingUser)
     return (
@@ -198,22 +195,20 @@ const UserCardWrapper = ({ userId }) => {
 
   const isOnline = userStatus[userToShow._id]?.isOnline || false;
 
-  console.log("[UserCardWrapper] Online status", {
-    userId: userToShow._id,
+  // ← Key normalization: guarantee a visible name/handle
+  const userForCard = {
+    ...userToShow,
     isOnline,
-  });
+    // If your backend uses "name" for display name and "username" for @handle,
+    // adjust the fallback order as needed. Common safe pattern:
+    username: userToShow.username ?? userToShow.name ?? "Anonymous",
+    // Optional: also ensure a display name if separate
+    // name: userToShow.name ?? userToShow.username ?? "Anonymous",
+  };
 
-  console.log("[UserCardWrapper] Follow check", {
-    followingList: followingList.map((item) =>
-      typeof item === "string" ? item : item?._id
-    ),
-    targetUserId: userToShow._id,
-    isFollowing,
-  });
-
-  console.log("[UserCardWrapper] Rendering UserCard with props", {
-    userId: userToShow._id,
-    username: userToShow.username,
+  console.log("[UserCardWrapper] Rendering UserCard with normalized user", {
+    userId: userForCard._id,
+    username: userForCard.username,
     isFollowing,
     showButtons,
     subscriptionStatus,
@@ -224,7 +219,7 @@ const UserCardWrapper = ({ userId }) => {
 
   return (
     <UserCard
-      user={{ ...userToShow, isOnline }}
+      user={userForCard}
       posts={posts}
       followers={userToShow?.followers || []}
       following={userToShow?.following || []}
