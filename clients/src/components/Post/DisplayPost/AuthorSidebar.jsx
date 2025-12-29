@@ -3,6 +3,9 @@ import UserCardWrapper from "../../Cards/usercard/UserCardWrapper";
 
 const AuthorSidebar = ({ authorId }) => {
 
+  console.log("authorID",authorId);
+  
+
   return (
     <div className="hidden lg:block lg:w-96">
       {authorId && <UserCardWrapper userId={authorId} />}
