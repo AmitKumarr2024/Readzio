@@ -69,7 +69,7 @@ const UserCard = ({
   const displayedFollowing = followingCount ?? following?.length ?? 0;
 
   const displayedPosts =
-    posts && posts.length > 0 ? posts.length : user?.postsCount ?? 0;
+    posts && posts?.length > 0 ? posts?.length : user?.postsCount ?? 0;
 
   console.log("[UserCard] Displayed stats", {
     isCurrentUser,
@@ -149,14 +149,18 @@ const UserCard = ({
                 <span className="stat-count">{displayedFollowers}</span>
                 <span className="stat-label">Followers</span>
               </div>
+
               <div className="stat-box">
                 <span className="stat-count">{displayedFollowing}</span>
                 <span className="stat-label">Following</span>
               </div>
-              <div className="stat-box">
-                <span className="stat-count">{displayedPosts}</span>
-                <span className="stat-label">Posts</span>
-              </div>
+
+              {displayedPosts > 0 && (
+                <div className="stat-box">
+                  <span className="stat-count">{displayedPosts}</span>
+                  <span className="stat-label">Posts</span>
+                </div>
+              )}
             </div>
 
             {/* Details Section */}
