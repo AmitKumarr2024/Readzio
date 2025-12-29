@@ -38,6 +38,28 @@ const CardOfPost = ({
   tags = [],
   readTime,
 }) => {
+  // 🔍 DEBUG: Log all incoming props
+  console.log("🔍 CardOfPost rendered with props", {
+    id,
+    slug,
+    title,
+    thumbnail,
+    createdAt,
+    commentsCount,
+    viewsCount,
+    likesCount,
+    bookmarksCount,
+    shareCount,
+    authorName: author?.name,
+    authorId: author?._id,
+    category,
+    isPremium,
+    postType,
+    readTime,
+    loading,
+    tags,
+  });
+
   const dispatch = useDispatch();
   const {
     plans = [],
@@ -46,14 +68,31 @@ const CardOfPost = ({
   } = useSelector((state) => state.subscription || {});
   const currentUser = useSelector((state) => state.auth.user);
 
+  // 🔍 DEBUG: Log Redux subscription state
+  console.log("🔍 Subscription Redux state", {
+    plansLength: plans.length,
+    isSubscribedKeys: Object.keys(isSubscribed),
+    subscriptionLoading,
+    currentUserId: currentUser?._id,
+  });
+
   const authorId = author?._id || "";
   const isPostPremium = isPremium;
   const isSubscribedToAuthor = isSubscribed[authorId];
+
+  // 🔍 DEBUG: Log derived values
+  console.log("🔍 Derived values", {
+    authorId,
+    isPostPremium,
+    isSubscribedToAuthor,
+    isOwnPost: authorId === currentUser?._id,
+  });
 
   // Debounced fetch for subscription plans
   const debouncedFetchPlans = useMemo(
     () =>
       debounce((authorId) => {
+        console.log("🔍 Debounced fetch triggered for authorId:", authorId);
         if (authorId && !subscriptionLoading) {
           dispatch(fetchSubscriptionPlansByAuthor(authorId));
         }
@@ -62,13 +101,18 @@ const CardOfPost = ({
   );
 
   useEffect(() => {
+    console.log("🔍 useEffect for subscription plans - authorId:", authorId);
     if (authorId) {
       debouncedFetchPlans(authorId);
     }
-    return () => debouncedFetchPlans.cancel();
+    return () => {
+      console.log("🔍 Cleaning up debounced fetch");
+      debouncedFetchPlans.cancel();
+    };
   }, [authorId, debouncedFetchPlans]);
 
   if (loading) {
+    console.log("🔍 Rendering loading skeleton");
     return (
       <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900  p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]  hover:border-transparent">
         <div className="relative">
@@ -90,6 +134,8 @@ const CardOfPost = ({
     );
   }
 
+  console.log("🔍 Rendering full card (not loading)");
+
   const formattedDate = new Date(createdAt || new Date()).toLocaleDateString(
     "en-US",
     {
@@ -98,6 +144,8 @@ const CardOfPost = ({
       day: "numeric",
     }
   );
+
+  console.log("🔍 Formatted date:", formattedDate);
 
   const getPostTypeConfig = (type) => {
     const configs = {
@@ -124,6 +172,7 @@ const CardOfPost = ({
   };
 
   const postTypeConfig = getPostTypeConfig(postType);
+  console.log("🔍 Post type config:", postTypeConfig);
 
   const formatCount = (count) => {
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
@@ -144,6 +193,8 @@ const CardOfPost = ({
     isPremium,
     tags,
   };
+
+  console.log("🔍 Final render - about to return JSX");
 
   return (
     <div className="group relative w-full flex flex-col h-full bg-white dark:bg-slate-900  p-2 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]  hover:border-transparent">
