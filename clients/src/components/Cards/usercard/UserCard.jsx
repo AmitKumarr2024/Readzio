@@ -1,11 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
 import ToggleFollowButton from "../../Author/Subscribe/ToggleFollowButton";
 import Skeleton from "@/components/Ui/Skeleton";
 
 const UserCard = ({
-  posts = [],
   user,
   followers = [],
   following = [],
@@ -16,10 +14,6 @@ const UserCard = ({
   subscriptionStatus,
   isLoading = false,
 }) => {
-  const { isEligible } = useSelector(
-    (state) => state.subscription || { isEligible: false }
-  );
-
   if (!user && !isLoading) return null;
 
   const formatDate = (dateStr) => {
@@ -32,8 +26,6 @@ const UserCard = ({
   };
 
   const authorName = user?.name || "Unknown";
-  const userPosts = posts.filter((post) => post.author?._id === user._id);
-  const postCount = userPosts.length;
   const isCurrentUser = currentUserId === user?._id;
 
   return (
@@ -66,9 +58,11 @@ const UserCard = ({
                   className="profile-img"
                 />
               ) : (
-                <div className="profile-initials">{(authorName || "U")[0]}</div>
+                <div className="profile-initials">
+                  {authorName?.trim()?.[0]?.toUpperCase() || "U"}
+                </div>
               )}
-              <div className="online-indicator"></div>
+              {user?.isOnline && <div className="online-indicator" />}
             </div>
             <div className="user-meta">
               <h3 className="user-name">{authorName}</h3>
@@ -87,18 +81,18 @@ const UserCard = ({
           <div className="stats-grid">
             <div className="stat-box">
               <span className="stat-count">
-                {currentUserId ? followers?.length : user?.followersCount || 0}
+                {isCurrentUser ? followers.length : user?.followersCount ?? 0}
               </span>
               <span className="stat-label">Followers</span>
             </div>
             <div className="stat-box">
               <span className="stat-count">
-                {currentUserId ? following?.length : user?.followingCount || 0}
+                {isCurrentUser ? following.length : user?.followingCount ?? 0}
               </span>
               <span className="stat-label">Following</span>
             </div>
             <div className="stat-box">
-              <span className="stat-count">{userPosts?.length}</span>
+              <span className="stat-count">{user?.postsCount ?? 0}</span>
               <span className="stat-label">Posts</span>
             </div>
           </div>
@@ -120,7 +114,7 @@ const UserCard = ({
             <div className="detail-item">
               <span className="detail-icon">📅</span>
               <span>
-                Joined {formatDate(user.joinedDate || user.createdAt)}
+                Joined {formatDate(user?.joinedDate ?? user?.createdAt ?? null)}
               </span>
             </div>
           </div>
@@ -138,7 +132,7 @@ const UserCard = ({
           </div>
 
           {/* Social Links */}
-          {user.social && (
+          {user.social && Object.values(user.social).some(Boolean) && (
             <div className="social-footer">
               {Object.entries(user.social).map(
                 ([key, value]) =>

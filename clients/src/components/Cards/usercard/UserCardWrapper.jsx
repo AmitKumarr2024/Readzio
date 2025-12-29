@@ -25,7 +25,6 @@ const UserCardWrapper = ({ userId }) => {
   const followingList = useSelector(
     (state) => state.follow?.following?.list || []
   );
-  const posts = useSelector((state) => state.post?.posts || []);
   const followError = useSelector((state) => state.follow?.error);
   const { userStatus = {} } = useSelector(selectSocketState);
 
