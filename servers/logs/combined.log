@@ -3,3 +3,7 @@
 {"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-12-24T17:17:18.295Z"}
 {"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-12-25T08:23:54.656Z"}
 {"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2025-12-25T14:49:30.305Z"}
+{"level":"error","message":"[MongoDB] ❌ Failed to connect:","timestamp":"2025-12-29T05:18:43.438Z"}
+{"level":"error","message":"[MongoDB] ❌ Failed to connect:","timestamp":"2025-12-29T05:19:31.600Z"}
+{"level":"error","message":"[MongoDB] ❌ Failed to connect:","timestamp":"2025-12-29T05:21:40.842Z"}
+{"level":"error","message":"[MongoDB] ❌ Failed to connect:","timestamp":"2025-12-29T05:22:02.641Z"}
