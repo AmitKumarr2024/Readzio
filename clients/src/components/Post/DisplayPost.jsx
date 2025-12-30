@@ -59,15 +59,15 @@ const DisplayPost = () => {
   const { views } = viewsData || {};
 
   // 🔍 DEBUG: Raw Redux values that determine which post we use
-  console.log("🔍 DEBUG Redux raw values", {
-    isAuthenticated,
-    postId: post?._id || "none",
-    guestPostId: guestPost?._id || "none",
-    loading,
-    guestLoading,
-    error: error?.message || error,
-    guestError: guestError?.message || guestError,
-  });
+  // console.log("🔍 DEBUG Redux raw values", {
+  //   isAuthenticated,
+  //   postId: post?._id || "none",
+  //   guestPostId: guestPost?._id || "none",
+  //   loading,
+  //   guestLoading,
+  //   error: error?.message || error,
+  //   guestError: guestError?.message || guestError,
+  // });
 
   // Local state
   const [sessionTime, setSessionTime] = useState(0);
@@ -92,14 +92,14 @@ const DisplayPost = () => {
   const activeError = isAuthenticated ? error : guestError;
 
   // 🔍 DEBUG: Derived active values used in rendering
-  console.log("🔍 DEBUG Active values", {
-    activePostId: activePost?._id || "none",
-    activePostTitle: activePost?.title || "none",
-    activeLoading,
-    activeError: activeError?.message || activeError,
-    fetchAttempted,
-    postReady,
-  });
+  // console.log("🔍 DEBUG Active values", {
+  //   activePostId: activePost?._id || "none",
+  //   activePostTitle: activePost?.title || "none",
+  //   activeLoading,
+  //   activeError: activeError?.message || activeError,
+  //   fetchAttempted,
+  //   postReady,
+  // });
 
   // Memoized values
   const categoryMap = useMemo(() => {
@@ -163,7 +163,7 @@ const DisplayPost = () => {
   // Main fetch effect
   useEffect(() => {
     // 🔍 DEBUG: Entry into fetch effect
-    console.log("🔍 DEBUG Fetch effect triggered", { slug, isAuthenticated });
+    // console.log("🔍 DEBUG Fetch effect triggered", { slug, isAuthenticated });
 
     if (!slug) {
       console.warn("[DisplayPost] No slug provided");
@@ -196,21 +196,21 @@ const DisplayPost = () => {
           const result = await dispatch(
             getSinglePost({ slug, isGuest: false })
           ).unwrap();
-          console.log("🔍 DEBUG Authenticated fetch success", {
-            postId: result?._id,
-          });
+          // console.log("🔍 DEBUG Authenticated fetch success", {
+          //   postId: result?._id,
+          // });
           dispatch(fetchCategories()).catch((err) =>
             console.warn("[DisplayPost] Categories fetch failed:", err)
           );
         } else {
           const result = await dispatch(fetchPublicPostBySlug(slug)).unwrap();
-          console.log("🔍 DEBUG Guest fetch success", { postId: result?._id });
+          // console.log("🔍 DEBUG Guest fetch success", { postId: result?._id });
         }
 
         if (componentMountedRef.current) {
           setFetchAttempted(true);
           setPostReady(true);
-          console.log("🔍 DEBUG Post ready set to true");
+          // console.log("🔍 DEBUG Post ready set to true");
         }
       } catch (err) {
         console.error("🔍 DEBUG Fetch failed", err);
@@ -388,35 +388,35 @@ const DisplayPost = () => {
 
   const renderPostContent = () => {
     // 🔍 DEBUG: The most crucial log – shows exactly which branch we enter
-    console.log("🔍 DEBUG renderPostContent decision tree", {
-      activeLoading,
-      subscriptionLoading,
-      fetchAttempted,
-      hasError: !!activeError,
-      hasPostId: !!activePost?._id,
-      hasBlocksArray: Array.isArray(activePost?.blocks),
-      blocksLength: activePost?.blocks?.length ?? 0,
-      canViewPost,
-      isPostRestricted,
-      isAuthor,
-    });
+    // console.log("🔍 DEBUG renderPostContent decision tree", {
+    //   activeLoading,
+    //   subscriptionLoading,
+    //   fetchAttempted,
+    //   hasError: !!activeError,
+    //   hasPostId: !!activePost?._id,
+    //   hasBlocksArray: Array.isArray(activePost?.blocks),
+    //   blocksLength: activePost?.blocks?.length ?? 0,
+    //   canViewPost,
+    //   isPostRestricted,
+    //   isAuthor,
+    // });
 
     if (activeLoading || subscriptionLoading || !fetchAttempted) {
-      console.log("🔍 → Showing skeleton loader");
+      // console.log("🔍 → Showing skeleton loader");
       return renderSkeleton();
     }
 
     if (activeError) {
-      console.log("🔍 → Showing PostNotFound due to activeError");
+      // console.log("🔍 → Showing PostNotFound due to activeError");
       return <PostNotFound message={activeError} />;
     }
 
     if (!activePost?._id || !Array.isArray(activePost.blocks)) {
-      console.log("🔍 → Showing PostNotFound – missing _id or valid blocks");
+      // console.log("🔍 → Showing PostNotFound – missing _id or valid blocks");
       return <PostNotFound message="Post not found" />;
     }
 
-    console.log("🔍 → Rendering full post content successfully");
+    // console.log("🔍 → Rendering full post content successfully");
 
     // SEO and content extraction
     const firstTextBlock = activePost.blocks?.find(

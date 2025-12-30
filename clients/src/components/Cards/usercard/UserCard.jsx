@@ -17,51 +17,51 @@ const UserCard = ({
   subscriptionStatus,
   isLoading = false,
 }) => {
-  console.log("user..", user);
-  console.log("posts...", posts);
+  // console.log("user..", user);
+  // console.log("posts...", posts);
 
   // === DEBUG: Incoming props ===
-  console.log("[UserCard] Received props", {
-    userId: user?._id,
-    hasUser: !!user,
-    userName: user?.name,
-    userUsername: user?.username,
-    followersCountInUser: user?.followersCount,
-    followingCountInUser: user?.followingCount,
-    postsCount: user?.postsCount,
-    hasFollowersArrayInUser: !!user?.followers,
-    hasFollowingArrayInUser: !!user?.following,
-    followersPropLength: followers.length,
-    followingPropLength: following.length,
-    showFollowBtn,
-    isFollowing,
-    currentUserId,
-    isLoading,
-  });
+  // console.log("[UserCard] Received props", {
+  //   userId: user?._id,
+  //   hasUser: !!user,
+  //   userName: user?.name,
+  //   userUsername: user?.username,
+  //   followersCountInUser: user?.followersCount,
+  //   followingCountInUser: user?.followingCount,
+  //   postsCount: user?.postsCount,
+  //   hasFollowersArrayInUser: !!user?.followers,
+  //   hasFollowingArrayInUser: !!user?.following,
+  //   followersPropLength: followers.length,
+  //   followingPropLength: following.length,
+  //   showFollowBtn,
+  //   isFollowing,
+  //   currentUserId,
+  //   isLoading,
+  // });
 
   if (!user?._id && !isLoading) {
-    console.log("[UserCard] Early return: no user and not loading");
+    // console.log("[UserCard] Early return: no user and not loading");
     return null;
   }
 
   const formatDate = React.useCallback((dateStr) => {
-    console.log("[UserCard] formatDate called with", dateStr);
+    // console.log("[UserCard] formatDate called with", dateStr);
     if (!dateStr) return "Not available";
     const formatted = new Date(dateStr).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
     });
-    console.log("[UserCard] formatDate result", formatted);
+    // console.log("[UserCard] formatDate result", formatted);
 
     return formatted;
   }, []);
 
   const authorName = user?.name || "Unknown";
-  console.log("[UserCard] Computed authorName", authorName);
+  // console.log("[UserCard] Computed authorName", authorName);
 
   const isCurrentUser = currentUserId === user?._id;
-  console.log("[UserCard] Computed isCurrentUser", isCurrentUser);
+  // console.log("[UserCard] Computed isCurrentUser", isCurrentUser);
 
   // === DEBUG: Final displayed stats ===
   const displayedFollowers = followersCount ?? followers?.length ?? 0;
@@ -71,22 +71,22 @@ const UserCard = ({
   const displayedPosts =
     posts && posts?.length > 0 ? posts?.length : user?.postsCount ?? 0;
 
-  console.log("[UserCard] Displayed stats", {
-    isCurrentUser,
-    displayedFollowers,
-    followersSource: isCurrentUser ? "prop array" : "user.followersCount",
-    displayedFollowing,
-    followingSource: isCurrentUser ? "prop array" : "user.followingCount",
-    displayedPosts,
-  });
+  // console.log("[UserCard] Displayed stats", {
+  //   isCurrentUser,
+  //   displayedFollowers,
+  //   followersSource: isCurrentUser ? "prop array" : "user.followersCount",
+  //   displayedFollowing,
+  //   followingSource: isCurrentUser ? "prop array" : "user.followingCount",
+  //   displayedPosts,
+  // });
 
-  console.log("[UserCard] Rendering branch", { isLoading });
+  // console.log("[UserCard] Rendering branch", { isLoading });
 
   return (
     <div className="modern-user-card-container">
       {isLoading ? (
         <>
-          {console.log("[UserCard] Rendering SKELETON")}
+          {/* {console.log("[UserCard] Rendering SKELETON")} */}
           <div className="card-skeleton">
             <div className="skeleton-header">
               <Skeleton width="w-20" height="h-20" rounded="rounded-full" />
@@ -105,13 +105,13 @@ const UserCard = ({
         </>
       ) : (
         <>
-          {console.log("[UserCard] Rendering FULL CARD")}
+          {/* {console.log("[UserCard] Rendering FULL CARD")} */}
           <div className="modern-card">
             {/* Header Section */}
-            {console.log("[UserCard] Rendering header", {
+            {/* {console.log("[UserCard] Rendering header", {
               avatarExists: !!user?.avatar,
               isOnline: user?.isOnline,
-            })}
+            })} */}
             <Link to={`/author-profile/${user._id}`} className="card-header">
               <div className="avatar-section">
                 {user?.avatar ? (
@@ -136,7 +136,7 @@ const UserCard = ({
             </Link>
 
             {/* Bio Section */}
-            {console.log("[UserCard] Bio value", user.bio)}
+            {/* {console.log("[UserCard] Bio value", user.bio)} */}
             <div className="bio-container">
               <p className="user-bio">
                 {user.bio || "No bio available for this creator."}
@@ -164,11 +164,11 @@ const UserCard = ({
             </div>
 
             {/* Details Section */}
-            {console.log("[UserCard] Details fields", {
+            {/* {console.log("[UserCard] Details fields", {
               profession: user.profession,
               location: user.location,
               joinedDateRaw: user?.joinedDate ?? user?.createdAt,
-            })}
+            })} */}
             <div className="details-list">
               {user.profession && (
                 <div className="detail-item">
@@ -192,10 +192,10 @@ const UserCard = ({
             </div>
 
             {/* Action Buttons */}
-            {console.log("[UserCard] Action button condition", {
+            {/* {console.log("[UserCard] Action button condition", {
               showFollowBtn,
               isCurrentUser,
-            })}
+            })} */}
             <div className="action-area">
               {showFollowBtn && !isCurrentUser && (
                 <ToggleFollowButton
@@ -208,12 +208,12 @@ const UserCard = ({
             </div>
 
             {/* Social Links */}
-            {console.log("[UserCard] Social links present?", {
+            {/* {console.log("[UserCard] Social links present?", {
               hasSocial: !!user.social,
               validLinks: user.social
                 ? Object.values(user.social).filter(Boolean).length
                 : 0,
-            })}
+            })} */}
             {user.social && Object.values(user.social).some(Boolean) && (
               <div className="social-footer">
                 {Object.entries(user.social).map(

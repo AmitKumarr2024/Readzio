@@ -34,24 +34,24 @@ const UserCardWrapper = ({ userId }) => {
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
 
   const refetchUserInfo = async () => {
-    console.log("[UserCardWrapper] Refetching user info for", userId);
+    // console.log("[UserCardWrapper] Refetching user info for", userId);
     if (!userId || typeof userId !== "string") return;
     try {
       const res = await dispatch(getUserById(userId)).unwrap();
       setFetchedUser(res);
 
-      console.log("[Data Debug] Fetched user details (refetch)", {
-        userId: res?._id,
-        hasFollowersArray: !!res?.followers,
-        followersArrayLength: res?.followers?.length,
-        followersCount: res?.followersCount,
-        hasFollowingArray: !!res?.following,
-        followingArrayLength: res?.following?.length,
-        followingCount: res?.followingCount,
-        postsCount: res?.postsCount,
-        bio: res?.bio,
-        avatar: !!res?.avatar,
-      });
+      // console.log("[Data Debug] Fetched user details (refetch)", {
+      //   userId: res?._id,
+      //   hasFollowersArray: !!res?.followers,
+      //   followersArrayLength: res?.followers?.length,
+      //   followersCount: res?.followersCount,
+      //   hasFollowingArray: !!res?.following,
+      //   followingArrayLength: res?.following?.length,
+      //   followingCount: res?.followingCount,
+      //   postsCount: res?.postsCount,
+      //   bio: res?.bio,
+      //   avatar: !!res?.avatar,
+      // });
     } catch (err) {
       setFetchedUser(null);
       toast.error("Failed to fetch user");
@@ -59,11 +59,11 @@ const UserCardWrapper = ({ userId }) => {
   };
 
   useEffect(() => {
-    console.log("[UserCardWrapper] Main useEffect triggered", {
-      userId,
-      currentUserId: user?._id,
-      isAuthenticated,
-    });
+    // console.log("[UserCardWrapper] Main useEffect triggered", {
+    //   userId,
+    //   currentUserId: user?._id,
+    //   isAuthenticated,
+    // });
 
     if (!userId || typeof userId !== "string") {
       setFetchedUser(null);
@@ -78,23 +78,23 @@ const UserCardWrapper = ({ userId }) => {
       dispatch(checkEligibilityForSubscription()),
     ])
       .then(([userRes]) => {
-        console.log("[UserCardWrapper] User data received", userRes.payload);
+        // console.log("[UserCardWrapper] User data received", userRes.payload);
 
         if (userRes.payload?._id) {
           setFetchedUser(userRes.payload);
 
-          console.log("[Data Debug] Fetched user details (initial load)", {
-            userId: userRes.payload?._id,
-            hasFollowersArray: !!userRes.payload?.followers,
-            followersArrayLength: userRes.payload?.followers?.length,
-            followersCount: userRes.payload?.followersCount,
-            hasFollowingArray: !!userRes.payload?.following,
-            followingArrayLength: userRes.payload?.following?.length,
-            followingCount: userRes.payload?.followingCount,
-            postsCount: userRes.payload?.postsCount,
-            bio: userRes.payload?.bio,
-            avatar: !!userRes.payload?.avatar,
-          });
+          // console.log("[Data Debug] Fetched user details (initial load)", {
+          //   userId: userRes.payload?._id,
+          //   hasFollowersArray: !!userRes.payload?.followers,
+          //   followersArrayLength: userRes.payload?.followers?.length,
+          //   followersCount: userRes.payload?.followersCount,
+          //   hasFollowingArray: !!userRes.payload?.following,
+          //   followingArrayLength: userRes.payload?.following?.length,
+          //   followingCount: userRes.payload?.followingCount,
+          //   postsCount: userRes.payload?.postsCount,
+          //   bio: userRes.payload?.bio,
+          //   avatar: !!userRes.payload?.avatar,
+          // });
 
           dispatch(fetchFollowers());
           dispatch(fetchFollowing());
@@ -110,10 +110,10 @@ const UserCardWrapper = ({ userId }) => {
           )
             .unwrap()
             .then((status) => {
-              console.log(
-                "[UserCardWrapper] Subscription status fetched",
-                status
-              );
+              // console.log(
+              //   "[UserCardWrapper] Subscription status fetched",
+              //   status
+              // );
               setSubscriptionStatus(status);
             })
             .catch((err) => {
@@ -126,7 +126,7 @@ const UserCardWrapper = ({ userId }) => {
         }
       })
       .catch((err) => {
-        console.log("[UserCardWrapper] Error during fetch", err);
+        // console.log("[UserCardWrapper] Error during fetch", err);
         setFetchedUser(null);
         setSubscriptionStatus(null);
         toast.error("Failed to fetch user data");
@@ -145,10 +145,10 @@ const UserCardWrapper = ({ userId }) => {
   );
 
   const handleFollowToggle = async () => {
-    console.log("[UserCardWrapper] Follow toggle started", {
-      isFollowing,
-      userId,
-    });
+    // console.log("[UserCardWrapper] Follow toggle started", {
+    //   isFollowing,
+    //   userId,
+    // });
     try {
       await dispatch(
         isFollowing ? unfollowUser(userId) : followUser(userId)
@@ -156,7 +156,7 @@ const UserCardWrapper = ({ userId }) => {
       await dispatch(fetchFollowing()).unwrap();
       const followingIds = followingList.map((item) => item._id || item);
       dispatch(getAllPosts({ followingIds, page: 1, limit: null }));
-      console.log("[UserCardWrapper] Follow action succeeded, refetching...");
+      // console.log("[UserCardWrapper] Follow action succeeded, refetching...");
       refetchUserInfo();
     } catch (err) {
       toast.error(err.message || "Failed to update follow status");
@@ -165,16 +165,16 @@ const UserCardWrapper = ({ userId }) => {
 
   const userToShow = userId ? fetchedUser : currentUser;
 
-  console.log("[Data Debug] Final userToShow source", {
-    source: userId ? "fetched" : "currentUser",
-    userId: userToShow?._id,
-    followersCountCalculated:
-      userToShow?.followers?.length ?? userToShow?.followersCount ?? 0,
-    followingCountCalculated:
-      userToShow?.following?.length ?? userToShow?.followingCount ?? 0,
-    hasFollowersArray: !!userToShow?.followers,
-    hasFollowingArray: !!userToShow?.following,
-  });
+  // console.log("[Data Debug] Final userToShow source", {
+  //   source: userId ? "fetched" : "currentUser",
+  //   userId: userToShow?._id,
+  //   followersCountCalculated:
+  //     userToShow?.followers?.length ?? userToShow?.followersCount ?? 0,
+  //   followingCountCalculated:
+  //     userToShow?.following?.length ?? userToShow?.followingCount ?? 0,
+  //   hasFollowersArray: !!userToShow?.followers,
+  //   hasFollowingArray: !!userToShow?.following,
+  // });
 
   if (loadingUser)
     return (
@@ -206,16 +206,16 @@ const UserCardWrapper = ({ userId }) => {
     // name: userToShow.name ?? userToShow.username ?? "Anonymous",
   };
 
-  console.log("[UserCardWrapper] Rendering UserCard with normalized user", {
-    userId: userForCard._id,
-    username: userForCard.username,
-    isFollowing,
-    showButtons,
-    subscriptionStatus,
-    followersCount,
-    followingCount,
-    isOnline,
-  });
+  // console.log("[UserCardWrapper] Rendering UserCard with normalized user", {
+  //   userId: userForCard._id,
+  //   username: userForCard.username,
+  //   isFollowing,
+  //   showButtons,
+  //   subscriptionStatus,
+  //   followersCount,
+  //   followingCount,
+  //   isOnline,
+  // });
 
   return (
     <UserCard
