@@ -3,7 +3,7 @@ import UserCardWrapper from "../../Cards/usercard/UserCardWrapper";
 
 const AuthorSidebar = ({ authorId }) => {
 
-  console.log("authorID",authorId);
+  // console.log("authorID",authorId);
   
 
   return (

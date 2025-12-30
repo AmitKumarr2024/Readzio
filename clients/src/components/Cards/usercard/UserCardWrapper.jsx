@@ -185,7 +185,7 @@ const UserCardWrapper = ({ userId }) => {
   }
 
   const showButtons =
-    userId && currentUser?._id && currentUser._id !== userToShow._id;
+    userId && currentUser?._id && currentUser._id !== userToShow?._id;
 
   const followersCount =
     userToShow.followers?.length ?? userToShow.followersCount ?? 0;
@@ -193,7 +193,7 @@ const UserCardWrapper = ({ userId }) => {
   const followingCount =
     userToShow.following?.length ?? userToShow.followingCount ?? 0;
 
-  const isOnline = userStatus[userToShow._id]?.isOnline || false;
+  const isOnline = userStatus[userToShow?._id]?.isOnline || false;
 
   // ← Key normalization: guarantee a visible name/handle
   const userForCard = {
