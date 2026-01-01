@@ -11,7 +11,18 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
     },
 
-    password: { type: String, required: true },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+
+    password: {
+      type: String,
+      required: function () {
+        return this.authProvider === "local";
+      },
+    },
 
     role: {
       type: String,
@@ -19,11 +30,10 @@ const userSchema = new mongoose.Schema(
       default: "user",
     },
 
-    // 🔴 REQUIRED FIX — ADD THIS
     categories: {
       type: [mongoose.Schema.Types.ObjectId],
       ref: "Category",
-      default: [], // ensures always an array
+      default: [],
     },
   },
   { timestamps: true }

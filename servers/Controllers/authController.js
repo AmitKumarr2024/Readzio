@@ -702,79 +702,280 @@ export const checkAuth = async (req, res, next) => {
   }
 };
 
-// Handles Google login
+// Handles Google login old code
+// export const googleLogin = async (req, res, next) => {
+//   const { token, sendEmail: sendEmailFlag } = req.body;
+//   const geoLocation = req.geoLocation;
+
+//   try {
+//     if (!token)
+//       throw new AppError(
+//         "Google token is required",
+//         400,
+//         "GoogleLogin",
+//         "Google token missing"
+//       );
+
+//     log("[GoogleLogin] Verifying Google token");
+//     const ticket = await client.verifyIdToken({
+//       idToken: token,
+//       audience: GOOGLE_CLIENT_ID,
+//     });
+
+//     const { sub: googleId, email, name, picture } = ticket.getPayload();
+//     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+//       throw new AppError(
+//         "Invalid email from Google",
+//         400,
+//         "GoogleLogin",
+//         "Invalid Google email"
+//       );
+
+//     log("[GoogleLogin] Finding or creating user for email:", email);
+
+//     // Check for existing user by googleId or email
+//     let user = await UserModel.findOne({ $or: [{ googleId }, { email }] });
+//     let isNewUser = false;
+
+//     if (user) {
+//       // If user signed up with local password, block Google login
+//       if (user.authProvider === "local")
+//         throw new AppError(
+//           "Email registered with password-based account. Use password login.",
+//           400,
+//           "GoogleLogin",
+//           "Email conflict with local account"
+//         );
+
+//       // If user exists but doesn't have googleId, update it
+//       if (!user.googleId) {
+//         user.googleId = googleId;
+//         await user.save();
+//       }
+//     } else {
+//       // Create a new Google user
+//       log("[GoogleLogin] Creating new user");
+//       user = new UserModel({
+//         name: name || "Unnamed User",
+//         email,
+//         googleId,
+//         avatar: picture,
+//         username: email.split("@")[0],
+//         authProvider: "google",
+//         role: "user",
+//         emailAttempts: 0,
+//         emailStatus: "not_sent",
+//         stopEmailAttempts: false,
+//         location: geoLocation
+//           ? `${geoLocation.city}, ${geoLocation.country}`
+//           : "",
+//       });
+//       await user.save(); // Save before using _id
+//       isNewUser = true;
+//     }
+
+//     // Record user's location after ensuring user._id exists
+//     if (geoLocation && user._id) {
+//       await UserLocation.create({
+//         userId: user._id,
+//         ip: geoLocation.ip,
+//         city: geoLocation.city,
+//         country: geoLocation.country,
+//         coordinates: {
+//           type: "Point",
+//           coordinates: [geoLocation.longitude, geoLocation.latitude],
+//         },
+//         timestamp: new Date(),
+//       });
+//     }
+
+//     // Reset email attempts before sending welcome email
+//     await UserModel.updateOne(
+//       { _id: user._id },
+//       { stopEmailAttempts: false, emailStatus: "not_sent", emailAttempts: 0 }
+//     );
+
+//     // Send welcome email only for new users (if not explicitly disabled)
+//     if (isNewUser && sendEmailFlag !== false) {
+//       log("[GoogleLogin] Preparing welcome email for:", email);
+
+//       try {
+//         const emailResult = await sendEmail({
+//           to: email,
+//           subject: "Welcome to Readzio 🎉",
+//           html: renderTemplate(WELCOME_EMAIL_TEMPLATE, {
+//             subject: "Welcome to Readzio 🎉",
+//             name: name,
+//             message: "We're excited to have you on board!",
+//             hasButton: true,
+//             buttonUrl: "https://readzio.com/dashboard",
+//             buttonText: "Get Started",
+//             supportEmail,
+//           }),
+//           type: "welcome",
+//         });
+
+//         if (!emailResult.success) {
+//           log("[GoogleLogin] Email sending failed:", emailResult.error);
+//           user.emailAttempts = (user.emailAttempts || 0) + 1;
+//           user.emailStatus = "failed";
+//           user.emailLastError = emailResult.error;
+//           await user.save();
+//         } else {
+//           user.emailAttempts = (user.emailAttempts || 0) + 1;
+//           user.emailStatus = "sent";
+//           user.emailLastError = null;
+//           await user.save();
+//           log("[GoogleLogin] Welcome email sent to:", email);
+//         }
+//       } catch (emailError) {
+//         log("[GoogleLogin] Email sending failed:", emailError.message);
+//         user.emailAttempts = emailError.attempts || 3;
+//         user.emailStatus = "failed";
+//         user.emailLastError = emailError.message;
+//         await user.save();
+//       }
+//     }
+
+//     // Record login activity
+//     log("[GoogleLogin] Recording login activity for userId:", user._id);
+//     await recordActivity({
+//       userId: user._id,
+//       action: "GOOGLE_LOGGED_IN",
+//       message: `User ${user.name} logged in with Google from ${
+//         user.location || "unknown location"
+//       }`,
+//     });
+
+//     // Generate JWT
+//     log("[GoogleLogin] Generating JWT token");
+//     const jwtToken = generateToken(user, res);
+
+//     res.status(200).json({
+//       message: isNewUser
+//         ? "Google signup successful"
+//         : "Google login successful",
+//       user: {
+//         _id: user._id,
+//         name: user.name,
+//         email: user.email,
+//         avatar: user.avatar,
+//         username: user.username,
+//         createdAt: user.createdAt,
+//         role: user.role,
+//         location: user.location,
+//       },
+//       token: jwtToken,
+//     });
+//   } catch (error) {
+//     log("[GoogleLogin] Error:", error.message);
+//     next(
+//       error instanceof AppError
+//         ? error
+//         : new AppError(
+//             error.message,
+//             500,
+//             "GoogleLogin",
+//             "Failed to process Google login"
+//           )
+//     );
+//   }
+// };
+
+// ================= GOOGLE AUTH CONTROLLER (FIXED) =================
+
 export const googleLogin = async (req, res, next) => {
   const { token, sendEmail: sendEmailFlag } = req.body;
   const geoLocation = req.geoLocation;
 
   try {
-    if (!token)
+    if (!token) {
       throw new AppError(
         "Google token is required",
         400,
         "GoogleLogin",
         "Google token missing"
       );
+    }
 
     log("[GoogleLogin] Verifying Google token");
+
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: GOOGLE_CLIENT_ID,
     });
 
-    const { sub: googleId, email, name, picture } = ticket.getPayload();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    if (!email) {
       throw new AppError(
-        "Invalid email from Google",
+        "Email not provided by Google",
         400,
         "GoogleLogin",
-        "Invalid Google email"
+        "Invalid Google payload"
       );
+    }
 
-    log("[GoogleLogin] Finding or creating user for email:", email);
+    log("[GoogleLogin] Finding or creating user:", email);
 
-    // Check for existing user by googleId or email
-    let user = await UserModel.findOne({ $or: [{ googleId }, { email }] });
+    let user = await UserModel.findOne({
+      $or: [{ googleId }, { email }],
+    });
+
     let isNewUser = false;
 
+    // ================= EXISTING USER =================
     if (user) {
-      // If user signed up with local password, block Google login
-      if (user.authProvider === "local")
+      // ❌ Block Google login for password accounts
+      if (user.authProvider === "local") {
         throw new AppError(
-          "Email registered with password-based account. Use password login.",
+          "Email registered with password-based account. Use email login.",
           400,
           "GoogleLogin",
-          "Email conflict with local account"
+          "Auth provider mismatch"
         );
+      }
 
-      // If user exists but doesn't have googleId, update it
+      // ✅ Link googleId if missing
       if (!user.googleId) {
         user.googleId = googleId;
         await user.save();
       }
-    } else {
-      // Create a new Google user
-      log("[GoogleLogin] Creating new user");
+    }
+
+    // ================= NEW GOOGLE USER =================
+    if (!user) {
+      log("[GoogleLogin] Creating new Google user");
+
+      // 🔐 REQUIRED FIX: dummy password to satisfy schema
+      const dummyPassword = await bcrypt.hash(
+        new mongoose.Types.ObjectId().toString(),
+        10
+      );
+
       user = new UserModel({
         name: name || "Unnamed User",
         email,
+        password: dummyPassword, // ✅ FIX
         googleId,
         avatar: picture,
-        username: email.split("@")[0],
         authProvider: "google",
         role: "user",
         emailAttempts: 0,
         emailStatus: "not_sent",
         stopEmailAttempts: false,
+        isAccountVerified: true,
         location: geoLocation
           ? `${geoLocation.city}, ${geoLocation.country}`
           : "",
       });
-      await user.save(); // Save before using _id
+
+      await user.save();
       isNewUser = true;
     }
 
-    // Record user's location after ensuring user._id exists
+    // ================= SAVE LOCATION =================
     if (geoLocation && user._id) {
       await UserLocation.create({
         userId: user._id,
@@ -789,23 +990,15 @@ export const googleLogin = async (req, res, next) => {
       });
     }
 
-    // Reset email attempts before sending welcome email
-    await UserModel.updateOne(
-      { _id: user._id },
-      { stopEmailAttempts: false, emailStatus: "not_sent", emailAttempts: 0 }
-    );
-
-    // Send welcome email only for new users (if not explicitly disabled)
+    // ================= WELCOME EMAIL (NEW USERS) =================
     if (isNewUser && sendEmailFlag !== false) {
-      log("[GoogleLogin] Preparing welcome email for:", email);
-
       try {
         const emailResult = await sendEmail({
           to: email,
           subject: "Welcome to Readzio 🎉",
           html: renderTemplate(WELCOME_EMAIL_TEMPLATE, {
             subject: "Welcome to Readzio 🎉",
-            name: name,
+            name: user.name,
             message: "We're excited to have you on board!",
             hasButton: true,
             buttonUrl: "https://readzio.com/dashboard",
@@ -815,30 +1008,17 @@ export const googleLogin = async (req, res, next) => {
           type: "welcome",
         });
 
-        if (!emailResult.success) {
-          log("[GoogleLogin] Email sending failed:", emailResult.error);
-          user.emailAttempts = (user.emailAttempts || 0) + 1;
-          user.emailStatus = "failed";
-          user.emailLastError = emailResult.error;
-          await user.save();
-        } else {
-          user.emailAttempts = (user.emailAttempts || 0) + 1;
-          user.emailStatus = "sent";
-          user.emailLastError = null;
-          await user.save();
-          log("[GoogleLogin] Welcome email sent to:", email);
-        }
-      } catch (emailError) {
-        log("[GoogleLogin] Email sending failed:", emailError.message);
-        user.emailAttempts = emailError.attempts || 3;
-        user.emailStatus = "failed";
-        user.emailLastError = emailError.message;
+        user.emailAttempts += 1;
+        user.emailStatus = emailResult.success ? "sent" : "failed";
+        user.emailLastError = emailResult.success ? null : emailResult.error;
+
         await user.save();
+      } catch (err) {
+        log("[GoogleLogin] Welcome email failed:", err.message);
       }
     }
 
-    // Record login activity
-    log("[GoogleLogin] Recording login activity for userId:", user._id);
+    // ================= ACTIVITY =================
     await recordActivity({
       userId: user._id,
       action: "GOOGLE_LOGGED_IN",
@@ -847,8 +1027,7 @@ export const googleLogin = async (req, res, next) => {
       }`,
     });
 
-    // Generate JWT
-    log("[GoogleLogin] Generating JWT token");
+    // ================= JWT =================
     const jwtToken = generateToken(user, res);
 
     res.status(200).json({
@@ -860,10 +1039,9 @@ export const googleLogin = async (req, res, next) => {
         name: user.name,
         email: user.email,
         avatar: user.avatar,
-        username: user.username,
-        createdAt: user.createdAt,
         role: user.role,
         location: user.location,
+        createdAt: user.createdAt,
       },
       token: jwtToken,
     });

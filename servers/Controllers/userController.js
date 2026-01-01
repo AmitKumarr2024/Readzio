@@ -11,14 +11,11 @@ import UserLocation from "../../servers/Models/UserLocation.js";
 // GET /api/user/ip-location
 export const getIPLocation = async (req, res, next) => {
   try {
-    // console.log("[Controller:getIPLocation] Location Data:", req.geoLocation);
     if (!req.geoLocation) {
-      throw new AppError(
-        "Geolocation not available",
-        400,
-        "GetIPLocation",
-        "No geoLocation data attached"
-      );
+      return res.status(200).json({
+        success: false,
+        location: null,
+      });
     }
 
     res.status(200).json({
@@ -26,16 +23,10 @@ export const getIPLocation = async (req, res, next) => {
       location: req.geoLocation,
     });
   } catch (error) {
-    next(
-      error instanceof AppError
-        ? error
-        : new AppError(
-            error.message || "Failed to get IP location",
-            500,
-            "GetIPLocation",
-            "Error in getIPLocation"
-          )
-    );
+    return res.status(200).json({
+      success: false,
+      location: null,
+    });
   }
 };
 
@@ -46,8 +37,17 @@ export const trackIPLocation = async (req, res, next) => {
     const { user } = req;
     const location = req.geoLocation;
 
+    // ✅ DO NOT BLOCK LOGIN
     if (!user || !user._id) {
-      return res.status(401).json({ message: "User not authenticated" });
+      return res.status(200).json({ message: "User not authenticated" });
+    }
+
+    if (
+      !location ||
+      typeof location.latitude !== "number" ||
+      typeof location.longitude !== "number"
+    ) {
+      return res.status(200).json({ message: "Location data not available" });
     }
 
     const locationData = {
@@ -60,17 +60,17 @@ export const trackIPLocation = async (req, res, next) => {
       country: location.country || "Unknown",
       state: location.state || "Unknown",
       pincode: location.pincode || "Unknown",
-      ip: location.ip,
+      ip: location.ip || "",
       timestamp: new Date(),
     };
 
     await UserLocation.create(locationData);
-    // console.log("[saveUserLocation] Final locationData:", locationData);
 
     return res.status(200).json({ message: "Location tracked successfully" });
   } catch (err) {
-    console.error("[trackIPLocation] Error:", err);
-    next(err);
+    console.error("[trackIPLocation] Error:", err.message);
+    // ✅ NEVER THROW — tracking must not break auth
+    return res.status(200).json({ message: "Location tracking skipped" });
   }
 };
 
@@ -379,28 +379,15 @@ export const getAllUserLocations = async (req, res, next) => {
 // Retrieves authenticated user's profile
 export const getProfile = async (req, res, next) => {
   try {
-    // Validates authentication
     if (!req.user?._id) {
-      throw new AppError(
-        "Unauthorized - No user found",
-        401,
-        "GetProfile",
-        "User not authenticated"
-      );
+      return res.status(401).json({ authenticated: false });
     }
 
-    // Fetches user profile
     const profile = await UserModel.findById(req.user._id).select("-password");
     if (!profile) {
-      throw new AppError(
-        "User not found",
-        404,
-        "GetProfile",
-        "Authenticated user does not exist"
-      );
+      return res.status(404).json({ message: "User not found" });
     }
 
-    // Logs activity
     await recordActivity({
       userId: req.user._id,
       action: "LOGGED_IN",
@@ -409,7 +396,6 @@ export const getProfile = async (req, res, next) => {
 
     res.status(200).json({ success: true, data: profile });
   } catch (error) {
-    // AppError with context for fetching profile
     next(
       error instanceof AppError
         ? error
@@ -926,33 +912,19 @@ export const clearOldActivity = async (req, res, next) => {
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
-    // Deletes old activity records
     const result = await ActivityModel.deleteMany({
       createdAt: { $lt: oneDayAgo },
     });
 
-    const message = `Cleared ${result.deletedCount} old activity records`;
-
     if (res) {
       res.status(200).json({
         success: true,
-        message,
+        message: `Cleared ${result.deletedCount} old activity records`,
       });
     }
   } catch (error) {
-    // AppError with context for clearing old activity
-    if (next) {
-      next(
-        error instanceof AppError
-          ? error
-          : new AppError(
-              error.message || "Failed to clear old activity",
-              500,
-              "ClearOldActivity",
-              "Error in clearOldActivity"
-            )
-      );
-    }
+    console.error("[clearOldActivity] Error:", error.message);
+    if (next) next(error);
   }
 };
 
