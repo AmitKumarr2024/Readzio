@@ -40,7 +40,7 @@ const GoogleAd = ({ adClient, adSlot, adFormat = "auto", style }) => {
 };
 
 const DisplayAd = () => (
-  <AdGuard placement="display">
+  <AdGuard placement="horizontal">
     <div className="flex flex-col items-center my-4">
       <GoogleAd
         adSlot="6440123489"
