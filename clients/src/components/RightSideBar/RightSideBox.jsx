@@ -4,6 +4,8 @@ import TrendingPosts from "../Cards/TrendingPost";
 import UserCardWrapper from "../Cards/usercard/UserCardWrapper";
 import Footer from "../Footer";
 import SafeInFeedAd from "../../Ads/SafeInFeedAd";
+import InFeedAd from "../../Ads/InFeedAd";
+import AdGuard from "../../Ads/adsGaurd/AdGuard";
 
 const RightSideBox = ({ user, posts, toggleSidebar }) => {
   const featuredAuthorId =
@@ -36,9 +38,9 @@ const RightSideBox = ({ user, posts, toggleSidebar }) => {
           </p>
         )}
       </section>
-
-      <SafeInFeedAd postId={featuredAuthorId || "default"} />
-
+      <AdGuard placement="inFeed">
+        <SafeInFeedAd postId={featuredAuthorId || "default"} />
+      </AdGuard>
 
       <section className="bg-background-light dark:bg-background-dark rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-2 mb-3 text-lg font-semibold text-text-main-light dark:text-text-main-dark">
@@ -47,8 +49,9 @@ const RightSideBox = ({ user, posts, toggleSidebar }) => {
         </div>
         <TrendingPosts />
       </section>
-
-      <InFeedAd postId={featuredAuthorId || "default"} />
+      <AdGuard placement="inFeed">
+        <InFeedAd postId={featuredAuthorId || "default"} />
+      </AdGuard>
 
       <div className="mt-auto pt-6 border-t border-gray-200 dark:border-gray-800">
         <Footer />
