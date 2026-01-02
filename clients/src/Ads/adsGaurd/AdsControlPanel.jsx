@@ -240,35 +240,35 @@ const Section = ({ title, icon: Icon, children }) => (
   </section>
 );
 
-// const ToggleRow = ({ label, description, checked, disabled, onChange }) => (
-//   <div className="flex items-center justify-between gap-4">
-//     <div className="flex-1">
-//       <p className="font-bold text-gray-700 dark:text-gray-200">{label}</p>
-//       {description && (
-//         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
-//           {description}
-//         </p>
-//       )}
-//     </div>
-//     <button
-//       disabled={disabled}
-//       onClick={() => onChange(!checked)}
-//       className={`relative w-12 h-6 rounded-full transition-all duration-300 ring-offset-2 focus:ring-2 ring-indigo-500
-//         ${
-//           checked
-//             ? "bg-indigo-600 toggle-active"
-//             : "bg-gray-300 dark:bg-gray-700"
-//         }
-//         ${
-//           disabled
-//             ? "opacity-40 cursor-not-allowed"
-//             : "hover:scale-105 active:scale-95"
-//         }`}
-//     >
-//       <span className="toggle-dot absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md" />
-//     </button>
-//   </div>
-// );
+const ToggleRow = ({ label, description, checked, disabled, onChange }) => (
+  <div className="flex items-center justify-between gap-4">
+    <div className="flex-1">
+      <p className="font-bold text-gray-700 dark:text-gray-200">{label}</p>
+      {description && (
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+          {description}
+        </p>
+      )}
+    </div>
+    <button
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative w-12 h-6 rounded-full transition-all duration-300 ring-offset-2 focus:ring-2 ring-indigo-500
+        ${
+          checked
+            ? "bg-indigo-600 toggle-active"
+            : "bg-gray-300 dark:bg-gray-700"
+        }
+        ${
+          disabled
+            ? "opacity-40 cursor-not-allowed"
+            : "hover:scale-105 active:scale-95"
+        }`}
+    >
+      <span className="toggle-dot absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md" />
+    </button>
+  </div>
+);
 
 const ModernToggle = ({
   label,
