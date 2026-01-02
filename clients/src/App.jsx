@@ -29,6 +29,8 @@ import { dismissBannerNotification } from "./store/bannerNotificationSlice";
 import { toast } from "react-hot-toast";
 import LoadingBar from "./Utils/LoadingBar";
 import { useAdsConfigInit } from "./Hook/useAdsConfigInit";
+import { useRateLimitTimer } from "./Hook/useRateLimitTimer";
+import RateLimitModal from "./components/RateLimitModal";
 
 // ❌ REMOVED: import AdminDashboard from "./pages/Admin/Dashboard";
 
@@ -85,6 +87,7 @@ export default function App() {
   useBannerExpiration();
 
   useAdsConfigInit();
+  useRateLimitTimer();
 
   const { newNotification, feedbackPrompt } = useSelector(
     (state) => state.socket
@@ -142,7 +145,8 @@ export default function App() {
       <AppTour />
       <Navbar />
       <VerifyBanner />
-
+      {/* ✅ RATE LIMIT UI */}
+      <RateLimitModal />
       {showGooglePopup && <GoogleLoginPopup />}
       {newNotification && newNotification._id && (
         <BroadcastBanner
@@ -170,6 +174,7 @@ export default function App() {
       )}
 
       <Outlet />
+
       <LocationErrorPopup locationError={locationError} onDismiss={() => {}} />
       <CookieConsentBanner />
     </div>

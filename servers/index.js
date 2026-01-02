@@ -7,7 +7,6 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import http from "http";
 import mongoose from "mongoose";
-import rateLimit from "express-rate-limit";
 
 import {
   CLIENT_URL,
@@ -41,17 +40,10 @@ import DailyEmailRoutes from "./Routes/dailyMailRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 import prerender from "prerender-node";
 import PostModel from "../servers/Models/Post.js";
+import { smartRateLimiter } from "./Middlewares/smartRateLimiter.js";
 
 const app = express();
 app.set("trust proxy", true);
-
-// General public rate limiter
-const apiLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 min
-  max: 200, // limit each IP
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 const __dirname = path.resolve();
 
@@ -186,9 +178,6 @@ app.use(
 
 app.use(cookieParser());
 
-// Apply to all API routes
-app.use("/api", apiLimiter);
-
 // =============================================================================
 // SEO BOT HANDLING (GOOGLEBOT, ETC.)
 // =============================================================================
@@ -301,15 +290,26 @@ app.use(prerender);
 // =============================================================================
 
 const routeConfigs = [
-  { path: "/api/auth", router: AuthRoutes, name: "AuthRoutes" },
+  {
+    path: "/api/auth",
+    name: "AuthRoutes",
+    router: AuthRoutes,
+    middleware: smartRateLimiter({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 500,
+      keyGenerator: (req) => req.ip,
+    }),
+  },
+
   { path: "/api/user", router: UserRoutes, name: "UserRoutes" },
   { path: "/api/playlists", router: playlistsRoutes, name: "playlistsRoutes" },
   {
     path: "/api/post",
-    router: PostRoutes,
     name: "PostRoutes",
+    router: PostRoutes,
     middleware: setRouteTimeout(60000),
   },
+
   { path: "/api/category", router: CategoryRoutes, name: "CategoryRoutes" },
   { path: "/api/block", router: BlockRoutes, name: "BlockRoutes" },
   { path: "/api/follow", router: FollowRoutes, name: "FollowRoutes" },
@@ -343,10 +343,18 @@ const routeConfigs = [
   },
   {
     path: "/api/public",
-    router: guestRoutes,
     name: "guestRoutes",
-    middleware: setRouteTimeout(60000),
+    router: guestRoutes,
+    middleware: [
+      smartRateLimiter({
+        windowMs: 10 * 60 * 1000, // 10 minutes
+        max: 200,
+        keyGenerator: (req) => req.ip,
+      }),
+      setRouteTimeout(60000),
+    ],
   },
+
   {
     path: "/api/ads",
     router: AdsRoutes,
@@ -371,9 +379,12 @@ function mountRoutes() {
         });
         return;
       }
-
       if (middleware) {
-        app.use(path, middleware, router);
+        if (Array.isArray(middleware)) {
+          app.use(path, ...middleware, router);
+        } else {
+          app.use(path, middleware, router);
+        }
       } else {
         app.use(path, router);
       }

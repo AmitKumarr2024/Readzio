@@ -1,5 +1,7 @@
 import axios from "axios";
 import { getToken } from "../Utils/getToken";
+import { rateLimitTriggered } from "../store/rateLimit/rateLimitSlice";
+import store from "../store/store";
 
 const isDev = import.meta.env.MODE === "development";
 const baseURL = "/api";
@@ -18,7 +20,7 @@ let requestQueue = [];
 let isRetrying = false;
 
 // Network status
-let isOnline = navigator.onLine;
+let isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
 
 // Listen for network changes
 if (typeof window !== "undefined") {
@@ -202,6 +204,19 @@ axiosInstance.interceptors.response.use(
     }
 
     if (status === 429) {
+      // ⛔ HARD STOP: prevent retry loops while rate-limited
+      requestQueue = [];
+      isRetrying = false;
+
+      const data = response.data || {};
+
+      store.dispatch(
+        rateLimitTriggered({
+          retryAfter: data.retryAfter ?? null,
+          resetAt: data.resetAt ?? null,
+        })
+      );
+
       return Promise.reject({
         message: "Too many requests. Please wait a moment.",
         type: "rate_limit",

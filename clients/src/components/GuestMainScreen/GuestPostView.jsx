@@ -12,6 +12,7 @@ import GuestCardOfPost from "../Cards/GuestCardOfPost";
 import MultiplexAd from "../../Ads/MultiplexAd";
 import Skeleton from "../Ui/Skeleton";
 import SafeInFeedAd from "../../Ads/SafeInFeedAd";
+import AdGuard from "../../Ads/adsGaurd/AdGuard";
 
 const POSTS_PER_PAGE = 20;
 const SKELETON_COUNT = 12;
@@ -171,15 +172,17 @@ const GuestPostView = () => {
 
         if ((index + 1) % AD_MULTIPLEX_INTERVAL === 0) {
           elements.push(
-            <div
-              key={`multiplex-${post._id}-${index}`}
-              className="col-span-full w-full border-b border-gray-300 dark:border-gray-600 my-2 py-4"
-            >
-              <MultiplexAd
-                postId={post._id}
-                testMode={process.env.NODE_ENV !== "production"}
-              />
-            </div>
+            <AdGuard placement="MultiplexAd">
+              <div
+                key={`multiplex-${post._id}-${index}`}
+                className="col-span-full w-full border-b border-gray-300 dark:border-gray-600 my-2 py-4"
+              >
+                <MultiplexAd
+                  postId={post._id}
+                  testMode={process.env.NODE_ENV !== "production"}
+                />
+              </div>
+            </AdGuard>
           );
         }
       } catch (adErr) {

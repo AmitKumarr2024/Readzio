@@ -21,7 +21,7 @@ import guestReducer from "../store/guestSlice";
 import bannerNotificationReducer from "../store/bannerNotificationSlice";
 import playlistReducer from "../store/playlistSlice";
 import adsReducer from "../store/adsSlice";
-
+import rateLimitReducer from "../store/rateLimit/rateLimitSlice";
 
 const store = configureStore({
   reducer: {
@@ -47,6 +47,7 @@ const store = configureStore({
     guest: guestReducer,
     playlist: playlistReducer,
     ads: adsReducer,
+    rateLimit: rateLimitReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
