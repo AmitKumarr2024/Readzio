@@ -28,6 +28,7 @@ import AppTour from "./AppRootFile/components/AppTour";
 import { dismissBannerNotification } from "./store/bannerNotificationSlice";
 import { toast } from "react-hot-toast";
 import LoadingBar from "./Utils/LoadingBar";
+import { useAdsConfigInit } from "./Hook/useAdsConfigInit";
 
 // ❌ REMOVED: import AdminDashboard from "./pages/Admin/Dashboard";
 
@@ -82,6 +83,8 @@ export default function App() {
   useAdminAnalytics();
   useClearUserError();
   useBannerExpiration();
+
+  useAdsConfigInit();
 
   const { newNotification, feedbackPrompt } = useSelector(
     (state) => state.socket

@@ -10,13 +10,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchPublicPosts, trackGuestVisit } from "../../store/guestSlice";
 import GuestCardOfPost from "../Cards/GuestCardOfPost";
 import MultiplexAd from "../../Ads/MultiplexAd";
-import InFeedAd from "../../Ads/InFeedAd";
 import Skeleton from "../Ui/Skeleton";
+import SafeInFeedAd from "../../Ads/SafeInFeedAd";
 
 const POSTS_PER_PAGE = 20;
 const SKELETON_COUNT = 12;
-const AD_IN_FEED_INTERVAL = 5;
-const AD_MULTIPLEX_INTERVAL = 12;
+const AD_IN_FEED_INTERVAL = 6;
+const AD_MULTIPLEX_INTERVAL = 13;
 
 const GuestPostView = () => {
   const dispatch = useDispatch();
@@ -162,11 +162,8 @@ const GuestPostView = () => {
               key={`infeed-${post._id}-${index}`}
               className="col-span-1 flex justify-center w-full p-3"
             >
-              <div className="w-full max-w-[300px] bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 border border-gray-200 dark:border-gray-700">
-                <InFeedAd
-                  postId={post._id}
-                  testMode={process.env.NODE_ENV !== "production"}
-                />
+              <div className="col-span-full flex justify-center my-4">
+                <SafeInFeedAd postId={post._id} />
               </div>
             </div>
           );

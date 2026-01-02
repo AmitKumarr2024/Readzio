@@ -8,6 +8,7 @@ import Skeleton from "@/components/Ui/Skeleton";
 import HorizontalBannerAd from "../../Ads/HorizontalBannerAd";
 import SafeInFeedAd from "../../Ads/SafeInFeedAd";
 import { Clock, User, TrendingUp } from "lucide-react";
+import AdGuard from "../../Ads/adsGaurd/AdGuard";
 
 const SuggestedPosts = ({ postId, className }) => {
   const dispatch = useDispatch();
@@ -281,7 +282,9 @@ const SuggestedPosts = ({ postId, className }) => {
                     <div className="col-span-full">
                       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden p-6">
                         <div className="flex items-center justify-center min-h-[250px] rounded-xl overflow-hidden">
-                          <HorizontalBannerAd postId={post._id} />
+                          <AdGuard placement="horizontal">
+                            <HorizontalBannerAd postId={post._id} />
+                          </AdGuard>
                         </div>
                       </div>
                     </div>

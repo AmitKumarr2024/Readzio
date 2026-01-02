@@ -34,6 +34,7 @@ import AchievementRoutes from "./Routes/AchievementRoutes.js";
 import CommentsRoutes from "./Routes/commentRoutes.js";
 import playlistsRoutes from "./Routes/playlistRoutes.js";
 import AdminRoutes from "./Routes/adminRoutes.js";
+import AdsRoutes from "./Routes/adsRoutes.js";
 import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
 import DailyEmailRoutes from "./Routes/dailyMailRoutes.js";
@@ -345,6 +346,11 @@ const routeConfigs = [
     router: guestRoutes,
     name: "guestRoutes",
     middleware: setRouteTimeout(60000),
+  },
+  {
+    path: "/api/ads",
+    router: AdsRoutes,
+    name: "AdsRoutes",
   },
 ];
 

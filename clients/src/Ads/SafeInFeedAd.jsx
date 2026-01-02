@@ -2,55 +2,56 @@ import React, { useEffect, useRef, useState } from "react";
 import InFeedAd from "./InFeedAd";
 import CardAd from "./CardAd";
 import useAdBlockDetector from "./useAdBlockDetector";
+import AdGuard from "./adsGaurd/AdGuard";
 
 const SafeInFeedAd = ({ postId }) => {
-  const ref = useRef(null);
-  const [showAd, setShowAd] = useState(true);
-  const [fallback, setFallback] = useState(false);
-  const retryTimeoutRef = useRef(null);
+  const containerRef = useRef(null);
   const isAdBlocked = useAdBlockDetector();
+  const [canRender, setCanRender] = useState(false);
+  const [useFallback, setUseFallback] = useState(false);
 
   useEffect(() => {
-    if (isAdBlocked) {
-      setShowAd(false);
-      return;
-    }
+    if (isAdBlocked) return;
 
-    // ✅ Don't attempt rendering on very small screens
-    if (window.innerWidth < 480) {
-      setShowAd(false);
-      return;
-    }
+    const checkWidth = () => {
+      const width = containerRef.current?.offsetWidth || 0;
 
-    const checkAdRendered = () => {
-      if (!ref.current || ref.current.offsetWidth < 250) {
-        console.warn(
-          "[SafeInFeedAd] Ad container too small (<250px), using fallback."
-        );
-        setFallback(true);
-        setTimeout(() => {
-          if (ref.current && ref.current.offsetHeight < 100) {
-            setShowAd(false);
-          }
-        }, 2000);
+      if (width >= 250) {
+        setCanRender(true);
+      } else {
+        setUseFallback(true);
       }
     };
 
-    const initialTimeout = setTimeout(checkAdRendered, 1000);
-
-    return () => {
-      clearTimeout(initialTimeout);
-      clearTimeout(retryTimeoutRef.current);
-    };
+    const t = setTimeout(checkWidth, 500);
+    return () => clearTimeout(t);
   }, [isAdBlocked]);
 
-  // ✅ If ads are blocked or not to be shown, render fallback ad component
-  if (!showAd) return null;
+  if (isAdBlocked || (!canRender && !useFallback)) return null;
 
   return (
-    <div ref={ref} className="w-full h-full flex flex-col">
-      {fallback ? <CardAd postId={postId} /> : <InFeedAd postId={postId} />}
-    </div>
+    <AdGuard placement="inFeed">
+      <div
+        ref={containerRef}
+        className="w-full flex flex-col items-center"
+        style={{ minWidth: 250, maxWidth: 728 }}
+      >
+        {useFallback ? (
+          <CardAd postId={postId} />
+        ) : (
+          <div className="w-full">
+            <div className="w-full min-h-[120px]">
+              <InFeedAd postId={postId} />
+            </div>
+
+            {/* ✅ Sponsored label – SAFE */}
+            <p className="mt-2 text-xs italic text-gray-500 dark:text-gray-400 text-center">
+              Sponsored
+            </p>
+          </div>
+        )}
+      </div>
+    </AdGuard>
   );
 };
 

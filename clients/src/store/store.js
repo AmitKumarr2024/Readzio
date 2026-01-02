@@ -20,6 +20,8 @@ import themeReducer from "../store/themeSlice";
 import guestReducer from "../store/guestSlice";
 import bannerNotificationReducer from "../store/bannerNotificationSlice";
 import playlistReducer from "../store/playlistSlice";
+import adsReducer from "../store/adsSlice";
+
 
 const store = configureStore({
   reducer: {
@@ -43,7 +45,8 @@ const store = configureStore({
     socket: socketReducer,
     theme: themeReducer,
     guest: guestReducer,
-    playlist: playlistReducer
+    playlist: playlistReducer,
+    ads: adsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -17,6 +17,7 @@ import { getSubscriptionStatusByAuthor } from "../../store/subscriptionSlice";
 import PostTags from "../Post/DisplayPost/PostTags";
 import Skeleton from "@/components/Ui/Skeleton";
 import InArticleAd from "../../Ads/InArticleAd";
+import AdGuard from "../../Ads/adsGaurd/AdGuard";
 
 const BlockRenderer = ({
   blocks,
@@ -282,10 +283,13 @@ const BlockRenderer = ({
         );
       case "ad":
         return (
-          <div key={i} className="my-8 w-full">
-            <InArticleAd postId={postId} adIndex={block.adIndex} />
-          </div>
+          <AdGuard placement="inArticle">
+            <div key={i} className="my-8 w-full">
+              <InArticleAd postId={postId} adIndex={block.adIndex} />
+            </div>
+          </AdGuard>
         );
+
       default:
         console.warn(
           `[DEBUG] Unsupported block type at index ${i}:`,

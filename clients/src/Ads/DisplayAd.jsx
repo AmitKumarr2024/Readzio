@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import AdGuard from "./adsGaurd/AdGuard";
 
 const GoogleAd = ({ adClient, adSlot, adFormat = "auto", style }) => {
   const adRef = useRef(null);
@@ -39,22 +40,24 @@ const GoogleAd = ({ adClient, adSlot, adFormat = "auto", style }) => {
 };
 
 const DisplayAd = () => (
-  <div className="flex flex-col items-center my-4">
-    <GoogleAd
-      adSlot="6440123489"
-      adFormat="auto" // auto format works for vertical or horizontal
-      style={{
-        display: "block",
-        width: "100%", // container width
-        maxWidth: "300px", // max width for vertical ad
-        height: "600px", // vertical ad height
-        minHeight: "300px", // fallback height
-      }}
-    />
-    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
-      Sponsored
-    </p>
-  </div>
+  <AdGuard placement="display">
+    <div className="flex flex-col items-center my-4">
+      <GoogleAd
+        adSlot="6440123489"
+        adFormat="auto" // auto format works for vertical or horizontal
+        style={{
+          display: "block",
+          width: "100%", // container width
+          maxWidth: "300px", // max width for vertical ad
+          height: "600px", // vertical ad height
+          minHeight: "300px", // fallback height
+        }}
+      />
+      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
+        Sponsored
+      </p>
+    </div>
+  </AdGuard>
 );
 
 export default DisplayAd;

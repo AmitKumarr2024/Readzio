@@ -3,7 +3,7 @@ import { X, TrendingUp, UserCircle, Megaphone } from "lucide-react";
 import TrendingPosts from "../Cards/TrendingPost";
 import UserCardWrapper from "../Cards/usercard/UserCardWrapper";
 import Footer from "../Footer";
-import InFeedAd from "../../Ads/InFeedAd";
+import SafeInFeedAd from "../../Ads/SafeInFeedAd";
 
 const RightSideBox = ({ user, posts, toggleSidebar }) => {
   const featuredAuthorId =
@@ -37,7 +37,8 @@ const RightSideBox = ({ user, posts, toggleSidebar }) => {
         )}
       </section>
 
-      <InFeedAd postId={featuredAuthorId || "default"} />
+      <SafeInFeedAd postId={featuredAuthorId || "default"} />
+
 
       <section className="bg-background-light dark:bg-background-dark rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-2 mb-3 text-lg font-semibold text-text-main-light dark:text-text-main-dark">

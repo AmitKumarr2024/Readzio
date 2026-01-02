@@ -71,6 +71,9 @@ const GoogleAd = ({
     return () => observer.disconnect();
   }, [adSlot, postId, isAdBlocked, socketInstance]);
 
+  // 🚫 Skip completely if ad blocker is active
+  if (isAdBlocked) return null;
+
   return (
     <ins
       ref={adRef}

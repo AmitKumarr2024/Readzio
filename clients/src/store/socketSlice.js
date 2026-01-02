@@ -17,6 +17,7 @@ import {
   fetchActiveBannerNotifications,
   fetchAllBannerNotifications,
 } from "./bannerNotificationSlice";
+import { adsUpdatedRealtime } from "./adsSlice";
 
 const isDev = import.meta.env.MODE === "development";
 const MAX_USER_LOCATIONS = 500;
@@ -80,6 +81,7 @@ const setupEventListeners = (socket, dispatch, getState) => {
     "postBlockToggled",
     "guestVisitUpdate",
     "showFeedbackPrompt",
+    "ads:update",
   ];
 
   eventList.forEach((event) => socket.off(event));
@@ -239,6 +241,10 @@ const setupEventListeners = (socket, dispatch, getState) => {
   socket.on("showFeedbackPrompt", (data) => {
     log("[socketSlice] 💬 Received showFeedbackPrompt:", data);
     dispatch(setFeedbackPrompt(data?.message || "We'd love your feedback!"));
+  });
+
+  socket.on("ads:update", (settings) => {
+    dispatch(adsUpdatedRealtime(settings));
   });
 };
 
