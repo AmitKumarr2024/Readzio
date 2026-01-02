@@ -843,3 +843,55 @@ div[contenteditable="true"] ::selection {
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
+
+/* ads control */
+/* AdsControl.css */
+
+/* Custom Toggle Animation */
+.toggle-dot {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-active .toggle-dot {
+  transform: translateX(1.5rem);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+}
+
+/* Pulse animation for Live Status */
+@keyframes status-pulse {
+  0% {
+    box-shadow: 0 0 0 0px rgba(34, 197, 94, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0px rgba(34, 197, 94, 0);
+  }
+}
+
+.status-pulse-green {
+  animation: status-pulse 2s infinite;
+}
+
+/* Glassmorphism subtle background */
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass-card {
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Hover effects for placement cards */
+.placement-item {
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.placement-item:hover {
+  transform: translateY(-2px);
+}

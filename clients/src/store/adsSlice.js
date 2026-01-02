@@ -7,12 +7,12 @@ import axiosInstance from "../connection/axiosInstance";
 export const fetchAdsSettings = createAsyncThunk(
   "ads/fetchAdsSettings",
   async (_, { rejectWithValue }) => {
-    console.log("[ADS][THUNK] fetchAdsSettings → START");
+    // console.log("[ADS][THUNK] fetchAdsSettings → START");
 
     try {
       const res = await axiosInstance.get("/ads");
 
-      console.log("[ADS][THUNK] fetchAdsSettings → SUCCESS", res.data.settings);
+      // console.log("[ADS][THUNK] fetchAdsSettings → SUCCESS", res.data.settings);
 
       return res.data.settings;
     } catch (err) {
@@ -28,12 +28,12 @@ export const fetchAdsSettings = createAsyncThunk(
 export const patchAdsSettings = createAsyncThunk(
   "ads/patchAdsSettings",
   async (payload, { rejectWithValue }) => {
-    console.log("[ADS][THUNK] patchAdsSettings → START", payload);
+    // console.log("[ADS][THUNK] patchAdsSettings → START", payload);
 
     try {
       const res = await axiosInstance.patch("/ads", payload);
 
-      console.log("[ADS][THUNK] patchAdsSettings → SUCCESS", res.data.settings);
+      // console.log("[ADS][THUNK] patchAdsSettings → SUCCESS", res.data.settings);
 
       return res.data.settings;
     } catch (err) {
@@ -49,12 +49,12 @@ export const patchAdsSettings = createAsyncThunk(
 export const fetchAdsRuntime = createAsyncThunk(
   "ads/fetchAdsRuntime",
   async (_, { rejectWithValue }) => {
-    console.log("[ADS][THUNK] fetchAdsRuntime → START");
+    // console.log("[ADS][THUNK] fetchAdsRuntime → START");
 
     try {
       const res = await axiosInstance.get("/ads/runtime");
 
-      console.log("[ADS][THUNK] fetchAdsRuntime → SUCCESS", res.data);
+      // console.log("[ADS][THUNK] fetchAdsRuntime → SUCCESS", res.data);
 
       return res.data;
     } catch (err) {
@@ -70,12 +70,12 @@ export const fetchAdsRuntime = createAsyncThunk(
 export const fetchAdsHealth = createAsyncThunk(
   "ads/fetchAdsHealth",
   async (_, { rejectWithValue }) => {
-    console.log("[ADS][THUNK] fetchAdsHealth → START");
+    // console.log("[ADS][THUNK] fetchAdsHealth → START");
 
     try {
       const res = await axiosInstance.get("/ads/health");
 
-      console.log("[ADS][THUNK] fetchAdsHealth → SUCCESS", res.data);
+      // console.log("[ADS][THUNK] fetchAdsHealth → SUCCESS", res.data);
 
       return res.data;
     } catch (err) {
@@ -102,12 +102,12 @@ const adsSlice = createSlice({
 
   reducers: {
     adsUpdatedRealtime: (state, action) => {
-      console.log("[ADS][SOCKET] adsUpdatedRealtime", action.payload);
+      // console.log("[ADS][SOCKET] adsUpdatedRealtime", action.payload);
       state.settings = action.payload;
     },
 
     clearAdsMessages: (state) => {
-      console.log("[ADS][REDUCER] clearAdsMessages");
+      // console.log("[ADS][REDUCER] clearAdsMessages");
       state.error = null;
       state.successMessage = null;
     },
@@ -118,16 +118,16 @@ const adsSlice = createSlice({
 
       /* ================= SETTINGS ================= */
       .addCase(fetchAdsSettings.pending, (state) => {
-        console.log("[ADS][REDUCER] fetchAdsSettings → PENDING");
+        // console.log("[ADS][REDUCER] fetchAdsSettings → PENDING");
         state.loading = true;
         state.error = null;
       })
 
       .addCase(fetchAdsSettings.fulfilled, (state, action) => {
-        console.log(
-          "[ADS][REDUCER] fetchAdsSettings → FULFILLED",
-          action.payload
-        );
+        // console.log(
+        //   "[ADS][REDUCER] fetchAdsSettings → FULFILLED",
+        //   action.payload
+        // );
         state.loading = false;
         state.settings = action.payload;
       })
@@ -143,16 +143,16 @@ const adsSlice = createSlice({
 
       /* ================= PATCH ================= */
       .addCase(patchAdsSettings.pending, (state) => {
-        console.log("[ADS][REDUCER] patchAdsSettings → PENDING");
+        // console.log("[ADS][REDUCER] patchAdsSettings → PENDING");
         state.loading = true;
         state.error = null;
       })
 
       .addCase(patchAdsSettings.fulfilled, (state, action) => {
-        console.log(
-          "[ADS][REDUCER] patchAdsSettings → FULFILLED",
-          action.payload
-        );
+        // console.log(
+        //   "[ADS][REDUCER] patchAdsSettings → FULFILLED",
+        //   action.payload
+        // );
         state.loading = false;
         state.settings = action.payload;
         state.successMessage = "Ads settings updated";
@@ -169,15 +169,15 @@ const adsSlice = createSlice({
 
       /* ================= RUNTIME ================= */
       .addCase(fetchAdsRuntime.pending, (state) => {
-        console.log("[ADS][REDUCER] fetchAdsRuntime → PENDING");
+        // console.log("[ADS][REDUCER] fetchAdsRuntime → PENDING");
         state.loading = true;
       })
 
       .addCase(fetchAdsRuntime.fulfilled, (state, action) => {
-        console.log(
-          "[ADS][REDUCER] fetchAdsRuntime → FULFILLED",
-          action.payload
-        );
+        // console.log(
+        //   "[ADS][REDUCER] fetchAdsRuntime → FULFILLED",
+        //   action.payload
+        // );
         state.loading = false;
         state.runtime = action.payload;
       })
@@ -193,10 +193,10 @@ const adsSlice = createSlice({
 
       /* ================= HEALTH ================= */
       .addCase(fetchAdsHealth.fulfilled, (state, action) => {
-        console.log(
-          "[ADS][REDUCER] fetchAdsHealth → FULFILLED",
-          action.payload
-        );
+        // console.log(
+        //   "[ADS][REDUCER] fetchAdsHealth → FULFILLED",
+        //   action.payload
+        // );
         state.health = action.payload;
       });
   },
