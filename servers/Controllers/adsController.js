@@ -1,9 +1,9 @@
 import AdsSettings from "../Models/AdsSettings.js";
 import { AppError } from "../Utils/AppError.js";
 
-/* -------------------------------------------------
-   GET ADS SETTINGS (PUBLIC)
-------------------------------------------------- */
+/* =================================================
+   GET ADS SETTINGS (PUBLIC – ADMIN PANEL USE)
+================================================= */
 export const getAdsSettings = async (req, res, next) => {
   try {
     let settings = await AdsSettings.findOne();
@@ -29,9 +29,9 @@ export const getAdsSettings = async (req, res, next) => {
   }
 };
 
-/* -------------------------------------------------
+/* =================================================
    PATCH ADS SETTINGS (ADMIN ONLY)
-------------------------------------------------- */
+================================================= */
 export const patchAdsSettings = async (req, res, next) => {
   try {
     if (!req.user || req.user.role !== "admin") {
@@ -73,14 +73,13 @@ export const patchAdsSettings = async (req, res, next) => {
         ...update,
         updatedBy: req.user._id,
       },
-      {
-        new: true,
-        upsert: true,
-      }
+      { new: true, upsert: true }
     );
 
-    // 🔴 Realtime sync
-    req.io.emit("ads:update", settings);
+    // 🔴 Realtime sync to clients
+    if (req.io) {
+      req.io.emit("ads:update", settings);
+    }
 
     res.status(200).json({
       success: true,
@@ -97,5 +96,74 @@ export const patchAdsSettings = async (req, res, next) => {
             "Failed to update ads settings"
           )
     );
+  }
+};
+
+/* =================================================
+   ADS RUNTIME DECISION (FRONTEND USE)
+================================================= */
+export const getAdsRuntime = async (req, res, next) => {
+  try {
+    const settings = await AdsSettings.findOne();
+
+    if (!settings || !settings.globalEnabled) {
+      return res.status(200).json({
+        adsEnabled: false,
+        reason: "GLOBAL_DISABLED",
+        placements: {},
+      });
+    }
+
+    const isAdmin = req.user?.role === "admin";
+
+    if (isAdmin && settings.disableForAdmins) {
+      return res.status(200).json({
+        adsEnabled: false,
+        reason: "ADMIN_DISABLED",
+        placements: {},
+      });
+    }
+
+    res.status(200).json({
+      adsEnabled: true,
+      reason: null,
+      placements: settings.placements || {},
+    });
+  } catch (error) {
+    next(
+      new AppError(
+        error.message,
+        500,
+        "GetAdsRuntime",
+        "Failed to resolve ads runtime"
+      )
+    );
+  }
+};
+
+/* =================================================
+   ADS SYSTEM HEALTH (DEBUG / ADMIN)
+================================================= */
+export const getAdsHealth = async (req, res) => {
+  try {
+    const settings = await AdsSettings.findOne();
+
+    res.status(200).json({
+      status: "ok",
+      settingsFound: !!settings,
+      globalEnabled: settings?.globalEnabled ?? false,
+      disableForAdmins: settings?.disableForAdmins ?? false,
+      enabledPlacements: settings?.placements
+        ? Object.entries(settings.placements)
+            .filter(([, v]) => v)
+            .map(([k]) => k)
+        : [],
+      updatedAt: settings?.updatedAt || null,
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: "error",
+      message: "Ads health check failed",
+    });
   }
 };
