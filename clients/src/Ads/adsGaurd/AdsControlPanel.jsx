@@ -147,20 +147,18 @@ export default function AdsControlPanel() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* GLOBAL CONTROLS */}
           <div className="lg:col-span-1 space-y-6">
-            <Section title="Master Switches" icon={Zap}>
+            <Section title="Master Controls" icon={Zap}>
               <div className="space-y-8">
-                <ModernToggle
+                <ToggleRow
                   label="Global Revenue"
                   description="The master switch for all ads."
-                  icon={Zap}
                   checked={settings.globalEnabled}
                   disabled={loading}
                   onChange={(v) => updateSetting({ globalEnabled: v })}
                 />
-                <ModernToggle
+                <ToggleRow
                   label="Admin Stealth"
                   description="Hide ads while you work."
-                  icon={ShieldCheck}
                   checked={settings.disableForAdmins}
                   disabled={loading}
                   onChange={(v) => updateSetting({ disableForAdmins: v })}
@@ -253,12 +251,12 @@ const ToggleRow = ({ label, description, checked, disabled, onChange }) => (
     <button
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative w-12 h-6 rounded-full transition-all duration-300 ring-offset-2 focus:ring-2 ring-indigo-500
+      className={`relative w-12 h-6 rounded-full transition-all duration-300 ring-offset-2 focus:ring-2 ring-indigo-500 
         ${
           checked
             ? "bg-indigo-600 toggle-active"
             : "bg-gray-300 dark:bg-gray-700"
-        }
+        } 
         ${
           disabled
             ? "opacity-40 cursor-not-allowed"
@@ -270,53 +268,6 @@ const ToggleRow = ({ label, description, checked, disabled, onChange }) => (
   </div>
 );
 
-const ModernToggle = ({
-  label,
-  description,
-  checked,
-  onChange,
-  disabled,
-  icon: Icon,
-}) => {
-  return (
-    <div
-      className={`switch-container group ${
-        checked ? "bg-indigo-50/50 dark:bg-indigo-900/10" : "bg-transparent"
-      }`}
-    >
-      <div className="flex gap-4 items-center">
-        {Icon && (
-          <div
-            className={`p-2 rounded-lg transition-colors ${
-              checked
-                ? "bg-indigo-100 text-indigo-600"
-                : "bg-gray-100 text-gray-400"
-            }`}
-          >
-            <Icon size={18} />
-          </div>
-        )}
-        <div>
-          <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100 uppercase tracking-tight">
-            {label}
-          </h4>
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-            {description}
-          </p>
-        </div>
-      </div>
-
-      <div
-        onClick={() => !disabled && onChange(!checked)}
-        className={`toggle-track ${checked ? "toggle-active" : ""} ${
-          disabled ? "opacity-30 cursor-not-allowed" : ""
-        }`}
-      >
-        <div className="toggle-thumb" />
-      </div>
-    </div>
-  );
-};
 const StatusCard = ({ title, value, status, icon: Icon, detail }) => {
   const statusColors = {
     success: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20",
