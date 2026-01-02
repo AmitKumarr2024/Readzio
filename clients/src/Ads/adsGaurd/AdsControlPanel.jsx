@@ -15,7 +15,7 @@ import {
   Activity,
   AlertTriangle,
   Zap,
-  CheckCircle2,
+  Info,
 } from "lucide-react";
 
 const PLACEMENTS = [
@@ -61,146 +61,162 @@ export default function AdsControlPanel() {
     [dispatch, loading]
   );
 
-  const finalStatus = useMemo(() => {
+  const finalAdsStatus = useMemo(() => {
     if (!runtime?.adsEnabled)
-      return { text: "Ads Offline", color: "bg-red-500", icon: Power };
+      return { text: "Ads System Offline", color: "bg-red-500", icon: Power };
     if (isAdmin && runtime?.disableForAdmins)
       return {
-        text: "Admin Stealth Active",
+        text: "Ads Hidden for Admins",
         color: "bg-amber-500",
         icon: ShieldCheck,
       };
     return {
-      text: "Ads Live & Running",
+      text: "Ads System Live & Healthy",
       color: "bg-emerald-500",
-      icon: CheckCircle2,
+      icon: Zap,
     };
   }, [runtime, isAdmin]);
 
   if (!settings) return <Skeleton />;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#020617] p-6 transition-colors duration-500">
-      <div className="max-w-5xl mx-auto space-y-8">
-        {/* HEADER & GLOBAL STATUS */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-black p-4 md:p-8 transition-colors duration-300">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* HEADER SECTION */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
-              <Zap className="text-white w-7 h-7" />
+            <div className="p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-none">
+              <ShieldCheck className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                Ads Engine
+              <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                Ads Control Center
               </h1>
-              <p className="text-slate-500 font-medium">
-                Global Revenue & Delivery Control
+              <p className="text-gray-500 dark:text-gray-400 font-medium">
+                Manage revenue and ad delivery
               </p>
             </div>
           </div>
+
           <div
-            className={`flex items-center gap-3 px-5 py-2.5 rounded-full text-white font-bold text-sm shadow-lg transition-all ${
-              finalStatus.color
-            } ${finalStatus.text.includes("Live") ? "pulse-green" : ""}`}
+            className={`flex items-center gap-3 px-6 py-3 rounded-full text-white shadow-xl transition-all duration-500 ${
+              finalAdsStatus.color
+            } ${
+              finalAdsStatus.color === "bg-emerald-500"
+                ? "status-pulse-green"
+                : ""
+            }`}
           >
-            <finalStatus.icon size={18} />
-            {finalStatus.text}
+            <finalAdsStatus.icon className="w-5 h-5" />
+            <span className="font-bold tracking-wide">
+              {finalAdsStatus.text}
+            </span>
           </div>
         </header>
 
-        {/* TOP STATUS CARDS */}
+        {/* STATUS CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatusCard
+            title="Runtime Engine"
+            value={runtime?.adsEnabled ? "Operational" : "Halted"}
+            status={runtime?.adsEnabled ? "success" : "danger"}
             icon={Power}
-            label="Engine Status"
-            value={runtime?.adsEnabled ? "Active" : "Halted"}
-            active={runtime?.adsEnabled}
+            detail="Current server-side status"
           />
           <StatusCard
-            icon={LayoutGrid}
-            label="Active Slots"
-            value={
+            title="Active Layers"
+            value={`${
               runtime?.adsEnabled
                 ? Object.values(runtime?.placements || {}).filter(Boolean)
                     .length
                 : 0
-            }
-            active={true}
+            } / ${PLACEMENTS.length}`}
+            status="info"
+            icon={LayoutGrid}
+            detail="Enabled ad placements"
           />
           <StatusCard
+            title="System Health"
+            value={health?.status?.toUpperCase() || "UNKNOWN"}
+            status={health?.status === "ok" ? "success" : "warning"}
             icon={Activity}
-            label="System Health"
-            value={health?.status?.toUpperCase() || "OK"}
-            active={health?.status === "ok"}
+            detail="API & Provider connectivity"
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* MASTER CONTROLS (LEFT) */}
-          <div className="lg:col-span-5 space-y-6">
-            <section className="glass-panel rounded-[2rem] p-8">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-8">
-                Master Switches
-              </h3>
-              <div className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* GLOBAL CONTROLS */}
+          <div className="lg:col-span-1 space-y-6">
+            <Section title="Master Switches" icon={Zap}>
+              <div className="space-y-8">
                 <ModernToggle
                   label="Global Revenue"
                   description="The master switch for all ads."
                   icon={Zap}
                   checked={settings.globalEnabled}
-                  onChange={(v) => updateSetting({ globalEnabled: v })}
                   disabled={loading}
+                  onChange={(v) => updateSetting({ globalEnabled: v })}
                 />
-                <div className="h-px bg-slate-100 dark:bg-slate-800 mx-2" />
                 <ModernToggle
                   label="Admin Stealth"
                   description="Hide ads while you work."
                   icon={ShieldCheck}
                   checked={settings.disableForAdmins}
-                  onChange={(v) => updateSetting({ disableForAdmins: v })}
                   disabled={loading}
+                  onChange={(v) => updateSetting({ disableForAdmins: v })}
                 />
+                <div className="flex gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg">
+                  <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                    Disabling ads for admins allows for a cleaner management
+                    experience but won't affect users.
+                  </p>
+                </div>
               </div>
-            </section>
+            </Section>
           </div>
 
-          {/* PLACEMENT CONTROLS (RIGHT) */}
-          <div className="lg:col-span-7">
-            <section className="glass-panel rounded-[2rem] p-8">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-8">
-                Ad Placement Deployment
-              </h3>
+          {/* PLACEMENT CONTROLS */}
+          <div className="lg:col-span-2">
+            <Section title="Deployment Placements" icon={LayoutGrid}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {PLACEMENTS.map((p) => (
                   <div
                     key={p.key}
-                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 hover:border-indigo-200 transition-all"
+                    className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 placement-item"
                   >
-                    <ModernToggle
+                    <ToggleRow
                       label={p.label}
                       checked={!!settings.placements?.[p.key]}
+                      disabled={loading}
                       onChange={(v) =>
                         updateSetting({
                           placements: { ...settings.placements, [p.key]: v },
                         })
                       }
-                      disabled={loading}
-                      small
                     />
                   </div>
                 ))}
               </div>
-            </section>
+            </Section>
           </div>
         </div>
 
-        {/* RUNTIME WARNING */}
+        {/* FOOTER WARNING */}
         {!runtime?.adsEnabled && (
-          <div className="flex items-center gap-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 p-4 rounded-2xl">
-            <AlertTriangle className="text-red-500" />
-            <p className="text-sm font-bold text-red-700 dark:text-red-400">
-              System Alert: The ad server is currently returning a disabled
-              status. Changes here will sync once the server is reachable.
-            </p>
+          <div className="flex items-center gap-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-5 rounded-2xl animate-bounce">
+            <div className="p-2 bg-red-100 dark:bg-red-800 rounded-full">
+              <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-200" />
+            </div>
+            <div>
+              <p className="font-bold text-red-800 dark:text-red-200">
+                Revenue Warning
+              </p>
+              <p className="text-sm text-red-600 dark:text-red-300">
+                Ads are currently halted at the runtime level. No impressions
+                are being recorded.
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -208,108 +224,146 @@ export default function AdsControlPanel() {
   );
 }
 
-/* REUSABLE SUB-COMPONENTS */
+/* UI SUB-COMPONENTS */
 
-function ModernToggle({
+const Section = ({ title, icon: Icon, children }) => (
+  <section className="glass-card rounded-3xl p-6 shadow-sm border border-gray-200 dark:border-gray-800">
+    <div className="flex items-center gap-3 mb-8">
+      <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg">
+        <Icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+      </div>
+      <h2 className="text-xl font-bold text-gray-800 dark:text-white">
+        {title}
+      </h2>
+    </div>
+    {children}
+  </section>
+);
+
+// const ToggleRow = ({ label, description, checked, disabled, onChange }) => (
+//   <div className="flex items-center justify-between gap-4">
+//     <div className="flex-1">
+//       <p className="font-bold text-gray-700 dark:text-gray-200">{label}</p>
+//       {description && (
+//         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+//           {description}
+//         </p>
+//       )}
+//     </div>
+//     <button
+//       disabled={disabled}
+//       onClick={() => onChange(!checked)}
+//       className={`relative w-12 h-6 rounded-full transition-all duration-300 ring-offset-2 focus:ring-2 ring-indigo-500
+//         ${
+//           checked
+//             ? "bg-indigo-600 toggle-active"
+//             : "bg-gray-300 dark:bg-gray-700"
+//         }
+//         ${
+//           disabled
+//             ? "opacity-40 cursor-not-allowed"
+//             : "hover:scale-105 active:scale-95"
+//         }`}
+//     >
+//       <span className="toggle-dot absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md" />
+//     </button>
+//   </div>
+// );
+
+const ModernToggle = ({
   label,
   description,
-  icon: Icon,
   checked,
   onChange,
   disabled,
-  small,
-}) {
+  icon: Icon,
+}) => {
   return (
     <div
-      className={`master-switch-row flex items-center justify-between p-3 rounded-2xl ${
-        checked && !small ? "active" : ""
+      className={`switch-container group ${
+        checked ? "bg-indigo-50/50 dark:bg-indigo-900/10" : "bg-transparent"
       }`}
     >
-      <div className="flex items-center gap-4">
-        {Icon && !small && (
+      <div className="flex gap-4 items-center">
+        {Icon && (
           <div
-            className={`p-2.5 rounded-xl transition-all duration-300 ${
+            className={`p-2 rounded-lg transition-colors ${
               checked
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-200 dark:bg-slate-700 text-slate-400"
+                ? "bg-indigo-100 text-indigo-600"
+                : "bg-gray-100 text-gray-400"
             }`}
           >
-            <Icon size={20} />
+            <Icon size={18} />
           </div>
         )}
         <div>
-          <p
-            className={`font-bold transition-colors ${
-              checked
-                ? "text-indigo-600 dark:text-indigo-400"
-                : "text-slate-700 dark:text-slate-200"
-            }`}
-          >
+          <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100 uppercase tracking-tight">
             {label}
+          </h4>
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+            {description}
           </p>
-          {description && (
-            <p className="text-xs text-slate-500 font-medium">{description}</p>
-          )}
         </div>
       </div>
 
       <div
         onClick={() => !disabled && onChange(!checked)}
-        className={`toggle-track ${checked ? "bg-on" : "bg-off"} ${
-          disabled
-            ? "opacity-30 cursor-not-allowed"
-            : "hover:brightness-110 active:scale-95 transition-all"
+        className={`toggle-track ${checked ? "toggle-active" : ""} ${
+          disabled ? "opacity-30 cursor-not-allowed" : ""
         }`}
       >
-        <div className={`toggle-thumb ${checked ? "active-thumb" : ""}`} />
+        <div className="toggle-thumb" />
       </div>
     </div>
   );
-}
+};
+const StatusCard = ({ title, value, status, icon: Icon, detail }) => {
+  const statusColors = {
+    success: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20",
+    warning: "text-amber-600 bg-amber-50 dark:bg-amber-900/20",
+    danger: "text-red-600 bg-red-50 dark:bg-red-900/20",
+    info: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
+  };
 
-function StatusCard({ icon: Icon, label, value, active }) {
   return (
-    <div className="glass-panel p-6 rounded-[2rem] flex items-center gap-5 group hover:shadow-xl transition-all duration-300">
-      <div
-        className={`p-3 rounded-2xl transition-all ${
-          active
-            ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600"
-            : "bg-slate-100 dark:bg-slate-800 text-slate-400"
-        }`}
-      >
-        <Icon size={24} className={active ? "animate-pulse" : ""} />
+    <div className="glass-card p-5 rounded-3xl flex flex-col gap-3 shadow-sm border border-gray-100 dark:border-gray-800 group hover:shadow-md transition-shadow">
+      <div className="flex justify-between items-start">
+        <div className={`p-2 rounded-xl ${statusColors[status]}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+          {status}
+        </span>
       </div>
       <div>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-          {label}
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+          {title}
         </p>
-        <p className="text-xl font-black text-slate-800 dark:text-white">
+        <p className="text-2xl font-black text-gray-800 dark:text-white">
           {value}
         </p>
+        <p className="text-[10px] text-gray-400 mt-1 uppercase font-semibold">
+          {detail}
+        </p>
       </div>
     </div>
   );
-}
+};
 
-function Skeleton() {
-  return (
-    <div className="max-w-5xl mx-auto p-10 space-y-10 animate-pulse">
-      <div className="flex justify-between items-center">
-        <div className="h-10 w-48 bg-slate-200 dark:bg-slate-800 rounded-xl" />
-        <div className="h-10 w-32 bg-slate-200 dark:bg-slate-800 rounded-full" />
-      </div>
-      <div className="grid grid-cols-3 gap-6">
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-32 bg-slate-200 dark:bg-slate-800 rounded-[2rem]"
-          />
-        ))}
-      </div>
-      <div className="grid grid-cols-12 gap-8">
-        <div className="col-span-5 h-80 bg-slate-200 dark:bg-slate-800 rounded-[2rem]" />
-        <div className="col-span-7 h-80 bg-slate-200 dark:bg-slate-800 rounded-[2rem]" />
-      </div>
+const Skeleton = () => (
+  <div className="max-w-6xl mx-auto p-8 space-y-8 animate-pulse">
+    <div className="flex justify-between items-center">
+      <div className="h-10 w-64 bg-gray-200 dark:bg-gray-800 rounded-lg" />
+      <div className="h-10 w-48 bg-gray-200 dark:bg-gray-800 rounded-full" />
     </div>
-  );
-}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {[1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="h-32 bg-gray-200 dark:bg-gray-800 rounded-3xl"
+        />
+      ))}
+    </div>
+    <div className="h-96 bg-gray-200 dark:bg-gray-800 rounded-3xl" />
+  </div>
+);
