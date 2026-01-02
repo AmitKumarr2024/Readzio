@@ -604,11 +604,9 @@ const DisplayPost = () => {
                     className="rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6"
                   />
                   {activePost?._id && (
-                    <AdGuard placement="horizontal">
-                      <div className="sticky top-[calc(100vh-200px)]">
-                        <DisplayAd postId={activePost._id} testMode={false} />
-                      </div>
-                    </AdGuard>
+                    <div className="sticky top-[calc(100vh-200px)]">
+                      <DisplayAd postId={activePost._id} testMode={false} />
+                    </div>
                   )}
                 </div>
               </div>
