@@ -477,7 +477,6 @@ app.get("/sitemap.xml", async (req, res) => {
     res.setHeader("Expires", "0");
     res.setHeader("Last-Modified", lastModified);
     res.setHeader("ETag", etag);
-    res.setHeader("X-Robots-Tag", "noindex"); // Prevent sitemap from being indexed
 
     res.send(sitemapContent);
 
