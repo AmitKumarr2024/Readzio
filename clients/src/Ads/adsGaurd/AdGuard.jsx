@@ -5,26 +5,39 @@ const AdGuard = ({ placement, children }) => {
   const { runtime, settings } = useSelector((state) => state.ads);
   const user = useSelector((state) => state.auth?.user);
 
-  // ⛔ runtime not loaded yet
-  if (!runtime && !settings) return null;
+  // --------------------------------------------------
+  // 1️⃣ Resolve FINAL flags (runtime > settings fallback)
+  // --------------------------------------------------
+  const adsEnabled = runtime?.adsEnabled ?? settings?.globalEnabled ?? false;
 
-  // ⛔ ads globally disabled
-  if (runtime && runtime.adsEnabled === false) return null;
+  const disableForAdmins =
+    runtime?.disableForAdmins ?? settings?.disableForAdmins ?? false;
 
-  // ⛔ admin ads disabled
-  if (
-    user?.role === "admin" &&
-    (runtime?.disableForAdmins ?? settings?.disableForAdmins)
-  ) {
+  const placementEnabled =
+    runtime?.placements?.[placement] ??
+    settings?.placements?.[placement] ??
+    false;
+
+  // --------------------------------------------------
+  // 2️⃣ Global OFF → no ads
+  // --------------------------------------------------
+  if (!adsEnabled) return null;
+
+  // --------------------------------------------------
+  // 3️⃣ Placement OFF → no ads
+  // --------------------------------------------------
+  if (!placementEnabled) return null;
+
+  // --------------------------------------------------
+  // 4️⃣ Admin-specific rule
+  // --------------------------------------------------
+  if (user?.role === "admin" && disableForAdmins) {
     return null;
   }
 
-  // ⛔ placement disabled
-  const placementEnabled =
-    runtime?.placements?.[placement] ?? settings?.placements?.[placement];
-
-  if (!placementEnabled) return null;
-
+  // --------------------------------------------------
+  // 5️⃣ Otherwise → allow render
+  // --------------------------------------------------
   return <>{children}</>;
 };
 
