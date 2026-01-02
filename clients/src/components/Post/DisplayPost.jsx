@@ -30,6 +30,7 @@ import MultiplexAd from "../../Ads/MultiplexAd";
 import DisplayAd from "../../Ads/DisplayAd";
 import { toast } from "react-hot-toast";
 import { selectPostViews } from "../../Utils/postSelectors";
+import AdGuard from "../../Ads/adsGaurd/AdGuard";
 
 const DisplayPost = () => {
   const { slug } = useParams();
@@ -587,7 +588,9 @@ const DisplayPost = () => {
               <div className="lg:col-span-2 space-y-8">
                 {renderPostContent()}
                 {activePost?._id && (
-                  <MultiplexAd postId={activePost._id} testMode={false} />
+                  <AdGuard placement="multiplex">
+                    <MultiplexAd postId={activePost._id} testMode={false} />
+                  </AdGuard>
                 )}
               </div>
 
@@ -601,9 +604,11 @@ const DisplayPost = () => {
                     className="rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6"
                   />
                   {activePost?._id && (
-                    <div className="sticky top-[calc(100vh-200px)]">
-                      <DisplayAd postId={activePost._id} testMode={false} />
-                    </div>
+                    <AdGuard placement="horizontal">
+                      <div className="sticky top-[calc(100vh-200px)]">
+                        <DisplayAd postId={activePost._id} testMode={false} />
+                      </div>
+                    </AdGuard>
                   )}
                 </div>
               </div>

@@ -267,27 +267,20 @@ const SuggestedPosts = ({ postId, className }) => {
                           <SafeInFeedAd postId={post._id} />
                         </div>
                       </div>
-                      <div className="p-6 flex flex-col flex-grow">
-                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                          <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-500 rounded-md font-semibold">
-                            Sponsored
-                          </span>
-                        </div>
-                      </div>
                     </div>
                   )}
 
                   {/* Banner Ad - Full width */}
                   {shouldShowBannerAd(index) && (
-                    <div className="col-span-full">
-                      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden p-6">
-                        <div className="flex items-center justify-center min-h-[250px] rounded-xl overflow-hidden">
-                          <AdGuard placement="horizontal">
+                    <AdGuard placement="horizontal">
+                      <div className="col-span-full">
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden p-6">
+                          <div className="flex items-center justify-center min-h-[250px] rounded-xl overflow-hidden">
                             <HorizontalBannerAd postId={post._id} />
-                          </AdGuard>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </AdGuard>
                   )}
                 </React.Fragment>
               ))}

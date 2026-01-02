@@ -28,6 +28,7 @@ import MultiplexAd from "../../Ads/MultiplexAd";
 import SafeInFeedAd from "../../Ads/SafeInFeedAd";
 import useWindowWidth from "../../Utils/useWindowWidth";
 import AdCard from "../../Ads/AdCard";
+import AdGuard from "../../Ads/adsGaurd/AdGuard";
 
 // --- CONSTANTS ---
 const POSTS_PER_PAGE = 100;
@@ -529,7 +530,9 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
                       key={item.id}
                       className="col-span-full w-full my-4 py-4 border-y border-gray-200 dark:border-gray-700"
                     >
-                      <MultiplexAd postId={item.postId} testMode={false} />
+                      <AdGuard placement="multiplex">
+                        <MultiplexAd postId={item.postId} testMode={false} />
+                      </AdGuard>
                     </div>
                   );
                 }
