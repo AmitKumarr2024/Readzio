@@ -1,10 +1,15 @@
 import axios from "axios";
 import { getToken } from "../Utils/getToken";
 import { rateLimitTriggered } from "../store/rateLimit/rateLimitSlice";
-import store from "../store/store";
 
 const isDev = import.meta.env.MODE === "development";
 const baseURL = "/api";
+
+let reduxStore = null;
+
+export const injectStore = (store) => {
+  reduxStore = store;
+};
 
 // Production-ready axios instance
 const axiosInstance = axios.create({
@@ -210,12 +215,14 @@ axiosInstance.interceptors.response.use(
 
       const data = response.data || {};
 
-      store.dispatch(
-        rateLimitTriggered({
-          retryAfter: data.retryAfter ?? null,
-          resetAt: data.resetAt ?? null,
-        })
-      );
+      if (reduxStore) {
+        reduxStore.dispatch(
+          rateLimitTriggered({
+            retryAfter: data.retryAfter ?? null,
+            resetAt: data.resetAt ?? null,
+          })
+        );
+      }
 
       return Promise.reject({
         message: "Too many requests. Please wait a moment.",

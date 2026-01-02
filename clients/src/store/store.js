@@ -22,6 +22,7 @@ import bannerNotificationReducer from "../store/bannerNotificationSlice";
 import playlistReducer from "../store/playlistSlice";
 import adsReducer from "../store/adsSlice";
 import rateLimitReducer from "../store/rateLimit/rateLimitSlice";
+import { injectStore } from "../connection/axiosInstance";
 
 const store = configureStore({
   reducer: {
@@ -54,5 +55,7 @@ const store = configureStore({
       serializableCheck: process.env.NODE_ENV !== "production" ? false : true,
     }),
 });
+
+injectStore(store);
 
 export default store;

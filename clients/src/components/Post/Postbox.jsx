@@ -60,7 +60,7 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
     (state) => state.postMeta?.isSidebarOpen ?? false
   );
   const currentUser = useSelector((state) => state.auth?.user ?? { _id: null });
-  const isAuthenticated = !!currentUser._id;
+  const isAuthenticated = !!currentUser?._id;
   const { followers = { list: [] } } = useSelector(
     (state) => state.follow || {}
   );

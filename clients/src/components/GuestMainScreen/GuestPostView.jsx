@@ -172,14 +172,14 @@ const GuestPostView = () => {
 
         if ((index + 1) % AD_MULTIPLEX_INTERVAL === 0) {
           elements.push(
-            <AdGuard placement="MultiplexAd">
-              <div
-                key={`multiplex-${post._id}-${index}`}
-                className="col-span-full w-full border-b border-gray-300 dark:border-gray-600 my-2 py-4"
-              >
+            <AdGuard
+              key={`multiplex-${post._id}-${index}`}
+              placement="MultiplexAd"
+            >
+              <div className="col-span-full w-full border-b border-gray-300 dark:border-gray-600 my-2 py-4">
                 <MultiplexAd
                   postId={post._id}
-                  testMode={process.env.NODE_ENV !== "production"}
+                  testMode={import.meta.env.MODE !== "production"}
                 />
               </div>
             </AdGuard>

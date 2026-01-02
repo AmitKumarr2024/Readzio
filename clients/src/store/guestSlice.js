@@ -83,7 +83,7 @@ export const fetchPublicPosts = createAsyncThunk(
       // );
       return {
         posts,
-        total,
+        totalPosts: total,
         page: res.data?.page ?? page,
         isEmpty: posts.length === 0 && page === 1,
       };
@@ -95,15 +95,11 @@ export const fetchPublicPosts = createAsyncThunk(
   {
     condition: ({ page }, { getState }) => {
       const { guest } = getState();
-      // console.log("fetchPublicPosts condition: Checking", {
-      //   page,
-      //   loading: guest.loading,
-      //   lastFetched: guest.lastFetchedPage,
-      //   initialized: guest.hasInitialized,
-      // });
-      // Prevent repeated calls for the same page
-      if (guest.loading) return false;
-      if (guest.lastFetchedPage === page && guest.hasInitialized) return false;
+
+      if (guest.lastFetchedPage === page && guest.hasInitialized) {
+        return false;
+      }
+
       return true;
     },
   }
@@ -154,7 +150,7 @@ export const trackGuestView = createAsyncThunk(
     } catch (err) {
       // console.log("trackGuestView thunk: Error", err);
       log("warn", `[guestSlice:trackGuestView] Failed: ${err.message}`);
-      return thunkAPI.rejectWithValue(false);
+      return thunkAPI.rejectWithValue("Failed to track guest view");
     }
   }
 );
@@ -182,7 +178,7 @@ export const searchPublicPosts = createAsyncThunk(
 
       return {
         posts,
-        total,
+        totalPosts: total,
         page: res.data?.page ?? page,
         isEmpty: posts.length === 0 && page === 1,
       };
@@ -210,9 +206,8 @@ export const trackGuestVisit = createAsyncThunk(
       }
       return guestData;
     } catch (err) {
-      // console.log("trackGuestVisit thunk: Error", err);
       log("warn", `[guestSlice:trackGuestVisit] ${err.message}`);
-      return null;
+      return thunkAPI.rejectWithValue("Failed to track guest visit");
     }
   }
 );
@@ -268,7 +263,7 @@ const guestSlice = createSlice({
         state.posts = [...state.posts, ...newPosts];
       }
 
-      state.totalPosts = action.payload.total;
+      state.totalPosts = action.payload.totalPosts;
       state.currentPage = action.payload.page;
       state.isEmpty = action.payload.isEmpty;
       state.error = null;
