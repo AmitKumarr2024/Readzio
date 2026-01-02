@@ -44,15 +44,13 @@ import PostModel from "../servers/Models/Post.js";
 const app = express();
 app.set("trust proxy", true);
 
-
 // General public rate limiter
 const apiLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 min
   max: 200, // limit each IP
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
-
 
 const __dirname = path.resolve();
 
@@ -187,8 +185,6 @@ app.use(
 
 app.use(cookieParser());
 
-
-
 // Apply to all API routes
 app.use("/api", apiLimiter);
 
@@ -279,16 +275,29 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// =============================================================================
+// HOMEPAGE BOT SAFETY FIX (MUST BE BEFORE PRERENDER)
+// =============================================================================
+
+app.get("/", (req, res, next) => {
+  const ua = req.headers["user-agent"] || "";
+
+  if (/bot|crawler|spider|google/i.test(ua)) {
+    return res.sendFile(CLIENT_INDEX_PATH);
+  }
+
+  next();
+});
+
 prerender.set("protocol", "https");
 prerender.set("prerenderServiceUrl", "https://render-tron.appspot.com/render");
 prerender.set("whitelisted", ["^/post/"]);
+prerender.set("blacklisted", ["^/$"]);
 app.use(prerender);
 
 // =============================================================================
 // ROUTE CONFIGURATION
 // =============================================================================
-
-
 
 const routeConfigs = [
   { path: "/api/auth", router: AuthRoutes, name: "AuthRoutes" },
@@ -460,13 +469,16 @@ app.get("/sitemap.xml", async (req, res) => {
 
     // ✅ CRITICAL FIX: Force Google to always refetch
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
-    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+    res.setHeader(
+      "Cache-Control",
+      "no-cache, no-store, must-revalidate, max-age=0"
+    );
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
     res.setHeader("Last-Modified", lastModified);
     res.setHeader("ETag", etag);
     res.setHeader("X-Robots-Tag", "noindex"); // Prevent sitemap from being indexed
-    
+
     res.send(sitemapContent);
 
     console.log("✅ Sitemap served successfully (FRESH, NO CACHE)");
@@ -499,7 +511,9 @@ app.get("/health", (req, res) => {
     sitemapStats = {
       size: `${(stats.size / 1024).toFixed(2)} KB`,
       lastModified: stats.mtime.toISOString(),
-      age: `${Math.floor((Date.now() - stats.mtime.getTime()) / 60000)} minutes ago`,
+      age: `${Math.floor(
+        (Date.now() - stats.mtime.getTime()) / 60000
+      )} minutes ago`,
     };
   }
 
