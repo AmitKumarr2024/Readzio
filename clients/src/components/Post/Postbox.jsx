@@ -514,26 +514,22 @@ const Postbox = ({ filterType, category, customPosts = [], user }) => {
                 // Card Ad - Takes single grid cell
                 if (item.type === "card-ad") {
                   return (
-                    <div
-                      key={item.id}
-                      className="w-full h-full flex items-center justify-center"
-                    >
-                      <AdCard postId={item?.postId} />
-                    </div>
+                    <AdGuard placement="card" key={item.id}>
+                      <div className="w-full h-full flex items-center justify-center">
+                        <AdCard postId={item?.postId} />
+                      </div>
+                    </AdGuard>
                   );
                 }
 
                 // Multiplex Ad - Spans full width
                 if (item.type === "multiplex-ad") {
                   return (
-                    <div
-                      key={item.id}
-                      className="col-span-full w-full my-4 py-4 border-y border-gray-200 dark:border-gray-700"
-                    >
-                      <AdGuard placement="multiplex">
+                    <AdGuard placement="multiplex" key={item.id}>
+                      <div className="col-span-full w-full my-4 py-4 border-y border-gray-200 dark:border-gray-700">
                         <MultiplexAd postId={item.postId} testMode={false} />
-                      </AdGuard>
-                    </div>
+                      </div>
+                    </AdGuard>
                   );
                 }
 

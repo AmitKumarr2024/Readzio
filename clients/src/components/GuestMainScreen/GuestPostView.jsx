@@ -151,42 +151,35 @@ const GuestPostView = () => {
   // --- Posts + Ads Composition ---
   const postsWithAds = useMemo(() => {
     return posts.flatMap((post, index) => {
-      if (!post?._id) {
-        return [];
-      }
+      if (!post?._id) return [];
+
       const elements = [<GuestCardOfPost key={post._id} post={post} />];
 
-      try {
-        if ((index + 1) % AD_IN_FEED_INTERVAL === 0) {
-          elements.push(
-            <div
-              key={`infeed-${post._id}-${index}`}
-              className="col-span-1 flex justify-center w-full p-3"
-            >
+      // ✅ IN-FEED AD (FIXED)
+      if ((index + 1) % AD_IN_FEED_INTERVAL === 0) {
+        elements.push(
+          <AdGuard key={`infeed-${post._id}-${index}`} placement="inFeed">
+            <div className="col-span-1 flex justify-center w-full p-3">
               <div className="col-span-full flex justify-center my-4">
                 <SafeInFeedAd postId={post._id} />
               </div>
             </div>
-          );
-        }
+          </AdGuard>
+        );
+      }
 
-        if ((index + 1) % AD_MULTIPLEX_INTERVAL === 0) {
-          elements.push(
-            <AdGuard
-              key={`multiplex-${post._id}-${index}`}
-              placement="MultiplexAd"
-            >
-              <div className="col-span-full w-full border-b border-gray-300 dark:border-gray-600 my-2 py-4">
-                <MultiplexAd
-                  postId={post._id}
-                  testMode={import.meta.env.MODE !== "production"}
-                />
-              </div>
-            </AdGuard>
-          );
-        }
-      } catch (adErr) {
-        console.warn("Ad render error:", adErr);
+      // ✅ MULTIPLEX AD (FIXED)
+      if ((index + 1) % AD_MULTIPLEX_INTERVAL === 0) {
+        elements.push(
+          <AdGuard key={`multiplex-${post._id}-${index}`} placement="multiplex">
+            <div className="col-span-full w-full border-b border-gray-300 dark:border-gray-600 my-2 py-4">
+              <MultiplexAd
+                postId={post._id}
+                testMode={import.meta.env.MODE !== "production"}
+              />
+            </div>
+          </AdGuard>
+        );
       }
 
       return elements;
