@@ -9,6 +9,7 @@ import HorizontalBannerAd from "../../Ads/HorizontalBannerAd";
 import SafeInFeedAd from "../../Ads/SafeInFeedAd";
 import { Clock, User, TrendingUp } from "lucide-react";
 import AdGuard from "../../Ads/adsGaurd/AdGuard";
+import MultiplexAd from "../../Ads/MultiplexAd";
 
 const SuggestedPosts = ({ postId, className }) => {
   const dispatch = useDispatch();
@@ -272,11 +273,11 @@ const SuggestedPosts = ({ postId, className }) => {
 
                   {/* Banner Ad - Full width */}
                   {shouldShowBannerAd(index) && (
-                    <AdGuard placement="horizontal">
+                    <AdGuard placement="multiplex">
                       <div className="col-span-full">
                         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden p-6">
                           <div className="flex items-center justify-center min-h-[250px] rounded-xl overflow-hidden">
-                            <HorizontalBannerAd postId={post._id} />
+                            <MultiplexAd postId={post._id} />
                           </div>
                         </div>
                       </div>
