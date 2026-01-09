@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import SpaceBackground from "../Utils/SpaceBackground";
+
 const PrivacyPage = () => {
   return (
     <SpaceBackground>
@@ -11,60 +12,76 @@ const PrivacyPage = () => {
             Effective Date: May 24, 2025
           </p>
 
-          {/* ✅ readzio Definition + Content Type Explanation */}
+          {/* ✅ Updated Readzio Definition */}
           <p className="mb-6 text-base text-gray-700 dark:text-gray-300">
-            <strong>readzio</strong> is a creative digital platform where
-            individuals can share, discover, and explore ideas through{" "}
-            <strong>blogs, articles, thought pieces, and storytelling</strong>.
-            We encourage meaningful expression — from personal experiences and
-            how-to guides to opinion pieces and tutorials. Whether you're a
-            writer, reader, or learner, readzio offers a respectful and open
-            space to grow and connect.
+            <strong>readzio</strong> is a digital reading and discussion
+            platform where individuals can share, discover, and engage with
+            ideas through{" "}
+            <strong>
+              articles, blogs, comments, polls, and real-time interactions
+            </strong>
+            . The platform encourages thoughtful expression, discussion, and
+            learning — allowing users not only to publish content, but also to
+            respond, vote, and participate in conversations.
           </p>
 
           <div className="space-y-6 text-base leading-relaxed">
             <h2 className="text-xl font-semibold">1. Information We Collect</h2>
             <p>
-              We do not collect personal data unless you voluntarily provide it
-              through our contact form. Any submitted information—such as your
-              name, email, or message—is used solely for communication and never
-              shared with third parties.
+              We collect only the information necessary to operate the platform.
+              This may include basic account details (such as username or
+              email), content you choose to publish, and interactions such as
+              comments, likes, votes, or bookmarks. Information is used solely
+              to provide and improve readzio’s services and is never sold to
+              third parties.
             </p>
 
-            <h2 className="text-xl font-semibold">2. Cookies</h2>
+            <h2 className="text-xl font-semibold">2. Cookies & Analytics</h2>
             <p>
-              This site may use minimal cookies or analytics tools to understand
-              usage trends and enhance user experience. We do not intentionally
-              store or track personally identifiable information.
+              readzio may use minimal cookies or analytics tools to understand
+              usage patterns, improve performance, and enhance user experience.
+              These tools do not intentionally track personally identifiable
+              information beyond what is required for functionality.
+            </p>
+
+            <h2 className="text-xl font-semibold">3. User-Generated Content</h2>
+            <p>
+              Content published on readzio — including articles, comments, and
+              poll responses — is created by users. Users are responsible for
+              the content they post. readzio does not claim ownership over user
+              content but reserves the right to moderate or remove content that
+              violates platform guidelines or applicable laws.
             </p>
 
             <h2 className="text-xl font-semibold">
-              3. Embedded Content & Links
+              4. Embedded Content & External Links
             </h2>
             <p>
-              Some content on readzio may include embedded media (e.g., videos,
-              articles) from other websites. Such content may behave as if you
-              visited those external sites and may include their own tracking or
-              cookies.
+              Some content on readzio may include embedded media or links to
+              third-party websites. These external sites may collect data or use
+              cookies according to their own privacy policies. readzio has no
+              control over external websites.
             </p>
 
-            <h2 className="text-xl font-semibold">4. Your Rights</h2>
+            <h2 className="text-xl font-semibold">5. Your Rights</h2>
             <p>
-              If you've submitted your information and wish for it to be
-              deleted, please email us with your request, and we will act
-              accordingly.
+              If you have an account or have submitted information and wish to
+              access, update, or delete your data, you may contact us. We will
+              take reasonable steps to honor such requests in accordance with
+              applicable laws.
             </p>
 
-            <h2 className="text-xl font-semibold">5. Updates</h2>
+            <h2 className="text-xl font-semibold">6. Policy Updates</h2>
             <p>
-              This Privacy Policy may be updated occasionally to reflect changes
-              in services, tools, or legal requirements. Please revisit this
-              page periodically for any changes.
+              This Privacy Policy may be updated from time to time to reflect
+              changes in features, technology, or legal requirements. Continued
+              use of readzio after updates implies acceptance of the revised
+              policy.
             </p>
 
-            <h2 className="text-xl font-semibold">6. Contact</h2>
+            <h2 className="text-xl font-semibold">7. Contact</h2>
             <p className="text-lg">
-              For privacy-related questions, reach out to us at{" "}
+              For privacy-related questions, contact us at{" "}
               <a
                 href="mailto:readzio.official@gmail.com"
                 className="text-blue-600 underline"
@@ -75,7 +92,7 @@ const PrivacyPage = () => {
             </p>
 
             <p className="text-lg">
-              For more information, please also read our{" "}
+              For more details, please review our{" "}
               <Link to="/terms-conditions" className="text-blue-600 underline">
                 Terms & Conditions
               </Link>

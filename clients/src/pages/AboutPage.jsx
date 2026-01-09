@@ -2,36 +2,38 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import SpaceBackground from "../Utils/SpaceBackground";
-
-// Optional: Add this only if you want the Twitter icon
 import { FaXTwitter } from "react-icons/fa6";
 
 const AboutPage = () => {
-  const version = "v1.0.0";
+  const version = "v2.2.0";
   const releaseDate = "July 21, 2025";
 
   return (
     <SpaceBackground>
       <Helmet>
         <title>
-          Free Online Publishing Platform | Publish Articles Online Worldwide &
-          India | readzio
+          Real-Time Reading & Discussion Platform | Write, Discuss & Get
+          Feedback | readzio
         </title>
+
         <meta
           name="description"
-          content="readzio is a free online publishing platform for writers and creators to publish articles, stories, and blogs — open to users worldwide and across India."
+          content="Readzio is a free real-time reading and discussion platform where users write articles, join live conversations, vote in polls, and get instant feedback on ideas."
         />
+
         <meta
           name="keywords"
-          content="free online publishing platform, publish articles online free, blog publishing platform India, self publishing platform writers, creative publishing platform"
+          content="real-time discussion platform, write articles online free, interactive publishing platform, idea discussion website, online forum writing platform"
         />
+
         <meta
           property="og:title"
-          content="Free Online Publishing Platform | readzio"
+          content="Real-Time Reading & Discussion Platform | readzio"
         />
+
         <meta
           property="og:description"
-          content="Publish stories, articles, and blogs globally or in India for free on readzio — a modern content publishing platform for writers and creators."
+          content="Write ideas, get instant feedback, vote in polls, and join live discussions on readzio — a discussion-first reading and writing platform."
         />
       </Helmet>
 
@@ -44,23 +46,29 @@ const AboutPage = () => {
 
             <p className="text-lg leading-relaxed text-gray-700 dark:text-gray-300">
               <strong>readzio</strong> is a{" "}
-              <strong>free online publishing platform</strong> for creators
-              across India and worldwide. Whether you want to{" "}
-              <strong>publish articles online free</strong>, share a story, or
-              grow as a writer — readzio offers a clean and seamless space to
-              connect with your audience.
+              <strong>
+                free, discussion-first reading and writing platform
+              </strong>{" "}
+              where ideas don’t just get published — they get responses, votes,
+              and real-time discussion.
             </p>
 
             <p className="text-lg mt-6 leading-relaxed text-gray-700 dark:text-gray-300">
-              Developed in <strong>India</strong>, readzio also supports global
-              authors and provides <strong>self publishing features</strong> for
-              writers, bloggers, and creators across the world. It's a{" "}
-              <strong>blog publishing platform India</strong> and a{" "}
-              <strong>creative publishing platform worldwide</strong>.
+              Whether you want to explain an idea, ask a question, or write
+              about something you care about, readzio lets real people respond
+              instantly while they are online.
+            </p>
+
+            <p className="text-lg mt-6 leading-relaxed text-gray-700 dark:text-gray-300">
+              Unlike traditional blogging platforms, readzio is built for
+              interaction. Readers can comment in real time, vote in polls
+              inside articles, save posts to their personal reading list, and
+              control what they see by selecting or removing categories they
+              care about.
             </p>
 
             <h2 className="text-2xl font-semibold mt-10 mb-4 text-gray-800 dark:text-white">
-              Key Features
+              How Readzio Helps Ideas Grow
             </h2>
 
             <ul className="list-disc list-inside space-y-3 text-gray-700 dark:text-gray-300 text-lg">
@@ -81,16 +89,20 @@ const AboutPage = () => {
                 images within posts.
               </li>
               <li>
-                <strong>Real-Time Updates:</strong> Interactions like likes,
-                votes, and bookmarks update instantly.
+                <strong>Real-Time Feedback:</strong> Comments, votes, bookmarks,
+                and reactions update instantly.
+              </li>
+              <li>
+                <strong>Live Online Users:</strong> See how many people are
+                currently active and join conversations when readers are online.
               </li>
               <li>
                 <strong>Tag & Category Filters:</strong> Discover posts by
-                topics or themes with ease.
+                topics you care about.
               </li>
               <li>
                 <strong>Shareable Links:</strong> Share content directly via
-                social or copy links.
+                social platforms.
               </li>
               <li>
                 <strong>Bookmark Posts:</strong> Save your favorite reads to
@@ -98,18 +110,18 @@ const AboutPage = () => {
               </li>
               <li>
                 <strong>Dark Mode:</strong> Auto and manual dark theme toggle
-                for optimal reading comfort.
+                for reading comfort.
               </li>
               <li>
-                <strong>Mobile-First Design:</strong> Fully responsive for
-                smooth use on all screen sizes.
+                <strong>Mobile-First Design:</strong> Fully responsive across
+                all devices.
               </li>
             </ul>
 
             <p className="text-lg mt-8 leading-relaxed font-medium text-gray-800 dark:text-gray-100">
               readzio is independently built and maintained by{" "}
-              <strong>Amit</strong>, with a mission to make modern publishing
-              simple, expressive, and enjoyable for everyone.
+              <strong>Amit</strong>, with a mission to turn reading into
+              conversation and writing into collaboration.
             </p>
 
             <div className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -122,7 +134,6 @@ const AboutPage = () => {
                 © {new Date().getFullYear()} readzio. All rights reserved.
               </p>
 
-              {/* Twitter/X Link */}
               <p className="mt-4 flex items-center justify-center gap-2">
                 <FaXTwitter className="text-xl text-blue-600 dark:text-blue-400" />
                 <a
