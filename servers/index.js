@@ -179,9 +179,19 @@ app.use(
 app.use(cookieParser());
 
 // =============================================================================
-// UTILITY FUNCTIONS
+// UTILITY FUNCTIONS (FINAL, SAFE, ONE-TIME ESCAPE)
 // =============================================================================
 
+// Decode entities that may already exist in stored content
+const decodeHtmlEntities = (str = "") =>
+  String(str)
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+
+// Escape ONLY for HTML output (after decode)
 const escapeHtml = (str = "") =>
   String(str)
     .replace(/&/g, "&amp;")
@@ -190,6 +200,7 @@ const escapeHtml = (str = "") =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
+// Escape for JSON-LD only (not HTML)
 const escapeJson = (str = "") =>
   String(str)
     .replace(/\\/g, "\\\\")
@@ -198,7 +209,7 @@ const escapeJson = (str = "") =>
     .trim();
 
 // =============================================================================
-// SEO BOT HANDLING (GOOGLEBOT, ETC.) — FINAL, BUG-FREE
+// SEO BOT HANDLING (GOOGLEBOT, ETC.) — FINAL, PERMANENT
 // =============================================================================
 app.use(async (req, res, next) => {
   const userAgent = req.headers["user-agent"]?.toLowerCase() || "";
@@ -215,7 +226,6 @@ app.use(async (req, res, next) => {
     return next();
   }
 
-  // Only handle post pages for bots
   if (isBot && req.path.startsWith("/post/")) {
     const slug = req.path.split("/")[2];
 
@@ -230,7 +240,7 @@ app.use(async (req, res, next) => {
       if (!post || !post.createdAt) return next();
 
       // ----------------------------
-      // TEXT EXTRACTION (RAW)
+      // TEXT EXTRACTION
       // ----------------------------
       const rawText =
         post.blocks?.find((b) => b?.type === "text" && b?.value)?.value || "";
@@ -241,7 +251,7 @@ app.use(async (req, res, next) => {
         .trim();
 
       // ----------------------------
-      // DESCRIPTION (ESCAPE ONCE ONLY)
+      // DESCRIPTION (NORMALIZE → ESCAPE ONCE)
       // ----------------------------
       const rawDescription =
         post.metaDescription ||
@@ -249,13 +259,20 @@ app.use(async (req, res, next) => {
         cleanText ||
         "Explore high-quality articles on Readzio.";
 
-      const description = escapeHtml(rawDescription.slice(0, 160));
+      const normalizedDescription = decodeHtmlEntities(rawDescription);
+
+      const description = escapeHtml(normalizedDescription.slice(0, 160));
 
       // ----------------------------
       // SAFE VALUES
       // ----------------------------
-      const safeTitle = escapeHtml(post.metaTitle || post.title || "Readzio");
-      const safeAuthor = escapeHtml(post.author?.name || "Unknown Author");
+      const safeTitle = escapeHtml(
+        decodeHtmlEntities(post.metaTitle || post.title || "Readzio")
+      );
+
+      const safeAuthor = escapeHtml(
+        decodeHtmlEntities(post.author?.name || "Unknown Author")
+      );
 
       const ogImage =
         typeof post.ogImage === "string" && post.ogImage
@@ -298,7 +315,7 @@ app.use(async (req, res, next) => {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
   "headline": "${escapeJson(safeTitle)}",
-  "description": "${escapeJson(description)}",
+  "description": "${escapeJson(normalizedDescription.slice(0, 160))}",
   "image": ["${escapeJson(ogImage)}"],
   "url": "https://www.readzio.com/post/${slug}",
   "author": {
