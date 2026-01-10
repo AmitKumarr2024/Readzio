@@ -179,13 +179,34 @@ app.use(
 app.use(cookieParser());
 
 // =============================================================================
-// SEO BOT HANDLING (GOOGLEBOT, ETC.)
+// UTILITY FUNCTIONS
 // =============================================================================
 
+const escapeHtml = (str = "") =>
+  String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const escapeJson = (str = "") =>
+  String(str)
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, " ")
+    .trim();
+
+// =============================================================================
+// SEO BOT HANDLING (GOOGLEBOT, ETC.) — FINAL, HARDENED, SEO-SAFE
+// =============================================================================
 app.use(async (req, res, next) => {
   const userAgent = req.headers["user-agent"]?.toLowerCase() || "";
-  const isBot = /bot|crawler|spider|crawling/i.test(userAgent);
+  const isBot = /bot|crawler|spider|crawling|googlebot|bingbot/i.test(
+    userAgent
+  );
 
+  // Skip APIs, sockets, static assets
   if (
     req.path.startsWith("/api") ||
     req.path.startsWith("/socket.io") ||
@@ -194,6 +215,7 @@ app.use(async (req, res, next) => {
     return next();
   }
 
+  // Only handle post pages for bots
   if (isBot && req.path.startsWith("/post/")) {
     const slug = req.path.split("/")[2];
 
@@ -201,64 +223,108 @@ app.use(async (req, res, next) => {
       const post = await PostModel.findOne({ slug, isPublished: true })
         .populate("author", "name")
         .select(
-          "title metaTitle metaDescription excerpt blocks ogImage createdAt"
-        );
+          "title metaTitle metaDescription excerpt blocks ogImage createdAt updatedAt"
+        )
+        .lean();
 
-      if (post) {
-        const title = `${post.metaTitle || post.title} | Readzio`;
-        const description =
+      if (!post || !post.createdAt) return next();
+
+      // ----------------------------
+      // TEXT EXTRACTION
+      // ----------------------------
+      const rawText =
+        post.blocks?.find((b) => b?.type === "text" && b?.value)?.value || "";
+
+      const cleanText = rawText
+        .replace(/<[^>]+>/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      // ----------------------------
+      // SAFE SEO VALUES
+      // ----------------------------
+      const description = escapeHtml(
+        (
           post.metaDescription ||
           post.excerpt ||
-          post.blocks?.find((b) => b.type === "text")?.text?.slice(0, 160) ||
-          "Explore high-quality articles on Readzio.";
-        const ogImage =
-          post.ogImage || "https://readzio.com/default-og-image.png";
-        const authorName = post.author?.name || "Unknown";
+          cleanText ||
+          "Explore high-quality articles on Readzio."
+        ).slice(0, 160)
+      );
 
-        return res.status(200).send(`
-          <!DOCTYPE html>
-          <html lang="en">
-            <head>
-              <meta charset="UTF-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-              <title>${title}</title>
-              <meta name="description" content="${description}" />
-              <meta property="og:title" content="${title}" />
-              <meta property="og:description" content="${description}" />
-              <meta property="og:image" content="${ogImage}" />
-              <meta property="og:type" content="article" />
-              <meta property="og:url" content="https://readzio.com/post/${slug}" />
-              <meta name="twitter:card" content="summary_large_image" />
-              <meta name="twitter:title" content="${title}" />
-              <meta name="twitter:description" content="${description}" />
-              <meta name="twitter:image" content="${ogImage}" />
+      const safeTitle = escapeHtml(post.metaTitle || post.title || "Readzio");
+      const safeAuthor = escapeHtml(post.author?.name || "Unknown Author");
 
-              <script type="application/ld+json">
-              {
-                "@context": "https://schema.org",
-                "@type": "BlogPosting",
-                "headline": "${post.title}",
-                "image": ["${ogImage}"],
-                "url": "https://readzio.com/post/${slug}",
-                "author": {
-                  "@type": "Person",
-                  "name": "${authorName}"
-                },
-                "datePublished": "${post.createdAt.toISOString()}"
-              }
-              </script>
-            </head>
-            <body>
-              <h1>${post.title}</h1>
-              <p>${description}</p>
-              <p><em>Slug: ${slug}</em></p>
-              <small>Static preview for search bots</small>
-            </body>
-          </html>
-        `);
-      }
-    } catch (error) {
-      console.error("Error fetching post for bot:", error.message);
+      const ogImage =
+        post.ogImage && typeof post.ogImage === "string"
+          ? post.ogImage
+          : "https://www.readzio.com/logo.png";
+
+      const publishedISO = new Date(post.createdAt).toISOString();
+      const modifiedISO =
+        post.updatedAt instanceof Date
+          ? post.updatedAt.toISOString()
+          : publishedISO;
+
+      const publishedHuman = new Date(post.createdAt).toDateString();
+
+      // ----------------------------
+      // BOT-FRIENDLY STATIC HTML
+      // ----------------------------
+      return res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>${safeTitle} | Readzio</title>
+    <meta name="description" content="${description}" />
+
+    <meta property="og:title" content="${safeTitle} | Readzio" />
+    <meta property="og:description" content="${description}" />
+    <meta property="og:image" content="${ogImage}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://www.readzio.com/post/${slug}" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${safeTitle} | Readzio" />
+    <meta name="twitter:description" content="${description}" />
+    <meta name="twitter:image" content="${ogImage}" />
+
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "${escapeJson(safeTitle)}",
+  "description": "${escapeJson(description)}",
+  "image": ["${escapeJson(ogImage)}"],
+  "url": "https://www.readzio.com/post/${slug}",
+  "author": {
+    "@type": "Person",
+    "name": "${escapeJson(safeAuthor)}"
+  },
+  "datePublished": "${publishedISO}",
+  "dateModified": "${modifiedISO}"
+}
+    </script>
+  </head>
+
+  <body>
+    <article itemscope itemtype="https://schema.org/BlogPosting">
+      <h1 itemprop="headline">${safeTitle}</h1>
+
+      <time itemprop="datePublished" datetime="${publishedISO}">
+        ${publishedHuman}
+      </time>
+
+      <p itemprop="description">${description}</p>
+
+      <small>Static preview for search bots</small>
+    </article>
+  </body>
+</html>`);
+    } catch (err) {
+      console.error("❌ Bot SEO render error:", err.message);
     }
   }
 
