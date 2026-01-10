@@ -198,7 +198,7 @@ const escapeJson = (str = "") =>
     .trim();
 
 // =============================================================================
-// SEO BOT HANDLING (GOOGLEBOT, ETC.) — FINAL, HARDENED, SEO-SAFE
+// SEO BOT HANDLING (GOOGLEBOT, ETC.) — FINAL, BUG-FREE
 // =============================================================================
 app.use(async (req, res, next) => {
   const userAgent = req.headers["user-agent"]?.toLowerCase() || "";
@@ -230,7 +230,7 @@ app.use(async (req, res, next) => {
       if (!post || !post.createdAt) return next();
 
       // ----------------------------
-      // TEXT EXTRACTION
+      // TEXT EXTRACTION (RAW)
       // ----------------------------
       const rawText =
         post.blocks?.find((b) => b?.type === "text" && b?.value)?.value || "";
@@ -241,22 +241,24 @@ app.use(async (req, res, next) => {
         .trim();
 
       // ----------------------------
-      // SAFE SEO VALUES
+      // DESCRIPTION (ESCAPE ONCE ONLY)
       // ----------------------------
-      const description = escapeHtml(
-        (
-          post.metaDescription ||
-          post.excerpt ||
-          cleanText ||
-          "Explore high-quality articles on Readzio."
-        ).slice(0, 160)
-      );
+      const rawDescription =
+        post.metaDescription ||
+        post.excerpt ||
+        cleanText ||
+        "Explore high-quality articles on Readzio.";
 
+      const description = escapeHtml(rawDescription.slice(0, 160));
+
+      // ----------------------------
+      // SAFE VALUES
+      // ----------------------------
       const safeTitle = escapeHtml(post.metaTitle || post.title || "Readzio");
       const safeAuthor = escapeHtml(post.author?.name || "Unknown Author");
 
       const ogImage =
-        post.ogImage && typeof post.ogImage === "string"
+        typeof post.ogImage === "string" && post.ogImage
           ? post.ogImage
           : "https://www.readzio.com/logo.png";
 
