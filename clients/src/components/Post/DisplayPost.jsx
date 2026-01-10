@@ -92,6 +92,42 @@ const DisplayPost = () => {
   const activeLoading = isAuthenticated ? loading : guestLoading;
   const activeError = isAuthenticated ? error : guestError;
 
+  const getSeoDescription = (html, minLength = 150, maxLength = 180) => {
+    if (!html) return "";
+
+    const text = html
+      .replace(/<[^>]+>/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (text.length <= maxLength) return text;
+
+    // Look for sentence end AFTER minLength
+    const sentenceEndRegex = new RegExp(`^(.{${minLength},}?[.!?])(\\s|$)`);
+
+    const match = text.match(sentenceEndRegex);
+
+    if (match) {
+      return match[1].trim();
+    }
+
+    // Fallback: safe cut at word boundary
+    return text
+      .slice(0, maxLength)
+      .replace(/\s+\S*$/, "")
+      .trim();
+  };
+
+  const postDescription = useMemo(() => {
+    if (!activePost?.blocks) return "";
+
+    const firstTextBlock = activePost.blocks.find(
+      (b) => b?.type === "text" && b?.value
+    );
+
+    return getSeoDescription(firstTextBlock?.value, 180);
+  }, [activePost]);
+
   // 🔍 DEBUG: Derived active values used in rendering
   // console.log("🔍 DEBUG Active values", {
   //   activePostId: activePost?._id || "none",
@@ -386,129 +422,97 @@ const DisplayPost = () => {
       </div>
     </div>
   );
-
   const renderPostContent = () => {
-    // 🔍 DEBUG: The most crucial log – shows exactly which branch we enter
-    // console.log("🔍 DEBUG renderPostContent decision tree", {
-    //   activeLoading,
-    //   subscriptionLoading,
-    //   fetchAttempted,
-    //   hasError: !!activeError,
-    //   hasPostId: !!activePost?._id,
-    //   hasBlocksArray: Array.isArray(activePost?.blocks),
-    //   blocksLength: activePost?.blocks?.length ?? 0,
-    //   canViewPost,
-    //   isPostRestricted,
-    //   isAuthor,
-    // });
-
+    // 1. Loading states
     if (activeLoading || subscriptionLoading || !fetchAttempted) {
-      // console.log("🔍 → Showing skeleton loader");
       return renderSkeleton();
     }
 
+    // 2. Error state
     if (activeError) {
-      // console.log("🔍 → Showing PostNotFound due to activeError");
       return <PostNotFound message={activeError} />;
     }
 
+    // 3. Invalid post
     if (!activePost?._id || !Array.isArray(activePost.blocks)) {
-      // console.log("🔍 → Showing PostNotFound – missing _id or valid blocks");
       return <PostNotFound message="Post not found" />;
     }
 
-    // console.log("🔍 → Rendering full post content successfully");
-
-    // SEO and content extraction
-    const firstTextBlock = activePost.blocks?.find(
+    // 4. Extract first text block (SEO + meta)
+    const firstTextBlock = activePost.blocks.find(
       (b) => b?.type === "text" && b?.value
     );
 
-    const descriptionHtml = firstTextBlock?.value || "";
-    const plainDescription =
-      descriptionHtml
-        .replace(/<[^>]+>/g, "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 160)
-        .trim() || "Read this post on readzio";
+    const seoDescription =
+      postDescription ||
+      "Read this article on Readzio – ideas, discussions, and insights.";
 
+    // 5. Extract first image
     const firstImage =
-      activePost.blocks?.find((b) => b?.type === "image")?.src ||
-      activePost.blocks?.find((b) => b?.type === "image")?.url ||
+      activePost.blocks.find((b) => b?.type === "image")?.src ||
+      activePost.blocks.find((b) => b?.type === "image")?.url ||
       activePost.thumbnail ||
       `${BASE_URL}/logo.png`;
 
+    // 6. JSON-LD (clean & safe)
     const jsonLd = {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
-      headline: activePost.title || "readzio Post",
-      description: plainDescription,
+      headline: activePost.title,
+      description: seoDescription,
       image: [firstImage],
       author: {
         "@type": "Person",
-        name:
-          activePost.author?.name ||
-          activePost.author?.fullName ||
-          "readzio Author",
+        name: activePost.author?.name || "Readzio Author",
         url: `${BASE_URL}/profile/${activePost.author?._id}`,
       },
       publisher: {
         "@type": "Organization",
-        name: "readzio",
+        name: "Readzio",
         logo: {
           "@type": "ImageObject",
           url: `${BASE_URL}/logo.png`,
         },
       },
       url: `${BASE_URL}/post/${activePost.slug}`,
-      datePublished: activePost.createdAt || new Date().toISOString(),
-      dateModified:
-        activePost.updatedAt ||
-        activePost.createdAt ||
-        new Date().toISOString(),
+      datePublished: activePost.createdAt,
+      dateModified: activePost.updatedAt || activePost.createdAt,
       mainEntityOfPage: {
         "@type": "WebPage",
         "@id": `${BASE_URL}/post/${activePost.slug}`,
       },
-      isAccessibleForFree: isPostRestricted ? "False" : "True",
-      hasPart: isPostRestricted
-        ? {
-            "@type": "WebPageElement",
-            isAccessibleForFree: "False",
-            cssSelector: ".premium-content-section",
-          }
-        : undefined,
+      isAccessibleForFree: !isPostRestricted,
     };
 
     return (
       <>
+        {/* SEO HEAD */}
         <Helmet>
-          <title>
-            {activePost.title
-              ? `${activePost.title} | readzio`
-              : "Loading... | readzio"}
-          </title>
+          <title>{`${activePost.title} | Readzio`}</title>
+
           <meta name="robots" content="index, follow" />
-          <meta name="description" content={plainDescription} />
+          <meta name="description" content={seoDescription} />
+
           <link rel="canonical" href={`${BASE_URL}/post/${activePost.slug}`} />
 
-          <meta
-            property="og:title"
-            content={activePost.title || "readzio Post"}
-          />
-          <meta property="og:description" content={plainDescription} />
+          {/* Open Graph */}
+          <meta property="og:title" content={activePost.title} />
+          <meta property="og:description" content={seoDescription} />
           <meta property="og:image" content={firstImage} />
           <meta property="og:type" content="article" />
           <meta
             property="og:url"
             content={`${BASE_URL}/post/${activePost.slug}`}
           />
+
+          {/* Twitter */}
           <meta name="twitter:card" content="summary_large_image" />
 
+          {/* Structured Data */}
           <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
         </Helmet>
 
+        {/* ARTICLE */}
         <article
           className="space-y-8 prose prose-lg max-w-none text-gray-700 dark:text-gray-300 leading-relaxed"
           itemScope
@@ -524,40 +528,21 @@ const DisplayPost = () => {
             categoryMap={categoryMap}
             formatTime={formatTime}
             setIsDeleteModalOpen={setIsDeleteModalOpen}
+            description={postDescription}
           />
 
-          <div className="relative">
-            <BlockContentRenderer
-              post={activePost}
-              isAuthor={isAuthor}
-              showAnyway={showAnyway}
-              setShowAnyway={setShowAnyway}
-              canViewPost={canViewPost}
-              isPostRestricted={isPostRestricted}
-              currentUser={currentUser}
-              getUserById={(userId) =>
-                userId === activePost.author?._id ? activePost.author : null
-              }
-            />
-
-            {firstTextBlock && (
-              <div
-                itemProp="articleBody"
-                dangerouslySetInnerHTML={{ __html: firstTextBlock?.value }}
-                style={{
-                  position: "absolute",
-                  width: "1px",
-                  height: "1px",
-                  padding: 0,
-                  margin: "-1px",
-                  overflow: "hidden",
-                  clip: "rect(0, 0, 0, 0)",
-                  whiteSpace: "nowrap",
-                  border: 0,
-                }}
-              />
-            )}
-          </div>
+          <BlockContentRenderer
+            post={activePost}
+            isAuthor={isAuthor}
+            showAnyway={showAnyway}
+            setShowAnyway={setShowAnyway}
+            canViewPost={canViewPost}
+            isPostRestricted={isPostRestricted}
+            currentUser={currentUser}
+            getUserById={(userId) =>
+              userId === activePost.author?._id ? activePost.author : null
+            }
+          />
 
           <SubscriptionBanner
             showSeeMore={showSeeMore}
@@ -606,7 +591,6 @@ const DisplayPost = () => {
                   {activePost?._id && (
                     <div className="sticky top-[calc(100vh-200px)]">
                       <DisplayAd postId={activePost._id} testMode={false} />
-                      
                     </div>
                   )}
                 </div>

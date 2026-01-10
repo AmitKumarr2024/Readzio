@@ -13,3 +13,5 @@
 {"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2026-01-02T09:23:30.422Z"}
 {"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2026-01-02T17:09:11.678Z"}
 {"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2026-01-03T08:24:51.648Z"}
+{"level":"error","message":"[MongoDB] ❌ Failed to connect:","timestamp":"2026-01-10T06:39:45.958Z"}
+{"level":"info","message":"[MongoDB] ✅ Connected successfully","timestamp":"2026-01-10T06:40:19.891Z"}

@@ -13,7 +13,7 @@ const AboutPage = () => {
       <Helmet>
         <title>
           Real-Time Reading & Discussion Platform | Write, Discuss & Get
-          Feedback | readzio
+          Feedback | Readzio
         </title>
 
         <meta
@@ -21,20 +21,32 @@ const AboutPage = () => {
           content="Readzio is a free real-time reading and discussion platform where users write articles, join live conversations, vote in polls, and get instant feedback on ideas."
         />
 
-        <meta
-          name="keywords"
-          content="real-time discussion platform, write articles online free, interactive publishing platform, idea discussion website, online forum writing platform"
-        />
+        <link rel="canonical" href="https://readzio.com/about" />
 
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
         <meta
           property="og:title"
-          content="Real-Time Reading & Discussion Platform | readzio"
+          content="Real-Time Reading & Discussion Platform | Readzio"
         />
-
         <meta
           property="og:description"
-          content="Write ideas, get instant feedback, vote in polls, and join live discussions on readzio — a discussion-first reading and writing platform."
+          content="Write ideas, get instant feedback, vote in polls, and join live discussions on Readzio."
         />
+        <meta property="og:url" content="https://readzio.com/about" />
+        <meta property="og:image" content="https://readzio.com/logo.png" />
+
+        {/* X Cards */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+          name="twitter:title"
+          content="Real-Time Reading & Discussion Platform | Readzio"
+        />
+        <meta
+          name="twitter:description"
+          content="Write ideas, get instant feedback, vote in polls, and join live discussions on Readzio."
+        />
+        <meta name="twitter:image" content="https://readzio.com/logo.png" />
       </Helmet>
 
       <div className="min-h-[600px] py-24 px-4 sm:px-6 lg:px-8">

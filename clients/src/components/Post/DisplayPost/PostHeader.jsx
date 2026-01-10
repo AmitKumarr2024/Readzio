@@ -1,4 +1,4 @@
-// src/components/Post/DisplayPost/PostHeader.jsx
+// // src/components/Post/DisplayPost/PostHeader.jsx
 import React from "react";
 import { toast } from "react-hot-toast";
 
@@ -22,8 +22,14 @@ const PostHeader = ({ post }) => {
 
       {/* Published Date */}
       {formattedDate && (
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Published on: <time dateTime={post.createdAt}>{formattedDate}</time>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-6 font-medium">
+          Published on:{" "}
+          <time
+            dateTime={post.createdAt}
+            className="font-semibold text-gray-700 dark:text-gray-300"
+          >
+            {formattedDate}
+          </time>
         </p>
       )}
 
