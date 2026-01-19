@@ -81,7 +81,7 @@ function validateEnvironment() {
   if (missing.length > 0) {
     console.error(
       "❌ Missing required environment variables:",
-      missing.join(", ")
+      missing.join(", "),
     );
     process.exit(1);
   }
@@ -143,7 +143,7 @@ app.use(
       return compression.filter(req, res);
     },
     threshold: 1024,
-  })
+  }),
 );
 
 // CORS
@@ -155,7 +155,7 @@ app.use(
       callback(new Error("Not allowed by CORS policy"), false);
     },
     credentials: true,
-  })
+  }),
 );
 
 // Body parsing
@@ -165,7 +165,7 @@ app.use(
     verify: (req, res, buf) => {
       if (req.path.includes("/webhook")) req.rawBody = buf;
     },
-  })
+  }),
 );
 
 app.use(
@@ -173,7 +173,7 @@ app.use(
     extended: true,
     limit: "50mb",
     parameterLimit: 50000,
-  })
+  }),
 );
 
 app.use(cookieParser());
@@ -213,9 +213,16 @@ const escapeJson = (str = "") =>
 // =============================================================================
 app.use(async (req, res, next) => {
   const userAgent = req.headers["user-agent"]?.toLowerCase() || "";
-  const isBot = /bot|crawler|spider|crawling|googlebot|bingbot/i.test(
-    userAgent
+
+  const ua = (req.headers["user-agent"] || "").toLowerCase();
+
+  const isSearchBot = /googlebot|bingbot|yandex|duckduckbot|baiduspider/i.test(
+    ua,
   );
+
+  const isAdsBot = /adsbot-google|mediapartners-google/i.test(ua);
+
+  const isAnyBot = isSearchBot || isAdsBot;
 
   // Skip APIs, sockets, static assets
   if (
@@ -226,14 +233,14 @@ app.use(async (req, res, next) => {
     return next();
   }
 
-  if (isBot && req.path.startsWith("/post/")) {
+  if (isAnyBot && req.path.startsWith("/post/")) {
     const slug = req.path.split("/")[2];
 
     try {
       const post = await PostModel.findOne({ slug, isPublished: true })
         .populate("author", "name")
         .select(
-          "title metaTitle metaDescription excerpt blocks ogImage createdAt updatedAt"
+          "title metaTitle metaDescription excerpt blocks ogImage createdAt updatedAt",
         )
         .lean();
 
@@ -267,11 +274,11 @@ app.use(async (req, res, next) => {
       // SAFE VALUES
       // ----------------------------
       const safeTitle = escapeHtml(
-        decodeHtmlEntities(post.metaTitle || post.title || "Readzio")
+        decodeHtmlEntities(post.metaTitle || post.title || "Readzio"),
       );
 
       const safeAuthor = escapeHtml(
-        decodeHtmlEntities(post.author?.name || "Unknown Author")
+        decodeHtmlEntities(post.author?.name || "Unknown Author"),
       );
 
       const ogImage =
@@ -353,22 +360,23 @@ app.use(async (req, res, next) => {
 // =============================================================================
 // HOMEPAGE BOT SAFETY FIX (MUST BE BEFORE PRERENDER)
 // =============================================================================
+const SEO_HOME_PATH = path.join(__dirname, "servers/seo/home.html");
 
-app.get("/", (req, res, next) => {
-  const ua = req.headers["user-agent"] || "";
+app.get("/", (req, res) => {
+  const ua = (req.headers["user-agent"] || "").toLowerCase();
 
-  if (/bot|crawler|spider|google/i.test(ua)) {
-    return res.sendFile(CLIENT_INDEX_PATH);
+  const isSearchBot = /googlebot|bingbot|yandex|duckduckbot|baiduspider/i.test(
+    ua,
+  );
+
+  const isAdsBot = /adsbot-google|mediapartners-google/i.test(ua);
+
+  if (isSearchBot || isAdsBot) {
+    return res.sendFile(SEO_HOME_PATH);
   }
 
-  next();
+  return res.sendFile(CLIENT_INDEX_PATH);
 });
-
-prerender.set("protocol", "https");
-prerender.set("prerenderServiceUrl", "https://render-tron.appspot.com/render");
-prerender.set("whitelisted", ["^/post/"]);
-prerender.set("blacklisted", ["^/$"]);
-app.use(prerender);
 
 // =============================================================================
 // ROUTE CONFIGURATION
@@ -493,7 +501,7 @@ function mountRoutes() {
   });
 
   console.log(
-    `\n📊 Routes: ✅ ${successfulRoutes} mounted, ❌ ${failedRoutes} failed`
+    `\n📊 Routes: ✅ ${successfulRoutes} mounted, ❌ ${failedRoutes} failed`,
   );
   return { successfulRoutes, failedRoutes };
 }
@@ -511,7 +519,7 @@ if (fsSync.existsSync(PUBLIC_PATH)) {
       maxAge: NODE_ENV === "production" ? "1d" : 0,
       etag: true,
       lastModified: true,
-    })
+    }),
   );
   console.log("✅ Public directory mounted");
 } else {
@@ -530,7 +538,7 @@ Sitemap: https://www.readzio.com/sitemap.xml
 
 # Disallow admin and API routes
 Disallow: /api/
-Disallow: /admin/`
+Disallow: /admin/`,
   );
 });
 
@@ -573,7 +581,7 @@ app.get("/sitemap.xml", async (req, res) => {
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader(
       "Cache-Control",
-      "no-cache, no-store, must-revalidate, max-age=0"
+      "no-cache, no-store, must-revalidate, max-age=0",
     );
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
@@ -613,7 +621,7 @@ app.get("/health", (req, res) => {
       size: `${(stats.size / 1024).toFixed(2)} KB`,
       lastModified: stats.mtime.toISOString(),
       age: `${Math.floor(
-        (Date.now() - stats.mtime.getTime()) / 60000
+        (Date.now() - stats.mtime.getTime()) / 60000,
       )} minutes ago`,
     };
   }
@@ -665,7 +673,7 @@ if (NODE_ENV === "production") {
             res.setHeader("Cache-Control", "no-cache");
           }
         },
-      })
+      }),
     );
 
     app.get("*", (req, res, next) => {
@@ -773,7 +781,7 @@ process.on("unhandledRejection", (reason, promise) => {
 
 function gracefulShutdown(signal) {
   console.log(
-    `\n[Shutdown] 🛑 Received ${signal}, starting graceful shutdown...`
+    `\n[Shutdown] 🛑 Received ${signal}, starting graceful shutdown...`,
   );
 
   const shutdownTimeout = setTimeout(() => {
@@ -854,7 +862,7 @@ async function startServer() {
 
       if (routeStats.failedRoutes > 0) {
         console.warn(
-          `⚠️  Warning: ${routeStats.failedRoutes} routes failed to mount`
+          `⚠️  Warning: ${routeStats.failedRoutes} routes failed to mount`,
         );
       }
 
