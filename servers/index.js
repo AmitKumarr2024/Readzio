@@ -657,6 +657,9 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Serve Vite public assets (favicons, manifest, etc.)
+app.use(express.static(path.join(__dirname, "clients", "public")));
+
 // =============================================================================
 // CLIENT SERVING (PRODUCTION)
 // =============================================================================
