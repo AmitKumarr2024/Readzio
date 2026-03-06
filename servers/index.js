@@ -209,17 +209,16 @@ const escapeJson = (str = "") =>
     .trim();
 
 // =============================================================================
-// SEO BOT HANDLING (GOOGLEBOT, ETC.) — FINAL, PERMANENT
+// SEO BOT HANDLING (GOOGLEBOT, ADSENSE, ETC.) — FIXED
 // =============================================================================
 app.use(async (req, res, next) => {
-  const userAgent = req.headers["user-agent"]?.toLowerCase() || "";
-
   const ua = (req.headers["user-agent"] || "").toLowerCase();
 
   const isSearchBot = /googlebot|bingbot|yandex|duckduckbot|baiduspider/i.test(
     ua,
   );
 
+  // ✅ FIX: AdsBot needs full HTML too — Google AdSense uses this to verify content
   const isAdsBot = /adsbot-google|mediapartners-google/i.test(ua);
 
   const isAnyBot = isSearchBot || isAdsBot;
@@ -236,6 +235,8 @@ app.use(async (req, res, next) => {
   if (isAnyBot && req.path.startsWith("/post/")) {
     const slug = req.path.split("/")[2];
 
+    if (!slug) return next();
+
     try {
       const post = await PostModel.findOne({ slug, isPublished: true })
         .populate("author", "name")
@@ -244,7 +245,21 @@ app.use(async (req, res, next) => {
         )
         .lean();
 
-      if (!post || !post.createdAt) return next();
+      // ✅ FIX: Return proper 404 instead of next() — prevents Google from seeing empty SPA
+      if (!post) {
+        return res.status(404).send(`<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Article Not Found | Readzio</title>
+    <meta name="robots" content="noindex" />
+  </head>
+  <body>
+    <h1>404 - Article Not Found</h1>
+    <p>This article does not exist or has been removed.</p>
+  </body>
+</html>`);
+      }
 
       // ----------------------------
       // TEXT EXTRACTION
@@ -263,12 +278,20 @@ app.use(async (req, res, next) => {
       const rawDescription =
         post.metaDescription ||
         post.excerpt ||
-        cleanText ||
+        cleanText.slice(0, 300) ||
         "Explore high-quality articles on Readzio.";
 
       const normalizedDescription = decodeHtmlEntities(rawDescription);
-
       const description = escapeHtml(normalizedDescription.slice(0, 160));
+
+      // ----------------------------
+      // ARTICLE BODY (for Soft 404 fix)
+      // ----------------------------
+      // ✅ FIX: Include real article text so Google doesn't see thin content
+      const articleBodyText =
+        cleanText.length > 0
+          ? escapeHtml(cleanText.slice(0, 2000))
+          : escapeHtml(normalizedDescription);
 
       // ----------------------------
       // SAFE VALUES
@@ -295,7 +318,7 @@ app.use(async (req, res, next) => {
       const publishedHuman = new Date(post.createdAt).toDateString();
 
       // ----------------------------
-      // BOT-FRIENDLY STATIC HTML
+      // BOT-FRIENDLY STATIC HTML — FIXED
       // ----------------------------
       return res.status(200).send(`<!DOCTYPE html>
 <html lang="en">
@@ -304,13 +327,26 @@ app.use(async (req, res, next) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>${safeTitle} | Readzio</title>
+
+    <!-- ✅ FIX 1: Canonical tag — prevents Google from mapping to homepage -->
+    <link rel="canonical" href="https://www.readzio.com/post/${slug}" />
+
+    <!-- ✅ FIX 2: Robots meta — explicitly tell Google to index this page -->
+    <meta name="robots" content="index, follow" />
+
     <meta name="description" content="${description}" />
+
+    <!-- Article meta — helps Google understand publish date -->
+    <meta property="article:published_time" content="${publishedISO}" />
+    <meta property="article:modified_time" content="${modifiedISO}" />
+    <meta property="article:author" content="${safeAuthor}" />
 
     <meta property="og:title" content="${safeTitle} | Readzio" />
     <meta property="og:description" content="${description}" />
     <meta property="og:image" content="${ogImage}" />
     <meta property="og:type" content="article" />
     <meta property="og:url" content="https://www.readzio.com/post/${slug}" />
+    <meta property="og:site_name" content="Readzio" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${safeTitle} | Readzio" />
@@ -325,9 +361,21 @@ app.use(async (req, res, next) => {
   "description": "${escapeJson(normalizedDescription.slice(0, 160))}",
   "image": ["${escapeJson(ogImage)}"],
   "url": "https://www.readzio.com/post/${slug}",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.readzio.com/post/${slug}"
+  },
   "author": {
     "@type": "Person",
     "name": "${escapeJson(safeAuthor)}"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Readzio",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.readzio.com/logo.png"
+    }
   },
   "datePublished": "${publishedISO}",
   "dateModified": "${modifiedISO}"
@@ -343,14 +391,22 @@ app.use(async (req, res, next) => {
         ${publishedHuman}
       </time>
 
+      <span itemprop="author" itemscope itemtype="https://schema.org/Person">
+        <span itemprop="name">${safeAuthor}</span>
+      </span>
+
       <p itemprop="description">${description}</p>
 
-      <small>Static preview for search bots</small>
+      <!-- ✅ FIX 3: Real article body text — fixes Soft 404 (thin content issue) -->
+      <div itemprop="articleBody">
+        <p>${articleBodyText}</p>
+      </div>
     </article>
   </body>
 </html>`);
     } catch (err) {
       console.error("❌ Bot SEO render error:", err.message);
+      return next();
     }
   }
 
@@ -368,7 +424,6 @@ app.get("/", (req, res) => {
   const isSearchBot = /googlebot|bingbot|yandex|duckduckbot|baiduspider/i.test(
     ua,
   );
-
   const isAdsBot = /adsbot-google|mediapartners-google/i.test(ua);
 
   if (isSearchBot || isAdsBot) {
@@ -388,7 +443,7 @@ const routeConfigs = [
     name: "AuthRoutes",
     router: AuthRoutes,
     middleware: smartRateLimiter({
-      windowMs: 15 * 60 * 1000, // 15 minutes
+      windowMs: 15 * 60 * 1000,
       max: 500,
       keyGenerator: (req) => req.ip,
     }),
@@ -440,7 +495,7 @@ const routeConfigs = [
     router: guestRoutes,
     middleware: [
       smartRateLimiter({
-        windowMs: 10 * 60 * 1000, // 10 minutes
+        windowMs: 10 * 60 * 1000,
         max: 200,
         keyGenerator: (req) => req.ip,
       }),
@@ -542,21 +597,18 @@ Disallow: /admin/`,
   );
 });
 
-// ✅ FIXED SITEMAP ROUTE - ALWAYS FRESH, NO CACHING
+// ✅ SITEMAP ROUTE - ALWAYS FRESH, NO CACHING
 app.get("/sitemap.xml", async (req, res) => {
   try {
-    // Check if sitemap exists
     if (!fsSync.existsSync(SITEMAP_PATH)) {
       console.error("❌ Sitemap not found at:", SITEMAP_PATH);
       return res.status(404).type("text/plain").send("Sitemap not found");
     }
 
-    // Get file stats
     const stats = await fs.stat(SITEMAP_PATH);
     const lastModified = stats.mtime.toUTCString();
     const etag = `"${stats.size}-${stats.mtime.getTime()}"`;
 
-    // Check if client already has latest version (conditional request)
     const ifNoneMatch = req.headers["if-none-match"];
     const ifModifiedSince = req.headers["if-modified-since"];
 
@@ -565,10 +617,8 @@ app.get("/sitemap.xml", async (req, res) => {
       return res.status(304).end();
     }
 
-    // Read sitemap content
     const sitemapContent = await fs.readFile(SITEMAP_PATH, "utf-8");
 
-    // Validate XML structure
     if (
       !sitemapContent.includes("<?xml") ||
       !sitemapContent.includes("<urlset")
@@ -577,7 +627,6 @@ app.get("/sitemap.xml", async (req, res) => {
       return res.status(500).type("text/plain").send("Invalid sitemap format");
     }
 
-    // ✅ CRITICAL FIX: Force Google to always refetch
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader(
       "Cache-Control",
