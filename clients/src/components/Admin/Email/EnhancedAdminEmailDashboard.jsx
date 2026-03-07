@@ -8,8 +8,13 @@ import {
   FaChartLine,
   FaUsers,
   FaExclamationTriangle,
+  FaPowerOff,
 } from "react-icons/fa";
 import { checkAuth } from "../../../store/authSlice";
+import {
+  getDailyEmailToggleStatus,
+  toggleGlobalDailyEmail,
+} from "../../../store/adminSlice";
 import EmailStatusBulletin from "./EmailStatusBulletin";
 import { EnhancedManualEmailSender } from "./EnhancedManualEmailSender";
 import { EnhancedDailyPostDetails } from "./EnhancedDailyPostDetails";
@@ -23,6 +28,11 @@ export default function EnhancedAdminEmailDashboard() {
     loading: authLoading,
     error: authError,
   } = useSelector((state) => state.auth);
+
+  const { globalEmailToggle, globalEmailToggleLoading } = useSelector(
+    (state) => state.admin,
+  );
+
   const [activeTab, setActiveTab] = useState("sender");
 
   useEffect(() => {
@@ -30,6 +40,17 @@ export default function EnhancedAdminEmailDashboard() {
       dispatch(checkAuth());
     }
   }, [dispatch, isAuthenticated]);
+
+  useEffect(() => {
+    dispatch(getDailyEmailToggleStatus());
+  }, [dispatch]);
+
+  const handleToggle = () => {
+    const newValue = !(globalEmailToggle?.dailyDigestEnabled ?? true);
+    dispatch(toggleGlobalDailyEmail({ enabled: newValue }));
+  };
+
+  const isEnabled = globalEmailToggle?.dailyDigestEnabled !== false;
 
   if (authLoading) {
     return (
@@ -120,6 +141,66 @@ export default function EnhancedAdminEmailDashboard() {
               <p className="text-lg text-gray-600 dark:text-gray-400">
                 Advanced email system administration and monitoring
               </p>
+
+              {/* ── Global Email Toggle ── */}
+              <div className="flex items-center justify-center mt-6">
+                <div
+                  className={`flex items-center gap-4 px-6 py-3 rounded-2xl shadow-inner border transition-colors duration-300 ${
+                    isEnabled
+                      ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                      : "bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600"
+                  }`}
+                >
+                  {/* Icon */}
+                  <FaPowerOff
+                    className={`text-sm transition-colors duration-300 ${
+                      isEnabled
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-gray-400 dark:text-gray-500"
+                    }`}
+                  />
+
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-300 select-none">
+                    Daily Digest Emails
+                  </span>
+
+                  {/* Toggle switch */}
+                  <button
+                    onClick={handleToggle}
+                    disabled={globalEmailToggleLoading}
+                    aria-label={`Turn daily digest emails ${isEnabled ? "off" : "on"}`}
+                    className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                      isEnabled
+                        ? "bg-green-500 focus:ring-green-500"
+                        : "bg-gray-400 dark:bg-gray-600 focus:ring-gray-400"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 ${
+                        isEnabled ? "translate-x-8" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+
+                  {/* Status label */}
+                  <span
+                    className={`text-sm font-semibold min-w-[70px] text-left transition-colors duration-300 ${
+                      globalEmailToggleLoading
+                        ? "text-gray-400 dark:text-gray-500"
+                        : isEnabled
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-gray-500 dark:text-gray-400"
+                    }`}
+                  >
+                    {globalEmailToggleLoading
+                      ? "Updating…"
+                      : isEnabled
+                        ? "✓ Enabled"
+                        : "✗ Disabled"}
+                  </span>
+                </div>
+              </div>
+              {/* ── /Global Email Toggle ── */}
             </div>
           </div>
         </div>

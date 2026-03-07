@@ -26,7 +26,7 @@ export const sendVerificationEmail = createAsyncThunk(
       const response = await axiosInstance.post(
         "/admin/send-verification-email",
         { email, name },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -36,10 +36,10 @@ export const sendVerificationEmail = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to send verification email"
+        error.response?.data?.message || "Failed to send verification email",
       );
     }
-  }
+  },
 );
 
 // Send welcome email
@@ -50,7 +50,7 @@ export const sendWelcomeEmail = createAsyncThunk(
       const response = await axiosInstance.post(
         "/admin/send-welcome-email",
         { email, name },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -60,10 +60,10 @@ export const sendWelcomeEmail = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to send welcome email"
+        error.response?.data?.message || "Failed to send welcome email",
       );
     }
-  }
+  },
 );
 
 // Send password reset email
@@ -74,7 +74,7 @@ export const sendPasswordResetEmail = createAsyncThunk(
       const response = await axiosInstance.post(
         "/admin/send-reset-password-email",
         { email },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -84,10 +84,10 @@ export const sendPasswordResetEmail = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to send password reset email"
+        error.response?.data?.message || "Failed to send password reset email",
       );
     }
-  }
+  },
 );
 
 // Send invoice email
@@ -98,7 +98,7 @@ export const sendInvoiceEmail = createAsyncThunk(
       const response = await axiosInstance.post(
         "/admin/send-invoice-email",
         { email, name, invoiceData },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -108,10 +108,10 @@ export const sendInvoiceEmail = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to send invoice email"
+        error.response?.data?.message || "Failed to send invoice email",
       );
     }
-  }
+  },
 );
 
 // ============== EXISTING ACTIONS ==============
@@ -124,7 +124,7 @@ export const getAllUsers = createAsyncThunk(
       const response = await retryRequest(() =>
         axiosInstance.get(`/admin/users?page=${page}&limit=${limit}`, {
           withCredentials: true,
-        })
+        }),
       );
       return {
         users: response.data.users || [],
@@ -142,10 +142,10 @@ export const getAllUsers = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        err.response?.data?.message || "Failed to fetch users"
+        err.response?.data?.message || "Failed to fetch users",
       );
     }
-  }
+  },
 );
 
 // Toggle block user
@@ -156,7 +156,7 @@ export const toggleBlockUser = createAsyncThunk(
       const response = await axiosInstance.patch(
         `/admin/users/block/${userId}`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return { userId, blocked: response.data.message.includes("blocked") };
     } catch (error) {
@@ -166,10 +166,10 @@ export const toggleBlockUser = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to toggle block user"
+        error.response?.data?.message || "Failed to toggle block user",
       );
     }
-  }
+  },
 );
 
 // Toggle user role
@@ -180,7 +180,7 @@ export const toggleUserRole = createAsyncThunk(
       const response = await axiosInstance.patch(
         `/admin/users/role/${userId}`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return {
         userId,
@@ -193,10 +193,10 @@ export const toggleUserRole = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to toggle user role"
+        error.response?.data?.message || "Failed to toggle user role",
       );
     }
-  }
+  },
 );
 
 // Delete user
@@ -215,10 +215,10 @@ export const deleteUser = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to delete user"
+        error.response?.data?.message || "Failed to delete user",
       );
     }
-  }
+  },
 );
 
 // Fetch all posts with retry and fallback
@@ -232,16 +232,16 @@ export const getAllPosts = createAsyncThunk(
       sortField = "title",
       sortOrder = "asc",
     },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       const response = await retryRequest(() =>
         axiosInstance.get(
           `/admin/posts?page=${page}&limit=${limit}&search=${encodeURIComponent(
-            search
+            search,
           )}&sortField=${sortField}&sortOrder=${sortOrder}`,
-          { withCredentials: true }
-        )
+          { withCredentials: true },
+        ),
       );
       return {
         posts: response.data.posts || [],
@@ -262,7 +262,7 @@ export const getAllPosts = createAsyncThunk(
       });
       if (error.response?.status === 502) {
         console.warn(
-          "[getAllPosts] 502 Bad Gateway detected, returning fallback data"
+          "[getAllPosts] 502 Bad Gateway detected, returning fallback data",
         );
         return {
           posts: [],
@@ -273,10 +273,10 @@ export const getAllPosts = createAsyncThunk(
         };
       }
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch posts"
+        error.response?.data?.message || "Failed to fetch posts",
       );
     }
-  }
+  },
 );
 
 // Toggle block post
@@ -287,7 +287,7 @@ export const toggleBlockPost = createAsyncThunk(
       const response = await axiosInstance.patch(
         `/admin/posts/block/${postId}`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return { postId, blocked: response.data.message.includes("blocked") };
     } catch (error) {
@@ -297,10 +297,10 @@ export const toggleBlockPost = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to toggle block post"
+        error.response?.data?.message || "Failed to toggle block post",
       );
     }
-  }
+  },
 );
 
 // Delete post
@@ -319,10 +319,10 @@ export const deletePost = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to delete post"
+        error.response?.data?.message || "Failed to delete post",
       );
     }
-  }
+  },
 );
 
 // Create contact message
@@ -333,7 +333,7 @@ export const createContactMessage = createAsyncThunk(
       const response = await axiosInstance.post(
         "/admin/contact",
         { name, email, subject, message },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -342,10 +342,10 @@ export const createContactMessage = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to create contact message"
+        error.response?.data?.message || "Failed to create contact message",
       );
     }
-  }
+  },
 );
 
 // Fetch contact messages
@@ -355,7 +355,7 @@ export const fetchContactMessages = createAsyncThunk(
     try {
       const response = await axiosInstance.get(
         `/admin/contact-messages?page=${page}&limit=${limit}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return {
         messages: response.data.messages || [],
@@ -371,10 +371,10 @@ export const fetchContactMessages = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch contact messages"
+        error.response?.data?.message || "Failed to fetch contact messages",
       );
     }
-  }
+  },
 );
 
 // Toggle contact message handled status
@@ -385,7 +385,7 @@ export const toggleContactMessageHandled = createAsyncThunk(
       const response = await axiosInstance.patch(
         `/admin/contact-messages/${messageId}/handled`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return { messageId, isHandled: response.data.isHandled };
     } catch (error) {
@@ -395,10 +395,10 @@ export const toggleContactMessageHandled = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to toggle message status"
+        error.response?.data?.message || "Failed to toggle message status",
       );
     }
-  }
+  },
 );
 
 // Reply to contact message
@@ -409,7 +409,7 @@ export const replyContactMessage = createAsyncThunk(
       const response = await axiosInstance.post(
         `/admin/reply-contact/${messageId}`,
         { subject, message },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return { messageId, isHandled: true };
     } catch (error) {
@@ -419,10 +419,10 @@ export const replyContactMessage = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to reply to contact message"
+        error.response?.data?.message || "Failed to reply to contact message",
       );
     }
-  }
+  },
 );
 
 // Create report
@@ -433,7 +433,7 @@ export const createReport = createAsyncThunk(
       const response = await axiosInstance.post(
         "/admin/reports",
         { postId, reason, details },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -443,10 +443,10 @@ export const createReport = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to create report"
+        error.response?.data?.message || "Failed to create report",
       );
     }
-  }
+  },
 );
 
 // Fetch reported posts
@@ -456,7 +456,7 @@ export const fetchReportedPosts = createAsyncThunk(
     try {
       const response = await axiosInstance.get(
         `/admin/reports?page=${page}&limit=${limit}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return {
         reports: response.data.reports || [],
@@ -472,10 +472,10 @@ export const fetchReportedPosts = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch reported posts"
+        error.response?.data?.message || "Failed to fetch reported posts",
       );
     }
-  }
+  },
 );
 
 // Review report
@@ -486,7 +486,7 @@ export const reviewReport = createAsyncThunk(
       const response = await axiosInstance.patch(
         `/admin/reports/${reportId}`,
         { forwardToAuthor },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return { reportId, forwardToAuthor, isReviewed: true };
     } catch (error) {
@@ -496,10 +496,10 @@ export const reviewReport = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to review report"
+        error.response?.data?.message || "Failed to review report",
       );
     }
-  }
+  },
 );
 
 // Send report notification
@@ -510,7 +510,7 @@ export const sendReportNotification = createAsyncThunk(
       const response = await axiosInstance.post(
         "/admin/replies/send-notification",
         { reportId, subject, message },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -520,10 +520,10 @@ export const sendReportNotification = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to send notification"
+        error.response?.data?.message || "Failed to send notification",
       );
     }
-  }
+  },
 );
 
 // Acknowledge report
@@ -534,7 +534,7 @@ export const acknowledgeReport = createAsyncThunk(
       const response = await axiosInstance.post(
         `/admin/acknowledge-report/${reportId}`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return { reportId, isAcknowledged: true };
     } catch (error) {
@@ -544,10 +544,10 @@ export const acknowledgeReport = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to acknowledge report"
+        error.response?.data?.message || "Failed to acknowledge report",
       );
     }
-  }
+  },
 );
 
 // Fetch all users' earnings
@@ -565,10 +565,10 @@ export const getAllUsersEarnings = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch users' earnings"
+        error.response?.data?.message || "Failed to fetch users' earnings",
       );
     }
-  }
+  },
 );
 
 // Process bulk payouts
@@ -579,7 +579,7 @@ export const processBulkPayouts = createAsyncThunk(
       const response = await axiosInstance.post(
         "/earning/admin/payouts",
         { users },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -588,10 +588,10 @@ export const processBulkPayouts = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to process bulk payouts"
+        error.response?.data?.message || "Failed to process bulk payouts",
       );
     }
-  }
+  },
 );
 
 // Fetch site analytics
@@ -601,7 +601,7 @@ export const fetchSiteAnalytics = createAsyncThunk(
     try {
       const response = await axiosInstance.get(
         `/admin/analytics?startDate=${startDate}&endDate=${endDate}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data.data || {};
     } catch (error) {
@@ -612,10 +612,10 @@ export const fetchSiteAnalytics = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch site analytics"
+        error.response?.data?.message || "Failed to fetch site analytics",
       );
     }
-  }
+  },
 );
 
 // Clear error
@@ -633,7 +633,7 @@ export const sendEnhancedDailyPostEmail = createAsyncThunk(
       maxUsers = null,
       skipEligibilityCheck = false,
     } = {},
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       const response = await axiosInstance.post(
@@ -644,7 +644,7 @@ export const sendEnhancedDailyPostEmail = createAsyncThunk(
           maxUsers,
           skipEligibilityCheck,
         },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -654,10 +654,10 @@ export const sendEnhancedDailyPostEmail = createAsyncThunk(
       });
       return rejectWithValue(
         error.response?.data?.message ||
-          "Failed to send enhanced daily post emails"
+          "Failed to send enhanced daily post emails",
       );
     }
-  }
+  },
 );
 
 // Check user eligibility for emails (NEW)
@@ -667,7 +667,7 @@ export const checkUserEmailEligibility = createAsyncThunk(
     try {
       const response = await axiosInstance.get(
         `/dailyMail/check-user-eligibility/${userId}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return {
         userId,
@@ -681,10 +681,10 @@ export const checkUserEmailEligibility = createAsyncThunk(
       });
       return rejectWithValue(
         error.response?.data?.message ||
-          "Failed to check user email eligibility"
+          "Failed to check user email eligibility",
       );
     }
-  }
+  },
 );
 
 // Get bounce statistics (NEW)
@@ -694,7 +694,7 @@ export const getBounceStatistics = createAsyncThunk(
     try {
       const response = await axiosInstance.get(
         `/dailyMail/bounce-stats?days=${days}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -704,10 +704,10 @@ export const getBounceStatistics = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to get bounce statistics"
+        error.response?.data?.message || "Failed to get bounce statistics",
       );
     }
-  }
+  },
 );
 
 // Remove email from suppression list (NEW)
@@ -718,7 +718,7 @@ export const removeEmailSuppression = createAsyncThunk(
       const response = await axiosInstance.post(
         "/dailyMail/remove-suppression",
         { email },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return {
         email,
@@ -731,10 +731,10 @@ export const removeEmailSuppression = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to remove email suppression"
+        error.response?.data?.message || "Failed to remove email suppression",
       );
     }
-  }
+  },
 );
 
 // Test single email functionality (NEW)
@@ -745,7 +745,7 @@ export const testSingleEmail = createAsyncThunk(
       const response = await axiosInstance.post(
         "/dailyMail/test-email",
         { email, type },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -756,10 +756,10 @@ export const testSingleEmail = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to send test email"
+        error.response?.data?.message || "Failed to send test email",
       );
     }
-  }
+  },
 );
 
 // Get email system health (NEW)
@@ -777,10 +777,10 @@ export const getEmailSystemHealth = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to get email system health"
+        error.response?.data?.message || "Failed to get email system health",
       );
     }
-  }
+  },
 );
 
 // Enhanced daily post email report (UPDATED to use new path)
@@ -788,7 +788,7 @@ export const getDailyPostEmailReport = createAsyncThunk(
   "admin/getDailyPostEmailReport",
   async (
     { page = 1, limit = 10, date, status, includeStats = true },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       const queryParams = new URLSearchParams({
@@ -802,7 +802,7 @@ export const getDailyPostEmailReport = createAsyncThunk(
 
       const response = await axiosInstance.get(
         `/dailyMail/daily-post-report?${queryParams.toString()}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return {
         emailReports: response.data.logs || [],
@@ -822,10 +822,10 @@ export const getDailyPostEmailReport = createAsyncThunk(
       });
       return rejectWithValue(
         error.response?.data?.message ||
-          "Failed to fetch daily post email report"
+          "Failed to fetch daily post email report",
       );
     }
-  }
+  },
 );
 
 // Batch check user eligibility (NEW)
@@ -839,7 +839,7 @@ export const batchCheckEmailEligibility = createAsyncThunk(
           operation: "check-eligibility",
           data: { userIds },
         },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -850,10 +850,10 @@ export const batchCheckEmailEligibility = createAsyncThunk(
       });
       return rejectWithValue(
         error.response?.data?.message ||
-          "Failed to batch check email eligibility"
+          "Failed to batch check email eligibility",
       );
     }
-  }
+  },
 );
 
 // Record reading time
@@ -864,7 +864,7 @@ export const recordReadingTime = createAsyncThunk(
       const response = await axiosInstance.post(
         "/admin/reading-time",
         { postId, timeSpent },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -874,10 +874,10 @@ export const recordReadingTime = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to record reading time"
+        error.response?.data?.message || "Failed to record reading time",
       );
     }
-  }
+  },
 );
 
 // Get reading details by post
@@ -887,7 +887,7 @@ export const getReadingDetailsByPost = createAsyncThunk(
     try {
       const response = await axiosInstance.get(
         `/admin/reading-details/${postId}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -897,10 +897,10 @@ export const getReadingDetailsByPost = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch reading details"
+        error.response?.data?.message || "Failed to fetch reading details",
       );
     }
-  }
+  },
 );
 
 export const deleteAllNotifications = createAsyncThunk(
@@ -924,10 +924,10 @@ export const deleteAllNotifications = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to delete all notifications"
+        error.response?.data?.message || "Failed to delete all notifications",
       );
     }
-  }
+  },
 );
 
 // Download all data as Excel
@@ -953,10 +953,10 @@ export const downloadAllDataCsv = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to download Excel"
+        error.response?.data?.message || "Failed to download Excel",
       );
     }
-  }
+  },
 );
 
 // Fetch all subscription plans
@@ -974,10 +974,10 @@ export const getAllSubscriptionPlans = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch subscription plans"
+        error.response?.data?.message || "Failed to fetch subscription plans",
       );
     }
-  }
+  },
 );
 
 // Toggle user eligibility for subscription creation
@@ -988,7 +988,7 @@ export const toggleUserEligibility = createAsyncThunk(
       const response = await axiosInstance.post(
         "/admin/subscriptions/eligibility/toggle",
         { userId, enable },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -999,10 +999,10 @@ export const toggleUserEligibility = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to toggle user eligibility"
+        error.response?.data?.message || "Failed to toggle user eligibility",
       );
     }
-  }
+  },
 );
 
 // Update global eligibility criteria
@@ -1010,13 +1010,13 @@ export const updateGlobalEligibilityCriteria = createAsyncThunk(
   "admin/updateGlobalEligibilityCriteria",
   async (
     { minFollowers, minPosts, minEngagementRate, minAccountAgeDays },
-    { rejectWithValue, dispatch }
+    { rejectWithValue, dispatch },
   ) => {
     try {
       const response = await axiosInstance.patch(
         "/admin/subscriptions/criteria",
         { minFollowers, minPosts, minEngagementRate, minAccountAgeDays },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       dispatch({
         type: "subscription/syncSubscriptionCriteria",
@@ -1041,10 +1041,11 @@ export const updateGlobalEligibilityCriteria = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to update eligibility criteria"
+        error.response?.data?.message ||
+          "Failed to update eligibility criteria",
       );
     }
-  }
+  },
 );
 
 // Check user eligibility status
@@ -1054,7 +1055,7 @@ export const checkUserEligibility = createAsyncThunk(
     try {
       const response = await axiosInstance.get(
         `/admin/subscriptions/eligibility/${userId}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return {
         ...response.data,
@@ -1091,10 +1092,10 @@ export const checkUserEligibility = createAsyncThunk(
         };
       }
       return rejectWithValue(
-        error.response?.data?.message || "Failed to check user eligibility"
+        error.response?.data?.message || "Failed to check user eligibility",
       );
     }
-  }
+  },
 );
 
 // Toggle subscription plan status
@@ -1105,7 +1106,7 @@ export const toggleSubscriptionPlanStatus = createAsyncThunk(
       const response = await axiosInstance.patch(
         `/admin/subscriptions/plan/status`,
         { planId, status },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data.plan;
     } catch (error) {
@@ -1117,10 +1118,10 @@ export const toggleSubscriptionPlanStatus = createAsyncThunk(
       });
       return rejectWithValue(
         error.response?.data?.message ||
-          "Failed to toggle subscription plan status"
+          "Failed to toggle subscription plan status",
       );
     }
-  }
+  },
 );
 
 // Grant/revoke subscription creation access
@@ -1131,7 +1132,7 @@ export const grantSubscriptionAccess = createAsyncThunk(
       const response = await axiosInstance.post(
         "/admin/subscriptions/grant",
         { userId, grant },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -1142,10 +1143,10 @@ export const grantSubscriptionAccess = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to grant subscription access"
+        error.response?.data?.message || "Failed to grant subscription access",
       );
     }
-  }
+  },
 );
 
 // Set per-user subscription eligibility override
@@ -1153,13 +1154,13 @@ export const setUserEligibilityOverride = createAsyncThunk(
   "admin/setUserEligibilityOverride",
   async (
     { userId, isEligibleForSubscription, bypassSubscriptionCriteria },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       const response = await axiosInstance.patch(
         `/admin/subscriptions/user-override/${userId}`,
         { isEligibleForSubscription, bypassSubscriptionCriteria },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -1170,10 +1171,10 @@ export const setUserEligibilityOverride = createAsyncThunk(
       });
       return rejectWithValue(
         error.response?.data?.message ||
-          "Failed to update user eligibility override"
+          "Failed to update user eligibility override",
       );
     }
-  }
+  },
 );
 
 // Override user milestone
@@ -1184,7 +1185,7 @@ export const overrideUserMilestones = createAsyncThunk(
       const response = await axiosInstance.patch(
         `/admin/subscriptions/user-milestone/${userId}`,
         overrideData,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -1194,10 +1195,10 @@ export const overrideUserMilestones = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to override user milestones"
+        error.response?.data?.message || "Failed to override user milestones",
       );
     }
-  }
+  },
 );
 
 // Reset user milestone
@@ -1208,7 +1209,7 @@ export const resetUserMilestones = createAsyncThunk(
       const response = await axiosInstance.patch(
         `/admin/subscriptions/user-milestone-reset/${userId}`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -1218,10 +1219,10 @@ export const resetUserMilestones = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to reset user milestones"
+        error.response?.data?.message || "Failed to reset user milestones",
       );
     }
-  }
+  },
 );
 
 // Fetch all email statuses
@@ -1236,7 +1237,7 @@ export const getAllEmailStatuses = createAsyncThunk(
       if (status) queryParams.append("status", status);
       const response = await axiosInstance.get(
         `/admin/all-email-statuses?${queryParams.toString()}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return {
         emailStatuses: response.data.statuses || [],
@@ -1253,10 +1254,10 @@ export const getAllEmailStatuses = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch email statuses"
+        error.response?.data?.message || "Failed to fetch email statuses",
       );
     }
-  }
+  },
 );
 
 // Check email status
@@ -1266,7 +1267,7 @@ export const checkEmailStatus = createAsyncThunk(
     try {
       const response = await axiosInstance.get(
         `/admin/email-status?email=${encodeURIComponent(email)}&type=${type}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data;
     } catch (error) {
@@ -1277,10 +1278,10 @@ export const checkEmailStatus = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to check email status"
+        error.response?.data?.message || "Failed to check email status",
       );
     }
-  }
+  },
 );
 
 // Retry failed emails
@@ -1291,7 +1292,7 @@ export const retryFailedEmails = createAsyncThunk(
       const response = await axiosInstance.post(
         "/admin/retry-failed-emails",
         { emails, type },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       return response.data.results || [];
     } catch (error) {
@@ -1302,10 +1303,10 @@ export const retryFailedEmails = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to retry emails"
+        error.response?.data?.message || "Failed to retry emails",
       );
     }
-  }
+  },
 );
 
 // Send direct email
@@ -1323,7 +1324,7 @@ export const sendDirectEmail = createAsyncThunk(
       const response = await axiosInstance.post(
         "/dailyMail/send-direct-email",
         { email },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       // console.log("[sendDirectEmail] Success:", {
       //   email,
@@ -1340,15 +1341,60 @@ export const sendDirectEmail = createAsyncThunk(
         timestamp: new Date().toISOString(),
       });
       return rejectWithValue(
-        error.response?.data?.message || "Failed to send direct email"
+        error.response?.data?.message || "Failed to send direct email",
       );
     }
-  }
+  },
 );
 
+// Get global email toggle status
+export const getDailyEmailToggleStatus = createAsyncThunk(
+  "admin/getDailyEmailToggleStatus",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get("/dailyMail/email-toggle", {
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("[getDailyEmailToggleStatus] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to get email toggle status",
+      );
+    }
+  },
+);
+
+// Toggle global daily email on/off
+export const toggleGlobalDailyEmail = createAsyncThunk(
+  "admin/toggleGlobalDailyEmail",
+  async ({ enabled }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        "/dailyMail/email-toggle",
+        { enabled },
+        { withCredentials: true },
+      );
+      return response.data;
+    } catch (error) {
+      console.error("[toggleGlobalDailyEmail] Error:", {
+        message: error.response?.data?.message || error.message,
+        timestamp: new Date().toISOString(),
+      });
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to toggle daily email",
+      );
+    }
+  },
+);
 const adminSlice = createSlice({
   name: "admin",
   initialState: {
+    globalEmailToggle: null, // { dailyDigestEnabled: true/false }
+    globalEmailToggleLoading: false,
     users: [],
     bannerNotifications: [],
     totalUsers: 0,
@@ -1439,7 +1485,7 @@ const adminSlice = createSlice({
       const newMessage = action.payload;
       state.contactMessages = [newMessage, ...state.contactMessages].slice(
         0,
-        10
+        10,
       );
       state.totalMessages += 1;
       state.totalPagesMessages = Math.ceil(state.totalMessages / 10);
@@ -1455,19 +1501,19 @@ const adminSlice = createSlice({
       state.reports = state.reports.map((report) =>
         report._id === reportId
           ? { ...report, isReviewed: true, forwardedToAuthor: forwardToAuthor }
-          : report
+          : report,
       );
     },
     socketReportAcknowledged: (state, action) => {
       const { reportId } = action.payload;
       state.reports = state.reports.map((report) =>
-        report._id === reportId ? { ...report, isAcknowledged: true } : report
+        report._id === reportId ? { ...report, isAcknowledged: true } : report,
       );
     },
     socketContactMessageReplied: (state, action) => {
       const { messageId } = action.payload;
       state.contactMessages = state.contactMessages.map((msg) =>
-        msg._id === messageId ? { ...msg, isHandled: true } : msg
+        msg._id === messageId ? { ...msg, isHandled: true } : msg,
       );
     },
     setNotificationStatus: (state, action) => {
@@ -1582,7 +1628,7 @@ const adminSlice = createSlice({
         state.users = state.users.map((user) =>
           user._id === action.payload.userId
             ? { ...user, blocked: action.payload.blocked }
-            : user
+            : user,
         );
       })
       .addCase(toggleBlockUser.rejected, (state, action) => {
@@ -1593,7 +1639,7 @@ const adminSlice = createSlice({
         state.users = state.users.map((user) =>
           user._id === action.payload.userId
             ? { ...user, role: action.payload.role }
-            : user
+            : user,
         );
       })
       .addCase(toggleUserRole.rejected, (state, action) => {
@@ -1602,7 +1648,7 @@ const adminSlice = createSlice({
       // deleteUser
       .addCase(deleteUser.fulfilled, (state, action) => {
         state.users = state.users.filter(
-          (user) => user._id !== action.payload.userId
+          (user) => user._id !== action.payload.userId,
         );
         state.totalUsers -= 1;
         state.totalPagesUsers = Math.ceil(state.totalUsers / 10);
@@ -1632,7 +1678,7 @@ const adminSlice = createSlice({
         state.posts = state.posts.map((post) =>
           post._id === action.payload.postId
             ? { ...post, blocked: action.payload.blocked }
-            : post
+            : post,
         );
       })
       .addCase(toggleBlockPost.rejected, (state, action) => {
@@ -1641,7 +1687,7 @@ const adminSlice = createSlice({
       // deletePost
       .addCase(deletePost.fulfilled, (state, action) => {
         state.posts = state.posts.filter(
-          (post) => post._id !== action.payload.postId
+          (post) => post._id !== action.payload.postId,
         );
         state.totalPosts -= 1;
         state.totalPagesPosts = Math.ceil(state.totalPosts / 10);
@@ -1683,7 +1729,7 @@ const adminSlice = createSlice({
         state.contactMessages = state.contactMessages.map((msg) =>
           msg._id === action.payload.messageId
             ? { ...msg, isHandled: action.payload.isHandled }
-            : msg
+            : msg,
         );
       })
       .addCase(toggleContactMessageHandled.rejected, (state, action) => {
@@ -1699,7 +1745,7 @@ const adminSlice = createSlice({
         state.contactMessages = state.contactMessages.map((msg) =>
           msg._id === action.payload.messageId
             ? { ...msg, isHandled: true }
-            : msg
+            : msg,
         );
         state.notificationStatus = "Reply sent successfully";
       })
@@ -1745,7 +1791,7 @@ const adminSlice = createSlice({
                 isReviewed: true,
                 forwardedToAuthor: action.payload.forwardToAuthor,
               }
-            : report
+            : report,
         );
       })
       .addCase(reviewReport.rejected, (state, action) => {
@@ -1763,7 +1809,7 @@ const adminSlice = createSlice({
         state.reports = state.reports.map((report) =>
           report._id === action.payload.reportId
             ? { ...report, isAcknowledged: true }
-            : report
+            : report,
         );
       })
       .addCase(acknowledgeReport.rejected, (state, action) => {
@@ -1855,7 +1901,7 @@ const adminSlice = createSlice({
         state.emailStatuses = state.emailStatuses.map((status) => {
           const updated = action.payload.find(
             (result) =>
-              result.email === status.email && result.type === status.type
+              result.email === status.email && result.type === status.type,
           );
           return updated
             ? { ...status, ...updated, stopEmailAttempts: !updated.success }
@@ -1942,7 +1988,7 @@ const adminSlice = createSlice({
       .addCase(removeEmailSuppression.fulfilled, (state, action) => {
         state.emailLoading = false;
         state.suppressedEmails = state.suppressedEmails.filter(
-          (email) => email !== action.payload.email
+          (email) => email !== action.payload.email,
         );
         state.notificationStatus = `Email ${action.payload.email} removed from suppression list`;
       })
@@ -2081,7 +2127,7 @@ const adminSlice = createSlice({
                 isEligibleForSubscription:
                   action.payload.user.isEligibleForSubscription,
               }
-            : user
+            : user,
         );
         state.notificationStatus = action.payload.message;
       })
@@ -2146,7 +2192,7 @@ const adminSlice = createSlice({
         state.plans = state.plans.map((plan) =>
           plan.id === action.payload.id
             ? { ...plan, status: action.payload.status }
-            : plan
+            : plan,
         );
         state.notificationStatus = `Plan ${action.payload.status} successfully`;
       })
@@ -2168,7 +2214,7 @@ const adminSlice = createSlice({
                 isEligibleForSubscription:
                   action.payload.user.isEligibleForSubscription,
               }
-            : user
+            : user,
         );
         state.notificationStatus = action.payload.message;
       })
@@ -2192,7 +2238,7 @@ const adminSlice = createSlice({
                 bypassSubscriptionCriteria:
                   action.payload.bypassSubscriptionCriteria,
               }
-            : user
+            : user,
         );
         state.notificationStatus =
           "User eligibility override updated successfully";
@@ -2212,7 +2258,7 @@ const adminSlice = createSlice({
         state.success = true;
         state.overrideInfo = action.payload;
         const idx = state.users.findIndex(
-          (u) => u._id === action.payload.userId
+          (u) => u._id === action.payload.userId,
         );
         if (idx !== -1) {
           state.users[idx] = {
@@ -2267,6 +2313,33 @@ const adminSlice = createSlice({
         state.emailLoading = false;
         state.emailError = action.payload;
         state.directEmailResult = { error: action.payload };
+      })
+      // getDailyEmailToggleStatus
+      .addCase(getDailyEmailToggleStatus.pending, (state) => {
+        state.globalEmailToggleLoading = true;
+        state.emailError = null;
+      })
+      .addCase(getDailyEmailToggleStatus.fulfilled, (state, action) => {
+        state.globalEmailToggleLoading = false;
+        state.globalEmailToggle = action.payload;
+      })
+      .addCase(getDailyEmailToggleStatus.rejected, (state, action) => {
+        state.globalEmailToggleLoading = false;
+        state.emailError = action.payload;
+      })
+      // toggleGlobalDailyEmail
+      .addCase(toggleGlobalDailyEmail.pending, (state) => {
+        state.globalEmailToggleLoading = true;
+        state.emailError = null;
+      })
+      .addCase(toggleGlobalDailyEmail.fulfilled, (state, action) => {
+        state.globalEmailToggleLoading = false;
+        state.globalEmailToggle = action.payload;
+        state.notificationStatus = action.payload.message;
+      })
+      .addCase(toggleGlobalDailyEmail.rejected, (state, action) => {
+        state.globalEmailToggleLoading = false;
+        state.emailError = action.payload;
       });
   },
 });

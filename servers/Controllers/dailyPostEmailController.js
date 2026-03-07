@@ -7,6 +7,7 @@ import { AppError } from "../Utils/AppError.js";
 import dayjs from "dayjs";
 import Handlebars from "handlebars";
 import { DAILY_POST_EMAIL_TEMPLATE } from "../config/dailyPostEmailTemplate.js";
+import SystemSettings from "../Models/email/SystemSettings.js";
 
 // ============ EMAIL SENDING CONTROLLERS ============
 
@@ -27,6 +28,15 @@ export const sendDailyPostEmail = async (req, res, next) => {
   });
 
   try {
+    // Check global email switch
+    const settings = await SystemSettings.findOne();
+    if (settings && settings.dailyDigestEnabled === false) {
+      console.log("⛔ Daily digest emails are globally disabled");
+      return res.status(200).json({
+        success: false,
+        message: "Daily digest emails are currently disabled.",
+      });
+    }
     // Fetch eligible users
     const users = await UserModel.find({
       isAccountVerified: true,
@@ -49,7 +59,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     const noPosts = posts.length === 0;
 
     console.log(
-      `📨 [sendDailyPostEmail] Found ${posts.length} random posts to send`
+      `📨 [sendDailyPostEmail] Found ${posts.length} random posts to send`,
     );
 
     // Compile template
@@ -88,7 +98,7 @@ export const sendDailyPostEmail = async (req, res, next) => {
     next(
       err instanceof AppError
         ? err
-        : new AppError(err.message, 500, "SendDailyPostEmail")
+        : new AppError(err.message, 500, "SendDailyPostEmail"),
     );
   }
 };
@@ -149,7 +159,7 @@ async function fetchPostsForDigest() {
     // Not enough posts available
     if (availablePosts.length > 0 && availablePosts.length < MIN_POSTS) {
       console.log(
-        `⚠️ Only ${availablePosts.length} posts found (less than minimum ${MIN_POSTS})`
+        `⚠️ Only ${availablePosts.length} posts found (less than minimum ${MIN_POSTS})`,
       );
       return availablePosts; // Return whatever we have
     }
@@ -180,7 +190,7 @@ function getRandomPosts(posts, min = 6, max = 10) {
   const actualCount = Math.min(count, posts.length);
 
   console.log(
-    `🎲 Selecting ${actualCount} random posts from ${posts.length} available`
+    `🎲 Selecting ${actualCount} random posts from ${posts.length} available`,
   );
 
   // Shuffle array using Fisher-Yates algorithm
@@ -251,7 +261,7 @@ async function sendEmailToUser(user, posts, template, noPosts) {
           await user.save();
 
           console.error(
-            `❌ Email failed for ${user.email} after ${attempts} attempts: ${lastError}`
+            `❌ Email failed for ${user.email} after ${attempts} attempts: ${lastError}`,
           );
           return "failed";
         }
@@ -340,7 +350,7 @@ export const sendDirectEmail = async (req, res, next) => {
     next(
       err instanceof AppError
         ? err
-        : new AppError(err.message, 500, "SendDirectEmail")
+        : new AppError(err.message, 500, "SendDirectEmail"),
     );
   }
 };
@@ -380,7 +390,7 @@ export const checkEmailStatus = async (req, res, next) => {
     }
 
     const user = await UserModel.findOne({ email }).select(
-      "email name emailStatus emailAttempts emailLastError stopEmailAttempts"
+      "email name emailStatus emailAttempts emailLastError stopEmailAttempts",
     );
 
     if (!user) {
@@ -423,7 +433,7 @@ export const retryFailedEmails = async (req, res, next) => {
         user,
         posts,
         template,
-        posts.length === 0
+        posts.length === 0,
       );
 
       results.push({
@@ -576,7 +586,7 @@ export const checkUserEmailEligibility = async (req, res, next) => {
     const { userId } = req.params;
 
     const user = await UserModel.findById(userId).select(
-      "email name isAccountVerified stopEmailAttempts emailStatus"
+      "email name isAccountVerified stopEmailAttempts emailStatus",
     );
 
     if (!user) {
@@ -587,8 +597,8 @@ export const checkUserEmailEligibility = async (req, res, next) => {
     const reason = !user.isAccountVerified
       ? "Account not verified"
       : user.stopEmailAttempts
-      ? "Email attempts stopped"
-      : "User is eligible";
+        ? "Email attempts stopped"
+        : "User is eligible";
 
     res.status(200).json({
       success: true,
@@ -616,7 +626,7 @@ export const batchOperations = async (req, res, next) => {
       }
 
       const users = await UserModel.find({ _id: { $in: userIds } }).select(
-        "email name isAccountVerified stopEmailAttempts"
+        "email name isAccountVerified stopEmailAttempts",
       );
 
       const results = users.map((user) => ({
@@ -701,5 +711,52 @@ export const sendTestEmail = async (req, res, next) => {
     });
   } catch (error) {
     next(new AppError(error.message, 500, "SendTestEmail"));
+  }
+};
+
+export const toggleDailyEmail = async (req, res, next) => {
+  try {
+    const { enabled } = req.body;
+
+    if (typeof enabled !== "boolean") {
+      throw new AppError(
+        "'enabled' must be a boolean",
+        400,
+        "ToggleDailyEmail",
+      );
+    }
+
+    let settings = await SystemSettings.findOne();
+
+    if (!settings) {
+      settings = await SystemSettings.create({ dailyDigestEnabled: enabled });
+    } else {
+      settings.dailyDigestEnabled = enabled;
+      await settings.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      dailyDigestEnabled: settings.dailyDigestEnabled,
+      message: `Daily digest emails ${settings.dailyDigestEnabled ? "enabled ✅" : "disabled ⛔"}`,
+    });
+  } catch (error) {
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(error.message, 500, "ToggleDailyEmail"),
+    );
+  }
+};
+
+export const getDailyEmailStatus = async (req, res, next) => {
+  try {
+    const settings = await SystemSettings.findOne();
+    res.status(200).json({
+      success: true,
+      dailyDigestEnabled: settings ? settings.dailyDigestEnabled : true,
+    });
+  } catch (error) {
+    next(new AppError(error.message, 500, "GetDailyEmailStatus"));
   }
 };

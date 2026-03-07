@@ -22,6 +22,8 @@ import {
   batchOperations,
   removeEmailSuppression,
   sendTestEmail,
+  getDailyEmailStatus,
+  toggleDailyEmail,
 } from "../../servers/Controllers/dailyPostEmailController.js";
 
 const router = express.Router();
@@ -71,5 +73,11 @@ router.post("/remove-suppression", removeEmailSuppression);
 
 // POST /test-email - Send test email
 router.post("/test-email", sendTestEmail);
+
+// GET  /email-toggle - Get current global email switch status
+router.get("/email-toggle", getDailyEmailStatus);
+
+// POST /email-toggle - Turn all daily emails ON or OFF (admin)
+router.post("/email-toggle", toggleDailyEmail);
 
 export default router;
