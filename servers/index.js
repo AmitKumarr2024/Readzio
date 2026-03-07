@@ -39,7 +39,7 @@ import guestRoutes from "./Routes/guestRoutes.js";
 import DailyEmailRoutes from "./Routes/dailyMailRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 import prerender from "prerender-node";
-import PostModel from "../servers/Models/Post.js";
+import PostModel from "./Models/Post.js"; // ✅ FIX: corrected relative import path
 import { smartRateLimiter } from "./Middlewares/smartRateLimiter.js";
 
 const app = express();
@@ -218,7 +218,7 @@ app.use(async (req, res, next) => {
     ua,
   );
 
-  // ✅ FIX: AdsBot needs full HTML too — Google AdSense uses this to verify content
+  // ✅ AdsBot needs full HTML too — Google AdSense uses this to verify content
   const isAdsBot = /adsbot-google|mediapartners-google/i.test(ua);
 
   const isAnyBot = isSearchBot || isAdsBot;
@@ -245,7 +245,7 @@ app.use(async (req, res, next) => {
         )
         .lean();
 
-      // ✅ FIX: Return proper 404 instead of next() — prevents Google from seeing empty SPA
+      // ✅ Return proper 404 instead of next() — prevents Google from seeing empty SPA
       if (!post) {
         return res.status(404).send(`<!DOCTYPE html>
 <html lang="en">
@@ -263,9 +263,14 @@ app.use(async (req, res, next) => {
 
       // ----------------------------
       // TEXT EXTRACTION
+      // ✅ FIX 1: Use filter() instead of find() to collect ALL text blocks,
+      //    not just the first one — this was the root cause of Soft 404 / thin content
       // ----------------------------
       const rawText =
-        post.blocks?.find((b) => b?.type === "text" && b?.value)?.value || "";
+        post.blocks
+          ?.filter((b) => b?.type === "text" && b?.value)
+          .map((b) => b.value)
+          .join(" ") || "";
 
       const cleanText = rawText
         .replace(/<[^>]+>/g, "")
@@ -286,12 +291,19 @@ app.use(async (req, res, next) => {
 
       // ----------------------------
       // ARTICLE BODY (for Soft 404 fix)
+      // ✅ FIX 2: Increased limit from 2000 → 5000 chars so Google sees enough content
+      // ✅ FIX 3: Render as individual <p> tags per paragraph instead of one giant <p>
       // ----------------------------
-      // ✅ FIX: Include real article text so Google doesn't see thin content
-      const articleBodyText =
+      const articleBodyHtml =
         cleanText.length > 0
-          ? escapeHtml(cleanText.slice(0, 2000))
-          : escapeHtml(normalizedDescription);
+          ? cleanText
+              .slice(0, 5000)
+              .split(/\n+/)
+              .map((p) => p.trim())
+              .filter(Boolean)
+              .map((p) => `        <p>${escapeHtml(p)}</p>`)
+              .join("\n")
+          : `        <p>${escapeHtml(normalizedDescription)}</p>`;
 
       // ----------------------------
       // SAFE VALUES
@@ -328,10 +340,10 @@ app.use(async (req, res, next) => {
 
     <title>${safeTitle} | Readzio</title>
 
-    <!-- ✅ FIX 1: Canonical tag — prevents Google from mapping to homepage -->
+    <!-- Canonical tag — prevents Google from mapping to homepage -->
     <link rel="canonical" href="https://www.readzio.com/post/${slug}" />
 
-    <!-- ✅ FIX 2: Robots meta — explicitly tell Google to index this page -->
+    <!-- Robots meta — explicitly tell Google to index this page -->
     <meta name="robots" content="index, follow" />
 
     <meta name="description" content="${description}" />
@@ -397,9 +409,9 @@ app.use(async (req, res, next) => {
 
       <p itemprop="description">${description}</p>
 
-      <!-- ✅ FIX 3: Real article body text — fixes Soft 404 (thin content issue) -->
+      <!-- ✅ Full article body — fixes Soft 404 thin content issue -->
       <div itemprop="articleBody">
-        <p>${articleBodyText}</p>
+${articleBodyHtml}
       </div>
     </article>
   </body>
