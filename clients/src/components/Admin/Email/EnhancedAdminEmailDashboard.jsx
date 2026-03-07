@@ -6,7 +6,6 @@ import {
   FaPaperPlane,
   FaTrash,
   FaChartLine,
-  FaUsers,
   FaExclamationTriangle,
   FaPowerOff,
 } from "react-icons/fa";
@@ -50,6 +49,7 @@ export default function EnhancedAdminEmailDashboard() {
     dispatch(toggleGlobalDailyEmail({ enabled: newValue }));
   };
 
+  // Default to true (enabled) while loading / before API responds
   const isEnabled = globalEmailToggle?.dailyDigestEnabled !== false;
 
   if (authLoading) {
@@ -130,73 +130,70 @@ export default function EnhancedAdminEmailDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-8">
             <div className="text-center">
+              {/* Icon */}
               <div className="flex items-center justify-center mb-4">
                 <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
                   <FaEnvelope className="text-2xl text-white" />
                 </div>
               </div>
+
+              {/* Title */}
               <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-2">
                 Email Management Center
               </h1>
-              <p className="text-lg text-gray-600 dark:text-gray-400">
+              <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
                 Advanced email system administration and monitoring
               </p>
 
               {/* ── Global Email Toggle ── */}
-              <div className="flex items-center justify-center mt-6">
-                <div
-                  className={`flex items-center gap-4 px-6 py-3 rounded-2xl shadow-inner border transition-colors duration-300 ${
-                    isEnabled
-                      ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-                      : "bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600"
-                  }`}
-                >
-                  {/* Icon */}
+              <div className="flex items-center justify-center">
+                {/* Hard dark bg so it's always visible on both light & dark mode */}
+                <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-gray-900 border-2 border-gray-600 shadow-xl">
+                  {/* Power icon */}
                   <FaPowerOff
-                    className={`text-sm transition-colors duration-300 ${
-                      isEnabled
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-gray-400 dark:text-gray-500"
+                    className={`text-base transition-colors duration-300 ${
+                      isEnabled ? "text-green-400" : "text-red-400"
                     }`}
                   />
 
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-300 select-none">
+                  {/* Label */}
+                  <span className="text-sm font-semibold text-gray-200 select-none whitespace-nowrap">
                     Daily Digest Emails
                   </span>
 
-                  {/* Toggle switch */}
+                  {/* Toggle pill */}
                   <button
                     onClick={handleToggle}
                     disabled={globalEmailToggleLoading}
                     aria-label={`Turn daily digest emails ${isEnabled ? "off" : "on"}`}
-                    className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer items-center rounded-full border-2 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:cursor-not-allowed disabled:opacity-50 ${
                       isEnabled
-                        ? "bg-green-500 focus:ring-green-500"
-                        : "bg-gray-400 dark:bg-gray-600 focus:ring-gray-400"
+                        ? "bg-green-500 border-green-400 focus:ring-green-500"
+                        : "bg-gray-600 border-gray-500 focus:ring-gray-500"
                     }`}
                   >
                     <span
                       className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 ${
-                        isEnabled ? "translate-x-8" : "translate-x-1"
+                        isEnabled ? "translate-x-7" : "translate-x-0.5"
                       }`}
                     />
                   </button>
 
-                  {/* Status label */}
+                  {/* Status badge */}
                   <span
-                    className={`text-sm font-semibold min-w-[70px] text-left transition-colors duration-300 ${
+                    className={`text-xs font-bold px-3 py-1 rounded-full border transition-colors duration-300 ${
                       globalEmailToggleLoading
-                        ? "text-gray-400 dark:text-gray-500"
+                        ? "bg-gray-700 text-gray-400 border-gray-600"
                         : isEnabled
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-gray-500 dark:text-gray-400"
+                          ? "bg-green-500/20 text-green-400 border-green-500/50"
+                          : "bg-red-500/20 text-red-400 border-red-500/50"
                     }`}
                   >
                     {globalEmailToggleLoading
                       ? "Updating…"
                       : isEnabled
-                        ? "✓ Enabled"
-                        : "✗ Disabled"}
+                        ? "✓ ON"
+                        : "✗ OFF"}
                   </span>
                 </div>
               </div>
