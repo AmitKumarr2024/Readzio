@@ -28,7 +28,7 @@ const validateObjectId = (id, type = "ID") => {
       `Invalid ${type}`,
       400,
       "ValidateObjectId",
-      `Invalid ${type} provided`
+      `Invalid ${type} provided`,
     );
   }
   logMemory(`After validateObjectId: ${type}`);
@@ -101,7 +101,7 @@ const checkRateLimit = (userId, cache) => {
     throw new AppError(
       "Too many post creation attempts. Please try again later.",
       429,
-      "CreatePost"
+      "CreatePost",
     );
   }
 
@@ -120,7 +120,7 @@ const validateImageContent = async (buffer) => {
       throw new AppError(
         "Invalid image file - corrupted or not an image",
         400,
-        "ValidateImage"
+        "ValidateImage",
       );
     }
 
@@ -128,7 +128,7 @@ const validateImageContent = async (buffer) => {
       throw new AppError(
         "Unsupported image format - too many channels",
         400,
-        "ValidateImage"
+        "ValidateImage",
       );
     }
 
@@ -137,7 +137,7 @@ const validateImageContent = async (buffer) => {
       throw new AppError(
         "Image too small - minimum 10x10 pixels required",
         400,
-        "ValidateImage"
+        "ValidateImage",
       );
     }
 
@@ -146,7 +146,7 @@ const validateImageContent = async (buffer) => {
       throw new AppError(
         "Image too large - maximum 10000x10000 pixels allowed",
         400,
-        "ValidateImage"
+        "ValidateImage",
       );
     }
 
@@ -155,7 +155,7 @@ const validateImageContent = async (buffer) => {
     throw new AppError(
       `Image validation failed: ${err.message}`,
       400,
-      "ValidateImage"
+      "ValidateImage",
     );
   }
 };
@@ -180,7 +180,7 @@ const processImage = async (source, id, folder) => {
         throw new AppError(
           `Invalid or unsupported image format: ${imgFormat}`,
           400,
-          "ProcessImage"
+          "ProcessImage",
         );
       }
       buffer = Buffer.from(base64Data, "base64");
@@ -209,7 +209,7 @@ const processImage = async (source, id, folder) => {
           throw new AppError(
             `Image download timeout: ${id}`,
             408,
-            "ProcessImage"
+            "ProcessImage",
           );
         }
         if (err.code === "ENOTFOUND") {
@@ -218,14 +218,14 @@ const processImage = async (source, id, folder) => {
         throw new AppError(
           `Failed to fetch image from URL: ${err.message}`,
           400,
-          "ProcessImage"
+          "ProcessImage",
         );
       }
     } else {
       throw new AppError(
         "Unsupported image source - must be data URL or HTTP(S) URL",
         400,
-        "ProcessImage"
+        "ProcessImage",
       );
     }
 
@@ -233,10 +233,10 @@ const processImage = async (source, id, folder) => {
     if (buffer.length > 15 * 1024 * 1024) {
       throw new AppError(
         `Image size exceeds 15MB limit: ${(buffer.length / 1024 / 1024).toFixed(
-          2
+          2,
         )}MB`,
         413,
-        "ProcessImage"
+        "ProcessImage",
       );
     }
 
@@ -254,7 +254,7 @@ const processImage = async (source, id, folder) => {
     console.log(
       `[processImage] Input image ${id}: format=${metadata.format}, size=${(
         buffer.length / 1024
-      ).toFixed(1)}KB, dimensions=${metadata.width}x${metadata.height}`
+      ).toFixed(1)}KB, dimensions=${metadata.width}x${metadata.height}`,
     );
 
     // Determine processing parameters
@@ -278,7 +278,7 @@ const processImage = async (source, id, folder) => {
         kernel: sharp.kernel.lanczos3, // Highest quality resampling
       });
       console.log(
-        `[processImage] Resized ${id} to max ${MAX_DIMENSION}px using Lanczos3`
+        `[processImage] Resized ${id} to max ${MAX_DIMENSION}px using Lanczos3`,
       );
     }
 
@@ -331,18 +331,18 @@ const processImage = async (source, id, folder) => {
       `[processImage] Optimized ${id}: originalSize=${(
         buffer.length / 1024
       ).toFixed(1)}KB, optimizedSize=${(optimizedBuffer.length / 1024).toFixed(
-        1
+        1,
       )}KB, format=${outputFormat}, compression=${compressionRatio.toFixed(
-        1
-      )}%, time=${processingTime}ms`
+        1,
+      )}%, time=${processingTime}ms`,
     );
 
     // Warn if compression is too aggressive
     if (compressionRatio > 85) {
       console.warn(
         `[processImage] High compression ratio for ${id}: ${compressionRatio.toFixed(
-          1
-        )}%`
+          1,
+        )}%`,
       );
     }
 
@@ -367,19 +367,19 @@ const processImage = async (source, id, folder) => {
           resource_type: "image",
           format: outputFormat,
         }),
-      { retries: 3, minTimeout: 2000 }
+      { retries: 3, minTimeout: 2000 },
     );
 
     if (!result?.secure_url) {
       throw new AppError(
         "Image upload failed - no URL returned",
         500,
-        "ProcessImage"
+        "ProcessImage",
       );
     }
 
     console.log(
-      `[processImage] Successfully uploaded ${id}: ${result.secure_url}`
+      `[processImage] Successfully uploaded ${id}: ${result.secure_url}`,
     );
 
     return result.secure_url;
@@ -388,7 +388,7 @@ const processImage = async (source, id, folder) => {
     throw new AppError(
       err.message || `Image processing failed: ${id}`,
       err.status || 500,
-      "ProcessImage"
+      "ProcessImage",
     );
   } finally {
     // Clean up memory
@@ -438,7 +438,7 @@ const normalizeLanguage = (lang, code) => {
 
     console.log(
       "🔍 Auto-detecting language for code:",
-      codeContent.substring(0, 100)
+      codeContent.substring(0, 100),
     );
 
     // Java detection patterns (FIXED - more comprehensive)
@@ -585,7 +585,7 @@ const processBlock = async (block, blockLimit, imageLimit) => {
     if (block.type === "image" && block.src && !block.isEmbed) {
       logMemory(`🖼️ Processing image block ${block.id}`);
       processedBlock.src = await imageLimit(() =>
-        processImage(block.src, block.id, "readzio/post/images/")
+        processImage(block.src, block.id, "readzio/post/images/"),
       );
     }
 
@@ -600,7 +600,7 @@ const processBlock = async (block, blockLimit, imageLimit) => {
     // Process poll blocks
     if (block.type === "poll") {
       processedBlock.question = sanitizeContent(
-        processedBlock.question?.trim() || "Default Question"
+        processedBlock.question?.trim() || "Default Question",
       );
 
       processedBlock.options = Array.isArray(processedBlock.options)
@@ -610,8 +610,8 @@ const processBlock = async (block, blockLimit, imageLimit) => {
                 typeof opt === "string"
                   ? opt
                   : typeof opt === "object" && typeof opt.option === "string"
-                  ? opt.option
-                  : "";
+                    ? opt.option
+                    : "";
               const trimmed = sanitizeContent(value.trim());
               return trimmed &&
                 trimmed.length >= 2 &&
@@ -660,18 +660,18 @@ const processBlock = async (block, blockLimit, imageLimit) => {
         throw new AppError(
           "Table block must have non-empty data",
           400,
-          "ProcessBlock"
+          "ProcessBlock",
         );
       }
       if (
         !processedBlock.data.every(
-          (row) => Array.isArray(row) && row.length > 0
+          (row) => Array.isArray(row) && row.length > 0,
         )
       ) {
         throw new AppError(
           "Table block has invalid data format - all rows must be non-empty arrays",
           400,
-          "ProcessBlock"
+          "ProcessBlock",
         );
       }
 
@@ -687,7 +687,7 @@ const processBlock = async (block, blockLimit, imageLimit) => {
               return cellStr.length > 1000
                 ? cellStr.substring(0, 1000) + "..."
                 : cellStr;
-            })
+            }),
         );
     }
 
@@ -701,7 +701,7 @@ const processBlock = async (block, blockLimit, imageLimit) => {
         hasJavaKeywords: {
           hasImportJava: processedBlock.code?.includes("import java"),
           hasMainMethod: processedBlock.code?.includes(
-            "public static void main"
+            "public static void main",
           ),
           hasSystemOut: processedBlock.code?.includes("System.out"),
         },
@@ -711,7 +711,7 @@ const processBlock = async (block, blockLimit, imageLimit) => {
       const beforeNormalization = processedBlock.language;
       processedBlock.language = normalizeLanguage(
         processedBlock.language,
-        processedBlock.code
+        processedBlock.code,
       );
 
       console.log("🔎 [ProcessBlock] AFTER language normalization:", {
@@ -739,7 +739,7 @@ const processBlock = async (block, blockLimit, imageLimit) => {
             blockId: block.id,
             code: processedBlock.code,
             finalLanguage: processedBlock.language,
-          }
+          },
         );
       }
     }
@@ -773,8 +773,8 @@ const processBlock = async (block, blockLimit, imageLimit) => {
 
     const filteredBlock = Object.fromEntries(
       Object.entries(processedBlock).filter(([key]) =>
-        allowedFields.includes(key)
-      )
+        allowedFields.includes(key),
+      ),
     );
 
     logMemory(`🛠️ End processBlock ${block.id || "unknown"}`);
@@ -834,14 +834,14 @@ const validateCreatePostInput = (input) => {
     throw new AppError(
       "Title must be at least 3 characters long",
       400,
-      "CreatePost"
+      "CreatePost",
     );
   }
   if (title.length > 300) {
     throw new AppError(
       "Title too long (max 300 characters)",
       400,
-      "CreatePost"
+      "CreatePost",
     );
   }
 
@@ -852,7 +852,7 @@ const validateCreatePostInput = (input) => {
     throw new AppError(
       "Category too long (max 100 characters)",
       400,
-      "CreatePost"
+      "CreatePost",
     );
   }
 
@@ -1169,7 +1169,7 @@ export const createPost = async (req, res, next) => {
       throw new AppError(
         "You must be signed in to create posts.",
         401,
-        "CreatePost"
+        "CreatePost",
       );
     }
 
@@ -1183,11 +1183,11 @@ export const createPost = async (req, res, next) => {
     if (payloadSize > MAX_PAYLOAD_SIZE) {
       throw new AppError(
         `Payload exceeds 15MB limit: ${(payloadSize / 1024 / 1024).toFixed(
-          2
+          2,
         )}MB. ` +
           `Please reduce image quality, remove unnecessary images, or split into multiple posts.`,
         413,
-        "CreatePost"
+        "CreatePost",
       );
     }
 
@@ -1217,7 +1217,7 @@ export const createPost = async (req, res, next) => {
       throw new AppError(
         `Too many blocks (${blocks.length}). Maximum allowed: 500`,
         413,
-        "CreatePost"
+        "CreatePost",
       );
     }
 
@@ -1227,7 +1227,7 @@ export const createPost = async (req, res, next) => {
         `Too many images (${imageBlocks.length}). Maximum allowed: 50. ` +
           `Consider using external image hosting or splitting into multiple posts.`,
         413,
-        "CreatePost"
+        "CreatePost",
       );
     }
 
@@ -1244,7 +1244,7 @@ export const createPost = async (req, res, next) => {
               1024
             ).toFixed(2)}MB). ` + `Please compress or resize the image.`,
             413,
-            "CreatePost"
+            "CreatePost",
           );
         }
       }
@@ -1262,7 +1262,7 @@ export const createPost = async (req, res, next) => {
       throw new AppError(
         "A post with this title was recently created. Please wait before creating another.",
         429,
-        "CreatePost"
+        "CreatePost",
       );
     }
 
@@ -1301,7 +1301,7 @@ export const createPost = async (req, res, next) => {
           throw new AppError(
             `Table block at index ${i} has invalid data`,
             400,
-            "CreatePost"
+            "CreatePost",
           );
         }
       }
@@ -1314,8 +1314,8 @@ export const createPost = async (req, res, next) => {
     logMemory("🖼️ Before processing blocks");
     const processedBlocks = await Promise.all(
       blocksWithIds.map((block) =>
-        blockLimit(() => processBlock(block, blockLimit, imageLimit))
-      )
+        blockLimit(() => processBlock(block, blockLimit, imageLimit)),
+      ),
     );
     logMemory("🖼️ After processing blocks");
 
@@ -1335,7 +1335,7 @@ export const createPost = async (req, res, next) => {
       } else {
         logMemory("🖼️ Before processing thumbnail");
         processedThumbnail = await imageLimit(() =>
-          processImage(rawThumbnail, "thumbnail", "readzio/post/thumbnails/")
+          processImage(rawThumbnail, "thumbnail", "readzio/post/thumbnails/"),
         );
         logMemory("🖼️ After processing thumbnail");
       }
@@ -1371,7 +1371,7 @@ export const createPost = async (req, res, next) => {
       .flatMap((b) =>
         ["text", "value", "caption", "question"]
           .map((f) => b[f])
-          .filter(Boolean)
+          .filter(Boolean),
       )
       .join("\n");
 
@@ -1415,7 +1415,7 @@ export const createPost = async (req, res, next) => {
 
       const [newPost] = await asyncRetry(
         () => PostModel.create([postData], { session }),
-        { retries: 3, minTimeout: 2000 }
+        { retries: 3, minTimeout: 2000 },
       );
 
       await recordActivity(
@@ -1425,7 +1425,7 @@ export const createPost = async (req, res, next) => {
           targetPost: newPost._id,
           message: `Created post: ${title.substring(0, 100)}`,
         },
-        { session }
+        { session },
       );
 
       await session.commitTransaction();
@@ -1442,7 +1442,7 @@ export const createPost = async (req, res, next) => {
                 authorId: req.user._id,
                 timestamp: new Date(),
               }),
-            { retries: 2, minTimeout: 500 }
+            { retries: 2, minTimeout: 500 },
           );
           const cacheKeys = [
             `postCounts:${req.user._id}`,
@@ -1450,10 +1450,16 @@ export const createPost = async (req, res, next) => {
             `userPosts:${req.user._id}`,
           ];
           cacheKeys.forEach((k) => cache.del(k));
+          // ✅ Auto-regenerate sitemap on new post
+          import("../scripts/generateSitemap.js")
+            .then((m) => m.default())
+            .catch((e) =>
+              console.warn("[Sitemap] Auto-regen failed:", e.message),
+            );
         } catch (err) {
           console.warn(
             "[CreatePost] Post-transaction tasks failed:",
-            err.message
+            err.message,
           );
         }
       })();
@@ -1485,7 +1491,7 @@ export const createPost = async (req, res, next) => {
       if (imageBlocks.length > 30) {
         response.meta.suggestions = response.meta.suggestions || [];
         response.meta.suggestions.push(
-          "Consider using image galleries for large collections"
+          "Consider using image galleries for large collections",
         );
       }
 
@@ -1497,7 +1503,7 @@ export const createPost = async (req, res, next) => {
       throw new AppError(
         dbError.message || "Failed to save post",
         500,
-        "CreatePost"
+        "CreatePost",
       );
     }
   } catch (error) {
@@ -1508,8 +1514,8 @@ export const createPost = async (req, res, next) => {
         : new AppError(
             error.message || "Unexpected error",
             error.status || 500,
-            "CreatePost"
-          )
+            "CreatePost",
+          ),
     );
   } finally {
     if (session) await session.endSession();
@@ -1553,7 +1559,7 @@ export const getPublicPosts = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .skip((pageNum - 1) * (limitNum || 20)) // Default to 20 if no limit
       .select(
-        "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks"
+        "title slug thumbnail excerpt author viewsCount shareCount createdAt tags blocks",
       )
       .populate("author", "name avatar")
       .populate("category", "name slug")
@@ -1603,8 +1609,8 @@ export const getPublicPosts = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to fetch public posts",
             500,
-            "GetPublicPosts"
-          )
+            "GetPublicPosts",
+          ),
     );
   }
 };
@@ -1668,8 +1674,8 @@ export const getPostIdBySlug = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to fetch post ID",
             500,
-            "GetPostIdBySlug"
-          )
+            "GetPostIdBySlug",
+          ),
     );
   }
 };
@@ -1709,8 +1715,8 @@ export const countAllPosts = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to fetch all posts count",
             500,
-            "CountAllPosts"
-          )
+            "CountAllPosts",
+          ),
     );
   }
 };
@@ -1751,7 +1757,7 @@ export const countMyPosts = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError("Failed to fetch post count", 500, "CountMyPosts")
+        : new AppError("Failed to fetch post count", 500, "CountMyPosts"),
     );
   }
 };
@@ -1792,8 +1798,8 @@ export const countFollowingPosts = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to fetch following posts count",
             500,
-            "CountFollowingPosts"
-          )
+            "CountFollowingPosts",
+          ),
     );
   }
 };
@@ -1818,7 +1824,7 @@ export const getPublicPost = async (req, res, next) => {
       blocked: false,
     })
       .select(
-        "title slug category excerpt thumbnail author createdAt isPublished readTime readingTime tags language viewsCount shareCount postType"
+        "title slug category excerpt thumbnail author createdAt isPublished readTime readingTime tags language viewsCount shareCount postType",
       )
       .populate("author", "name avatar")
       .populate("category", "name slug")
@@ -1829,7 +1835,7 @@ export const getPublicPost = async (req, res, next) => {
       throw new AppError(
         "Post not found or has been deleted",
         404,
-        "GetPublicPost"
+        "GetPublicPost",
       );
     }
 
@@ -1844,8 +1850,8 @@ export const getPublicPost = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to fetch public post",
             500,
-            "GetPublicPost"
-          )
+            "GetPublicPost",
+          ),
     );
   }
 };
@@ -1861,7 +1867,7 @@ export const trackGuestView = async (req, res, next) => {
     const post = await PostModel.findOneAndUpdate(
       { slug: sanitizedSlug, isPublished: true, blocked: false },
       { $inc: { viewsCount: 1 } },
-      { select: "_id title" }
+      { select: "_id title" },
     ).lean();
 
     if (!post) {
@@ -1894,8 +1900,8 @@ export const trackGuestView = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to record guest view",
             500,
-            "TrackGuestView"
-          )
+            "TrackGuestView",
+          ),
     );
   }
 };
@@ -1962,7 +1968,7 @@ export const trackGuestVisit = async (req, res, next) => {
         upsert: true,
         new: true,
         setDefaultsOnInsert: true,
-      }
+      },
     ).lean();
 
     const isNewGuest = !existingGuest;
@@ -1972,7 +1978,7 @@ export const trackGuestVisit = async (req, res, next) => {
       await AnalyticsModel.findOneAndUpdate(
         { _id: "guest-analytics" },
         { $inc: { "traffic.guestUsersCount": 1 } },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, new: true, setDefaultsOnInsert: true },
       ).lean();
     }
 
@@ -2004,7 +2010,7 @@ export const trackGuestVisit = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError("Failed to track guest visit", 500, "TrackGuestVisit")
+        : new AppError("Failed to track guest visit", 500, "TrackGuestVisit"),
     );
   }
 };
@@ -2055,16 +2061,16 @@ export const getAllPosts = async (req, res, next) => {
     const posts = await asyncRetry(
       () =>
         postQuery.select(
-          "title slug category excerpt thumbnail author createdAt isPublished isPinned isPremium isSubscriberOnly blocked message readTime likesCount commentsCount viewsCount bookmarksCount likes tags language isFeatured allowComments timeSpent updatedAt shareCount sharedBy blocks postType"
+          "title slug category excerpt thumbnail author createdAt isPublished isPinned isPremium isSubscriberOnly blocked message readTime likesCount commentsCount viewsCount bookmarksCount likes tags language isFeatured allowComments timeSpent updatedAt shareCount sharedBy blocks postType",
         ),
-      { retries: 3, minTimeout: 2000 }
+      { retries: 3, minTimeout: 2000 },
     );
     logMemory("📖 After fetching posts");
 
     console.log("Posts fetched:", posts.length);
     const total = await asyncRetry(
       () => PostModel.countDocuments(query).maxTimeMS(10000).lean(),
-      { retries: 3, minTimeout: 2000 }
+      { retries: 3, minTimeout: 2000 },
     );
     console.log("Total posts:", total);
 
@@ -2108,7 +2114,7 @@ export const getAllPosts = async (req, res, next) => {
         async () => {
           io.to(req.user._id).emit("postCountsUpdated", counts);
         },
-        { retries: 3, minTimeout: 1000 }
+        { retries: 3, minTimeout: 1000 },
       );
     }
 
@@ -2122,8 +2128,8 @@ export const getAllPosts = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to fetch posts",
             500,
-            "GetAllPosts"
-          )
+            "GetAllPosts",
+          ),
     );
   }
 };
@@ -2217,7 +2223,7 @@ export const getSinglePost = async (req, res, next) => {
             likesCount commentsCount viewsCount bookmarksCount shareCount
             tags language isFeatured allowComments timeSpent blocks postType
             likes sharedBy
-          `
+          `,
           )
           .populate({
             path: "author",
@@ -2240,12 +2246,12 @@ export const getSinglePost = async (req, res, next) => {
                 slug: result.slug,
                 author: result.author?.name,
               }
-            : "No post found"
+            : "No post found",
         );
 
         return result;
       },
-      { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
+      { retries: 3, minTimeout: 1000, maxTimeout: 5000 },
     );
 
     logMemory("📖 After fetching post");
@@ -2302,11 +2308,11 @@ export const getSinglePost = async (req, res, next) => {
       PostModel.findByIdAndUpdate(
         post._id,
         { $inc: { viewsCount: 1 } },
-        { upsert: false }
+        { upsert: false },
       ).catch((err) => {
         console.warn(
           "[GetSinglePost] Failed to increment view count:",
-          err.message
+          err.message,
         );
       });
     }
@@ -2352,8 +2358,8 @@ export const getSinglePost = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to fetch post",
             500,
-            "GetSinglePost"
-          )
+            "GetSinglePost",
+          ),
     );
   }
 };
@@ -2384,7 +2390,7 @@ export const trackTimeSpent = async (req, res, next) => {
       throw new AppError(
         "Duration too large (max 1 hour)",
         400,
-        "trackTimeSpent"
+        "trackTimeSpent",
       );
     }
 
@@ -2414,7 +2420,7 @@ export const trackTimeSpent = async (req, res, next) => {
           upsert: true,
           new: false,
           maxTimeMS: 5000,
-        }
+        },
       ),
       PostModel.updateOne(
         { _id: postId },
@@ -2422,7 +2428,7 @@ export const trackTimeSpent = async (req, res, next) => {
           $inc: { timeSpent: duration },
           $set: { lastInteractedAt: new Date() },
         },
-        { maxTimeMS: 5000 }
+        { maxTimeMS: 5000 },
       ),
     ]);
     logMemory("💾 After updating interaction");
@@ -2446,8 +2452,8 @@ export const trackTimeSpent = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to track time",
             500,
-            "trackTimeSpent"
-          )
+            "trackTimeSpent",
+          ),
     );
   }
 };
@@ -2487,7 +2493,7 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError(
         !slug?.trim() ? "Valid slug is required" : "Authentication required",
         !slug?.trim() ? 400 : 401,
-        "UpdatePostBySlug"
+        "UpdatePostBySlug",
       );
     }
 
@@ -2502,11 +2508,11 @@ export const updatePostBySlug = async (req, res, next) => {
     if (payloadSize > MAX_PAYLOAD_SIZE) {
       throw new AppError(
         `Payload exceeds 15MB limit: ${(payloadSize / 1024 / 1024).toFixed(
-          2
+          2,
         )}MB. ` +
           `Please reduce image quality, remove unnecessary images, or split into multiple posts.`,
         413,
-        "UpdatePostBySlug"
+        "UpdatePostBySlug",
       );
     }
 
@@ -2539,7 +2545,7 @@ export const updatePostBySlug = async (req, res, next) => {
         throw new AppError(
           "Invalid tags format - must be valid JSON array",
           400,
-          "UpdatePostBySlug"
+          "UpdatePostBySlug",
         );
       }
     }
@@ -2553,7 +2559,7 @@ export const updatePostBySlug = async (req, res, next) => {
           throw new AppError(
             "Blocks must be a non-empty array",
             400,
-            "UpdatePostBySlug"
+            "UpdatePostBySlug",
           );
         }
 
@@ -2562,7 +2568,7 @@ export const updatePostBySlug = async (req, res, next) => {
           throw new AppError(
             `Too many blocks (${blocks.length}). Maximum allowed: 500`,
             413,
-            "UpdatePostBySlug"
+            "UpdatePostBySlug",
           );
         }
 
@@ -2573,7 +2579,7 @@ export const updatePostBySlug = async (req, res, next) => {
             `Too many images (${imageBlocks.length}). Maximum allowed: 50. ` +
               `Consider using external image hosting or splitting into multiple posts.`,
             413,
-            "UpdatePostBySlug"
+            "UpdatePostBySlug",
           );
         }
 
@@ -2590,7 +2596,7 @@ export const updatePostBySlug = async (req, res, next) => {
                   1024
                 ).toFixed(2)}MB). ` + `Please compress or resize the image.`,
                 413,
-                "UpdatePostBySlug"
+                "UpdatePostBySlug",
               );
             }
           }
@@ -2601,7 +2607,7 @@ export const updatePostBySlug = async (req, res, next) => {
         throw new AppError(
           "Invalid blocks format - must be valid JSON array",
           400,
-          "UpdatePostBySlug"
+          "UpdatePostBySlug",
         );
       }
     }
@@ -2614,7 +2620,7 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError(
         "Title must be 3-300 characters",
         400,
-        "UpdatePostBySlug"
+        "UpdatePostBySlug",
       );
     }
     if (
@@ -2624,7 +2630,7 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError(
         "Category must be 1-100 characters",
         400,
-        "UpdatePostBySlug"
+        "UpdatePostBySlug",
       );
     }
     if (
@@ -2635,7 +2641,7 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError(
         "Excerpt too long (max 1000 characters)",
         400,
-        "UpdatePostBySlug"
+        "UpdatePostBySlug",
       );
     }
 
@@ -2657,7 +2663,7 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError(
         exists ? "Unauthorized to update this post" : "Post not found",
         exists ? 403 : 404,
-        "UpdatePostBySlug"
+        "UpdatePostBySlug",
       );
     }
 
@@ -2665,7 +2671,7 @@ export const updatePostBySlug = async (req, res, next) => {
       throw new AppError(
         "Post is blocked and cannot be updated",
         403,
-        "UpdatePostBySlug"
+        "UpdatePostBySlug",
       );
 
     // Process blocks if provided
@@ -2680,8 +2686,8 @@ export const updatePostBySlug = async (req, res, next) => {
       }));
       processedBlocks = await Promise.all(
         blocksWithIds.map((b) =>
-          blockLimit(() => processBlock(b, blockLimit, imageLimit))
-        )
+          blockLimit(() => processBlock(b, blockLimit, imageLimit)),
+        ),
       );
     }
 
@@ -2691,7 +2697,7 @@ export const updatePostBySlug = async (req, res, next) => {
       processedThumbnail = await processImage(
         rawThumbnail,
         "thumbnail",
-        "readzio/post/thumbnails/"
+        "readzio/post/thumbnails/",
       );
     } else if (rawThumbnail && isThumbnailEmbed) {
       try {
@@ -2701,7 +2707,7 @@ export const updatePostBySlug = async (req, res, next) => {
         throw new AppError(
           "Invalid thumbnail embed URL",
           400,
-          "UpdatePostBySlug"
+          "UpdatePostBySlug",
         );
       }
     }
@@ -2725,12 +2731,12 @@ export const updatePostBySlug = async (req, res, next) => {
       const moderation = await moderateContent(fullText);
       if (moderation.isFlagged) {
         const reasons = Object.keys(moderation.categories).filter(
-          (k) => moderation.categories[k]
+          (k) => moderation.categories[k],
         );
         throw new AppError(
           `Content violates community guidelines: ${reasons.join(", ")}`,
           400,
-          "UpdatePostBySlug"
+          "UpdatePostBySlug",
         );
       }
     }
@@ -2771,7 +2777,7 @@ export const updatePostBySlug = async (req, res, next) => {
       updatedPost = await PostModel.findOneAndUpdate(
         { _id: post._id },
         { $set: updates },
-        { new: true, runValidators: true, session }
+        { new: true, runValidators: true, session },
       );
       if (!updatedPost)
         throw new AppError("Failed to update post", 500, "UpdatePostBySlug");
@@ -2783,7 +2789,7 @@ export const updatePostBySlug = async (req, res, next) => {
           targetPost: updatedPost._id,
           message: `Edited post: ${updatedPost.title}`,
         },
-        { session }
+        { session },
       );
     });
 
@@ -2812,7 +2818,7 @@ export const updatePostBySlug = async (req, res, next) => {
     if (blocks && blocks.filter((b) => b.type === "image").length > 30) {
       response.meta.suggestions = response.meta.suggestions || [];
       response.meta.suggestions.push(
-        "Consider using image galleries for large collections"
+        "Consider using image galleries for large collections",
       );
     }
 
@@ -2835,12 +2841,18 @@ export const updatePostBySlug = async (req, res, next) => {
               ...updatedPost.toObject(),
               authorId: userId,
             }),
-          { retries: 5, minTimeout: 1000, maxTimeout: 10000 }
+          { retries: 5, minTimeout: 1000, maxTimeout: 10000 },
         );
+        // ✅ Auto-regenerate sitemap on post update
+        import("../scripts/generateSitemap.js")
+          .then((m) => m.default())
+          .catch((e) =>
+            console.warn("[Sitemap] Auto-regen failed:", e.message),
+          );
       } catch (err) {
         console.warn(
           "[UpdatePostBySlug] Post-response operations failed:",
-          err.message
+          err.message,
         );
       }
     });
@@ -2853,8 +2865,8 @@ export const updatePostBySlug = async (req, res, next) => {
           : new AppError(
               error.message || "Failed to update post",
               500,
-              "UpdatePostBySlug"
-            )
+              "UpdatePostBySlug",
+            ),
       );
     }
   } finally {
@@ -2864,7 +2876,7 @@ export const updatePostBySlug = async (req, res, next) => {
       } catch (sessionError) {
         console.error(
           "[UpdatePostBySlug] Session cleanup failed:",
-          sessionError
+          sessionError,
         );
       }
     }
@@ -2889,7 +2901,7 @@ export const deletePost = async (req, res, next) => {
       throw new AppError(
         "You must be signed in to delete a post",
         401,
-        "DeletePost"
+        "DeletePost",
       );
     }
 
@@ -2926,7 +2938,7 @@ export const deletePost = async (req, res, next) => {
       logMemory("💾 Before deleting post");
       const deleteResult = await PostModel.deleteOne(
         { _id: postId },
-        { session }
+        { session },
       );
       logMemory("💾 After deleting post");
 
@@ -2942,7 +2954,7 @@ export const deletePost = async (req, res, next) => {
           targetPost: postId,
           message: `Deleted post: ${post.title}`,
         },
-        { session }
+        { session },
       );
 
       // Emit real-time update with retry
@@ -2951,7 +2963,7 @@ export const deletePost = async (req, res, next) => {
           async () => {
             io.emit("postDeleted", { postId, authorId: userId });
           },
-          { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
+          { retries: 3, minTimeout: 1000, maxTimeout: 5000 },
         );
       } catch (emitError) {
         console.error("Failed to emit postDeleted event:", emitError);
@@ -3006,7 +3018,7 @@ export const deletePost = async (req, res, next) => {
           async () => {
             io.to(userId.toString()).emit("postCountsUpdated", counts);
           },
-          { retries: 3, minTimeout: 1000, maxTimeout: 5000 }
+          { retries: 3, minTimeout: 1000, maxTimeout: 5000 },
         );
       } catch (countError) {
         console.error("Failed to update post counts:", countError);
@@ -3043,8 +3055,8 @@ export const deletePost = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to delete post",
             500,
-            "DeletePost"
-          )
+            "DeletePost",
+          ),
     );
   } finally {
     if (session) {
@@ -3081,7 +3093,7 @@ export const toggleBlockPost = async (req, res, next) => {
     const updatedPost = await PostModel.findByIdAndUpdate(
       postId,
       { $set: { blocked: !post.blocked } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("title slug blocked");
     logMemory("💾 After updating post");
 
@@ -3110,7 +3122,7 @@ export const toggleBlockPost = async (req, res, next) => {
     next(
       error instanceof AppError
         ? error
-        : new AppError(error.message, 500, "ToggleBlockPost")
+        : new AppError(error.message, 500, "ToggleBlockPost"),
     );
   }
 };
@@ -3131,7 +3143,7 @@ export const submitAppeal = async (req, res, next) => {
       throw new AppError(
         "You must be signed in to access this feature.",
         401,
-        "SubmitAppeal"
+        "SubmitAppeal",
       );
     }
 
@@ -3150,7 +3162,7 @@ export const submitAppeal = async (req, res, next) => {
       throw new AppError(
         "Only the post author can appeal",
         403,
-        "SubmitAppeal"
+        "SubmitAppeal",
       );
     }
 
@@ -3178,8 +3190,8 @@ export const submitAppeal = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to submit appeal",
             500,
-            "SubmitAppeal"
-          )
+            "SubmitAppeal",
+          ),
     );
   }
 };
@@ -3198,7 +3210,7 @@ export const incrementShareCount = async (req, res, next) => {
     const result = await PostModel.findByIdAndUpdate(
       postId,
       { $inc: { shareCount: 1 } },
-      { new: true, select: "shareCount" }
+      { new: true, select: "shareCount" },
     ).lean();
     logMemory("💾 After updating share count");
 
@@ -3219,8 +3231,8 @@ export const incrementShareCount = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to increment share count",
             500,
-            "IncrementShareCount"
-          )
+            "IncrementShareCount",
+          ),
     );
   }
 };
@@ -3234,7 +3246,7 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
       throw new AppError(
         "You must be signed in to access this feature.",
         401,
-        "GetDraftAndPendingPosts"
+        "GetDraftAndPendingPosts",
       );
     }
 
@@ -3248,7 +3260,7 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
     const [posts, total] = await Promise.all([
       PostModel.find(query)
         .select(
-          "title slug category excerpt thumbnail author createdAt isPublished postType"
+          "title slug category excerpt thumbnail author createdAt isPublished postType",
         )
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -3279,8 +3291,8 @@ export const getDraftAndPendingPosts = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to fetch posts",
             500,
-            "GetDraftAndPendingPosts"
-          )
+            "GetDraftAndPendingPosts",
+          ),
     );
   }
 };
@@ -3296,7 +3308,7 @@ export const getFollowingPosts = async (req, res, next) => {
       throw new AppError(
         "You must be signed in to access this feature.",
         401,
-        "GetFollowingPosts"
+        "GetFollowingPosts",
       );
     }
 
@@ -3555,7 +3567,7 @@ export const getFollowingPosts = async (req, res, next) => {
     // Handle specific error cases
     if (error.name === "CastError") {
       return next(
-        new AppError("Invalid user ID format", 400, "GetFollowingPosts")
+        new AppError("Invalid user ID format", 400, "GetFollowingPosts"),
       );
     }
 
@@ -3564,7 +3576,7 @@ export const getFollowingPosts = async (req, res, next) => {
       error.name === "MongoTimeoutError"
     ) {
       return next(
-        new AppError("Database connection issue", 503, "GetFollowingPosts")
+        new AppError("Database connection issue", 503, "GetFollowingPosts"),
       );
     }
 
@@ -3574,8 +3586,8 @@ export const getFollowingPosts = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to fetch following posts",
             500,
-            "GetFollowingPosts"
-          )
+            "GetFollowingPosts",
+          ),
     );
   }
 };
@@ -3627,7 +3639,7 @@ export const voteOnPoll = async (req, res, next) => {
       }
 
       const pollBlockIndex = post.blocks.findIndex(
-        (block) => block.id === blockId && block.type === "poll"
+        (block) => block.id === blockId && block.type === "poll",
       );
 
       if (pollBlockIndex === -1) {
@@ -3644,7 +3656,7 @@ export const voteOnPoll = async (req, res, next) => {
       // Check if user already voted
       if (
         pollBlock.votedUserIds.some(
-          (vote) => vote.userId.toString() === userId.toString()
+          (vote) => vote.userId.toString() === userId.toString(),
         )
       ) {
         throw new AppError("User already voted", 400, "VoteOnPoll");
@@ -3663,7 +3675,7 @@ export const voteOnPoll = async (req, res, next) => {
       const updatedPost = await PostModel.findByIdAndUpdate(
         postId,
         { $set: { blocks: post.blocks, updatedAt: new Date() } },
-        { new: true, select: "title slug blocks", session }
+        { new: true, select: "title slug blocks", session },
       );
       logMemory("💾 After updating post");
 
@@ -3674,7 +3686,7 @@ export const voteOnPoll = async (req, res, next) => {
           targetPost: postId,
           message: `Voted on poll in post: ${post.title}`,
         },
-        { session }
+        { session },
       );
 
       await session.commitTransaction();
@@ -3704,8 +3716,8 @@ export const voteOnPoll = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to record vote",
             500,
-            "VoteOnPoll"
-          )
+            "VoteOnPoll",
+          ),
     );
   } finally {
     if (session) {
@@ -3755,7 +3767,7 @@ export const incrementView = async (req, res, next) => {
         new: true,
         select: "viewsCount title",
         maxTimeMS: 5000,
-      }
+      },
     ).lean();
 
     if (!post) {
@@ -3780,8 +3792,8 @@ export const incrementView = async (req, res, next) => {
         : new AppError(
             error.message || "Failed to increment view count",
             500,
-            "IncrementView"
-          )
+            "IncrementView",
+          ),
     );
   }
 };
