@@ -38,9 +38,10 @@ import BannerNotificationRoutes from "./Routes/bannerNotificationRoutes.js";
 import guestRoutes from "./Routes/guestRoutes.js";
 import DailyEmailRoutes from "./Routes/dailyMailRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
-import prerender from "prerender-node";
-import PostModel from "./Models/Post.js"; // ✅ FIX: corrected relative import path
 import { smartRateLimiter } from "./Middlewares/smartRateLimiter.js";
+
+// NOTE: PostModel and prerender-node imports removed — no longer needed
+// after removing the custom bot rendering middleware.
 
 const app = express();
 app.set("trust proxy", true);
@@ -64,13 +65,6 @@ const ALLOWED_ORIGINS = [
 ];
 
 const REQUIRED_ENV = ["MONGO_URI", "JWT_SECRET", "CLIENT_URL"];
-
-// Cache for sitemap stats (to track changes)
-let sitemapCache = {
-  lastModified: null,
-  etag: null,
-  content: null,
-};
 
 // =============================================================================
 // ENVIRONMENT VALIDATION
@@ -129,13 +123,11 @@ const io = initializeSocket(server);
 // MIDDLEWARE SETUP
 // =============================================================================
 
-// Socket.io middleware
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
-// Compression
 app.use(
   compression({
     filter: (req, res) => {
@@ -146,7 +138,6 @@ app.use(
   }),
 );
 
-// CORS
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -158,7 +149,6 @@ app.use(
   }),
 );
 
-// Body parsing
 app.use(
   express.json({
     limit: "50mb",
@@ -179,270 +169,141 @@ app.use(
 app.use(cookieParser());
 
 // =============================================================================
-// UTILITY FUNCTIONS (FINAL, SAFE, ONE-TIME ESCAPE)
+// BOT MIDDLEWARE REMOVED
+// =============================================================================
+// Previously there was a middleware that sent stripped-down HTML to Googlebot
+// and AdsBot (mediapartners-google). This caused AdSense rejection because:
+//
+//   - Bots saw:  <article><h1>title</h1><p>text</p></article>
+//   - Users saw: full React UI with nav, sidebar, comments, grid etc.
+//
+// Google/AdSense calls this "cloaking" or "thin content" and rejects it.
+//
+// Fix: removed the middleware entirely. Now bots and users both receive
+// index.html → React renders → same full page for everyone.
+//
+// Google's crawler (Chromium-based) renders JavaScript fine, so your
+// articles will still be indexed correctly.
 // =============================================================================
 
-// Decode entities that may already exist in stored content
-const decodeHtmlEntities = (str = "") =>
-  String(str)
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
-
-// Escape ONLY for HTML output (after decode)
-const escapeHtml = (str = "") =>
-  String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-
-// Escape for JSON-LD only (not HTML)
-const escapeJson = (str = "") =>
-  String(str)
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/\n/g, " ")
-    .trim();
+// =============================================================================
+// HOMEPAGE BOT OVERRIDE REMOVED
+// =============================================================================
+// Previously:
+//   if (isSearchBot || isAdsBot) { return res.sendFile(SEO_HOME_PATH); }
+//
+// This was sending a different homepage to bots — another cloaking issue.
+// Removed. All visitors now get the same index.html.
+// =============================================================================
 
 // =============================================================================
-// SEO BOT HANDLING (GOOGLEBOT, ADSENSE, ETC.) — FIXED
+// SPECIAL ROUTES (robots.txt, sitemap.xml, ads.txt)
 // =============================================================================
-app.use(async (req, res, next) => {
-  const ua = (req.headers["user-agent"] || "").toLowerCase();
 
-  const isSearchBot = /googlebot|bingbot|yandex|duckduckbot|baiduspider/i.test(
-    ua,
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain").send(
+    `User-agent: *
+Allow: /
+Sitemap: https://www.readzio.com/sitemap.xml
+
+# Disallow admin and API routes
+Disallow: /api/
+Disallow: /admin/`,
   );
+});
 
-  // ✅ AdsBot needs full HTML too — Google AdSense uses this to verify content
-  const isAdsBot = /adsbot-google|mediapartners-google/i.test(ua);
-
-  const isAnyBot = isSearchBot || isAdsBot;
-
-  // Skip APIs, sockets, static assets
-  if (
-    req.path.startsWith("/api") ||
-    req.path.startsWith("/socket.io") ||
-    /\.(js|css|png|jpg|jpeg|ico|svg|woff|woff2|ttf|eot|xml|txt)$/.test(req.path)
-  ) {
-    return next();
-  }
-
-  if (isAnyBot && req.path.startsWith("/post/")) {
-    const slug = req.path.split("/")[2];
-
-    if (!slug) return next();
-
-    try {
-      const post = await PostModel.findOne({ slug, isPublished: true })
-        .populate("author", "name")
-        .select(
-          "title metaTitle metaDescription excerpt blocks ogImage createdAt updatedAt",
-        )
-        .lean();
-
-      // ✅ Return proper 404 instead of next() — prevents Google from seeing empty SPA
-      if (!post) {
-        return res.status(404).send(`<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Article Not Found | Readzio</title>
-    <meta name="robots" content="noindex" />
-  </head>
-  <body>
-    <h1>404 - Article Not Found</h1>
-    <p>This article does not exist or has been removed.</p>
-  </body>
-</html>`);
-      }
-
-      // ----------------------------
-      // TEXT EXTRACTION
-      // ✅ FIX 1: Use filter() instead of find() to collect ALL text blocks,
-      //    not just the first one — this was the root cause of Soft 404 / thin content
-      // ----------------------------
-      const rawText =
-        post.blocks
-          ?.filter((b) => b?.type === "text" && b?.value)
-          .map((b) => b.value)
-          .join(" ") || "";
-
-      const cleanText = rawText
-        .replace(/<[^>]+>/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      // ----------------------------
-      // DESCRIPTION (NORMALIZE → ESCAPE ONCE)
-      // ----------------------------
-      const rawDescription =
-        post.metaDescription ||
-        post.excerpt ||
-        cleanText.slice(0, 300) ||
-        "Explore high-quality articles on Readzio.";
-
-      const normalizedDescription = decodeHtmlEntities(rawDescription);
-      const description = escapeHtml(normalizedDescription.slice(0, 160));
-
-      // ----------------------------
-      // ARTICLE BODY (for Soft 404 fix)
-      // ✅ FIX 2: Increased limit from 2000 → 5000 chars so Google sees enough content
-      // ✅ FIX 3: Render as individual <p> tags per paragraph instead of one giant <p>
-      // ----------------------------
-      const articleBodyHtml =
-        cleanText.length > 0
-          ? cleanText
-              .slice(0, 5000)
-              .split(/\n+/)
-              .map((p) => p.trim())
-              .filter(Boolean)
-              .map((p) => `        <p>${escapeHtml(p)}</p>`)
-              .join("\n")
-          : `        <p>${escapeHtml(normalizedDescription)}</p>`;
-
-      // ----------------------------
-      // SAFE VALUES
-      // ----------------------------
-      const safeTitle = escapeHtml(
-        decodeHtmlEntities(post.metaTitle || post.title || "Readzio"),
-      );
-
-      const safeAuthor = escapeHtml(
-        decodeHtmlEntities(post.author?.name || "Unknown Author"),
-      );
-
-      const ogImage =
-        typeof post.ogImage === "string" && post.ogImage
-          ? post.ogImage
-          : "https://www.readzio.com/logo.png";
-
-      const publishedISO = new Date(post.createdAt).toISOString();
-      const modifiedISO =
-        post.updatedAt instanceof Date
-          ? post.updatedAt.toISOString()
-          : publishedISO;
-
-      const publishedHuman = new Date(post.createdAt).toDateString();
-
-      // ----------------------------
-      // BOT-FRIENDLY STATIC HTML — FIXED
-      // ----------------------------
-      return res.status(200).send(`<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <title>${safeTitle} | Readzio</title>
-
-    <!-- Canonical tag — prevents Google from mapping to homepage -->
-    <link rel="canonical" href="https://www.readzio.com/post/${slug}" />
-
-    <!-- Robots meta — explicitly tell Google to index this page -->
-    <meta name="robots" content="index, follow" />
-
-    <meta name="description" content="${description}" />
-
-    <!-- Article meta — helps Google understand publish date -->
-    <meta property="article:published_time" content="${publishedISO}" />
-    <meta property="article:modified_time" content="${modifiedISO}" />
-    <meta property="article:author" content="${safeAuthor}" />
-
-    <meta property="og:title" content="${safeTitle} | Readzio" />
-    <meta property="og:description" content="${description}" />
-    <meta property="og:image" content="${ogImage}" />
-    <meta property="og:type" content="article" />
-    <meta property="og:url" content="https://www.readzio.com/post/${slug}" />
-    <meta property="og:site_name" content="Readzio" />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="${safeTitle} | Readzio" />
-    <meta name="twitter:description" content="${description}" />
-    <meta name="twitter:image" content="${ogImage}" />
-
-    <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BlogPosting",
-  "headline": "${escapeJson(safeTitle)}",
-  "description": "${escapeJson(normalizedDescription.slice(0, 160))}",
-  "image": ["${escapeJson(ogImage)}"],
-  "url": "https://www.readzio.com/post/${slug}",
-  "mainEntityOfPage": {
-    "@type": "WebPage",
-    "@id": "https://www.readzio.com/post/${slug}"
-  },
-  "author": {
-    "@type": "Person",
-    "name": "${escapeJson(safeAuthor)}"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "Readzio",
-    "logo": {
-      "@type": "ImageObject",
-      "url": "https://www.readzio.com/logo.png"
+app.get("/sitemap.xml", async (req, res) => {
+  try {
+    if (!fsSync.existsSync(SITEMAP_PATH)) {
+      console.error("❌ Sitemap not found at:", SITEMAP_PATH);
+      return res.status(404).type("text/plain").send("Sitemap not found");
     }
-  },
-  "datePublished": "${publishedISO}",
-  "dateModified": "${modifiedISO}"
-}
-    </script>
-  </head>
 
-  <body>
-    <article itemscope itemtype="https://schema.org/BlogPosting">
-      <h1 itemprop="headline">${safeTitle}</h1>
+    const stats = await fs.stat(SITEMAP_PATH);
+    const lastModified = stats.mtime.toUTCString();
+    const etag = `"${stats.size}-${stats.mtime.getTime()}"`;
 
-      <time itemprop="datePublished" datetime="${publishedISO}">
-        ${publishedHuman}
-      </time>
+    const ifNoneMatch = req.headers["if-none-match"];
+    const ifModifiedSince = req.headers["if-modified-since"];
 
-      <span itemprop="author" itemscope itemtype="https://schema.org/Person">
-        <span itemprop="name">${safeAuthor}</span>
-      </span>
-
-      <p itemprop="description">${description}</p>
-
-      <!-- ✅ Full article body — fixes Soft 404 thin content issue -->
-      <div itemprop="articleBody">
-${articleBodyHtml}
-      </div>
-    </article>
-  </body>
-</html>`);
-    } catch (err) {
-      console.error("❌ Bot SEO render error:", err.message);
-      return next();
+    if (ifNoneMatch === etag || ifModifiedSince === lastModified) {
+      return res.status(304).end();
     }
-  }
 
-  next();
+    const sitemapContent = await fs.readFile(SITEMAP_PATH, "utf-8");
+
+    if (
+      !sitemapContent.includes("<?xml") ||
+      !sitemapContent.includes("<urlset")
+    ) {
+      return res.status(500).type("text/plain").send("Invalid sitemap format");
+    }
+
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader(
+      "Cache-Control",
+      "no-cache, no-store, must-revalidate, max-age=0",
+    );
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Last-Modified", lastModified);
+    res.setHeader("ETag", etag);
+
+    res.send(sitemapContent);
+  } catch (error) {
+    console.error("❌ Error serving sitemap:", error.message);
+    res.status(500).type("text/plain").send("Error loading sitemap");
+  }
+});
+
+app.get("/ads.txt", (req, res) => {
+  res
+    .type("text/plain")
+    .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
 });
 
 // =============================================================================
-// HOMEPAGE BOT SAFETY FIX (MUST BE BEFORE PRERENDER)
+// HEALTH CHECK
 // =============================================================================
-const SEO_HOME_PATH = path.join(__dirname, "servers/seo/home.html");
 
-app.get("/", (req, res) => {
-  const ua = (req.headers["user-agent"] || "").toLowerCase();
+app.get("/health", (req, res) => {
+  const memUsage = process.memoryUsage();
+  const sitemapExists = fsSync.existsSync(SITEMAP_PATH);
+  let sitemapStats = null;
 
-  const isSearchBot = /googlebot|bingbot|yandex|duckduckbot|baiduspider/i.test(
-    ua,
-  );
-  const isAdsBot = /adsbot-google|mediapartners-google/i.test(ua);
-
-  if (isSearchBot || isAdsBot) {
-    return res.sendFile(SEO_HOME_PATH);
+  if (sitemapExists) {
+    const stats = fsSync.statSync(SITEMAP_PATH);
+    sitemapStats = {
+      size: `${(stats.size / 1024).toFixed(2)} KB`,
+      lastModified: stats.mtime.toISOString(),
+      age: `${Math.floor((Date.now() - stats.mtime.getTime()) / 60000)} minutes ago`,
+    };
   }
 
-  return res.sendFile(CLIENT_INDEX_PATH);
+  res.status(200).json({
+    status: "OK",
+    message: "readzio API is running",
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    environment: NODE_ENV,
+    nodeVersion: process.version,
+    database:
+      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    socket: {
+      status: io.engine.clientsCount > 0 ? "active" : "inactive",
+      clients: io.engine.clientsCount,
+    },
+    memory: {
+      rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+      heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+      heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+    },
+    sitemap: {
+      exists: sitemapExists,
+      path: sitemapExists ? SITEMAP_PATH : null,
+      stats: sitemapStats,
+    },
+  });
 });
 
 // =============================================================================
@@ -460,7 +321,6 @@ const routeConfigs = [
       keyGenerator: (req) => req.ip,
     }),
   },
-
   { path: "/api/user", router: UserRoutes, name: "UserRoutes" },
   { path: "/api/playlists", router: playlistsRoutes, name: "playlistsRoutes" },
   {
@@ -469,7 +329,6 @@ const routeConfigs = [
     router: PostRoutes,
     middleware: setRouteTimeout(60000),
   },
-
   { path: "/api/category", router: CategoryRoutes, name: "CategoryRoutes" },
   { path: "/api/block", router: BlockRoutes, name: "BlockRoutes" },
   { path: "/api/follow", router: FollowRoutes, name: "FollowRoutes" },
@@ -514,12 +373,7 @@ const routeConfigs = [
       setRouteTimeout(60000),
     ],
   },
-
-  {
-    path: "/api/ads",
-    router: AdsRoutes,
-    name: "AdsRoutes",
-  },
+  { path: "/api/ads", router: AdsRoutes, name: "AdsRoutes" },
 ];
 
 function mountRoutes() {
@@ -531,11 +385,9 @@ function mountRoutes() {
       if (!validateRouter(router, name)) {
         failedRoutes++;
         app.use(path, (req, res) => {
-          res.status(503).json({
-            error: `Service unavailable: ${name} failed to load`,
-            path: req.path,
-            method: req.method,
-          });
+          res
+            .status(503)
+            .json({ error: `Service unavailable: ${name} failed to load` });
         });
         return;
       }
@@ -548,21 +400,18 @@ function mountRoutes() {
       } else {
         app.use(path, router);
       }
-
       successfulRoutes++;
-      if (NODE_ENV !== "production") {
+      if (NODE_ENV !== "production")
         console.log(`✅ Mounted: ${path} (${name})`);
-      }
     } catch (err) {
       console.error(`❌ Failed to mount ${path} (${name}):`, err.message);
       failedRoutes++;
-
       app.use(path, (req, res) => {
-        res.status(503).json({
-          error: `Service unavailable: ${name} initialization failed`,
-          path: req.path,
-          method: req.method,
-        });
+        res
+          .status(503)
+          .json({
+            error: `Service unavailable: ${name} initialization failed`,
+          });
       });
     }
   });
@@ -588,135 +437,7 @@ if (fsSync.existsSync(PUBLIC_PATH)) {
       lastModified: true,
     }),
   );
-  console.log("✅ Public directory mounted");
-} else {
-  console.warn("⚠️  Public directory not found:", PUBLIC_PATH);
 }
-
-// =============================================================================
-// SPECIAL ROUTES (robots.txt, sitemap.xml, ads.txt)
-// =============================================================================
-
-app.get("/robots.txt", (req, res) => {
-  res.type("text/plain").send(
-    `User-agent: *
-Allow: /
-Sitemap: https://www.readzio.com/sitemap.xml
-
-# Disallow admin and API routes
-Disallow: /api/
-Disallow: /admin/`,
-  );
-});
-
-// ✅ SITEMAP ROUTE - ALWAYS FRESH, NO CACHING
-app.get("/sitemap.xml", async (req, res) => {
-  try {
-    if (!fsSync.existsSync(SITEMAP_PATH)) {
-      console.error("❌ Sitemap not found at:", SITEMAP_PATH);
-      return res.status(404).type("text/plain").send("Sitemap not found");
-    }
-
-    const stats = await fs.stat(SITEMAP_PATH);
-    const lastModified = stats.mtime.toUTCString();
-    const etag = `"${stats.size}-${stats.mtime.getTime()}"`;
-
-    const ifNoneMatch = req.headers["if-none-match"];
-    const ifModifiedSince = req.headers["if-modified-since"];
-
-    if (ifNoneMatch === etag || ifModifiedSince === lastModified) {
-      console.log("✅ Sitemap: Client has latest version (304)");
-      return res.status(304).end();
-    }
-
-    const sitemapContent = await fs.readFile(SITEMAP_PATH, "utf-8");
-
-    if (
-      !sitemapContent.includes("<?xml") ||
-      !sitemapContent.includes("<urlset")
-    ) {
-      console.error("❌ Invalid sitemap XML structure");
-      return res.status(500).type("text/plain").send("Invalid sitemap format");
-    }
-
-    res.setHeader("Content-Type", "application/xml; charset=utf-8");
-    res.setHeader(
-      "Cache-Control",
-      "no-cache, no-store, must-revalidate, max-age=0",
-    );
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
-    res.setHeader("Last-Modified", lastModified);
-    res.setHeader("ETag", etag);
-
-    res.send(sitemapContent);
-
-    console.log("✅ Sitemap served successfully (FRESH, NO CACHE)");
-    console.log(`   - Size: ${(stats.size / 1024).toFixed(2)} KB`);
-    console.log(`   - Last Modified: ${lastModified}`);
-    console.log(`   - ETag: ${etag}`);
-  } catch (error) {
-    console.error("❌ Error serving sitemap:", error.message);
-    res.status(500).type("text/plain").send("Error loading sitemap");
-  }
-});
-
-app.get("/ads.txt", (req, res) => {
-  res
-    .type("text/plain")
-    .send("google.com, pub-8408980890451581, DIRECT, f08c47fec0942fa0");
-});
-
-// =============================================================================
-// HEALTH CHECK
-// =============================================================================
-
-app.get("/health", (req, res) => {
-  const memUsage = process.memoryUsage();
-  const sitemapExists = fsSync.existsSync(SITEMAP_PATH);
-  let sitemapStats = null;
-
-  if (sitemapExists) {
-    const stats = fsSync.statSync(SITEMAP_PATH);
-    sitemapStats = {
-      size: `${(stats.size / 1024).toFixed(2)} KB`,
-      lastModified: stats.mtime.toISOString(),
-      age: `${Math.floor(
-        (Date.now() - stats.mtime.getTime()) / 60000,
-      )} minutes ago`,
-    };
-  }
-
-  res.status(200).json({
-    status: "OK",
-    message: "readzio API is running",
-    uptime: Math.floor(process.uptime()),
-    timestamp: new Date().toISOString(),
-    environment: NODE_ENV,
-    nodeVersion: process.version,
-    database:
-      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-    socket: {
-      status: io.engine.clientsCount > 0 ? "active" : "inactive",
-      clients: io.engine.clientsCount,
-    },
-    memory: {
-      rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
-      heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
-      heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
-    },
-    routes: {
-      successful: routeStats.successfulRoutes,
-      failed: routeStats.failedRoutes,
-      total: routeStats.successfulRoutes + routeStats.failedRoutes,
-    },
-    sitemap: {
-      exists: sitemapExists,
-      path: sitemapExists ? SITEMAP_PATH : null,
-      stats: sitemapStats,
-    },
-  });
-});
 
 // Serve Vite public assets (favicons, manifest, etc.)
 app.use(express.static(path.join(__dirname, "clients", "public")));
@@ -740,6 +461,8 @@ if (NODE_ENV === "production") {
       }),
     );
 
+    // Catch-all: all routes (/, /post/*, /profile/*, etc.) → index.html
+    // This serves the same React app to everyone — users AND bots.
     app.get("*", (req, res, next) => {
       const skipRoutes = [
         "/api",
@@ -757,9 +480,7 @@ if (NODE_ENV === "production") {
       res.sendFile(CLIENT_INDEX_PATH, (err) => {
         if (err) {
           console.error("❌ Failed to serve index.html:", err.message);
-          if (!res.headersSent) {
-            res.status(500).send("Internal Server Error");
-          }
+          if (!res.headersSent) res.status(500).send("Internal Server Error");
         }
       });
     });
@@ -805,7 +526,7 @@ app.use("/api/{*splat}", (req, res) => {
 app.use(errorHandler);
 
 // =============================================================================
-// ERROR HANDLERS
+// ERROR LISTENERS
 // =============================================================================
 
 io.on("error", (err) => {
@@ -821,21 +542,16 @@ server.on("error", (err) => {
 });
 
 server.on("clientError", (err, socket) => {
-  console.error("[HTTP Server] ❌ Client error:", err.message);
-  if (!socket.destroyed) {
-    socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
-  }
+  if (!socket.destroyed) socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
 });
 
 process.on("uncaughtException", (err) => {
-  console.error("[UncaughtException] ❌", err.message);
-  console.error(err.stack);
+  console.error("[UncaughtException] ❌", err.message, err.stack);
   process.exit(1);
 });
 
-process.on("unhandledRejection", (reason, promise) => {
+process.on("unhandledRejection", (reason) => {
   console.error("[UnhandledRejection] ❌", reason);
-  console.error("Promise:", promise);
   process.exit(1);
 });
 
@@ -855,22 +571,19 @@ function gracefulShutdown(signal) {
 
   server.close((err) => {
     clearTimeout(shutdownTimeout);
-
     if (err) {
       console.error("[Shutdown] ❌ Error closing server:", err.message);
       process.exit(1);
     }
-
     console.log("[Shutdown] ✅ HTTP server closed");
-
     mongoose.connection
       .close()
       .then(() => {
-        console.log("[Shutdown] ✅ Database connection closed");
+        console.log("[Shutdown] ✅ Database closed");
         process.exit(0);
       })
       .catch((err) => {
-        console.error("[Shutdown] ❌ Database close error:", err.message);
+        console.error("[Shutdown] ❌ DB close error:", err.message);
         process.exit(1);
       });
   });
@@ -905,7 +618,6 @@ async function startServer() {
       if (fsSync.existsSync(SITEMAP_PATH)) {
         const stats = fsSync.statSync(SITEMAP_PATH);
         console.log(`✅ Sitemap found: ${(stats.size / 1024).toFixed(2)}KB`);
-        console.log(`   Last modified: ${stats.mtime.toISOString()}`);
       } else {
         console.warn("⚠️  Sitemap not found - run sitemap generator");
       }
@@ -917,24 +629,15 @@ async function startServer() {
       console.log(`🌐 URL: http://0.0.0.0:${address.port}`);
       console.log(`🔗 Health: http://0.0.0.0:${address.port}/health`);
       console.log(`🗺️  Sitemap: http://0.0.0.0:${address.port}/sitemap.xml`);
-
-      if (NODE_ENV === "production") {
-        console.log("🎯 Mode: Production (serving client app)");
-      } else {
-        console.log("🔧 Mode: Development (API only)");
-      }
-
-      if (routeStats.failedRoutes > 0) {
-        console.warn(
-          `⚠️  Warning: ${routeStats.failedRoutes} routes failed to mount`,
-        );
-      }
-
+      console.log(
+        NODE_ENV === "production"
+          ? "🎯 Mode: Production"
+          : "🔧 Mode: Development",
+      );
       console.log("\n✨ Server ready!\n");
     });
   } catch (err) {
-    console.error("\n❌ Failed to start server:", err.message);
-    console.error(err.stack);
+    console.error("\n❌ Failed to start server:", err.message, err.stack);
     process.exit(1);
   }
 }
