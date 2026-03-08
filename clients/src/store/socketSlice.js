@@ -19,7 +19,6 @@ import {
 } from "./bannerNotificationSlice";
 import { adsUpdatedRealtime } from "./adsSlice";
 
-const isDev = import.meta.env.MODE === "development";
 const MAX_USER_LOCATIONS = 500;
 const MAX_GUEST_VISITS = 100;
 const CONNECTION_RETRY_DELAY = 2000;
@@ -35,13 +34,26 @@ const log = (...args) => {
   }
 };
 
+// =============================================================================
+// SOCKET URL — always use www to avoid redirect breaking WebSocket upgrade
+// =============================================================================
+const getSocketUrl = () => {
+  const url = import.meta.env.VITE_API_URL || "http://localhost:8001";
+  // Force www on production to avoid non-www redirect breaking WebSocket
+  if (url.includes("readzio.com") && !url.includes("www.")) {
+    return url.replace("https://readzio.com", "https://www.readzio.com");
+  }
+  return url;
+};
+
+// =============================================================================
+// FETCH INITIAL POST COUNTS
+// =============================================================================
 export const fetchInitialPostCounts = createAsyncThunk(
   "socket/fetchInitialPostCounts",
   async (_, { rejectWithValue, getState }) => {
     try {
       const { user } = getState().auth;
-      log("[fetchInitialPostCounts] Authenticated user:", user);
-
       if (!user?._id) throw new Error("User not authenticated");
 
       const [allPostsCount, myPostsCount, followingPostsCount] =
@@ -60,12 +72,13 @@ export const fetchInitialPostCounts = createAsyncThunk(
       console.error("[socketSlice] fetchInitialPostCounts Error:", err.message);
       return rejectWithValue(err.message || "Failed to fetch post counts");
     }
-  }
+  },
 );
 
-// ✅ Fixed: Better event listener management
+// =============================================================================
+// EVENT LISTENERS
+// =============================================================================
 const setupEventListeners = (socket, dispatch, getState) => {
-  // Remove all existing listeners first
   const eventList = [
     "onlineUsersCount",
     "newNotification",
@@ -86,22 +99,14 @@ const setupEventListeners = (socket, dispatch, getState) => {
 
   eventList.forEach((event) => socket.off(event));
 
-  // Debounced handlers
   const debouncedLocationHandler = debounce((location) => {
     dispatch(addUserLocation(location));
   }, 1000);
 
   const debouncedGuestVisit = debounce((guest) => {
-    log("[socketSlice] 🔵 [Debounced] Processing guestVisitUpdate:", {
-      guestId: guest.guestId,
-      visitCount: guest.visitCount,
-      lastVisit: guest.lastVisit,
-      timestamp: new Date().toISOString(),
-    });
     dispatch(addGuestVisit(guest));
   }, 1000);
 
-  // Set up all event listeners
   socket.on("onlineUsersCount", (count) => {
     dispatch(setOnlineUsersCount(count));
   });
@@ -139,7 +144,7 @@ const setupEventListeners = (socket, dispatch, getState) => {
           _id: appeal.postId,
           message: `New appeal for post: ${appeal.postTitle}`,
           type: "appeal",
-        })
+        }),
       );
     }
   });
@@ -154,7 +159,7 @@ const setupEventListeners = (socket, dispatch, getState) => {
         try {
           const res = await axiosInstance.get(
             `/bannerNotification/dismissed/${notification._id}`,
-            { withCredentials: true }
+            { withCredentials: true },
           );
           if (!res.data.dismissed) {
             dispatch(addBannerNotification(notification));
@@ -162,7 +167,6 @@ const setupEventListeners = (socket, dispatch, getState) => {
           }
         } catch (err) {
           if (err.response?.status === 403) {
-            // Admin: add without check
             dispatch(addBannerNotification(notification));
             dispatch(newNotificationReceived(notification));
           } else {
@@ -174,7 +178,6 @@ const setupEventListeners = (socket, dispatch, getState) => {
       if (user?._id) {
         checkDismissed();
       } else {
-        // Guest: assume not dismissed
         dispatch(addBannerNotification(notification));
         dispatch(newNotificationReceived(notification));
       }
@@ -185,13 +188,9 @@ const setupEventListeners = (socket, dispatch, getState) => {
     "postCountsUpdated",
     ({ allPostsCount, myPostsCount, followingPostsCount }) => {
       dispatch(
-        setPostCounts({
-          allPostsCount,
-          myPostsCount,
-          followingPostsCount,
-        })
+        setPostCounts({ allPostsCount, myPostsCount, followingPostsCount }),
       );
-    }
+    },
   );
 
   const handleBannerRemoval = (id, reason = "deactivated") => {
@@ -229,17 +228,10 @@ const setupEventListeners = (socket, dispatch, getState) => {
   });
 
   socket.on("guestVisitUpdate", (guest) => {
-    log("[socketSlice] 🔴 Received guestVisitUpdate:", {
-      guestId: guest.guestId,
-      visitCount: guest.visitCount,
-      lastVisit: guest.lastVisit,
-      timestamp: new Date().toISOString(),
-    });
     debouncedGuestVisit(guest);
   });
 
   socket.on("showFeedbackPrompt", (data) => {
-    log("[socketSlice] 💬 Received showFeedbackPrompt:", data);
     dispatch(setFeedbackPrompt(data?.message || "We'd love your feedback!"));
   });
 
@@ -248,14 +240,15 @@ const setupEventListeners = (socket, dispatch, getState) => {
   });
 };
 
+// =============================================================================
+// INITIALIZE SOCKET
+// =============================================================================
 export const initializeSocket = createAsyncThunk(
   "socket/initialize",
   async (_, { dispatch, getState }) => {
-    log("[socketSlice] Initializing socket...");
     const { user, isGuest } = getState().auth;
     let token = getToken();
 
-    // ✅ Fixed: Better token validation
     if (!isGuest && !token) {
       try {
         await dispatch(checkAuth()).unwrap();
@@ -268,88 +261,79 @@ export const initializeSocket = createAsyncThunk(
 
     const userId = user?._id?.toString();
 
-    // ✅ Fixed: Better validation logic
     if (!isGuest && !userId) {
-      log("[socketSlice] ❌ User ID required for authenticated users");
       return Promise.reject("User ID not available");
     }
 
-    const socket = io(import.meta.env.VITE_API_URL || "http://localhost:8001", {
+    const socketUrl = getSocketUrl();
+
+    const socket = io(socketUrl, {
       auth: { token: token || null },
-      transports: ["websocket", "polling"],
-      path: "/socket.io", // ✅ Fixed: Removed trailing slash
+      transports: ["polling", "websocket"], // polling first = more reliable with Cloudflare
+      path: "/socket.io",
       reconnectionAttempts: MAX_RETRY_ATTEMPTS,
       reconnectionDelay: CONNECTION_RETRY_DELAY,
-      timeout: 10000, // ✅ Added connection timeout
+      timeout: 10000,
+      withCredentials: true,
     });
 
     return new Promise((resolve, reject) => {
-      // ✅ Fixed: Clean up existing listeners
       socket.removeAllListeners();
 
       let connectionTimeout;
 
       socket.on("connect", async () => {
-        if (connectionTimeout) {
-          clearTimeout(connectionTimeout);
-        }
-
-        log("[socketSlice] ✅ Socket connected successfully");
+        if (connectionTimeout) clearTimeout(connectionTimeout);
 
         if (isGuest) {
-          // 🔵 Generate a temporary guest ID (saved in localStorage)
           let guestId = localStorage.getItem("guestId");
           if (!guestId) {
             guestId = "guest_" + Math.random().toString(36).substring(2, 10);
             localStorage.setItem("guestId", guestId);
           }
-
-          // Tell server about the guest
           socket.emit("join", guestId);
-          log("[socketSlice] 🟢 Guest joined socket room:", guestId);
         } else if (userId) {
           socket.emit("join", userId);
           const isAdmin = user?.role === "admin";
-          if (isAdmin) {
-            socket.emit("join", "adminRoom");
-          }
+          if (isAdmin) socket.emit("join", "adminRoom");
 
           const fetchThunk = isAdmin
             ? fetchAllBannerNotifications
             : fetchActiveBannerNotifications;
           const region = user?.region ? { region: user.region } : {};
-          const result = await dispatch(fetchThunk(region)).unwrap();
 
-          // Set initial newNotification matching old logic
-          let activeNotification = null;
-          if (result.length > 0) {
-            activeNotification = result.find(
-              (notif) =>
-                notif.isActive &&
-                (!notif.expiresAt || new Date(notif.expiresAt) > new Date()) &&
-                (notif.region === "global" || notif.region === user.region) &&
-                !notif.dismissedBy?.includes(user._id)
+          try {
+            const result = await dispatch(fetchThunk(region)).unwrap();
+            if (result.length > 0) {
+              const activeNotification = result.find(
+                (notif) =>
+                  notif.isActive &&
+                  (!notif.expiresAt ||
+                    new Date(notif.expiresAt) > new Date()) &&
+                  (notif.region === "global" || notif.region === user.region) &&
+                  !notif.dismissedBy?.includes(user._id),
+              );
+              if (activeNotification) {
+                dispatch(newNotificationReceived(activeNotification));
+              }
+            }
+          } catch (err) {
+            console.error(
+              "[socketSlice] Failed to fetch banner notifications:",
+              err.message,
             );
-          }
-          if (activeNotification) {
-            dispatch(newNotificationReceived(activeNotification));
           }
         }
 
         dispatch(fetchInitialPostCounts());
-
-        // ✅ Fixed: Set up event listeners properly
         setupEventListeners(socket, dispatch, getState);
         dispatch(setSocketInstance(socket));
         resolve(socket);
       });
 
-      // ✅ Fixed: Better error handling with rate limiting
       let lastToast = 0;
       socket.on("connect_error", (err) => {
-        if (connectionTimeout) {
-          clearTimeout(connectionTimeout);
-        }
+        if (connectionTimeout) clearTimeout(connectionTimeout);
 
         const now = Date.now();
         if (now - lastToast > 10000) {
@@ -364,7 +348,7 @@ export const initializeSocket = createAsyncThunk(
 
       socket.io.on("reconnect_attempt", (attemptNumber) => {
         log(
-          `🌀 Reconnection attempt ${attemptNumber}/${MAX_RETRY_ATTEMPTS}...`
+          `🌀 Reconnection attempt ${attemptNumber}/${MAX_RETRY_ATTEMPTS}...`,
         );
       });
 
@@ -373,30 +357,32 @@ export const initializeSocket = createAsyncThunk(
         dispatch(setDisconnected());
       });
 
-      // ✅ Fixed: Add connection timeout
       connectionTimeout = setTimeout(() => {
         socket.disconnect();
         reject(new Error("Connection timeout"));
       }, 15000);
     });
-  }
+  },
 );
 
+// =============================================================================
+// DISCONNECT SOCKET
+// =============================================================================
 export const disconnectSocket = createAsyncThunk(
   "socket/disconnect",
   async (_, { dispatch, getState }) => {
     const socket = getState().socket.socketInstance;
     if (socket) {
-      log("[socketSlice] 🔌 Disconnecting socket...");
-
-      // ✅ Fixed: Proper cleanup
       socket.removeAllListeners();
       socket.disconnect();
       dispatch(setDisconnected());
     }
-  }
+  },
 );
 
+// =============================================================================
+// SLICE
+// =============================================================================
 const socketSlice = createSlice({
   name: "socket",
   initialState: {
@@ -428,17 +414,14 @@ const socketSlice = createSlice({
     },
     setError(state, action) {
       state.error = action.payload;
-      state.status = "error"; // ✅ Fixed: Better status handling
+      state.status = "error";
     },
     setOnlineUsersCount(state, action) {
       state.onlineUsersCount = Number(action.payload) || 0;
     },
     setUserStatus(state, action) {
       const { userId, isOnline } = action.payload;
-      state.userStatus = {
-        ...state.userStatus,
-        [userId]: { isOnline },
-      };
+      state.userStatus = { ...state.userStatus, [userId]: { isOnline } };
     },
     newNotificationReceived(state, action) {
       state.newNotification = action.payload;
@@ -449,11 +432,10 @@ const socketSlice = createSlice({
         !location?.userId ||
         !location?.coordinates?.lat ||
         !location?.coordinates?.lon
-      ) {
+      )
         return;
-      }
+
       if (state.userLocations.length >= MAX_USER_LOCATIONS) {
-        console.warn("⚠️ Max user locations reached. Trimming oldest entries.");
         state.userLocations.shift();
       }
       state.userLocations = [
@@ -465,71 +447,26 @@ const socketSlice = createSlice({
       state.notificationDismissReason = action.payload;
     },
     setPostCounts(state, action) {
-      state.postCounts = {
-        ...state.postCounts,
-        ...action.payload,
-      };
+      state.postCounts = { ...state.postCounts, ...action.payload };
     },
-    addGuestVisit: (state, action) => {
+    addGuestVisit(state, action) {
       const newGuest = action.payload;
-      log("[addGuestVisit] Processing new guest:", {
-        guestId: newGuest.guestId,
-        visitCount: newGuest.visitCount,
-        lastVisit: newGuest.lastVisit,
-        currentGuestVisitsLength: state.guestVisits.length,
-        timestamp: new Date().toISOString(),
-      });
-
       const existingGuest = state.guestVisits.find(
-        (g) => g.guestId === newGuest.guestId
+        (g) => g.guestId === newGuest.guestId,
       );
 
       if (existingGuest) {
-        log("[addGuestVisit] Existing guest found:", {
-          existing: {
-            guestId: existingGuest.guestId,
-            visitCount: existingGuest.visitCount,
-            lastVisit: existingGuest.lastVisit,
-          },
-          newGuest: {
-            guestId: newGuest.guestId,
-            visitCount: newGuest.visitCount,
-            lastVisit: newGuest.lastVisit,
-          },
-        });
-
         const sameVisit =
           newGuest.visitCount === existingGuest.visitCount &&
           new Date(newGuest.lastVisit).getTime() ===
             new Date(existingGuest.lastVisit).getTime();
-
-        if (sameVisit) {
-          log("[addGuestVisit] ❌ Duplicate guest visit detected, skipping:", {
-            guestId: newGuest.guestId,
-            visitCount: newGuest.visitCount,
-            lastVisit: newGuest.lastVisit,
-          });
-          return;
-        }
-
-        log("[addGuestVisit] ✅ Updating existing guest:", {
-          guestId: newGuest.guestId,
-          visitCount: newGuest.visitCount,
-          lastVisit: newGuest.lastVisit,
-        });
+        if (sameVisit) return;
         state.guestVisits = state.guestVisits.map((g) =>
-          g.guestId === newGuest.guestId ? newGuest : g
+          g.guestId === newGuest.guestId ? newGuest : g,
         );
       } else {
-        log("[addGuestVisit] ✅ Adding new guest:", {
-          guestId: newGuest.guestId,
-          visitCount: newGuest.visitCount,
-          lastVisit: newGuest.lastVisit,
-          guestVisitsLength: state.guestVisits.length + 1,
-        });
         state.guestVisits.unshift(newGuest);
         if (state.guestVisits.length > MAX_GUEST_VISITS) {
-          console.warn("⚠️ Max guest visits reached. Trimming oldest entries.");
           state.guestVisits = state.guestVisits.slice(0, MAX_GUEST_VISITS);
         }
       }
@@ -598,7 +535,7 @@ export const selectSocketState = createSelector(
     postCounts: socket.postCounts,
     guestVisits: socket.guestVisits,
     feedbackPrompt: socket.feedbackPrompt,
-  })
+  }),
 );
 
 export default socketSlice.reducer;
