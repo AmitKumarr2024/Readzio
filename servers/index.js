@@ -167,14 +167,11 @@ app.use(cookieParser());
 // =============================================================================
 
 app.get("/robots.txt", (req, res) => {
-  res.type("text/plain").send(
-    `User-agent: *
-Allow: /
-Sitemap: https://www.readzio.com/sitemap.xml
-
-Disallow: /api/
-Disallow: /admin/`,
-  );
+  res
+    .type("text/plain")
+    .send(
+      `User-agent: *\nAllow: /\nSitemap: https://www.readzio.com/sitemap.xml\n\nDisallow: /api/\nDisallow: /admin/`,
+    );
 });
 
 app.get("/sitemap.xml", async (req, res) => {
@@ -362,17 +359,13 @@ function mountRoutes() {
         app.use(path, router);
       }
       successfulRoutes++;
-      if (NODE_ENV !== "production")
-        console.log(`✅ Mounted: ${path} (${name})`);
     } catch (err) {
       console.error(`❌ Failed to mount ${path} (${name}):`, err.message);
       failedRoutes++;
       app.use(path, (req, res) =>
-        res
-          .status(503)
-          .json({
-            error: `Service unavailable: ${name} initialization failed`,
-          }),
+        res.status(503).json({
+          error: `Service unavailable: ${name} initialization failed`,
+        }),
       );
     }
   });
@@ -383,7 +376,7 @@ function mountRoutes() {
   return { successfulRoutes, failedRoutes };
 }
 
-const routeStats = mountRoutes();
+mountRoutes();
 
 // =============================================================================
 // STATIC FILE SERVING
@@ -400,13 +393,15 @@ if (fsSync.existsSync(PUBLIC_PATH)) {
   );
 }
 
-// Vite public assets
 app.use(express.static(path.join(__dirname, "clients", "public")));
 
 // =============================================================================
-// CLIENT SERVING
-// AdSense fix: ALL visitors (users + Googlebot + AdsBot) get the same
-// index.html. React renders the full UI for everyone. No cloaking.
+// CLIENT SERVING — production
+// ALL visitors (users + Googlebot + AdsBot) get the same index.html.
+// No cloaking. AdSense safe.
+//
+// ✅ CRITICAL FIX: Use "/{*wildcard}" NOT "*" or "{*splat}"
+// The bare "*" pattern crashes path-to-regexp v8+ on server startup.
 // =============================================================================
 
 if (NODE_ENV === "production") {
@@ -423,7 +418,7 @@ if (NODE_ENV === "production") {
       }),
     );
 
-    app.get("*", (req, res, next) => {
+    app.get("/{*wildcard}", (req, res, next) => {
       const skipRoutes = [
         "/api",
         "/public",
@@ -444,7 +439,7 @@ if (NODE_ENV === "production") {
     console.log("✅ Client app mounted (production mode)");
   } else {
     console.error("❌ Client build not found:", CLIENT_INDEX_PATH);
-    app.get("*", (req, res) =>
+    app.get("/{*wildcard}", (req, res) =>
       res.status(503).send("Service unavailable - client build not found"),
     );
   }
@@ -464,7 +459,6 @@ if (NODE_ENV === "production") {
 
 // =============================================================================
 // API 404 HANDLER
-// NOTE: Fixed — removed {*splat} syntax which crashed the server on startup
 // =============================================================================
 
 app.use("/api", (req, res) => {
