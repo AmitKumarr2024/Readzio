@@ -19,7 +19,6 @@ import initializeSocket from "./sockets/socket.js";
 import { startTempCleanup } from "./Utils/cleanupTemp.js";
 import { startDailyDigestJob } from "./Utils/startDailyDigestJob.js";
 
-// Routes
 import AuthRoutes from "./Routes/authRoutes.js";
 import UserRoutes from "./Routes/userRoutes.js";
 import PostRoutes from "./Routes/postRoutes.js";
@@ -40,16 +39,12 @@ import DailyEmailRoutes from "./Routes/dailyMailRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 import { smartRateLimiter } from "./Middlewares/smartRateLimiter.js";
 
-// NOTE: PostModel and prerender-node imports removed — no longer needed
-// after removing the custom bot rendering middleware.
-
 const app = express();
 app.set("trust proxy", true);
-
 const __dirname = path.resolve();
 
 // =============================================================================
-// CONFIGURATION & CONSTANTS
+// CONSTANTS
 // =============================================================================
 
 const PORT = process.env.PORT || 10002;
@@ -102,7 +97,6 @@ const setRouteTimeout = (timeoutMs) => (req, res, next) => {
       next(err);
     }
   }, timeoutMs);
-
   res.on("finish", () => clearTimeout(timeout));
   res.on("close", () => clearTimeout(timeout));
   next();
@@ -120,7 +114,7 @@ server.headersTimeout = 66000;
 const io = initializeSocket(server);
 
 // =============================================================================
-// MIDDLEWARE SETUP
+// MIDDLEWARE
 // =============================================================================
 
 app.use((req, res, next) => {
@@ -169,35 +163,7 @@ app.use(
 app.use(cookieParser());
 
 // =============================================================================
-// BOT MIDDLEWARE REMOVED
-// =============================================================================
-// Previously there was a middleware that sent stripped-down HTML to Googlebot
-// and AdsBot (mediapartners-google). This caused AdSense rejection because:
-//
-//   - Bots saw:  <article><h1>title</h1><p>text</p></article>
-//   - Users saw: full React UI with nav, sidebar, comments, grid etc.
-//
-// Google/AdSense calls this "cloaking" or "thin content" and rejects it.
-//
-// Fix: removed the middleware entirely. Now bots and users both receive
-// index.html → React renders → same full page for everyone.
-//
-// Google's crawler (Chromium-based) renders JavaScript fine, so your
-// articles will still be indexed correctly.
-// =============================================================================
-
-// =============================================================================
-// HOMEPAGE BOT OVERRIDE REMOVED
-// =============================================================================
-// Previously:
-//   if (isSearchBot || isAdsBot) { return res.sendFile(SEO_HOME_PATH); }
-//
-// This was sending a different homepage to bots — another cloaking issue.
-// Removed. All visitors now get the same index.html.
-// =============================================================================
-
-// =============================================================================
-// SPECIAL ROUTES (robots.txt, sitemap.xml, ads.txt)
+// SPECIAL ROUTES
 // =============================================================================
 
 app.get("/robots.txt", (req, res) => {
@@ -206,7 +172,6 @@ app.get("/robots.txt", (req, res) => {
 Allow: /
 Sitemap: https://www.readzio.com/sitemap.xml
 
-# Disallow admin and API routes
 Disallow: /api/
 Disallow: /admin/`,
   );
@@ -223,10 +188,10 @@ app.get("/sitemap.xml", async (req, res) => {
     const lastModified = stats.mtime.toUTCString();
     const etag = `"${stats.size}-${stats.mtime.getTime()}"`;
 
-    const ifNoneMatch = req.headers["if-none-match"];
-    const ifModifiedSince = req.headers["if-modified-since"];
-
-    if (ifNoneMatch === etag || ifModifiedSince === lastModified) {
+    if (
+      req.headers["if-none-match"] === etag ||
+      req.headers["if-modified-since"] === lastModified
+    ) {
       return res.status(304).end();
     }
 
@@ -248,7 +213,6 @@ app.get("/sitemap.xml", async (req, res) => {
     res.setHeader("Expires", "0");
     res.setHeader("Last-Modified", lastModified);
     res.setHeader("ETag", etag);
-
     res.send(sitemapContent);
   } catch (error) {
     console.error("❌ Error serving sitemap:", error.message);
@@ -307,7 +271,7 @@ app.get("/health", (req, res) => {
 });
 
 // =============================================================================
-// ROUTE CONFIGURATION
+// ROUTES
 // =============================================================================
 
 const routeConfigs = [
@@ -325,8 +289,8 @@ const routeConfigs = [
   { path: "/api/playlists", router: playlistsRoutes, name: "playlistsRoutes" },
   {
     path: "/api/post",
-    name: "PostRoutes",
     router: PostRoutes,
+    name: "PostRoutes",
     middleware: setRouteTimeout(60000),
   },
   { path: "/api/category", router: CategoryRoutes, name: "CategoryRoutes" },
@@ -384,19 +348,16 @@ function mountRoutes() {
     try {
       if (!validateRouter(router, name)) {
         failedRoutes++;
-        app.use(path, (req, res) => {
+        app.use(path, (req, res) =>
           res
             .status(503)
-            .json({ error: `Service unavailable: ${name} failed to load` });
-        });
+            .json({ error: `Service unavailable: ${name} failed to load` }),
+        );
         return;
       }
       if (middleware) {
-        if (Array.isArray(middleware)) {
-          app.use(path, ...middleware, router);
-        } else {
-          app.use(path, middleware, router);
-        }
+        if (Array.isArray(middleware)) app.use(path, ...middleware, router);
+        else app.use(path, middleware, router);
       } else {
         app.use(path, router);
       }
@@ -406,13 +367,13 @@ function mountRoutes() {
     } catch (err) {
       console.error(`❌ Failed to mount ${path} (${name}):`, err.message);
       failedRoutes++;
-      app.use(path, (req, res) => {
+      app.use(path, (req, res) =>
         res
           .status(503)
           .json({
             error: `Service unavailable: ${name} initialization failed`,
-          });
-      });
+          }),
+      );
     }
   });
 
@@ -439,11 +400,13 @@ if (fsSync.existsSync(PUBLIC_PATH)) {
   );
 }
 
-// Serve Vite public assets (favicons, manifest, etc.)
+// Vite public assets
 app.use(express.static(path.join(__dirname, "clients", "public")));
 
 // =============================================================================
-// CLIENT SERVING (PRODUCTION)
+// CLIENT SERVING
+// AdSense fix: ALL visitors (users + Googlebot + AdsBot) get the same
+// index.html. React renders the full UI for everyone. No cloaking.
 // =============================================================================
 
 if (NODE_ENV === "production") {
@@ -454,15 +417,12 @@ if (NODE_ENV === "production") {
         etag: true,
         lastModified: true,
         setHeaders: (res, filePath) => {
-          if (filePath.endsWith(".html")) {
+          if (filePath.endsWith(".html"))
             res.setHeader("Cache-Control", "no-cache");
-          }
         },
       }),
     );
 
-    // Catch-all: all routes (/, /post/*, /profile/*, etc.) → index.html
-    // This serves the same React app to everyone — users AND bots.
     app.get("*", (req, res, next) => {
       const skipRoutes = [
         "/api",
@@ -472,11 +432,7 @@ if (NODE_ENV === "production") {
         "/sitemap.xml",
         "/ads.txt",
       ];
-
-      if (skipRoutes.some((route) => req.path.startsWith(route))) {
-        return next();
-      }
-
+      if (skipRoutes.some((route) => req.path.startsWith(route))) return next();
       res.sendFile(CLIENT_INDEX_PATH, (err) => {
         if (err) {
           console.error("❌ Failed to serve index.html:", err.message);
@@ -488,9 +444,9 @@ if (NODE_ENV === "production") {
     console.log("✅ Client app mounted (production mode)");
   } else {
     console.error("❌ Client build not found:", CLIENT_INDEX_PATH);
-    app.get("*", (req, res) => {
-      res.status(503).send("Service unavailable - client build not found");
-    });
+    app.get("*", (req, res) =>
+      res.status(503).send("Service unavailable - client build not found"),
+    );
   }
 } else {
   app.get("/", (req, res) => {
@@ -507,10 +463,11 @@ if (NODE_ENV === "production") {
 }
 
 // =============================================================================
-// 404 HANDLER FOR API ROUTES
+// API 404 HANDLER
+// NOTE: Fixed — removed {*splat} syntax which crashed the server on startup
 // =============================================================================
 
-app.use("/api/{*splat}", (req, res) => {
+app.use("/api", (req, res) => {
   res.status(404).json({
     error: "API endpoint not found",
     path: req.path,
@@ -529,9 +486,7 @@ app.use(errorHandler);
 // ERROR LISTENERS
 // =============================================================================
 
-io.on("error", (err) => {
-  console.error("[Socket.IO] ❌ Error:", err.message);
-});
+io.on("error", (err) => console.error("[Socket.IO] ❌ Error:", err.message));
 
 server.on("error", (err) => {
   console.error("[HTTP Server] ❌ Error:", err.message);
@@ -563,7 +518,6 @@ function gracefulShutdown(signal) {
   console.log(
     `\n[Shutdown] 🛑 Received ${signal}, starting graceful shutdown...`,
   );
-
   const shutdownTimeout = setTimeout(() => {
     console.error("[Shutdown] ⚠️  Forcing shutdown after timeout");
     process.exit(1);
