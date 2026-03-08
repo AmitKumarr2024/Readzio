@@ -92,7 +92,7 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const playlistsCount = useSelector(
-    (state) => state.playlist?.playlists?.length || 0
+    (state) => state.playlist?.playlists?.length || 0,
   );
   const {
     isAuthenticated,
@@ -103,7 +103,7 @@ const Navbar = () => {
     sessionExpired,
   } = useSelector((state) => state.auth ?? {});
   const { onlineUsersCount, status } = useSelector(
-    (state) => state.socket ?? {}
+    (state) => state.socket ?? {},
   );
   const { user, userLocations } = useSelector((state) => state.user ?? {});
 
@@ -113,7 +113,7 @@ const Navbar = () => {
 
   const userLocation = useMemo(
     () => userLocations?.list?.find((loc) => loc.userId === authUser?._id),
-    [userLocations?.list, authUser?._id]
+    [userLocations?.list, authUser?._id],
   );
 
   const shouldHideCategory = useMemo(
@@ -127,38 +127,48 @@ const Navbar = () => {
         "/bookmark",
         "/admin",
       ].some((route) =>
-        matchPath({ path: route, end: false }, location.pathname)
+        matchPath({ path: route, end: false }, location.pathname),
       ),
-    [location.pathname, isAuthenticated]
+    [location.pathname, isAuthenticated],
   );
 
   const statusClass = useMemo(
     () =>
       onlineUsersCount >= 1 ? "animate-pulse bg-green-500" : "bg-gray-500",
-    [onlineUsersCount]
+    [onlineUsersCount],
   );
 
   useEffect(() => {
     if (!authInitialized && !authLoading) {
       dispatch(checkAuth()).catch((err) =>
-        console.error("Auth check failed:", err)
+        console.error("Auth check failed:", err),
       );
       dispatch(getUser()).catch((err) =>
-        console.error("Get user failed:", err)
+        console.error("Get user failed:", err),
       );
       dispatch(trackUserIPLocation()).catch((err) =>
-        console.warn("IP location tracking failed:", err)
+        console.warn("IP location tracking failed:", err),
       );
     }
   }, [authInitialized, authLoading, dispatch]);
 
+  // Guests ke liye bhi socket initialize karo ✅
+  useEffect(() => {
+    if (authInitialized) {
+      // authenticated ho ya guest — dono ke liye
+      dispatch(initializeSocket()).catch((err) =>
+        console.error("Socket init failed:", err),
+      );
+      return () => dispatch(disconnectSocket());
+    }
+  }, [authInitialized, dispatch]);
   useEffect(() => {
     if (isAuthenticated && authUser?._id) {
       dispatch(initializeSocket()).catch((err) =>
-        console.error("Socket init failed:", err)
+        console.error("Socket init failed:", err),
       );
       dispatch(fetchUserPlaylists(authUser._id)).catch((err) =>
-        console.error("Fetch playlists failed:", err)
+        console.error("Fetch playlists failed:", err),
       );
       return () => dispatch(disconnectSocket());
     }
