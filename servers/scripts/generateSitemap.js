@@ -21,7 +21,6 @@ const CONFIG = {
 };
 
 /* ================= STATIC ROUTES ================== */
-/* ❌ login/signup removed (SEO best practice) */
 const STATIC_ROUTES = [
   { url: "/", changefreq: "daily", priority: 1.0 },
   { url: "/about", changefreq: "monthly", priority: 0.5 },
@@ -48,7 +47,7 @@ async function fetchPostsInBatches() {
   while (hasMore) {
     const batch = await PostModel.find(
       { isPublished: true },
-      "slug updatedAt createdAt"
+      "slug updatedAt createdAt",
     )
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -85,6 +84,7 @@ function validatePosts(posts) {
 /* ================= GENERATE SITEMAP ================ */
 async function generateSitemap() {
   const startTime = Date.now();
+  const isStandalone = import.meta.url === `file://${process.argv[1]}`;
 
   try {
     /* Ensure output directory */
@@ -92,8 +92,10 @@ async function generateSitemap() {
       mkdirSync(CONFIG.OUTPUT_DIR, { recursive: true });
     }
 
-    /* Connect DB */
-    await connectDb();
+    /* Connect DB only if not already connected */
+    if (mongoose.connection.readyState !== 1) {
+      await connectDb();
+    }
 
     const outputPath = path.join(CONFIG.OUTPUT_DIR, CONFIG.SITEMAP_FILENAME);
 
@@ -152,7 +154,8 @@ async function generateSitemap() {
       outputPath,
     };
   } finally {
-    if (mongoose.connection.readyState === 1) {
+    /* Only close DB connection if running as standalone script */
+    if (isStandalone && mongoose.connection.readyState === 1) {
       await mongoose.connection.close();
     }
   }

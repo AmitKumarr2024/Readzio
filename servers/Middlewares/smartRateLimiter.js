@@ -10,31 +10,31 @@ export const smartRateLimiter = ({
       const key = keyGenerator(req);
       const route = req.baseUrl + req.path;
       const now = new Date();
+      const resetAt = new Date(now.getTime() + windowMs);
 
-      let record = await RateLimitLog.findOne({ key, route });
-
-      if (!record || record.resetAt < now) {
-        record = await RateLimitLog.findOneAndUpdate(
-          { key, route },
-          {
-            key,
-            route,
-            count: 1,
-            resetAt: new Date(now.getTime() + windowMs),
-          },
-          { upsert: true, new: true }
-        );
-      } else {
-        record.count += 1;
-        await record.save();
-      }
+      // ✅ Single atomic DB call — no race condition
+      const record = await RateLimitLog.findOneAndUpdate(
+        {
+          key,
+          route,
+          resetAt: { $gt: now }, // only match non-expired records
+        },
+        {
+          $inc: { count: 1 },
+          $setOnInsert: { resetAt },
+        },
+        {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true,
+        },
+      );
 
       const remaining = Math.max(max - record.count, 0);
       const retryAfter = Math.ceil(
-        (record.resetAt.getTime() - now.getTime()) / 1000
+        (record.resetAt.getTime() - now.getTime()) / 1000,
       );
 
-      // 🔑 Headers for frontend
       res.set({
         "X-RateLimit-Limit": max,
         "X-RateLimit-Remaining": remaining,
@@ -54,7 +54,9 @@ export const smartRateLimiter = ({
 
       next();
     } catch (err) {
-      next(err);
+      // ✅ Fail open — rate limiter error se server down nahi hoga
+      console.warn("[RateLimiter] Error:", err.message);
+      next();
     }
   };
 };

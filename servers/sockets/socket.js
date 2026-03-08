@@ -24,7 +24,6 @@ const SOCKET_CONFIG = {
   connectTimeout: 45000,
   maxHttpBufferSize: 1e6,
   allowEIO3: false,
-  // ✅ FIXED: polling first matches client config and is more reliable with Cloudflare
   transports: ["polling", "websocket"],
 };
 
@@ -37,9 +36,10 @@ const FEEDBACK_CONFIG = {
 // STATE MANAGEMENT
 // =============================================================================
 
-const connectedUsers = new Map(); // userId -> { socketId, connectedAt, metadata }
+const connectedUsers = new Map(); // userId -> { socketId, connectedAt, isAdmin, role }
 const socketToUser = new Map(); // socketId -> userId
 const roomMembers = new Map(); // roomId -> Set<userId>
+const connectedGuests = new Set(); // socketId (guests)
 
 // =============================================================================
 // UTILITY FUNCTIONS
@@ -99,7 +99,8 @@ function emitUserStatus(io, userId, isOnline) {
 
 function emitOnlineCount(io) {
   try {
-    const count = connectedUsers.size;
+    // ✅ authenticated users + guests = total online
+    const count = connectedUsers.size + connectedGuests.size;
     io.emit("onlineUsersCount", count);
   } catch (error) {
     console.error("[Socket:Count] Failed to emit online count:", error.message);
@@ -182,6 +183,7 @@ io.on("connection", async (socket) => {
 
   try {
     if (socket.userId && !socket.isGuest) {
+      // ✅ Authenticated user
       connectedUsers.set(socket.userId, {
         socketId: socket.id,
         connectedAt: connectionTime,
@@ -200,6 +202,7 @@ io.on("connection", async (socket) => {
       emitUserStatus(io, socket.userId, true);
       emitOnlineCount(io);
 
+      // Feedback prompt check
       try {
         const user = await UserModel.findById(socket.userId)
           .select("joiningDate feedbackPrompt")
@@ -224,6 +227,10 @@ io.on("connection", async (socket) => {
       } catch (err) {
         console.error("[Socket:Feedback] Feedback check error:", err.message);
       }
+    } else {
+      // ✅ Guest user — count mein add karo
+      connectedGuests.add(socket.id);
+      emitOnlineCount(io);
     }
 
     // =============================================================================
@@ -396,11 +403,16 @@ io.on("connection", async (socket) => {
         `[Socket:Disconnect] ${socket.userId || socket.id} disconnected after ${duration}s - Reason: ${reason}`,
       );
 
-      if (socket.userId) {
+      if (socket.userId && !socket.isGuest) {
+        // ✅ Authenticated user cleanup
         cleanupUserConnection(socket);
         emitUserStatus(io, socket.userId, false);
-        emitOnlineCount(io);
+      } else {
+        // ✅ Guest cleanup
+        connectedGuests.delete(socket.id);
       }
+
+      emitOnlineCount(io); // ✅ dono cases mein count update
     });
 
     socket.on("error", (error) => {
@@ -436,22 +448,34 @@ export default function initializeSocket(server) {
       });
     });
 
-    // Periodic stale connection cleanup (every 5 minutes)
+    // ✅ Periodic stale connection cleanup (every 5 minutes)
     setInterval(
       () => {
         try {
           const now = Date.now();
           const staleThreshold = 10 * 60 * 1000;
 
+          // Authenticated users cleanup
           for (const [userId, data] of connectedUsers.entries()) {
             if (now - data.connectedAt > staleThreshold) {
-              const socket = io.sockets.sockets.get(data.socketId);
-              if (!socket || !socket.connected) {
+              const s = io.sockets.sockets.get(data.socketId);
+              if (!s || !s.connected) {
                 connectedUsers.delete(userId);
                 socketToUser.delete(data.socketId);
               }
             }
           }
+
+          // ✅ Guest stale cleanup
+          for (const socketId of connectedGuests) {
+            const s = io.sockets.sockets.get(socketId);
+            if (!s || !s.connected) {
+              connectedGuests.delete(socketId);
+            }
+          }
+
+          // ✅ Cleanup ke baad count update
+          emitOnlineCount(io);
         } catch (error) {
           console.error("[Socket:Cleanup] Cleanup error:", error.message);
         }
@@ -508,7 +532,9 @@ export const emitNotification = (userId, notification) => {
 export const getConnectionStats = () => {
   try {
     return {
-      totalConnections: connectedUsers.size,
+      totalConnections: connectedUsers.size + connectedGuests.size, // ✅ guests bhi
+      authenticatedConnections: connectedUsers.size,
+      guestConnections: connectedGuests.size,
       totalRooms: roomMembers.size,
       adminConnections: Array.from(connectedUsers.values()).filter(
         (u) => u.isAdmin,
