@@ -7,29 +7,28 @@ import routes from "./routers/routes.jsx";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Provider } from "react-redux";
 import store from "./store/store.js";
+import { HelmetProvider } from "react-helmet-async"; // ✅ ADDED
 
-// Renders app with Redux, Google OAuth, and routing
 createRoot(document.getElementById("root")).render(
   <Provider store={store}>
-    {" "}
-    {/* Redux store provider */}
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-      {" "}
-      {/* Google OAuth setup */}
-      <Toaster
-        position="bottom-left"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: "#333",
-            color: "#fff",
-            borderRadius: "8px",
-            padding: "8px 16px",
-          },
-        }}
-      />
-      {/* Toast notifications */}
-      <RouterProvider router={routes} /> {/* App routes */}
+      <HelmetProvider>
+        {" "}
+        {/* ✅ Global — sirf ek baar, sab pages cover */}
+        <Toaster
+          position="bottom-left"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: "#333",
+              color: "#fff",
+              borderRadius: "8px",
+              padding: "8px 16px",
+            },
+          }}
+        />
+        <RouterProvider router={routes} />
+      </HelmetProvider>
     </GoogleOAuthProvider>
-  </Provider>
+  </Provider>,
 );

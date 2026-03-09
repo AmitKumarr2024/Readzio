@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Helmet, HelmetProvider } from "react-helmet-async";
+import { Helmet } from "react-helmet-async"; // ✅ HelmetProvider HATAYA
 import { useDispatch, useSelector } from "react-redux";
 import {
   getSinglePost,
@@ -32,6 +32,11 @@ import { toast } from "react-hot-toast";
 import { selectPostViews } from "../../Utils/postSelectors";
 import AdGuard from "../../Ads/adsGaurd/AdGuard";
 
+// ✅ Module level — re-render pe reset nahi hoga, trailing slash safe
+const BASE_URL = (
+  import.meta.env.VITE_API_URL || "https://www.readzio.com"
+).replace(/\/$/, "");
+
 const DisplayPost = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -50,25 +55,14 @@ const DisplayPost = () => {
     error: guestError,
   } = useSelector((state) => state.guest || {});
   const { isAuthenticated, user: currentUser } = useSelector(
-    (state) => state.auth
+    (state) => state.auth,
   );
   const { isSubscribed, subscriptionLoading, plans } = useSelector(
-    (state) => state.subscription
+    (state) => state.subscription,
   );
   const { categories } = useSelector((state) => state.categories);
   const viewsData = useSelector((state) => selectPostViews(state, slug));
   const { views } = viewsData || {};
-
-  // 🔍 DEBUG: Raw Redux values that determine which post we use
-  // console.log("🔍 DEBUG Redux raw values", {
-  //   isAuthenticated,
-  //   postId: post?._id || "none",
-  //   guestPostId: guestPost?._id || "none",
-  //   loading,
-  //   guestLoading,
-  //   error: error?.message || error,
-  //   guestError: guestError?.message || guestError,
-  // });
 
   // Local state
   const [sessionTime, setSessionTime] = useState(0);
@@ -94,24 +88,14 @@ const DisplayPost = () => {
 
   const getSeoDescription = (html, minLength = 150, maxLength = 180) => {
     if (!html) return "";
-
     const text = html
       .replace(/<[^>]+>/g, "")
       .replace(/\s+/g, " ")
       .trim();
-
     if (text.length <= maxLength) return text;
-
-    // Look for sentence end AFTER minLength
     const sentenceEndRegex = new RegExp(`^(.{${minLength},}?[.!?])(\\s|$)`);
-
     const match = text.match(sentenceEndRegex);
-
-    if (match) {
-      return match[1].trim();
-    }
-
-    // Fallback: safe cut at word boundary
+    if (match) return match[1].trim();
     return text
       .slice(0, maxLength)
       .replace(/\s+\S*$/, "")
@@ -120,31 +104,17 @@ const DisplayPost = () => {
 
   const postDescription = useMemo(() => {
     if (!activePost?.blocks) return "";
-
     const firstTextBlock = activePost.blocks.find(
-      (b) => b?.type === "text" && b?.value
+      (b) => b?.type === "text" && b?.value,
     );
-
     return getSeoDescription(firstTextBlock?.value, 180);
   }, [activePost]);
-
-  // 🔍 DEBUG: Derived active values used in rendering
-  // console.log("🔍 DEBUG Active values", {
-  //   activePostId: activePost?._id || "none",
-  //   activePostTitle: activePost?.title || "none",
-  //   activeLoading,
-  //   activeError: activeError?.message || activeError,
-  //   fetchAttempted,
-  //   postReady,
-  // });
 
   // Memoized values
   const categoryMap = useMemo(() => {
     if (!Array.isArray(categories)) return {};
     return categories.reduce((map, cat) => {
-      if (cat?._id && cat?.name) {
-        map[cat._id] = cat.name;
-      }
+      if (cat?._id && cat?.name) map[cat._id] = cat.name;
       return map;
     }, {});
   }, [categories]);
@@ -157,8 +127,8 @@ const DisplayPost = () => {
   const isAuthor = useMemo(() => {
     return Boolean(
       currentUser?._id &&
-        activePost?.author?._id &&
-        currentUser._id === activePost?.author?._id
+      activePost?.author?._id &&
+      currentUser._id === activePost?.author?._id,
     );
   }, [currentUser, activePost]);
 
@@ -173,7 +143,7 @@ const DisplayPost = () => {
     if (isAuthor) return true;
     if (!isPostRestricted) return true;
     return Boolean(
-      activePost?.author?._id && isSubscribed?.[activePost.author?._id]
+      activePost?.author?._id && isSubscribed?.[activePost.author?._id],
     );
   }, [
     isAuthor,
@@ -185,7 +155,7 @@ const DisplayPost = () => {
 
   const isUserSubscribed = useMemo(() => {
     return Boolean(
-      activePost?.author?._id && isSubscribed?.[activePost.author?._id]
+      activePost?.author?._id && isSubscribed?.[activePost.author?._id],
     );
   }, [activePost?.author?._id, isSubscribed]);
 
@@ -199,9 +169,6 @@ const DisplayPost = () => {
 
   // Main fetch effect
   useEffect(() => {
-    // 🔍 DEBUG: Entry into fetch effect
-    // console.log("🔍 DEBUG Fetch effect triggered", { slug, isAuthenticated });
-
     if (!slug) {
       console.warn("[DisplayPost] No slug provided");
       return;
@@ -230,30 +197,21 @@ const DisplayPost = () => {
     const fetchData = async () => {
       try {
         if (isAuthenticated) {
-          const result = await dispatch(
-            getSinglePost({ slug, isGuest: false })
-          ).unwrap();
-          // console.log("🔍 DEBUG Authenticated fetch success", {
-          //   postId: result?._id,
-          // });
+          await dispatch(getSinglePost({ slug, isGuest: false })).unwrap();
           dispatch(fetchCategories()).catch((err) =>
-            console.warn("[DisplayPost] Categories fetch failed:", err)
+            console.warn("[DisplayPost] Categories fetch failed:", err),
           );
         } else {
-          const result = await dispatch(fetchPublicPostBySlug(slug)).unwrap();
-          // console.log("🔍 DEBUG Guest fetch success", { postId: result?._id });
+          await dispatch(fetchPublicPostBySlug(slug)).unwrap();
         }
-
         if (componentMountedRef.current) {
           setFetchAttempted(true);
           setPostReady(true);
-          // console.log("🔍 DEBUG Post ready set to true");
         }
       } catch (err) {
-        console.error("🔍 DEBUG Fetch failed", err);
+        console.error("[DisplayPost] Fetch failed", err);
         if (componentMountedRef.current) {
-          const errorMessage = err?.message || "Failed to load post";
-          toast.error(errorMessage);
+          toast.error(err?.message || "Failed to load post");
           setFetchAttempted(true);
           setPostReady(false);
         }
@@ -265,32 +223,27 @@ const DisplayPost = () => {
 
   // Fetch bookmark/like status and subscription plans
   useEffect(() => {
-    if (!isAuthenticated || !activePost?._id || !activePost?.author?._id) {
+    if (!isAuthenticated || !activePost?._id || !activePost?.author?._id)
       return;
-    }
-
     if (hasFetchedStatus.current) return;
-
     hasFetchedStatus.current = true;
 
     dispatch(fetchBookmarkAndLikeStatus(activePost._id))
       .unwrap()
-      .catch((err) => {
-        console.warn("[DisplayPost] Failed to fetch interaction status:", err);
-      });
+      .catch((err) =>
+        console.warn("[DisplayPost] Failed to fetch interaction status:", err),
+      );
 
     dispatch(fetchSubscriptionPlansByAuthor(activePost?.author?._id))
       .unwrap()
-      .catch((err) => {
-        console.warn("[DisplayPost] Failed to fetch subscription plans:", err);
-      });
+      .catch((err) =>
+        console.warn("[DisplayPost] Failed to fetch subscription plans:", err),
+      );
   }, [dispatch, activePost?._id, activePost?.author?._id, isAuthenticated]);
 
   // Reading time tracking
   useEffect(() => {
-    if (!isAuthenticated || !activePost?._id || !activePost?.slug) {
-      return;
-    }
+    if (!isAuthenticated || !activePost?._id || !activePost?.slug) return;
 
     if (!isTracking && !localStartTime) {
       dispatch(startReading(activePost._id));
@@ -314,7 +267,7 @@ const DisplayPost = () => {
               if (error?.status !== 404) {
                 console.warn(
                   "[DisplayPost] Failed to record reading time:",
-                  error
+                  error,
                 );
               }
             });
@@ -335,20 +288,17 @@ const DisplayPost = () => {
   // Session time counter
   useEffect(() => {
     if (!isTracking || !localStartTime) return;
-
     const interval = setInterval(() => {
       if (localStartTime && componentMountedRef.current) {
         setSessionTime(Math.floor((Date.now() - localStartTime) / 1000));
       }
     }, 1000);
-
     return () => clearInterval(interval);
   }, [isTracking, localStartTime]);
 
   // Handle 404 navigation
   useEffect(() => {
     if (!fetchAttempted) return;
-
     const timeoutId = setTimeout(() => {
       if (
         !postReady &&
@@ -359,7 +309,6 @@ const DisplayPost = () => {
         navigate("/404", { replace: true });
       }
     }, 1000);
-
     return () => clearTimeout(timeoutId);
   }, [fetchAttempted, postReady, activeLoading, navigate]);
 
@@ -372,9 +321,8 @@ const DisplayPost = () => {
       activeLoading ||
       !activePost?._id ||
       !fetchAttempted
-    ) {
+    )
       return;
-    }
 
     if (isPostRestricted && !canViewPost && !isAuthor) {
       toast("This is a paid post. Subscribe to view full content.", {
@@ -395,15 +343,11 @@ const DisplayPost = () => {
     isAuthor,
   ]);
 
-  const BASE_URL = import.meta.env.VITE_API_URL || "https://readzio.com";
-
   const formatTime = (seconds) => {
     if (!seconds || typeof seconds !== "number") return "0 sec";
-
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-
     return `${hrs ? `${hrs} hr ` : ""}${mins ? `${mins} min ` : ""}${
       secs || (!hrs && !mins) ? `${secs} sec` : ""
     }`.trim();
@@ -422,6 +366,7 @@ const DisplayPost = () => {
       </div>
     </div>
   );
+
   const renderPostContent = () => {
     // 1. Loading states
     if (activeLoading || subscriptionLoading || !fetchAttempted) {
@@ -438,23 +383,19 @@ const DisplayPost = () => {
       return <PostNotFound message="Post not found" />;
     }
 
-    // 4. Extract first text block (SEO + meta)
-    const firstTextBlock = activePost.blocks.find(
-      (b) => b?.type === "text" && b?.value
-    );
-
     const seoDescription =
       postDescription ||
       "Read this article on Readzio – ideas, discussions, and insights.";
 
-    // 5. Extract first image
+    // ✅ Canonical always = https://www.readzio.com/post/slug
+    const canonicalUrl = `${BASE_URL}/post/${activePost.slug}`;
+
     const firstImage =
       activePost.blocks.find((b) => b?.type === "image")?.src ||
       activePost.blocks.find((b) => b?.type === "image")?.url ||
       activePost.thumbnail ||
       `${BASE_URL}/logo.png`;
 
-    // 6. JSON-LD (clean & safe)
     const jsonLd = {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
@@ -474,39 +415,38 @@ const DisplayPost = () => {
           url: `${BASE_URL}/logo.png`,
         },
       },
-      url: `${BASE_URL}/post/${activePost.slug}`,
+      url: canonicalUrl,
       datePublished: activePost.createdAt,
       dateModified: activePost.updatedAt || activePost.createdAt,
       mainEntityOfPage: {
         "@type": "WebPage",
-        "@id": `${BASE_URL}/post/${activePost.slug}`,
+        "@id": canonicalUrl,
       },
       isAccessibleForFree: !isPostRestricted,
     };
 
     return (
       <>
-        {/* SEO HEAD */}
+        {/* ✅ SEO HEAD — HelmetProvider main.jsx mein hai, yahan sirf Helmet */}
         <Helmet>
           <title>{`${activePost.title} | Readzio`}</title>
-
           <meta name="robots" content="index, follow" />
           <meta name="description" content={seoDescription} />
-
-          <link rel="canonical" href={`${BASE_URL}/post/${activePost.slug}`} />
+          {/* ✅ Canonical = exact post URL, homepage nahi */}
+          <link rel="canonical" href={canonicalUrl} />
 
           {/* Open Graph */}
           <meta property="og:title" content={activePost.title} />
           <meta property="og:description" content={seoDescription} />
           <meta property="og:image" content={firstImage} />
           <meta property="og:type" content="article" />
-          <meta
-            property="og:url"
-            content={`${BASE_URL}/post/${activePost.slug}`}
-          />
+          <meta property="og:url" content={canonicalUrl} />
 
           {/* Twitter */}
           <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content={activePost.title} />
+          <meta name="twitter:description" content={seoDescription} />
+          <meta name="twitter:image" content={firstImage} />
 
           {/* Structured Data */}
           <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
@@ -564,79 +504,77 @@ const DisplayPost = () => {
     );
   };
 
+  // ✅ HelmetProvider HATAYA — main.jsx mein globally hai
   return (
     <ErrorBoundary>
-      <HelmetProvider>
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 font-sans antialiased">
-          <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="lg:grid lg:grid-cols-3 lg:gap-10">
-              <div className="lg:col-span-2 space-y-8">
-                {renderPostContent()}
-                {activePost?._id && (
-                  <AdGuard placement="multiplex">
-                    <MultiplexAd postId={activePost._id} testMode={false} />
-                  </AdGuard>
-                )}
-              </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 font-sans antialiased">
+        <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="lg:grid lg:grid-cols-3 lg:gap-10">
+            <div className="lg:col-span-2 space-y-8">
+              {renderPostContent()}
+              {activePost?._id && (
+                <AdGuard placement="multiplex">
+                  <MultiplexAd postId={activePost._id} testMode={false} />
+                </AdGuard>
+              )}
+            </div>
 
-              <div className="hidden lg:block lg:col-span-1 space-y-8">
-                <div className="sticky -top-76 space-y-8">
-                  <AuthorSidebar
-                    authorId={activePost?.author?._id || null}
-                    isLoading={
-                      activeLoading || subscriptionLoading || !fetchAttempted
-                    }
-                    className="rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6"
-                  />
-                  {activePost?._id && (
-                    <div className="sticky top-[calc(100vh-200px)]">
-                      <DisplayAd postId={activePost._id} testMode={false} />
-                    </div>
-                  )}
-                </div>
+            <div className="hidden lg:block lg:col-span-1 space-y-8">
+              <div className="sticky -top-76 space-y-8">
+                <AuthorSidebar
+                  authorId={activePost?.author?._id || null}
+                  isLoading={
+                    activeLoading || subscriptionLoading || !fetchAttempted
+                  }
+                  className="rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6"
+                />
+                {activePost?._id && (
+                  <div className="sticky top-[calc(100vh-200px)]">
+                    <DisplayAd postId={activePost._id} testMode={false} />
+                  </div>
+                )}
               </div>
             </div>
           </div>
-
-          {activePost?._id && (
-            <div className="w-full min-h-screen bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 py-16">
-              <ErrorBoundary>
-                <SuggestedPosts
-                  postId={activePost._id}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-full"
-                />
-              </ErrorBoundary>
-            </div>
-          )}
-
-          {activePost?.author?._id && (
-            <>
-              <UserModal
-                isOpen={isUserModalOpen}
-                onClose={() => setIsUserModalOpen(false)}
-                authorId={activePost?.author?._id}
-              />
-
-              <button
-                className="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-full shadow-xl hover:shadow-2xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 z-50 border border-blue-500/30"
-                onClick={() => setIsUserModalOpen(true)}
-                aria-label="View author information"
-              >
-                Author
-              </button>
-            </>
-          )}
-
-          {isAuthor && activePost?._id && activePost?.slug && (
-            <DeleteModal
-              isOpen={isDeleteModalOpen}
-              onClose={() => setIsDeleteModalOpen(false)}
-              postId={activePost?._id}
-              slug={activePost?.slug}
-            />
-          )}
         </div>
-      </HelmetProvider>
+
+        {activePost?._id && (
+          <div className="w-full min-h-screen bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 py-16">
+            <ErrorBoundary>
+              <SuggestedPosts
+                postId={activePost._id}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-full"
+              />
+            </ErrorBoundary>
+          </div>
+        )}
+
+        {activePost?.author?._id && (
+          <>
+            <UserModal
+              isOpen={isUserModalOpen}
+              onClose={() => setIsUserModalOpen(false)}
+              authorId={activePost?.author?._id}
+            />
+            <button
+              className="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-full shadow-xl hover:shadow-2xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 z-50 border border-blue-500/30"
+              onClick={() => setIsUserModalOpen(true)}
+              aria-label="View author information"
+            >
+              Author
+            </button>
+          </>
+        )}
+
+        {isAuthor && activePost?._id && activePost?.slug && (
+          <DeleteModal
+            isOpen={isDeleteModalOpen}
+            onClose={() => setIsDeleteModalOpen(false)}
+            postId={activePost?._id}
+            slug={activePost?.slug}
+          />
+        )}
+      </div>
     </ErrorBoundary>
   );
 };
