@@ -6,7 +6,7 @@ import {
   trackGuestVisit,
   searchPublicPosts,
 } from "../../servers/Controllers/publicGuestController.js";
-import AppError from "../Utils/AppError.js"; // ✅ fixed: default import, not named
+import { AppError } from "../Utils/AppError.js";
 
 const router = express.Router();
 
