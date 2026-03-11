@@ -1,4 +1,3 @@
-// Router file (unchanged, as no fixes needed)
 import express from "express";
 import {
   getPublicPosts,
@@ -7,6 +6,7 @@ import {
   trackGuestVisit,
   searchPublicPosts,
 } from "../../servers/Controllers/publicGuestController.js";
+import AppError from "../Utils/AppError.js"; // ✅ fixed: default import, not named
 
 const router = express.Router();
 
@@ -25,26 +25,26 @@ const validateSearchQuery = (req, res, next) => {
   const { query } = req.query;
   if (!query || typeof query !== "string" || query.trim() === "") {
     return next(
-      new AppError("Invalid search query", 400, "ValidateSearchQuery")
+      new AppError("Invalid search query", 400, "ValidateSearchQuery"),
     );
   }
   req.query.query = query.trim();
   next();
 };
 
-// GET /public/posts - Fetches public posts
+// GET  /api/public/posts           — fetch paginated public posts
 router.get("/posts", getPublicPosts);
 
-// GET /public/post/:slug - Fetches a public post by slug
+// GET  /api/public/search-posts    — search public posts (before /post/:slug to avoid conflict)
+router.get("/search-posts", validateSearchQuery, searchPublicPosts);
+
+// GET  /api/public/post/:slug      — fetch single public post by slug
 router.get("/post/:slug", validateSlug, getPublicPostBySlug);
 
-// POST /public/post/:slug/view - Tracks guest view of a post
+// POST /api/public/post/:slug/view — track guest view
 router.post("/post/:slug/view", validateSlug, trackGuestView);
 
-// POST /guest/visit - Tracks guest visit
+// POST /api/public/guest/visit     — track guest visit
 router.post("/guest/visit", trackGuestVisit);
-
-// GET /public/search-posts - Searches public posts
-router.get("/search-posts", validateSearchQuery, searchPublicPosts);
 
 export default router;

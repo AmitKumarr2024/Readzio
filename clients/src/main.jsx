@@ -13,8 +13,7 @@ createRoot(document.getElementById("root")).render(
   <Provider store={store}>
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <HelmetProvider>
-        {" "}
-        {/* ✅ Global — sirf ek baar, sab pages cover */}
+        <RouterProvider router={routes} />
         <Toaster
           position="bottom-left"
           toastOptions={{
@@ -27,7 +26,6 @@ createRoot(document.getElementById("root")).render(
             },
           }}
         />
-        <RouterProvider router={routes} />
       </HelmetProvider>
     </GoogleOAuthProvider>
   </Provider>,
