@@ -22,11 +22,7 @@ const countVariants = {
     opacity: 1,
     scale: 1,
     y: 0,
-    transition: {
-      type: "spring",
-      stiffness: 300,
-      damping: 20,
-    },
+    transition: { type: "spring", stiffness: 300, damping: 20 },
   },
   exit: {
     opacity: 0,
@@ -37,30 +33,17 @@ const countVariants = {
 };
 
 const dropdownVariants = {
-  hidden: {
-    opacity: 0,
-    y: -10,
-    scale: 0.95,
-    transition: { duration: 0.2 },
-  },
+  hidden: { opacity: 0, y: -10, scale: 0.95, transition: { duration: 0.2 } },
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: {
-      type: "spring",
-      stiffness: 300,
-      damping: 25,
-    },
+    transition: { type: "spring", stiffness: 300, damping: 25 },
   },
 };
 
 const mobileMenuVariants = {
-  hidden: {
-    opacity: 0,
-    height: 0,
-    transition: { duration: 0.3 },
-  },
+  hidden: { opacity: 0, height: 0, transition: { duration: 0.3 } },
   visible: {
     opacity: 1,
     height: "auto",
@@ -102,9 +85,7 @@ const Navbar = () => {
     authLoading,
     sessionExpired,
   } = useSelector((state) => state.auth ?? {});
-  const { onlineUsersCount, status } = useSelector(
-    (state) => state.socket ?? {},
-  );
+  const { onlineUsersCount } = useSelector((state) => state.socket ?? {});
   const { user, userLocations } = useSelector((state) => state.user ?? {});
 
   const avatarUrl = useMemo(() => user?.avatar, [user?.avatar]);
@@ -138,6 +119,7 @@ const Navbar = () => {
     [onlineUsersCount],
   );
 
+  // ── 1. Auth + user init ──────────────────────────────────────────────────
   useEffect(() => {
     if (!authInitialized && !authLoading) {
       dispatch(checkAuth()).catch((err) =>
@@ -152,28 +134,30 @@ const Navbar = () => {
     }
   }, [authInitialized, authLoading, dispatch]);
 
-  // Guests ke liye bhi socket initialize karo ✅
+  // ── 2. Socket — ONLY for authenticated/login users ───────────────────────
+  //    Guests never connect → never counted in onlineUsersCount.
   useEffect(() => {
-    if (authInitialized) {
-      // authenticated ho ya guest — dono ke liye
-      dispatch(initializeSocket()).catch((err) =>
-        console.error("Socket init failed:", err),
-      );
-      return () => dispatch(disconnectSocket());
-    }
-  }, [authInitialized, dispatch]);
+    if (!isAuthenticated || !authUser?._id) return;
+
+    dispatch(initializeSocket()).catch((err) =>
+      console.error("Socket init failed:", err),
+    );
+
+    return () => {
+      dispatch(disconnectSocket());
+    };
+  }, [isAuthenticated, authUser?._id, dispatch]);
+
+  // ── 3. Fetch playlists for authenticated users ───────────────────────────
   useEffect(() => {
     if (isAuthenticated && authUser?._id) {
-      dispatch(initializeSocket()).catch((err) =>
-        console.error("Socket init failed:", err),
-      );
       dispatch(fetchUserPlaylists(authUser._id)).catch((err) =>
         console.error("Fetch playlists failed:", err),
       );
-      return () => dispatch(disconnectSocket());
     }
   }, [isAuthenticated, authUser?._id, dispatch]);
 
+  // ── 4. Track guest visit (once per session, no socket involved) ──────────
   useEffect(() => {
     if (
       !isAuthenticated &&
@@ -187,6 +171,7 @@ const Navbar = () => {
     }
   }, [isAuthenticated, authInitialized, dispatch]);
 
+  // ── 5. Close dropdown on outside click ──────────────────────────────────
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -197,6 +182,7 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // ── 6. Close mobile menu on route change ────────────────────────────────
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
@@ -259,7 +245,6 @@ const Navbar = () => {
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Logo with Country Flag */}
             <div className="relative flex flex-col items-center">
-              {/* Country Name - Positioned Above Logo */}
               <div className="absolute -top-4 -right-3 text-sm text-gray-600 dark:text-gray-300">
                 {userLocation?.country && userLocation.country !== "Unknown"
                   ? userLocation.country.toUpperCase()
@@ -268,7 +253,6 @@ const Navbar = () => {
 
               <Logo />
 
-              {/* Country Flag - Positioned at Bottom Right of Logo */}
               {userLocation?.countryCode && (
                 <motion.img
                   initial={{ scale: 0, opacity: 0 }}
@@ -286,44 +270,46 @@ const Navbar = () => {
               )}
             </div>
 
-            {/* Online Users Count */}
-            <Link to="/users" className="group" aria-label="Online users">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-gray-200/80 dark:hover:bg-gray-700/80 transition-colors"
-              >
-                <motion.span
-                  className={`w-2 h-2 rounded-full ${statusClass} shadow-lg`}
-                  animate={
-                    onlineUsersCount >= 1
-                      ? {
-                          boxShadow: [
-                            "0 0 0 0 rgba(34, 197, 94, 0.7)",
-                            "0 0 0 8px rgba(34, 197, 94, 0)",
-                          ],
-                        }
-                      : {}
-                  }
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                />
-                <AnimatePresence mode="wait">
+            {/* Online count — login users only, hidden from guests */}
+            {isAuthenticated && authUser?._id && (
+              <Link to="/users" className="group" aria-label="Online users">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-gray-200/80 dark:hover:bg-gray-700/80 transition-colors"
+                >
                   <motion.span
-                    key={onlineUsersCount}
-                    variants={countVariants}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    className="font-bold text-sm sm:text-base bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent"
-                  >
-                    {onlineUsersCount || 0}
-                  </motion.span>
-                </AnimatePresence>
-                <span className="hidden sm:inline text-xs font-medium text-gray-600 dark:text-gray-400">
-                  online
-                </span>
-              </motion.div>
-            </Link>
+                    className={`w-2 h-2 rounded-full ${statusClass} shadow-lg`}
+                    animate={
+                      onlineUsersCount >= 1
+                        ? {
+                            boxShadow: [
+                              "0 0 0 0 rgba(34, 197, 94, 0.7)",
+                              "0 0 0 8px rgba(34, 197, 94, 0)",
+                            ],
+                          }
+                        : {}
+                    }
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  />
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={onlineUsersCount}
+                      variants={countVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      className="font-bold text-sm sm:text-base bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent"
+                    >
+                      {onlineUsersCount || 0}
+                    </motion.span>
+                  </AnimatePresence>
+                  <span className="hidden sm:inline text-xs font-medium text-gray-600 dark:text-gray-400">
+                    online
+                  </span>
+                </motion.div>
+              </Link>
+            )}
           </div>
 
           {/* Center - Search Bar */}
@@ -376,7 +362,7 @@ const Navbar = () => {
             {/* Theme Toggle */}
             <ThemeToggleButton />
 
-            {/* Mobile Avatar (shown only on mobile when authenticated) */}
+            {/* Mobile Avatar */}
             {isAuthenticated && authUser?._id && (
               <Link to="/user" className="block md:hidden">
                 <motion.div
@@ -400,7 +386,7 @@ const Navbar = () => {
               </Link>
             )}
 
-            {/* Write Button with Original Animated Border */}
+            {/* Write Button */}
             <div className="relative rounded-full border-4 border-transparent [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,conic-gradient(from_var(--border-angle),#ff0000,#ff9900,#33cc33,#3399ff,#cc33cc,#ff0000)_border-box] animate-border hidden md:inline-block">
               <motion.button
                 whileHover={{ scale: 1.05 }}
