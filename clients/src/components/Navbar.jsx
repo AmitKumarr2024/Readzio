@@ -74,6 +74,9 @@ const Navbar = () => {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // ✅ Real-time online count — updated via socket listener below
+  const [liveOnlineCount, setLiveOnlineCount] = useState(0);
+
   const playlistsCount = useSelector(
     (state) => state.playlist?.playlists?.length || 0,
   );
@@ -85,7 +88,12 @@ const Navbar = () => {
     authLoading,
     sessionExpired,
   } = useSelector((state) => state.auth ?? {});
-  const { onlineUsersCount } = useSelector((state) => state.socket ?? {});
+
+  // ✅ Read socket from Redux store — same pattern as UserProfilePage
+  const { socket, isConnected, onlineUsersCount } = useSelector(
+    (state) => state.socket ?? {},
+  );
+
   const { user, userLocations } = useSelector((state) => state.user ?? {});
 
   const avatarUrl = useMemo(() => user?.avatar, [user?.avatar]);
@@ -114,9 +122,8 @@ const Navbar = () => {
   );
 
   const statusClass = useMemo(
-    () =>
-      onlineUsersCount >= 1 ? "animate-pulse bg-green-500" : "bg-gray-500",
-    [onlineUsersCount],
+    () => (liveOnlineCount >= 1 ? "animate-pulse bg-green-500" : "bg-gray-500"),
+    [liveOnlineCount],
   );
 
   // ── 1. Auth + user init ──────────────────────────────────────────────────
@@ -134,8 +141,7 @@ const Navbar = () => {
     }
   }, [authInitialized, authLoading, dispatch]);
 
-  // ── 2. Socket — ONLY for authenticated/login users ───────────────────────
-  //    Guests never connect → never counted in onlineUsersCount.
+  // ── 2. Socket init — ONLY for authenticated/login users ─────────────────
   useEffect(() => {
     if (!isAuthenticated || !authUser?._id) return;
 
@@ -148,7 +154,37 @@ const Navbar = () => {
     };
   }, [isAuthenticated, authUser?._id, dispatch]);
 
-  // ── 3. Fetch playlists for authenticated users ───────────────────────────
+  // ── 3. Real-time online count listener — same pattern as UserProfilePage ─
+  //    Seed liveOnlineCount from Redux state first, then keep it fresh
+  //    via the socket "onlineUsersCount" event.
+  useEffect(() => {
+    // Seed from Redux store whenever it changes
+    if (onlineUsersCount !== undefined) {
+      setLiveOnlineCount(onlineUsersCount);
+    }
+  }, [onlineUsersCount]);
+
+  useEffect(() => {
+    if (!socket || !isConnected || !isAuthenticated) return;
+
+    const handleOnlineCount = (count) => {
+      setLiveOnlineCount(count);
+    };
+
+    // Listen to whichever event your backend emits for online count
+    // Common event names — use whichever your server emits:
+    socket.on("onlineUsersCount", handleOnlineCount);
+    socket.on("updateOnlineCount", handleOnlineCount);
+    socket.on("onlineCount", handleOnlineCount);
+
+    return () => {
+      socket.off("onlineUsersCount", handleOnlineCount);
+      socket.off("updateOnlineCount", handleOnlineCount);
+      socket.off("onlineCount", handleOnlineCount);
+    };
+  }, [socket, isConnected, isAuthenticated]);
+
+  // ── 4. Fetch playlists for authenticated users ───────────────────────────
   useEffect(() => {
     if (isAuthenticated && authUser?._id) {
       dispatch(fetchUserPlaylists(authUser._id)).catch((err) =>
@@ -157,7 +193,7 @@ const Navbar = () => {
     }
   }, [isAuthenticated, authUser?._id, dispatch]);
 
-  // ── 4. Track guest visit (once per session, no socket involved) ──────────
+  // ── 5. Track guest visit (once per session, no socket) ───────────────────
   useEffect(() => {
     if (
       !isAuthenticated &&
@@ -171,7 +207,7 @@ const Navbar = () => {
     }
   }, [isAuthenticated, authInitialized, dispatch]);
 
-  // ── 5. Close dropdown on outside click ──────────────────────────────────
+  // ── 6. Close dropdown on outside click ──────────────────────────────────
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -182,7 +218,7 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ── 6. Close mobile menu on route change ────────────────────────────────
+  // ── 7. Close mobile menu on route change ────────────────────────────────
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
@@ -270,7 +306,7 @@ const Navbar = () => {
               )}
             </div>
 
-            {/* Online count — login users only, hidden from guests */}
+            {/* Online count — login users only, updates in real-time via socket */}
             {isAuthenticated && authUser?._id && (
               <Link to="/users" className="group" aria-label="Online users">
                 <motion.div
@@ -281,7 +317,7 @@ const Navbar = () => {
                   <motion.span
                     className={`w-2 h-2 rounded-full ${statusClass} shadow-lg`}
                     animate={
-                      onlineUsersCount >= 1
+                      liveOnlineCount >= 1
                         ? {
                             boxShadow: [
                               "0 0 0 0 rgba(34, 197, 94, 0.7)",
@@ -294,14 +330,14 @@ const Navbar = () => {
                   />
                   <AnimatePresence mode="wait">
                     <motion.span
-                      key={onlineUsersCount}
+                      key={liveOnlineCount}
                       variants={countVariants}
                       initial="initial"
                       animate="animate"
                       exit="exit"
                       className="font-bold text-sm sm:text-base bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent"
                     >
-                      {onlineUsersCount || 0}
+                      {liveOnlineCount}
                     </motion.span>
                   </AnimatePresence>
                   <span className="hidden sm:inline text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -618,7 +654,6 @@ const Navbar = () => {
             className="md:hidden bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md shadow-2xl border-b border-gray-200 dark:border-gray-800 overflow-hidden"
           >
             <div className="px-4 py-4 space-y-1">
-              {/* Mobile Write Button */}
               <motion.div variants={menuItemVariants} className="mb-3">
                 <div className="relative rounded-full border-4 border-transparent [background:linear-gradient(45deg,#172033,#1e293b_50%,#172033)_padding-box,conic-gradient(from_var(--border-angle),#ff0000,#ff9900,#33cc33,#3399ff,#cc33cc,#ff0000)_border-box] animate-border">
                   <motion.button
@@ -770,7 +805,6 @@ const Navbar = () => {
                       Login
                     </Link>
                   </motion.div>
-
                   <motion.div variants={menuItemVariants}>
                     <Link
                       to="/signup"
