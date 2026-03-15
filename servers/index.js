@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import http from "http";
 import mongoose from "mongoose";
+import { createRequire } from "module"; // ✅ NEW: needed for prerender-node (CommonJS)
 
 import {
   CLIENT_URL,
@@ -38,6 +39,10 @@ import guestRoutes from "./Routes/guestRoutes.js";
 import DailyEmailRoutes from "./Routes/dailyMailRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 import { smartRateLimiter } from "./Middlewares/smartRateLimiter.js";
+
+// ✅ NEW: Load prerender-node (it's a CommonJS module, so we need createRequire)
+const require = createRequire(import.meta.url);
+const prerender = require("prerender-node");
 
 const app = express();
 app.set("trust proxy", true);
@@ -142,6 +147,149 @@ app.use(
     credentials: true,
   }),
 );
+
+// =============================================================================
+// ✅ PRERENDER MIDDLEWARE — Googlebot & crawlers ko fully rendered HTML milega
+// Normal users ko same React CSR milega — no cloaking, AdSense safe
+// =============================================================================
+
+if (NODE_ENV === "production") {
+  prerender
+    .set("protocol", "https")
+    .set("host", "www.readzio.com")
+    .set("prerenderServiceUrl", "http://localhost:8000"); // Self-hosted prerender server
+
+  // Agar prerender.io cloud use karna ho to upar wali line hatao aur ye add karo:
+  // .set("prerenderToken", process.env.PRERENDER_TOKEN)
+
+  // Ye routes prerender se skip honge (APIs, static files)
+  prerender.set("shouldPrerender", (req) => {
+    const skipExtensions = [
+      ".js",
+      ".css",
+      ".xml",
+      ".less",
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".gif",
+      ".pdf",
+      ".doc",
+      ".txt",
+      ".ico",
+      ".rss",
+      ".zip",
+      ".mp3",
+      ".rar",
+      ".exe",
+      ".wmv",
+      ".doc",
+      ".avi",
+      ".ppt",
+      ".mpg",
+      ".mpeg",
+      ".tif",
+      ".wav",
+      ".mov",
+      ".psd",
+      ".ai",
+      ".xls",
+      ".mp4",
+      ".m4a",
+      ".swf",
+      ".dat",
+      ".dmg",
+      ".iso",
+      ".flv",
+      ".m4v",
+      ".torrent",
+      ".ttf",
+      ".woff",
+      ".woff2",
+      ".svg",
+    ];
+
+    const url = req.url.toLowerCase();
+
+    // Skip API routes
+    if (url.startsWith("/api/")) return false;
+
+    // Skip static file extensions
+    if (skipExtensions.some((ext) => url.endsWith(ext))) return false;
+
+    // Only prerender for known bots
+    const userAgent = (req.headers["user-agent"] || "").toLowerCase();
+    const botAgents = [
+      // ── Google ──────────────────────────────────────────
+      "googlebot",
+      "google-inspectiontool",
+      "adsbot-google",
+      "googleother",
+      "google-extended",
+      "apis-google",
+      "storebot-google",
+
+      // ── Bing / Microsoft ────────────────────────────────
+      "bingbot",
+      "bingpreview",
+      "msnbot",
+
+      // ── AI crawlers (OpenAI, Anthropic, Meta, etc.) ─────
+      "gptbot", // OpenAI GPT crawler
+      "chatgpt-user", // ChatGPT browsing
+      "oai-searchbot", // OpenAI search
+      "claudebot", // Anthropic Claude
+      "claude-web", // Anthropic Claude web
+      "anthropic-ai", // Anthropic general
+      "perplexitybot", // Perplexity AI
+      "perplexity-user", // Perplexity user agent
+      "cohere-ai", // Cohere
+      "youbot", // You.com
+      "meta-externalagent", // Meta AI
+      "meta-externalfetcher", // Meta fetcher
+      "facebookexternalhit", // Facebook/Meta link preview
+      "ia_archiver", // Internet Archive / Wayback
+      "ccbot", // Common Crawl (used by many AI datasets)
+      "diffbot", // Diffbot AI
+      "bytespider", // ByteDance / TikTok AI
+      "amazonbot", // Amazon Alexa AI
+      "applebot-extended", // Apple AI extended
+      "semrushbot", // SEMrush
+      "ahrefsbot", // Ahrefs
+      "dotbot", // Moz
+      "rogerbot", // Moz
+
+      // ── Social / Messaging previews ─────────────────────
+      "twitterbot",
+      "facebot",
+      "linkedinbot",
+      "whatsapp",
+      "telegrambot",
+      "discordbot",
+      "slackbot",
+      "pinterest",
+
+      // ── Search engines ───────────────────────────────────
+      "yandex",
+      "duckduckbot",
+      "slurp",
+      "baiduspider",
+      "sogou",
+      "exabot",
+      "applebot",
+
+      // ── Prerender itself ─────────────────────────────────
+      "prerender",
+    ];
+
+    return botAgents.some((bot) => userAgent.includes(bot));
+  });
+
+  app.use(prerender);
+  console.log("✅ Prerender middleware active (production)");
+}
+
+// =============================================================================
 
 app.use(
   express.json({
@@ -263,6 +411,10 @@ app.get("/health", (req, res) => {
       exists: sitemapExists,
       path: sitemapExists ? SITEMAP_PATH : null,
       stats: sitemapStats,
+    },
+    prerender: {
+      active: NODE_ENV === "production",
+      serviceUrl: "http://localhost:8000",
     },
   });
 });
