@@ -7,7 +7,7 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import http from "http";
 import mongoose from "mongoose";
-import { createRequire } from "module"; // ✅ NEW: needed for prerender-node (CommonJS)
+import { createRequire } from "module";
 
 import {
   CLIENT_URL,
@@ -40,7 +40,7 @@ import DailyEmailRoutes from "./Routes/dailyMailRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 import { smartRateLimiter } from "./Middlewares/smartRateLimiter.js";
 
-// ✅ NEW: Load prerender-node (it's a CommonJS module, so we need createRequire)
+// prerender-node is CommonJS — must use createRequire in ESM project
 const require = createRequire(import.meta.url);
 const prerender = require("prerender-node");
 
@@ -149,147 +149,164 @@ app.use(
 );
 
 // =============================================================================
-// ✅ PRERENDER MIDDLEWARE — Googlebot & crawlers ko fully rendered HTML milega
-// Normal users ko same React CSR milega — no cloaking, AdSense safe
+// ✅ PRERENDER MIDDLEWARE (prerender.io CLOUD — no local Chrome needed)
+//
+// HOW IT WORKS:
+//   Normal users  → React CSR (index.html) — same as before
+//   Bots/Crawlers → prerender.io cloud renders full HTML → returns to bot
+//
+// SETUP (one time):
+//   1. Sign up FREE at https://prerender.io
+//   2. Copy your token from dashboard
+//   3. Add to .env:  PRERENDER_TOKEN=your_token_here
+//   4. pm2 delete prerender-server  (no longer needed)
+//   5. pm2 restart readzio-backend
 // =============================================================================
 
+// All known bot user-agent strings (O(n) lookup, cached at startup)
+const BOT_AGENTS = [
+  // Google
+  "googlebot",
+  "google-inspectiontool",
+  "adsbot-google",
+  "googleother",
+  "google-extended",
+  "apis-google",
+  "storebot-google",
+  // Bing / Microsoft
+  "bingbot",
+  "bingpreview",
+  "msnbot",
+  // OpenAI
+  "gptbot",
+  "chatgpt-user",
+  "oai-searchbot",
+  // Anthropic
+  "claudebot",
+  "claude-web",
+  "claude-user",
+  "claude-searchbot",
+  "anthropic-ai",
+  "anthropic",
+  // Perplexity
+  "perplexitybot",
+  "perplexity-user",
+  // Meta / Facebook
+  "meta-externalagent",
+  "meta-externalfetcher",
+  "facebookexternalhit",
+  // Other AI crawlers
+  "cohere-ai",
+  "youbot",
+  "ia_archiver",
+  "ccbot",
+  "diffbot",
+  "bytespider",
+  "amazonbot",
+  "applebot-extended",
+  // SEO tools
+  "semrushbot",
+  "ahrefsbot",
+  "dotbot",
+  "rogerbot",
+  // Social / Messaging previews
+  "twitterbot",
+  "facebot",
+  "linkedinbot",
+  "whatsapp",
+  "telegrambot",
+  "discordbot",
+  "slackbot",
+  "pinterest",
+  // Other search engines
+  "yandex",
+  "duckduckbot",
+  "slurp",
+  "baiduspider",
+  "sogou",
+  "exabot",
+  "applebot",
+  // Prerender itself
+  "prerender",
+];
+
+// Static file extensions — skip prerender for these (O(1) Set lookup)
+const SKIP_EXTENSIONS = new Set([
+  ".js",
+  ".css",
+  ".xml",
+  ".less",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".pdf",
+  ".doc",
+  ".txt",
+  ".ico",
+  ".rss",
+  ".zip",
+  ".mp3",
+  ".rar",
+  ".exe",
+  ".wmv",
+  ".avi",
+  ".ppt",
+  ".mpg",
+  ".mpeg",
+  ".tif",
+  ".wav",
+  ".mov",
+  ".psd",
+  ".ai",
+  ".xls",
+  ".mp4",
+  ".m4a",
+  ".swf",
+  ".dat",
+  ".dmg",
+  ".iso",
+  ".flv",
+  ".m4v",
+  ".torrent",
+  ".ttf",
+  ".woff",
+  ".woff2",
+  ".svg",
+]);
+
 if (NODE_ENV === "production") {
-  prerender
-    .set("protocol", "https")
-    .set("host", "www.readzio.com")
-    .set("prerenderServiceUrl", "http://localhost:8000"); // Self-hosted prerender server
+  const PRERENDER_TOKEN = process.env.PRERENDER_TOKEN;
 
-  // Agar prerender.io cloud use karna ho to upar wali line hatao aur ye add karo:
-  // .set("prerenderToken", process.env.PRERENDER_TOKEN)
+  if (!PRERENDER_TOKEN) {
+    console.warn("⚠️  PRERENDER_TOKEN not set in .env — prerender disabled!");
+    console.warn("   Get your free token at https://prerender.io");
+  } else {
+    prerender
+      .set("prerenderToken", PRERENDER_TOKEN)
+      .set("protocol", "https")
+      .set("host", "www.readzio.com");
 
-  // Ye routes prerender se skip honge (APIs, static files)
-  prerender.set("shouldPrerender", (req) => {
-    const skipExtensions = [
-      ".js",
-      ".css",
-      ".xml",
-      ".less",
-      ".png",
-      ".jpg",
-      ".jpeg",
-      ".gif",
-      ".pdf",
-      ".doc",
-      ".txt",
-      ".ico",
-      ".rss",
-      ".zip",
-      ".mp3",
-      ".rar",
-      ".exe",
-      ".wmv",
-      ".doc",
-      ".avi",
-      ".ppt",
-      ".mpg",
-      ".mpeg",
-      ".tif",
-      ".wav",
-      ".mov",
-      ".psd",
-      ".ai",
-      ".xls",
-      ".mp4",
-      ".m4a",
-      ".swf",
-      ".dat",
-      ".dmg",
-      ".iso",
-      ".flv",
-      ".m4v",
-      ".torrent",
-      ".ttf",
-      ".woff",
-      ".woff2",
-      ".svg",
-    ];
+    prerender.set("shouldPrerender", (req) => {
+      const url = req.url.toLowerCase();
 
-    const url = req.url.toLowerCase();
+      // Skip API routes
+      if (url.startsWith("/api/")) return false;
 
-    // Skip API routes
-    if (url.startsWith("/api/")) return false;
+      // Skip static file extensions
+      const cleanUrl = url.split("?")[0];
+      const lastDot = cleanUrl.lastIndexOf(".");
+      if (lastDot !== -1 && SKIP_EXTENSIONS.has(cleanUrl.slice(lastDot)))
+        return false;
 
-    // Skip static file extensions
-    if (skipExtensions.some((ext) => url.endsWith(ext))) return false;
+      // Only prerender for known bots
+      const ua = (req.headers["user-agent"] || "").toLowerCase();
+      return BOT_AGENTS.some((bot) => ua.includes(bot));
+    });
 
-    // Only prerender for known bots
-    const userAgent = (req.headers["user-agent"] || "").toLowerCase();
-    const botAgents = [
-      // ── Google ──────────────────────────────────────────
-      "googlebot",
-      "google-inspectiontool",
-      "adsbot-google",
-      "googleother",
-      "google-extended",
-      "apis-google",
-      "storebot-google",
-
-      // ── Bing / Microsoft ────────────────────────────────
-      "bingbot",
-      "bingpreview",
-      "msnbot",
-
-      // ── AI crawlers (OpenAI, Anthropic, Meta, etc.) ─────
-      "gptbot", // OpenAI GPT crawler
-      "chatgpt-user", // ChatGPT browsing
-      "oai-searchbot", // OpenAI search
-      "claudebot", // Anthropic Claude
-      "claude-web", // Anthropic Claude web
-      "claude-user", // Anthropic Claude user
-      "claude-searchbot", // Anthropic Claude search
-      "anthropic-ai", // Anthropic general
-      "anthropic", // Anthropic — matches all variants
-      "perplexitybot", // Perplexity AI
-      "perplexity-user", // Perplexity user agent
-      "cohere-ai", // Cohere
-      "youbot", // You.com
-      "meta-externalagent", // Meta AI
-      "meta-externalfetcher", // Meta fetcher
-      "facebookexternalhit", // Facebook/Meta link preview
-      "ia_archiver", // Internet Archive / Wayback
-      "ccbot", // Common Crawl (used by many AI datasets)
-      "diffbot", // Diffbot AI
-      "bytespider", // ByteDance / TikTok AI
-      "amazonbot", // Amazon Alexa AI
-      "applebot-extended", // Apple AI extended
-      "semrushbot", // SEMrush
-      "ahrefsbot", // Ahrefs
-      "dotbot", // Moz
-      "rogerbot", // Moz
-
-      // ── Social / Messaging previews ─────────────────────
-      "twitterbot",
-      "facebot",
-      "linkedinbot",
-      "whatsapp",
-      "telegrambot",
-      "discordbot",
-      "slackbot",
-      "pinterest",
-
-      // ── Search engines ───────────────────────────────────
-      "yandex",
-      "duckduckbot",
-      "slurp",
-      "baiduspider",
-      "sogou",
-      "exabot",
-      "applebot",
-
-      // ── Prerender itself ─────────────────────────────────
-      "prerender",
-    ];
-
-    return botAgents.some((bot) => userAgent.includes(bot));
-  });
-
-  app.use(prerender);
-  console.log("✅ Prerender middleware active (production)");
+    app.use(prerender);
+    console.log("✅ Prerender middleware active (prerender.io cloud)");
+  }
 }
 
 // =============================================================================
@@ -416,8 +433,9 @@ app.get("/health", (req, res) => {
       stats: sitemapStats,
     },
     prerender: {
-      active: NODE_ENV === "production",
-      serviceUrl: "http://localhost:8000",
+      active: NODE_ENV === "production" && !!process.env.PRERENDER_TOKEN,
+      mode: "prerender.io cloud",
+      tokenSet: !!process.env.PRERENDER_TOKEN,
     },
   });
 });
@@ -518,9 +536,11 @@ function mountRoutes() {
       console.error(`❌ Failed to mount ${path} (${name}):`, err.message);
       failedRoutes++;
       app.use(path, (req, res) =>
-        res.status(503).json({
-          error: `Service unavailable: ${name} initialization failed`,
-        }),
+        res
+          .status(503)
+          .json({
+            error: `Service unavailable: ${name} initialization failed`,
+          }),
       );
     }
   });
@@ -552,11 +572,8 @@ app.use(express.static(path.join(__dirname, "clients", "public")));
 
 // =============================================================================
 // CLIENT SERVING — production
-// ALL visitors (users + Googlebot + AdsBot) get the same index.html.
-// No cloaking. AdSense safe.
-//
-// ✅ CRITICAL FIX: Use "/{*wildcard}" NOT "*" or "{*splat}"
-// The bare "*" pattern crashes path-to-regexp v8+ on server startup.
+// ALL visitors (users + Googlebot + AdsBot) get same index.html — no cloaking
+// ✅ Use "/{*wildcard}" NOT "*" — bare "*" crashes path-to-regexp v8+
 // =============================================================================
 
 if (NODE_ENV === "production") {
