@@ -240,7 +240,10 @@ if (NODE_ENV === "production") {
       "oai-searchbot", // OpenAI search
       "claudebot", // Anthropic Claude
       "claude-web", // Anthropic Claude web
+      "claude-user", // Anthropic Claude user
+      "claude-searchbot", // Anthropic Claude search
       "anthropic-ai", // Anthropic general
+      "anthropic", // Anthropic — matches all variants
       "perplexitybot", // Perplexity AI
       "perplexity-user", // Perplexity user agent
       "cohere-ai", // Cohere
