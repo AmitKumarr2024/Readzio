@@ -42,7 +42,7 @@ import {
   botRenderMiddleware,
   rendererAdminRoutes,
   warmUpRenderer,
-} from "../servers/services/puppeteerRenderer.js";
+} from "./services/puppeteerRenderer.js";
 
 const app = express();
 app.set("trust proxy", true);

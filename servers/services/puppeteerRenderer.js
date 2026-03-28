@@ -44,6 +44,8 @@ const BOT_PATTERNS = [
   "oai-searchbot",
   "claudebot",
   "claude-web",
+  "claude-user",
+  "claude-searchbot",
   "anthropic-ai",
   "anthropic",
   "perplexitybot",
