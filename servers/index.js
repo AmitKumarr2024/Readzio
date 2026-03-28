@@ -7,7 +7,6 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import http from "http";
 import mongoose from "mongoose";
-import { createRequire } from "module";
 
 import {
   CLIENT_URL,
@@ -39,10 +38,11 @@ import guestRoutes from "./Routes/guestRoutes.js";
 import DailyEmailRoutes from "./Routes/dailyMailRoutes.js";
 import errorHandler from "./Middlewares/errorHandler.js";
 import { smartRateLimiter } from "./Middlewares/smartRateLimiter.js";
-
-// prerender-node is CommonJS — must use createRequire in ESM project
-const require = createRequire(import.meta.url);
-const prerender = require("prerender-node");
+import {
+  botRenderMiddleware,
+  rendererAdminRoutes,
+  warmUpRenderer,
+} from "../servers/services/puppeteerRenderer.js";
 
 const app = express();
 app.set("trust proxy", true);
@@ -148,169 +148,6 @@ app.use(
   }),
 );
 
-// =============================================================================
-// ✅ PRERENDER MIDDLEWARE (prerender.io CLOUD — no local Chrome needed)
-//
-// HOW IT WORKS:
-//   Normal users  → React CSR (index.html) — same as before
-//   Bots/Crawlers → prerender.io cloud renders full HTML → returns to bot
-//
-// SETUP (one time):
-//   1. Sign up FREE at https://prerender.io
-//   2. Copy your token from dashboard
-//   3. Add to .env:  PRERENDER_TOKEN=your_token_here
-//   4. pm2 delete prerender-server  (no longer needed)
-//   5. pm2 restart readzio-backend
-// =============================================================================
-
-// All known bot user-agent strings (O(n) lookup, cached at startup)
-const BOT_AGENTS = [
-  // Google
-  "googlebot",
-  "google-inspectiontool",
-  "adsbot-google",
-  "googleother",
-  "google-extended",
-  "apis-google",
-  "storebot-google",
-  // Bing / Microsoft
-  "bingbot",
-  "bingpreview",
-  "msnbot",
-  // OpenAI
-  "gptbot",
-  "chatgpt-user",
-  "oai-searchbot",
-  // Anthropic
-  "claudebot",
-  "claude-web",
-  "claude-user",
-  "claude-searchbot",
-  "anthropic-ai",
-  "anthropic",
-  // Perplexity
-  "perplexitybot",
-  "perplexity-user",
-  // Meta / Facebook
-  "meta-externalagent",
-  "meta-externalfetcher",
-  "facebookexternalhit",
-  // Other AI crawlers
-  "cohere-ai",
-  "youbot",
-  "ia_archiver",
-  "ccbot",
-  "diffbot",
-  "bytespider",
-  "amazonbot",
-  "applebot-extended",
-  // SEO tools
-  "semrushbot",
-  "ahrefsbot",
-  "dotbot",
-  "rogerbot",
-  // Social / Messaging previews
-  "twitterbot",
-  "facebot",
-  "linkedinbot",
-  "whatsapp",
-  "telegrambot",
-  "discordbot",
-  "slackbot",
-  "pinterest",
-  // Other search engines
-  "yandex",
-  "duckduckbot",
-  "slurp",
-  "baiduspider",
-  "sogou",
-  "exabot",
-  "applebot",
-  // Prerender itself
-  "prerender",
-];
-
-// Static file extensions — skip prerender for these (O(1) Set lookup)
-const SKIP_EXTENSIONS = new Set([
-  ".js",
-  ".css",
-  ".xml",
-  ".less",
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".gif",
-  ".pdf",
-  ".doc",
-  ".txt",
-  ".ico",
-  ".rss",
-  ".zip",
-  ".mp3",
-  ".rar",
-  ".exe",
-  ".wmv",
-  ".avi",
-  ".ppt",
-  ".mpg",
-  ".mpeg",
-  ".tif",
-  ".wav",
-  ".mov",
-  ".psd",
-  ".ai",
-  ".xls",
-  ".mp4",
-  ".m4a",
-  ".swf",
-  ".dat",
-  ".dmg",
-  ".iso",
-  ".flv",
-  ".m4v",
-  ".torrent",
-  ".ttf",
-  ".woff",
-  ".woff2",
-  ".svg",
-]);
-
-if (NODE_ENV === "production") {
-  const PRERENDER_TOKEN = process.env.PRERENDER_TOKEN;
-
-  if (!PRERENDER_TOKEN) {
-    console.warn("⚠️  PRERENDER_TOKEN not set in .env — prerender disabled!");
-    console.warn("   Get your free token at https://prerender.io");
-  } else {
-    prerender
-      .set("prerenderToken", PRERENDER_TOKEN)
-      .set("protocol", "https")
-      .set("host", "www.readzio.com");
-
-    prerender.set("shouldPrerender", (req) => {
-      const url = req.url.toLowerCase();
-
-      // Skip API routes
-      if (url.startsWith("/api/")) return false;
-
-      // Skip static file extensions
-      const cleanUrl = url.split("?")[0];
-      const lastDot = cleanUrl.lastIndexOf(".");
-      if (lastDot !== -1 && SKIP_EXTENSIONS.has(cleanUrl.slice(lastDot)))
-        return false;
-
-      // Only prerender for known bots
-      const ua = (req.headers["user-agent"] || "").toLowerCase();
-      return BOT_AGENTS.some((bot) => ua.includes(bot));
-    });
-
-    app.use(prerender);
-    console.log("✅ Prerender middleware active (prerender.io cloud)");
-  }
-}
-
-// =============================================================================
-
 app.use(
   express.json({
     limit: "50mb",
@@ -329,6 +166,16 @@ app.use(
 );
 
 app.use(cookieParser());
+
+// =============================================================================
+// BOT SSR MIDDLEWARE (Puppeteer — production only)
+// Bots get fully-rendered HTML. Normal users get React CSR as before.
+// =============================================================================
+
+if (NODE_ENV === "production") {
+  app.use(botRenderMiddleware);
+  console.log("✅ Puppeteer bot-render middleware active");
+}
 
 // =============================================================================
 // SPECIAL ROUTES
@@ -432,10 +279,9 @@ app.get("/health", (req, res) => {
       path: sitemapExists ? SITEMAP_PATH : null,
       stats: sitemapStats,
     },
-    prerender: {
-      active: NODE_ENV === "production" && !!process.env.PRERENDER_TOKEN,
-      mode: "prerender.io cloud",
-      tokenSet: !!process.env.PRERENDER_TOKEN,
+    renderer: {
+      mode: NODE_ENV === "production" ? "puppeteer (local)" : "disabled (dev)",
+      status: "check /api/render/status for live metrics",
     },
   });
 });
@@ -508,6 +354,12 @@ const routeConfigs = [
     ],
   },
   { path: "/api/ads", router: AdsRoutes, name: "AdsRoutes" },
+  // Renderer admin — /api/render/status  and  DELETE /api/render/cache
+  {
+    path: "/api/render",
+    name: "RendererAdmin",
+    router: rendererAdminRoutes(express.Router()),
+  },
 ];
 
 function mountRoutes() {
@@ -536,11 +388,9 @@ function mountRoutes() {
       console.error(`❌ Failed to mount ${path} (${name}):`, err.message);
       failedRoutes++;
       app.use(path, (req, res) =>
-        res
-          .status(503)
-          .json({
-            error: `Service unavailable: ${name} initialization failed`,
-          }),
+        res.status(503).json({
+          error: `Service unavailable: ${name} initialization failed`,
+        }),
       );
     }
   });
@@ -572,8 +422,6 @@ app.use(express.static(path.join(__dirname, "clients", "public")));
 
 // =============================================================================
 // CLIENT SERVING — production
-// ALL visitors (users + Googlebot + AdsBot) get same index.html — no cloaking
-// ✅ Use "/{*wildcard}" NOT "*" — bare "*" crashes path-to-regexp v8+
 // =============================================================================
 
 if (NODE_ENV === "production") {
@@ -741,6 +589,10 @@ async function startServer() {
       } else {
         console.warn("⚠️  Sitemap not found - run sitemap generator");
       }
+
+      // Warm up browser so first bot request doesn't stall
+      console.log("🌐 Warming up Puppeteer browser...");
+      await warmUpRenderer();
     }
 
     server.listen(PORT, "0.0.0.0", function () {
@@ -749,6 +601,9 @@ async function startServer() {
       console.log(`🌐 URL: http://0.0.0.0:${address.port}`);
       console.log(`🔗 Health: http://0.0.0.0:${address.port}/health`);
       console.log(`🗺️  Sitemap: http://0.0.0.0:${address.port}/sitemap.xml`);
+      console.log(
+        `📊 Renderer: http://0.0.0.0:${address.port}/api/render/status`,
+      );
       console.log(
         NODE_ENV === "production"
           ? "🎯 Mode: Production"
