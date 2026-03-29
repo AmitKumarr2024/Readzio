@@ -2,22 +2,29 @@
  * puppeteerRenderer.js
  * ─────────────────────────────────────────────────────────────────
  * Safe Puppeteer SSR renderer for 1GB RAM servers.
+ *
+ * Strategy for post pages:
+ *  Instead of waiting for React to hydrate (which requires auth),
+ *  we fetch post data from the public API directly and inject
+ *  correct meta tags into the HTML shell before serving to bots.
+ *  This gives Google the right title, description, and schema
+ *  without needing Puppeteer to render the full React app.
  */
 
 import puppeteer from "puppeteer";
+import http from "http";
 
 // =============================================================================
 // CONFIG
 // =============================================================================
 
 const RENDER_TIMEOUT_MS = 25_000;
-const TITLE_WAIT_TIMEOUT_MS = 15_000;
+const TITLE_WAIT_TIMEOUT_MS = 12_000;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 100;
 const MAX_QUEUE_SIZE = 10;
 const LOCAL_PORT = process.env.PORT || 10002;
 
-// These titles mean React hasn't loaded page content yet
 const FALLBACK_TITLES = [
   "readzio – write ideas",
   "readzio – get feedback",
@@ -104,14 +111,221 @@ function cacheGet(url) {
 
 function cacheSet(url, html) {
   if (cache.size >= CACHE_MAX_ENTRIES) {
-    const oldest = cache.keys().next().value;
-    cache.delete(oldest);
+    cache.delete(cache.keys().next().value);
   }
   cache.set(url, { html, ts: Date.now() });
 }
 
 // =============================================================================
-// BROWSER MANAGER
+// FETCH POST DATA FROM PUBLIC API (no auth needed)
+// =============================================================================
+
+function fetchPostData(slug) {
+  return new Promise((resolve) => {
+    const options = {
+      hostname: "127.0.0.1",
+      port: LOCAL_PORT,
+      path: `/api/public/post/${encodeURIComponent(slug)}`,
+      method: "GET",
+      headers: { "User-Agent": "ReadzioSSR/1.0" },
+    };
+
+    const req = http.request(options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.success && parsed.post) {
+            resolve(parsed.post);
+          } else {
+            resolve(null);
+          }
+        } catch {
+          resolve(null);
+        }
+      });
+    });
+
+    req.on("error", () => resolve(null));
+    req.setTimeout(5000, () => {
+      req.destroy();
+      resolve(null);
+    });
+    req.end();
+  });
+}
+
+// =============================================================================
+// BUILD STATIC HTML FOR POST (injected meta tags into index.html shell)
+// =============================================================================
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function extractTextFromBlocks(blocks) {
+  if (!Array.isArray(blocks)) return "";
+  return blocks
+    .filter((b) => b.type === "text" && b.value)
+    .map((b) => b.value.replace(/<[^>]+>/g, "").trim())
+    .filter(Boolean)
+    .join(" ")
+    .slice(0, 300);
+}
+
+function buildPostHtml(post, indexHtml, publicUrl) {
+  const title = escapeHtml(post.title || "");
+  const description = escapeHtml(
+    extractTextFromBlocks(post.blocks) || `Read ${post.title} on Readzio.`,
+  ).slice(0, 160);
+  const image = post.thumbnail || "https://www.readzio.com/logo.png";
+  const author = post.author?.name || "Readzio";
+  const publishedAt = post.createdAt
+    ? new Date(post.createdAt).toISOString()
+    : new Date().toISOString();
+  const tags = Array.isArray(post.tags) ? post.tags : [];
+  const readTime = post.readTime || "";
+  const canonical = publicUrl;
+
+  // Build JSON-LD
+  const articleSchema = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: description.replace(/&amp;/g, "&").replace(/&quot;/g, '"'),
+    image: image,
+    author: { "@type": "Person", name: author },
+    publisher: {
+      "@type": "Organization",
+      name: "Readzio",
+      logo: { "@type": "ImageObject", url: "https://www.readzio.com/logo.png" },
+    },
+    datePublished: publishedAt,
+    dateModified: publishedAt,
+    mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
+    keywords: tags.join(", "),
+  });
+
+  const breadcrumbSchema = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://www.readzio.com/",
+      },
+      { "@type": "ListItem", position: 2, name: post.title, item: canonical },
+    ],
+  });
+
+  // Inject into <head> — replace the static fallback title and add all meta
+  const injectedHead = `
+    <title>${title} | Readzio</title>
+    <meta name="description" content="${description}" />
+    <meta name="author" content="${escapeHtml(author)}" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <link rel="canonical" href="${escapeHtml(canonical)}" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="${escapeHtml(canonical)}" />
+    <meta property="og:title" content="${title}" />
+    <meta property="og:description" content="${description}" />
+    <meta property="og:image" content="${escapeHtml(image)}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Readzio" />
+    <meta property="article:published_time" content="${publishedAt}" />
+    <meta property="article:author" content="${escapeHtml(author)}" />
+    ${tags.map((t) => `<meta property="article:tag" content="${escapeHtml(t)}" />`).join("\n    ")}
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${title}" />
+    <meta name="twitter:description" content="${description}" />
+    <meta name="twitter:image" content="${escapeHtml(image)}" />
+    <meta name="twitter:site" content="@readzio" />
+
+    <!-- Extra -->
+    ${readTime ? `<meta name="twitter:label1" content="Reading time" /><meta name="twitter:data1" content="${escapeHtml(readTime)}" />` : ""}
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">${articleSchema}</script>
+    <script type="application/ld+json">${breadcrumbSchema}</script>
+
+    <!-- Prerender hint -->
+    <meta name="prerender-status-code" content="200" />
+  `;
+
+  // Also inject visible content for Google to index
+  // This goes into #root so Google sees the actual article text
+  const visibleContent = `
+    <article itemscope itemtype="https://schema.org/Article" style="max-width:800px;margin:0 auto;padding:20px;font-family:sans-serif;">
+      <h1 itemprop="headline" style="font-size:1.8rem;font-weight:bold;margin-bottom:1rem;">${title}</h1>
+      <div style="color:#666;margin-bottom:1rem;">
+        <span itemprop="author" itemscope itemtype="https://schema.org/Person">
+          By <span itemprop="name">${escapeHtml(author)}</span>
+        </span>
+        ${readTime ? ` · ${escapeHtml(readTime)}` : ""}
+        <meta itemprop="datePublished" content="${publishedAt}" />
+      </div>
+      ${post.thumbnail ? `<img src="${escapeHtml(post.thumbnail)}" alt="${title}" style="width:100%;max-height:400px;object-fit:cover;border-radius:8px;margin-bottom:1rem;" itemprop="image" />` : ""}
+      <div itemprop="articleBody">
+        ${extractTextFromBlocks(post.blocks)
+          .split(". ")
+          .map((s) => `<p>${escapeHtml(s.trim())}.</p>`)
+          .join("")}
+      </div>
+      ${tags.length > 0 ? `<div style="margin-top:1rem;">${tags.map((t) => `<span style="display:inline-block;margin:4px;padding:4px 8px;background:#f0f0f0;border-radius:4px;font-size:0.8rem;">${escapeHtml(t)}</span>`).join("")}</div>` : ""}
+    </article>
+  `;
+
+  // Replace static title in index.html
+  let html = indexHtml
+    .replace(/<title>[^<]*<\/title>/, `<title>${title} | Readzio</title>`)
+    .replace("</head>", `${injectedHead}\n</head>`)
+    .replace('<div id="root">', `<div id="root">${visibleContent}`);
+
+  return html;
+}
+
+// =============================================================================
+// READ INDEX.HTML ONCE
+// =============================================================================
+
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
+
+let _indexHtml = null;
+
+function getIndexHtml() {
+  if (_indexHtml) return _indexHtml;
+  const paths = [
+    join(process.cwd(), "clients/dist/index.html"),
+    join(process.cwd(), "../clients/dist/index.html"),
+    "/root/readzio/clients/dist/index.html",
+  ];
+  for (const p of paths) {
+    if (existsSync(p)) {
+      _indexHtml = readFileSync(p, "utf-8");
+      console.log(`[Renderer] 📄 Loaded index.html from ${p}`);
+      return _indexHtml;
+    }
+  }
+  console.error("[Renderer] ❌ index.html not found!");
+  return null;
+}
+
+// =============================================================================
+// BROWSER MANAGER (kept for non-post pages)
 // =============================================================================
 
 let browser = null;
@@ -162,9 +376,7 @@ async function getBrowser() {
     });
 
     browser.on("disconnected", () => {
-      console.warn(
-        "[Renderer] ⚠️  Browser disconnected — will restart on next request",
-      );
+      console.warn("[Renderer] ⚠️  Browser disconnected");
       browser = null;
     });
 
@@ -172,12 +384,11 @@ async function getBrowser() {
   } finally {
     browserRestarting = false;
   }
-
   return browser;
 }
 
 // =============================================================================
-// RENDER QUEUE (concurrency = 1)
+// RENDER QUEUE
 // =============================================================================
 
 let activeRenders = 0;
@@ -185,9 +396,8 @@ const queue = [];
 
 function enqueue(fn) {
   return new Promise((resolve, reject) => {
-    if (queue.length >= MAX_QUEUE_SIZE) {
+    if (queue.length >= MAX_QUEUE_SIZE)
       return reject(new Error("Render queue full"));
-    }
     queue.push({ fn, resolve, reject });
     drainQueue();
   });
@@ -208,33 +418,21 @@ async function drainQueue() {
 }
 
 // =============================================================================
-// CORE RENDER FUNCTION
+// PUPPETEER RENDER (for non-post pages like homepage, category pages etc.)
 // =============================================================================
 
-async function renderPage(publicUrl, pathAndQuery) {
-  const cached = cacheGet(publicUrl);
-  if (cached) {
-    console.log(`[Renderer] 📦 Cache hit: ${publicUrl}`);
-    return cached;
-  }
-
+async function puppeteerRender(publicUrl, pathAndQuery) {
   return enqueue(async () => {
     const b = await getBrowser();
     const page = await b.newPage();
 
     try {
       await page.setRequestInterception(true);
-
       page.on("request", (req) => {
         const type = req.resourceType();
         const url = req.url();
-
-        // Block heavy resources
-        if (["image", "stylesheet", "font", "media"].includes(type)) {
+        if (["image", "stylesheet", "font", "media"].includes(type))
           return req.abort();
-        }
-
-        // Block third-party scripts that slow rendering
         if (
           url.includes("googlesyndication") ||
           url.includes("googletagmanager") ||
@@ -243,81 +441,18 @@ async function renderPage(publicUrl, pathAndQuery) {
           url.includes("hilltopads") ||
           url.includes("hotjar") ||
           url.includes("clarity.ms") ||
-          url.includes("facebook.net") ||
-          url.includes("twitter.com/i/jot")
-        ) {
+          url.includes("facebook.net")
+        )
           return req.abort();
-        }
-
         req.continue();
       });
 
-      // Standard Chrome UA — not a bot string, not a forbidden header setter
       await page.setUserAgent(
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
       );
 
-      // ── KEY FIX ──────────────────────────────────────────────────────────
-      // We render the PUBLIC URL directly (https://www.readzio.com/post/...)
-      // but intercept the request at the network level to rewrite it to
-      // localhost — avoiding Cloudflare and the Host header forbidden issue.
-      //
-      // We do this by using page.goto on the public URL but intercepting
-      // the FIRST navigation request and redirecting it to localhost.
-      // All subsequent requests (API calls etc.) go to the real server.
-      // ─────────────────────────────────────────────────────────────────────
-
-      let firstRequest = true;
-
-      // Override request interception to catch the first navigation
-      page.removeAllListeners("request");
-      page.on("request", (req) => {
-        const type = req.resourceType();
-        const url = req.url();
-
-        // Rewrite the first (navigation) request to localhost
-        if (firstRequest && type === "document") {
-          firstRequest = false;
-          const localUrl = `http://127.0.0.1:${LOCAL_PORT}${pathAndQuery}`;
-          console.log(`[Renderer] 🔄 Rewriting navigation → ${localUrl}`);
-          // We can't change URL in continue(), so use respond() with a fetch
-          // Instead: just go to localhost directly but set cookie/storage first
-          req.continue();
-          return;
-        }
-
-        // Block heavy resources
-        if (["image", "stylesheet", "font", "media"].includes(type)) {
-          return req.abort();
-        }
-
-        // Block third-party ad/analytics scripts
-        if (
-          url.includes("googlesyndication") ||
-          url.includes("googletagmanager") ||
-          url.includes("doubleclick") ||
-          url.includes("adsterra") ||
-          url.includes("hilltopads") ||
-          url.includes("hotjar") ||
-          url.includes("clarity.ms") ||
-          url.includes("facebook.net") ||
-          url.includes("twitter.com/i/jot")
-        ) {
-          return req.abort();
-        }
-
-        req.continue();
-      });
-
-      // ── ACTUAL FIX: navigate directly to localhost ────────────────────────
-      // Don't set Host header (forbidden). Instead, make sure your Express
-      // server responds correctly to localhost requests — it does, because
-      // React Router uses the path, not the host.
-      // The only issue was ERR_INVALID_ARGUMENT from setExtraHTTPHeaders.
-      // Now we simply navigate to localhost without any extra headers.
-      // ─────────────────────────────────────────────────────────────────────
       const localUrl = `http://127.0.0.1:${LOCAL_PORT}${pathAndQuery}`;
-      console.log(`[Renderer] 🔄 Rendering: ${localUrl}`);
+      console.log(`[Renderer] 🔄 Puppeteer rendering: ${localUrl}`);
 
       await Promise.race([
         page.goto(localUrl, {
@@ -329,16 +464,11 @@ async function renderPage(publicUrl, pathAndQuery) {
         ),
       ]);
 
-      // ── WAIT FOR PAGE-SPECIFIC TITLE ──────────────────────────────────────
-      // Poll until title changes from homepage fallback to post-specific title.
-      // React Helmet updates title after the API fetch completes.
-      // ─────────────────────────────────────────────────────────────────────
-      const titleChanged = await page
+      await page
         .waitForFunction(
-          (fallbackTitles) => {
+          (fallbacks) => {
             const title = document.title.toLowerCase().trim();
-            if (!title) return false;
-            if (fallbackTitles.some((f) => f && title.includes(f)))
+            if (!title || fallbacks.some((f) => f && title.includes(f)))
               return false;
             const root = document.getElementById("root");
             return root && root.innerText.trim().length > 150;
@@ -349,28 +479,69 @@ async function renderPage(publicUrl, pathAndQuery) {
         .then(() => true)
         .catch(() => false);
 
-      if (!titleChanged) {
-        const currentTitle = await page.title().catch(() => "unknown");
-        console.warn(
-          `[Renderer] ⚠️  Title stayed as fallback: "${currentTitle}" for ${publicUrl}`,
-        );
-        // Don't cache failed renders — let next bot request retry
-        return null;
-      }
-
-      // Small buffer for Helmet to flush remaining meta tags
       await new Promise((r) => setTimeout(r, 300));
-
       const html = await page.content();
       const capturedTitle = await page.title().catch(() => "unknown");
-      console.log(`[Renderer] ✅ "${capturedTitle}" → ${publicUrl}`);
-
-      cacheSet(publicUrl, html);
+      console.log(`[Renderer] ✅ Puppeteer: "${capturedTitle}"`);
       return html;
     } finally {
       await page.close().catch(() => {});
     }
   });
+}
+
+// =============================================================================
+// MAIN RENDER DISPATCHER
+// =============================================================================
+
+// Extract slug from /post/:slug path
+function extractPostSlug(urlPath) {
+  const match = urlPath.match(/^\/post\/([^/?#]+)/);
+  return match ? match[1] : null;
+}
+
+async function renderPage(publicUrl, pathAndQuery) {
+  const cached = cacheGet(publicUrl);
+  if (cached) {
+    console.log(`[Renderer] 📦 Cache hit: ${publicUrl}`);
+    return cached;
+  }
+
+  const slug = extractPostSlug(pathAndQuery);
+
+  // ── POST PAGE: use public API + HTML injection (fast, no auth needed) ──
+  if (slug) {
+    console.log(`[Renderer] 📰 Post page detected, fetching: ${slug}`);
+    const post = await fetchPostData(slug);
+
+    if (post) {
+      const indexHtml = getIndexHtml();
+      if (!indexHtml) throw new Error("index.html not found");
+
+      const html = buildPostHtml(post, indexHtml, publicUrl);
+      console.log(`[Renderer] ✅ Post injected: "${post.title}"`);
+      cacheSet(publicUrl, html);
+      return html;
+    }
+
+    console.warn(
+      `[Renderer] ⚠️  Public API returned no post for slug: ${slug}`,
+    );
+    // Fall through to Puppeteer as last resort
+  }
+
+  // ── OTHER PAGES: use Puppeteer ──
+  try {
+    const html = await puppeteerRender(publicUrl, pathAndQuery);
+    if (html) {
+      cacheSet(publicUrl, html);
+      return html;
+    }
+  } catch (err) {
+    console.error(`[Renderer] ❌ Puppeteer failed: ${err.message}`);
+  }
+
+  return null;
 }
 
 // =============================================================================
@@ -386,8 +557,6 @@ function isBot(userAgent) {
 function shouldSkip(urlPath) {
   if (urlPath.startsWith("/api/")) return true;
   if (urlPath.startsWith("/public/")) return true;
-  // Skip internal SSR renders — Puppeteer calling back into Express
-  if (urlPath.startsWith("/_ssr")) return true;
   const clean = urlPath.split("?")[0];
   const dot = clean.lastIndexOf(".");
   if (dot !== -1 && SKIP_EXT.has(clean.slice(dot))) return true;
@@ -400,16 +569,13 @@ function shouldSkip(urlPath) {
 
 export async function botRenderMiddleware(req, res, next) {
   const ua = req.headers["user-agent"] || "";
-
-  // Skip if this is an internal Puppeteer render request
   if (req.headers["x-ssr-internal"] === "1") return next();
-
   if (!isBot(ua) || shouldSkip(req.path)) return next();
 
   const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   const publicUrl = `${protocol}://${host}${req.originalUrl}`;
-  const pathAndQuery = req.originalUrl; // e.g. /post/some-slug
+  const pathAndQuery = req.originalUrl;
 
   console.log(`[Renderer] 🤖 Bot: ${ua.slice(0, 50)} → ${publicUrl}`);
 
@@ -417,8 +583,9 @@ export async function botRenderMiddleware(req, res, next) {
     const html = await renderPage(publicUrl, pathAndQuery);
 
     if (!html) {
-      // Render failed to get real content — fall through to CSR
-      console.warn(`[Renderer] ⚠️  Falling through to CSR for ${publicUrl}`);
+      console.warn(
+        `[Renderer] ⚠️  No HTML produced for ${publicUrl} — falling through`,
+      );
       return next();
     }
 
@@ -475,6 +642,8 @@ export function rendererAdminRoutes(router) {
 
 export async function warmUpRenderer() {
   try {
+    // Pre-load index.html so first request is fast
+    getIndexHtml();
     await getBrowser();
     console.log("[Renderer] ✅ Warm-up complete");
   } catch (e) {
