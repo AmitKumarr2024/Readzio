@@ -10,10 +10,8 @@
  *  ✅ Per-render timeout (12s) — never hangs
  *  ✅ Auto browser restart on crash
  *  ✅ Bot detection middleware (drop-in prerender replacement)
- *
- * Usage in server.js:
- *   import { botRenderMiddleware } from "./puppeteerRenderer.js";
- *   if (NODE_ENV === "production") app.use(botRenderMiddleware);
+ *  ✅ Waits for React #root to have real content
+ *  ✅ Proper prerender headers for Cloudflare caching
  */
 
 import puppeteer from "puppeteer";
@@ -22,10 +20,11 @@ import puppeteer from "puppeteer";
 // CONFIG
 // =============================================================================
 
-const RENDER_TIMEOUT_MS = 12_000; // max time to render one page
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const RENDER_TIMEOUT_MS = 12_000;
+const ROOT_CONTENT_TIMEOUT_MS = 8_000;
+const CACHE_TTL_MS = 10 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 100;
-const MAX_QUEUE_SIZE = 10; // drop requests beyond this
+const MAX_QUEUE_SIZE = 10;
 
 // Bot user-agents that need SSR
 const BOT_PATTERNS = [
@@ -93,7 +92,7 @@ const SKIP_EXT = new Set([
 // CACHE  (simple Map with TTL + max-size eviction)
 // =============================================================================
 
-const cache = new Map(); // url → { html, ts }
+const cache = new Map();
 
 function cacheGet(url) {
   const entry = cache.get(url);
@@ -107,7 +106,6 @@ function cacheGet(url) {
 
 function cacheSet(url, html) {
   if (cache.size >= CACHE_MAX_ENTRIES) {
-    // evict oldest
     const oldest = cache.keys().next().value;
     cache.delete(oldest);
   }
@@ -124,7 +122,6 @@ let browserRestarting = false;
 async function getBrowser() {
   if (browser && browser.connected) return browser;
   if (browserRestarting) {
-    // wait up to 5s for restart
     for (let i = 0; i < 50; i++) {
       await new Promise((r) => setTimeout(r, 100));
       if (browser && browser.connected) return browser;
@@ -148,7 +145,7 @@ async function getBrowser() {
         "--disable-dev-shm-usage",
         "--disable-gpu",
         "--no-zygote",
-        "--single-process", // critical for 1GB RAM
+        "--single-process",
         "--disable-extensions",
         "--disable-background-networking",
         "--disable-background-timer-throttling",
@@ -232,23 +229,58 @@ async function renderPage(fullUrl) {
       await page.setRequestInterception(true);
       page.on("request", (req) => {
         const type = req.resourceType();
+        const url = req.url();
+
+        // Block heavy resources but allow API calls React needs
         if (["image", "stylesheet", "font", "media"].includes(type)) {
-          req.abort();
-        } else {
-          req.continue();
+          return req.abort();
         }
+
+        // Block third-party ad/analytics scripts to save RAM
+        if (
+          url.includes("googlesyndication") ||
+          url.includes("googletagmanager") ||
+          url.includes("doubleclick") ||
+          url.includes("adsterra") ||
+          url.includes("hilltopads") ||
+          url.includes("hotjar") ||
+          url.includes("clarity.ms")
+        ) {
+          return req.abort();
+        }
+
+        req.continue();
       });
 
+      // Use a neutral renderer UA — NOT a known bot string
+      // so internal API calls don't get bot-blocked by your own server
       await page.setUserAgent(
-        "Mozilla/5.0 (compatible; ReadzioRenderer/1.0; +https://readzio.com)",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 ReadzioSSR/1.0",
       );
 
+      // Navigate with networkidle2 (faster than networkidle0, good enough for React)
       await Promise.race([
-        page.goto(fullUrl, { waitUntil: "networkidle0" }),
+        page.goto(fullUrl, { waitUntil: "networkidle2" }),
         new Promise((_, rej) =>
           setTimeout(() => rej(new Error("Render timeout")), RENDER_TIMEOUT_MS),
         ),
       ]);
+
+      // Wait for React to actually render real content into #root
+      // This is the key fix — without this you get the blank shell
+      await page
+        .waitForFunction(
+          () => {
+            const root = document.getElementById("root");
+            return root && root.innerText.trim().length > 100;
+          },
+          { timeout: ROOT_CONTENT_TIMEOUT_MS },
+        )
+        .catch(() => {
+          console.warn(
+            `[Renderer] ⚠️  #root content wait timed out for ${fullUrl} — returning partial HTML`,
+          );
+        });
 
       const html = await page.content();
       cacheSet(fullUrl, html);
@@ -280,7 +312,7 @@ function shouldSkip(urlPath) {
 }
 
 // =============================================================================
-// EXPRESS MIDDLEWARE  (drop-in replacement for prerender-node)
+// EXPRESS MIDDLEWARE
 // =============================================================================
 
 export async function botRenderMiddleware(req, res, next) {
@@ -292,12 +324,18 @@ export async function botRenderMiddleware(req, res, next) {
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   const fullUrl = `${protocol}://${host}${req.originalUrl}`;
 
-  console.log(`[Renderer] 🤖 Bot detected (${ua.split(" ")[0]}) → ${fullUrl}`);
+  console.log(`[Renderer] 🤖 Bot detected (${ua.split("/")[0]}) → ${fullUrl}`);
 
   try {
     const html = await renderPage(fullUrl);
+
+    // These headers match Daytul's working prerender response
+    // Cloudflare will cache this for 1 hour for bots
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("X-Rendered-By", "puppeteer");
+    res.setHeader("X-Prerender-Status", "200");
+    res.setHeader("X-Prerender-By", "puppeteer-self-hosted");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.setHeader("X-Robots-Tag", "index, follow");
     res.send(html);
   } catch (err) {
     console.error(`[Renderer] ❌ Render failed for ${fullUrl}:`, err.message);
@@ -307,7 +345,7 @@ export async function botRenderMiddleware(req, res, next) {
 }
 
 // =============================================================================
-// CACHE MANAGEMENT ENDPOINTS  (mount on /api/render/*)
+// CACHE MANAGEMENT ENDPOINTS
 // =============================================================================
 
 export function rendererAdminRoutes(router) {
@@ -318,10 +356,12 @@ export function rendererAdminRoutes(router) {
       activeRenders,
       queueLength: queue.length,
       cacheEntries: cache.size,
+      cacheMaxEntries: CACHE_MAX_ENTRIES,
+      cacheTTLMinutes: CACHE_TTL_MS / 60000,
     });
   });
 
-  // DELETE /api/render/cache  — flush cache
+  // DELETE /api/render/cache — flush entire cache
   router.delete("/cache", (req, res) => {
     const count = cache.size;
     cache.clear();
@@ -329,11 +369,21 @@ export function rendererAdminRoutes(router) {
     res.json({ cleared: count });
   });
 
+  // DELETE /api/render/cache/:url — flush single URL
+  router.delete("/cache/url", (req, res) => {
+    const { url } = req.query;
+    if (!url)
+      return res.status(400).json({ error: "url query param required" });
+    const existed = cache.has(url);
+    cache.delete(url);
+    res.json({ deleted: existed, url });
+  });
+
   return router;
 }
 
 // =============================================================================
-// WARM UP  (call at server startup so first bot request isn't slow)
+// WARM UP
 // =============================================================================
 
 export async function warmUpRenderer() {

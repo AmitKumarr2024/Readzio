@@ -66,6 +66,10 @@ const ALLOWED_ORIGINS = [
 
 const REQUIRED_ENV = ["MONGO_URI", "JWT_SECRET", "CLIENT_URL"];
 
+// Bot UA check (used for cache-control header on SPA fallback)
+const BOT_UA_RE =
+  /googlebot|bingbot|twitterbot|facebookexternalhit|linkedinbot|whatsapp|telegrambot|discordbot|slackbot|yandex|duckduckbot|baiduspider/i;
+
 // =============================================================================
 // ENVIRONMENT VALIDATION
 // =============================================================================
@@ -168,7 +172,7 @@ app.use(
 app.use(cookieParser());
 
 // =============================================================================
-// BOT SSR MIDDLEWARE (Puppeteer — production only)
+// BOT SSR MIDDLEWARE — must come BEFORE static files and API routes
 // Bots get fully-rendered HTML. Normal users get React CSR as before.
 // =============================================================================
 
@@ -217,12 +221,8 @@ app.get("/sitemap.xml", async (req, res) => {
     }
 
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
-    res.setHeader(
-      "Cache-Control",
-      "no-cache, no-store, must-revalidate, max-age=0",
-    );
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
+    // Sitemap can be cached for 1 hour — no need for no-store
+    res.setHeader("Cache-Control", "public, max-age=3600");
     res.setHeader("Last-Modified", lastModified);
     res.setHeader("ETag", etag);
     res.send(sitemapContent);
@@ -354,7 +354,6 @@ const routeConfigs = [
     ],
   },
   { path: "/api/ads", router: AdsRoutes, name: "AdsRoutes" },
-  // Renderer admin — /api/render/status  and  DELETE /api/render/cache
   {
     path: "/api/render",
     name: "RendererAdmin",
@@ -428,16 +427,28 @@ if (NODE_ENV === "production") {
   if (fsSync.existsSync(CLIENT_INDEX_PATH)) {
     app.use(
       express.static(CLIENT_PATH, {
-        maxAge: "1d",
+        maxAge: "1y", // JS/CSS assets have hashed filenames — cache aggressively
         etag: true,
         lastModified: true,
         setHeaders: (res, filePath) => {
-          if (filePath.endsWith(".html"))
-            res.setHeader("Cache-Control", "no-cache");
+          if (filePath.endsWith(".html")) {
+            // HTML must never be cached — always fresh for users
+            res.setHeader(
+              "Cache-Control",
+              "no-cache, no-store, must-revalidate",
+            );
+          } else if (filePath.endsWith(".js") || filePath.endsWith(".css")) {
+            // Hashed assets — immutable cache
+            res.setHeader(
+              "Cache-Control",
+              "public, max-age=31536000, immutable",
+            );
+          }
         },
       }),
     );
 
+    // SPA fallback — serve index.html for all non-API routes
     app.get("/{*wildcard}", (req, res, next) => {
       const skipRoutes = [
         "/api",
@@ -448,6 +459,20 @@ if (NODE_ENV === "production") {
         "/ads.txt",
       ];
       if (skipRoutes.some((route) => req.path.startsWith(route))) return next();
+
+      // Bots should have already been handled by botRenderMiddleware above.
+      // If a bot somehow reaches here (render failed), give it a cacheable response
+      // so Cloudflare doesn't serve a no-store shell to crawlers.
+      const ua = req.headers["user-agent"] || "";
+      const isBotRequest = BOT_UA_RE.test(ua);
+
+      res.setHeader(
+        "Cache-Control",
+        isBotRequest
+          ? "public, max-age=3600"
+          : "no-cache, no-store, must-revalidate",
+      );
+
       res.sendFile(CLIENT_INDEX_PATH, (err) => {
         if (err) {
           console.error("❌ Failed to serve index.html:", err.message);
@@ -590,7 +615,6 @@ async function startServer() {
         console.warn("⚠️  Sitemap not found - run sitemap generator");
       }
 
-      // Warm up browser so first bot request doesn't stall
       console.log("🌐 Warming up Puppeteer browser...");
       await warmUpRenderer();
     }
