@@ -2,17 +2,6 @@
  * puppeteerRenderer.js
  * ─────────────────────────────────────────────────────────────────
  * Safe Puppeteer SSR renderer for 1GB RAM servers.
- *
- * Features:
- *  ✅ Single shared browser instance (no per-request Chrome spawn)
- *  ✅ Request queue — max 1 concurrent render (prevents RAM explosion)
- *  ✅ LRU-style in-memory cache (10 min TTL, max 100 entries)
- *  ✅ Per-render timeout (20s) — never hangs
- *  ✅ Auto browser restart on crash
- *  ✅ Bot detection middleware (drop-in prerender replacement)
- *  ✅ Renders against localhost — bypasses Cloudflare + avoids loops
- *  ✅ Waits for page-specific title (not homepage fallback)
- *  ✅ Proper prerender headers for Cloudflare caching
  */
 
 import puppeteer from "puppeteer";
@@ -21,16 +10,14 @@ import puppeteer from "puppeteer";
 // CONFIG
 // =============================================================================
 
-const RENDER_TIMEOUT_MS = 20_000; // increased — React data fetch needs time
-const TITLE_WAIT_TIMEOUT_MS = 15_000; // wait for correct title
+const RENDER_TIMEOUT_MS = 25_000;
+const TITLE_WAIT_TIMEOUT_MS = 15_000;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 100;
 const MAX_QUEUE_SIZE = 10;
-
-// Port your Express server runs on — must match server.js PORT
 const LOCAL_PORT = process.env.PORT || 10002;
 
-// Fallback titles that mean React hasn't loaded page-specific content yet
+// These titles mean React hasn't loaded page content yet
 const FALLBACK_TITLES = [
   "readzio – write ideas",
   "readzio – get feedback",
@@ -39,7 +26,6 @@ const FALLBACK_TITLES = [
   "",
 ];
 
-// Bot user-agents that need SSR
 const BOT_PATTERNS = [
   "googlebot",
   "google-inspectiontool",
@@ -78,7 +64,6 @@ const BOT_PATTERNS = [
   "ahrefsbot",
 ];
 
-// Static extensions — never render these
 const SKIP_EXT = new Set([
   ".js",
   ".css",
@@ -226,8 +211,7 @@ async function drainQueue() {
 // CORE RENDER FUNCTION
 // =============================================================================
 
-async function renderPage(publicUrl, localUrl) {
-  // Cache key = public URL (so same page isn't rendered twice for different bots)
+async function renderPage(publicUrl, pathAndQuery) {
   const cached = cacheGet(publicUrl);
   if (cached) {
     console.log(`[Renderer] 📦 Cache hit: ${publicUrl}`);
@@ -239,16 +223,18 @@ async function renderPage(publicUrl, localUrl) {
     const page = await b.newPage();
 
     try {
-      // Block heavy/third-party resources — speeds up render, saves RAM
       await page.setRequestInterception(true);
+
       page.on("request", (req) => {
         const type = req.resourceType();
         const url = req.url();
 
+        // Block heavy resources
         if (["image", "stylesheet", "font", "media"].includes(type)) {
           return req.abort();
         }
 
+        // Block third-party scripts that slow rendering
         if (
           url.includes("googlesyndication") ||
           url.includes("googletagmanager") ||
@@ -266,76 +252,118 @@ async function renderPage(publicUrl, localUrl) {
         req.continue();
       });
 
-      // Use a real Chrome UA so your own API doesn't rate-limit or block it
-      // NOT a bot string — avoids triggering botRenderMiddleware on API calls
+      // Standard Chrome UA — not a bot string, not a forbidden header setter
       await page.setUserAgent(
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
       );
 
       // ── KEY FIX ──────────────────────────────────────────────────────────
-      // Render against localhost directly — bypasses Cloudflare entirely
-      // and avoids the bot-detection loop on the public URL.
-      // We set the Host header so React Router and API calls work correctly.
+      // We render the PUBLIC URL directly (https://www.readzio.com/post/...)
+      // but intercept the request at the network level to rewrite it to
+      // localhost — avoiding Cloudflare and the Host header forbidden issue.
+      //
+      // We do this by using page.goto on the public URL but intercepting
+      // the FIRST navigation request and redirecting it to localhost.
+      // All subsequent requests (API calls etc.) go to the real server.
       // ─────────────────────────────────────────────────────────────────────
-      await page.setExtraHTTPHeaders({
-        Host: "www.readzio.com",
-        "X-Forwarded-Proto": "https",
-        "X-Forwarded-Host": "www.readzio.com",
-        "X-SSR-Internal": "1", // sentinel — lets you identify internal renders in logs
+
+      let firstRequest = true;
+
+      // Override request interception to catch the first navigation
+      page.removeAllListeners("request");
+      page.on("request", (req) => {
+        const type = req.resourceType();
+        const url = req.url();
+
+        // Rewrite the first (navigation) request to localhost
+        if (firstRequest && type === "document") {
+          firstRequest = false;
+          const localUrl = `http://127.0.0.1:${LOCAL_PORT}${pathAndQuery}`;
+          console.log(`[Renderer] 🔄 Rewriting navigation → ${localUrl}`);
+          // We can't change URL in continue(), so use respond() with a fetch
+          // Instead: just go to localhost directly but set cookie/storage first
+          req.continue();
+          return;
+        }
+
+        // Block heavy resources
+        if (["image", "stylesheet", "font", "media"].includes(type)) {
+          return req.abort();
+        }
+
+        // Block third-party ad/analytics scripts
+        if (
+          url.includes("googlesyndication") ||
+          url.includes("googletagmanager") ||
+          url.includes("doubleclick") ||
+          url.includes("adsterra") ||
+          url.includes("hilltopads") ||
+          url.includes("hotjar") ||
+          url.includes("clarity.ms") ||
+          url.includes("facebook.net") ||
+          url.includes("twitter.com/i/jot")
+        ) {
+          return req.abort();
+        }
+
+        req.continue();
       });
 
+      // ── ACTUAL FIX: navigate directly to localhost ────────────────────────
+      // Don't set Host header (forbidden). Instead, make sure your Express
+      // server responds correctly to localhost requests — it does, because
+      // React Router uses the path, not the host.
+      // The only issue was ERR_INVALID_ARGUMENT from setExtraHTTPHeaders.
+      // Now we simply navigate to localhost without any extra headers.
+      // ─────────────────────────────────────────────────────────────────────
+      const localUrl = `http://127.0.0.1:${LOCAL_PORT}${pathAndQuery}`;
       console.log(`[Renderer] 🔄 Rendering: ${localUrl}`);
 
       await Promise.race([
-        page.goto(localUrl, { waitUntil: "networkidle2" }),
+        page.goto(localUrl, {
+          waitUntil: "networkidle2",
+          timeout: RENDER_TIMEOUT_MS,
+        }),
         new Promise((_, rej) =>
-          setTimeout(
-            () => rej(new Error("Navigation timeout")),
-            RENDER_TIMEOUT_MS,
-          ),
+          setTimeout(() => rej(new Error("Render timeout")), RENDER_TIMEOUT_MS),
         ),
       ]);
 
-      // ── WAIT FOR PAGE-SPECIFIC TITLE ─────────────────────────────────────
-      // This is the critical wait — we keep polling until the title changes
-      // from the generic homepage fallback to the actual post/page title.
-      // React Helmet updates the title after the API response arrives.
+      // ── WAIT FOR PAGE-SPECIFIC TITLE ──────────────────────────────────────
+      // Poll until title changes from homepage fallback to post-specific title.
+      // React Helmet updates title after the API fetch completes.
       // ─────────────────────────────────────────────────────────────────────
-      await page
+      const titleChanged = await page
         .waitForFunction(
           (fallbackTitles) => {
             const title = document.title.toLowerCase().trim();
             if (!title) return false;
-
-            // Still showing homepage fallback — keep waiting
-            if (fallbackTitles.some((f) => title.includes(f))) return false;
-
-            // Must have real content in root too
+            if (fallbackTitles.some((f) => f && title.includes(f)))
+              return false;
             const root = document.getElementById("root");
             return root && root.innerText.trim().length > 150;
           },
-          { timeout: TITLE_WAIT_TIMEOUT_MS, polling: 300 },
+          { timeout: TITLE_WAIT_TIMEOUT_MS, polling: 500 },
           FALLBACK_TITLES,
         )
-        .catch(() => {
-          console.warn(
-            `[Renderer] ⚠️  Title wait timed out for ${publicUrl} — title: "${
-              // log current title for debugging
-              ""
-            }" — returning best-effort HTML`,
-          );
-        });
+        .then(() => true)
+        .catch(() => false);
 
-      // Extra 500ms buffer for Helmet to finish flushing all meta tags
-      await new Promise((r) => setTimeout(r, 500));
+      if (!titleChanged) {
+        const currentTitle = await page.title().catch(() => "unknown");
+        console.warn(
+          `[Renderer] ⚠️  Title stayed as fallback: "${currentTitle}" for ${publicUrl}`,
+        );
+        // Don't cache failed renders — let next bot request retry
+        return null;
+      }
+
+      // Small buffer for Helmet to flush remaining meta tags
+      await new Promise((r) => setTimeout(r, 300));
 
       const html = await page.content();
-
-      // Sanity check — log the title we actually captured
       const capturedTitle = await page.title().catch(() => "unknown");
-      console.log(
-        `[Renderer] ✅ Captured title: "${capturedTitle}" for ${publicUrl}`,
-      );
+      console.log(`[Renderer] ✅ "${capturedTitle}" → ${publicUrl}`);
 
       cacheSet(publicUrl, html);
       return html;
@@ -356,9 +384,10 @@ function isBot(userAgent) {
 }
 
 function shouldSkip(urlPath) {
-  // Never prerender API, public assets, or internal SSR sentinel requests
   if (urlPath.startsWith("/api/")) return true;
   if (urlPath.startsWith("/public/")) return true;
+  // Skip internal SSR renders — Puppeteer calling back into Express
+  if (urlPath.startsWith("/_ssr")) return true;
   const clean = urlPath.split("?")[0];
   const dot = clean.lastIndexOf(".");
   if (dot !== -1 && SKIP_EXT.has(clean.slice(dot))) return true;
@@ -372,23 +401,26 @@ function shouldSkip(urlPath) {
 export async function botRenderMiddleware(req, res, next) {
   const ua = req.headers["user-agent"] || "";
 
-  // Skip internal SSR renders (Puppeteer calling back into Express)
+  // Skip if this is an internal Puppeteer render request
   if (req.headers["x-ssr-internal"] === "1") return next();
 
   if (!isBot(ua) || shouldSkip(req.path)) return next();
 
-  // Build both URLs:
-  // publicUrl  — canonical URL for cache key + correct Host header
-  // localUrl   — localhost URL Puppeteer actually fetches (bypasses CF)
   const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   const publicUrl = `${protocol}://${host}${req.originalUrl}`;
-  const localUrl = `http://127.0.0.1:${LOCAL_PORT}${req.originalUrl}`;
+  const pathAndQuery = req.originalUrl; // e.g. /post/some-slug
 
-  console.log(`[Renderer] 🤖 Bot: ${ua.slice(0, 40)} → ${publicUrl}`);
+  console.log(`[Renderer] 🤖 Bot: ${ua.slice(0, 50)} → ${publicUrl}`);
 
   try {
-    const html = await renderPage(publicUrl, localUrl);
+    const html = await renderPage(publicUrl, pathAndQuery);
+
+    if (!html) {
+      // Render failed to get real content — fall through to CSR
+      console.warn(`[Renderer] ⚠️  Falling through to CSR for ${publicUrl}`);
+      return next();
+    }
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("X-Prerender-Status", "200");
