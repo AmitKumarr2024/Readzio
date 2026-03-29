@@ -13,6 +13,8 @@
 
 import puppeteer from "puppeteer";
 import http from "http";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
 // =============================================================================
 // CONFIG
@@ -157,7 +159,7 @@ function fetchPostData(slug) {
 }
 
 // =============================================================================
-// BUILD STATIC HTML FOR POST (injected meta tags into index.html shell)
+// HTML UTILITIES
 // =============================================================================
 
 function escapeHtml(str) {
@@ -179,6 +181,37 @@ function extractTextFromBlocks(blocks) {
     .slice(0, 300);
 }
 
+// =============================================================================
+// STRIP CONFLICTING STATIC TAGS FROM INDEX.HTML
+// Removes homepage fallback meta tags so our injected ones are the only ones.
+// =============================================================================
+
+function stripStaticFallbackTags(html) {
+  return (
+    html
+      // Remove static <title>
+      .replace(/<title>[^<]*<\/title>/gi, "")
+      // Remove static <link rel="canonical">
+      .replace(/<link\s[^>]*rel=["']canonical["'][^>]*\/?>/gi, "")
+      // Remove static <meta name="description">
+      .replace(/<meta\s[^>]*name=["']description["'][^>]*\/?>/gi, "")
+      // Remove static <meta name="robots">
+      .replace(/<meta\s[^>]*name=["']robots["'][^>]*\/?>/gi, "")
+      // Remove static <meta name="author">
+      .replace(/<meta\s[^>]*name=["']author["'][^>]*\/?>/gi, "")
+      // Remove ALL og: meta tags
+      .replace(/<meta\s[^>]*property=["']og:[^"']*["'][^>]*\/?>/gi, "")
+      // Remove ALL twitter: meta tags
+      .replace(/<meta\s[^>]*name=["']twitter:[^"']*["'][^>]*\/?>/gi, "")
+      // Remove static article: meta tags
+      .replace(/<meta\s[^>]*property=["']article:[^"']*["'][^>]*\/?>/gi, "")
+  );
+}
+
+// =============================================================================
+// BUILD STATIC HTML FOR POST
+// =============================================================================
+
 function buildPostHtml(post, indexHtml, publicUrl) {
   const title = escapeHtml(post.title || "");
   const description = escapeHtml(
@@ -193,7 +226,8 @@ function buildPostHtml(post, indexHtml, publicUrl) {
   const readTime = post.readTime || "";
   const canonical = publicUrl;
 
-  // Build JSON-LD
+  // ── Structured Data ───────────────────────────────────────────────────────
+
   const articleSchema = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "Article",
@@ -204,7 +238,10 @@ function buildPostHtml(post, indexHtml, publicUrl) {
     publisher: {
       "@type": "Organization",
       name: "Readzio",
-      logo: { "@type": "ImageObject", url: "https://www.readzio.com/logo.png" },
+      logo: {
+        "@type": "ImageObject",
+        url: "https://www.readzio.com/logo.png",
+      },
     },
     datePublished: publishedAt,
     dateModified: publishedAt,
@@ -222,11 +259,17 @@ function buildPostHtml(post, indexHtml, publicUrl) {
         name: "Home",
         item: "https://www.readzio.com/",
       },
-      { "@type": "ListItem", position: 2, name: post.title, item: canonical },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: post.title,
+        item: canonical,
+      },
     ],
   });
 
-  // Inject into <head> — replace the static fallback title and add all meta
+  // ── Injected <head> block ─────────────────────────────────────────────────
+
   const injectedHead = `
     <title>${title} | Readzio</title>
     <meta name="description" content="${description}" />
@@ -243,19 +286,18 @@ function buildPostHtml(post, indexHtml, publicUrl) {
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="Readzio" />
+    <meta property="og:locale" content="en_IN" />
     <meta property="article:published_time" content="${publishedAt}" />
     <meta property="article:author" content="${escapeHtml(author)}" />
     ${tags.map((t) => `<meta property="article:tag" content="${escapeHtml(t)}" />`).join("\n    ")}
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@readzio" />
     <meta name="twitter:title" content="${title}" />
     <meta name="twitter:description" content="${description}" />
     <meta name="twitter:image" content="${escapeHtml(image)}" />
-    <meta name="twitter:site" content="@readzio" />
-
-    <!-- Extra -->
-    ${readTime ? `<meta name="twitter:label1" content="Reading time" /><meta name="twitter:data1" content="${escapeHtml(readTime)}" />` : ""}
+    ${readTime ? `<meta name="twitter:label1" content="Reading time" />\n    <meta name="twitter:data1" content="${escapeHtml(readTime)}" />` : ""}
 
     <!-- Structured Data -->
     <script type="application/ld+json">${articleSchema}</script>
@@ -265,44 +307,82 @@ function buildPostHtml(post, indexHtml, publicUrl) {
     <meta name="prerender-status-code" content="200" />
   `;
 
-  // Also inject visible content for Google to index
-  // This goes into #root so Google sees the actual article text
+  // ── Visible article body (Google indexes this) ────────────────────────────
+
+  const articleText = extractTextFromBlocks(post.blocks);
   const visibleContent = `
-    <article itemscope itemtype="https://schema.org/Article" style="max-width:800px;margin:0 auto;padding:20px;font-family:sans-serif;">
-      <h1 itemprop="headline" style="font-size:1.8rem;font-weight:bold;margin-bottom:1rem;">${title}</h1>
-      <div style="color:#666;margin-bottom:1rem;">
+    <article
+      itemscope
+      itemtype="https://schema.org/Article"
+      style="max-width:800px;margin:0 auto;padding:20px;font-family:sans-serif;"
+    >
+      <h1
+        itemprop="headline"
+        style="font-size:1.8rem;font-weight:bold;margin-bottom:1rem;"
+      >${title}</h1>
+
+      <div style="color:#666;margin-bottom:1rem;font-size:0.9rem;">
         <span itemprop="author" itemscope itemtype="https://schema.org/Person">
           By <span itemprop="name">${escapeHtml(author)}</span>
         </span>
-        ${readTime ? ` · ${escapeHtml(readTime)}` : ""}
+        ${readTime ? ` &middot; ${escapeHtml(readTime)}` : ""}
         <meta itemprop="datePublished" content="${publishedAt}" />
+        <meta itemprop="dateModified" content="${publishedAt}" />
       </div>
-      ${post.thumbnail ? `<img src="${escapeHtml(post.thumbnail)}" alt="${title}" style="width:100%;max-height:400px;object-fit:cover;border-radius:8px;margin-bottom:1rem;" itemprop="image" />` : ""}
+
+      ${
+        post.thumbnail
+          ? `<img
+              src="${escapeHtml(post.thumbnail)}"
+              alt="${title}"
+              itemprop="image"
+              style="width:100%;max-height:400px;object-fit:cover;border-radius:8px;margin-bottom:1.5rem;"
+            />`
+          : ""
+      }
+
       <div itemprop="articleBody">
-        ${extractTextFromBlocks(post.blocks)
+        ${articleText
           .split(". ")
+          .filter((s) => s.trim().length > 0)
           .map((s) => `<p>${escapeHtml(s.trim())}.</p>`)
-          .join("")}
+          .join("\n        ")}
       </div>
-      ${tags.length > 0 ? `<div style="margin-top:1rem;">${tags.map((t) => `<span style="display:inline-block;margin:4px;padding:4px 8px;background:#f0f0f0;border-radius:4px;font-size:0.8rem;">${escapeHtml(t)}</span>`).join("")}</div>` : ""}
+
+      ${
+        tags.length > 0
+          ? `<div style="margin-top:1.5rem;display:flex;flex-wrap:wrap;gap:6px;">
+          ${tags
+            .map(
+              (t) =>
+                `<span style="padding:4px 10px;background:#f0f0f0;border-radius:20px;font-size:0.78rem;color:#333;">${escapeHtml(t)}</span>`,
+            )
+            .join("")}
+        </div>`
+          : ""
+      }
     </article>
   `;
 
-  // Replace static title in index.html
-  let html = indexHtml
-    .replace(/<title>[^<]*<\/title>/, `<title>${title} | Readzio</title>`)
-    .replace("</head>", `${injectedHead}\n</head>`)
-    .replace('<div id="root">', `<div id="root">${visibleContent}`);
+  // ── Assemble final HTML ───────────────────────────────────────────────────
+
+  let html = indexHtml;
+
+  // STEP 1: Strip all conflicting static fallback tags from index.html
+  html = stripStaticFallbackTags(html);
+
+  // STEP 2: Inject correct post-specific tags just before </head>
+  html = html.replace("</head>", `${injectedHead}\n</head>`);
+
+  // STEP 3: Inject visible article content into #root for Google to index
+  html = html.replace('<div id="root">', `<div id="root">${visibleContent}`);
 
   return html;
 }
 
 // =============================================================================
-// READ INDEX.HTML ONCE
+// READ INDEX.HTML ONCE AT STARTUP
 // =============================================================================
-
-import { readFileSync, existsSync } from "fs";
-import { join } from "path";
 
 let _indexHtml = null;
 
@@ -325,7 +405,7 @@ function getIndexHtml() {
 }
 
 // =============================================================================
-// BROWSER MANAGER (kept for non-post pages)
+// BROWSER MANAGER (used for non-post pages)
 // =============================================================================
 
 let browser = null;
@@ -376,7 +456,9 @@ async function getBrowser() {
     });
 
     browser.on("disconnected", () => {
-      console.warn("[Renderer] ⚠️  Browser disconnected");
+      console.warn(
+        "[Renderer] ⚠️  Browser disconnected — will restart on next request",
+      );
       browser = null;
     });
 
@@ -388,7 +470,7 @@ async function getBrowser() {
 }
 
 // =============================================================================
-// RENDER QUEUE
+// RENDER QUEUE (concurrency = 1)
 // =============================================================================
 
 let activeRenders = 0;
@@ -418,7 +500,7 @@ async function drainQueue() {
 }
 
 // =============================================================================
-// PUPPETEER RENDER (for non-post pages like homepage, category pages etc.)
+// PUPPETEER RENDER (non-post pages: homepage, category, author pages etc.)
 // =============================================================================
 
 async function puppeteerRender(publicUrl, pathAndQuery) {
@@ -494,7 +576,6 @@ async function puppeteerRender(publicUrl, pathAndQuery) {
 // MAIN RENDER DISPATCHER
 // =============================================================================
 
-// Extract slug from /post/:slug path
 function extractPostSlug(urlPath) {
   const match = urlPath.match(/^\/post\/([^/?#]+)/);
   return match ? match[1] : null;
@@ -509,15 +590,14 @@ async function renderPage(publicUrl, pathAndQuery) {
 
   const slug = extractPostSlug(pathAndQuery);
 
-  // ── POST PAGE: use public API + HTML injection (fast, no auth needed) ──
+  // ── POST PAGES: API injection (fast, no Puppeteer, no auth needed) ────────
   if (slug) {
-    console.log(`[Renderer] 📰 Post page detected, fetching: ${slug}`);
+    console.log(`[Renderer] 📰 Post detected, fetching slug: ${slug}`);
     const post = await fetchPostData(slug);
 
     if (post) {
       const indexHtml = getIndexHtml();
       if (!indexHtml) throw new Error("index.html not found");
-
       const html = buildPostHtml(post, indexHtml, publicUrl);
       console.log(`[Renderer] ✅ Post injected: "${post.title}"`);
       cacheSet(publicUrl, html);
@@ -525,12 +605,11 @@ async function renderPage(publicUrl, pathAndQuery) {
     }
 
     console.warn(
-      `[Renderer] ⚠️  Public API returned no post for slug: ${slug}`,
+      `[Renderer] ⚠️  Public API returned no post for slug: ${slug} — falling back to Puppeteer`,
     );
-    // Fall through to Puppeteer as last resort
   }
 
-  // ── OTHER PAGES: use Puppeteer ──
+  // ── OTHER PAGES: Puppeteer render ─────────────────────────────────────────
   try {
     const html = await puppeteerRender(publicUrl, pathAndQuery);
     if (html) {
@@ -569,6 +648,8 @@ function shouldSkip(urlPath) {
 
 export async function botRenderMiddleware(req, res, next) {
   const ua = req.headers["user-agent"] || "";
+
+  // Skip internal Puppeteer render-back requests
   if (req.headers["x-ssr-internal"] === "1") return next();
   if (!isBot(ua) || shouldSkip(req.path)) return next();
 
@@ -584,7 +665,7 @@ export async function botRenderMiddleware(req, res, next) {
 
     if (!html) {
       console.warn(
-        `[Renderer] ⚠️  No HTML produced for ${publicUrl} — falling through`,
+        `[Renderer] ⚠️  No HTML produced for ${publicUrl} — falling through to CSR`,
       );
       return next();
     }
@@ -642,8 +723,7 @@ export function rendererAdminRoutes(router) {
 
 export async function warmUpRenderer() {
   try {
-    // Pre-load index.html so first request is fast
-    getIndexHtml();
+    getIndexHtml(); // pre-load index.html so first request is instant
     await getBrowser();
     console.log("[Renderer] ✅ Warm-up complete");
   } catch (e) {
