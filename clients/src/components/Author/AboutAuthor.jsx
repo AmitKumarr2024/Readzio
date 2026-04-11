@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { getUserById, fetchUserActivity } from "../../store/userSlice";
@@ -16,7 +16,6 @@ import { toast } from "react-hot-toast";
 import {
   UserCheck,
   UserPlus,
-  UserMinus,
   LogOut,
   Pencil,
   FileText,
@@ -46,7 +45,7 @@ const PostCardSkeleton = () => (
 );
 
 // ─── Profile Header Skeleton ──────────────────────────────────────────────────
-// Pulsing placeholder while author data loads
+// Pulsing placeholder while author profile data is loading
 const ProfileSkeleton = () => (
   <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 mb-6 animate-pulse">
     <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
@@ -69,7 +68,7 @@ const ProfileSkeleton = () => (
 );
 
 // ─── Stat Item ─────────────────────────────────────────────────────────────────
-// Individual stat pill in the profile header stat bar
+// A single stat figure with icon and label used in the profile stats bar
 function StatItem({ label, value, icon: Icon }) {
   return (
     <div className="flex flex-col items-center sm:items-start gap-0.5">
@@ -87,7 +86,7 @@ function StatItem({ label, value, icon: Icon }) {
 }
 
 // ─── Post Card ─────────────────────────────────────────────────────────────────
-// Clickable article card in the Posts tab grid
+// Clickable article card rendered in the Posts tab grid
 function PostCard({ post, onClick }) {
   return (
     <article
@@ -96,7 +95,7 @@ function PostCard({ post, onClick }) {
                  hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md
                  overflow-hidden transition-all duration-200 cursor-pointer"
     >
-      {/* Thumbnail */}
+      {/* Thumbnail — zooms slightly on hover */}
       <div className="relative aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-800">
         {post.thumbnail ? (
           <img
@@ -110,7 +109,7 @@ function PostCard({ post, onClick }) {
           </div>
         )}
 
-        {/* Views badge overlay */}
+        {/* Views badge overlaid on top-left corner */}
         <div
           className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold
                         bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700
@@ -133,7 +132,7 @@ function PostCard({ post, onClick }) {
           {post.excerpt || "Click to read the full article."}
         </p>
 
-        {/* Category pill */}
+        {/* Optional category pill */}
         {post.category && (
           <div className="mt-3">
             <span
@@ -151,7 +150,7 @@ function PostCard({ post, onClick }) {
 }
 
 // ─── Badge Card ────────────────────────────────────────────────────────────────
-// Individual achievement badge in the About tab
+// Individual achievement badge shown in the About tab
 function BadgeCard({ badge }) {
   return (
     <div
@@ -165,15 +164,16 @@ function BadgeCard({ badge }) {
       >
         <Trophy className="w-4 h-4 text-amber-600 dark:text-amber-400" />
       </div>
+      {/* Support both plain string badges and object badges with a .name field */}
       <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-        {badge.name || badge}
+        {typeof badge === "string" ? badge : badge?.name || "Badge"}
       </span>
     </div>
   );
 }
 
 // ─── Tab Button ────────────────────────────────────────────────────────────────
-// Individual tab switcher button
+// Styled tab switcher button used in the Posts / About tab row
 function TabBtn({ label, active, onClick, icon: Icon }) {
   return (
     <button
@@ -205,27 +205,39 @@ const AboutAuthor = ({ authorId }) => {
     totalPosts,
     loading: postsLoading,
   } = useSelector((state) => state.post);
-  const { userId, loading: followLoading } = useSelector(
-    (state) => state.follow,
-  );
-  const { badges, loading: achievementsLoading } = useSelector(
-    (state) => state.achievements,
+
+  // FIX: followSlice stores loading at the top level (state.follow.loading),
+  // not nested inside a sub-object — pull it correctly to avoid undefined
+  const { loading: followLoading } = useSelector((state) => state.follow);
+
+  // FIX: the logged-in user's ID comes from authSlice, not followSlice.
+  // followSlice.userId is only set when explicitly dispatched via setUserId action.
+  const { user: authUser } = useSelector((state) => state.auth);
+
+  const { badges = [], loading: achievementsLoading } = useSelector(
+    (state) => state.achievements || {},
   );
 
   // ── Local state ──────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState("Posts");
   const [isFollowing, setIsFollowing] = useState(false);
 
-  // ── Fetch all author data on mount or authorId change ───────────────────
+  // ── Fetch all data for this author on mount / authorId change ────────────
   useEffect(() => {
     if (!authorId) return;
+
     dispatch(getUserById(authorId));
     dispatch(fetchUserPosts({ userId: authorId, page: 1, limit: 12 }));
     dispatch(fetchUserActivity(authorId));
     dispatch(fetchUserAchievements(authorId));
+
+    // FIX: fetchFollowers and fetchFollowing thunks now safely accept no
+    // arguments because we added `= {}` default to their parameter destructuring
+    // in followSlice.js — calling them with no args no longer crashes.
     dispatch(fetchFollowers());
     dispatch(fetchFollowing());
-    // Get live follow status for the follow/unfollow button
+
+    // Check if the logged-in user is already following this author
     dispatch(getFollowStatus(authorId)).then((res) => {
       setIsFollowing(res.payload?.isFollowing ?? false);
     });
@@ -237,19 +249,18 @@ const AboutAuthor = ({ authorId }) => {
     try {
       await dispatch(action(authorId)).unwrap();
       setIsFollowing((prev) => !prev);
-      toast.success(isFollowing ? "Unfollowed successfully" : "Now following!");
+      toast.success(isFollowing ? "Unfollowed" : "Now following!");
     } catch {
       toast.error("Failed to update follow status.");
     }
   };
 
-  // ── Navigation helpers ───────────────────────────────────────────────────
   const handleEditProfile = () => navigate("/user");
 
   const handleLogout = async () => {
     try {
       await dispatch(logout()).unwrap();
-      toast.success("Logged out successfully");
+      toast.success("Logged out");
       navigate("/login");
     } catch {
       toast.error("Logout failed.");
@@ -257,11 +268,14 @@ const AboutAuthor = ({ authorId }) => {
   };
 
   // ── Derived values ───────────────────────────────────────────────────────
-  const followersCount = selectedUser?.followers?.length || 0;
-  const followingCount = selectedUser?.following?.length || 0;
+  // followers/following counts come from selectedUser (populated by getUserById)
+  // since the follow slice only tracks the *current* user's own follow list
+  const followersCount = selectedUser?.followers?.length ?? 0;
+  const followingCount = selectedUser?.following?.length ?? 0;
   const postCount = totalPosts || posts.length || 0;
-  // Determine if the viewer is viewing their own profile
-  const isSelf = userId?.toString() === authorId?.toString();
+
+  // FIX: compare authUser._id (from auth slice) to authorId to detect self-view
+  const isSelf = authUser?._id?.toString() === authorId?.toString();
 
   // ── Loading state ────────────────────────────────────────────────────────
   if (selectedUserLoading) {
@@ -279,7 +293,7 @@ const AboutAuthor = ({ authorId }) => {
     );
   }
 
-  // ── Error / not found state ──────────────────────────────────────────────
+  // ── Error / not-found state ──────────────────────────────────────────────
   if (selectedUserError || !selectedUser) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center px-4 text-center">
@@ -305,14 +319,14 @@ const AboutAuthor = ({ authorId }) => {
     );
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // ── Main render ──────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         {/* ── Profile Header Card ──────────────────────────────────────── */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-            {/* Avatar */}
+            {/* Avatar with online dot */}
             <div className="relative flex-shrink-0">
               {selectedUser.avatar ? (
                 <img
@@ -321,20 +335,18 @@ const AboutAuthor = ({ authorId }) => {
                   className="w-24 h-24 rounded-2xl object-cover border-2 border-gray-100 dark:border-gray-700"
                 />
               ) : (
-                // Fallback initials avatar when no avatar image
+                // Initials fallback — uses first character of name
                 <div className="w-24 h-24 rounded-2xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
                   <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
                     {(selectedUser.name || "?")[0].toUpperCase()}
                   </span>
                 </div>
               )}
-              {/* Online indicator dot */}
               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-900" />
             </div>
 
-            {/* Author info & actions */}
+            {/* Info column */}
             <div className="flex-1 text-center sm:text-left min-w-0">
-              {/* Name + action buttons row */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
                 <div>
                   <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-0.5">
@@ -347,11 +359,10 @@ const AboutAuthor = ({ authorId }) => {
                   )}
                 </div>
 
-                {/* Action buttons — different for self vs. other author */}
+                {/* Action buttons */}
                 <div className="flex flex-wrap justify-center sm:justify-end gap-2 flex-shrink-0">
                   {isSelf ? (
                     <>
-                      {/* Owner: edit profile + logout */}
                       <button
                         onClick={handleEditProfile}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
@@ -372,7 +383,6 @@ const AboutAuthor = ({ authorId }) => {
                       </button>
                     </>
                   ) : (
-                    // Visitor: follow/unfollow button
                     <button
                       onClick={handleFollowToggle}
                       disabled={followLoading}
@@ -386,13 +396,11 @@ const AboutAuthor = ({ authorId }) => {
                     >
                       {isFollowing ? (
                         <>
-                          <UserCheck className="w-4 h-4" />
-                          Following
+                          <UserCheck className="w-4 h-4" /> Following
                         </>
                       ) : (
                         <>
-                          <UserPlus className="w-4 h-4" />
-                          Follow
+                          <UserPlus className="w-4 h-4" /> Follow
                         </>
                       )}
                     </button>
@@ -400,7 +408,7 @@ const AboutAuthor = ({ authorId }) => {
                 </div>
               </div>
 
-              {/* Meta info row: location, joined date */}
+              {/* Location + join date */}
               <div className="flex flex-wrap justify-center sm:justify-start gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 mb-4">
                 {selectedUser.location && (
                   <span className="flex items-center gap-1">
@@ -423,7 +431,7 @@ const AboutAuthor = ({ authorId }) => {
                 )}
               </div>
 
-              {/* Stats bar: articles, followers, following */}
+              {/* Stats bar */}
               <div className="flex justify-center sm:justify-start gap-6 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <StatItem label="Articles" value={postCount} icon={FileText} />
                 <StatItem
@@ -441,7 +449,7 @@ const AboutAuthor = ({ authorId }) => {
           </div>
         </div>
 
-        {/* ── Bio snippet (shown if exists) ─────────────────────────────── */}
+        {/* ── Bio snippet (shown only if bio exists) ────────────────────── */}
         {selectedUser.bio && (
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 px-6 py-4 mb-6">
             <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed italic">
@@ -466,13 +474,10 @@ const AboutAuthor = ({ authorId }) => {
           />
         </div>
 
-        {/* ── Tab Content ──────────────────────────────────────────────── */}
-
-        {/* Posts tab: responsive card grid */}
+        {/* ── Posts Tab ────────────────────────────────────────────────── */}
         {activeTab === "Posts" && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {postsLoading ? (
-              // Skeleton placeholders while posts load
               [...Array(6)].map((_, i) => <PostCardSkeleton key={i} />)
             ) : posts.length > 0 ? (
               posts.map((post) => (
@@ -483,7 +488,6 @@ const AboutAuthor = ({ authorId }) => {
                 />
               ))
             ) : (
-              // Empty state for posts tab
               <div className="col-span-full py-20 flex flex-col items-center text-center">
                 <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
                   <FileText className="w-6 h-6 text-gray-400" />
@@ -499,39 +503,35 @@ const AboutAuthor = ({ authorId }) => {
           </div>
         )}
 
-        {/* About tab: biography + achievements grid */}
+        {/* ── About Tab ────────────────────────────────────────────────── */}
         {activeTab === "About" && (
           <div className="space-y-5 max-w-3xl">
-            {/* Biography section */}
+            {/* Biography */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
               <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                 Biography
               </h3>
               <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                {selectedUser.bio ||
-                  "This author hasn't written a bio yet. Check back later!"}
+                {selectedUser.bio || "This author hasn't written a bio yet."}
               </p>
-
-              {/* Additional profile fields if present */}
               <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-800 flex flex-wrap gap-x-6 gap-y-2">
                 {selectedUser.profession && (
                   <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                     <Briefcase className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>{selectedUser.profession}</span>
+                    {selectedUser.profession}
                   </div>
                 )}
                 {selectedUser.location && (
                   <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                     <MapPin className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>{selectedUser.location}</span>
+                    {selectedUser.location}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Achievements section */}
+            {/* Achievements */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-              {/* Section header */}
               <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
                 <Trophy className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -550,7 +550,6 @@ const AboutAuthor = ({ authorId }) => {
 
               <div className="p-5">
                 {achievementsLoading ? (
-                  // Skeleton badges while loading
                   <div className="flex flex-wrap gap-3">
                     {[...Array(4)].map((_, i) => (
                       <div
@@ -566,7 +565,6 @@ const AboutAuthor = ({ authorId }) => {
                     ))}
                   </div>
                 ) : (
-                  // Empty state for achievements
                   <div className="flex flex-col items-center justify-center py-10 text-center">
                     <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
                       <Star className="w-5 h-5 text-gray-400" />
