@@ -36,11 +36,16 @@ export default defineConfig(({ mode }) => {
         // ... your existing extensions
         animation: {
           fadeIn: "fadeIn 0.5s ease-in forwards",
+          "tour-in": "tour-in 0.2s ease",
         },
         keyframes: {
           fadeIn: {
             "0%": { opacity: "0", transform: "translateY(10px)" },
             "100%": { opacity: "1", transform: "translateY(0)" },
+          },
+          "tour-in": {
+            from: { opacity: 0, transform: "scale(0.95) translateY(6px)" },
+            to: { opacity: 1, transform: "scale(1) translateY(0)" },
           },
         },
       },
@@ -85,7 +90,7 @@ export default defineConfig(({ mode }) => {
             proxy.on("error", (err) => {
               console.error(
                 "[ViteConfig:Proxy] ❌ /socket.io error:",
-                err.message
+                err.message,
               );
             });
             proxy.on("proxyReq", (proxyReq, req) => {
