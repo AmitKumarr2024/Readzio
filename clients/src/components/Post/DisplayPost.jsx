@@ -107,7 +107,7 @@ const DisplayPost = () => {
     const firstTextBlock = activePost.blocks.find(
       (b) => b?.type === "text" && b?.value,
     );
-    return getSeoDescription(firstTextBlock?.value, 180);
+    return getSeoDescription(firstTextBlock?.value, 120, 155);
   }, [activePost]);
 
   // Memoized values
@@ -422,6 +422,15 @@ const DisplayPost = () => {
         "@type": "WebPage",
         "@id": canonicalUrl,
       },
+
+      wordCount: activePost.blocks
+        ?.filter((b) => b?.type === "text")
+        ?.reduce(
+          (acc, b) =>
+            acc + (b?.value?.replace(/<[^>]+>/g, "").split(/\s+/).length || 0),
+          0,
+        ),
+
       isAccessibleForFree: !isPostRestricted,
     };
 
@@ -439,8 +448,24 @@ const DisplayPost = () => {
           <meta property="og:title" content={activePost.title} />
           <meta property="og:description" content={seoDescription} />
           <meta property="og:image" content={firstImage} />
+
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:type" content="image/jpeg" />
           <meta property="og:type" content="article" />
           <meta property="og:url" content={canonicalUrl} />
+
+          <meta property="og:site_name" content="Readzio" />
+          <meta property="og:locale" content="en_IN" />
+          <meta
+            property="article:published_time"
+            content={activePost.createdAt}
+          />
+          <meta
+            property="article:modified_time"
+            content={activePost.updatedAt}
+          />
+          <meta property="article:author" content={activePost.author?.name} />
 
           {/* Twitter */}
           <meta name="twitter:card" content="summary_large_image" />
@@ -448,6 +473,10 @@ const DisplayPost = () => {
           <meta name="twitter:description" content={seoDescription} />
           <meta name="twitter:image" content={firstImage} />
 
+          <meta
+            property="article:modified_time"
+            content={activePost.updatedAt || activePost.createdAt}
+          />
           {/* Structured Data */}
           <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
         </Helmet>
@@ -520,7 +549,7 @@ const DisplayPost = () => {
             </div>
 
             <div className="hidden lg:block lg:col-span-1 space-y-8">
-              <div className="sticky -top-76 space-y-8">
+              <div className="sticky top-14 space-y-8">
                 <AuthorSidebar
                   authorId={activePost?.author?._id || null}
                   isLoading={
