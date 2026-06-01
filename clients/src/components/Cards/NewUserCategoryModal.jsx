@@ -248,7 +248,7 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
       ).unwrap();
 
       toast.success("Categories saved successfully!");
-      navigate(isNewUser ? "/" : "/create-post");
+      navigate(isNewUser ? "/" : "/createPost");
       onClose();
     } catch (err) {
       toast.error(err.message || "Failed to save categories");
@@ -258,7 +258,7 @@ const NewUserCategoryModal = ({ onClose, isNewUser }) => {
   };
 
   const handleSkip = () => {
-    navigate(isNewUser ? "/" : "/create-post");
+    navigate(isNewUser ? "/" : "/createPost");
     onClose();
   };
 
