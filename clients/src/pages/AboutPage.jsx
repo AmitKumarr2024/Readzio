@@ -12,7 +12,7 @@ const AboutPage = () => {
     <SpaceBackground>
       <Helmet>
         <title>
-          Real-Time Reading & Discussion Platform | Write, Discuss & Get
+          Readzio – Write Ideas, Get Feedback & Vote in Polls| Write, Discuss & Get
           Feedback | Readzio
         </title>
 
