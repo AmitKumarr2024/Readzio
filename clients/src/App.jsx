@@ -140,7 +140,7 @@ export default function App() {
     <div
       className={`min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark`}
     >
-      {isAdBlocked && <AdBlockWarning />}
+      {/* {isAdBlocked && <AdBlockWarning />} */}
       <ScrollToTop />
       <AppTour />
       <Navbar />
