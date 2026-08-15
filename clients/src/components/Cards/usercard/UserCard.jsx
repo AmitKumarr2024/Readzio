@@ -43,6 +43,7 @@ const UserCard = ({
     // console.log("[UserCard] Early return: no user and not loading");
     return null;
   }
+console.log("user:",user);
 
   const formatDate = React.useCallback((dateStr) => {
     // console.log("[UserCard] formatDate called with", dateStr);
@@ -139,7 +140,7 @@ const UserCard = ({
             {/* {console.log("[UserCard] Bio value", user.bio)} */}
             <div className="bio-container">
               <p className="user-bio">
-                {user.bio || "No bio available for this creator."}
+                {user?.bio || "No bio available for this creator."}
               </p>
             </div>
 
