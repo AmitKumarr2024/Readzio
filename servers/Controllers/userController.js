@@ -130,7 +130,7 @@ export const saveUserLocation = async (req, res, next) => {
     followers.forEach((followerId) =>
       io
         .to(followerId.toString())
-        .emit("userLocationUpdate", socketLocationData)
+        .emit("userLocationUpdate", socketLocationData),
     );
 
     res.status(201).json({
@@ -147,8 +147,8 @@ export const saveUserLocation = async (req, res, next) => {
             error.message || "Failed to save user location",
             500,
             "SaveUserLocation",
-            "Unhandled error in location save"
-          )
+            "Unhandled error in location save",
+          ),
     );
   }
 };
@@ -370,8 +370,8 @@ export const getAllUserLocations = async (req, res, next) => {
             error.message || "Failed to fetch user locations",
             500,
             "GetAllUserLocations",
-            "Error in getAllUserLocations"
-          )
+            "Error in getAllUserLocations",
+          ),
     );
   }
 };
@@ -403,8 +403,8 @@ export const getProfile = async (req, res, next) => {
             error.message || "Failed to fetch profile",
             500,
             "GetProfile",
-            "Error in getProfile"
-          )
+            "Error in getProfile",
+          ),
     );
   }
 };
@@ -440,8 +440,8 @@ export const getAllUser = async (req, res, next) => {
             error.message || "Failed to fetch users",
             500,
             "GetAllUser",
-            "Error in getAllUser"
-          )
+            "Error in getAllUser",
+          ),
     );
   }
 };
@@ -460,7 +460,7 @@ export const updateProfile = async (req, res, next) => {
         "Unauthorized - No user found",
         401,
         "UpdateProfile",
-        "User not authenticated"
+        "User not authenticated",
       );
     }
 
@@ -472,7 +472,7 @@ export const updateProfile = async (req, res, next) => {
         "User not found",
         404,
         "UpdateProfile",
-        "Authenticated user does not exist"
+        "Authenticated user does not exist",
       );
     }
 
@@ -520,7 +520,7 @@ export const updateProfile = async (req, res, next) => {
             "Invalid avatar file",
             400,
             "UpdateProfile",
-            "Avatar must be a valid image file"
+            "Avatar must be a valid image file",
           );
         }
 
@@ -549,7 +549,7 @@ export const updateProfile = async (req, res, next) => {
           user.avatar = uploadedAvatar.secure_url;
           console.log(
             "✅ Avatar uploaded successfully:",
-            uploadedAvatar.secure_url
+            uploadedAvatar.secure_url,
           );
         } catch (err) {
           console.error("💥 Cloudinary avatar upload error:", {
@@ -561,7 +561,7 @@ export const updateProfile = async (req, res, next) => {
             "Failed to upload avatar",
             500,
             "UpdateProfile",
-            `Cloudinary error: ${err.message}`
+            `Cloudinary error: ${err.message}`,
           );
         }
       } else {
@@ -588,7 +588,7 @@ export const updateProfile = async (req, res, next) => {
             "Invalid banner file",
             400,
             "UpdateProfile",
-            "Banner must be a valid image file"
+            "Banner must be a valid image file",
           );
         }
 
@@ -617,7 +617,7 @@ export const updateProfile = async (req, res, next) => {
           user.banner = uploadedBanner.secure_url;
           console.log(
             "✅ Banner uploaded successfully:",
-            uploadedBanner.secure_url
+            uploadedBanner.secure_url,
           );
         } catch (err) {
           console.error("💥 Cloudinary banner upload error:", {
@@ -629,7 +629,7 @@ export const updateProfile = async (req, res, next) => {
             "Failed to upload banner",
             500,
             "UpdateProfile",
-            `Cloudinary error: ${err.message}`
+            `Cloudinary error: ${err.message}`,
           );
         }
       } else {
@@ -667,14 +667,19 @@ export const updateProfile = async (req, res, next) => {
     };
 
     // Emit updates via Socket.IO
+    const followers = Array.isArray(user.followers) ? user.followers : [];
+
     console.log("📡 Emitting updates to:", [
       "adminRoom",
-      ...user.followers.map((f) => f.toString()),
+      ...followers.map((f) => f.toString()),
     ]);
+
     io.to("adminRoom").emit("userProfileUpdate", profileUpdateData);
-    user.followers.forEach((followerId) => {
+
+    followers.forEach((followerId) => {
       io.to(followerId.toString()).emit("userProfileUpdate", profileUpdateData);
     });
+
     console.log("✅ Emits sent");
 
     res.status(200).json({
@@ -705,8 +710,8 @@ export const updateProfile = async (req, res, next) => {
             error.message || "Failed to update profile",
             500,
             "UpdateProfile",
-            "Unhandled error in updateProfile"
-          )
+            "Unhandled error in updateProfile",
+          ),
     );
   }
 };
@@ -720,7 +725,7 @@ export const deleteUser = async (req, res, next) => {
         "Unauthorized",
         401,
         "DeleteUser",
-        "User not authenticated"
+        "User not authenticated",
       );
     }
 
@@ -731,7 +736,7 @@ export const deleteUser = async (req, res, next) => {
         "User not found",
         404,
         "DeleteUser",
-        "Authenticated user does not exist"
+        "Authenticated user does not exist",
       );
     }
 
@@ -757,8 +762,8 @@ export const deleteUser = async (req, res, next) => {
             error.message || "Failed to delete user",
             500,
             "DeleteUser",
-            "Error in deleteUser"
-          )
+            "Error in deleteUser",
+          ),
     );
   }
 };
@@ -774,7 +779,7 @@ export const getSingleUserById = async (req, res, next) => {
         "Invalid user ID",
         400,
         "GetSingleUserById",
-        "Invalid MongoDB ObjectId"
+        "Invalid MongoDB ObjectId",
       );
     }
 
@@ -788,7 +793,7 @@ export const getSingleUserById = async (req, res, next) => {
         "User not found",
         404,
         "GetSingleUserById",
-        "User does not exist"
+        "User does not exist",
       );
     }
 
@@ -811,8 +816,8 @@ export const getSingleUserById = async (req, res, next) => {
             error.message || "Failed to fetch user",
             500,
             "GetSingleUserById",
-            "Error in getSingleUserById"
-          )
+            "Error in getSingleUserById",
+          ),
     );
   }
 };
@@ -828,7 +833,7 @@ export const getUserActivity = async (req, res, next) => {
         "Invalid user ID",
         400,
         "GetUserActivity",
-        "Invalid MongoDB ObjectId"
+        "Invalid MongoDB ObjectId",
       );
     }
 
@@ -839,7 +844,7 @@ export const getUserActivity = async (req, res, next) => {
         "User not found",
         404,
         "GetUserActivity",
-        "User does not exist"
+        "User does not exist",
       );
     }
 
@@ -873,8 +878,8 @@ export const getUserActivity = async (req, res, next) => {
             error.message || "Failed to fetch user activity",
             500,
             "GetUserActivity",
-            "Error in getUserActivity"
-          )
+            "Error in getUserActivity",
+          ),
     );
   }
 };
@@ -900,8 +905,8 @@ export const clearUserActivity = async (req, res, next) => {
             error.message || "Failed to clear user activity",
             500,
             "ClearUserActivity",
-            "Error in clearUserActivity"
-          )
+            "Error in clearUserActivity",
+          ),
     );
   }
 };
@@ -940,7 +945,7 @@ export const saveUserCookieConsent = async (req, res, next) => {
         "Invalid consent value",
         400,
         "SaveUserCookieConsent",
-        "Consent must be a boolean"
+        "Consent must be a boolean",
       );
     }
 
@@ -970,8 +975,8 @@ export const saveUserCookieConsent = async (req, res, next) => {
             error.message || "Failed to save cookie consent",
             500,
             "SaveUserCookieConsent",
-            "Error in saveUserCookieConsent"
-          )
+            "Error in saveUserCookieConsent",
+          ),
     );
   }
 };
@@ -982,7 +987,7 @@ export const adminSendFeedbackPrompt = async (req, res, next) => {
   try {
     if (!req.user?.isAdmin) {
       return next(
-        new AppError("Only admins can trigger feedback prompts", 403)
+        new AppError("Only admins can trigger feedback prompts", 403),
       );
     }
 
@@ -1018,7 +1023,7 @@ export const adminSendFeedbackPrompt = async (req, res, next) => {
 export const shouldShowFeedbackPrompt = async (req, res, next) => {
   try {
     const user = await UserModel.findById(req.user._id).select(
-      "joiningDate feedbackPrompt"
+      "joiningDate feedbackPrompt",
     );
 
     if (!user) {
@@ -1026,7 +1031,7 @@ export const shouldShowFeedbackPrompt = async (req, res, next) => {
     }
 
     const accountAgeInDays = Math.floor(
-      (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24)
+      (Date.now() - new Date(user.joiningDate)) / (1000 * 60 * 60 * 24),
     );
 
     const shouldShow =
@@ -1091,7 +1096,7 @@ export const getAllFeedbacks = async (req, res, next) => {
       "feedbackPrompt.responded": true,
     })
       .select(
-        "name email avatar feedbackPrompt.createdAt feedbackPrompt.rating feedbackPrompt.message feedbackPrompt.shown feedbackPrompt.shownAt feedbackPrompt.responded"
+        "name email avatar feedbackPrompt.createdAt feedbackPrompt.rating feedbackPrompt.message feedbackPrompt.shown feedbackPrompt.shownAt feedbackPrompt.responded",
       )
       .sort({ "feedbackPrompt.shownAt": -1 })
       .lean();
@@ -1121,8 +1126,8 @@ export const getAllFeedbacks = async (req, res, next) => {
             error.message || "Failed to fetch feedback",
             500,
             "GetAllFeedbacks",
-            "Error in getAllFeedbacks"
-          )
+            "Error in getAllFeedbacks",
+          ),
     );
   }
 };
