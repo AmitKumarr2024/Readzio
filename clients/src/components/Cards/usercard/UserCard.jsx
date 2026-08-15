@@ -43,7 +43,7 @@ const UserCard = ({
     // console.log("[UserCard] Early return: no user and not loading");
     return null;
   }
-console.log("user:",user);
+
 
   const formatDate = React.useCallback((dateStr) => {
     // console.log("[UserCard] formatDate called with", dateStr);
